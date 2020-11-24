@@ -1,0 +1,7 @@
+npm install express morgan axios cheerio lodash
+
+git remote add origin git://github.com/saiemgilani/cfb-data-api.git
+
+ssh-keygen -t ed25519 -C "saiem.gilani@gmail.com"
+
+cd C:\\Users\\saiem\\Documents\\GitHub\\cfb-data-api
