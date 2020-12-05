@@ -2,9 +2,9 @@
   "name": "cfb_scrapper",
   "version": "1.0.0",
   "description": "an express cfb_scrapper",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Saiem Gilani",
@@ -15,22 +15,23 @@
     "cfb-data": "file:cfb-data",
     "cheerio": "^1.0.0-rc.3",
     "cowsay": "^1.4.0",
+    "dc": "^4.2.0",
     "express": "^4.17.1",
     "lodash": "^4.17.20",
     "morgan": "^1.10.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SaiemGilani/cfbscrapR-data.git"
+    "url": "git+https://github.com/SaiemGilani/cfb-data-api.git"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "nodemon": "^2.0.6"
   },
   "bugs": {
-    "url": "https://github.com/SaiemGilani/cfbscrapR-data/issues"
+    "url": "https://github.com/SaiemGilani/cfb-data-api/issues"
   },
-  "homepage": "https://github.com/SaiemGilani/cfbscrapR-data#readme",
+  "homepage": "https://github.com/SaiemGilani/cfb-data-api#readme",
   "directories": {
     "test": "test"
   },

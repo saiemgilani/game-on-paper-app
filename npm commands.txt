@@ -5,3 +5,15 @@ git remote add origin git://github.com/saiemgilani/cfb-data-api.git
 ssh-keygen -t ed25519 -C "saiem.gilani@gmail.com"
 
 cd C:\\Users\\saiem\\Documents\\GitHub\\cfb-data-api
+
+curl --data "id=400763535" http://localhost:5000/cfb/pbp
+"id=400763535"
+
+curl -X GET --data "id=401212483" http://localhost:5000/cfb/pbp
+
+curl -X GET --data "week=10" http://localhost:5000/cfb/schedule
+
+curl -X GET --data "id=401169768" http://localhost:5000/cbb/pbp
+
+doctl registry login
+docker ps

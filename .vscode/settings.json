@@ -1,0 +1,6 @@
+{
+    "r.bracketedPaste": true,
+    "r.lsp.args": [
+        "C:\\Program Files\\R\\R-4.0.3\\bin\\x64\\Rscript.exe",
+    ]
+}
