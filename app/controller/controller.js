@@ -72,42 +72,48 @@ kickoff = [
 
 async function retrievePBP(req, res) {
     // get game all game data
-    let summary = await cfb.games.getPlayByPlay(req.query.gameId);
+    let pbp = await cfb.games.getPlayByPlay(req.query.gameId);
+    let summary = await cfb.games.getSummary(req.query.gameId);
+    // console.log(JSON.stringify(boxScore))
     
     // strip out the unnecessary crap
-    delete summary.news;
-    delete summary.article;
-    delete summary.standings;
-    delete summary.videos;
-    delete summary.header;
-    delete summary.pickcenter; // could probably reuse the spread from here to give an initial prediction
-    delete summary.teams;
+    delete pbp.news;
+    delete pbp.article;
+    delete pbp.standings;
+    delete pbp.videos;
+    delete pbp.header;
+    summary.homeTeamSpread = summary.pickcenter[0].spread * (summary.pickcenter[0].homeTeamOdds.favorite == true ? 1 : -1)
+    delete pbp.pickcenter;
+    delete pbp.teams;
 
-    summary.gameInfo = summary.competitions[0];
-    delete summary.competitions;
+    pbp.gameInfo = pbp.competitions[0];
+    var homeTeamId = pbp.competitions[0].competitors[0].id;
+    delete pbp.competitions;
 
-    var drives = summary.drives.previous;
-    if ("current" in summary.drives) {
-        drives.concat(summary.drives.current)
+    var drives = pbp.drives.previous;
+    if ("current" in pbp.drives) {
+        drives.concat(pbp.drives.current)
     }
     drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
+    var firstHalfKickTeamId = drives[0].plays[0].start.team.id
 
     var plays = drives.map(d => d.plays).reduce((acc, val) => acc.concat(val));
     
-    if ("winprobability" in summary) {
-        summary.espnWP = summary.winprobability
-        delete summary.winprobability
+    if ("winprobability" in pbp) {
+        pbp.espnWP = pbp.winprobability
+        delete pbp.winprobability
     }
     
     plays.sort((a, b) => parseInt(a.id) < parseInt(b.id));
     try {
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
+        plays.forEach(p => p.period = (p.period != null) ? p.period.number : 0)
         plays = await calculateEPA(plays)
-        calculateWPA(plays);
-        summary.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
-        summary.plays = plays;
-        summary.drives = drives;
-        return res.json(summary);
+        plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
+        pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
+        pbp.plays = plays;
+        pbp.drives = drives;
+        return res.json(pbp);
     } catch(err) {
         console.log(err);
         return res.json(err);
@@ -115,6 +121,14 @@ async function retrievePBP(req, res) {
 }
 
 function calculateHalfSecondsRemaining(period, time) {
+    if (period == null) {
+        return 0
+    }
+
+    if (time == null) {
+        return 0
+    }
+
     var splitTime = time.split(":")
     var minutes = splitTime.length > 0 ? parseInt(splitTime[0]) : 0
     var seconds = splitTime.length > 1 ? parseInt(splitTime[1]) : 0
@@ -151,6 +165,7 @@ function prepareEPInputs(play, clock) {
         goal_to_go: (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
         under_two: (time_remaining <= 120) ? 1.0 : 0.0,
         time_remaining: time_remaining,
+        adj_time_remaining: calculateGameSecondsRemaining(play.period, time_remaining),
         adjusted_yardline: play.yardsToEndzone,
         adjusted_yardline_down_2: (play.down == 2) ? play.yardsToEndzone : 0.0,
         adjusted_yardline_down_3: (play.down == 3) ? play.yardsToEndzone : 0.0,
@@ -342,18 +357,157 @@ function calculateExpectedValue(preds) {
     return result
 }
 
-function calculateWPA(plays) {
+function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, nextPlay) {
+
+    let offenseReceives2HKickoff = (firstHalfKickTeamId == play.start.team.id) ? 1.0 : 0.0
+
+    let epStartInput = prepareEPInputs(play.start, play.clock.displayValue)
+    let adj_TimeSecsRem = epStartInput['adj_time_remaining']
+
+    let isHome = (homeTeamId == play.start.team.id) ? 1.0 : 0.0
+    let posScoreMargin = (isHome == 1.0) ? (play.homeScore - play.awayScore) : (play.awayScore - play.homeScore)
+
+    let expScoreDiff = posScoreMargin + play.expectedPoints.before
+    let expScoreDiffTimeRatio = expScoreDiff / (adj_TimeSecsRem + 1)
+
+    let posTeamSpread = (isHome == 1.0) ? homeTeamSpread : (-1 * homeTeamSpread)
+    let elapsedShare = Math.max(0, (3600 - adj_TimeSecsRem) / 3600)
+    let spreadTime = posTeamSpread * Math.exp(-4 * elapsedShare)
+
+    let epAfterInput = prepareEPInputs(play.end, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00")
+    let adj_TimeSecsRem_end = epAfterInput['adj_time_remaining']
+
+    let expScoreDiff_end = posScoreMargin + play.expectedPoints.after
+    let expScoreDiffTimeRatio_end = expScoreDiff_end / (adj_TimeSecsRem_end + 1)
+
+    let elapsedShare_End = Math.max(0, (3600 - adj_TimeSecsRem_end) / 3600)
+    let spreadTime_end = posTeamSpread * Math.exp(-4 * elapsedShare_End)
+
+    return {
+        "pos_team_receives_2H_kickoff" : offenseReceives2HKickoff,
+        "spread_time" : spreadTime,
+        "TimeSecsRem" : epStartInput["time_remaining"],
+        "adj_TimeSecsRem" : adj_TimeSecsRem,
+        "ExpScoreDiff_Time_Ratio" : expScoreDiffTimeRatio,
+        "pos_score_diff_start" : posScoreMargin,
+        "down" : play.start.down,
+        "distance" : play.start.distance,
+        "yards_to_goal" : play.start.yardsToEndzone,
+        "is_home" : isHome,
+        "pos_team_timeouts_rem_before" : 3,
+        "def_pos_team_timeouts_rem_before" : 3,
+        "period" : play.period,
+
+        "pos_team_receives_2H_kickoff_end" : offenseReceives2HKickoff,
+        "spread_time_end" : spreadTime_end,
+        "TimeSecsRem_end" : epAfterInput["time_remaining"],
+        "adj_TimeSecsRem_end" : adj_TimeSecsRem_end,
+        "ExpScoreDiff_Time_Ratio_end" : expScoreDiffTimeRatio_end,
+        "pos_score_diff_start_end" : posScoreMargin,
+        "down_end" : play.end.down,
+        "distance_end" : play.end.distance,
+        "yards_to_goal_end" : play.end.yardsToEndzone,
+        "is_home_end" : isHome,
+        "pos_team_timeouts_rem_before_end" : 3,
+        "def_pos_team_timeouts_rem_before_end" : 3,
+        "period_end" : play.period
+    }
+}
+
+async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeamId) {
     // INPUTS: ["pos_team_receives_2H_kickoff","spread_time","TimeSecsRem","adj_TimeSecsRem","ExpScoreDiff_Time_Ratio",
     // "pos_score_diff_start","down","distance","yards_to_goal","is_home","pos_team_timeouts_rem_before","def_pos_team_timeouts_rem_before",
     // "period"]
 
+    var beforeInputs = []
+    var endInputs = []
     // how do we figure out when timeouts are taken?
-    // how do we figure out who's kicking off in the second half?
-    plays.forEach(p => p.winProbability = {
-        "before" : 0.0,
-        "after" : 0.0,
-        "added" : 0.0
-    })
+    for (var i = 0; i <= plays.length - 1; i+= 1) {
+        var play = plays[i]
+        var nextPlay = null
+        if ((i + 1) >= plays.length) {
+            nextPlay = null
+        } else {
+            nextPlay = plays[i + 1]
+        }
+
+        let wpInputs = prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, nextPlay)
+        let start = [
+            wpInputs["pos_team_receives_2H_kickoff"],
+            wpInputs["spread_time"],
+            wpInputs["TimeSecsRem"],
+            wpInputs["adj_TimeSecsRem"],
+            wpInputs["ExpScoreDiff_Time_Ratio"],
+            wpInputs["pos_score_diff_start"],
+            wpInputs["down"],
+            wpInputs["distance"],
+            wpInputs["yards_to_goal"],
+            wpInputs["is_home"],
+            wpInputs["pos_team_timeouts_rem_before"],
+            wpInputs["def_pos_team_timeouts_rem_before"],
+            wpInputs["period"]
+        ]
+        beforeInputs.push(start)
+
+        let end = [
+            wpInputs["pos_team_receives_2H_kickoff_end"],
+            wpInputs["spread_time_end"],
+            wpInputs["TimeSecsRem_end"],
+            wpInputs["adj_TimeSecsRem_end"],
+            wpInputs["ExpScoreDiff_Time_Ratio_end"],
+            wpInputs["pos_score_diff_start_end"],
+            wpInputs["down_end"],
+            wpInputs["distance_end"],
+            wpInputs["yards_to_goal_end"],
+            wpInputs["is_home_end"],
+            wpInputs["pos_team_timeouts_rem_before_end"],
+            wpInputs["def_pos_team_timeouts_rem_before_end"],
+            wpInputs["period_end"]
+        ]
+        endInputs.push(end)
+
+        play.winProbability = {
+            "before" : 0.0,
+            "after" : 0.0,
+            "added" : 0.0
+        }
+    }
+
+    const resBefore = await axios.post('http://localhost:8000/wp/predict', {
+        data: beforeInputs
+    });
+    var wpBefore = resBefore.data.predictions; 
+    for (var i = 0; i < wpBefore.length; i += 1) {
+        plays[i].winProbability.before = wpBefore[i].wp
+    }
+
+    const resAfter = await axios.post('http://localhost:8000/wp/predict', {
+        data: endInputs
+    });
+    var wpAfter = resAfter.data.predictions; 
+    for (var i = 0; i < wpAfter.length; i += 1) {
+        var wpEnd = wpAfter[i].wp
+
+        var nextPlay = null
+        if ((i + 1) >= plays.length) {
+            nextPlay = null
+        } else {
+            nextPlay = plays[i + 1]
+        }
+
+        if (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0) {
+            if (play.start.team.id == homeTeamId && play.homeScore > play.awayScore) {
+                wpEnd = 1.0
+            } else if (!(play.start.team.id == homeTeamId) && play.homeScore < play.awayScore) {
+                wpEnd = 1.0
+            } else {
+                wpEnd = 0.0
+            }
+        }
+        plays[i].winProbability.after = wpEnd
+        plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
+    }
+    return plays;
 }
 
 exports.getPBP = retrievePBP
