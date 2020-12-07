@@ -13,7 +13,7 @@ Test using Postman -- Send a GET request to `localhost:5000/cfb/pbp?gameId=<ESPN
 ## To-Do:
 
 - [] Docker container to encapsulate both services
-- [] Data manipulation to get epEnd input variables
+- [X] Data manipulation to get epEnd input variables
 - [] Figure out how to get timeouts and calculate ExpScoreDiff for WPA
 - [] Frontend pages?
 - [] Test requests during a live game
