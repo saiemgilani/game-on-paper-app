@@ -10,9 +10,10 @@
   "author": "Saiem Gilani",
   "license": "MIT",
   "dependencies": {
+    "axios": "^0.21.0",
     "cfb-data": "^4.0.0",
     "express": "^4.17.1",
-    "ml-xgboost": "^1.1.2"
+    "python-shell": "^2.0.3"
   },
   "repository": {
     "type": "git",
