@@ -88,6 +88,7 @@ async function retrievePBP(req, res) {
 
     pbp.gameInfo = pbp.competitions[0];
     var homeTeamId = pbp.competitions[0].competitors[0].id;
+    var awayTeamId = pbp.competitions[0].competitors[1].id;
     delete pbp.competitions;
 
     var drives = pbp.drives.previous;
@@ -105,9 +106,39 @@ async function retrievePBP(req, res) {
     }
     
     plays.sort((a, b) => parseInt(a.id) < parseInt(b.id));
+    var timeouts = {};
+    timeouts[homeTeamId] = {
+        "1": [],
+        "2": []
+    };
+    timeouts[awayTeamId] = {
+        "1": [],
+        "2": []
+    };
+    console.log(timeouts)
     try {
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
-        plays.forEach(p => p.period = (p.period != null) ? p.period.number : 0)
+        plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
+
+        timeouts[homeTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period <= 2).map(p => parseInt(p.id))
+        timeouts[awayTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == awayTeamId && p.period <= 2).map(p => parseInt(p.id))
+        timeouts[homeTeamId]["2"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period > 2).map(p => parseInt(p.id))
+        timeouts[awayTeamId]["2"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == awayTeamId && p.period > 2).map(p => parseInt(p.id))
+
+        plays.forEach(p => {
+            var intId = parseInt(p.id);
+            var offenseId = p.start.team.id;
+            var defenseId = (offenseId == homeTeamId) ? awayTeamId : homeTeamId
+
+            var half = p.period <= 2 ? "1" : "2"
+
+            p.start.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[offenseId][half].filter(t => t < intId).length))
+            p.start.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t < intId).length))
+
+            p.end.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[offenseId][half].filter(t => t <= intId).length))
+            p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
+        });
+        
         plays = await calculateEPA(plays)
         plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
@@ -394,8 +425,8 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "distance" : play.start.distance,
         "yards_to_goal" : play.start.yardsToEndzone,
         "is_home" : isHome,
-        "pos_team_timeouts_rem_before" : 3,
-        "def_pos_team_timeouts_rem_before" : 3,
+        "pos_team_timeouts_rem_before" : play.start.posTeamTimeouts,
+        "def_pos_team_timeouts_rem_before" : play.end.posTeamTimeouts,
         "period" : play.period,
 
         "pos_team_receives_2H_kickoff_end" : offenseReceives2HKickoff,
@@ -408,8 +439,8 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "distance_end" : play.end.distance,
         "yards_to_goal_end" : play.end.yardsToEndzone,
         "is_home_end" : isHome,
-        "pos_team_timeouts_rem_before_end" : 3,
-        "def_pos_team_timeouts_rem_before_end" : 3,
+        "pos_team_timeouts_rem_before_end" : play.end.posTeamTimeouts,
+        "def_pos_team_timeouts_rem_before_end" : play.end.defTeamTimeouts,
         "period_end" : play.period
     }
 }
