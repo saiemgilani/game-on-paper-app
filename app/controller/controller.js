@@ -115,7 +115,7 @@ async function retrievePBP(req, res) {
         "1": [],
         "2": []
     };
-    console.log(timeouts)
+    // console.log(timeouts)
     try {
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
         plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
