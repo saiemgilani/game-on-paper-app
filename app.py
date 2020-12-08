@@ -7,10 +7,10 @@ from flask import jsonify
 app = Flask(__name__)
 
 ep_model = xgb.Booster({'nthread': 4})  # init model
-ep_model.load_model('app/models/ep_model.model')
+ep_model.load_model('/models/ep_model.model')
 
 wp_model = xgb.Booster({'nthread': 4})  # init model
-wp_model.load_model('app/models/wp_spread.model')
+wp_model.load_model('/models/wp_spread.model')
 
 @app.route('/ep/predict', methods=['POST'])
 def ep_predict():
@@ -50,6 +50,11 @@ def wp_predict():
     return jsonify({
         "count" : len(result),
         "predictions" : result
+    })
+@app.route('/healthcheck', methods=['GET'])
+def healthcheck():
+    return jsonify({
+        "status": "ok"
     })
 
 if __name__ == '__main__':

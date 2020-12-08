@@ -1,0 +1,21 @@
+version: "3.4"
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - models
+    command: ["npm", "run", "start"]
+
+  models:
+    build:
+      context: .
+    expose:
+      - "80"
+    ports:
+      - "8000:80"
+    volumes: 
+      - ./app/models:/models
+    command: ["python", "app.py"]

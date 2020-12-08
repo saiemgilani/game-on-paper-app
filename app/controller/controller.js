@@ -322,7 +322,7 @@ async function calculateEPA(plays) {
         }
     }
 
-    const resBefore = await axios.post('http://localhost:8000/ep/predict', {
+    const resBefore = await axios.post('http://models:8000/ep/predict', {
         data: beforeInputs
     });
     var epBefore = resBefore.data.predictions; 
@@ -330,7 +330,7 @@ async function calculateEPA(plays) {
         plays[i].expectedPoints.before = calculateExpectedValue(epBefore[i])
     }
 
-    const resAfter = await axios.post('http://localhost:8000/ep/predict', {
+    const resAfter = await axios.post('http://models:8000/ep/predict', {
         data: endInputs
     });
     var epAfter = resAfter.data.predictions; 
@@ -504,7 +504,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         }
     }
 
-    const resBefore = await axios.post('http://localhost:8000/wp/predict', {
+    const resBefore = await axios.post('http://models:8000/wp/predict', {
         data: beforeInputs
     });
     var wpBefore = resBefore.data.predictions; 
@@ -512,7 +512,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         plays[i].winProbability.before = wpBefore[i].wp
     }
 
-    const resAfter = await axios.post('http://localhost:8000/wp/predict', {
+    const resAfter = await axios.post('http://models:8000/wp/predict', {
         data: endInputs
     });
     var wpAfter = resAfter.data.predictions; 
