@@ -1,21 +1,20 @@
-version: "3.4"
+version: "3.8"
 services:
-  app:
-    build:
+  python:
+    build: 
       context: .
-    ports:
-      - "5000:5000"
-    depends_on:
-      - models
-    command: ["npm", "run", "start"]
-
-  models:
-    build:
-      context: .
+      dockerfile: Dockerfile-python
     expose:
-      - "80"
+      - 8080
     ports:
-      - "8000:80"
+      - "8080:8080"
     volumes: 
       - ./app/models:/models
-    command: ["python", "app.py"]
+  node:
+    build: 
+      context: .
+      dockerfile: Dockerfile-node
+    ports:
+      - "5000:5000"
+    links:
+      - python

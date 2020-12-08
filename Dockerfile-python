@@ -1,12 +1,12 @@
-FROM nikolaik/python-nodejs:latest
+FROM python:latest
 
 WORKDIR /src
 
 COPY requirements.txt ./
-COPY package.json ./
 RUN pip install --no-cache-dir -r requirements.txt
-RUN npm install
 
 COPY . .
 
-CMD ./run.sh
+EXPOSE 8080
+
+CMD ["python", "app.py"]
