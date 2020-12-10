@@ -2,10 +2,10 @@ FROM python:latest
 
 WORKDIR /src
 
-COPY requirements.txt ./
+COPY ./python/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./python .
 
 EXPOSE 8080
 

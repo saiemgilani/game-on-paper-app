@@ -2,11 +2,11 @@ FROM node:latest
 
 WORKDIR /src
 
-COPY ./api/package.json ./
+COPY ./frontend/package.json ./
 RUN npm install
 
-COPY ./api .
+COPY ./frontend .
 
-EXPOSE 5000
+EXPOSE 8000
 
 CMD ["npm", "run", "start"]

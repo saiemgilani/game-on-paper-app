@@ -8,11 +8,21 @@ services:
       - 8080
     volumes: 
       - ./python/models:/models
-  node:
+  api:
     build: 
       context: .
       dockerfile: api/Dockerfile
     ports:
       - "5000:5000"
+    expose:
+      - 5000
     links:
       - python
+  frontend:
+    build: 
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8000:8000"
+    links:
+      - api
