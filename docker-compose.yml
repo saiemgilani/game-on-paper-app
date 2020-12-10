@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  python:
+    build: 
+      context: .
+      dockerfile: Dockerfile-python
+    expose:
+      - 8080
+    # ports:
+    #   - "8080:8080"
+    volumes: 
+      - ./app/models:/models
+  node:
+    build: 
+      context: .
+      dockerfile: Dockerfile-node
+    ports:
+      - "5000:5000"
+    links:
+      - python
