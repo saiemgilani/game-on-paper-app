@@ -341,16 +341,16 @@ async function calculateEPA(plays) {
             plays[i].expectedPoints.after *= -1
         }
         
-        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || plays[i].playType.toLocaleLowerCase().includes("end of game") || plays[i].playType.toLocaleLowerCase().includes("end of half")) {
+        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || plays[i].playType.toLocaleLowerCase().includes("end of game") || plays[i].playType.toLocaleLowerCase().includes("end of ot") || plays[i].playType.toLocaleLowerCase().includes("end of half")) {
             plays[i].expectedPoints.after = 0
         }
 
-        if (score.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = 7
+        if (score.includes(plays[i].playType) || (normal_play.includes(plays[i].playType) && plays[i].text.includes("TD"))) {
+            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? 8 : 7
         }
         
         if (defense_score_vec.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = -7
+            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? -8 : -7
         }
         
         if (plays[i].playType.includes("Safety")) {
