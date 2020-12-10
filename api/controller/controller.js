@@ -98,7 +98,7 @@ async function retrievePBP(req, res) {
     drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
     var firstHalfKickTeamId = drives[0].plays[0].start.team.id
 
-    var plays = drives.map(d => d.plays).reduce((acc, val) => acc.concat(val));
+    var plays = drives.map(d => d.plays.filter(p => !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of")))).reduce((acc, val) => acc.concat(val));
     
     if ("winprobability" in pbp) {
         pbp.espnWP = pbp.winprobability
@@ -341,7 +341,8 @@ async function calculateEPA(plays) {
             plays[i].expectedPoints.after *= -1
         }
         
-        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || plays[i].playType.toLocaleLowerCase().includes("end of game") || plays[i].playType.toLocaleLowerCase().includes("end of ot") || plays[i].playType.toLocaleLowerCase().includes("end of half")) {
+        var endHalfGame = (plays[i].type.text.toLocaleLowerCase().includes("end of game") || plays[i].text.toLocaleLowerCase().includes("end of game") || plays[i].type.text.toLocaleLowerCase().includes("end of half") || plays[i].text.toLocaleLowerCase().includes("end of half"))
+        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || endHalfGame) {
             plays[i].expectedPoints.after = 0
         }
 
@@ -526,7 +527,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
             nextPlay = plays[i + 1]
         }
 
-        if (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0) {
+        if (nextPlay == null || i == (wpAfter.length - 1) || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0) {
             if (play.start.team.id == homeTeamId && play.homeScore > play.awayScore) {
                 wpEnd = 1.0
             } else if (!(play.start.team.id == homeTeamId) && play.homeScore < play.awayScore) {
