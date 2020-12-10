@@ -3,17 +3,15 @@ services:
   python:
     build: 
       context: .
-      dockerfile: Dockerfile-python
+      dockerfile: python/Dockerfile
     expose:
       - 8080
-    # ports:
-    #   - "8080:8080"
     volumes: 
-      - ./app/models:/models
+      - ./python/models:/models
   node:
     build: 
       context: .
-      dockerfile: Dockerfile-node
+      dockerfile: api/Dockerfile
     ports:
       - "5000:5000"
     links:
