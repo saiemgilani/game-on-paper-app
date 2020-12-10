@@ -128,27 +128,30 @@ if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.scor
               }
           },
           scales: {
-                  yAxes: [{
-                      ticks: {
-                          // Include a dollar sign in the ticks
-                          callback: function(value, index, values) {
-                              return (Math.round(baseTranslate(value, -1.0, 1.0, 0.0, 100.0) * 100) / 100) + '%'
-                          }
-                      },
-                      labelString: "Win Probability"
-                  }],
-                  xAxes: [{
-                      ticks: {
-                          // Include a dollar sign in the ticks
-                          callback: function(value, index, values) {
-                              return Math.max(0, Math.min(3600, 3600 - value))
-                          }
-                      },
-                      scaleLabel: {
-                          display: true,
-                          labelString: "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)"
-                      }
-                  }]
+                yAxes: [{
+                    ticks: {
+                        // Include a dollar sign in the ticks
+                        callback: function(value, index, values) {
+                            return (Math.round(baseTranslate(value, -1.0, 1.0, 0.0, 100.0) * 100) / 100) + '%'
+                        }
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Win Probablity"
+                    }
+                }],
+                xAxes: [{
+                    ticks: {
+                        // Include a dollar sign in the ticks
+                        callback: function(value, index, values) {
+                            return Math.max(0, Math.min(3600, 3600 - value))
+                        }
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)"
+                    }
+                }]
               }
       }
   })
