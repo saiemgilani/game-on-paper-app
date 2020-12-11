@@ -13,5 +13,6 @@ Test the actual API requests using Postman -- Send a GET request to `localhost:5
 - [X] Data manipulation to get epEnd input variables
 - [X] Figure out how to calculate ExpScoreDiff for WPA
 - [X] Figure out how to get timeouts for WPA
-- [ ] Frontend pages?
+- [X] Frontend pages?
+- [ ] Advanced Box Scores?
 - [ ] Test requests during a live game

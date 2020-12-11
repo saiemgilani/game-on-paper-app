@@ -70,6 +70,17 @@ kickoff = [
     "Kickoff Touchdown"
 ]
 
+function checkValidPlay(p) {
+    if (p.type == null) {
+        return false;
+    }
+
+    if (p.text == null) {
+        return false;
+    }
+    return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of"))
+}
+
 async function retrievePBP(req, res) {
     // get game all game data
     let pbp = await cfb.games.getPlayByPlay(req.query.gameId);
@@ -82,7 +93,7 @@ async function retrievePBP(req, res) {
     delete pbp.standings;
     delete pbp.videos;
     delete pbp.header;
-    summary.homeTeamSpread = summary.pickcenter[0].spread * (summary.pickcenter[0].homeTeamOdds.favorite == true ? 1 : -1)
+    pbp.homeTeamSpread = summary.pickcenter[0].spread * (summary.pickcenter[0].homeTeamOdds.favorite == true ? 1 : -1)
     delete pbp.pickcenter;
     delete pbp.teams;
 
@@ -97,8 +108,7 @@ async function retrievePBP(req, res) {
     }
     drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
     var firstHalfKickTeamId = drives[0].plays[0].start.team.id
-
-    var plays = drives.map(d => d.plays).reduce((acc, val) => acc.concat(val));
+    var plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
     
     if ("winprobability" in pbp) {
         pbp.espnWP = pbp.winprobability
@@ -341,16 +351,17 @@ async function calculateEPA(plays) {
             plays[i].expectedPoints.after *= -1
         }
         
-        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || plays[i].playType.toLocaleLowerCase().includes("end of game") || plays[i].playType.toLocaleLowerCase().includes("end of half")) {
+        var endHalfGame = (plays[i].type.text.toLocaleLowerCase().includes("end of game") || plays[i].text.toLocaleLowerCase().includes("end of game") || plays[i].type.text.toLocaleLowerCase().includes("end of half") || plays[i].text.toLocaleLowerCase().includes("end of half"))
+        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || endHalfGame) {
             plays[i].expectedPoints.after = 0
         }
 
-        if (score.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = 7
+        if (score.includes(plays[i].playType) || (normal_play.includes(plays[i].playType) && plays[i].text.includes("TD"))) {
+            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? 8 : 7
         }
         
         if (defense_score_vec.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = -7
+            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? -8 : -7
         }
         
         if (plays[i].playType.includes("Safety")) {
@@ -526,10 +537,10 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
             nextPlay = plays[i + 1]
         }
 
-        if (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0) {
-            if (play.start.team.id == homeTeamId && play.homeScore > play.awayScore) {
+        if (calculateGameSecondsRemaining(plays[i].period, calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)) <= 30 && (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0)) {
+            if (plays[i].start.team.id == homeTeamId && plays[i].homeScore > plays[i].awayScore) {
                 wpEnd = 1.0
-            } else if (!(play.start.team.id == homeTeamId) && play.homeScore < play.awayScore) {
+            } else if (!(plays[i].start.team.id == homeTeamId) && plays[i].homeScore < plays[i].awayScore) {
                 wpEnd = 1.0
             } else {
                 wpEnd = 0.0

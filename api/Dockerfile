@@ -2,10 +2,10 @@ FROM node:latest
 
 WORKDIR /src
 
-COPY package.json ./
+COPY ./api/package.json ./
 RUN npm install
 
-COPY . .
+COPY ./api .
 
 EXPOSE 5000
 

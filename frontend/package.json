@@ -1,0 +1,31 @@
+{
+  "name": "cfb-frontend",
+  "version": "0.0.1",
+  "description": "Graphs and stuff",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saiemgilani/cfb-data-api.git"
+  },
+  "keywords": [
+    "cfb",
+    "data",
+    "college",
+    "football",
+    "api"
+  ],
+  "author": "Akshay Easwaran <akeaswaran@me.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/saiemgilani/cfb-data-api/issues"
+  },
+  "homepage": "https://github.com/saiemgilani/cfb-data-api#readme",
+  "dependencies": {
+    "axios": "^0.21.0",
+    "ejs": "^3.1.5",
+    "express": "^4.17.1"
+  }
+}
