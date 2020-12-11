@@ -54,21 +54,23 @@ var homeComp = gameData.gameInfo.competitors[0];
 var awayComp = gameData.gameInfo.competitors[1];
 var homeTeam = homeComp.team;
 var awayTeam = awayComp.team;
-var awayTeamColor = hexToRgb(awayTeam.color)
+var awayTeamColor = hexToRgb(awayTeam.alternateColor)
 var homeTeamColor = hexToRgb(homeTeam.color)
 
 var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
 var awayTeamWP = gameData.plays.map(p => ((p.start.team.id == awayTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
 
 // handle end of game
-if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
-  timestamps.push(0)
-  homeTeamWP.push(translateWP(1.0))
-  awayTeamWP.push(translateWP(0.0))
-} else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
-  timestamps.push(0)
-  homeTeamWP.push(translateWP(0.0))
-  awayTeamWP.push(translateWP(1.0))
+if (gameData.gameInfo.status.type.completed == true) {
+    if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
+        timestamps.push(0)
+        homeTeamWP.push(translateWP(1.0))
+        awayTeamWP.push(translateWP(0.0))
+      } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
+        timestamps.push(0)
+        homeTeamWP.push(translateWP(0.0))
+        awayTeamWP.push(translateWP(1.0))
+      }
 }
 
 (function () {
@@ -98,9 +100,9 @@ if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.scor
                   lineTension: 0,
                   label: awayTeam.abbreviation,
                   backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`,
-                  borderColor: awayTeam.color,
+                  borderColor: awayTeam.alternateColor,
                   borderWidth: 4,
-                  pointBackgroundColor: awayTeam.color
+                  pointBackgroundColor: awayTeam.alternateColor
               }
           ]
       },

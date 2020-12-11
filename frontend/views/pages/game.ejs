@@ -5,6 +5,27 @@ const homeComp = gameData.gameInfo.competitors[0];
 const awayComp = gameData.gameInfo.competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
+
+function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"],
+        v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
+    if (yardsToEndzone == 50) {
+        return "50";
+    } else if (yardsToEndzone < 50) {
+        return `${defenseAbbrev} ${yardsToEndzone}`
+    } else {
+        return `${offenseAbbrev} ${100 - yardsToEndzone}`
+    }
+}
+
+function formatDistance(distance) {
+    return (distance == 0) ? "Goal" : distance
+}
+
 %>
 <%- include('../partials/head') %> 
 <body>
@@ -131,10 +152,13 @@ const awayTeam = awayComp.team;
                                             } else {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
+
+                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left"><%= play.text %></td>
+                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
@@ -174,10 +198,14 @@ const awayTeam = awayComp.team;
                                             } else {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
+
+                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left"><%= play.text %></td>
+                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
@@ -205,6 +233,7 @@ const awayTeam = awayComp.team;
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
         document.body.querySelector("#game-date").innerText = DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+      </script>
     </script>
     <script src="/assets/js/dashboard.js"></script>
 </body>
