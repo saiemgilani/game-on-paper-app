@@ -1,10 +1,11 @@
 const express = require('express');
 const axios = require('axios');
+const morgan = require("morgan");
 var path = require('path');
 const port = 8000;
 
 const app = express();
-
+app.use(morgan('common'));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
