@@ -15,7 +15,7 @@ app.get('/', function(req, res) {
 });
 
 async function retrieveGameData(gameId) {
-    const res = await axios.get('http://api:5000/cfb/pbp?gameId=' + gameId);
+    const res = await axios.get('http://api:5000/cfb/pbp/' + gameId);
     return res.data
 }
 

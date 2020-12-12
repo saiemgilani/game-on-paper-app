@@ -6,6 +6,8 @@ services:
       dockerfile: rdata/Dockerfile
     expose:
       - 7000
+    volumes: 
+      - ./rdata/models:/models
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7000/healthcheck"]
       interval: 1m30s

@@ -5,7 +5,8 @@ WORKDIR /src
 
 # Install R packages
 RUN install2.r --error \
-    plumber
+    plumber \
+    mgcv
 
 RUN installGithub.r \
     saiemgilani/cfbscrapR
