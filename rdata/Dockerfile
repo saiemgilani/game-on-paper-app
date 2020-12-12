@@ -1,0 +1,17 @@
+FROM rocker/tidyverse:4.0.3
+
+WORKDIR /src
+
+
+# Install R packages
+RUN install2.r --error \
+    plumber
+
+RUN installGithub.r \
+    saiemgilani/cfbscrapR
+
+COPY ./rdata .
+
+EXPOSE 7000
+
+CMD ["Rscript", "server.R"]

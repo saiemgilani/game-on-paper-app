@@ -154,11 +154,25 @@ async function retrievePBP(req, res) {
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;
+
+        if (pbp.gameInfo.status.type.completed == true) {
+            let boxScore = await retrieveBoxScore(req.query.gameId)
+            pbp.boxScore = boxScore
+        }
+
         return res.json(pbp);
     } catch(err) {
         console.log(err);
         return res.json(err);
     }
+}
+
+async function retrieveBoxScore(gameId) {
+    const res = await axios.post('http://rdata:7000/box', {
+        gameId: gameId
+    });
+    // console.log(res.data)
+    return res.data
 }
 
 function calculateHalfSecondsRemaining(period, time) {
@@ -552,6 +566,23 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
     return plays;
 }
 
+async function getServiceHealth(req, res) {
+    const pythonCheck = await axios.get('http://python:8080/healthcheck');
+    const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
+    const selfCheck = {
+        "status" : "ok"
+    }
+    // console.log("Python: " + JSON.stringify(pythonCheck.data))
+    // console.log("R: " + JSON.stringify(rdataCheck.data))
+    
+    return res.json({
+        "python" : pythonCheck.data,
+        "r" : rdataCheck.data,
+        "node" : selfCheck
+    })
+}
+
 exports.getPBP = retrievePBP
 exports.calculateEPA = calculateEPA
 exports.calculateWPA = calculateWPA
+exports.getServiceHealth = getServiceHealth

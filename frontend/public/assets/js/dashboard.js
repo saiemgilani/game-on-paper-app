@@ -47,6 +47,11 @@ function translateWP(input) {
   return baseTranslate(input, 0.0, 1.0, -1.0, 1.0)
 }
 
+function calculateCumulativeSums(arr) {
+    const cumulativeSum = (sum => value => sum += value)(0);
+    return arr.map(cumulativeSum);
+}
+
 var traversedQuarters = []
 var timestamps = gameData.plays.map(p => calculateGameSecondsRemaining(p.period, calculateHalfSecondsRemaining(p.period, p.clock.displayValue)));
 // console.log(timestamps)
@@ -59,6 +64,18 @@ var homeTeamColor = hexToRgb(homeTeam.color)
 
 var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
 var awayTeamWP = gameData.plays.map(p => ((p.start.team.id == awayTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
+
+var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == homeTeam.id)).map(p => p.expectedPoints.added));
+var homePlays = [...Array(homeTeamEPA.length).keys()]
+var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == awayTeam.id)).map(p => p.expectedPoints.added));
+var awayPlays = [...Array(awayTeamEPA.length).keys()]
+
+var finalPlays = homePlays;
+if (homePlays.length > awayPlays.length) {
+    finalPlays = homePlays;
+} else {
+    finalPlays = awayPlays;
+}
 
 // handle end of game
 if (gameData.gameInfo.status.type.completed == true) {
@@ -79,9 +96,9 @@ if (gameData.gameInfo.status.type.completed == true) {
   feather.replace()
 
   // Graphs
-  var ctx = document.getElementById('myChart')
+  var ctx = document.getElementById('wpChart')
   // eslint-disable-next-line no-unused-vars
-  var myChart = new Chart(ctx, {
+  var wpChart = new Chart(ctx, {
       type: 'line',
       data: {
           labels: timestamps,
@@ -157,4 +174,71 @@ if (gameData.gameInfo.status.type.completed == true) {
               }
       }
   })
+
+  var epCtx = document.getElementById('epChart')
+  // eslint-disable-next-line no-unused-vars
+  var epChart = new Chart(epCtx, {
+      type: 'line',
+      data: {
+          labels: finalPlays,
+          datasets: [
+              {
+                  data: homeTeamEPA,
+                  lineTension: 0,
+                  label: homeTeam.abbreviation,
+                  backgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.0)`,
+                  borderColor: homeTeam.color,
+                  borderWidth: 4,
+                  pointBackgroundColor: homeTeam.color
+              },
+              {
+                  data: awayTeamEPA,
+                  lineTension: 0,
+                  label: awayTeam.abbreviation,
+                  backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.0)`,
+                  borderColor: awayTeam.alternateColor,
+                  borderWidth: 4,
+                  pointBackgroundColor: awayTeam.alternateColor
+              }
+          ]
+      },
+      options: {
+          legend: {
+              display: true
+          },
+          tooltips: {
+              callbacks: {
+                  title: function(tooltipItem, data) {
+                      console.log(tooltipItem)
+                      var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
+                      return `Play Number: ${timeElapsed}`
+                  },
+                  label: function(tooltipItem, data) {
+                      var label = data.datasets[tooltipItem.datasetIndex].label || '';
+
+                      if (label) {
+                          label += ': ';
+                      }
+                      label += (parseFloat(tooltipItem.value) > 0 ? ("+" + tooltipItem.value) : tooltipItem.value)
+                      return label;
+                  }
+              }
+          },
+          scales: {
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Total Offensive EPA"
+                    }
+                }],
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: "Play Number"
+                    }
+                }]
+            }
+      }
+  })
+
 })()

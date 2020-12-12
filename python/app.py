@@ -51,6 +51,7 @@ def wp_predict():
         "count" : len(result),
         "predictions" : result
     })
+
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
     return jsonify({

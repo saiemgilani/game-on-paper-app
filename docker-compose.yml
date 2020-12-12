@@ -1,5 +1,17 @@
 version: "3.8"
 services:
+  rdata:
+    build: 
+      context: .
+      dockerfile: rdata/Dockerfile
+    expose:
+      - 7000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   python:
     build: 
       context: .
@@ -8,6 +20,12 @@ services:
       - 8080
     volumes: 
       - ./python/models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   api:
     build: 
       context: .
@@ -18,6 +36,13 @@ services:
       - 5000
     links:
       - python
+      - rdata
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/cfb/healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   frontend:
     build: 
       context: .
