@@ -297,9 +297,9 @@ async function calculateEPA(plays, homeTeamId) {
         ]
         endInputs.push(end)
 
-        if (play.end.down == -1) {
-            console.log(play)
-        }
+        // if (play.end.down == -1) {
+        //     console.log(play)
+        // }
 
         play.expectedPoints = {
             "before" : 0.0,
@@ -521,16 +521,13 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 }
 
 async function getServiceHealth(req, res) {
-    // const pythonCheck = await axios.get('http://python:8080/healthcheck');
     const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
     const selfCheck = {
         "status" : "ok"
     }
-    // console.log("Python: " + JSON.stringify(pythonCheck.data))
     // console.log("R: " + JSON.stringify(rdataCheck.data))
     
     return res.json({
-        // "python" : pythonCheck.data,
         "r" : rdataCheck.data,
         "node" : selfCheck
     })

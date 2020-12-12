@@ -14,20 +14,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-  python:
-    build: 
-      context: .
-      dockerfile: python/Dockerfile
-    expose:
-      - 8080
-    volumes: 
-      - ./python/models:/models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthcheck"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
   api:
     build: 
       context: .
@@ -37,7 +23,6 @@ services:
     expose:
       - 5000
     links:
-      - python
       - rdata
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/cfb/healthcheck"]

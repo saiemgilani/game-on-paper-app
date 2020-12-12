@@ -23,14 +23,6 @@ function() {
 #* Returns expected points predictions using cfbscrapR's model
 #* @post /ep/predict
 function(data) {
-# "TimeSecsRem",
-# "down",
-# "distance",
-# "yards_to_goal",
-# "log_ydstogo",
-# "Goal_To_Go",
-# "Under_two",
-# "pos_score_diff_start"
   # print(data)
   base <- as.data.frame(data)
   colnames(base) <- c(
