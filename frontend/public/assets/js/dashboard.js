@@ -52,8 +52,71 @@ function calculateCumulativeSums(arr) {
     return arr.map(cumulativeSum);
 }
 
-var traversedQuarters = []
-var timestamps = gameData.plays.map(p => calculateGameSecondsRemaining(p.period, calculateHalfSecondsRemaining(p.period, p.clock.displayValue)));
+// https://www.trysmudford.com/blog/linear-interpolation-functions/
+const lerp = (x, y, a) => x * (1 - a) + y * a;
+
+function interpolateTimestamps(plays) {
+    plays.forEach(p => p.time_remaining = calculateHalfSecondsRemaining(p.period, p.clock.displayValue))
+    var ind = [];
+    for (var i = 0; i < plays.length; i+= 1) {
+        // var play = plays[i]
+        var nextPlay = null
+        if ((i + 1) >= plays.length) {
+            nextPlay = null
+        } else {
+            nextPlay = plays[i + 1]
+        }
+
+        if (nextPlay != null) {
+            if (plays[i].time_remaining == nextPlay.time_remaining) {
+                plays[i].time_remaining = null
+            } else {
+                plays[i].time_remaining = plays[i].time_remaining
+            }
+        }
+
+        if (plays[i].time_remaining == 1800 && plays[i].period == 3) {
+            ind.push(i)
+        }
+    }
+
+    plays[0].time_remaining = 1800
+    plays[plays.length - 1].time_remaining = 0
+    
+    // game is probably in progress?
+    if (ind.length == 0) {
+        ind.push(plays.length - 1)
+    }
+
+    ind.forEach(j => {
+        let adjIndex = j - 1
+        if (adjIndex >= 0 && adjIndex < plays.length) {
+            plays[adjIndex].time_remaining = 0
+        }
+    })
+    console.log(ind)
+
+    let halfPoint = ind[ind.length - 1]
+    for (var i = 0; i < halfPoint; i++) {
+        var pct = (i / halfPoint)
+        // console.log("pct: " + pct)
+        plays[i].time_remaining = Math.round(lerp(1800, 0, pct))
+    }
+    
+    for (var i = halfPoint + 1; i < plays.length; i++) {
+        var pct = ((i - (halfPoint + 1)) / (plays.length - (halfPoint + 1)))
+        // console.log("pct: " + pct)
+        plays[i].time_remaining = Math.round(lerp(1800, 0, pct))
+    }
+    
+    plays.forEach(p => p.game_time_remaining = calculateGameSecondsRemaining(p.period, p.time_remaining))
+
+    return plays;
+}
+
+gameData.plays = interpolateTimestamps(gameData.plays)
+// console.log(gameData.plays[0])
+var timestamps = gameData.plays.map(p => p.game_time_remaining);
 // console.log(timestamps)
 var homeComp = gameData.gameInfo.competitors[0];
 var awayComp = gameData.gameInfo.competitors[1];
