@@ -156,7 +156,7 @@ async function retrievePBP(req, res) {
         pbp.drives = drives;
 
         if (pbp.gameInfo.status.type.completed == true) {
-            let boxScore = await retrieveBoxScore(req.query.gameId)
+            let boxScore = await retrieveBoxScore(req.params.gameId)
             pbp.boxScore = boxScore
         }
 
@@ -311,7 +311,7 @@ async function calculateEPA(plays, homeTeamId) {
     const resBefore = await axios.post('http://rdata:7000/ep/predict', {
         data: beforeInputs
     });
-    console.log(resBefore.data)
+    
     var epBefore = resBefore.data.predictions; 
     for (var i = 0; i < epBefore.length; i += 1) {
         plays[i].expectedPoints.before = calculateExpectedValue(epBefore[i])
@@ -407,6 +407,7 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "spread_time" : spreadTime,
         "TimeSecsRem" : epStartInput["TimeSecsRem"],
         "adj_TimeSecsRem" : adj_TimeSecsRem,
+        "ExpScoreDiff": expScoreDiff,
         "ExpScoreDiff_Time_Ratio" : expScoreDiffTimeRatio,
         "pos_score_diff_start" : posScoreMargin,
         "down" : play.start.down,
@@ -416,11 +417,14 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "pos_team_timeouts_rem_before" : play.start.posTeamTimeouts,
         "def_pos_team_timeouts_rem_before" : play.end.posTeamTimeouts,
         "period" : play.period,
+        "half" : (play.period <= 2) ? 1 : 2,
+        "Under_two" : (epStartInput["TimeSecsRem"] <= 120) ? 1.0 : 0.0,
 
         "pos_team_receives_2H_kickoff_end" : offenseReceives2HKickoff,
         "spread_time_end" : spreadTime_end,
         "TimeSecsRem_end" : epAfterInput["TimeSecsRem"],
         "adj_TimeSecsRem_end" : adj_TimeSecsRem_end,
+        "ExpScoreDiff_end": expScoreDiff_end,
         "ExpScoreDiff_Time_Ratio_end" : expScoreDiffTimeRatio_end,
         "pos_score_diff_start_end" : posScoreMargin,
         "down_end" : play.end.down,
@@ -429,7 +433,9 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "is_home_end" : isHome,
         "pos_team_timeouts_rem_before_end" : play.end.posTeamTimeouts,
         "def_pos_team_timeouts_rem_before_end" : play.end.defTeamTimeouts,
-        "period_end" : play.period
+        "period_end" : play.period,
+        "half_end" : (play.period <= 2) ? 1 : 2,
+        "Under_two_end" : (epAfterInput["TimeSecsRem"] <= 120) ? 1.0 : 0.0,
     }
 }
 
@@ -448,36 +454,24 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 
         let wpInputs = prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, nextPlay)
         let start = [
-            wpInputs["pos_team_receives_2H_kickoff"],
-            wpInputs["spread_time"],
+            wpInputs["ExpScoreDiff"],
+            wpInputs["half"],
             wpInputs["TimeSecsRem"],
-            wpInputs["adj_TimeSecsRem"],
             wpInputs["ExpScoreDiff_Time_Ratio"],
-            wpInputs["pos_score_diff_start"],
-            wpInputs["down"],
-            wpInputs["distance"],
-            wpInputs["yards_to_goal"],
-            wpInputs["is_home"],
+            wpInputs["Under_two"],
             wpInputs["pos_team_timeouts_rem_before"],
-            wpInputs["def_pos_team_timeouts_rem_before"],
-            wpInputs["period"]
+            wpInputs["def_pos_team_timeouts_rem_before"]
         ]
         beforeInputs.push(start)
 
         let end = [
-            wpInputs["pos_team_receives_2H_kickoff_end"],
-            wpInputs["spread_time_end"],
+            wpInputs["ExpScoreDiff_end"],
+            wpInputs["half_end"],
             wpInputs["TimeSecsRem_end"],
-            wpInputs["adj_TimeSecsRem_end"],
             wpInputs["ExpScoreDiff_Time_Ratio_end"],
-            wpInputs["pos_score_diff_start_end"],
-            wpInputs["down_end"],
-            wpInputs["distance_end"],
-            wpInputs["yards_to_goal_end"],
-            wpInputs["is_home_end"],
+            wpInputs["Under_two_end"],
             wpInputs["pos_team_timeouts_rem_before_end"],
-            wpInputs["def_pos_team_timeouts_rem_before_end"],
-            wpInputs["period_end"]
+            wpInputs["def_pos_team_timeouts_rem_before_end"]
         ]
         endInputs.push(end)
 
@@ -488,20 +482,21 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         }
     }
 
-    const resBefore = await axios.post('http://python:8080/wp/predict', {
+    const resBefore = await axios.post('http://rdata:7000/wp/predict', {
         data: beforeInputs
     });
+    // console.log(resBefore.data)
     var wpBefore = resBefore.data.predictions; 
     for (var i = 0; i < wpBefore.length; i += 1) {
-        plays[i].winProbability.before = wpBefore[i].wp
+        plays[i].winProbability.before = wpBefore[i]
     }
 
-    const resAfter = await axios.post('http://python:8080/wp/predict', {
+    const resAfter = await axios.post('http://rdata:7000/wp/predict', {
         data: endInputs
     });
     var wpAfter = resAfter.data.predictions; 
     for (var i = 0; i < wpAfter.length; i += 1) {
-        var wpEnd = wpAfter[i].wp
+        var wpEnd = wpAfter[i]
 
         var nextPlay = null
         if ((i + 1) >= plays.length) {
@@ -526,7 +521,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 }
 
 async function getServiceHealth(req, res) {
-    const pythonCheck = await axios.get('http://python:8080/healthcheck');
+    // const pythonCheck = await axios.get('http://python:8080/healthcheck');
     const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
     const selfCheck = {
         "status" : "ok"
@@ -535,7 +530,7 @@ async function getServiceHealth(req, res) {
     // console.log("R: " + JSON.stringify(rdataCheck.data))
     
     return res.json({
-        "python" : pythonCheck.data,
+        // "python" : pythonCheck.data,
         "r" : rdataCheck.data,
         "node" : selfCheck
     })

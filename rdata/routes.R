@@ -48,13 +48,27 @@ function(data) {
   base$Under_two = as.logical(base$Under_two)
   base$Goal_To_Go = as.logical(base$Goal_To_Go)
   res <- data.frame(predict(ep_model, newdata = base, type = "probs"))
-  # print(res)
+
   return(list(predictions = res, count = nrow(res)))
 }
 
 #* Returns win probability predictions using cfbscrapR's model
 #* @post /wp/predict
 function(data) {
-  res <- predict(wp_model, new_data = data, type = "response")
-  return(res)
+  base <- as.data.frame(data)
+  colnames(base) <- c(
+    "ExpScoreDiff",
+    "half",
+    "TimeSecsRem",
+    "ExpScoreDiff_Time_Ratio",
+    "Under_two",
+    "pos_team_timeouts_rem_before",
+    "def_pos_team_timeouts_rem_before"
+  )
+
+  base$Under_two = as.logical(base$Under_two)
+  # print(base)
+  res <- as.vector(predict(wp_model, newdata = base, type = "response"))
+  # print(res)
+  return(list(predictions = res, count = nrow(res)))
 }
