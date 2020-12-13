@@ -106,11 +106,19 @@ stat_key_title_mapping = {
         </div>
         <div class="row">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                <div>
+                    <h1 class="h2">Win Probability</h1>
+                    <p class="text-small"><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download</a></p>
+                </div>
                 <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
             </main>
         </div>
         <div class="row">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                <div>
+                    <h1 class="h2">Expected Points</h1>
+                    <p class="text-small"><a id="ep-download" download="game-ep-<%= gameData.gameInfo.id %>.jpg" href="">Download</a></p>
+                </div>
                 <canvas class="my-4 w-100" id="epChart" width="900" height="380"></canvas>
             </main>
         </div>
@@ -459,6 +467,27 @@ stat_key_title_mapping = {
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
         document.body.querySelector("#game-date").innerText = DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+
+        // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
+        //Download Chart Image
+        document.getElementById("wp-download").addEventListener('click', function() {
+            /*Get image of canvas element*/
+            var url_base64jp = document.getElementById("wpChart").toDataURL("image/jpg");
+            /*get download button (tag: <a></a>) */
+            var a =  document.getElementById("wp-download");
+            /*insert chart image url to download button (tag: <a></a>) */
+            a.href = url_base64jp;
+        });
+
+        // //Download Chart Image
+        // document.getElementById("ep-download").addEventListener('click', function() {
+        //     /*Get image of canvas element*/
+        //     var url_base64jp = document.getElementById("epChart").toDataURL("image/jpg");
+        //     /*get download button (tag: <a></a>) */
+        //     var a =  document.getElementById("ep-download");
+        //     /*insert chart image url to download button (tag: <a></a>) */
+        //     a.href = url_base64jp;
+        // });
       </script>
     </script>
     <script src="/assets/js/dashboard.js"></script>
