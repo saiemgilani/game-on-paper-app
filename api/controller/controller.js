@@ -557,7 +557,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 function adjustSpreadWP(homeTeamSpread) {
     var result = 0.50
     var absSpread = Math.abs(homeTeamSpread)
-    console.log("abs spread: " + absSpread)
+    // console.log("abs spread: " + absSpread)
     switch(absSpread) {
         case 0:
             result = 0.50

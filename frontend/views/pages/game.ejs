@@ -476,7 +476,7 @@ stat_key_title_mapping = {
             var airings = gameData.gameInfo.airings
             var airingLink = (gameData.gameInfo.airings.length > 0) ? gameData.gameInfo.airings[0].webAiringLink : null
             if (airingLink != null) {
-                document.body.querySelector("#game-date").innerHtml = "<a href=" + airingLink + ">LIVE</a> - " + gameData.gameInfo.status.type.detail
+                document.body.querySelector("#game-date").innerHTML = "<a href=" + airingLink + ">LIVE</a> - " + gameData.gameInfo.status.type.detail
             } else {
                 document.body.querySelector("#game-date").innerText = "LIVE - " + gameData.gameInfo.status.type.detail
             }
