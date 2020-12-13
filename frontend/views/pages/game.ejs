@@ -124,7 +124,10 @@ stat_key_title_mapping = {
         </div>
         <% if (gameData.gameInfo.status.type.completed == true) { %>
         <div class="row">
-            <h2 id="box-score" class="px-md-4">Advanced Box Score</h2>
+            <div class="px-md-4">
+                <h2 id="box-score">Advanced Box Score</h2>
+                <p class="text-small">Data from CollegeFootballData.com. <i>Note: Does not include garbage time.</i></p>
+            </div>
             <% if (gameData.boxScore != null && gameData.boxScore.length > 0) { %>
                 <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
                     <div class="table-responsive">
