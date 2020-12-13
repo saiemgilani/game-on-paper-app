@@ -470,7 +470,17 @@ stat_key_title_mapping = {
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
-        document.body.querySelector("#game-date").innerText = DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+        if (gameData.gameInfo.status.type.completed == true) {
+            document.body.querySelector("#game-date").innerText = gameData.gameInfo.status.type.detail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+        } else {
+            var airings = gameData.gameInfo.airings
+            var airingLink = (gameData.gameInfo.airings.length > 0) ? gameData.gameInfo.airings[0].webAiringLink : null
+            if (airingLink != null) {
+                document.body.querySelector("#game-date").innerHtml = "<a href=" + airingLink + ">LIVE</a> - " + gameData.gameInfo.status.type.detail
+            } else {
+                document.body.querySelector("#game-date").innerText = "LIVE - " + gameData.gameInfo.status.type.detail
+            }
+        }
 
         // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
         //Download Chart Image
