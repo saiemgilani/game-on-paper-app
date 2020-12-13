@@ -93,7 +93,8 @@ async function retrievePBP(req, res) {
     delete pbp.standings;
     delete pbp.videos;
     delete pbp.header;
-    pbp.homeTeamSpread = summary.pickcenter[0].spread * (summary.pickcenter[0].homeTeamOdds.favorite == true ? 1 : -1)
+    let baseSpread = Math.abs(summary.pickcenter[0].spread)
+    pbp.homeTeamSpread = (summary.pickcenter[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
     delete pbp.pickcenter;
     delete pbp.teams;
 
@@ -509,7 +510,18 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
     // console.log(resBefore.data)
     var wpBefore = resBefore.data.predictions; 
     for (var i = 0; i < wpBefore.length; i += 1) {
-        plays[i].winProbability.before = wpBefore[i]
+        if (i == 0) {
+            var startWP = adjustSpreadWP(homeTeamSpread)
+            // console.log("spread: " + homeTeamSpread)
+            // console.log("start wp: " + startWP)
+            if (plays[i].start.team != null && plays[i].start.team.id == homeTeamId) {
+                plays[i].winProbability.before = startWP
+            } else {
+                plays[i].winProbability.before = 1.0 - startWP
+            }
+        } else {
+            plays[i].winProbability.before = wpBefore[i]
+        }
     }
 
     const resAfter = await axios.post('http://rdata:7000/wp/predict', {
@@ -539,6 +551,139 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
     }
     return plays;
+}
+
+// assumes homeTeamSpread is positive number of points
+function adjustSpreadWP(homeTeamSpread) {
+    var result = 0.50
+    var absSpread = Math.abs(homeTeamSpread)
+    console.log("abs spread: " + absSpread)
+    switch(absSpread) {
+        case 0:
+            result = 0.50
+            break;
+        case 0.5:
+            result = 0.50
+            break;
+        case 1:
+            result = 0.4880
+            break;
+        case 1.5:
+            result = 0.4660
+            break;
+        case 2:
+            result = 0.4660
+            break;
+        case 2.5:
+            result = 0.4570
+            break;
+        case 3:
+            result = 0.4260
+            break;
+        case 3.5:
+            result = 0.3940
+            break;
+        case 4:
+            result = 0.3810
+            break;
+        case 4.5:
+            result = 0.3690
+            break;
+        case 5:
+            result = 0.3590
+            break;
+        case 5.5:
+            result = 0.3490
+            break;
+        case 6:
+            result = 0.3360
+            break;
+        case 6.5:
+            result = 0.3230 
+            break;  
+        case 7:
+            result = 0.2970 
+            break; 
+        case 7.5:
+            result = 0.2700 
+            break; 
+        case 8:
+            result = 0.2620 
+            break;
+        case 8.5:
+            result = 0.2540
+            break;  
+        case 9:
+            result = 0.2490 
+            break; 
+        case 9.5:
+            result = 0.2450 
+            break; 
+        case 10:
+            result = 0.2260
+            break;
+        case 10.5:
+            result = 0.2080  
+            break; 
+        case 11:
+            result = 0.2010  
+            break; 
+        case 11.5:
+            result = 0.1940
+            break;    
+        case 12:
+            result = 0.1840 
+            break; 
+        case 12.5:
+            result = 0.1740
+            break; 
+        case 13:
+            result = 0.1700 
+            break;
+        case 13.5:
+            result = 0.1650
+            break;
+        case 14:
+            result = 0.1490 
+            break;
+        case 14.5:
+            result = 0.1320 
+            break;
+        case 15:
+            result = 0.1260 
+            break;
+        case 15.5:
+            result = 0.1190 
+            break;
+        case 16:
+            result = 0.1140
+            break;
+        case 16.5:
+            result = 0.1090   
+            break; 
+        case 17:
+            result = 0.0860
+            break;
+        case 17.5:
+            result = 0.0630
+            break;
+        case 18:
+            result = 0.0500
+            break;
+        case 18.5:
+            result = 0.0380
+            break;
+        case 19:
+            result = 0.0270
+            break;
+        case 19.5:
+            result = 0.0160
+            break;
+        default: 
+            result = 0.0001 
+            break; 
+    }
+    return (homeTeamSpread > 0) ? (1.0 - result) : result
 }
 
 async function getServiceHealth(req, res) {
