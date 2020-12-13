@@ -272,9 +272,9 @@ if (gameData.gameInfo.status.type.completed == true) {
           tooltips: {
               callbacks: {
                   title: function(tooltipItem, data) {
-                      console.log(tooltipItem)
-                      var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-                      return `Play Number: ${timeElapsed}`
+                    //   console.log(tooltipItem)
+                    //   var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
+                      return `Play Number: ${tooltipItem[0].label}`
                   },
                   label: function(tooltipItem, data) {
                       var label = data.datasets[tooltipItem.datasetIndex].label || '';
@@ -282,7 +282,8 @@ if (gameData.gameInfo.status.type.completed == true) {
                       if (label) {
                           label += ': ';
                       }
-                      label += (parseFloat(tooltipItem.value) > 0 ? ("+" + tooltipItem.value) : tooltipItem.value)
+                      var roundValue = (Math.round(tooltipItem.value * 10) / 10)
+                      label += (parseFloat(tooltipItem.value) > 0 ? ("+" + roundValue) : roundValue)
                       return label;
                   }
               }
