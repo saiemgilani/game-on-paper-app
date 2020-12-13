@@ -116,7 +116,7 @@ function interpolateTimestamps(plays) {
 
 gameData.plays = interpolateTimestamps(gameData.plays)
 // console.log(gameData.plays[0])
-var timestamps = gameData.plays.map(p => p.game_time_remaining);
+var timestamps = (gameData.gameInfo.status.type.completed == true) ? gameData.plays.map(p => p.game_time_remaining) : [...Array(gameData.plays.length).keys()];
 // console.log(timestamps)
 var homeComp = gameData.gameInfo.competitors[0];
 var awayComp = gameData.gameInfo.competitors[1];
@@ -194,8 +194,12 @@ if (gameData.gameInfo.status.type.completed == true) {
               callbacks: {
                   title: function(tooltipItem, data) {
                       console.log(tooltipItem)
-                      var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-                      return `Time Elapsed: ${timeElapsed}`
+                      if (gameData.gameInfo.status.type.completed == true) {
+                        var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
+                        return `Time Elapsed: ${timeElapsed}`
+                      } else {
+                        return `Play Number: ${tooltipItem[0].label}`
+                      }
                   },
                   label: function(tooltipItem, data) {
                       var label = data.datasets[tooltipItem.datasetIndex].label || '';
@@ -226,12 +230,16 @@ if (gameData.gameInfo.status.type.completed == true) {
                     ticks: {
                         // Include a dollar sign in the ticks
                         callback: function(value, index, values) {
-                            return Math.max(0, Math.min(3600, 3600 - value))
+                            if (gameData.gameInfo.status.type.completed == true) {
+                                return Math.max(0, Math.min(3600, 3600 - value))
+                            } else {
+                                return value
+                            }
                         }
                     },
                     scaleLabel: {
                         display: true,
-                        labelString: "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)"
+                        labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
                     }
                 }]
               }
@@ -274,7 +282,7 @@ if (gameData.gameInfo.status.type.completed == true) {
                   title: function(tooltipItem, data) {
                     //   console.log(tooltipItem)
                     //   var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-                      return `Play Number: ${tooltipItem[0].label}`
+                      return `Off Play Number: ${tooltipItem[0].label}`
                   },
                   label: function(tooltipItem, data) {
                       var label = data.datasets[tooltipItem.datasetIndex].label || '';
