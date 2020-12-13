@@ -1,10 +1,12 @@
 # routes.R
 library(cfbscrapR)
 library(mgcv)
+library(xgboost)
+library(dplyr)
 
 # load models
 load("models/fg_model.RData")
-load("models/wp_model.RData")
+wp_model <- xgboost::xgb.load("models/wp_spread.model")
 load("models/ep_model.RData")
 
 #* Return the advanced box score from CFBData
@@ -61,18 +63,27 @@ function(data) {
 function(data) {
   base <- as.data.frame(data)
   colnames(base) <- c(
-    "ExpScoreDiff",
-    "half",
+    "pos_team_receives_2H_kickoff",
+    "spread_time",
     "TimeSecsRem",
+    "adj_TimeSecsRem",
     "ExpScoreDiff_Time_Ratio",
-    "Under_two",
+    "pos_score_diff_start",
+    "down",
+    "distance",
+    "yards_to_goal",
+    "is_home",
     "pos_team_timeouts_rem_before",
-    "def_pos_team_timeouts_rem_before"
+    "def_pos_team_timeouts_rem_before",
+    "period"
   )
 
-  base$Under_two = as.logical(base$Under_two)
+  dtest <- xgboost::xgb.DMatrix(model.matrix(~ . + 0, data = base %>% select(-period)))
+
+  # base$Under_two = as.logical(base$Under_two)
+  # base$half = as.factor(base$half)
   # print(base)
-  res <- as.vector(predict(wp_model, newdata = base, type = "response"))
+  res <- as.vector(predict(wp_model, newdata = dtest, type = "response"))
   # print(res)
   return(list(predictions = res, count = nrow(res)))
 }

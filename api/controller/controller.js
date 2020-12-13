@@ -78,7 +78,7 @@ function checkValidPlay(p) {
     if (p.text == null) {
         return false;
     }
-    return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of"))
+    return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of") || p.type.text.toLocaleLowerCase().includes("coin toss") || p.text.toLocaleLowerCase().includes("coin toss"))
 }
 
 async function retrievePBP(req, res) {
@@ -184,20 +184,21 @@ function calculateHalfSecondsRemaining(period, time) {
         return 0
     }
 
+    if (parseInt(period) > 4) {
+        return 0
+    }
+
     var splitTime = time.split(":")
-    var minutes = splitTime.length > 0 ? parseInt(splitTime[0]) : 0
-    var seconds = splitTime.length > 1 ? parseInt(splitTime[1]) : 0
-    return calculateHalfSecondsRemaining(period, minutes, seconds);
+
+    var minutes = (splitTime.length > 0) ? parseInt(splitTime[0]) : 0
+    var seconds = (splitTime.length > 1) ? parseInt(splitTime[1]) : 0
+
+    var adjMin = (parseInt(period) == 1 || parseInt(period) == 3) ? (15.0 + minutes) : minutes
+
+    return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
 }
 
-function calculateHalfSecondsRemaining(period, minutes, seconds) {
-    if (period > 4) {
-        return 0
-    } else {
-        var adjMin = (parseInt(period) == 1 || parseInt(period) == 3) ? (15.0 + minutes) : minutes
-        return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
-    }
-}
+
 function calculateGameSecondsRemaining(period, halfSeconds) {
     if (period <= 2) {
         return Math.max(0, Math.min(3600, 1800.0 + halfSeconds))
@@ -206,14 +207,13 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-function prepareEPInputs(play, clock, homeTeamId, homeScore, awayScore) {
-    var splitTime = clock.split(":")
-    var minutes = splitTime.length > 0 ? parseInt(splitTime[0]) : 0
-    var seconds = splitTime.length > 1 ? parseInt(splitTime[1]) : 0
-    var time_remaining = calculateHalfSecondsRemaining(play.period, minutes, seconds);
-    var adj_TimeSecsRem = calculateGameSecondsRemaining(play.period, time_remaining)
+function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
+    var time_remaining = calculateHalfSecondsRemaining(period, clock);
+    // console.log("period: " + period)
+    // console.log("time sec: " + time_remaining)
+    var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
     var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
-    let isHome = (homeTeamId == play.team.id) ? 1.0 : 0.0
+    let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (homeScore - awayScore) : (awayScore - homeScore)
     return {
         "TimeSecsRem" : time_remaining,
@@ -239,7 +239,12 @@ async function calculateEPA(plays, homeTeamId) {
         } else {
             nextPlay = plays[i + 1]
         }
-        let epBeforeInputs = prepareEPInputs(play.start, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
+
+        // if (play.down == 0 || play.start.team == null || play.end.team == null) {
+        //     console.log(play)
+        // }
+
+        let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
         
         if (kickoff.includes(play.playType)) {
             epBeforeInputs["down"] = 1
@@ -260,7 +265,11 @@ async function calculateEPA(plays, homeTeamId) {
         ]
         beforeInputs.push(start)
 
-        var epAfterInputs = prepareEPInputs(play.end, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
+        var epAfterInputs = prepareEPInputs(play.end, play.period, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
+
+        if (epAfterInputs['down'] == 0 || play.end.team == null) { // this is some invalid state, usually (penalties, timeouts)
+            epAfterInputs = epBeforeInputs
+        }
 
         if (epAfterInputs["time_remaining"] == 0) {
             epAfterInputs['down'] = 1
@@ -380,10 +389,10 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
 
     let offenseReceives2HKickoff = (firstHalfKickTeamId == play.start.team.id) ? 1.0 : 0.0
 
-    let epStartInput = prepareEPInputs(play.start, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
+    let epStartInput = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
     let adj_TimeSecsRem = epStartInput['adj_TimeSecsRem']
 
-    let isHome = (homeTeamId == play.start.team.id) ? 1.0 : 0.0
+    let isHome = (play.start.team != null && homeTeamId == play.start.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (play.homeScore - play.awayScore) : (play.awayScore - play.homeScore)
 
     let expScoreDiff = posScoreMargin + play.expectedPoints.before
@@ -393,7 +402,7 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
     let elapsedShare = Math.max(0, (3600 - adj_TimeSecsRem) / 3600)
     let spreadTime = posTeamSpread * Math.exp(-4 * elapsedShare)
 
-    let epAfterInput = prepareEPInputs(play.end, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
+    let epAfterInput = prepareEPInputs(play.end, play.period, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
     let adj_TimeSecsRem_end = epAfterInput['adj_TimeSecsRem']
 
     let expScoreDiff_end = posScoreMargin + play.expectedPoints.after
@@ -454,24 +463,36 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 
         let wpInputs = prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, nextPlay)
         let start = [
-            wpInputs["ExpScoreDiff"],
-            wpInputs["half"],
+            wpInputs["pos_team_receives_2H_kickoff"],
+            wpInputs["spread_time"],
             wpInputs["TimeSecsRem"],
+            wpInputs["adj_TimeSecsRem"],
             wpInputs["ExpScoreDiff_Time_Ratio"],
-            wpInputs["Under_two"],
+            wpInputs["pos_score_diff_start"],
+            wpInputs["down"],
+            wpInputs["distance"],
+            wpInputs["yards_to_goal"],
+            wpInputs["is_home"],
             wpInputs["pos_team_timeouts_rem_before"],
-            wpInputs["def_pos_team_timeouts_rem_before"]
+            wpInputs["def_pos_team_timeouts_rem_before"],
+            wpInputs["period"]
         ]
         beforeInputs.push(start)
 
         let end = [
-            wpInputs["ExpScoreDiff_end"],
-            wpInputs["half_end"],
+            wpInputs["pos_team_receives_2H_kickoff_end"],
+            wpInputs["spread_time_end"],
             wpInputs["TimeSecsRem_end"],
+            wpInputs["adj_TimeSecsRem_end"],
             wpInputs["ExpScoreDiff_Time_Ratio_end"],
-            wpInputs["Under_two_end"],
+            wpInputs["pos_score_diff_start_end"],
+            wpInputs["down_end"],
+            wpInputs["distance_end"],
+            wpInputs["yards_to_goal_end"],
+            wpInputs["is_home_end"],
             wpInputs["pos_team_timeouts_rem_before_end"],
-            wpInputs["def_pos_team_timeouts_rem_before_end"]
+            wpInputs["def_pos_team_timeouts_rem_before_end"],
+            wpInputs["period_end"]
         ]
         endInputs.push(end)
 

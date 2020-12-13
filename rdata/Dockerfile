@@ -8,7 +8,9 @@ RUN install2.r --error \
     plumber \
     mgcv \
     logger \
-    tictoc
+    tictoc \
+    xgboost \
+    dplyr
 
 RUN installGithub.r \
     saiemgilani/cfbscrapR
