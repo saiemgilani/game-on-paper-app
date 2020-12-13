@@ -522,14 +522,20 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 
 async function getServiceHealth(req, res) {
     const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
+    const cfbDataCheck = await axios.get('https://collegefootballdata.com');
+
+    var cfbdCheck = {
+        status: (cfbDataCheck.status == 200) ? "ok" : "bad"
+    }
+
     const selfCheck = {
         "status" : "ok"
     }
-    // console.log("R: " + JSON.stringify(rdataCheck.data))
     
     return res.json({
         "r" : rdataCheck.data,
-        "node" : selfCheck
+        "node" : selfCheck,
+        "cfbData" : cfbdCheck
     })
 }
 

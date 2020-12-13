@@ -11,13 +11,25 @@ load("models/ep_model.RData")
 #* @param gameId the ESPN gameId to return data for
 #* @post /box
 function(gameId) {
-  cfb_game_box_advanced(as.numeric(gameId))
+  return(
+    tryCatch({
+        cfb_game_box_advanced(as.numeric(gameId))
+        }, 
+        error=function(cond) {
+            # message(paste("URL does not seem to exist:", url))
+            # message("Here's the original error message:")
+            print(cond)
+            # Choose a return value in case of error
+            list()
+        }
+    )
+  )
 }
 
 #* Returns current server status
 #* @get /healthcheck
 function() {
-  list(status = "OK")
+  return(list(status = "OK"))
 }
 
 #* Returns expected points predictions using cfbscrapR's model
