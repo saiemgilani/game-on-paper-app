@@ -172,8 +172,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   label: homeTeam.abbreviation,
                   backgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`,
                   borderColor: homeTeam.color,
-                  borderWidth: 4,
-                  pointBackgroundColor: homeTeam.color
+                  borderWidth: 3,
+                  pointBackgroundColor: homeTeam.color,
+                  pointRadius: 0
               },
               {
                   data: awayTeamWP,
@@ -181,8 +182,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   label: awayTeam.abbreviation,
                   backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`,
                   borderColor: awayTeam.color,
-                  borderWidth: 4,
-                  pointBackgroundColor: awayTeam.color
+                  borderWidth: 3,
+                  pointBackgroundColor: awayTeam.color,
+                  pointRadius: 0
               }
           ]
       },
@@ -259,8 +261,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   label: homeTeam.abbreviation,
                   backgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.0)`,
                   borderColor: homeTeam.color,
-                  borderWidth: 4,
-                  pointBackgroundColor: homeTeam.color
+                  borderWidth: 3,
+                  pointBackgroundColor: homeTeam.color,
+                  pointRadius: 1.5
               },
               {
                   data: awayTeamEPA,
@@ -268,8 +271,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   label: awayTeam.abbreviation,
                   backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.0)`,
                   borderColor: awayTeam.color,
-                  borderWidth: 4,
-                  pointBackgroundColor: awayTeam.color
+                  borderWidth: 3,
+                  pointBackgroundColor: awayTeam.color,
+                  pointRadius: 1.5
               }
           ]
       },
