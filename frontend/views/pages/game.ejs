@@ -22,8 +22,8 @@ function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
     }
 }
 
-function formatDistance(distance) {
-    return (distance == 0) ? "Goal" : distance
+function formatDistance(distance, yardline) {
+    return (distance == 0 || yardline <= distance) ? "Goal" : distance
 }
 
 stat_key_title_mapping = {
@@ -392,7 +392,7 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
@@ -441,7 +441,7 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
