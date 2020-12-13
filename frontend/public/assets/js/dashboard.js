@@ -122,7 +122,7 @@ var homeComp = gameData.gameInfo.competitors[0];
 var awayComp = gameData.gameInfo.competitors[1];
 var homeTeam = homeComp.team;
 var awayTeam = awayComp.team;
-var awayTeamColor = hexToRgb(awayTeam.alternateColor)
+var awayTeamColor = hexToRgb(awayTeam.color)
 var homeTeamColor = hexToRgb(homeTeam.color)
 
 var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
@@ -180,9 +180,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   lineTension: 0,
                   label: awayTeam.abbreviation,
                   backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`,
-                  borderColor: awayTeam.alternateColor,
+                  borderColor: awayTeam.color,
                   borderWidth: 4,
-                  pointBackgroundColor: awayTeam.alternateColor
+                  pointBackgroundColor: awayTeam.color
               }
           ]
       },
@@ -267,9 +267,9 @@ if (gameData.gameInfo.status.type.completed == true) {
                   lineTension: 0,
                   label: awayTeam.abbreviation,
                   backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.0)`,
-                  borderColor: awayTeam.alternateColor,
+                  borderColor: awayTeam.color,
                   borderWidth: 4,
-                  pointBackgroundColor: awayTeam.alternateColor
+                  pointBackgroundColor: awayTeam.color
               }
           ]
       },
