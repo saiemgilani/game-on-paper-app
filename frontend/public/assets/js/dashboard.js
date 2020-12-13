@@ -306,7 +306,7 @@ if (gameData.gameInfo.status.type.completed == true) {
                 xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: "Play Number"
+                        labelString: "Off Play Number"
                     }
                 }]
             }
