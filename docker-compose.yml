@@ -30,6 +30,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    depends_on:
+      - rdata
   frontend:
     build: 
       context: .
@@ -38,3 +40,6 @@ services:
       - "8000:8000"
     links:
       - api
+    depends_on:
+      - api
+      - rdata
