@@ -12,6 +12,11 @@ app.use(express.static(__dirname + '/public'));
 
 // index page
 app.get('/', function(req, res) {
+    res.redirect('/cfb');
+});
+
+// index page
+app.get('/cfb', function(req, res) {
     res.render('pages/index');
 });
 
@@ -20,7 +25,7 @@ async function retrieveGameData(gameId) {
     return res.data
 }
 
-app.get('/game/:gameId', async function(req, res) {
+app.get('/cfb/game/:gameId', async function(req, res) {
     let data = await retrieveGameData(req.params.gameId);
     res.render('pages/game', {
         gameData: data
