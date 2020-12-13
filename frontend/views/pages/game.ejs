@@ -91,37 +91,41 @@ stat_key_title_mapping = {
                     </div>
                     <div class="btn-toolbar mb-2 mb-md-0">
                         <div class="btn-group me-2">
-                            <a href="#wpChart" class="btn btn-sm btn-outline-primary">WP Chart</a>
-                            <a href="#epChart" class="btn btn-sm btn-outline-primary">EPA Chart</a>
-                            <% if (gameData.gameInfo.status.type.completed == true) { %>
-                                <a class="btn btn-sm btn-outline-primary" href="#box-score">Box Score</a>
+                            <% if (gameData.plays != null && gameData.plays.length > 0) { %>
+                                <a href="#wpChart" class="btn btn-sm btn-outline-primary">WP Chart</a>
+                                <a href="#epChart" class="btn btn-sm btn-outline-primary">EPA Chart</a>
+                                <% if (gameData.gameInfo.status.type.completed == true) { %>
+                                    <a class="btn btn-sm btn-outline-primary" href="#box-score">Box Score</a>
+                                <% } %>
+                                <a href="#scoring-plays" class="btn btn-sm btn-outline-primary">Scoring Plays</a>
+                                <a href="#all-plays" class="btn btn-sm btn-outline-primary">All Plays</a>
                             <% } %>
-                            <a href="#scoring-plays" class="btn btn-sm btn-outline-primary">Scoring Plays</a>
-                            <a href="#all-plays" class="btn btn-sm btn-outline-primary">All Plays</a>
                             <a class="btn btn-sm btn-outline-primary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
-        <div class="row">
-            <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
-                <div>
-                    <h1 class="h2">Win Probability</h1>
-                    <p class="text-small"><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
-                </div>
-                <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
-            </main>
-            <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
-                <div>
-                    <h1 class="h2">Expected Points</h1>
-                    <p class="text-small"><a id="ep-download" download="game-ep-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
-                </div>
-                <canvas class="my-4 w-100" id="epChart" width="900" height="380"></canvas>
-            </main>
-        </div>
+        <% if (gameData.plays.length > 0) { %>
+            <div class="row mb-3">
+                <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
+                    <div>
+                        <h1 class="h2">Win Probability</h1>
+                        <p class="text-small"><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                    </div>
+                    <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
+                </main>
+                <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
+                    <div>
+                        <h1 class="h2">Expected Points</h1>
+                        <p class="text-small"><a id="ep-download" download="game-ep-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                    </div>
+                    <canvas class="my-4 w-100" id="epChart" width="900" height="380"></canvas>
+                </main>
+            </div>
+        <% } %>
         <% if (gameData.gameInfo.status.type.completed == true) { %>
-        <div class="row">
+        <div class="row mb-3">
             <div class="px-md-4">
                 <h2 id="box-score">Advanced Box Score</h2>
                 <p class="text-small">Data from CollegeFootballData.com. <i>Note: Does not include garbage time.</i></p>
@@ -356,7 +360,7 @@ stat_key_title_mapping = {
             <% } %>
         </div>
         <% } %>
-        <div class="row">
+        <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                 <h2 id="scoring-plays">Scoring Plays</h2>
                 <div class="table-responsive">
@@ -405,7 +409,7 @@ stat_key_title_mapping = {
                 </div>
             </main>
         </div>
-        <div class="row">
+        <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                 <h2 id="all-plays">All Plays</h2>
                 <div class="table-responsive">
@@ -468,38 +472,41 @@ stat_key_title_mapping = {
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
-        if (gameData.gameInfo.status.type.completed == true) {
-            document.body.querySelector("#game-date").innerText = gameData.gameInfo.status.type.detail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+        var statusDetail = gameData.gameInfo.status.type.detail;
+        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
+            document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
             var airings = gameData.gameInfo.airings
             var airingLink = (gameData.gameInfo.airings.length > 0) ? gameData.gameInfo.airings[0].webAiringLink : null
             if (airingLink != null) {
-                document.body.querySelector("#game-date").innerHTML = "<a href=" + airingLink + ">LIVE</a> - " + gameData.gameInfo.status.type.detail
+                document.body.querySelector("#game-date").innerHTML = "<a href=" + airingLink + ">LIVE</a> - " + statusDetail
             } else {
-                document.body.querySelector("#game-date").innerText = "LIVE - " + gameData.gameInfo.status.type.detail
+                document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             }
         }
 
-        // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
-        //Download Chart Image
-        document.getElementById("wp-download").addEventListener('click', function() {
-            /*Get image of canvas element*/
-            var url_base64jp = document.getElementById("wpChart").toDataURL("image/jpg");
-            /*get download button (tag: <a></a>) */
-            var a =  document.getElementById("wp-download");
-            /*insert chart image url to download button (tag: <a></a>) */
-            a.href = url_base64jp;
-        });
+        if (gameData.plays.length > 0) {
+            // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
+            //Download Chart Image
+            document.getElementById("wp-download").addEventListener('click', function() {
+                /*Get image of canvas element*/
+                var url_base64jp = document.getElementById("wpChart").toDataURL("image/jpg");
+                /*get download button (tag: <a></a>) */
+                var a =  document.getElementById("wp-download");
+                /*insert chart image url to download button (tag: <a></a>) */
+                a.href = url_base64jp;
+            });
 
-        // //Download Chart Image
-        document.getElementById("ep-download").addEventListener('click', function() {
-            /*Get image of canvas element*/
-            var url_base64jp = document.getElementById("epChart").toDataURL("image/jpg");
-            /*get download button (tag: <a></a>) */
-            var a =  document.getElementById("ep-download");
-            /*insert chart image url to download button (tag: <a></a>) */
-            a.href = url_base64jp;
-        });
+            // //Download Chart Image
+            document.getElementById("ep-download").addEventListener('click', function() {
+                /*Get image of canvas element*/
+                var url_base64jp = document.getElementById("epChart").toDataURL("image/jpg");
+                /*get download button (tag: <a></a>) */
+                var a =  document.getElementById("ep-download");
+                /*insert chart image url to download button (tag: <a></a>) */
+                a.href = url_base64jp;
+            });
+        }
       </script>
     </script>
     <script src="/assets/js/dashboard.js"></script>
