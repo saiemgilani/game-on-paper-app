@@ -1,13 +1,19 @@
 version: "3.8"
 services:
-  python:
+  rdata:
     build: 
       context: .
-      dockerfile: python/Dockerfile
+      dockerfile: rdata/Dockerfile
     expose:
-      - 8080
+      - 7000
     volumes: 
-      - ./python/models:/models
+      - ./rdata/models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   api:
     build: 
       context: .
@@ -17,7 +23,15 @@ services:
     expose:
       - 5000
     links:
-      - python
+      - rdata
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/cfb/healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - rdata
   frontend:
     build: 
       context: .
@@ -26,3 +40,6 @@ services:
       - "8000:8000"
     links:
       - api
+    depends_on:
+      - api
+      - rdata

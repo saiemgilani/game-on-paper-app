@@ -1,5 +1,24 @@
 <html>
-    <body>
-        <h1>Hello World</h1>
+    <head>
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">
+        <title>College Football | Game on Paper</title>    
+    </head>
+    <body class="text-center">
+        <main class="form-signin">
+            <form id="game-id-form">
+              <h1 class="h3 mb-3 fw-normal">Game on Paper</h1>
+              <label for="inputGameId" class="visually-hidden">Game ID</label>
+              <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
+              <button class="w-100 btn btn-lg btn-primary" type="submit">View Data</button>
+            </form>
+        </main>
     </body>
+    <script>
+        document.getElementById("game-id-form").addEventListener("submit", function(e) {
+            e.preventDefault()
+            var gameId = document.getElementById("inputGameId").value;
+            window.location = "/cfb/game/" + gameId;
+        });
+    </script>
 </html>

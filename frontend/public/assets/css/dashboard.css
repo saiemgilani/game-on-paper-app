@@ -98,3 +98,17 @@ body {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 }
+
+/*
+ * Footer
+ */
+ .blog-footer {
+  padding: 2.5rem 0;
+  color: #727272;
+  text-align: center;
+  background-color: #f9f9f9;
+  border-top: .05rem solid #e5e5e5;
+}
+.blog-footer p:last-child {
+  margin-bottom: 0;
+}

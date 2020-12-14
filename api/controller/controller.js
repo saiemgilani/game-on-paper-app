@@ -78,55 +78,73 @@ function checkValidPlay(p) {
     if (p.text == null) {
         return false;
     }
-    return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of"))
+    return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of") || p.type.text.toLocaleLowerCase().includes("coin toss") || p.text.toLocaleLowerCase().includes("coin toss"))
 }
 
 async function retrievePBP(req, res) {
-    // get game all game data
-    let pbp = await cfb.games.getPlayByPlay(req.query.gameId);
-    let summary = await cfb.games.getSummary(req.query.gameId);
-    // console.log(JSON.stringify(boxScore))
-    
-    // strip out the unnecessary crap
-    delete pbp.news;
-    delete pbp.article;
-    delete pbp.standings;
-    delete pbp.videos;
-    delete pbp.header;
-    pbp.homeTeamSpread = summary.pickcenter[0].spread * (summary.pickcenter[0].homeTeamOdds.favorite == true ? 1 : -1)
-    delete pbp.pickcenter;
-    delete pbp.teams;
 
-    pbp.gameInfo = pbp.competitions[0];
-    var homeTeamId = pbp.competitions[0].competitors[0].id;
-    var awayTeamId = pbp.competitions[0].competitors[1].id;
-    delete pbp.competitions;
-
-    var drives = pbp.drives.previous;
-    if ("current" in pbp.drives) {
-        drives.concat(pbp.drives.current)
-    }
-    drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
-    var firstHalfKickTeamId = drives[0].plays[0].start.team.id
-    var plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
-    
-    if ("winprobability" in pbp) {
-        pbp.espnWP = pbp.winprobability
-        delete pbp.winprobability
-    }
-    
-    plays.sort((a, b) => parseInt(a.id) < parseInt(b.id));
-    var timeouts = {};
-    timeouts[homeTeamId] = {
-        "1": [],
-        "2": []
-    };
-    timeouts[awayTeamId] = {
-        "1": [],
-        "2": []
-    };
-    // console.log(timeouts)
     try {
+        // get game all game data
+        let pbp = await cfb.games.getPlayByPlay(req.params.gameId);
+        let summary = await cfb.games.getSummary(req.params.gameId);
+        // console.log(JSON.stringify(boxScore))
+
+        if (pbp == null) {
+            throw "No play-by-play available, game could have been postponed or cancelled OR is invalid."
+        }
+
+        if (summary == null) {
+            throw "No summary available, game could be invalid"
+        }
+
+        // strip out the unnecessary crap
+        delete pbp.news;
+        delete pbp.article;
+        delete pbp.standings;
+        delete pbp.videos;
+        delete pbp.header;
+        let baseSpread = Math.abs(summary.pickcenter[0].spread)
+        pbp.homeTeamSpread = (summary.pickcenter[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
+        delete pbp.pickcenter;
+        delete pbp.teams;
+
+        pbp.gameInfo = pbp.competitions[0];
+        var homeTeamId = pbp.competitions[0].competitors[0].id;
+        var awayTeamId = pbp.competitions[0].competitors[1].id;
+        delete pbp.competitions;
+
+        if ("winprobability" in pbp) {
+            pbp.espnWP = pbp.winprobability
+            delete pbp.winprobability
+        }
+
+        var drives = [];
+        if ("drives" in pbp && pbp.drives != null) {
+            if ("previous" in pbp.drives) {
+                drives = drives.concat(pbp.drives.previous);
+            }
+            if ("current" in pbp.drives) {
+                drives = drives.concat(pbp.drives.current);
+            }
+        }
+        drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
+        var firstHalfKickTeamId = (drives.length > 0) ? drives[0].plays[0].start.team.id : null
+        var plays = [];
+        if (drives.length > 0) {
+            plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
+        }
+
+        plays.sort((a, b) => parseInt(a.id) < parseInt(b.id));
+        var timeouts = {};
+        timeouts[homeTeamId] = {
+            "1": [],
+            "2": []
+        };
+        timeouts[awayTeamId] = {
+            "1": [],
+            "2": []
+        };
+
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
         plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
 
@@ -149,16 +167,30 @@ async function retrievePBP(req, res) {
             p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
         });
         
-        plays = await calculateEPA(plays)
+        plays = await calculateEPA(plays, homeTeamId)
         plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;
+
+        if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
+            let boxScore = await retrieveBoxScore(req.params.gameId)
+            pbp.boxScore = boxScore
+        }
+
         return res.json(pbp);
     } catch(err) {
-        console.log(err);
+        console.error(err);
         return res.json(err);
     }
+}
+
+async function retrieveBoxScore(gameId) {
+    const res = await axios.post('http://rdata:7000/box', {
+        gameId: gameId
+    });
+    // console.log(res.data)
+    return res.data
 }
 
 function calculateHalfSecondsRemaining(period, time) {
@@ -170,20 +202,21 @@ function calculateHalfSecondsRemaining(period, time) {
         return 0
     }
 
+    if (parseInt(period) > 4) {
+        return 0
+    }
+
     var splitTime = time.split(":")
-    var minutes = splitTime.length > 0 ? parseInt(splitTime[0]) : 0
-    var seconds = splitTime.length > 1 ? parseInt(splitTime[1]) : 0
-    return calculateHalfSecondsRemaining(period, minutes, seconds);
+
+    var minutes = (splitTime.length > 0) ? parseInt(splitTime[0]) : 0
+    var seconds = (splitTime.length > 1) ? parseInt(splitTime[1]) : 0
+
+    var adjMin = (parseInt(period) == 1 || parseInt(period) == 3) ? (15.0 + minutes) : minutes
+
+    return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
 }
 
-function calculateHalfSecondsRemaining(period, minutes, seconds) {
-    if (period > 4) {
-        return 0
-    } else {
-        var adjMin = (period == 1 || period == 3) ? (15.0 + minutes) : minutes
-        return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
-    }
-}
+
 function calculateGameSecondsRemaining(period, halfSeconds) {
     if (period <= 2) {
         return Math.max(0, Math.min(3600, 1800.0 + halfSeconds))
@@ -192,41 +225,28 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-function prepareEPInputs(play, clock) {
-    var splitTime = clock.split(":")
-    var minutes = splitTime.length > 0 ? parseInt(splitTime[0]) : 0
-    var seconds = splitTime.length > 1 ? parseInt(splitTime[1]) : 0
-    var time_remaining = calculateHalfSecondsRemaining(play.period, minutes, seconds);
+function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
+    var time_remaining = calculateHalfSecondsRemaining(period, clock);
+    // console.log("period: " + period)
+    // console.log("time sec: " + time_remaining)
+    var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
     var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
+    let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
+    let posScoreMargin = (isHome == 1.0) ? (homeScore - awayScore) : (awayScore - homeScore)
     return {
-        Intercept: 1,
-        down2: (play.down == 2) ? 1.0 : 0.0,
-        down3: (play.down == 3) ? 1.0 : 0.0,
-        down4: (play.down == 4) ? 1.0 : 0.0,
-        goal_to_go: (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
-        under_two: (time_remaining <= 120) ? 1.0 : 0.0,
-        time_remaining: time_remaining,
-        adj_time_remaining: calculateGameSecondsRemaining(play.period, time_remaining),
-        adjusted_yardline: play.yardsToEndzone,
-        adjusted_yardline_down_2: (play.down == 2) ? play.yardsToEndzone : 0.0,
-        adjusted_yardline_down_3: (play.down == 3) ? play.yardsToEndzone : 0.0,
-        adjusted_yardline_down_4: (play.down == 4) ? play.yardsToEndzone : 0.0,
-        log_distance: logDistance,
-        log_distance_down_2: (play.down == 2) ? logDistance : 0.0,
-        log_distance_down_3: (play.down == 3) ? logDistance : 0.0,
-        log_distance_down_4: (play.down == 4) ? logDistance : 0.0,
-        goal_to_go_log_distance: (play.yardsToEndzone <= play.distance) ? logDistance : 0.0
+        "TimeSecsRem" : time_remaining,
+        "down" : parseInt(play.down) < 0 ? 1 : parseInt(play.down),
+        "distance" : parseInt(play.distance),
+        "yards_to_goal" : parseInt(play.yardsToEndzone),
+        "log_ydstogo" : logDistance,
+        "Goal_To_Go" : (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
+        "Under_two" : time_remaining <= 120 ? 1.0 : 0.0,
+        "pos_score_diff_start": posScoreMargin,
+        "adj_TimeSecsRem": adj_TimeSecsRem,
     }
 }
 
-async function calculateEPA(plays) {
-    // INPUTS: ['Intercept', 'down2', 'down3', 'down4',
-    //    'goal_to_go', 'under_two', 'time_remaining',
-    //    'adjusted_yardline', 'adjusted_yardline_down_2',
-    //    'adjusted_yardline_down_3', 'adjusted_yardline_down_4',
-    //    'log_distance', 'log_distance_down_2',
-    //    'log_distance_down_3', 'log_distance_down_4',
-    //    'goal_to_go_log_distance']
+async function calculateEPA(plays, homeTeamId) {
     var beforeInputs = []
     var endInputs = []
     for (var i = 0; i <= plays.length - 1; i+= 1) {
@@ -237,93 +257,76 @@ async function calculateEPA(plays) {
         } else {
             nextPlay = plays[i + 1]
         }
-        let epBeforeInputs = prepareEPInputs(play.start, play.clock.displayValue)
+
+        // if (play.down == 0 || play.start.team == null || play.end.team == null) {
+        //     console.log(play)
+        // }
+
+        let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
+        
+        if (kickoff.includes(play.playType)) {
+            epBeforeInputs["down"] = 1
+            epBeforeInputs["distance"] = 10
+            epBeforeInputs["yards_to_goal"] = 75
+            epBeforeInputs["log_ydstogo"] = Math.log(10)
+        }
+
         let start = [
-            epBeforeInputs['Intercept'], 
-            epBeforeInputs['down2'], 
-            epBeforeInputs['down3'], 
-            epBeforeInputs['down4'],
-            epBeforeInputs['goal_to_go'], 
-            epBeforeInputs['under_two'], 
-            epBeforeInputs['time_remaining'],
-            epBeforeInputs['adjusted_yardline'], 
-            epBeforeInputs['adjusted_yardline_down_2'],
-            epBeforeInputs['adjusted_yardline_down_3'], 
-            epBeforeInputs['adjusted_yardline_down_4'],
-            epBeforeInputs['log_distance'], 
-            epBeforeInputs['log_distance_down_2'],
-            epBeforeInputs['log_distance_down_3'], 
-            epBeforeInputs['log_distance_down_4'],
-            epBeforeInputs['goal_to_go_log_distance']
+            epBeforeInputs['TimeSecsRem'],
+            epBeforeInputs['down'],
+            epBeforeInputs['distance'],
+            epBeforeInputs['yards_to_goal'],
+            epBeforeInputs['log_ydstogo'],
+            epBeforeInputs['Goal_To_Go'],
+            epBeforeInputs['Under_two'],
+            epBeforeInputs['pos_score_diff_start']
         ]
         beforeInputs.push(start)
 
-        var epAfterInputs = prepareEPInputs(play.end, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00")
+        var epAfterInputs = prepareEPInputs(play.end, play.period, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
+
+        if (epAfterInputs['down'] == 0 || play.end.team == null) { // this is some invalid state, usually (penalties, timeouts)
+            epAfterInputs = epBeforeInputs
+        }
 
         if (epAfterInputs["time_remaining"] == 0) {
-            epAfterInputs['Intercept'], 
-            epAfterInputs['down2'] = 0
-            epAfterInputs['down3'] = 0
-            epAfterInputs['down4'] = 1
-            epAfterInputs['goal_to_go'] = 0
-            epAfterInputs["under_two"] = 1
-            epAfterInputs['time_remaining'] = 0
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = 0
-            epAfterInputs['adjusted_yardline_down_3'] = 0
-            epAfterInputs['adjusted_yardline_down_4'] = 99
-            epAfterInputs["log_distance"] = Math.log(99)
-            epAfterInputs['log_distance_down_2'] = 0
-            epAfterInputs['log_distance_down_3'] = 0
-            epAfterInputs["log_distance_down_4"] = Math.log(99)
-            epAfterInputs['goal_to_go_log_distance'] = 0
+            epAfterInputs['down'] = 1
+            epAfterInputs['Goal_To_Go'] = 0
+            epAfterInputs["Under_two"] = 1
+            epAfterInputs['TimeSecsRem'] = 0
+            epAfterInputs["yards_to_goal"] = 99
+            epAfterInputs["log_ydstogo"] = Math.log(99)
         }
         
-        if (epAfterInputs["adjusted_yardline"] >= 100) {
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
+        if (epAfterInputs["yards_to_goal"] >= 100) {
+            epAfterInputs["yards_to_goal"] = 99
         }
         
         if (play.end.distance < 0) {
             var logDistance = Math.log(99)
-            epAfterInputs["log_distance"] = logDistance
-
-            epAfterInputs['log_distance_down_2'] = (play.end.down == 2) ? logDistance : 0.0
-            epAfterInputs['log_distance_down_3'] = (play.end.down == 3) ? logDistance : 0.0
-            epAfterInputs["log_distance_down_4"] = (play.end.down == 4) ? logDistance : 0.0
-
-            epAfterInputs["new_distance"] = 99 // dat.new_distance.shift(-1)
-            epAfterInputs['goal_to_go_log_distance'] = (epAfterInputs['goal_to_go'] == 1) ? logDistance : 0
+            epAfterInputs["log_ydstogo"] = logDistance
+            epAfterInputs["distance"] = 99 // dat.new_distance.shift(-1)
         }
 
-        if (epAfterInputs["adjusted_yardline"] <= 0) {
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
+        if (epAfterInputs["yards_to_goal"] <= 0) {
+            epAfterInputs["yards_to_goal"] = 99
         }
 
         let end = [
-            epAfterInputs['Intercept'], 
-            epAfterInputs['down2'], 
-            epAfterInputs['down3'], 
-            epAfterInputs['down4'],
-            epAfterInputs['goal_to_go'], 
-            epAfterInputs['under_two'], 
-            epAfterInputs['time_remaining'],
-            epAfterInputs['adjusted_yardline'], 
-            epAfterInputs['adjusted_yardline_down_2'],
-            epAfterInputs['adjusted_yardline_down_3'], 
-            epAfterInputs['adjusted_yardline_down_4'],
-            epAfterInputs['log_distance'], 
-            epAfterInputs['log_distance_down_2'],
-            epAfterInputs['log_distance_down_3'], 
-            epAfterInputs['log_distance_down_4'],
-            epAfterInputs['goal_to_go_log_distance']
+            epAfterInputs['TimeSecsRem'],
+            epAfterInputs['down'],
+            epAfterInputs['distance'],
+            epAfterInputs['yards_to_goal'],
+            epAfterInputs['log_ydstogo'],
+            epAfterInputs['Goal_To_Go'],
+            epAfterInputs['Under_two'],
+            epAfterInputs['pos_score_diff_start']
         ]
         endInputs.push(end)
+
+        // if (play.end.down == -1) {
+        //     console.log(play)
+        // }
 
         play.expectedPoints = {
             "before" : 0.0,
@@ -332,63 +335,69 @@ async function calculateEPA(plays) {
         }
     }
 
-    const resBefore = await axios.post('http://python:8080/ep/predict', {
-        data: beforeInputs
-    });
-    var epBefore = resBefore.data.predictions; 
-    for (var i = 0; i < epBefore.length; i += 1) {
-        plays[i].expectedPoints.before = calculateExpectedValue(epBefore[i])
+    if (beforeInputs.length > 0) {
+        const resBefore = await axios.post('http://rdata:7000/ep/predict', {
+            data: beforeInputs
+        });
+        
+        var epBefore = resBefore.data.predictions; 
+        for (var i = 0; i < epBefore.length; i += 1) {
+            plays[i].expectedPoints.before = calculateExpectedValue(epBefore[i])
+        }
     }
 
-    const resAfter = await axios.post('http://python:8080/ep/predict', {
-        data: endInputs
-    });
-    var epAfter = resAfter.data.predictions; 
-    for (var i = 0; i < epAfter.length; i += 1) {
-        plays[i].expectedPoints.after = calculateExpectedValue(epAfter[i])
+    if (endInputs.length > 0) {
+        const resAfter = await axios.post('http://rdata:7000/ep/predict', {
+            data: endInputs
+        });
+        var epAfter = resAfter.data.predictions; 
+        for (var i = 0; i < epAfter.length; i += 1) {
+            plays[i].expectedPoints.after = calculateExpectedValue(epAfter[i])
 
-        if (turnover_plays.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after *= -1
-        }
-        
-        var endHalfGame = (plays[i].type.text.toLocaleLowerCase().includes("end of game") || plays[i].text.toLocaleLowerCase().includes("end of game") || plays[i].type.text.toLocaleLowerCase().includes("end of half") || plays[i].text.toLocaleLowerCase().includes("end of half"))
-        if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || endHalfGame) {
-            plays[i].expectedPoints.after = 0
-        }
+            if (turnover_plays.includes(plays[i].playType)) {
+                plays[i].expectedPoints.after *= -1
+            }
+            
+            var endHalfGame = (plays[i].type.text.toLocaleLowerCase().includes("end of game") || plays[i].text.toLocaleLowerCase().includes("end of game") || plays[i].type.text.toLocaleLowerCase().includes("end of half") || plays[i].text.toLocaleLowerCase().includes("end of half"))
+            if (calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue) == 0 || endHalfGame) {
+                plays[i].expectedPoints.after = 0
+            }
 
-        if (score.includes(plays[i].playType) || (normal_play.includes(plays[i].playType) && plays[i].text.includes("TD"))) {
-            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? 8 : 7
-        }
-        
-        if (defense_score_vec.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? -8 : -7
-        }
-        
-        if (plays[i].playType.includes("Safety")) {
-            plays[i].expectedPoints.after = -2
-        }
+            if (score.includes(plays[i].playType) || (normal_play.includes(plays[i].playType) && plays[i].text.includes("TD"))) {
+                plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? 8 : 7
+            }
+            
+            if (defense_score_vec.includes(plays[i].playType)) {
+                plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? -8 : -7
+            }
+            
+            if (plays[i].playType.includes("Safety")) {
+                plays[i].expectedPoints.after = -2
+            }
 
-        if (PAT_miss_type.includes(plays[i].playType)) {
-            plays[i].expectedPoints.after = 6
-        }
+            if (PAT_miss_type.includes(plays[i].playType)) {
+                plays[i].expectedPoints.after = 6
+            }
 
-        if (plays[i].playType.includes("Field Goal Good")) {
-            plays[i].expectedPoints.after = 3
-        }
+            if (plays[i].playType.includes("Field Goal Good")) {
+                plays[i].expectedPoints.after = 3
+            }
 
-        plays[i].expectedPoints.added = plays[i].expectedPoints.after - plays[i].expectedPoints.before
+            plays[i].expectedPoints.added = plays[i].expectedPoints.after - plays[i].expectedPoints.before
+        }
     }
+    
     return plays;
 }
 
 name_to_mapping = {
-    "td": 7,
-    "opp_td": -7,
-    "fg": 3,
-    "opp_fg": -3,
-    "no_score": 0,
-    "safety": 2,
-    "opp_safety": -2
+    "X1": 0,
+    "X2": 3,
+    "X3": -3,
+    "X4": -2,
+    "X5": -7,
+    "X6": 2,
+    "X7": 7
 }
 
 function calculateExpectedValue(preds) {
@@ -403,10 +412,10 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
 
     let offenseReceives2HKickoff = (firstHalfKickTeamId == play.start.team.id) ? 1.0 : 0.0
 
-    let epStartInput = prepareEPInputs(play.start, play.clock.displayValue)
-    let adj_TimeSecsRem = epStartInput['adj_time_remaining']
+    let epStartInput = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
+    let adj_TimeSecsRem = epStartInput['adj_TimeSecsRem']
 
-    let isHome = (homeTeamId == play.start.team.id) ? 1.0 : 0.0
+    let isHome = (play.start.team != null && homeTeamId == play.start.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (play.homeScore - play.awayScore) : (play.awayScore - play.homeScore)
 
     let expScoreDiff = posScoreMargin + play.expectedPoints.before
@@ -416,8 +425,8 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
     let elapsedShare = Math.max(0, (3600 - adj_TimeSecsRem) / 3600)
     let spreadTime = posTeamSpread * Math.exp(-4 * elapsedShare)
 
-    let epAfterInput = prepareEPInputs(play.end, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00")
-    let adj_TimeSecsRem_end = epAfterInput['adj_time_remaining']
+    let epAfterInput = prepareEPInputs(play.end, play.period, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
+    let adj_TimeSecsRem_end = epAfterInput['adj_TimeSecsRem']
 
     let expScoreDiff_end = posScoreMargin + play.expectedPoints.after
     let expScoreDiffTimeRatio_end = expScoreDiff_end / (adj_TimeSecsRem_end + 1)
@@ -428,8 +437,9 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
     return {
         "pos_team_receives_2H_kickoff" : offenseReceives2HKickoff,
         "spread_time" : spreadTime,
-        "TimeSecsRem" : epStartInput["time_remaining"],
+        "TimeSecsRem" : epStartInput["TimeSecsRem"],
         "adj_TimeSecsRem" : adj_TimeSecsRem,
+        "ExpScoreDiff": expScoreDiff,
         "ExpScoreDiff_Time_Ratio" : expScoreDiffTimeRatio,
         "pos_score_diff_start" : posScoreMargin,
         "down" : play.start.down,
@@ -439,11 +449,14 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "pos_team_timeouts_rem_before" : play.start.posTeamTimeouts,
         "def_pos_team_timeouts_rem_before" : play.end.posTeamTimeouts,
         "period" : play.period,
+        "half" : (play.period <= 2) ? 1 : 2,
+        "Under_two" : (epStartInput["TimeSecsRem"] <= 120) ? 1.0 : 0.0,
 
         "pos_team_receives_2H_kickoff_end" : offenseReceives2HKickoff,
         "spread_time_end" : spreadTime_end,
-        "TimeSecsRem_end" : epAfterInput["time_remaining"],
+        "TimeSecsRem_end" : epAfterInput["TimeSecsRem"],
         "adj_TimeSecsRem_end" : adj_TimeSecsRem_end,
+        "ExpScoreDiff_end": expScoreDiff_end,
         "ExpScoreDiff_Time_Ratio_end" : expScoreDiffTimeRatio_end,
         "pos_score_diff_start_end" : posScoreMargin,
         "down_end" : play.end.down,
@@ -452,15 +465,13 @@ function prepareWPInputs(play, homeTeamSpread, homeTeamId, firstHalfKickTeamId, 
         "is_home_end" : isHome,
         "pos_team_timeouts_rem_before_end" : play.end.posTeamTimeouts,
         "def_pos_team_timeouts_rem_before_end" : play.end.defTeamTimeouts,
-        "period_end" : play.period
+        "period_end" : play.period,
+        "half_end" : (play.period <= 2) ? 1 : 2,
+        "Under_two_end" : (epAfterInput["TimeSecsRem"] <= 120) ? 1.0 : 0.0,
     }
 }
 
 async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeamId) {
-    // INPUTS: ["pos_team_receives_2H_kickoff","spread_time","TimeSecsRem","adj_TimeSecsRem","ExpScoreDiff_Time_Ratio",
-    // "pos_score_diff_start","down","distance","yards_to_goal","is_home","pos_team_timeouts_rem_before","def_pos_team_timeouts_rem_before",
-    // "period"]
-
     var beforeInputs = []
     var endInputs = []
     // how do we figure out when timeouts are taken?
@@ -515,43 +526,212 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         }
     }
 
-    const resBefore = await axios.post('http://python:8080/wp/predict', {
-        data: beforeInputs
-    });
-    var wpBefore = resBefore.data.predictions; 
-    for (var i = 0; i < wpBefore.length; i += 1) {
-        plays[i].winProbability.before = wpBefore[i].wp
-    }
-
-    const resAfter = await axios.post('http://python:8080/wp/predict', {
-        data: endInputs
-    });
-    var wpAfter = resAfter.data.predictions; 
-    for (var i = 0; i < wpAfter.length; i += 1) {
-        var wpEnd = wpAfter[i].wp
-
-        var nextPlay = null
-        if ((i + 1) >= plays.length) {
-            nextPlay = null
-        } else {
-            nextPlay = plays[i + 1]
-        }
-
-        if (calculateGameSecondsRemaining(plays[i].period, calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)) <= 30 && (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0)) {
-            if (plays[i].start.team.id == homeTeamId && plays[i].homeScore > plays[i].awayScore) {
-                wpEnd = 1.0
-            } else if (!(plays[i].start.team.id == homeTeamId) && plays[i].homeScore < plays[i].awayScore) {
-                wpEnd = 1.0
+    if (beforeInputs.length > 0) {
+        const resBefore = await axios.post('http://rdata:7000/wp/predict', {
+            data: beforeInputs
+        });
+        // console.log(resBefore.data)
+        var wpBefore = resBefore.data.predictions; 
+        for (var i = 0; i < wpBefore.length; i += 1) {
+            if (i == 0) {
+                var startWP = adjustSpreadWP(homeTeamSpread)
+                // console.log("spread: " + homeTeamSpread)
+                // console.log("start wp: " + startWP)
+                if (plays[i].start.team != null && plays[i].start.team.id == homeTeamId) {
+                    plays[i].winProbability.before = startWP
+                } else {
+                    plays[i].winProbability.before = 1.0 - startWP
+                }
             } else {
-                wpEnd = 0.0
+                plays[i].winProbability.before = wpBefore[i]
             }
         }
-        plays[i].winProbability.after = wpEnd
-        plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
+    }
+
+    if (endInputs.length > 0) {
+        const resAfter = await axios.post('http://rdata:7000/wp/predict', {
+            data: endInputs
+        });
+        var wpAfter = resAfter.data.predictions; 
+        for (var i = 0; i < wpAfter.length; i += 1) {
+            var wpEnd = wpAfter[i]
+
+            var nextPlay = null
+            if ((i + 1) >= plays.length) {
+                nextPlay = null
+            } else {
+                nextPlay = plays[i + 1]
+            }
+
+            if (calculateGameSecondsRemaining(plays[i].period, calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)) <= 30 && (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0)) {
+                if (plays[i].start.team.id == homeTeamId && plays[i].homeScore > plays[i].awayScore) {
+                    wpEnd = 1.0
+                } else if (!(plays[i].start.team.id == homeTeamId) && plays[i].homeScore < plays[i].awayScore) {
+                    wpEnd = 1.0
+                } else {
+                    wpEnd = 0.0
+                }
+            }
+            plays[i].winProbability.after = wpEnd
+            plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
+        }
     }
     return plays;
+}
+
+// assumes homeTeamSpread is positive number of points
+function adjustSpreadWP(homeTeamSpread) {
+    var result = 0.50
+    var absSpread = Math.abs(homeTeamSpread)
+    // console.log("abs spread: " + absSpread)
+    switch(absSpread) {
+        case 0:
+            result = 0.50
+            break;
+        case 0.5:
+            result = 0.50
+            break;
+        case 1:
+            result = 0.4880
+            break;
+        case 1.5:
+            result = 0.4660
+            break;
+        case 2:
+            result = 0.4660
+            break;
+        case 2.5:
+            result = 0.4570
+            break;
+        case 3:
+            result = 0.4260
+            break;
+        case 3.5:
+            result = 0.3940
+            break;
+        case 4:
+            result = 0.3810
+            break;
+        case 4.5:
+            result = 0.3690
+            break;
+        case 5:
+            result = 0.3590
+            break;
+        case 5.5:
+            result = 0.3490
+            break;
+        case 6:
+            result = 0.3360
+            break;
+        case 6.5:
+            result = 0.3230 
+            break;  
+        case 7:
+            result = 0.2970 
+            break; 
+        case 7.5:
+            result = 0.2700 
+            break; 
+        case 8:
+            result = 0.2620 
+            break;
+        case 8.5:
+            result = 0.2540
+            break;  
+        case 9:
+            result = 0.2490 
+            break; 
+        case 9.5:
+            result = 0.2450 
+            break; 
+        case 10:
+            result = 0.2260
+            break;
+        case 10.5:
+            result = 0.2080  
+            break; 
+        case 11:
+            result = 0.2010  
+            break; 
+        case 11.5:
+            result = 0.1940
+            break;    
+        case 12:
+            result = 0.1840 
+            break; 
+        case 12.5:
+            result = 0.1740
+            break; 
+        case 13:
+            result = 0.1700 
+            break;
+        case 13.5:
+            result = 0.1650
+            break;
+        case 14:
+            result = 0.1490 
+            break;
+        case 14.5:
+            result = 0.1320 
+            break;
+        case 15:
+            result = 0.1260 
+            break;
+        case 15.5:
+            result = 0.1190 
+            break;
+        case 16:
+            result = 0.1140
+            break;
+        case 16.5:
+            result = 0.1090   
+            break; 
+        case 17:
+            result = 0.0860
+            break;
+        case 17.5:
+            result = 0.0630
+            break;
+        case 18:
+            result = 0.0500
+            break;
+        case 18.5:
+            result = 0.0380
+            break;
+        case 19:
+            result = 0.0270
+            break;
+        case 19.5:
+            result = 0.0160
+            break;
+        default: 
+            result = 0.0001 
+            break; 
+    }
+    return (homeTeamSpread > 0) ? (1.0 - result) : result
+}
+
+async function getServiceHealth(req, res) {
+    const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
+    const cfbDataCheck = await axios.get('https://collegefootballdata.com');
+
+    var cfbdCheck = {
+        status: (cfbDataCheck.status == 200) ? "ok" : "bad"
+    }
+
+    const selfCheck = {
+        "status" : "ok"
+    }
+    
+    return res.json({
+        "r" : rdataCheck.data,
+        "node" : selfCheck,
+        "cfbData" : cfbdCheck
+    })
 }
 
 exports.getPBP = retrievePBP
 exports.calculateEPA = calculateEPA
 exports.calculateWPA = calculateWPA
+exports.getServiceHealth = getServiceHealth
