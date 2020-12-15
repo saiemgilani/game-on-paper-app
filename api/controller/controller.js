@@ -103,8 +103,13 @@ async function retrievePBP(req, res) {
         delete pbp.standings;
         delete pbp.videos;
         delete pbp.header;
-        let baseSpread = Math.abs(summary.pickcenter[0].spread)
-        pbp.homeTeamSpread = (summary.pickcenter[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
+        if (summary.pickcenter != null && summary.pickcenter.length > 0) {
+            let baseSpread = Math.abs(summary.pickcenter[0].spread)
+            pbp.homeTeamSpread = (summary.pickcenter[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
+        } else {
+            pbp.homeTeamSpread = 2.5
+        }
+        
         delete pbp.pickcenter;
         delete pbp.teams;
 
@@ -145,6 +150,14 @@ async function retrievePBP(req, res) {
             "2": []
         };
 
+        plays.forEach(p => {
+            var yard = (p.start.team != null && p.start.team.id == homeTeamId) ? 100 - p.start.yardLine : p.start.yardLine
+            p.start.yardsToEndzone = (p.start.yardLine != null) ? yard : p.start.yardsToEndzone
+        })
+        plays.forEach(p => {
+            var yard = (p.end.team != null && p.end.team.id == homeTeamId) ? 100 - p.end.yardLine : p.end.yardLine
+            p.end.yardsToEndzone = (p.end.yardLine != null) ? yard : p.end.yardsToEndzone
+        })
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
         plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
 
