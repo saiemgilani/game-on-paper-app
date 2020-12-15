@@ -7,9 +7,21 @@ const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
 function getNumberWithOrdinal(n) {
-    var s = ["th", "st", "nd", "rd"],
-        v = n % 100;
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function formatDown(down, playType) {
+    if (playType.includes("Kickoff")) {
+        return "Kickoff"
+    } else if (playType.includes("Extra Point") || playType.includes("Conversion")) {
+        return "PAT"
+    } else if (down > -1) {
+        return getNumberWithOrdinal(down)
+    } else {
+        return down
+    }
 }
 
 function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
@@ -22,8 +34,14 @@ function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
     }
 }
 
-function formatDistance(distance, yardline) {
-    return (distance == 0 || yardline <= distance) ? "Goal" : distance
+function formatDistance(down, type, distance, yardline) {
+    var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
+    var downForm = formatDown(down, type)
+    if (downForm.includes("Kickoff") || downForm.includes("PAT")) {
+        return downForm
+    } else {
+        return downForm + " & " + dist
+    }
 }
 
 stat_key_title_mapping = {
@@ -394,7 +412,7 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
@@ -443,7 +461,7 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
