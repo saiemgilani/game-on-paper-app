@@ -3,6 +3,7 @@ const axios = require('axios');
 const morgan = require("morgan");
 var path = require('path');
 const port = 8000;
+const API_BASE_URL = process.env.API_BASE_URL;
 
 const app = express();
 app.use(morgan('common'));
@@ -21,7 +22,7 @@ app.get('/cfb', function(req, res) {
 });
 
 async function retrieveGameData(gameId) {
-    const res = await axios.get('http://api:5000/cfb/pbp/' + gameId);
+    const res = await axios.get(API_BASE_URL + '/cfb/pbp/' + gameId);
     return res.data
 }
 

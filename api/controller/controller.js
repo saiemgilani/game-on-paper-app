@@ -1,6 +1,8 @@
 const cfb = require('cfb-data');
 const axios = require('axios');
 
+const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
+
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
 turnover_plays = [
@@ -201,7 +203,7 @@ async function retrievePBP(req, res) {
 }
 
 async function retrieveBoxScore(gameId) {
-    const res = await axios.post('http://rdata:7000/box', {
+    const res = await axios.post(RDATA_BASE_URL + '/box', {
         gameId: gameId
     });
     // console.log(res.data)
@@ -395,7 +397,7 @@ async function calculateEPA(plays, homeTeamId) {
     }
 
     if (beforeInputs.length > 0) {
-        const resBefore = await axios.post('http://rdata:7000/ep/predict', {
+        const resBefore = await axios.post(RDATA_BASE_URL + '/ep/predict', {
             data: beforeInputs
         });
         
@@ -406,7 +408,7 @@ async function calculateEPA(plays, homeTeamId) {
     }
 
     if (endInputs.length > 0) {
-        const resAfter = await axios.post('http://rdata:7000/ep/predict', {
+        const resAfter = await axios.post(RDATA_BASE_URL + '/ep/predict', {
             data: endInputs
         });
         var epAfter = resAfter.data.predictions; 
@@ -586,7 +588,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
     }
 
     if (beforeInputs.length > 0) {
-        const resBefore = await axios.post('http://rdata:7000/wp/predict', {
+        const resBefore = await axios.post(RDATA_BASE_URL + '/wp/predict', {
             data: beforeInputs
         });
         // console.log(resBefore.data)
@@ -608,7 +610,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
     }
 
     if (endInputs.length > 0) {
-        const resAfter = await axios.post('http://rdata:7000/wp/predict', {
+        const resAfter = await axios.post(RDATA_BASE_URL + '/wp/predict', {
             data: endInputs
         });
         var wpAfter = resAfter.data.predictions; 
@@ -772,7 +774,7 @@ function adjustSpreadWP(homeTeamSpread) {
 }
 
 async function getServiceHealth(req, res) {
-    const rdataCheck = await axios.get('http://rdata:7000/healthcheck');
+    const rdataCheck = await axios.get(RDATA_BASE_URL + ':7000/healthcheck');
     const cfbDataCheck = await axios.get('https://collegefootballdata.com');
 
     var cfbdCheck = {

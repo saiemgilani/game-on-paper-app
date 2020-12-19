@@ -2,6 +2,9 @@ library(plumber)
 library(logger)
 library(tictoc)
 
+root_ip <- Sys.getenv("ROOT_IP")
+print(paste0("Running on system IP: ", root_ip))
+
 # Logging from https://rviews.rstudio.com/2019/08/13/plumber-logging/
 # Specify how logs are written
 log_dir <- "logs"
@@ -32,4 +35,9 @@ pr$registerHooks(
   )
 )
 
-pr_run(pr, host = "0.0.0.0", port=7000)
+# this is purposefully not set in GCP 
+if(is.na(root_ip)) {
+  pr_run(pr, port=7000)
+} else {
+  pr_run(pr, host = "0.0.0.0", port=7000)
+}

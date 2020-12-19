@@ -495,8 +495,8 @@ stat_key_title_mapping = {
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
-            var airings = gameData.gameInfo.airings
-            var airingLink = (gameData.gameInfo.airings.length > 0) ? gameData.gameInfo.airings[0].webAiringLink : null
+            var airings = gameData.gameInfo.airings;
+            var airingLink = (airings != null && airings.length > 0) ? airings[0].webAiringLink : null
             if (airingLink != null) {
                 document.body.querySelector("#game-date").innerHTML = "<a href=" + airingLink + ">LIVE</a> - " + statusDetail
             } else {
