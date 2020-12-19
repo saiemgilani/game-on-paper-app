@@ -4,6 +4,7 @@ library(tictoc)
 
 root_ip <- Sys.getenv("ROOT_IP")
 print(paste0("Running on system IP: ", root_ip))
+print(paste0("is system IP NA: ", is.na(root_ip)))
 
 # Logging from https://rviews.rstudio.com/2019/08/13/plumber-logging/
 # Specify how logs are written
@@ -36,7 +37,7 @@ pr$registerHooks(
 )
 
 # this is purposefully not set in GCP 
-if(is.na(root_ip)) {
+if(is.na(root_ip) || root_ip == '') {
   pr_run(pr, port=7000)
 } else {
   pr_run(pr, host = "0.0.0.0", port=7000)

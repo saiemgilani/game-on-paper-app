@@ -34,7 +34,6 @@ services:
       - rdata
     environment:
       - RDATA_BASE_URL="http://rdata:7000"
-      - ROOT_IP="127.0.0.1"
   frontend:
     build: 
       context: ./frontend

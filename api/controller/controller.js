@@ -774,7 +774,7 @@ function adjustSpreadWP(homeTeamSpread) {
 }
 
 async function getServiceHealth(req, res) {
-    const rdataCheck = await axios.get(RDATA_BASE_URL + ':7000/healthcheck');
+    const rdataCheck = await axios.get(RDATA_BASE_URL + '/healthcheck');
     const cfbDataCheck = await axios.get('https://collegefootballdata.com');
 
     var cfbdCheck = {
