@@ -32,16 +32,27 @@ fi
 # Otherwise it loops forever, waking up every 60 seconds
 
 while sleep 60; do
-  ps aux |grep rdata |grep -q -v grep
+  ps aux |grep [rdata] |grep -q -v grep
   PROCESS_0_STATUS=$?
-  ps aux |grep api |grep -q -v grep
+  ps aux |grep [api] |grep -q -v grep
   PROCESS_1_STATUS=$?
-  ps aux |grep frontend |grep -q -v grep
+  ps aux |grep [frontend] |grep -q -v grep
   PROCESS_2_STATUS=$?
   # If the greps above find anything, they exit with 0 status
   # If they are not both 0, then something is wrong
-  if [ $PROCESS_1_STATUS -ne 0 -o $PROCESS_2_STATUS -ne 0 -o $PROCESS_0_STATUS -ne 0 ]; then
-    echo "One of the processes has already exited."
+  if [ $PROCESS_0_STATUS -ne 0 ]; then
+    echo "RData process has exited"
+    ps aux |grep [rdata] |grep -q -v grep
+    exit 1
+  fi
+  if [ $PROCESS_1_STATUS -ne 0 ]; then
+    echo "API process has exited"
+    ps aux |grep [api] |grep -q -v grep
+    exit 1
+  fi
+  if [ $PROCESS_2_STATUS -ne 0 ]; then
+    echo "Frontend process has exited"
+    ps aux |grep [frontend] |grep -q -v grep
     exit 1
   fi
 done

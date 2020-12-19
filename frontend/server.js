@@ -6,7 +6,7 @@ const port = 8000;
 const API_BASE_URL = process.env.API_BASE_URL;
 
 const app = express();
-app.use(morgan('common'));
+app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
