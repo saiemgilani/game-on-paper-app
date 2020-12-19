@@ -8,8 +8,8 @@ services:
       - "8000:8000"
     command: "./start.sh"
     environment: 
-      - API_BASE_URL="http://localhost:5000"
-      - RDATA_BASE_URL="http://localhost:7000"
+      - API_BASE_URL=http://localhost:5000
+      - RDATA_BASE_URL=http://localhost:7000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/cfb/healthcheck"]
       interval: 1m30s

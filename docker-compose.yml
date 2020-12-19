@@ -13,7 +13,7 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      - ROOT_IP="0.0.0.0"
+      - ROOT_IP=0.0.0.0
   api:
     build: 
       context: ./api
@@ -33,7 +33,7 @@ services:
     depends_on:
       - rdata
     environment:
-      - RDATA_BASE_URL="http://rdata:7000"
+      - RDATA_BASE_URL=http://rdata:7000
   frontend:
     build: 
       context: ./frontend
@@ -46,4 +46,4 @@ services:
       - api
       - rdata
     environment:
-      - API_BASE_URL="http://api:5000"
+      - API_BASE_URL=http://api:5000

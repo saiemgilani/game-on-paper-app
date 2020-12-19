@@ -2,6 +2,7 @@ const cfb = require('cfb-data');
 const axios = require('axios');
 
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
+console.log("RDATA BASE URL: " + RDATA_BASE_URL)
 
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
@@ -89,7 +90,7 @@ async function retrievePBP(req, res) {
         // get game all game data
         let pbp = await cfb.games.getPlayByPlay(req.params.gameId);
         let summary = await cfb.games.getSummary(req.params.gameId);
-        // console.log(JSON.stringify(boxScore))
+        console.log("retreived data for game " + req.params.gameId)
 
         if (pbp == null) {
             throw "No play-by-play available, game could have been postponed or cancelled OR is invalid."
@@ -190,6 +191,7 @@ async function retrievePBP(req, res) {
 
         if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
             let boxScore = await retrieveBoxScore(req.params.gameId)
+            console.log("retreived box score data for game " + req.params.gameId)
             pbp.boxScore = boxScore
 
             pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)

@@ -11,6 +11,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
 
+console.log("API BASE URL: " + API_BASE_URL);
+
 // index page
 app.get('/', function(req, res) {
     res.redirect('/cfb');
@@ -22,7 +24,10 @@ app.get('/cfb', function(req, res) {
 });
 
 async function retrieveGameData(gameId) {
-    const res = await axios.get(API_BASE_URL + '/cfb/pbp/' + gameId);
+    console.log("starting data retrieval for game " + gameId)
+    var fullURL = (API_BASE_URL + '/cfb/pbp/' + gameId)
+    console.log("accessing URL " + fullURL)
+    const res = await axios.get(fullURL);
     return res.data
 }
 
