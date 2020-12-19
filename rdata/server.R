@@ -2,6 +2,10 @@ library(plumber)
 library(logger)
 library(tictoc)
 
+root_ip <- Sys.getenv("ROOT_IP")
+print(paste0("Running on system IP: ", root_ip))
+print(paste0("is system IP NA: ", is.na(root_ip)))
+
 # Logging from https://rviews.rstudio.com/2019/08/13/plumber-logging/
 # Specify how logs are written
 log_dir <- "logs"
@@ -27,9 +31,14 @@ pr$registerHooks(
     postroute = function(req, res) {
       end <- tictoc::toc(quiet = TRUE)
       # Log details about the request and the response
-      log_info('{convert_empty(req$REMOTE_ADDR)} {convert_empty(req$HTTP_HOST)} {convert_empty(req$REQUEST_METHOD)} {convert_empty(req$PATH_INFO)} {convert_empty(res$status)} {round(end$toc - end$tic, digits = getOption("digits", 5))}')
+      log_info('[rdata] {convert_empty(req$REMOTE_ADDR)} {convert_empty(req$HTTP_HOST)} {convert_empty(req$REQUEST_METHOD)} {convert_empty(req$PATH_INFO)} {convert_empty(res$status)} {round(end$toc - end$tic, digits = getOption("digits", 5))}')
     }
   )
 )
 
-pr_run(pr, host = "0.0.0.0", port=7000)
+# this is purposefully not set in GCP 
+if(is.na(root_ip) || root_ip == '') {
+  pr_run(pr, port=7000)
+} else {
+  pr_run(pr, host = "0.0.0.0", port=7000)
+}

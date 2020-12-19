@@ -2,22 +2,22 @@ version: "3.8"
 services:
   rdata:
     build: 
-      context: .
-      dockerfile: rdata/Dockerfile
+      context: ./rdata
+      dockerfile: Dockerfile
     expose:
       - 7000
-    volumes: 
-      - ./rdata/models:/models
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7000/healthcheck"]
       interval: 1m30s
       timeout: 10s
       retries: 3
       start_period: 30s
+    environment:
+      - ROOT_IP=0.0.0.0
   api:
     build: 
-      context: .
-      dockerfile: api/Dockerfile
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     expose:
@@ -32,10 +32,12 @@ services:
       start_period: 30s
     depends_on:
       - rdata
+    environment:
+      - RDATA_BASE_URL=http://rdata:7000
   frontend:
     build: 
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     links:
@@ -43,3 +45,5 @@ services:
     depends_on:
       - api
       - rdata
+    environment:
+      - API_BASE_URL=http://api:5000

@@ -7,9 +7,21 @@ const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
 function getNumberWithOrdinal(n) {
-    var s = ["th", "st", "nd", "rd"],
-        v = n % 100;
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function formatDown(down, playType) {
+    if (playType.includes("Kickoff")) {
+        return "Kickoff"
+    } else if (playType.includes("Extra Point") || playType.includes("Conversion")) {
+        return "PAT"
+    } else if (down > -1) {
+        return getNumberWithOrdinal(down)
+    } else {
+        return down
+    }
 }
 
 function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
@@ -22,8 +34,14 @@ function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
     }
 }
 
-function formatDistance(distance, yardline) {
-    return (distance == 0 || yardline <= distance) ? "Goal" : distance
+function formatDistance(down, type, distance, yardline) {
+    var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
+    var downForm = formatDown(down, type)
+    if (downForm.includes("Kickoff") || downForm.includes("PAT")) {
+        return downForm
+    } else {
+        return downForm + " & " + dist
+    }
 }
 
 stat_key_title_mapping = {
@@ -111,7 +129,8 @@ stat_key_title_mapping = {
                 <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
                     <div>
                         <h1 class="h2">Win Probability</h1>
-                        <p class="text-small"><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                        
+                        <p class="text-small"><% if (gameData.gameInfo.status.type.completed == true) { %>Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | <% } %><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
                     </div>
                     <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
                 </main>
@@ -394,11 +413,11 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toPrecision(3) %>%</td>
+                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -443,12 +462,12 @@ stat_key_title_mapping = {
                                         %>
                                         <td align="left"><%= period %></td>
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= getNumberWithOrdinal(play.start.down) %> & <%= formatDistance(play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toPrecision(3) %>%</td>
+                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -476,8 +495,8 @@ stat_key_title_mapping = {
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
-            var airings = gameData.gameInfo.airings
-            var airingLink = (gameData.gameInfo.airings.length > 0) ? gameData.gameInfo.airings[0].webAiringLink : null
+            var airings = gameData.gameInfo.airings;
+            var airingLink = (airings != null && airings.length > 0) ? airings[0].webAiringLink : null
             if (airingLink != null) {
                 document.body.querySelector("#game-date").innerHTML = "<a href=" + airingLink + ">LIVE</a> - " + statusDetail
             } else {

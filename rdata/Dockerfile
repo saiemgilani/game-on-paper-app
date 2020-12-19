@@ -15,7 +15,7 @@ RUN install2.r --error \
 RUN installGithub.r \
     saiemgilani/cfbscrapR
 
-COPY ./rdata .
+COPY . .
 
 EXPOSE 7000
 

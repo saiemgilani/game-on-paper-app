@@ -4,7 +4,7 @@ const morgan = require("morgan");
 const port = process.env.PORT || 5000
 
 const app = express();
-app.use(morgan('common'));
+app.use(morgan('[api] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
 app.use(router);
 
 app.listen(port, () => {
