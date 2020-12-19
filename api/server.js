@@ -7,6 +7,6 @@ const app = express();
 app.use(morgan('[api] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
 app.use(router);
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
     console.log(`listening on port ${port}`)
 })
