@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const morgan = require("morgan");
 var path = require('path');
-const port = 8000;
+const port = process.env.PORT || 8000;
 const API_BASE_URL = process.env.API_BASE_URL;
 
 const app = express();
