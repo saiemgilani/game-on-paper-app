@@ -2,8 +2,8 @@ version: "3.8"
 services:
   rdata:
     build: 
-      context: .
-      dockerfile: rdata/Dockerfile
+      context: ./rdata
+      dockerfile: Dockerfile
     expose:
       - 7000
     volumes: 
@@ -16,8 +16,8 @@ services:
       start_period: 30s
   api:
     build: 
-      context: .
-      dockerfile: api/Dockerfile
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     expose:
@@ -34,8 +34,8 @@ services:
       - rdata
   frontend:
     build: 
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     links:

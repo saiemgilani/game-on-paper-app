@@ -189,6 +189,8 @@ async function retrievePBP(req, res) {
         if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
             let boxScore = await retrieveBoxScore(req.params.gameId)
             pbp.boxScore = boxScore
+
+            pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
         }
 
         return res.json(pbp);
@@ -204,6 +206,50 @@ async function retrieveBoxScore(gameId) {
     });
     // console.log(res.data)
     return res.data
+}
+
+function calculateGEI(plays, homeTeamId) {
+    var wpDiffs = []
+    for (var i = 0; i < plays.length; i++) {
+        let play = plays[i]
+
+        var nextPlay = null;
+        if ((i + 1) >= plays.length) {
+            nextPlay = null
+        } else {
+            nextPlay = plays[i + 1]
+        }
+        
+        function calculateHomeWP(play) {
+            let offWP = play != null ? play.winProbability.before : 0.0
+            let defWP = 1.0 - offWP
+            
+            let homeWP = (play.start.team.id == homeTeamId) ? offWP : defWP
+            return homeWP
+        }
+        
+        var finalWP = 0
+        if (play.homeScore > play.awayScore) {
+            if (play.start.team != null && play.start.team.id == homeTeamId) {
+                finalWP = 1.0
+            } else {
+                finalWP = 0.0
+            }
+        } else {
+            if (play.start.team != null && play.start.team.id == homeTeamId) {
+                finalWP = 0.0
+            } else {
+                finalWP = 1.0
+            }
+        }
+        let nextPlayWP = (nextPlay != null) ? calculateHomeWP(nextPlay) : finalWP
+        
+        wpDiffs.push((nextPlayWP - calculateHomeWP(play)))
+    }
+
+    let normalizeFactor = (plays.length == 0) ? 0 : (179.01777401608126 / plays.length)
+    let gei = wpDiffs.map(p => Math.abs(p)).reduce((acc, val) => acc + val)
+    return normalizeFactor * gei
 }
 
 function calculateHalfSecondsRemaining(period, time) {

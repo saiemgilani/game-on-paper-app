@@ -2,10 +2,10 @@ FROM node:latest
 
 WORKDIR /src
 
-COPY ./frontend/package.json ./
+COPY ./package.json ./
 RUN npm install
 
-COPY ./frontend .
+COPY . .
 
 EXPOSE 8000
 

@@ -129,7 +129,7 @@ stat_key_title_mapping = {
                 <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
                     <div>
                         <h1 class="h2">Win Probability</h1>
-                        <p class="text-small"><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                        <p class="text-small">Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100) %> | <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
                     </div>
                     <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
                 </main>
@@ -414,9 +414,9 @@ stat_key_title_mapping = {
                                         <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
                                         <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toPrecision(3) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toPrecision(3) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toPrecision(3) %>%</td>
+                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100) %></td>
+                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100) %>%</td>
+                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
