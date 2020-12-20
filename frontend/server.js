@@ -20,11 +20,15 @@ app.get('/', function(req, res) {
 
 // index page
 app.get('/cfb', async function(req, res) {
-    const response = await axios.get(API_BASE_URL + "/cfb/games");
-    // console.info(response.data)
-    return res.render('pages/index', {
-        scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
-    });
+    try {
+        const response = await axios.get(API_BASE_URL + "/cfb/games");
+        // console.info(response.data)
+        return res.render('pages/index', {
+            scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
+        });
+    } catch(err) {
+        return res.error(err)
+    }
 });
 
 async function retrieveGameData(gameId) {
@@ -36,10 +40,14 @@ async function retrieveGameData(gameId) {
 }
 
 app.get('/cfb/game/:gameId', async function(req, res) {
-    let data = await retrieveGameData(req.params.gameId);
-    res.render('pages/game', {
-        gameData: data
-    });
+    try {
+        let data = await retrieveGameData(req.params.gameId);
+        return res.render('pages/game', {
+            gameData: data
+        });
+    } catch(err) {
+        return res.error(err)
+    }
 });
 
 app.listen(port, () => {
