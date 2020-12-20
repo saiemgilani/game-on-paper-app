@@ -90,7 +90,7 @@ async function retrievePBP(req, res) {
         // get game all game data
         let pbp = await cfb.games.getPlayByPlay(req.params.gameId);
         let summary = await cfb.games.getSummary(req.params.gameId);
-        console.log("retreived data for game " + req.params.gameId)
+        // console.log("retreived data for game " + req.params.gameId)
 
         if (pbp == null) {
             throw "No play-by-play available, game could have been postponed or cancelled OR is invalid."
@@ -136,6 +136,11 @@ async function retrievePBP(req, res) {
             }
         }
         drives.sort((a,b) => parseInt(a.id) < parseInt(b.id))
+        drives = drives.filter((thing, index, self) =>
+            index === self.findIndex((t) => (
+                parseInt(thing.id) == parseInt(t.id)
+            ))
+        )
         var firstHalfKickTeamId = (drives.length > 0) ? drives[0].plays[0].start.team.id : null
         var plays = [];
         if (drives.length > 0) {
@@ -776,24 +781,47 @@ function adjustSpreadWP(homeTeamSpread) {
 }
 
 async function getServiceHealth(req, res) {
-    const rdataCheck = await axios.get(RDATA_BASE_URL + '/healthcheck');
-    const cfbDataCheck = await axios.get('https://collegefootballdata.com');
+    try {
+        const rdataCheck = await axios.get(RDATA_BASE_URL + '/healthcheck');
+        const cfbDataCheck = await axios.get('https://collegefootballdata.com');
 
-    var cfbdCheck = {
-        status: (cfbDataCheck.status == 200) ? "ok" : "bad"
-    }
+        var cfbdCheck = {
+            status: (cfbDataCheck.status == 200) ? "ok" : "bad"
+        }
 
-    const selfCheck = {
-        "status" : "ok"
+        const selfCheck = {
+            "status" : "ok"
+        }
+        
+        return res.json({
+            "r" : rdataCheck.data,
+            "node" : selfCheck,
+            "cfbData" : cfbdCheck
+        })
+    } catch(err) {
+        console.error(err);
+        return res.json(err);
     }
-    
-    return res.json({
-        "r" : rdataCheck.data,
-        "node" : selfCheck,
-        "cfbData" : cfbdCheck
-    })
 }
 
+async function getGameList(req, res) {
+    try {
+        // get game all game data
+        const baseUrl = 'http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard';
+        const params = {};
+
+        const response = await axios.get(baseUrl, {
+            params
+        });
+
+        return res.json(response.data)
+    } catch(err) {
+        console.error(err);
+        return res.json(err);
+    }
+}
+
+exports.getGameList = getGameList
 exports.getPBP = retrievePBP
 exports.calculateEPA = calculateEPA
 exports.calculateWPA = calculateWPA

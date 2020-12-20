@@ -13,7 +13,7 @@ $ docker run -d -it -p 8000:8000 --name=game-on-paper <what you named the image>
 ```
 
 Test API requests using Postman -- Send a GET request to `localhost:5000/cfb/pbp/<ESPN gameId>`.
-Test the frontend using a browser -- load up `localhost:8000/cfb/game/<ESPN gameId>`.
+Test the frontend using a browser -- load up `localhost:8000/cfb`.
 
 ## To-Do:
 
@@ -24,5 +24,6 @@ Test the frontend using a browser -- load up `localhost:8000/cfb/game/<ESPN game
 - [X] Frontend pages
 - [X] Advanced Box Scores
 - [X] Test requests during a live game
+- [X] Better home page
 - [ ] Postgame win probabilities
 - [ ] EPA in box scores
