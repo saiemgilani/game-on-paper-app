@@ -24,5 +24,6 @@ Test the frontend using a browser -- load up `localhost:8000/cfb/game/<ESPN game
 - [X] Frontend pages
 - [X] Advanced Box Scores
 - [X] Test requests during a live game
+- [X] Better home page
 - [ ] Postgame win probabilities
 - [ ] EPA in box scores

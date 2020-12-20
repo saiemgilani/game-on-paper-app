@@ -19,8 +19,12 @@ app.get('/', function(req, res) {
 });
 
 // index page
-app.get('/cfb', function(req, res) {
-    res.render('pages/index');
+app.get('/cfb', async function(req, res) {
+    const response = await axios.get(API_BASE_URL + "/cfb/games");
+    console.info(response.data)
+    return res.render('pages/index', {
+        scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
+    });
 });
 
 async function retrieveGameData(gameId) {
