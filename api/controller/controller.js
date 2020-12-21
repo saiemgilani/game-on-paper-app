@@ -207,7 +207,7 @@ async function retrievePBP(req, res) {
 
         return res.json(pbp);
     } catch(err) {
-        console.error(err);
+        debuglog(err);
         return res.json(err);
     }
 }
