@@ -1,13 +1,16 @@
 # routes.R
+start_dep_load <- proc.time()
 library(cfbscrapR)
-library(mgcv)
 library(xgboost)
 library(dplyr)
+print(paste0("Dep load time: ", proc.time() - start_dep_load))
 
 # load models
+start_model_load <- proc.time()
 load("models/fg_model.RData")
 wp_model <- xgboost::xgb.load("models/wp_spread.model")
 load("models/ep_model.RData")
+print(paste0("Model load time: ", proc.time() - start_model_load))
 
 #* Return the advanced box score from CFBData
 #* @param gameId the ESPN gameId to return data for

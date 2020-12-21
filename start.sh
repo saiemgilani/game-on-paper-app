@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd ./rdata
-Rscript server.R & 
+r server.R & 
 status=$?
 if [ $status -ne 0 ]; then
   echo "Failed to start rdata: $status"

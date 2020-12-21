@@ -8,7 +8,6 @@ COPY . .
 RUN cd ./rdata
 RUN install2.r --error \
     plumber \
-    mgcv \
     logger \
     tictoc \
     xgboost \
