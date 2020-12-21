@@ -97,7 +97,7 @@ function interpolateTimestamps(plays) {
             plays[adjIndex].time_remaining = 0
         }
     })
-    console.log(ind)
+    // console.log(ind)
 
     let halfPoint = ind[ind.length - 1]
     for (var i = 0; i < halfPoint; i++) {
@@ -172,22 +172,24 @@ if (gameData.plays.length > 0) {
                 datasets: [
                     {
                         data: homeTeamWP,
+                        fill:true,
                         lineTension: 0,
                         label: homeTeam.abbreviation,
                         backgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`,
-                        borderColor: homeTeam.color,
+                        borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
                         borderWidth: 3,
-                        pointBackgroundColor: homeTeam.color,
+                        pointBackgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
                         pointRadius: 0
                     },
                     {
                         data: awayTeamWP,
+                        fill:true,
                         lineTension: 0,
                         label: awayTeam.abbreviation,
                         backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`,
-                        borderColor: awayTeam.color,
+                        borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
                         borderWidth: 3,
-                        pointBackgroundColor: awayTeam.color,
+                        pointBackgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
                         pointRadius: 0
                     }
                 ]
@@ -199,7 +201,7 @@ if (gameData.plays.length > 0) {
                 tooltips: {
                     callbacks: {
                         title: function(tooltipItem, data) {
-                            console.log(tooltipItem)
+                            // console.log(tooltipItem)
                             if (gameData.gameInfo.status.type.completed == true) {
                                 var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
                                 return `Time Elapsed: ${timeElapsed}`
@@ -261,22 +263,24 @@ if (gameData.plays.length > 0) {
                 datasets: [
                     {
                         data: homeTeamEPA,
+                        fill: false,
                         lineTension: 0,
                         label: homeTeam.abbreviation,
-                        backgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.0)`,
-                        borderColor: homeTeam.color,
+                        backgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`],
+                        borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
                         borderWidth: 3,
-                        pointBackgroundColor: homeTeam.color,
+                        pointBackgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
                         pointRadius: 1.5
                     },
                     {
                         data: awayTeamEPA,
+                        fill: false,
                         lineTension: 0,
                         label: awayTeam.abbreviation,
-                        backgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.0)`,
-                        borderColor: awayTeam.color,
+                        backgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`],
+                        borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
                         borderWidth: 3,
-                        pointBackgroundColor: awayTeam.color,
+                        pointBackgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
                         pointRadius: 1.5
                     }
                 ]
