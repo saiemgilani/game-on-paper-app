@@ -9,7 +9,7 @@ if [ $status -ne 0 ]; then
 fi
 
 cd ../api
-RDATA_BASE_URL=http://0.0.0.0:7000 API_BASE_URL=http://0.0.0.0:5000 npm run start &
+RDATA_BASE_URL=http://0.0.0.0:7000 API_BASE_URL=http://0.0.0.0:5000 NODE_DEBUG=[api] npm run start &
 status=$?
 if [ $status -ne 0 ]; then
   echo "Failed to start api: $status"
@@ -18,7 +18,7 @@ fi
 
 # Start the second process
 cd ../frontend
-RDATA_BASE_URL=http://0.0.0.0:7000 API_BASE_URL=http://0.0.0.0:5000 npm run start &
+RDATA_BASE_URL=http://0.0.0.0:7000 API_BASE_URL=http://0.0.0.0:5000 NODE_DEBUG=[frontend] npm run start &
 status=$?
 if [ $status -ne 0 ]; then
   echo "Failed to start frontend: $status"
