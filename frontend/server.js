@@ -60,3 +60,8 @@ app.get('/cfb/game/:gameId', async function(req, res) {
 app.listen(port, () => {
     console.log(`listening on port ${port}`)
 })
+
+app.use(function (err, req, res, next) {
+    console.error(err.stack)
+    return res.status(500).send('Something broke!')
+})
