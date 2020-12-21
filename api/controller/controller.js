@@ -1,8 +1,11 @@
 const cfb = require('cfb-data');
 const axios = require('axios');
 
+const util = require('util');
+const debuglog = util.debuglog('[api]');
+
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
-console.log("RDATA BASE URL: " + RDATA_BASE_URL)
+debuglog("RDATA BASE URL: " + RDATA_BASE_URL)
 
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
@@ -90,7 +93,7 @@ async function retrievePBP(req, res) {
         // get game all game data
         let pbp = await cfb.games.getPlayByPlay(req.params.gameId);
         let summary = await cfb.games.getSummary(req.params.gameId);
-        // console.log("retreived data for game " + req.params.gameId)
+        // debuglog("retreived data for game " + req.params.gameId)
 
         if (pbp == null) {
             throw "No play-by-play available, game could have been postponed or cancelled OR is invalid."
@@ -196,7 +199,7 @@ async function retrievePBP(req, res) {
 
         if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
             let boxScore = await retrieveBoxScore(req.params.gameId)
-            console.log("retreived box score data for game " + req.params.gameId)
+            debuglog("retreived box score data for game " + req.params.gameId)
             pbp.boxScore = boxScore
 
             pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
@@ -213,7 +216,7 @@ async function retrieveBoxScore(gameId) {
     const res = await axios.post(RDATA_BASE_URL + '/box', {
         gameId: gameId
     });
-    // console.log(res.data)
+    // debuglog(res.data)
     return res.data
 }
 
@@ -295,8 +298,8 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
 
 function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
     var time_remaining = calculateHalfSecondsRemaining(period, clock);
-    // console.log("period: " + period)
-    // console.log("time sec: " + time_remaining)
+    // debuglog("period: " + period)
+    // debuglog("time sec: " + time_remaining)
     var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
     var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
     let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
@@ -327,7 +330,7 @@ async function calculateEPA(plays, homeTeamId) {
         }
 
         // if (play.down == 0 || play.start.team == null || play.end.team == null) {
-        //     console.log(play)
+        //     debuglog(play)
         // }
 
         let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
@@ -393,7 +396,7 @@ async function calculateEPA(plays, homeTeamId) {
         endInputs.push(end)
 
         // if (play.end.down == -1) {
-        //     console.log(play)
+        //     debuglog(play)
         // }
 
         play.expectedPoints = {
@@ -606,13 +609,13 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         const resBefore = await axios.post(RDATA_BASE_URL + '/wp/predict', {
             data: beforeInputs
         });
-        // console.log(resBefore.data)
+        // debuglog(resBefore.data)
         var wpBefore = resBefore.data.predictions; 
         for (var i = 0; i < wpBefore.length; i += 1) {
             if (i == 0) {
                 var startWP = adjustSpreadWP(homeTeamSpread)
-                // console.log("spread: " + homeTeamSpread)
-                // console.log("start wp: " + startWP)
+                // debuglog("spread: " + homeTeamSpread)
+                // debuglog("start wp: " + startWP)
                 if (plays[i].start.team != null && plays[i].start.team.id == homeTeamId) {
                     plays[i].winProbability.before = startWP
                 } else {
@@ -659,7 +662,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
 function adjustSpreadWP(homeTeamSpread) {
     var result = 0.50
     var absSpread = Math.abs(homeTeamSpread)
-    // console.log("abs spread: " + absSpread)
+    // debuglog("abs spread: " + absSpread)
     switch(absSpread) {
         case 0:
             result = 0.50
