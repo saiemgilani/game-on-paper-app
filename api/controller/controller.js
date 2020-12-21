@@ -422,7 +422,7 @@ async function calculateEPA(plays, homeTeamId) {
         for (var i = 0; i < epAfter.length; i += 1) {
             plays[i].expectedPoints.after = calculateExpectedValue(epAfter[i])
 
-            if (turnover_plays.includes(plays[i].playType)) {
+            if (turnover_plays.includes(plays[i].playType) || (plays[i].start.team != null && plays[i].end.team != null && plays[i].start.team.id != plays[i].end.team.id)) {
                 plays[i].expectedPoints.after *= -1
             }
             
@@ -432,13 +432,21 @@ async function calculateEPA(plays, homeTeamId) {
             }
 
             if (score.includes(plays[i].playType) || (normal_play.includes(plays[i].playType) && plays[i].text.includes("TD"))) {
-                plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? 8 : 7
+                if (plays[i].text.toLocaleLowerCase().includes("conversion")) {
+                    plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("failed") ? 6 : 8
+                } else {
+                    plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("missed") ? 6 : 7
+                }
             }
             
             if (defense_score_vec.includes(plays[i].playType)) {
-                plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("for two-point conversion") ? -8 : -7
+                if (plays[i].text.toLocaleLowerCase().includes("conversion")) {
+                    plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("failed") ? -6 : -8
+                } else {
+                    plays[i].expectedPoints.after = plays[i].text.toLocaleLowerCase().includes("missed") ? -6 : -7
+                }
             }
-            
+
             if (plays[i].playType.includes("Safety")) {
                 plays[i].expectedPoints.after = -2
             }

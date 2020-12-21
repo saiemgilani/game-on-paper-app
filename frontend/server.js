@@ -22,6 +22,9 @@ app.get('/', function(req, res) {
 app.get('/cfb', async function(req, res) {
     try {
         const response = await axios.get(API_BASE_URL + "/cfb/games");
+        if (response.data == null) {
+            throw Error(`Data not available for /cfb/games. An internal service may be down.`)
+        }
         // console.info(response.data)
         return res.render('pages/index', {
             scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
@@ -42,6 +45,10 @@ async function retrieveGameData(gameId) {
 app.get('/cfb/game/:gameId', async function(req, res) {
     try {
         let data = await retrieveGameData(req.params.gameId);
+        if (data == null || data.gameInfo == null) {
+            throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
+        }
+
         return res.render('pages/game', {
             gameData: data
         });
@@ -52,4 +59,9 @@ app.get('/cfb/game/:gameId', async function(req, res) {
 
 app.listen(port, () => {
     console.log(`listening on port ${port}`)
+})
+
+app.use(function (err, req, res, next) {
+    console.error(err.stack)
+    return res.status(500).send('Something broke!')
 })
