@@ -1,16 +1,41 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 import xgboost as xgb
 import numpy as np
-from flask import request
-from flask import jsonify
+from datetime import datetime as dt
+from flask_logs import LogSetup
+import os
+import logging
 
 app = Flask(__name__)
+app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
+app.config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", "INFO")
+
+logs = LogSetup()
+logs.init_app(app)
 
 ep_model = xgb.Booster({'nthread': 4})  # init model
 ep_model.load_model('models/ep_model.model')
 
 wp_model = xgb.Booster({'nthread': 4})  # init model
 wp_model.load_model('models/wp_spread.model')
+
+@app.after_request
+def after_request(response):
+    logger = logging.getLogger("app.access")
+    logger.info(
+        "[python] %s [%s] %s %s %s",
+        request.remote_addr,
+        dt.utcnow().strftime("%d/%b/%Y:%H:%M:%S.%f")[:-3],
+        request.method,
+        request.path,
+        response.status
+    )
+    return response
+
+@app.route('/box', methods=['POST'])
+def box():
+    # base_data = request.get_json(force=True)['gameId']
+    return jsonify({})
 
 @app.route('/ep/predict', methods=['POST'])
 def ep_predict():
