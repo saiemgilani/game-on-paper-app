@@ -299,37 +299,19 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
 function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
     var time_remaining = calculateHalfSecondsRemaining(period, clock);
     var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
-    var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
     let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (homeScore - awayScore) : (awayScore - homeScore)
 
     return {
         "TimeSecsRem" : time_remaining,
-        "down" : parseInt(play.down) < 0 ? 1 : parseInt(play.down),
-        "distance" : parseInt(play.distance),
         "yards_to_goal" : parseInt(play.yardsToEndzone),
-        "log_ydstogo" : logDistance,
-        "Goal_To_Go" : (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
-        "Under_two" : time_remaining <= 120 ? 1.0 : 0.0,
+        "distance" : parseInt(play.distance),
+        "down1": (parseInt(play.down) == 1) ? 1.0 : 0.0,
+        "down2": (parseInt(play.down) == 2) ? 1.0 : 0.0,
+        "down3": (parseInt(play.down) == 3) ? 1.0 : 0.0,
+        "down4": (parseInt(play.down) == 4) ? 1.0 : 0.0,
         "pos_score_diff_start": posScoreMargin,
         "adj_TimeSecsRem": adj_TimeSecsRem,
-        Intercept: 1,
-        down2: (parseInt(play.down) == 2) ? 1.0 : 0.0,
-        down3: (parseInt(play.down) == 3) ? 1.0 : 0.0,
-        down4: (parseInt(play.down) == 4) ? 1.0 : 0.0,
-        goal_to_go: (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
-        under_two: (time_remaining <= 120) ? 1.0 : 0.0,
-        time_remaining: time_remaining,
-        adj_time_remaining: adj_TimeSecsRem,
-        adjusted_yardline: play.yardsToEndzone,
-        adjusted_yardline_down_2: (play.down == 2) ? play.yardsToEndzone : 0.0,
-        adjusted_yardline_down_3: (play.down == 3) ? play.yardsToEndzone : 0.0,
-        adjusted_yardline_down_4: (play.down == 4) ? play.yardsToEndzone : 0.0,
-        log_distance: logDistance,
-        log_distance_down_2: (play.down == 2) ? logDistance : 0.0,
-        log_distance_down_3: (play.down == 3) ? logDistance : 0.0,
-        log_distance_down_4: (play.down == 4) ? logDistance : 0.0,
-        goal_to_go_log_distance: (play.yardsToEndzone <= play.distance) ? logDistance : 0.0
     }
 }
 
@@ -348,41 +330,22 @@ async function calculateEPA(plays, homeTeamId) {
         let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
         
         if (kickoff.includes(play.playType)) {
-            epBeforeInputs['Intercept'] = 1 
+            epBeforeInputs['down1'] = 1 
             epBeforeInputs['down2'] = 0
             epBeforeInputs['down3'] = 0 
             epBeforeInputs['down4'] = 0
-            epBeforeInputs['goal_to_go'] = 0
-            // epBeforeInputs['under_two'], 
-            // epBeforeInputs['time_remaining'],
-            epBeforeInputs['adjusted_yardline'] = 75 
-            epBeforeInputs['adjusted_yardline_down_2'] = 0
-            epBeforeInputs['adjusted_yardline_down_3'] = 0 
-            epBeforeInputs['adjusted_yardline_down_4'] = 0
-            epBeforeInputs['log_distance'] = Math.log(10) 
-            epBeforeInputs['log_distance_down_2'] = 0
-            epBeforeInputs['log_distance_down_3'] = 0
-            epBeforeInputs['log_distance_down_4'] = 0
-            epBeforeInputs['goal_to_go_log_distance'] = 0
+            epBeforeInputs['yards_to_goal'] = 75 
         }
 
         let start = [
-            epBeforeInputs['Intercept'], 
+            epBeforeInputs['TimeSecsRem'], 
+            epBeforeInputs['yards_to_goal'],
+            epBeforeInputs['distance'],
+            epBeforeInputs['down1'],
             epBeforeInputs['down2'], 
             epBeforeInputs['down3'], 
             epBeforeInputs['down4'],
-            epBeforeInputs['goal_to_go'], 
-            epBeforeInputs['under_two'], 
-            epBeforeInputs['time_remaining'],
-            epBeforeInputs['adjusted_yardline'], 
-            epBeforeInputs['adjusted_yardline_down_2'],
-            epBeforeInputs['adjusted_yardline_down_3'], 
-            epBeforeInputs['adjusted_yardline_down_4'],
-            epBeforeInputs['log_distance'], 
-            epBeforeInputs['log_distance_down_2'],
-            epBeforeInputs['log_distance_down_3'], 
-            epBeforeInputs['log_distance_down_4'],
-            epBeforeInputs['goal_to_go_log_distance']
+            epBeforeInputs['pos_score_diff_start']
         ]
         beforeInputs.push(start)
 
@@ -392,67 +355,33 @@ async function calculateEPA(plays, homeTeamId) {
             epAfterInputs = epBeforeInputs
         }
 
-        if (epAfterInputs["time_remaining"] == 0) {
-            epAfterInputs['Intercept'] = 1 
+        if (epAfterInputs["TimeSecsRem"] == 0) {
+            epAfterInputs['TimeSecsRem'] = 0
+            epAfterInputs["yards_to_goal"] = 99
+            epAfterInputs['down1'] = 1 
             epAfterInputs['down2'] = 0
             epAfterInputs['down3'] = 0
             epAfterInputs['down4'] = 0
-            epAfterInputs['goal_to_go'] = 0
-            epAfterInputs["under_two"] = 1
-            epAfterInputs['time_remaining'] = 0
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = 0
-            epAfterInputs['adjusted_yardline_down_3'] = 0
-            epAfterInputs['adjusted_yardline_down_4'] = 0
-            epAfterInputs["log_distance"] = Math.log(99)
-            epAfterInputs['log_distance_down_2'] = 0
-            epAfterInputs['log_distance_down_3'] = 0
-            epAfterInputs["log_distance_down_4"] = 0
-            epAfterInputs['goal_to_go_log_distance'] = 0
         }
         
-        if (epAfterInputs["adjusted_yardline"] >= 100) {
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
+        if (epAfterInputs["yards_to_goal"] >= 100) {
+            epAfterInputs["yards_to_goal"] = 99
         }
         
-        if (play.end.distance < 0) {
-            var logDistance = Math.log(99)
-            epAfterInputs["log_distance"] = logDistance
 
-            epAfterInputs['log_distance_down_2'] = (play.end.down == 2) ? logDistance : 0.0
-            epAfterInputs['log_distance_down_3'] = (play.end.down == 3) ? logDistance : 0.0
-            epAfterInputs["log_distance_down_4"] = (play.end.down == 4) ? logDistance : 0.0
-
-            epAfterInputs['goal_to_go_log_distance'] = (epAfterInputs['goal_to_go'] == 1) ? logDistance : 0
-        }
-
-        if (epAfterInputs["adjusted_yardline"] <= 0) {
-            epAfterInputs["adjusted_yardline"] = 99
-            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
-            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
+        if (epAfterInputs["yards_to_goal"] <= 0) {
+            epAfterInputs["yards_to_goal"] = 99
         }
 
         let end = [
-            epAfterInputs['Intercept'], 
+            epAfterInputs['TimeSecsRem'], 
+            epAfterInputs['yards_to_goal'],
+            epAfterInputs['distance'],
+            epAfterInputs['down1'],
             epAfterInputs['down2'], 
             epAfterInputs['down3'], 
             epAfterInputs['down4'],
-            epAfterInputs['goal_to_go'], 
-            epAfterInputs['under_two'], 
-            epAfterInputs['time_remaining'],
-            epAfterInputs['adjusted_yardline'], 
-            epAfterInputs['adjusted_yardline_down_2'],
-            epAfterInputs['adjusted_yardline_down_3'], 
-            epAfterInputs['adjusted_yardline_down_4'],
-            epAfterInputs['log_distance'], 
-            epAfterInputs['log_distance_down_2'],
-            epAfterInputs['log_distance_down_3'], 
-            epAfterInputs['log_distance_down_4'],
-            epAfterInputs['goal_to_go_log_distance']
+            epAfterInputs['pos_score_diff_start']
         ]
         endInputs.push(end)
 
@@ -531,13 +460,15 @@ async function calculateEPA(plays, homeTeamId) {
 }
 
 name_to_mapping = {
-    "td": 7,
-    "opp_td": -7,
-    "fg": 3,
-    "opp_fg": -3,
-    "no_score": 0,
-    "safety": 2,
-    "opp_safety": -2
+    "X1": 7,
+    "X2": -7,
+    "X3": 3,
+    "X4": -3,
+    "X5": 2,
+    "X6": -2,
+    "X7": 0
+    // Touchdown", "Opp_Touchdown", "Field_Goal", "Opp_Field_Goal",
+    // "Safety", "Opp_Safety", "No_Score"
 }
 
 function calculateExpectedValue(preds) {
