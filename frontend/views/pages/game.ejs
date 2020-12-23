@@ -571,9 +571,17 @@ stat_key_title_mapping = {
         </div>
         <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <h2 id="all-plays">All Plays</h2>
+                <%  var gamePlays = [...gameData.plays] 
+                    if (gameData.gameInfo.status.type.completed != true) {
+                        gamePlays.reverse()
+                    }
+                %>
+                <div>
+                    <h2 id="all-plays">All Plays</h2>
+                    <p class="text-small"><% (gameData.gameInfo.status.type.completed == true) ? "" : "Most recent plays first." %></p>
+                </div>
                 <div class="table-responsive">
-                    <% if (gameData.plays != null && gameData.plays.length > 0) { %>
+                    <% if (gamePlays != null && gamePlays.length > 0) { %>
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
