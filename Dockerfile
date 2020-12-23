@@ -1,24 +1,10 @@
-FROM rocker/tidyverse:latest
+FROM nikolaik/python-nodejs
 
 WORKDIR /src
 
 COPY . .
 
-# Install R packages
-RUN cd ./rdata
-RUN install2.r --error \
-    plumber \
-    logger \
-    tictoc \
-    xgboost \
-    dplyr
-
-RUN installGithub.r \
-    saiemgilani/cfbscrapR
-
-RUN apt-get update && apt-get -y install curl
-RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
-RUN apt-get update && sudo apt-get install -y nodejs
+RUN cd ./python && pip install --no-cache-dir -r requirements.txt
 
 RUN cd ./api && npm install
 
