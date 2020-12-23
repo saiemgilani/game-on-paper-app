@@ -224,7 +224,10 @@ if (gameData.plays.length > 0) {
                 scales: {
                         yAxes: [{
                             ticks: {
-                                // Include a dollar sign in the ticks
+                                // max: 1.0,
+                                // min: -1.0,
+                                stepSize: 0.5,
+                                
                                 callback: function(value, index, values) {
                                     return (Math.round(baseTranslate(value, -1.0, 1.0, 0.0, 100.0) * 100) / 100) + '%'
                                 }
