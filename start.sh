@@ -1,10 +1,10 @@
 #!/bin/bash
 
-cd ./rdata
-r server.R & 
+cd ./python
+python app.py & 
 status=$?
 if [ $status -ne 0 ]; then
-  echo "Failed to start rdata: $status"
+  echo "Failed to start python: $status"
   exit $status
 fi
 

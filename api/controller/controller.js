@@ -298,12 +298,11 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
 
 function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
     var time_remaining = calculateHalfSecondsRemaining(period, clock);
-    // debuglog("period: " + period)
-    // debuglog("time sec: " + time_remaining)
     var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
     var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
     let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (homeScore - awayScore) : (awayScore - homeScore)
+
     return {
         "TimeSecsRem" : time_remaining,
         "down" : parseInt(play.down) < 0 ? 1 : parseInt(play.down),
@@ -314,6 +313,23 @@ function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) 
         "Under_two" : time_remaining <= 120 ? 1.0 : 0.0,
         "pos_score_diff_start": posScoreMargin,
         "adj_TimeSecsRem": adj_TimeSecsRem,
+        Intercept: 1,
+        down2: (parseInt(play.down) == 2) ? 1.0 : 0.0,
+        down3: (parseInt(play.down) == 3) ? 1.0 : 0.0,
+        down4: (parseInt(play.down) == 4) ? 1.0 : 0.0,
+        goal_to_go: (play.yardsToEndzone <= play.distance) ? 1.0 : 0.0,
+        under_two: (time_remaining <= 120) ? 1.0 : 0.0,
+        time_remaining: time_remaining,
+        adj_time_remaining: adj_TimeSecsRem,
+        adjusted_yardline: play.yardsToEndzone,
+        adjusted_yardline_down_2: (play.down == 2) ? play.yardsToEndzone : 0.0,
+        adjusted_yardline_down_3: (play.down == 3) ? play.yardsToEndzone : 0.0,
+        adjusted_yardline_down_4: (play.down == 4) ? play.yardsToEndzone : 0.0,
+        log_distance: logDistance,
+        log_distance_down_2: (play.down == 2) ? logDistance : 0.0,
+        log_distance_down_3: (play.down == 3) ? logDistance : 0.0,
+        log_distance_down_4: (play.down == 4) ? logDistance : 0.0,
+        goal_to_go_log_distance: (play.yardsToEndzone <= play.distance) ? logDistance : 0.0
     }
 }
 
@@ -329,69 +345,114 @@ async function calculateEPA(plays, homeTeamId) {
             nextPlay = plays[i + 1]
         }
 
-        // if (play.down == 0 || play.start.team == null || play.end.team == null) {
-        //     debuglog(play)
-        // }
-
         let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
         
         if (kickoff.includes(play.playType)) {
-            epBeforeInputs["down"] = 1
-            epBeforeInputs["distance"] = 10
-            epBeforeInputs["yards_to_goal"] = 75
-            epBeforeInputs["log_ydstogo"] = Math.log(10)
+            epBeforeInputs['Intercept'] = 1 
+            epBeforeInputs['down2'] = 0
+            epBeforeInputs['down3'] = 0 
+            epBeforeInputs['down4'] = 0
+            epBeforeInputs['goal_to_go'] = 0
+            // epBeforeInputs['under_two'], 
+            // epBeforeInputs['time_remaining'],
+            epBeforeInputs['adjusted_yardline'] = 75 
+            epBeforeInputs['adjusted_yardline_down_2'] = 0
+            epBeforeInputs['adjusted_yardline_down_3'] = 0 
+            epBeforeInputs['adjusted_yardline_down_4'] = 0
+            epBeforeInputs['log_distance'] = Math.log(10) 
+            epBeforeInputs['log_distance_down_2'] = 0
+            epBeforeInputs['log_distance_down_3'] = 0
+            epBeforeInputs['log_distance_down_4'] = 0
+            epBeforeInputs['goal_to_go_log_distance'] = 0
         }
 
         let start = [
-            epBeforeInputs['TimeSecsRem'],
-            epBeforeInputs['down'],
-            epBeforeInputs['distance'],
-            epBeforeInputs['yards_to_goal'],
-            epBeforeInputs['log_ydstogo'],
-            epBeforeInputs['Goal_To_Go'],
-            epBeforeInputs['Under_two'],
-            epBeforeInputs['pos_score_diff_start']
+            epBeforeInputs['Intercept'], 
+            epBeforeInputs['down2'], 
+            epBeforeInputs['down3'], 
+            epBeforeInputs['down4'],
+            epBeforeInputs['goal_to_go'], 
+            epBeforeInputs['under_two'], 
+            epBeforeInputs['time_remaining'],
+            epBeforeInputs['adjusted_yardline'], 
+            epBeforeInputs['adjusted_yardline_down_2'],
+            epBeforeInputs['adjusted_yardline_down_3'], 
+            epBeforeInputs['adjusted_yardline_down_4'],
+            epBeforeInputs['log_distance'], 
+            epBeforeInputs['log_distance_down_2'],
+            epBeforeInputs['log_distance_down_3'], 
+            epBeforeInputs['log_distance_down_4'],
+            epBeforeInputs['goal_to_go_log_distance']
         ]
         beforeInputs.push(start)
 
         var epAfterInputs = prepareEPInputs(play.end, play.period, (nextPlay != null) ? nextPlay.clock.displayValue : "0:00", homeTeamId, play.homeScore, play.awayScore)
 
-        if (epAfterInputs['down'] == 0 || play.end.team == null) { // this is some invalid state, usually (penalties, timeouts)
+        if (play.end.team == null) { // this is some invalid state, usually (penalties, timeouts)
             epAfterInputs = epBeforeInputs
         }
 
         if (epAfterInputs["time_remaining"] == 0) {
-            epAfterInputs['down'] = 1
-            epAfterInputs['Goal_To_Go'] = 0
-            epAfterInputs["Under_two"] = 1
-            epAfterInputs['TimeSecsRem'] = 0
-            epAfterInputs["yards_to_goal"] = 99
-            epAfterInputs["log_ydstogo"] = Math.log(99)
+            epAfterInputs['Intercept'] = 1 
+            epAfterInputs['down2'] = 0
+            epAfterInputs['down3'] = 0
+            epAfterInputs['down4'] = 0
+            epAfterInputs['goal_to_go'] = 0
+            epAfterInputs["under_two"] = 1
+            epAfterInputs['time_remaining'] = 0
+            epAfterInputs["adjusted_yardline"] = 99
+            epAfterInputs['adjusted_yardline_down_2'] = 0
+            epAfterInputs['adjusted_yardline_down_3'] = 0
+            epAfterInputs['adjusted_yardline_down_4'] = 0
+            epAfterInputs["log_distance"] = Math.log(99)
+            epAfterInputs['log_distance_down_2'] = 0
+            epAfterInputs['log_distance_down_3'] = 0
+            epAfterInputs["log_distance_down_4"] = 0
+            epAfterInputs['goal_to_go_log_distance'] = 0
         }
         
-        if (epAfterInputs["yards_to_goal"] >= 100) {
-            epAfterInputs["yards_to_goal"] = 99
+        if (epAfterInputs["adjusted_yardline"] >= 100) {
+            epAfterInputs["adjusted_yardline"] = 99
+            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
+            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
+            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
         }
         
         if (play.end.distance < 0) {
             var logDistance = Math.log(99)
-            epAfterInputs["log_ydstogo"] = logDistance
-            epAfterInputs["distance"] = 99 // dat.new_distance.shift(-1)
+            epAfterInputs["log_distance"] = logDistance
+
+            epAfterInputs['log_distance_down_2'] = (play.end.down == 2) ? logDistance : 0.0
+            epAfterInputs['log_distance_down_3'] = (play.end.down == 3) ? logDistance : 0.0
+            epAfterInputs["log_distance_down_4"] = (play.end.down == 4) ? logDistance : 0.0
+
+            epAfterInputs['goal_to_go_log_distance'] = (epAfterInputs['goal_to_go'] == 1) ? logDistance : 0
         }
 
-        if (epAfterInputs["yards_to_goal"] <= 0) {
-            epAfterInputs["yards_to_goal"] = 99
+        if (epAfterInputs["adjusted_yardline"] <= 0) {
+            epAfterInputs["adjusted_yardline"] = 99
+            epAfterInputs['adjusted_yardline_down_2'] = (play.end.down == 2) ? 99 : 0.0
+            epAfterInputs['adjusted_yardline_down_3'] = (play.end.down == 3) ? 99 : 0.0
+            epAfterInputs['adjusted_yardline_down_4'] = (play.end.down == 4) ? 99 : 0.0
         }
 
         let end = [
-            epAfterInputs['TimeSecsRem'],
-            epAfterInputs['down'],
-            epAfterInputs['distance'],
-            epAfterInputs['yards_to_goal'],
-            epAfterInputs['log_ydstogo'],
-            epAfterInputs['Goal_To_Go'],
-            epAfterInputs['Under_two'],
-            epAfterInputs['pos_score_diff_start']
+            epAfterInputs['Intercept'], 
+            epAfterInputs['down2'], 
+            epAfterInputs['down3'], 
+            epAfterInputs['down4'],
+            epAfterInputs['goal_to_go'], 
+            epAfterInputs['under_two'], 
+            epAfterInputs['time_remaining'],
+            epAfterInputs['adjusted_yardline'], 
+            epAfterInputs['adjusted_yardline_down_2'],
+            epAfterInputs['adjusted_yardline_down_3'], 
+            epAfterInputs['adjusted_yardline_down_4'],
+            epAfterInputs['log_distance'], 
+            epAfterInputs['log_distance_down_2'],
+            epAfterInputs['log_distance_down_3'], 
+            epAfterInputs['log_distance_down_4'],
+            epAfterInputs['goal_to_go_log_distance']
         ]
         endInputs.push(end)
 
@@ -470,13 +531,13 @@ async function calculateEPA(plays, homeTeamId) {
 }
 
 name_to_mapping = {
-    "X1": 0,
-    "X2": 3,
-    "X3": -3,
-    "X4": -2,
-    "X5": -7,
-    "X6": 2,
-    "X7": 7
+    "td": 7,
+    "opp_td": -7,
+    "fg": 3,
+    "opp_fg": -3,
+    "no_score": 0,
+    "safety": 2,
+    "opp_safety": -2
 }
 
 function calculateExpectedValue(preds) {
@@ -622,7 +683,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
                     plays[i].winProbability.before = 1.0 - startWP
                 }
             } else {
-                plays[i].winProbability.before = wpBefore[i]
+                plays[i].winProbability.before = wpBefore[i].wp
             }
         }
     }
@@ -633,7 +694,7 @@ async function calculateWPA(plays, homeTeamSpread, homeTeamId, firstHalfKickTeam
         });
         var wpAfter = resAfter.data.predictions; 
         for (var i = 0; i < wpAfter.length; i += 1) {
-            var wpEnd = wpAfter[i]
+            var wpEnd = wpAfter[i].wp
 
             var nextPlay = null
             if ((i + 1) >= plays.length) {

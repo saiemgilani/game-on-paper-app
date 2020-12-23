@@ -1,8 +1,8 @@
 version: "3.8"
 services:
-  rdata:
+  python:
     build: 
-      context: ./rdata
+      context: ./python
       dockerfile: Dockerfile
     expose:
       - 7000
@@ -23,7 +23,7 @@ services:
     expose:
       - 5000
     links:
-      - rdata
+      - python
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/cfb/healthcheck"]
       interval: 1m30s
@@ -31,9 +31,10 @@ services:
       retries: 3
       start_period: 30s
     depends_on:
-      - rdata
+      - python
     environment:
-      - RDATA_BASE_URL=http://rdata:7000
+      - RDATA_BASE_URL=http://python:7000
+      - NODE_DEBUG=[api]
   frontend:
     build: 
       context: ./frontend
@@ -44,6 +45,7 @@ services:
       - api
     depends_on:
       - api
-      - rdata
+      - python
     environment:
       - API_BASE_URL=http://api:5000
+      - NODE_DEBUG=[frontend]
