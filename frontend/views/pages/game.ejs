@@ -102,17 +102,17 @@ stat_key_title_mapping = {
     <div class="container-fluid">
         <header class="blog-header py-3">
             <div class="row flex-nowrap justify-content-between align-items-center">
-                <div class="col-4 pt-1">
+                <div class="col-2 pt-1">
                     <a class="btn btn-sm btn-outline-primary" href="/">Index</a>
                 </div>
-                <div class="col-4 text-center">
+                <div class="col-8 text-center">
                     <!-- <a class="blog-header-logo text-dark" href="#">Large</a> -->
                     <div>
                         <h2><%= awayTeam.nickname %> <%= awayComp.score %>, <%= homeTeam.nickname %> <%= homeComp.score %></h2>
                         <p class="text-small" id="game-date"></p>
                     </div>
                 </div>
-                <div class="col-4 d-flex justify-content-end align-items-center">
+                <div class="col-2 d-flex justify-content-end align-items-center">
                     <a class="btn btn-sm btn-outline-secondary" href="https://github.com/saiemgilani/cfb-data-api">GitHub</a>
                   </div>
             </div>
@@ -385,7 +385,7 @@ stat_key_title_mapping = {
                     </div>
                 </div>
             <% } else { %>
-                <p class="col-md-12 text-center">No box score data for this game.</p>
+                <p class="col-md-12 text-center text-muted">No box score data for this game.</p>
             <% } %>
         </div>
         <% } %>
@@ -465,7 +465,7 @@ stat_key_title_mapping = {
                         </table>
                     </div>
                 <% } else { %>
-                    <p class="text-center">No big plays listed for this game.</p>
+                    <p class="text-center text-muted">No big plays listed for this game.</p>
                 <% } %>
             </div>
             <div class="col-lg-6 ms-sm-auto px-md-4" id="most-imp-plays">
@@ -515,7 +515,7 @@ stat_key_title_mapping = {
                     </table>
                 </div>
                 <% } else { %>
-                    <p class="text-center">No big plays listed for this game.</p>
+                    <p class="text-center text-muted">No big plays listed for this game.</p>
                 <% } %>
             </div>
         </div>
@@ -571,9 +571,17 @@ stat_key_title_mapping = {
         </div>
         <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <h2 id="all-plays">All Plays</h2>
+                <%  var gamePlays = [...gameData.plays] 
+                    if (gameData.gameInfo.status.type.completed != true) {
+                        gamePlays.reverse()
+                    }
+                %>
+                <div>
+                    <h2 id="all-plays">All Plays</h2>
+                    <p class="text-small"><% (gameData.gameInfo.status.type.completed == true) ? "" : "Most recent plays first." %></p>
+                </div>
                 <div class="table-responsive">
-                    <% if (gameData.plays != null && gameData.plays.length > 0) { %>
+                    <% if (gamePlays != null && gamePlays.length > 0) { %>
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
@@ -614,7 +622,7 @@ stat_key_title_mapping = {
                             </tbody>
                         </table>
                     <% } else { %>
-                        <p class="text-center">No plays in this game.</p>
+                        <p class="text-center text-muted">No plays in this game.</p>
                     <% } %>
                 </div>
                 <!-- <p id="content"></p> -->
