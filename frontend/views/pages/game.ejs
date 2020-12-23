@@ -100,32 +100,40 @@ stat_key_title_mapping = {
 <%- include('../partials/head') %> 
 <body>
     <div class="container-fluid">
-        <div class="row">
-            <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <header class="blog-header py-3">
+            <div class="row flex-nowrap justify-content-between align-items-center">
+                <div class="col-4 pt-1">
+                    <a class="btn btn-sm btn-outline-primary" href="/">Index</a>
+                </div>
+                <div class="col-4 text-center">
+                    <!-- <a class="blog-header-logo text-dark" href="#">Large</a> -->
                     <div>
                         <h1 class="h2"><%= awayTeam.nickname %> <%= awayComp.score %>, <%= homeTeam.nickname %> <%= homeComp.score %></h1>
                         <p class="text-small" id="game-date"></p>
                     </div>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        <div class="btn-group me-2">
-                            <% if (gameData.plays != null && gameData.plays.length > 0) { %>
-                                <a href="#wpChart" class="btn btn-sm btn-outline-primary">WP Chart</a>
-                                <a href="#epChart" class="btn btn-sm btn-outline-primary">EPA Chart</a>
-                                <% if (gameData.gameInfo.status.type.completed == true) { %>
-                                    <a class="btn btn-sm btn-outline-primary" href="#box-score">Box Score</a>
-                                <% } %>
-                                <a href="#big-plays" class="btn btn-sm btn-outline-primary">Big Plays</a>
-                                <a href="#most-imp-plays" class="btn btn-sm btn-outline-primary">Most Important Plays</a>
-                                <a href="#scoring-plays" class="btn btn-sm btn-outline-primary">Scoring Plays</a>
-                                <a href="#all-plays" class="btn btn-sm btn-outline-primary">All Plays</a>
-                            <% } %>
-                            <a class="btn btn-sm btn-outline-primary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
-                        </div>
-                    </div>
                 </div>
-            </main>
+                <div class="col-4 d-flex justify-content-end align-items-center">
+                    <a class="btn btn-sm btn-outline-secondary" href="https://github.com/saiemgilani/cfb-data-api">GitHub</a>
+                  </div>
+            </div>
+        </header>
+        
+        <div class="nav-scroller py-1 mb-2">
+            <nav class="nav d-flex justify-content-between">
+                <a href="#wpChart" class="p-2 link-secondary">WP Chart</a>
+                <a href="#epChart" class="p-2 link-secondary">EPA Chart</a>
+                <% if (gameData.gameInfo.status.type.completed == true) { %>
+                    <a class="p-2 link-secondary" href="#box-score">Box Score</a>
+                <% } %>
+                <a href="#big-plays" class="p-2 link-secondary">Big Plays</a>
+                <a href="#most-imp-plays" class="p-2 link-secondary">Most Important Plays</a>
+                <a href="#scoring-plays" class="p-2 link-secondary">Scoring Plays</a>
+                <a href="#all-plays" class="p-2 link-secondary">All Plays</a>
+                <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
+            </nav>
         </div>
+    </div>
+    <div class="container-fluid">
         <% if (gameData.plays.length > 0) { %>
             <div class="row mb-3">
                 <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
