@@ -100,7 +100,7 @@
                                             </p>
                                         <% } %>
                                     <% } %>
-                                    <a class="btn btn-sm btn-outline-primary <% (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "disabled" : "" %></a>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                    <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
                                 </div>
                             </div>
                         <% }); %>
