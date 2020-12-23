@@ -335,7 +335,10 @@ async function calculateEPA(plays, homeTeamId) {
             epBeforeInputs['down2'] = 0
             epBeforeInputs['down3'] = 0 
             epBeforeInputs['down4'] = 0
-            epBeforeInputs['yards_to_goal'] = 75 
+            epBeforeInputs['distance'] = 10
+            epBeforeInputs['yards_to_goal'] = 75
+            epBeforeInputs['pos_score_diff_start'] = -1 * epBeforeInputs['pos_score_diff_start'] // receiving team is the "offense"
+            // debuglog("kickoff play text: " + JSON.stringify(play))
         }
 
         let start = [
