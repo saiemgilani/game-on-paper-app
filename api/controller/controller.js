@@ -299,6 +299,7 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
 function prepareEPInputs(play, period, clock, homeTeamId, homeScore, awayScore) {
     var time_remaining = calculateHalfSecondsRemaining(period, clock);
     var adj_TimeSecsRem = calculateGameSecondsRemaining(period, time_remaining)
+    // var logDistance = (play.distance == 0) ? Math.log(0.5) : Math.log(play.distance)
     let isHome = (play.team != null && homeTeamId == play.team.id) ? 1.0 : 0.0
     let posScoreMargin = (isHome == 1.0) ? (homeScore - awayScore) : (awayScore - homeScore)
 
@@ -460,15 +461,13 @@ async function calculateEPA(plays, homeTeamId) {
 }
 
 name_to_mapping = {
-    "X1": 7,
-    "X2": -7,
-    "X3": 3,
-    "X4": -3,
-    "X5": 2,
-    "X6": -2,
-    "X7": 0
-    // Touchdown", "Opp_Touchdown", "Field_Goal", "Opp_Field_Goal",
-    // "Safety", "Opp_Safety", "No_Score"
+    "td": 7,
+    "opp_td": -7,
+    "fg": 3,
+    "opp_fg": -3,
+    "no_score": 0,
+    "safety": 2,
+    "opp_safety": -2
 }
 
 function calculateExpectedValue(preds) {
