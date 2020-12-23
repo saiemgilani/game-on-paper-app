@@ -45,15 +45,17 @@ def ep_predict():
     dtest_moment = xgb.DMatrix(np_mom)
     predictions = ep_model.predict(dtest_moment)
     result = []
+    # "Touchdown", "Opp_Touchdown", "Field_Goal", "Opp_Field_Goal",
+    # "Safety", "Opp_Safety", "No_Score"
     for p in predictions:
         result.append({
             "td" : float(p[0]),
             "opp_td" : float(p[1]),
             "fg" : float(p[2]),
             "opp_fg" : float(p[3]),
-            "no_score" : float(p[4]),
-            "safety" : float(p[5]),
-            "opp_safety" : float(p[6])
+            "safety" : float(p[4]),
+            "opp_safety" : float(p[5]),
+            "no_score" : float(p[6])
         })
     return jsonify({
         "count" : len(result),
