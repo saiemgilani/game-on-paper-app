@@ -245,10 +245,10 @@ if (gameData.plays.length > 0) {
                         ticks: {
                             suggestedMax: 1.0,
                             suggestedMin: -1.0,
-                            stepSize: 0.5,
+                            stepSize: 0.25,
                             
                             callback: function(value, index, values) {
-                                return (Math.round(baseTranslate(value, -1.0, 1.0, 0.0, 100.0) * 100) / 100) + '%'
+                                return (Math.round(Math.abs(value * 100) * 100) / 100) + '%'
                             }
                         },
                         scaleLabel: {
