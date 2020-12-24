@@ -87,7 +87,7 @@
                                     </div>
                                     <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
                                         <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
-                                            <p class="card-text text-muted mb-auto">
+                                            <p class="card-text text-muted mb-2">
                                             <% if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK")) { %>
                                                 (PAT) <%= gameComp.situation.lastPlay.text %>
                                             <% } else if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>

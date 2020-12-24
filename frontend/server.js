@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const morgan = require("morgan");
+const { spawn } = require('child_process');
 var path = require('path');
 const port = 8000;
 const API_BASE_URL = process.env.API_BASE_URL;
@@ -60,6 +61,56 @@ app.get('/cfb/game/:gameId', async function(req, res, next) {
     }
 });
 
+// Start the Python service
+const python = spawn('python app.py', {
+    shell: true,
+    cwd: "../python"
+});
+
+python.stdout.on('data', (data) => {
+    console.log(`[python] ${data}`);
+});
+
+python.stderr.on('data', (data) => {
+    console.error(`[python] ${data}`);
+});
+
+python.on('close', (code) => {
+    console.error(`[python] child process exited with code ${code}`);
+});
+
+python.on('error', (err) => {
+    console.error(`[python] Failed to start subprocess: ${err}`);
+});
+
+// Start the API service
+const api = spawn('node server.js', { 
+    shell: true,
+    cwd: "../api",
+    env: {
+        RDATA_BASE_URL:"http://0.0.0.0:7000", 
+        API_BASE_URL:"http://0.0.0.0:5000",
+        NODE_DEBUG: "[api]"
+    }
+});
+
+api.stdout.on('data', (data) => {
+    console.log(`[api] ${data}`);
+});
+
+api.stderr.on('data', (data) => {
+    console.error(`[api] ${data}`);
+});
+
+api.on('close', (code) => {
+    console.error(`[api] child process exited with code ${code}`);
+});
+
+api.on('error', (err) => {
+    console.error(`[api] Failed to start subprocess: ${err}`);
+});
+
+// Start the frontend service
 app.listen(port, () => {
     debuglog(`listening on port ${port}`)
 })

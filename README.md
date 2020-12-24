@@ -3,14 +3,14 @@ cfb-data-api
 
 ## Development
 
-Make sure you have Docker installed. Once you do, `cd` into the repo and run `docker-compose up --build`. That will install all python and node dependencies, along with start the services in a Docker container.
-
-If you want to run the app like it would be run on a server in Google Cloud Run:
+Make sure you have Docker installed. Once you do, `cd` into the repo and run the following commands:
 
 ```Shell
 $ docker build -t <whatever you want to name the image> .
-$ docker run -d -it -p 8000:8000 --name=game-on-paper <what you named the image>
+$ docker run --rm -d -it -p 8000:8000 --memory=2g --cpus=2.0 <whatever you want to name the image>
 ```
+
+This will setup the container just like how it would run on Google Cloud Run, installing all python and node dependencies and starting all three services in a Docker container.
 
 Test API requests using Postman -- Send a GET request to `localhost:5000/cfb/pbp/<ESPN gameId>`.
 Test the frontend using a browser -- load up `localhost:8000/cfb`.
