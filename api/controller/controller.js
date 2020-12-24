@@ -110,7 +110,7 @@ async function retrievePBP(req, res) {
         delete pbp.videos;
         delete pbp.header;
         if (summary.pickcenter != null && summary.pickcenter.length > 0) {
-            let baseSpread = Math.abs(summary.pickcenter[0].spread)
+            let baseSpread = Math.abs(parseFloat(summary.pickcenter[0].spread))
             pbp.homeTeamSpread = (summary.pickcenter[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
         } else {
             pbp.homeTeamSpread = 2.5
