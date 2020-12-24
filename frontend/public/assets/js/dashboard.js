@@ -265,10 +265,7 @@ if (gameData.plays.length > 0) {
                                 } else {
                                     return value
                                 }
-                            },
-                            max: 0,
-                            min: 3600,
-                            stepSize: -900,
+                            }
                         },
                         scaleLabel: {
                             display: true,
