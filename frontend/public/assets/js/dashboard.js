@@ -178,7 +178,11 @@ if (gameData.plays.length > 0) {
         var dEBackground = deltaE([clr.r, clr.g, clr.b], [255,255,255])
         if (dEBackground <= 49) {
             adjusted = true;
-            clr = hexToRgb("#999999")
+            if (idx == 0) {
+                homeTeamColor = hexToRgb("#CCCCCC")
+            } else {
+                awayTeamColor = hexToRgb("#CCCCCC")
+            }
             console.log(`updating color at index ${idx} to gray bc of background`)
         }
     })
