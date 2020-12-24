@@ -247,128 +247,51 @@ if (gameData.plays.length > 0) {
         }
     });
 
-    // (function () {
-    //     'use strict'
-
-    //     feather.replace()
-
-    //     var epCtx = document.getElementById('epChart')
-    //     // eslint-disable-next-line no-unused-vars
-    //     var epChart = new Chart(epCtx, {
-    //     type: 'line',
-    //     data: {
-    //         labels: finalPlays,
-    //         datasets: [
-    //             {
-    //                 data: homeTeamEPA,
-    //                 fill: false,
-    //                 lineTension: 0,
-    //                 label: homeTeam.abbreviation,
-    //                 backgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`],
-    //                 borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
-    //                 borderWidth: 3,
-    //                 pointBackgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
-    //                 pointRadius: 1.5
-    //             },
-    //             {
-    //                 data: awayTeamEPA,
-    //                 fill: false,
-    //                 lineTension: 0,
-    //                 label: awayTeam.abbreviation,
-    //                 backgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`],
-    //                 borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
-    //                 borderWidth: 3,
-    //                 pointBackgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
-    //                 pointRadius: 1.5
-    //             }
-    //         ]
-    //     },
-    //     options: {
-    //         legend: {
-    //             display: true
-    //         },
-    //         tooltips: {
-    //             callbacks: {
-    //                 title: function(tooltipItem, data) {
-    //                     //   console.log(tooltipItem)
-    //                     //   var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-    //                     return `Off Play Number: ${tooltipItem[0].label}`
-    //                 },
-    //                 label: function(tooltipItem, data) {
-    //                     var label = data.datasets[tooltipItem.datasetIndex].label || '';
-
-    //                     if (label) {
-    //                         label += ': ';
-    //                     }
-    //                     var roundValue = (Math.round(tooltipItem.value * 10) / 10)
-    //                     label += (parseFloat(tooltipItem.value) > 0 ? ("+" + roundValue) : roundValue)
-    //                     return label;
-    //                 }
-    //             }
-    //         },
-    //         scales: {
-    //                 yAxes: [{
-    //                     scaleLabel: {
-    //                         display: true,
-    //                         labelString: "Total Offensive EPA"
-    //                     }
-    //                 }],
-    //                 xAxes: [{
-    //                     scaleLabel: {
-    //                         display: true,
-    //                         labelString: "Off Play Number"
-    //                     }
-    //                 }]
-    //             }
-    //     }
-    //     })
-    // })()
-
     (function () {
         'use strict'
-
+        
         feather.replace()
         
         // Graphs
         var ctx = document.getElementById('wpChart')
         // eslint-disable-next-line no-unused-vars
         var wpChart = new Chart(ctx, {
-        type: 'NegativeTransparentLine',
-        data: {
-            labels: timestamps,
-            datasets: [
-                targetDataSet
-            ]
-        },
-        options: {
-            legend: {
-                display: false,
-                onClick: null
+            type: 'NegativeTransparentLine',
+            data: {
+                labels: timestamps,
+                datasets: [
+                    targetDataSet
+                ]
             },
-            tooltips: {
-                callbacks: {
-                    title: function(tooltipItem, data) {
-                        // console.log(tooltipItem)
-                        if (gameData.gameInfo.status.type.completed == true) {
-                            var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-                            return `Time Elapsed: ${timeElapsed}`
-                        } else {
-                            return `Play Number: ${tooltipItem[0].label}`
+            options: {
+                legend: {
+                    display: false,
+                    onClick: null
+                },
+                tooltips: {
+                    callbacks: {
+                        title: function(tooltipItem, data) {
+                            // console.log(tooltipItem)
+                            if (gameData.gameInfo.status.type.completed == true) {
+                                var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
+                                return `Time Elapsed: ${timeElapsed}`
+                            } else {
+                                return `Play Number: ${tooltipItem[0].label}`
+                            }
+                        },
+                        label: function(tooltipItem, data) {
+                            var label = data.datasets[tooltipItem.datasetIndex].label || '';
+                            
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += (Math.round(baseTranslate(tooltipItem.value, -1.0, 1.0, 0.0, 100.0) * 100) / 100)
+                            label += "%"
+                            return label;
                         }
-                    },
-                    label: function(tooltipItem, data) {
-                        var label = data.datasets[tooltipItem.datasetIndex].label || '';
-
-                        if (label) {
-                            label += ': ';
-                        }
-                        label += (Math.round(baseTranslate(tooltipItem.value, -1.0, 1.0, 0.0, 100.0) * 100) / 100)
-                        label += "%"
-                        return label;
                     }
-                }
-            },
-            scales: {
+                },
+                scales: {
                     yAxes: [{
                         ticks: {
                             suggestedMax: 1.0,
@@ -403,10 +326,85 @@ if (gameData.plays.length > 0) {
                             labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
                         }
                     }]
+                }
             }
-        }
         })
 
+        var epCtx = document.getElementById('epChart')
+            // eslint-disable-next-line no-unused-vars
+        var epChart = new Chart(epCtx, {
+            type: 'line',
+            data: {
+                labels: finalPlays,
+                datasets: [
+                    {
+                        data: homeTeamEPA,
+                        fill: false,
+                        lineTension: 0,
+                        label: homeTeam.abbreviation,
+                        backgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`],
+                        borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
+                        borderWidth: 3,
+                        pointHoverBackgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
+                        pointHoverBorderColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
+                        pointBorderColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
+                        pointBackgroundColor: `rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`,
+                        pointRadius: 1.5
+                    },
+                    {
+                        data: awayTeamEPA,
+                        fill: false,
+                        lineTension: 0,
+                        label: awayTeam.abbreviation,
+                        backgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`],
+                        borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
+                        borderWidth: 3,
+                        pointHoverBackgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
+                        pointHoverBorderColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
+                        pointBorderColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
+                        pointBackgroundColor: `rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`,
+                        pointRadius: 1.5
+                    }
+                ]
+            },
+            options: {
+                legend: {
+                    display: true
+                },
+                tooltips: {
+                    callbacks: {
+                        title: function(tooltipItem, data) {
+                            //   console.log(tooltipItem)
+                            //   var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
+                            return `Off Play Number: ${tooltipItem[0].label}`
+                        },
+                        label: function(tooltipItem, data) {
+                            var label = data.datasets[tooltipItem.datasetIndex].label || '';
 
+                            if (label) {
+                                label += ': ';
+                            }
+                            var roundValue = (Math.round(tooltipItem.value * 10) / 10)
+                            label += (parseFloat(tooltipItem.value) > 0 ? ("+" + roundValue) : roundValue)
+                            return label;
+                        }
+                    }
+                },
+                scales: {
+                        yAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: "Total Offensive EPA"
+                            }
+                        }],
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: "Off Play Number"
+                            }
+                        }]
+                }
+            }
+        })
     })()
 }
