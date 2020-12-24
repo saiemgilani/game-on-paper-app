@@ -164,34 +164,8 @@ if (gameData.plays.length > 0) {
         pointRadius: 0,
         borderWidth: 3,
         label: null,
-        data: [],
-        // borderColor: [],
-        // backgroundColor: [],
-        // pointBackgroundColor: [],
-        colors: [],
-        // pointBorderColor: [],
-        // pointHoverBackgroundColor: [],
-        // pointHoverBorderColor: []
+        data: homeTeamWP
     };
-
-    function formatDataSetInputs(homeAdjWP) {
-        // let homeWP = (play.start.team.id == homeTeam.id) ? play.winProbability.before : (1.0 - play.winProbability.before)
-        targetDataSet["data"].push(homeAdjWP)
-        var colorBase = (homeAdjWP >= 0.5) ? homeTeamColor : awayTeamColor
-        var detailedColorStringPrefix = `rgba(${colorBase.r},${colorBase.g},${colorBase.b}`
-        // targetDataSet["borderColor"].push(`${detailedColorStringPrefix}, 1.0)`)
-        // targetDataSet["backgroundColor"].push(`${detailedColorStringPrefix}, 0.5)`)
-        // targetDataSet["pointBackgroundColor"].push(`${detailedColorStringPrefix}, 1.0)`)
-        // targetDataSet["colors"].push(`${detailedColorStringPrefix}, 0.5)`)
-        // targetDataSet["pointHoverBackgroundColor"].push(`${detailedColorStringPrefix}, 1.0)`)
-        // targetDataSet["pointBorderColor"].push(`${detailedColorStringPrefix}, 1.0)`)
-        // targetDataSet["pointHoverBorderColor"].push(`${detailedColorStringPrefix}, 1.0)`)
-        // return "test";
-    }
-
-    for (var i = 0; i < homeTeamWP.length; i+= 1) {
-        formatDataSetInputs(homeTeamWP[i])
-    }
 
     //adding custom chart type
     // https://stackoverflow.com/questions/36916867/chart-js-line-different-fill-color-for-negative-point
@@ -264,33 +238,8 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
-                legend: {
-                    display: false,
-                    onClick: null
-                },
-                tooltips: {
-                    callbacks: {
-                        title: function(tooltipItem, data) {
-                            // console.log(tooltipItem)
-                            if (gameData.gameInfo.status.type.completed == true) {
-                                var timeElapsed = Math.max(0, Math.min(3600, 3600 - parseInt(tooltipItem[0].label)));
-                                return `Time Elapsed: ${timeElapsed}`
-                            } else {
-                                return `Play Number: ${tooltipItem[0].label}`
-                            }
-                        },
-                        label: function(tooltipItem, data) {
-                            var label = data.datasets[tooltipItem.datasetIndex].label || '';
-                            
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += (Math.round(baseTranslate(tooltipItem.value, -1.0, 1.0, 0.0, 100.0) * 100) / 100)
-                            label += "%"
-                            return label;
-                        }
-                    }
-                },
+                legend: false,
+                tooltips: false,
                 scales: {
                     yAxes: [{
                         ticks: {
@@ -317,9 +266,9 @@ if (gameData.plays.length > 0) {
                                     return value
                                 }
                             },
-                            suggestedMax: 3600,
-                            suggestedMin: 0,
-                            stepSize: 900,
+                            max: 0,
+                            min: 3600,
+                            stepSize: -900,
                         },
                         scaleLabel: {
                             display: true,
