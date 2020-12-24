@@ -3,7 +3,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>College Football | Game on Paper</title>    
+        <title>College Football | Game on Paper</title>  
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">  
     </head>
     <body>
         <div class="container-fluid">
@@ -87,7 +89,7 @@
                                     </div>
                                     <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
                                         <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
-                                            <p class="card-text text-muted mb-auto">
+                                            <p class="card-text text-muted mb-2">
                                             <% if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK")) { %>
                                                 (PAT) <%= gameComp.situation.lastPlay.text %>
                                             <% } else if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
@@ -115,8 +117,6 @@
                 <%- include('../partials/footer') %>
             </div>
         </div>
-        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-        <link href="/assets/css/index.css" rel="stylesheet">
         <%- include('../partials/scripts') %>
         <script>
             const DateTime = luxon.DateTime;
