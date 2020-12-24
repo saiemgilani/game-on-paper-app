@@ -139,8 +139,22 @@ stat_key_title_mapping = {
                 <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
                     <div>
                         <h1 class="h2">Win Probability</h1>
-                        
-                        <p class="text-small"><% if (gameData.gameInfo.status.type.completed == true) { %>Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | <% } %><a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                        <%
+                            function printSpread() {
+                                if (parseFloat(gameData.homeTeamSpread) > 0) {
+                                    return `${homeTeam.abbreviation} -${gameData.homeTeamSpread}`
+                                } else if (parseFloat(gameData.homeTeamSpread) < 0) {
+                                    return `${awayTeam.abbreviation} ${gameData.homeTeamSpread}`
+                                } else {
+                                    return "PUSH"
+                                }
+                            }
+                        %>
+                        <p class="text-small">
+                            <% if (gameData.gameInfo.status.type.completed == true) { %>
+                                Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
+                            <% } %>Spread: <%= printSpread() %> | 
+                            <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
                     </div>
                     <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
                 </main>
@@ -639,7 +653,7 @@ stat_key_title_mapping = {
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
-        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
+        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
