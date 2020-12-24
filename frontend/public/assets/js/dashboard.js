@@ -117,6 +117,41 @@ function interpolateTimestamps(plays) {
     return plays;
 }
 
+// https://stackoverflow.com/a/52453462
+function deltaE(rgbA, rgbB) {
+    let labA = rgb2lab(rgbA);
+    let labB = rgb2lab(rgbB);
+    let deltaL = labA[0] - labB[0];
+    let deltaA = labA[1] - labB[1];
+    let deltaB = labA[2] - labB[2];
+    let c1 = Math.sqrt(labA[1] * labA[1] + labA[2] * labA[2]);
+    let c2 = Math.sqrt(labB[1] * labB[1] + labB[2] * labB[2]);
+    let deltaC = c1 - c2;
+    let deltaH = deltaA * deltaA + deltaB * deltaB - deltaC * deltaC;
+    deltaH = deltaH < 0 ? 0 : Math.sqrt(deltaH);
+    let sc = 1.0 + 0.045 * c1;
+    let sh = 1.0 + 0.015 * c1;
+    let deltaLKlsl = deltaL / (1.0);
+    let deltaCkcsc = deltaC / (sc);
+    let deltaHkhsh = deltaH / (sh);
+    let i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
+    return i < 0 ? 0 : Math.sqrt(i);
+}
+  
+function rgb2lab(rgb){
+    let r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, x, y, z;
+    r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = (b > 0.04045) ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+    x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+    y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+    z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+    x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+    y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+    z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+    return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
+}
+
 if (gameData.plays.length > 0) {
     gameData.plays = interpolateTimestamps(gameData.plays)
     // console.log(gameData.plays[0])
@@ -128,6 +163,32 @@ if (gameData.plays.length > 0) {
     var awayTeam = awayComp.team;
     var awayTeamColor = hexToRgb(awayTeam.color)
     var homeTeamColor = hexToRgb(homeTeam.color)
+
+    // if the homeTeamColor and the awayTeamColor are too similar, make the awayTeam use their alt
+    let dEHome = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
+    if (dEHome <= 49) {
+        awayTeamColor = hexToRgb(awayTeam.alternateColor)
+        console.log(`updating away team color from primary ${JSON.stringify(hexToRgb(awayTeam.color))} to alt: ${JSON.stringify(awayTeamColor)}`)
+    }
+
+    // if either color is too similar to white, use gray
+    let colors = [homeTeamColor, awayTeamColor]
+    var adjusted = false;
+    colors.forEach((clr, idx) => {
+        var dEBackground = deltaE([clr.r, clr.g, clr.b], [255,255,255])
+        if (dEBackground <= 49) {
+            adjusted = true;
+            clr = hexToRgb("#999999")
+            console.log(`updating color at index ${idx} to gray bc of background`)
+        }
+    })
+    
+    // if both colors are now gray, reset the homeTeamColor
+    let dEHomeAdj = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
+    if (dEHomeAdj <= 49 && adjusted) {
+        homeTeamColor = hexToRgb(homeTeam.color);
+        console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
+    }
 
     var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
     var awayTeamWP = gameData.plays.map(p => ((p.start.team.id == awayTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
