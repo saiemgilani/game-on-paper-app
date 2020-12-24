@@ -12,8 +12,8 @@ RUN cd ./frontend && npm install
 
 EXPOSE 8000
 
-# HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 --start-period=30s \
-#     CMD curl -f http://localhost:5000/cfb/healthcheck || exit 1
+ENV RDATA_BASE_URL=http://0.0.0.0:7000
+ENV API_BASE_URL=http://0.0.0.0:5000
+ENV NODE_DEBUG=[frontend]
 
-RUN cd ./ && chmod +x ./start.sh
-CMD ["./start.sh"]
+CMD cd ./frontend && npm run start

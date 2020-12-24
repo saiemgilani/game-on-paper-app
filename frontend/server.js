@@ -83,31 +83,30 @@ python.on('error', (err) => {
     console.error(`[python] Failed to start subprocess: ${err}`);
 });
 
-// Start the API service
+// Start the API service -- this one has its own debug logs so no prefix needed
 const api = spawn('node server.js', { 
     shell: true,
     cwd: "../api",
     env: {
-        RDATA_BASE_URL:"http://0.0.0.0:7000", 
-        API_BASE_URL:"http://0.0.0.0:5000",
-        NODE_DEBUG: "[api]"
+        RDATA_BASE_URL: process.env.RDATA_BASE_URL,
+        NODE_DEBUG: "[API]"
     }
 });
 
 api.stdout.on('data', (data) => {
-    console.log(`[api] ${data}`);
+    console.log(`${data}`);
 });
 
 api.stderr.on('data', (data) => {
-    console.error(`[api] ${data}`);
+    console.error(`${data}`);
 });
 
 api.on('close', (code) => {
-    console.error(`[api] child process exited with code ${code}`);
+    console.error(`[API] child process exited with code ${code}`);
 });
 
 api.on('error', (err) => {
-    console.error(`[api] Failed to start subprocess: ${err}`);
+    console.error(`[API] Failed to start subprocess: ${err}`);
 });
 
 // Start the frontend service

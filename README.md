@@ -6,8 +6,8 @@ cfb-data-api
 Make sure you have Docker installed. Once you do, `cd` into the repo and run the following commands:
 
 ```Shell
-$ docker build -t <whatever you want to name the image> .
-$ docker run --rm -d -it -p 8000:8000 --memory=2g --cpus=2.0 <whatever you want to name the image>
+$ docker build .
+$ docker run --rm -d -it -p 8000:8000 --memory=2g --cpus=2.0
 ```
 
 This will setup the container just like how it would run on Google Cloud Run, installing all python and node dependencies and starting all three services in a Docker container.
