@@ -84,7 +84,11 @@ def wp_predict():
 @app.route('/cfb/process', methods=['POST'])
 def process():
     base_data = request.get_json(force=True)['data']
-    processed_data = PlayProcess(json_data=base_data)
+    spread = request.get_json(force=True)['homeTeamSpread']
+    homeTeam = request.get_json(force=True)['homeTeamId']
+    awayTeam = request.get_json(force=True)['awayTeamId']
+
+    processed_data = PlayProcess(json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam)
     processed_data.run_processing_pipeline()
     jsonified_df = processed_data.plays_json.to_json(orient="records")
     

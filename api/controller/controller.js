@@ -172,6 +172,35 @@ async function retrievePBP(req, res) {
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
         plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
 
+        for (var i = 0; i < plays.length; i += 1) {
+            var nextPlay = null
+            if ((i + 1) >= plays.length) {
+                nextPlay = null
+            } else {
+                nextPlay = plays[i + 1]
+            }
+
+            plays[i].start.TimeSecsRem = calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)
+            plays[i].start.adj_TimeSecsRem = calculateGameSecondsRemaining(plays[i].period, plays[i].start.TimeSecsRem)
+            
+            var endPeriod = (nextPlay != null) ? nextPlay.period : 5
+            var endClock = (nextPlay != null) ? nextPlay.clock.displayValue : "0:00"
+            plays[i].end.TimeSecsRem = calculateHalfSecondsRemaining(endPeriod, endClock)
+            plays[i].end.adj_TimeSecsRem = calculateGameSecondsRemaining(endPeriod, plays[i].end.TimeSecsRem)
+
+            // if (calculateGameSecondsRemaining(plays[i].period, calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)) <= 30 && (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0)) {
+            //     if (plays[i].start.team.id == homeTeamId && plays[i].homeScore > plays[i].awayScore) {
+            //         wpEnd = 1.0
+            //     } else if (!(plays[i].start.team.id == homeTeamId) && plays[i].homeScore < plays[i].awayScore) {
+            //         wpEnd = 1.0
+            //     } else {
+            //         wpEnd = 0.0
+            //     }
+            // }
+            // plays[i].winProbability.after = wpEnd
+            // plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
+        }
+
         timeouts[homeTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period <= 2).map(p => parseInt(p.id))
         timeouts[awayTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == awayTeamId && p.period <= 2).map(p => parseInt(p.id))
         timeouts[homeTeamId]["2"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period > 2).map(p => parseInt(p.id))
