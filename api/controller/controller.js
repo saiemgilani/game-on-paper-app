@@ -329,6 +329,24 @@ async function calculateEPA(plays, homeTeamId) {
         }
 
         let epBeforeInputs = prepareEPInputs(play.start, play.period, play.clock.displayValue, homeTeamId, play.homeScore, play.awayScore)
+        if (("scoringPlay" in play) && (play.scoringPlay == true)) {
+            // rollback the score from pos_score_diff_start
+            var scoreVal = 0;
+            if (defense_score_vec.includes(play.playType)) {
+                if (play.text.toLocaleLowerCase().includes("conversion")) {
+                    scoreVal = play.text.toLocaleLowerCase().includes("failed") ? -6 : -8
+                } else {
+                    scoreVal = play.text.toLocaleLowerCase().includes("missed") ? -6 : -7
+                }
+            } else if (score.includes(play.playType)) {
+                if (play.text.toLocaleLowerCase().includes("conversion")) {
+                    scoreVal = play.text.toLocaleLowerCase().includes("failed") ? 6 : 8
+                } else {
+                    scoreVal = play.text.toLocaleLowerCase().includes("missed") ? 6 : 7
+                }
+            }
+            epBeforeInputs['pos_score_diff_start'] = epBeforeInputs['pos_score_diff_start'] - scoreVal
+        }
         
         if (kickoff.includes(play.playType)) {
             epBeforeInputs['down1'] = 1 
