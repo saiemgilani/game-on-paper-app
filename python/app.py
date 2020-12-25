@@ -3,8 +3,10 @@ import xgboost as xgb
 import numpy as np
 from datetime import datetime as dt
 from flask_logs import LogSetup
+from play_handler import PlayProcess
 import os
 import logging
+import pandas as pd
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -78,6 +80,87 @@ def wp_predict():
         "count" : len(result),
         "predictions" : result
     })
+
+@app.route('/cfb/process', methods=['POST'])
+def process():
+    base_data = request.get_json(force=True)['data']
+    processed_data = PlayProcess(json_data=base_data)
+
+    jsonified_df = processed_data.plays_json.to_json(orient="records")
+    
+    bad_cols = [
+        'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
+        'start.shortDownDistanceText', 'start.possessionText', 'start.downDistanceText',
+        'clock.displayValue', 
+        'type.id', 'type.text', 'type.abbreviation'
+        'end.shortDownDistanceText', 'end.possessionText', 'end.downDistanceText', 'end.distance', 'end.yardLine', 'end.team.id','end.down', 'end.yardsToEndzone', 'end.posTeamTimeouts','end.defTeamTimeouts', 
+        'expectedPoints.before', 'expectedPoints.after', 'expectedPoints.added', 
+        'winProbability.before', 'winProbability.after', 'winProbability.added', 
+        'scoringType.displayName', 'scoringType.name', 'scoringType.abbreviation'
+    ]
+    # clean records back into ESPN format
+    for record in jsonified_df:
+        record["clock"] = {
+            "displayValue" : record["clock.displayValue"]
+        }
+
+        record["type"] = {
+            "id" : record["type.id"],
+            "text" : record["type.text"],
+            "abbreviation" : record["type.abbreviation"],
+        }
+
+        record["expectedPoints"] = {
+            "before" : record["EP_start"],
+            "after" : record["EP_end"],
+            "added" : record["EPA"],
+        }
+
+        record["winProbability"] = {
+            "before" : record["WP_start"],
+            "after" : record["WP_end"],
+            "added" : record["WPA"],
+        }
+
+        record["start"] = {
+            "team" : {
+                "id" : record["start.team.id"],
+            },
+            "distance" : record["start.distance"],
+            "yardLine" : record["start.yardLine"],
+            "down" : record["start.down"],
+            "yardsToEndzone" : record["start.yardsToEndzone"],
+            "posTeamTimeouts" : record["start.posTeamTimeouts"],
+            "defTeamTimeouts" : record["start.defTeamTimeouts"],
+            "shortDownDistanceText" : record["start.shortDownDistanceText"],
+            "possessionText" : record["start.possessionText"],
+            "downDistanceText" : record["start.downDistanceText"],
+        }
+
+        record["end"] = {
+            "team" : {
+                "id" : record["end.team.id"],
+            },
+            "distance" : record["end.distance"],
+            "yardLine" : record["end.yardLine"],
+            "down" : record["end.down"],
+            "yardsToEndzone" : record["end.yardsToEndzone"],
+            "posTeamTimeouts" : record["end.posTeamTimeouts"],
+            "defTeamTimeouts" : record["end.defTeamTimeouts"],
+            "shortDownDistanceText" : record["end.shortDownDistanceText"],
+            "possessionText" : record["end.possessionText"],
+            "downDistanceText" : record["end.downDistanceText"],
+        }
+
+        # remove added columns
+        for col in bad_cols:
+            record.pop(col, None)
+
+    return jsonify({
+        "count" : len(jsonified_df),
+        "records" : jsonified_df
+    })
+
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
     return jsonify({
