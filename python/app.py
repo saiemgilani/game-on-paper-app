@@ -85,7 +85,7 @@ def wp_predict():
 def process():
     base_data = request.get_json(force=True)['data']
     processed_data = PlayProcess(json_data=base_data)
-
+    processed_data.run_processing_pipeline()
     jsonified_df = processed_data.plays_json.to_json(orient="records")
     
     bad_cols = [
