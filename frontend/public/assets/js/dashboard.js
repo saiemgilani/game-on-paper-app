@@ -166,7 +166,7 @@ if (gameData.plays.length > 0) {
 
     // if the homeTeamColor and the awayTeamColor are too similar, make the awayTeam use their alt
     let dEHome = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
-    if (dEHome <= 49) {
+    if (dEHome <= 49 && awayTeam.alternateColor != null) {
         awayTeamColor = hexToRgb(awayTeam.alternateColor)
         console.log(`updating away team color from primary ${JSON.stringify(hexToRgb(awayTeam.color))} to alt: ${JSON.stringify(awayTeamColor)}`)
     }
