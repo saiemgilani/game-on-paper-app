@@ -366,6 +366,8 @@ class PlayProcess(object):
     def __clean_pbp_data__(self, play_df):
         play_df.id = play_df.id.astype(float)
         play_df = play_df.sort_values(by="id", ascending=True)
+        play_df["start.team.id"] = play_df["start.team.id"].astype(int)
+        play_df["end.team.id"] = play_df["end.team.id"].astype(int)
         
         play_df['is_home'] = (play_df["start.team.id"] == self.homeTeamId)
         play_df['pos_team_receives_2H_kickoff'] = (play_df["start.team.id"] == self.firstHalfKickoffTeamId)
@@ -395,14 +397,14 @@ class PlayProcess(object):
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('safety')),
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & (~play_df.text.str.lower().str.contains('failed'))),
-            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('missed')),
-            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('missed'))),
+            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('kick'))),
+            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('kick')),
 
             (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~(play_df.text.str.lower().str.contains('failed'))),
+            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & (~play_df.text.str.lower().str.contains('failed'))),
             (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & play_df.playType.str.lower().str.contains('good')),
-            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('missed')),
-            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & ~(play_df.text.str.lower().str.contains('missed')))
+            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('kick'))),
+            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('kick'))
         ],
         [
             (play_df.pos_score_diff_start - (-2)),
@@ -1291,9 +1293,11 @@ class PlayProcess(object):
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "distance"] = 10
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "start.yardsToEndzone"] = 75
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "pos_score_diff_start"] = -1 * play_df.pos_score_diff_start
+        play_df.loc[play_df["type.text"].isin(kickoff_vec), "pos_score_diff_start_end"] = -1 * play_df.pos_score_diff_start_end
 
         start_data = play_df[ep_start_columns]
         start_data.columns = ep_final_names
+        self.logger.info(start_data.iloc[[12]].to_json(orient="records"))
 
         dtest_start = xgb.DMatrix(start_data)
         EP_start_parts = ep_model.predict(dtest_start)
@@ -1311,6 +1315,7 @@ class PlayProcess(object):
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
+        self.logger.info(end_data.iloc[[12]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         EP_end_parts = ep_model.predict(dtest_end)
 
@@ -1378,11 +1383,13 @@ class PlayProcess(object):
 
         start_data = play_df[wp_start_columns]
         start_data.columns = wp_final_names
+        self.logger.info(start_data.iloc[[12]].to_json(orient="records"))
         dtest_start = xgb.DMatrix(start_data)
         WP_start = wp_model.predict(dtest_start)
 
         end_data = play_df[wp_end_columns]
         end_data.columns = wp_final_names
+        self.logger.info(end_data.iloc[[12]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
 
