@@ -1288,7 +1288,7 @@ class PlayProcess(object):
 
         start_data = play_df[ep_start_columns]
         start_data.columns = ep_final_names
-        self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
+        # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
 
         dtest_start = xgb.DMatrix(start_data)
         EP_start_parts = ep_model.predict(dtest_start)
@@ -1306,7 +1306,7 @@ class PlayProcess(object):
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
-        self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
+        # self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         EP_end_parts = ep_model.predict(dtest_end)
 
