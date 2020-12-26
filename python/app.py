@@ -7,6 +7,7 @@ from play_handler import PlayProcess
 import os
 import logging
 import pandas as pd
+import json
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -39,48 +40,6 @@ def box():
     # base_data = request.get_json(force=True)['gameId']
     return jsonify({})
 
-@app.route('/ep/predict', methods=['POST'])
-def ep_predict():
-    base_data = request.get_json(force=True)['data']
-    # print(base_data)
-    np_mom = np.array(base_data)
-    dtest_moment = xgb.DMatrix(np_mom)
-    predictions = ep_model.predict(dtest_moment)
-    result = []
-    # "Touchdown", "Opp_Touchdown", "Field_Goal", "Opp_Field_Goal",
-    # "Safety", "Opp_Safety", "No_Score"
-    for p in predictions:
-        result.append({
-            "td" : float(p[0]),
-            "opp_td" : float(p[1]),
-            "fg" : float(p[2]),
-            "opp_fg" : float(p[3]),
-            "safety" : float(p[4]),
-            "opp_safety" : float(p[5]),
-            "no_score" : float(p[6])
-        })
-    return jsonify({
-        "count" : len(result),
-        "predictions" : result
-    })
-
-@app.route('/wp/predict', methods=['POST'])
-def wp_predict():
-    base_data = request.get_json(force=True)['data']
-    # print(base_data)
-    np_mom = np.array(base_data)
-    dtest_moment = xgb.DMatrix(np_mom)
-    predictions = wp_model.predict(dtest_moment)
-    result = []
-    for p in predictions:
-        result.append({
-            "wp" : float(p)
-        })
-    return jsonify({
-        "count" : len(result),
-        "predictions" : result
-    })
-
 @app.route('/cfb/process', methods=['POST'])
 def process():
     base_data = request.get_json(force=True)['data']
@@ -89,9 +48,10 @@ def process():
     awayTeam = request.get_json(force=True)['awayTeamId']
     firstHalfKickoffTeam = request.get_json(force=True)['firstHalfKickoffTeamId']
 
-    processed_data = PlayProcess(json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
+    processed_data = PlayProcess(logger = logging.getLogger("root"), json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
     processed_data.run_processing_pipeline()
-    jsonified_df = processed_data.plays_json.to_json(orient="records")
+    tmp_json = processed_data.plays_json.to_json(orient="records")
+    jsonified_df = json.loads(tmp_json) 
     
     bad_cols = [
         'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
@@ -118,13 +78,13 @@ def process():
         record["expectedPoints"] = {
             "before" : record["EP_start"],
             "after" : record["EP_end"],
-            "added" : record["EPA"],
+            "added" : record["EPA"]
         }
 
         record["winProbability"] = {
             "before" : record["WP_start"],
             "after" : record["WP_end"],
-            "added" : record["WPA"],
+            "added" : record["WPA"]
         }
 
         record["start"] = {
@@ -139,7 +99,7 @@ def process():
             "defTeamTimeouts" : record["start.defTeamTimeouts"],
             "shortDownDistanceText" : record["start.shortDownDistanceText"],
             "possessionText" : record["start.possessionText"],
-            "downDistanceText" : record["start.downDistanceText"],
+            "downDistanceText" : record["start.downDistanceText"]
         }
 
         record["end"] = {
@@ -154,7 +114,7 @@ def process():
             "defTeamTimeouts" : record["end.defTeamTimeouts"],
             "shortDownDistanceText" : record["end.shortDownDistanceText"],
             "possessionText" : record["end.possessionText"],
-            "downDistanceText" : record["end.downDistanceText"],
+            "downDistanceText" : record["end.downDistanceText"]
         }
 
         # remove added columns

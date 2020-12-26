@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import re
+from flask_logs import LogSetup
 
 ep_class_to_score_mapping = {
     0: 7,
@@ -37,12 +38,11 @@ ep_final_names = [
     "TimeSecsRem",
     "yards_to_goal",
     "distance",
-    "down1",
-    "down2",
-    "down3",
-    "down4",
-    "pos_score_diff_start",
-    "adj_TimeSecsRem"
+    "down_1",
+    "down_2",
+    "down_3",
+    "down_4",
+    "pos_score_diff_start"
 ]
 wp_final_names = [
     "pos_team_receives_2H_kickoff",
@@ -55,7 +55,7 @@ wp_final_names = [
     "distance",
     "yards_to_goal",
     "is_home",
-    "pos_team_timeouts_rem_before"
+    "pos_team_timeouts_rem_before",
     "def_pos_team_timeouts_rem_before",
     "period"
 ]
@@ -190,13 +190,15 @@ class PlayProcess(object):
     homeTeamId = 0
     awayTeamId = 0
     firstHalfKickoffTeamId = 0
+    logger = None
 
-    def __init__(self, json_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
+    def __init__(self, logger = None, json_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
         self.plays_json = pd.json_normalize(json_data)
         self.homeTeamSpread = float(spread)
         self.homeTeamId = int(homeTeam)
         self.awayTeamId = int(awayTeam)
         self.firstHalfKickoffTeamId = int(firstHalfKickoffTeam)
+        self.logger = logger
 
     def __setup_penalty_data__(self, play_df):
         #     #-- 'Penalty' in play text ----
@@ -378,13 +380,13 @@ class PlayProcess(object):
         play_df['down_4_end'] = (play_df["end.down"] == 4)
 
         play_df['pos_score_diff_start'] = np.where(
-            (play_df.isHome == True),
+            (play_df.is_home == True),
             (play_df.homeScore - play_df.awayScore),
             (play_df.awayScore - play_df.homeScore)
         )
 
         play_df['pos_score_diff_start_end'] = np.where(
-            (play_df.isHome == True),
+            (play_df.is_home == True),
             (play_df.homeScore - play_df.awayScore),
             (play_df.awayScore - play_df.homeScore)
         )
@@ -392,22 +394,22 @@ class PlayProcess(object):
         play_df.pos_score_diff_start = np.select([
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('safety')),
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(defense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('missed')),
-            (play_df["type.text"].isin(defense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed'))
+            (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & (~play_df.text.str.lower().str.contains('failed'))),
+            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('missed')),
+            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('missed'))),
 
             (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & play_df.playType.str.lower().str.contains('good'))
-            (play_df["type.text"].isin(offense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('missed')),
-            (play_df["type.text"].isin(offense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed'))
+            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~(play_df.text.str.lower().str.contains('failed'))),
+            (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & play_df.playType.str.lower().str.contains('good')),
+            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('missed')),
+            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & ~(play_df.text.str.lower().str.contains('missed')))
         ],
         [
             (play_df.pos_score_diff_start - (-2)),
             (play_df.pos_score_diff_start - (-6)),
             (play_df.pos_score_diff_start - (-8)),
             (play_df.pos_score_diff_start - (-6)),
-            (play_df.pos_score_diff_start - (-7))
+            (play_df.pos_score_diff_start - (-7)),
 
             (play_df.pos_score_diff_start - 6),
             (play_df.pos_score_diff_start - 8),
@@ -1292,10 +1294,10 @@ class PlayProcess(object):
 
         start_data = play_df[ep_start_columns]
         start_data.columns = ep_final_names
+
         dtest_start = xgb.DMatrix(start_data)
         EP_start_parts = ep_model.predict(dtest_start)
         EP_start = self.__calculate_ep_exp_val__(EP_start_parts)
-
 
         play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.TimeSecsRem"] = 0
         play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.yardsToEndzone"] = 99
@@ -1308,7 +1310,7 @@ class PlayProcess(object):
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
         end_data = play_df[ep_end_columns]
-        end_data.columns = ep_start_columns
+        end_data.columns = ep_final_names
         dtest_end = xgb.DMatrix(end_data)
         EP_end_parts = ep_model.predict(dtest_end)
 
@@ -1325,12 +1327,12 @@ class PlayProcess(object):
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('failed')),
             (play_df["type.text"].isin(defense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('missed')),
-            (play_df["type.text"].isin(defense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed'))
+            (play_df["type.text"].isin(defense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed')),
 
             (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
             (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('failed')),
             (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & (play_df.playType.str.lower().str.contains('good'))),
-            (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & ~play_df.playType.str.lower().str.contains('good'))
+            (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & ~play_df.playType.str.lower().str.contains('good')),
             (play_df["type.text"].isin(offense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('missed')),
             (play_df["type.text"].isin(offense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed'))
         ],
@@ -1357,7 +1359,7 @@ class PlayProcess(object):
 
     def __process_wpa__(self, play_df):
         play_df['ExpScoreDiff'] = play_df.pos_score_diff_start + play_df.EP_start
-        play_df['ExpScoreDiffTimeRatio'] = play_df['ExpScoreDiff'] / (play_df['start.adj_TimeSecsRem'] + 1)
+        play_df['ExpScoreDiff_Time_Ratio'] = play_df['ExpScoreDiff'] / (play_df['start.adj_TimeSecsRem'] + 1)
 
         play_df['pos_team_spread'] = np.where(
             (play_df.is_home == True),
@@ -1365,13 +1367,13 @@ class PlayProcess(object):
             (-1 * self.homeTeamSpread)
         )
 
-        play_df['elapsed_share'] = max(0, (3600 - play_df['start.adj_TimeSecsRem']) / 3600)
+        play_df['elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
         play_df['spread_time'] = play_df.pos_team_spread * np.exp(-4 * play_df.elapsed_share)
 
         play_df['ExpScoreDiff_end'] = play_df.pos_score_diff_start + play_df.EP_end
         play_df['ExpScoreDiff_Time_Ratio_end'] = play_df.ExpScoreDiff_end / (play_df["end.adj_TimeSecsRem"] + 1)
 
-        play_df['elapsed_share_end'] = max(0, (3600 - play_df["end.adj_TimeSecsRem"]) / 3600)
+        play_df['elapsed_share_end'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
         play_df['spread_time_end'] = play_df.pos_team_spread * np.exp(-4 * play_df.elapsed_share_end)
 
         start_data = play_df[wp_start_columns]
@@ -1387,7 +1389,7 @@ class PlayProcess(object):
         play_df['WP_start'] = WP_start
         play_df['WP_end'] = WP_end
 
-        play_df.iloc[-1, 'WP_end'] = np.select([
+        play_df.iloc[-1]['WP_end'] = np.select([
             (play_df.is_home == True) & (play_df.homeScore > play_df.awayScore),
             (play_df.is_home == False) & (play_df.homeScore < play_df.awayScore),
             (play_df.is_home == True) & (play_df.homeScore < play_df.awayScore),
