@@ -340,7 +340,7 @@ async function processPlays(plays, homeTeamSpread, homeTeamId, awayTeamId, first
         firstHalfKickoffTeamId: firstHalfKickTeamId
     })
     let finalPlaysData = response.data.records;
-    debuglog(finalPlaysData[12])
+    debuglog(finalPlaysData[36])
     if (finalPlaysData.length > 0) {
         for (var i = 0; i < finalPlaysData.length; i += 1) {
             if (i == 0) {

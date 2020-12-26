@@ -29,10 +29,10 @@ wp_model = xgb.Booster({'nthread': 4})  # init model
 wp_model.load_model('models/wp_spread.model')
 
 wp_start_columns = ["pos_team_receives_2H_kickoff","spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","ExpScoreDiff_Time_Ratio","pos_score_diff_start","start.down","start.distance","start.yardsToEndzone","is_home","start.posTeamTimeouts","start.defTeamTimeouts","period"]
-wp_end_columns = ["pos_team_receives_2H_kickoff","spread_time_end","end.TimeSecsRem","end.adj_TimeSecsRem","ExpScoreDiff_Time_Ratio_end","pos_score_diff_start_end","end.down","end.distance","end.yardsToEndzone","is_home","end.posTeamTimeouts","end.defTeamTimeouts","period"]
+wp_end_columns = ["pos_team_receives_2H_kickoff","spread_time_end","end.TimeSecsRem","end.adj_TimeSecsRem","ExpScoreDiff_Time_Ratio_end","pos_score_diff","end.down","end.distance","end.yardsToEndzone","is_home","end.posTeamTimeouts","end.defTeamTimeouts","period"]
 
 ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
-ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff_start_end"]
+ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff"]
 
 ep_final_names = [        
     "TimeSecsRem",
@@ -368,9 +368,6 @@ class PlayProcess(object):
         play_df = play_df.sort_values(by="id", ascending=True)
         play_df["start.team.id"] = play_df["start.team.id"].astype(int)
         play_df["end.team.id"] = play_df["end.team.id"].astype(int)
-        
-        play_df['is_home'] = (play_df["start.team.id"] == self.homeTeamId)
-        play_df['pos_team_receives_2H_kickoff'] = (play_df["start.team.id"] == self.firstHalfKickoffTeamId)
         play_df['down_1'] = (play_df["start.down"] == 1)
         play_df['down_2'] = (play_df["start.down"] == 2)
         play_df['down_3'] = (play_df["start.down"] == 3)
@@ -380,45 +377,6 @@ class PlayProcess(object):
         play_df['down_2_end'] = (play_df["end.down"] == 2)
         play_df['down_3_end'] = (play_df["end.down"] == 3)
         play_df['down_4_end'] = (play_df["end.down"] == 4)
-
-        play_df['pos_score_diff_start'] = np.where(
-            (play_df.is_home == True),
-            (play_df.homeScore - play_df.awayScore),
-            (play_df.awayScore - play_df.homeScore)
-        )
-
-        play_df['pos_score_diff_start_end'] = np.where(
-            (play_df.is_home == True),
-            (play_df.homeScore - play_df.awayScore),
-            (play_df.awayScore - play_df.homeScore)
-        )
-
-        play_df.pos_score_diff_start = np.select([
-            (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('safety')),
-            (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & (~play_df.text.str.lower().str.contains('failed'))),
-            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('kick'))),
-            (play_df["type.text"].isin(defense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('kick')),
-
-            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
-            (play_df["type.text"].isin(offense_score_vec) & play_df.text.str.lower().str.contains('conversion') & (~play_df.text.str.lower().str.contains('failed'))),
-            (play_df["type.text"].isin(offense_score_vec) & play_df["type.text"].str.lower().str.contains('field goal') & play_df.playType.str.lower().str.contains('good')),
-            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & (~play_df.text.str.lower().str.contains('kick'))),
-            (play_df["type.text"].isin(offense_score_vec) & (~play_df.text.str.lower().str.contains('conversion')) & play_df.text.str.lower().str.contains('kick'))
-        ],
-        [
-            (play_df.pos_score_diff_start - (-2)),
-            (play_df.pos_score_diff_start - (-6)),
-            (play_df.pos_score_diff_start - (-8)),
-            (play_df.pos_score_diff_start - (-6)),
-            (play_df.pos_score_diff_start - (-7)),
-
-            (play_df.pos_score_diff_start - 6),
-            (play_df.pos_score_diff_start - 8),
-            (play_df.pos_score_diff_start - 3),
-            (play_df.pos_score_diff_start - 6),
-            (play_df.pos_score_diff_start - 7)
-        ], default = play_df.pos_score_diff_start)
 
         #-- Touchdowns----
         play_df["scoring_play"] = np.where(play_df["type.text"].isin(scores_vec), True, False)
@@ -740,6 +698,40 @@ class PlayProcess(object):
         play_df['lead_play_type'] = play_df['type.text'].shift(-1)
         play_df['lead_play_type2'] = play_df['type.text'].shift(-2)
         play_df['lead_play_type3'] = play_df['type.text'].shift(-3)
+
+        play_df['turnover_vec_lag'] = play_df['turnover_vec'].shift(1)
+        play_df['lag_defense_score_play'] = play_df['defense_score_play'].shift(1)
+        play_df['play_after_turnover'] = ((play_df.turnover_vec == True) & (play_df.lag_defense_score_play == True))
+
+        play_df['pos_team'] = np.select([
+            (play_df["start.team.id"] == self.homeTeamId) & (play_df.kickoff_play == True),
+            (play_df["start.team.id"] == self.awayTeamId) & (play_df.kickoff_play == True)
+        ],
+        [
+            self.awayTeamId,
+            self.homeTeamId
+        ], default = play_df["start.team.id"])
+
+        play_df['is_home'] = (play_df.pos_team == self.homeTeamId)
+        
+        play_df['def_pos_team'] = np.where(play_df.pos_team == self.homeTeamId, self.awayTeamId, self.homeTeamId)
+        play_df['pos_team_score'] = np.where(play_df.pos_team == self.homeTeamId, play_df.homeScore, play_df.awayScore)
+        play_df['def_pos_team_score'] = np.where(play_df.pos_team == self.homeTeamId, play_df.awayScore, play_df.homeScore)
+
+        play_df['lag_pos_team'] = play_df['pos_team'].shift(1)
+        play_df.loc[play_df.lag_pos_team.isna() == True, 'lag_pos_team'] = play_df.pos_team
+
+        play_df['lead_pos_team'] = play_df['pos_team'].shift(-1)
+        play_df['lead_pos_team2'] = play_df['pos_team'].shift(-2)
+
+        play_df['pos_score_diff'] = play_df.pos_team_score - play_df.def_pos_team_score
+        play_df['lag_pos_score_diff'] = play_df['pos_score_diff'].shift(1)
+        play_df.loc[play_df.pos_score_diff.isna() == True, 'lag_pos_score_diff'] = 0
+
+        play_df['pos_score_pts'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.pos_score_diff - play_df.lag_pos_score_diff, play_df.pos_score_diff + play_df.lag_pos_score_diff)
+        play_df['pos_score_diff_start'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff)
+
+        play_df['pos_team_receives_2H_kickoff'] = (play_df.pos_team == self.firstHalfKickoffTeamId)
 
         return play_df
     
@@ -1286,18 +1278,17 @@ class PlayProcess(object):
         return matrix[:,0] * ep_class_to_score_mapping[0] + matrix[:,1] * ep_class_to_score_mapping[1] + matrix[:,2] * ep_class_to_score_mapping[2] + matrix[:,3] * ep_class_to_score_mapping[3] + matrix[:,4] * ep_class_to_score_mapping[4] + matrix[:,5] * ep_class_to_score_mapping[5] + matrix[:,6] * ep_class_to_score_mapping[6]
     
     def __process_epa__(self, play_df):
+        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down"] = 1
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_1"] = True
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_2"] = False
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_3"] = False
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_4"] = False
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "distance"] = 10
         play_df.loc[play_df["type.text"].isin(kickoff_vec), "start.yardsToEndzone"] = 75
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "pos_score_diff_start"] = -1 * play_df.pos_score_diff_start
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "pos_score_diff_start_end"] = -1 * play_df.pos_score_diff_start_end
 
         start_data = play_df[ep_start_columns]
         start_data.columns = ep_final_names
-        self.logger.info(start_data.iloc[[12]].to_json(orient="records"))
+        self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
 
         dtest_start = xgb.DMatrix(start_data)
         EP_start_parts = ep_model.predict(dtest_start)
@@ -1315,7 +1306,7 @@ class PlayProcess(object):
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
-        self.logger.info(end_data.iloc[[12]].to_json(orient="records"))
+        self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         EP_end_parts = ep_model.predict(dtest_end)
 
@@ -1375,7 +1366,7 @@ class PlayProcess(object):
         play_df['elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
         play_df['spread_time'] = play_df.pos_team_spread * np.exp(-4 * play_df.elapsed_share)
 
-        play_df['ExpScoreDiff_end'] = play_df.pos_score_diff_start_end + play_df.EP_end
+        play_df['ExpScoreDiff_end'] = play_df.pos_score_diff_start + play_df.EP_end
         play_df['ExpScoreDiff_Time_Ratio_end'] = play_df.ExpScoreDiff_end / (play_df["end.adj_TimeSecsRem"] + 1)
 
         play_df['elapsed_share_end'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
@@ -1383,13 +1374,13 @@ class PlayProcess(object):
 
         start_data = play_df[wp_start_columns]
         start_data.columns = wp_final_names
-        self.logger.info(start_data.iloc[[12]].to_json(orient="records"))
+        # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
         dtest_start = xgb.DMatrix(start_data)
         WP_start = wp_model.predict(dtest_start)
 
         end_data = play_df[wp_end_columns]
         end_data.columns = wp_final_names
-        self.logger.info(end_data.iloc[[12]].to_json(orient="records"))
+        # self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
 
