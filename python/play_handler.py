@@ -1375,7 +1375,7 @@ class PlayProcess(object):
         play_df['elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
         play_df['spread_time'] = play_df.pos_team_spread * np.exp(-4 * play_df.elapsed_share)
 
-        play_df['ExpScoreDiff_end'] = play_df.pos_score_diff_start + play_df.EP_end
+        play_df['ExpScoreDiff_end'] = play_df.pos_score_diff_start_end + play_df.EP_end
         play_df['ExpScoreDiff_Time_Ratio_end'] = play_df.ExpScoreDiff_end / (play_df["end.adj_TimeSecsRem"] + 1)
 
         play_df['elapsed_share_end'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
