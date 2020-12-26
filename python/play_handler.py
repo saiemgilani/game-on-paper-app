@@ -1320,7 +1320,7 @@ class PlayProcess(object):
         play_df['EP_end'] = EP_end
 
         play_df.EP_end = np.select([
-            (play_df.playType.isin(turnover_vec) | play_df["start.team.id"] != play_df["end.team.id"]),
+            (play_df.playType.isin(turnover_vec) | (play_df["start.team.id"] != play_df["end.team.id"])),
             (play_df.playType.str.lower().str.contains("end of game") | play_df.playType.str.lower().str.contains("end of game") | play_df.playType.str.lower().str.contains("end of half") | play_df.playType.str.lower().str.contains("end of half")),
 
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('safety')),
