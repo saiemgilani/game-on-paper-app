@@ -197,6 +197,8 @@ if (gameData.plays.length > 0) {
     var homeTeamWP = gameData.plays.map(p => {
         if (p.start.team.id == homeTeam.id && !p.playType.includes("Kickoff")) {
             return translateWP(p.winProbability.before)
+        } else if (p.end.team.id == homeTeam.id && p.playType.includes("Kickoff")) {
+            return translateWP(p.winProbability.before)
         } else {
             return translateWP(1.0 - p.winProbability.before)
         }
