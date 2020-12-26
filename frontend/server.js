@@ -29,9 +29,18 @@ app.get('/cfb', async function(req, res, next) {
         if (response.data == null) {
             throw Error(`Data not available for /cfb/games. An internal service may be down.`)
         }
-        // debuglog(response.data)
+        let espnData = response.data;
+        var gameList = (espnData.events != null) ? espnData.events : [];
+        gameList = gameList.filter(g => {
+            const gameComp = g.competitions[0];
+            const homeComp = gameComp.competitors[0];
+            const awayComp = gameComp.competitors[1];
+
+            return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
+        })
+
         return res.render('pages/index', {
-            scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
+            scoreboard: gameList
         });
     } catch(err) {
         return next(err)
