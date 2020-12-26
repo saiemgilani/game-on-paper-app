@@ -87,8 +87,9 @@ def process():
     spread = request.get_json(force=True)['homeTeamSpread']
     homeTeam = request.get_json(force=True)['homeTeamId']
     awayTeam = request.get_json(force=True)['awayTeamId']
+    firstHalfKickoffTeam = request.get_json(force=True)['firstHalfKickoffTeamId']
 
-    processed_data = PlayProcess(json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam)
+    processed_data = PlayProcess(json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
     processed_data.run_processing_pipeline()
     jsonified_df = processed_data.plays_json.to_json(orient="records")
     

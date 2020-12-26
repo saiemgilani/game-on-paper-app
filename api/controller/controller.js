@@ -187,18 +187,6 @@ async function retrievePBP(req, res) {
             var endClock = (nextPlay != null) ? nextPlay.clock.displayValue : "0:00"
             plays[i].end.TimeSecsRem = calculateHalfSecondsRemaining(endPeriod, endClock)
             plays[i].end.adj_TimeSecsRem = calculateGameSecondsRemaining(endPeriod, plays[i].end.TimeSecsRem)
-
-            // if (calculateGameSecondsRemaining(plays[i].period, calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)) <= 30 && (nextPlay == null || calculateGameSecondsRemaining(nextPlay, calculateHalfSecondsRemaining(nextPlay.period, nextPlay.clock.displayValue)) <= 0)) {
-            //     if (plays[i].start.team.id == homeTeamId && plays[i].homeScore > plays[i].awayScore) {
-            //         wpEnd = 1.0
-            //     } else if (!(plays[i].start.team.id == homeTeamId) && plays[i].homeScore < plays[i].awayScore) {
-            //         wpEnd = 1.0
-            //     } else {
-            //         wpEnd = 0.0
-            //     }
-            // }
-            // plays[i].winProbability.after = wpEnd
-            // plays[i].winProbability.added = plays[i].winProbability.after - plays[i].winProbability.before
         }
 
         timeouts[homeTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period <= 2).map(p => parseInt(p.id))
@@ -220,8 +208,9 @@ async function retrievePBP(req, res) {
             p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
         });
         
-        plays = await calculateEPA(plays, homeTeamId)
-        plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
+        // plays = await calculateEPA(plays, homeTeamId)
+        // plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
+        plays = await processPlays(plays, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;
@@ -315,7 +304,6 @@ function calculateHalfSecondsRemaining(period, time) {
 
     return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
 }
-
 
 function calculateGameSecondsRemaining(period, halfSeconds) {
     if (period <= 2) {
