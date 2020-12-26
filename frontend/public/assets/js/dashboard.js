@@ -194,12 +194,17 @@ if (gameData.plays.length > 0) {
         console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
     }
 
-    var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
-    var awayTeamWP = gameData.plays.map(p => ((p.start.team.id == awayTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
+    var homeTeamWP = gameData.plays.map(p => {
+        if (p.start.team.id == homeTeam.id && !p.playType.includes("Kickoff")) {
+            return translateWP(p.winProbability.before)
+        } else {
+            return translateWP(1.0 - p.winProbability.before)
+        }
+    });
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == homeTeam.id)).map(p => p.expectedPoints.added));
+    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == homeTeam.id)).map(p => ((p.playType.includes("Kickoff")) ? (-1 * p.expectedPoints.added) : p.expectedPoints.added)));
     var homePlays = [...Array(homeTeamEPA.length).keys()]
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == awayTeam.id)).map(p => p.expectedPoints.added));
+    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == awayTeam.id)).map(p => ((p.playType.includes("Kickoff")) ? (-1 * p.expectedPoints.added) : p.expectedPoints.added)));
     var awayPlays = [...Array(awayTeamEPA.length).keys()]
 
     var finalPlays = homePlays;
@@ -214,11 +219,9 @@ if (gameData.plays.length > 0) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
             timestamps.push(0)
             homeTeamWP.push(translateWP(1.0))
-            awayTeamWP.push(translateWP(0.0))
         } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
             timestamps.push(0)
             homeTeamWP.push(translateWP(0.0))
-            awayTeamWP.push(translateWP(1.0))
         }
     }
 
