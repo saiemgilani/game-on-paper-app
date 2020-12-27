@@ -62,9 +62,13 @@ app.get('/cfb/game/:gameId', async function(req, res, next) {
             throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
         }
 
-        return res.render('pages/game', {
-            gameData: data
-        });
+        if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+            return res.json(data);
+        } else {
+            return res.render('pages/game', {
+                gameData: data
+            });
+        }
     } catch(err) {
         return next(err)
     }
