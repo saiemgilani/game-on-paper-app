@@ -272,19 +272,19 @@ function calculateGEI(plays, homeTeamId) {
             let offWP = play != null ? play.winProbability.before : 0.0
             let defWP = 1.0 - offWP
             
-            let homeWP = (play.start.team.id == homeTeamId) ? offWP : defWP
+            let homeWP = (play.pos_team == homeTeamId) ? offWP : defWP
             return homeWP
         }
         
         var finalWP = 0
         if (play.homeScore > play.awayScore) {
-            if (play.start.team != null && play.start.team.id == homeTeamId) {
+            if (play.pos_team == homeTeamId) {
                 finalWP = 1.0
             } else {
                 finalWP = 0.0
             }
         } else {
-            if (play.start.team != null && play.start.team.id == homeTeamId) {
+            if (play.pos_team == homeTeamId) {
                 finalWP = 0.0
             } else {
                 finalWP = 1.0
