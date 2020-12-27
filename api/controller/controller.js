@@ -156,6 +156,11 @@ async function retrievePBP(req, res) {
         var firstHalfKickTeamId = (drives.length > 0) ? drives[0].plays[0].start.team.id : null
         var plays = [];
         if (drives.length > 0) {
+            drives.forEach(d => {
+                d.plays.forEach(p => {
+                    p.driveId = parseFloat(d.id);
+                })
+            })
             plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
         }
 
