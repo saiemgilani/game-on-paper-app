@@ -345,7 +345,7 @@ async function processPlays(plays, homeTeamSpread, homeTeamId, awayTeamId, first
         for (var i = 0; i < finalPlaysData.length; i += 1) {
             if (i == 0) {
                 var startWP = adjustSpreadWP(homeTeamSpread)
-                if (finalPlaysData[i].end.team != null && finalPlaysData[i].end.team.id == homeTeamId) {
+                if (finalPlaysData[i].pos_team == homeTeamId) {
                     finalPlaysData[i].winProbability.before = startWP
                 } else {
                     finalPlaysData[i].winProbability.before = 1.0 - startWP
