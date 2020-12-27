@@ -129,5 +129,12 @@ app.listen(port, () => {
 
 app.use(function (err, req, res, next) {
     debuglog(err.stack)
-    return res.status(500).send(err.message)
+    if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+        return res.status(500).json({
+            status: 500,
+            message: err.message
+        });
+    } else {
+        return res.status(500).send(err.message)
+    }
 })
