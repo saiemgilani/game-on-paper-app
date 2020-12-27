@@ -1648,21 +1648,21 @@ class PlayProcess(object):
         pass_box = self.plays_json[self.plays_json["pass"] == 1]
         rush_box = self.plays_json[self.plays_json.rush == 1]
 
-        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"]).agg(
+        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"],as_index=False).agg(
             Yds= ('yds_receiving',sum),
             EPA= ('EPA', sum),
             WPA= ('wpa', sum)
         )
         passer_box = passer_box.replace({np.nan: None})
 
-        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"]).agg(
+        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"],as_index=False).agg(
             Yds= ('yds_rushed',sum),
             EPA= ('EPA', sum),
             WPA= ('wpa', sum)
         )
         rusher_box = rusher_box.replace({np.nan: None})
 
-        receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"]).agg(
+        receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"],as_index=False).agg(
             Yds= ('yds_receiving',sum),
             EPA= ('EPA', sum),
             WPA= ('wpa', sum)
