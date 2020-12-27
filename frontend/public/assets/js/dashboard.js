@@ -334,10 +334,19 @@ if (gameData.plays.length > 0) {
                         ticks: {
                             suggestedMax: 1.0,
                             suggestedMin: -1.0,
-                            stepSize: 0.25,
+                            stepSize: 0.5,
                             
                             callback: function(value, index, values) {
-                                return (Math.round(Math.abs(value * 100) * 100) / 100) + '%'
+                                // return (Math.round(Math.abs(value * 100) * 100) / 100) + '%'
+                                if (value > 0) {
+                                    let transVal = baseTranslate(value, 0.0, 1.0, 50, 100); 
+                                    return (Math.round(Math.abs(transVal) * 100) / 100) + '%'
+                                } else if (value < 0) {
+                                    let transVal = baseTranslate(value, -1.0, 0.0, 100, 50); 
+                                    return (Math.round(Math.abs(transVal) * 100) / 100) + '%'
+                                } else {
+                                    return "50%";
+                                }
                             }
                         },
                         scaleLabel: {
