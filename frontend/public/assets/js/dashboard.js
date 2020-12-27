@@ -223,6 +223,8 @@ if (gameData.plays.length > 0) {
     //adding custom chart type
     // https://stackoverflow.com/questions/36916867/chart-js-line-different-fill-color-for-negative-point
     // https://stackoverflow.com/questions/52120036/chartjs-line-color-between-two-points
+    // https://stackoverflow.com/questions/63107181/drawing-images-on-top-of-graph-doesnt-work-with-chartjs
+    // https://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen/8001254
     Chart.defaults.NegativeTransparentLine = Chart.helpers.clone(Chart.defaults.line);
     Chart.controllers.NegativeTransparentLine = Chart.controllers.line.extend({
         update: function () {
@@ -271,6 +273,39 @@ if (gameData.plays.length > 0) {
                 this.chart.data.datasets[i].pointHoverBackgroundColor = gradientStroke;
             }
             return Chart.controllers.line.prototype.update.apply(this, arguments);
+        },
+        draw: function(ease) {
+            // call the parent draw method (inheritance in javascript, whatcha gonna do?)
+            var ctx = this.chart.ctx;                                         // get the context
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            var sizeWidth = ctx.canvas.clientWidth;
+            var sizeHeight = ctx.canvas.clientHeight;
+            if (this.homeTeamImage) {                                       // if the image is loaded
+                ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (75.0/4.0), 75, 75);             // draw it - ~145 px per half
+            }
+
+            if (this.awayTeamImage) {                                    // if the image is loaded
+                ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (75.0/2.0), 75, 75);             // draw it - ~145 px per half
+            }
+            ctx.restore();
+            Chart.controllers.line.prototype.draw.call(this, ease);
+        },
+        initialize: function(chart, datasetIndex) {                     // override initialize too to preload the image, the image doesn't need to be outside as it is only used by this chart
+            Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
+            var homeImage = new Image();
+            homeImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+            homeImage.onload = () => {                                            // when the image loads
+                this.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
+                chart.render();                                                 // and force re-render to include it
+            };
+
+            var awayImage = new Image();
+            awayImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+            awayImage.onload = () => {                                            // when the image loads
+                this.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
+                chart.render();                                                 // and force re-render to include it
+            };
         }
     });
 
