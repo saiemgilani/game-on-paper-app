@@ -368,6 +368,17 @@ class PlayProcess(object):
         play_df = play_df.sort_values(by="id", ascending=True)
         play_df["start.team.id"] = play_df["start.team.id"].astype(int)
         play_df["end.team.id"] = play_df["end.team.id"].astype(int)
+        play_df["period"] = play_df["period"].astype(int)
+
+        play_df['half'] = np.where(
+            play_df.period <= 2,
+            1,
+            2
+        )
+        play_df['lead_half'] = play_df.half.shift(-1)
+        play_df.loc[play_df.lead_half.isna() == True, 'lead_half'] = 2
+        play_df['end_of_half'] = (play_df.half != play_df.lead_half)
+
         play_df['down_1'] = (play_df["start.down"] == 1)
         play_df['down_2'] = (play_df["start.down"] == 2)
         play_df['down_3'] = (play_df["start.down"] == 3)
@@ -732,6 +743,18 @@ class PlayProcess(object):
         play_df['pos_score_diff_start'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff)
 
         play_df['pos_team_receives_2H_kickoff'] = (play_df.pos_team == self.firstHalfKickoffTeamId)
+
+                #-- Change of pos_team by lead('pos_team', 1)----
+        play_df['change_of_pos_team'] = np.where(
+            (play_df.pos_team == play_df.lead_pos_team) & (~(play_df.lead_play_type.isin(["End Period", "End of Half"])) | play_df.lead_play_type.isna() == True),
+            False,
+            np.where(
+                (play_df.pos_team == play_df.lead_pos_team2) & ((play_df.lead_play_type.isin(["End Period", "End of Half"])) | play_df.lead_play_type.isna() == True),
+                False,
+                True
+            )
+        )
+        play_df['change_of_pos_team'] = np.where(play_df['change_of_poss'].isna(), False, play_df['change_of_pos_team'])
 
         return play_df
     
@@ -1387,18 +1410,76 @@ class PlayProcess(object):
         play_df['WP_start'] = WP_start
         play_df['WP_end'] = WP_end
 
-        play_df.iloc[-1]['WP_end'] = np.select([
-            (play_df.is_home == True) & (play_df.homeScore > play_df.awayScore),
-            (play_df.is_home == False) & (play_df.homeScore < play_df.awayScore),
-            (play_df.is_home == True) & (play_df.homeScore < play_df.awayScore),
-            (play_df.is_home == False) & (play_df.homeScore > play_df.awayScore)
-        ],
-        [
-            1.0,
-            1.0,
-            0.0,
-            0.0
-        ], default = play_df.WP_end)
+        play_df['lead_wp_before'] = play_df['WP_start'].shift(-1)
+        play_df['lead_wp_before2'] = play_df['WP_start'].shift(-2)
+
+        # base wpa
+        play_df['wp_base'] = play_df.lead_wp_before - play_df.wp_before
+        play_df['wpa_base_nxt'] = play_df.lead_wp_before2 - play_df.wp_before
+        play_df['wpa_base_ind'] = (play_df.pos_team == play_df.lead_pos_team)
+        play_df['wpa_base_nxt_ind'] = (play_df.pos_team == play_df.lead_pos_team2)
+
+        # account for turnover
+        play_df['wpa_change'] = (1 - play_df.lead_wp_before) - play_df.wp_before
+        play_df['wpa_change_nxt'] = (1 - play_df.lead_wp_before2) - play_df.wp_before
+        play_df['wpa_change_ind'] = (play_df.pos_team != play_df.lead_pos_team)
+        play_df['wpa_change_nxt_ind'] = (play_df.pos_team != play_df.lead_pos_team2)
+
+        play_df['wpa_half_end'] = np.where(
+            (play_df.end_of_half == 1) & (play_df.wpa_base_nxt_ind == 1) & (play_df.playType != "Timeout"),
+            play_df.wpa_base_nxt,
+            np.where(
+                ((play_df.end_of_half == 1) & (play_df.wpa_change_nxt_ind == 1) & (play_df.playType != "Timeout")),
+                    play_df.wpa_change_nxt,
+                    np.where(
+                        ((play_df.end_of_half == 1) & (play_df.pos_team_receives_2H_kickoff == 0) & (play_df.playType == "Timeout")),
+                        play_df.wpa_base,
+                        np.where(
+                            (play_df.wpa_change_ind == 1),
+                            play_df.wpa_change,
+                            play_df.wpa_base
+                        )
+                    )
+            )
+        )
+
+        play_df['WPA'] = np.where(
+            (play_df.end_of_half == 1) & (play_df.play_type != "Timeout"), 
+            play_df.wpa_half_end, 
+            np.where(
+                play_df.lead_play_type.isin(["End Period", "End of Half"]) & (play_df.change_of_pos_team == 0),
+                play_df.wpa_base_nxt,
+                np.where(
+                    play_df.lead_play_type.isin(["End Period", "End of Half"]) & (play_df.change_of_pos_team == 1),
+                    play_df.wpa_change_nxt,
+                    np.where(play_df.wpa_change_ind == 1, play_df.wpa_change, play_df.wpa_base)
+                )
+            )
+        )
+
+
+        play_df['wp_after'] = play_df.wp_before + play_df.wpa,
+        play_df['def_wp_after'] = 1 - play_df.wp_after,
+        play_df['home_wp_after'] = np.where(play_df.pos_team == self.homeTeamId,
+                        play_df.home_wp_before + play_df.wpa,
+                        play_df.home_wp_before - play_df.wpa),
+        play_df['away_wp_after'] = np.where(play_df.pos_team != self.homeTeamId,
+                        play_df.away_wp_before + play_df.wpa,
+                        play_df.away_wp_before - play_df.wpa),
+
+
+        # play_df.iloc[-1]['WP_end'] = np.select([
+        #     (play_df.is_home == True) & (play_df.homeScore > play_df.awayScore),
+        #     (play_df.is_home == False) & (play_df.homeScore < play_df.awayScore),
+        #     (play_df.is_home == True) & (play_df.homeScore < play_df.awayScore),
+        #     (play_df.is_home == False) & (play_df.homeScore > play_df.awayScore)
+        # ],
+        # [
+        #     1.0,
+        #     1.0,
+        #     0.0,
+        #     0.0
+        # ], default = play_df.WP_end)
 
         play_df['WPA'] = play_df['WP_end'] - play_df['WP_start']
         return play_df
