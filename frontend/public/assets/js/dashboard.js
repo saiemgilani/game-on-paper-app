@@ -194,27 +194,10 @@ if (gameData.plays.length > 0) {
         console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
     }
 
-    var homeTeamWP = gameData.plays.map(p => {
-        if (p.start.team.id == homeTeam.id && !p.playType.includes("Kickoff")) {
-            return translateWP(p.winProbability.before)
-        } else if (p.end.team.id == homeTeam.id && p.playType.includes("Kickoff")) {
-            return translateWP(p.winProbability.before)
-        } else {
-            return translateWP(1.0 - p.winProbability.before)
-        }
-    });
+    var homeTeamWP = gameData.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == homeTeam.id)).map(p => ((p.playType.includes("Kickoff")) ? (-1 * p.expectedPoints.added) : p.expectedPoints.added)));
-    var homePlays = [...Array(homeTeamEPA.length).keys()]
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == awayTeam.id)).map(p => ((p.playType.includes("Kickoff")) ? (-1 * p.expectedPoints.added) : p.expectedPoints.added)));
-    var awayPlays = [...Array(awayTeamEPA.length).keys()]
-
-    var finalPlays = homePlays;
-    if (homePlays.length > awayPlays.length) {
-        finalPlays = homePlays;
-    } else {
-        finalPlays = awayPlays;
-    }
+    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
 
     // handle end of game
     if (gameData.gameInfo.status.type.completed == true) {
@@ -350,14 +333,13 @@ if (gameData.plays.length > 0) {
         var epCtx = document.getElementById('epChart')
             // eslint-disable-next-line no-unused-vars
         var epChart = new Chart(epCtx, {
-            type: 'line',
+            type: 'scatter',
             data: {
-                labels: finalPlays,
                 datasets: [
                     {
                         data: homeTeamEPA,
+                        showLine: true,
                         fill: false,
-                        lineTension: 0,
                         label: homeTeam.abbreviation,
                         backgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`],
                         borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
@@ -370,8 +352,8 @@ if (gameData.plays.length > 0) {
                     },
                     {
                         data: awayTeamEPA,
+                        showLine: true,
                         fill: false,
-                        lineTension: 0,
                         label: awayTeam.abbreviation,
                         backgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`],
                         borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
@@ -385,6 +367,7 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
+                showLine: true,
                 responsive: true,
                 legend: {
                     display: true
