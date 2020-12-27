@@ -374,6 +374,15 @@ if (gameData.plays.length > 0) {
             }
         })
 
+        // document.getElementById("wp-download").addEventListener('click', function() {
+        //     /*Get image of canvas element*/
+        //     var url_base64jp = wpChart.toBase64Image();
+        //     /*get download button (tag: <a></a>) */
+        //     var a =  document.getElementById("wp-download");
+        //     /*insert chart image url to download button (tag: <a></a>) */
+        //     a.href = url_base64jp;
+        // });
+
         var epCtx = document.getElementById('epChart')
             // eslint-disable-next-line no-unused-vars
         var epChart = new Chart(epCtx, {
@@ -453,5 +462,14 @@ if (gameData.plays.length > 0) {
                 }
             }
         })
+
+        document.getElementById("ep-download").addEventListener('click', function() {
+            /*Get image of canvas element*/
+            var url_base64jp = epChart.toBase64Image();
+            /*get download button (tag: <a></a>) */
+            var a =  document.getElementById("ep-download");
+            /*insert chart image url to download button (tag: <a></a>) */
+            a.href = url_base64jp;
+        });
     })()
 }

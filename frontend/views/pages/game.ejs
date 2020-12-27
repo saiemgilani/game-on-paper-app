@@ -153,8 +153,10 @@ stat_key_title_mapping = {
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
-                            <% } %>Spread: <%= printSpread() %> | 
-                            <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                            <% } %>Spread: <%= printSpread() %>
+                            <!-- can't offer download button here because of canvas security issues -->
+                             <!-- | 
+                            <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p> -->
                     </div>
                     <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
                 </main>
@@ -669,29 +671,6 @@ stat_key_title_mapping = {
             } else {
                 document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             }
-        }
-
-        if (gameData.plays.length > 0) {
-            // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
-            //Download Chart Image
-            document.getElementById("wp-download").addEventListener('click', function() {
-                /*Get image of canvas element*/
-                var url_base64jp = document.getElementById("wpChart").toDataURL("image/jpg");
-                /*get download button (tag: <a></a>) */
-                var a =  document.getElementById("wp-download");
-                /*insert chart image url to download button (tag: <a></a>) */
-                a.href = url_base64jp;
-            });
-
-            // //Download Chart Image
-            document.getElementById("ep-download").addEventListener('click', function() {
-                /*Get image of canvas element*/
-                var url_base64jp = document.getElementById("epChart").toDataURL("image/jpg");
-                /*get download button (tag: <a></a>) */
-                var a =  document.getElementById("ep-download");
-                /*insert chart image url to download button (tag: <a></a>) */
-                a.href = url_base64jp;
-            });
         }
       </script>
     </script>
