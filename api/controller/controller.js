@@ -239,7 +239,9 @@ async function retrievePBP(req, res) {
         plays = processedGame["records"];
         // debuglog(plays)
         pbp.boxScore = processedGame["box_score"];
+        // debuglog(typeof pbp.boxScore)
         // debuglog(pbp.boxScore)
+        
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;

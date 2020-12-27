@@ -4,6 +4,7 @@ import numpy as np
 import xgboost as xgb
 import re
 from flask_logs import LogSetup
+import json
 
 ep_class_to_score_mapping = {
     0: 7,
@@ -1705,9 +1706,9 @@ class PlayProcess(object):
         receiver_box = receiver_box.replace({np.nan: None})
 
         return {
-            "pass" : passer_box.to_dict(orient="records"),
-            "rush" : rusher_box.to_dict(orient="records"),
-            "receiver" : receiver_box.to_dict(orient="records")
+            "pass" : json.loads(passer_box.to_json(orient="records")),
+            "rush" : json.loads(rusher_box.to_json(orient="records")),
+            "receiver" : json.loads(receiver_box.to_json(orient="records"))
         }
         
     def run_processing_pipeline(self):
