@@ -82,9 +82,9 @@ def process():
         }
 
         record["winProbability"] = {
-            "before" : record["WP_start"],
-            "after" : record["WP_end"],
-            "added" : record["WPA"]
+            "before" : record["wp_before"],
+            "after" : record["wp_after"],
+            "added" : record["wpa"]
         }
 
         record["start"] = {

@@ -159,16 +159,16 @@ async function retrievePBP(req, res) {
             plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
         }
 
-        plays.sort((a, b) => {
-            var diff = parseInt(a.id) - parseInt(b.id)
-            if (diff < 0) {
-                return -1
-            } else if (diff == 0) {
-                return 0
-            } else {
-                return 1
-            }
-        });
+        // plays.sort((a, b) => {
+        //     var diff = parseInt(a.id) - parseInt(b.id)
+        //     if (diff < 0) {
+        //         return -1
+        //     } else if (diff == 0) {
+        //         return 0
+        //     } else {
+        //         return 1
+        //     }
+        // });
         var timeouts = {};
         timeouts[homeTeamId] = {
             "1": [],
@@ -237,7 +237,7 @@ async function retrievePBP(req, res) {
             let boxScore = await retrieveBoxScore(req.params.gameId)
             debuglog("retreived box score data for game " + req.params.gameId)
             pbp.boxScore = boxScore
-            
+
             if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
                 pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
             } else if (pbp.plays[pbp.plays.length - 1].pos_team == awayTeamId && (pbp.plays[pbp.plays.length - 1].homeScore < pbp.plays[pbp.plays.length - 1].awayScore)) {
