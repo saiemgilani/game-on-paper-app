@@ -308,6 +308,7 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
+                responsive: true,
                 legend: false,
                 tooltips: false,
                 scales: {
@@ -384,6 +385,7 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
+                responsive: true,
                 legend: {
                     display: true
                 },
