@@ -189,6 +189,7 @@ async function retrievePBP(req, res) {
         })
         plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
         plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
+        plays.forEach(p => p.gameId = pbp.gameInfo.id)
 
         for (var i = 0; i < plays.length; i += 1) {
             var nextPlay = null
@@ -348,19 +349,6 @@ async function processPlays(plays, homeTeamSpread, homeTeamId, awayTeamId, first
         firstHalfKickoffTeamId: firstHalfKickTeamId
     })
     let finalPlaysData = response.data.records;
-    // debuglog(finalPlaysData[36])
-    if (finalPlaysData.length > 0) {
-        for (var i = 0; i < finalPlaysData.length; i += 1) {
-            if (i == 0) {
-                var startWP = adjustSpreadWP(homeTeamSpread)
-                if (finalPlaysData[i].pos_team == homeTeamId) {
-                    finalPlaysData[i].winProbability.before = startWP
-                } else {
-                    finalPlaysData[i].winProbability.before = 1.0 - startWP
-                }
-            }
-        }
-    }
     return finalPlaysData;
 }
 
