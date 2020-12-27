@@ -463,12 +463,12 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                         <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
@@ -514,13 +514,13 @@ stat_key_title_mapping = {
                                             period = `Q${play.period} ${play.clock.displayValue}`;
                                         }
 
-                                        var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                        var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                        var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                        var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
 
                                         var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                     %>
                                     <td align="left"><%= period %></td>
-                                    <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
+                                    <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                     <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                     
                                     <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
@@ -566,13 +566,13 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
 
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                         <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
@@ -625,13 +625,13 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
 
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                         <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         
