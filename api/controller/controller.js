@@ -237,6 +237,14 @@ async function retrievePBP(req, res) {
             let boxScore = await retrieveBoxScore(req.params.gameId)
             debuglog("retreived box score data for game " + req.params.gameId)
             pbp.boxScore = boxScore
+            
+            if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
+                pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
+            } else if (pbp.plays[pbp.plays.length - 1].pos_team == awayTeamId && (pbp.plays[pbp.plays.length - 1].homeScore < pbp.plays[pbp.plays.length - 1].awayScore)) {
+                pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
+            } else {
+                pbp.plays[pbp.plays.length - 1].winProbability.after = 0.0
+            }
 
             pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
         }
