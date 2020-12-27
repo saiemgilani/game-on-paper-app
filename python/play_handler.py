@@ -191,6 +191,7 @@ class PlayProcess(object):
     awayTeamId = 0
     firstHalfKickoffTeamId = 0
     logger = None
+    ran_pipeline = False
 
     def __init__(self, logger = None, json_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
         self.plays_json = pd.json_normalize(json_data)
@@ -199,6 +200,7 @@ class PlayProcess(object):
         self.awayTeamId = int(awayTeam)
         self.firstHalfKickoffTeamId = int(firstHalfKickoffTeam)
         self.logger = logger
+        self.ran_pipeline = False
 
     def __setup_penalty_data__(self, play_df):
         #     #-- 'Penalty' in play text ----
@@ -1639,11 +1641,49 @@ class PlayProcess(object):
 
         return play_df
 
+    def create_box_score(self):
+        if (self.ran_pipeline == False):
+            self.run_processing_pipeline()
+        # have to run the pipeline before pulling this in
+        pass_box = self.plays_json[self.plays_json["pass"] == 1]
+        rush_box = self.plays_json[self.plays_json.rush == 1]
+
+        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"]).agg(
+            Yds= ('yds_receiving',sum),
+            EPA= ('EPA', sum),
+            WPA= ('wpa', sum)
+        )
+        passer_box = passer_box.replace({np.nan: None})
+
+        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"]).agg(
+            Yds= ('yds_rushed',sum),
+            EPA= ('EPA', sum),
+            WPA= ('wpa', sum)
+        )
+        rusher_box = rusher_box.replace({np.nan: None})
+
+        receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"]).agg(
+            Yds= ('yds_receiving',sum),
+            EPA= ('EPA', sum),
+            WPA= ('wpa', sum)
+        )
+        receiver_box = receiver_box.replace({np.nan: None})
+
+        return {
+            "pass" : passer_box.to_dict(orient="records"),
+            "rush" : rusher_box.to_dict(orient="records"),
+            "receiver" : receiver_box.to_dict(orient="records")
+        }
         
     def run_processing_pipeline(self):
-        self.plays_json = self.__clean_pbp_data__(self.plays_json)
-        self.plays_json = self.__add_yardage_cols__(self.plays_json)
-        self.plays_json = self.__add_player_cols__(self.plays_json)
-        self.plays_json = self.__process_epa__(self.plays_json)
-        self.plays_json = self.__process_wpa__(self.plays_json)
+        if (self.ran_pipeline == False):
+            self.plays_json = self.__clean_pbp_data__(self.plays_json)
+            self.plays_json = self.__add_yardage_cols__(self.plays_json)
+            self.plays_json = self.__add_player_cols__(self.plays_json)
+            self.plays_json = self.__process_epa__(self.plays_json)
+            self.plays_json = self.__process_wpa__(self.plays_json)
+            self.plays_json = self.plays_json.replace({np.nan: None})
+            self.ran_pipeline = True
+        else:
+            self.logger.info("Already ran pipeline for this game. Doing nothing.")
         return self.plays_json

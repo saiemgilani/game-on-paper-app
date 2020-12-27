@@ -35,11 +35,6 @@ def after_request(response):
     )
     return response
 
-@app.route('/box', methods=['POST'])
-def box():
-    # base_data = request.get_json(force=True)['gameId']
-    return jsonify({})
-
 @app.route('/cfb/process', methods=['POST'])
 def process():
     base_data = request.get_json(force=True)['data']
@@ -51,7 +46,9 @@ def process():
     processed_data = PlayProcess(logger = logging.getLogger("root"), json_data=base_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
-    jsonified_df = json.loads(tmp_json) 
+    jsonified_df = json.loads(tmp_json)
+
+    box = processed_data.create_box_score()
     
     bad_cols = [
         'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
@@ -121,10 +118,13 @@ def process():
         for col in bad_cols:
             record.pop(col, None)
 
-    return jsonify({
+    result = {
         "count" : len(jsonified_df),
-        "records" : jsonified_df
-    })
+        "records" : jsonified_df,
+        "box_score" : box
+    }
+    # logging.getLogger("root").info(result)
+    return jsonify(result)
 
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():

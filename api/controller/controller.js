@@ -227,18 +227,19 @@ async function retrievePBP(req, res) {
             p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
         });
         
-        // plays = await calculateEPA(plays, homeTeamId)
-        // plays = await calculateWPA(plays, pbp.homeTeamSpread, homeTeamId, firstHalfKickTeamId);
-        plays = await processPlays(plays, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        const processedGame = await processPlays(plays, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        // debuglog(processedGame)
+        // debuglog(typeof processedGame)
+    
+        plays = processedGame["records"];
+        // debuglog(plays)
+        pbp.boxScore = processedGame["box_score"];
+        // debuglog(pbp.boxScore)
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;
 
         if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
-            let boxScore = await retrieveBoxScore(req.params.gameId)
-            debuglog("retreived box score data for game " + req.params.gameId)
-            pbp.boxScore = boxScore
-
             if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
                 pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
             } else if (pbp.plays[pbp.plays.length - 1].pos_team == awayTeamId && (pbp.plays[pbp.plays.length - 1].homeScore < pbp.plays[pbp.plays.length - 1].awayScore)) {
@@ -255,14 +256,6 @@ async function retrievePBP(req, res) {
         debuglog(err);
         return res.json(err);
     }
-}
-
-async function retrieveBoxScore(gameId) {
-    const res = await axios.post(RDATA_BASE_URL + '/box', {
-        gameId: gameId
-    });
-    // debuglog(res.data)
-    return res.data
 }
 
 function calculateGEI(plays, homeTeamId) {
@@ -341,148 +334,14 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
 }
 
 async function processPlays(plays, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
-    let response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
+    var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
         data: plays,
         homeTeamId: homeTeamId,
         awayTeamId: awayTeamId,
         homeTeamSpread: homeTeamSpread,
         firstHalfKickoffTeamId: firstHalfKickTeamId
     })
-    let finalPlaysData = response.data.records;
-    return finalPlaysData;
-}
-
-// assumes homeTeamSpread is positive number of points
-function adjustSpreadWP(homeTeamSpread) {
-    var result = 0.50
-    var absSpread = Math.abs(homeTeamSpread)
-    // debuglog("abs spread: " + absSpread)
-    switch(absSpread) {
-        case 0:
-            result = 0.50
-            break;
-        case 0.5:
-            result = 0.50
-            break;
-        case 1:
-            result = 0.4880
-            break;
-        case 1.5:
-            result = 0.4660
-            break;
-        case 2:
-            result = 0.4660
-            break;
-        case 2.5:
-            result = 0.4570
-            break;
-        case 3:
-            result = 0.4260
-            break;
-        case 3.5:
-            result = 0.3940
-            break;
-        case 4:
-            result = 0.3810
-            break;
-        case 4.5:
-            result = 0.3690
-            break;
-        case 5:
-            result = 0.3590
-            break;
-        case 5.5:
-            result = 0.3490
-            break;
-        case 6:
-            result = 0.3360
-            break;
-        case 6.5:
-            result = 0.3230 
-            break;  
-        case 7:
-            result = 0.2970 
-            break; 
-        case 7.5:
-            result = 0.2700 
-            break; 
-        case 8:
-            result = 0.2620 
-            break;
-        case 8.5:
-            result = 0.2540
-            break;  
-        case 9:
-            result = 0.2490 
-            break; 
-        case 9.5:
-            result = 0.2450 
-            break; 
-        case 10:
-            result = 0.2260
-            break;
-        case 10.5:
-            result = 0.2080  
-            break; 
-        case 11:
-            result = 0.2010  
-            break; 
-        case 11.5:
-            result = 0.1940
-            break;    
-        case 12:
-            result = 0.1840 
-            break; 
-        case 12.5:
-            result = 0.1740
-            break; 
-        case 13:
-            result = 0.1700 
-            break;
-        case 13.5:
-            result = 0.1650
-            break;
-        case 14:
-            result = 0.1490 
-            break;
-        case 14.5:
-            result = 0.1320 
-            break;
-        case 15:
-            result = 0.1260 
-            break;
-        case 15.5:
-            result = 0.1190 
-            break;
-        case 16:
-            result = 0.1140
-            break;
-        case 16.5:
-            result = 0.1090   
-            break; 
-        case 17:
-            result = 0.0860
-            break;
-        case 17.5:
-            result = 0.0630
-            break;
-        case 18:
-            result = 0.0500
-            break;
-        case 18.5:
-            result = 0.0380
-            break;
-        case 19:
-            result = 0.0270
-            break;
-        case 19.5:
-            result = 0.0160
-            break;
-        default: 
-            result = 0.0001 
-            break; 
-    }
-    return (homeTeamSpread > 0) ? (1.0 - result) : result
+    return response.data;
 }
 
 async function getServiceHealth(req, res) {
