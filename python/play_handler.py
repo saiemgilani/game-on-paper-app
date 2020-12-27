@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import mean
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -203,7 +204,7 @@ class PlayProcess(object):
         self.ran_pipeline = False
 
     def __setup_penalty_data__(self, play_df):
-        #     #-- 'Penalty' in play text ----
+            ##-- 'Penalty' in play text ----
             #-- T/F flag conditions penalty_flag 
         play_df['penalty_flag'] = False
         play_df.loc[(play_df['type.text'] == "penalty"), 'penalty_flag'] = True
@@ -347,7 +348,8 @@ class PlayProcess(object):
             "Missing"
         ], default = None)
         
-        play_df['penalty_text'] = np.where((play_df.penalty_flag == True),
+        play_df['penalty_text'] = np.where(
+            (play_df.penalty_flag == True),
             play_df.text.str.extract(r"Penalty(.+)", flags=re.IGNORECASE)[0],
             None
         )
@@ -361,7 +363,8 @@ class PlayProcess(object):
         play_df['yds_penalty'] = np.where(
             (play_df.penalty_flag == 1) & play_df.text.str.contains(r"ards\)", case=False, regex=True) & play_df.yds_penalty.isna(),
             play_df.text.str.extract(r"(.{0,4})yards\)|Yards\)|yds\)|Yds\)",flags=re.IGNORECASE)[0], 
-            play_df.yds_penalty)
+            play_df.yds_penalty
+        )
         play_df['yds_penalty'] = play_df.yds_penalty.str.replace( "yards\\)|Yards\\)|yds\\)|Yds\\)", "").str.replace( "\\(", "")
         return play_df
 
@@ -437,11 +440,11 @@ class PlayProcess(object):
             | ((play_df["type.text"] == "Fumble Recovery (Opponent)") & play_df["text"].str.contains("sacked"))
             | ((play_df["type.text"] == "Fumble Recovery (Opponent) Touchdown") & play_df["text"].str.contains(r"pass complete|pass incomplete", case=False, flags=0, na=False, regex=True))
             | ((play_df["type.text"] == "Fumble Return Touchdown") & play_df["text"].str.contains(r"pass complete|pass incomplete", case=False, flags=0, na=False, regex=True))
-                | ((play_df["type.text"] == "Fumble Return Touchdown") & play_df["text"].str.contains("sacked"))
+            | ((play_df["type.text"] == "Fumble Return Touchdown") & play_df["text"].str.contains("sacked"))
             ),
             True, False
         )
-        #-- Sacks----
+            #-- Sacks----
         play_df['sack_vec'] = np.where(
             (
                 (play_df["type.text"].isin(["Sack", "Sack Touchdown"]))
@@ -492,7 +495,7 @@ class PlayProcess(object):
         play_df['change_of_poss'] = np.where(play_df["pos_team"] == play_df["lead_pos_team"], False, True)
         play_df['change_of_poss'] = np.where(play_df['change_of_poss'].isna(), 0, play_df['change_of_poss'])
 
-        ## Fix Strip-Sacks to Fumbles----
+            ## Fix Strip-Sacks to Fumbles----
         play_df['type.text'] = np.where(
             (play_df.fumble_vec == 1) 
                 & (play_df["pass"] == 1) 
@@ -741,18 +744,7 @@ class PlayProcess(object):
             default='Defense'
         )
             #--- Lags/Leads play type ----
-        play_df['lag_play_type3'] = play_df['type.text'].shift(3)
-        play_df['lag_play_type2'] = play_df['type.text'].shift(2)
-        play_df['lag_play_type'] = play_df['type.text'].shift(1)
-        
         play_df['lead_play_type'] = play_df['type.text'].shift(-1)
-        play_df['lead_play_type2'] = play_df['type.text'].shift(-2)
-        play_df['lead_play_type3'] = play_df['type.text'].shift(-3)
-
-        play_df['turnover_vec_lag'] = play_df['turnover_vec'].shift(1)
-        play_df['lag_defense_score_play'] = play_df['defense_score_play'].shift(1)
-        play_df['play_after_turnover'] = ((play_df.turnover_vec == True) & (play_df.lag_defense_score_play == True))
-
         #-- Change of pos_team by lead('pos_team', 1)----
         play_df['change_of_pos_team'] = np.where(
             (play_df.pos_team == play_df.lead_pos_team) & (~(play_df.lead_play_type.isin(["End Period", "End of Half"])) | play_df.lead_play_type.isna() == True),
@@ -1382,7 +1374,24 @@ class PlayProcess(object):
             7
         ], default = play_df.EP_end)
 
-        play_df['EPA'] = play_df['EP_end'] - play_df['EP_start']
+        play_df['EPA'] = np.where(
+            (play_df["scoring_play"]==False) & (play_df['end_of_half'] == 1), 
+            -1*play_df['EP_start'], 
+            play_df['EP_end'] - play_df['EP_start']
+        )
+        play_df['def_EPA'] = -1*play_df['EPA']
+        play_df['home_EPA'] = np.where(play_df.pos_team == self.homeTeamId, play_df.EPA, play_df.def_EPA)
+        play_df['away_EPA'] = np.where(play_df.pos_team == self.awayTeamId, play_df.EPA, play_df.def_EPA)
+        play_df['home_EPA_rush'] = np.where((play_df.pos_team == self.homeTeamId) & (play_df.rush == 1), play_df.EPA, play_df.def_EPA)
+        play_df['away_EPA_rush'] = np.where((play_df.pos_team == self.awayTeamId) & (play_df.rush == 1), play_df.EPA, play_df.def_EPA)
+        play_df['home_EPA_pass'] = np.where((play_df.pos_team == self.homeTeamId) & (play_df['pass'] == 1), play_df.EPA, play_df.def_EPA)
+        play_df['away_EPA_pass'] = np.where((play_df.pos_team == self.awayTeamId) & (play_df['pass'] == 1), play_df.EPA, play_df.def_EPA)
+        play_df['EPA_success'] =  np.where(play_df.EPA > 0, True, False)
+        play_df['middle_8'] =  np.where((play_df['start.adj_TimeSecsRem']>=1560) & (play_df['start.adj_TimeSecsRem']<=2040), True, False)
+        play_df['rz_play'] =  np.where(play_df['start.yardsToEndzone']<=20, True, False)
+        play_df['scoring_opp'] =  np.where(play_df['start.yardsToEndzone']<=40, True, False)
+        play_df['stuffed_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed <=0), True, False)
+        
         return play_df
 
     def __process_wpa__(self, play_df):
@@ -1645,26 +1654,52 @@ class PlayProcess(object):
         if (self.ran_pipeline == False):
             self.run_processing_pipeline()
         # have to run the pipeline before pulling this in
+        self.plays_json['completion'] = self.plays_json['completion'].astype(float)
+        self.plays_json['pass_attempt'] = self.plays_json['pass_attempt'].astype(float)
+        self.plays_json['target'] = self.plays_json['target'].astype(float)
+        self.plays_json['yds_receiving'] = self.plays_json['yds_receiving'].astype(float)
+        self.plays_json['yds_rushed'] = self.plays_json['yds_rushed'].astype(float)
+        self.plays_json['rush'] = self.plays_json['rush'].astype(float)
+        self.plays_json['rush_td'] = self.plays_json['rush_td'].astype(float)
+        self.plays_json['pass'] = self.plays_json['pass'].astype(float)
+        self.plays_json['pass_td'] = self.plays_json['pass_td'].astype(float)
+        self.plays_json['EPA'] = self.plays_json['EPA'].astype(float)
+        self.plays_json['wpa'] = self.plays_json['wpa'].astype(float)
+        
         pass_box = self.plays_json[self.plays_json["pass"] == 1]
         rush_box = self.plays_json[self.plays_json.rush == 1]
 
-        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"],as_index=False).agg(
+        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
+            Comp= ('completion', sum),
+            Att= ('pass_attempt',sum),
             Yds= ('yds_receiving',sum),
+            Pass_TD = ('pass_td', sum),
+            YPT= ('yds_receiving', mean),
             EPA= ('EPA', sum),
+            EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
         )
         passer_box = passer_box.replace({np.nan: None})
 
-        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"],as_index=False).agg(
+        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
+            Car= ('rush', sum),
             Yds= ('yds_rushed',sum),
+            Rush_TD = ('rush_td',sum),
+            YPC= ('yds_rushed', mean),
             EPA= ('EPA', sum),
+            EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
         )
         rusher_box = rusher_box.replace({np.nan: None})
 
-        receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"],as_index=False).agg(
+        receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"], as_index=False).agg(
+            Rec= ('completion', sum),
+            Tar= ('target',sum),
             Yds= ('yds_receiving',sum),
+            Rec_TD = ('pass_td', sum),
+            YPT= ('yds_receiving', mean),
             EPA= ('EPA', sum),
+            EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
         )
         receiver_box = receiver_box.replace({np.nan: None})
