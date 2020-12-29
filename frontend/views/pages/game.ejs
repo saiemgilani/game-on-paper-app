@@ -123,7 +123,7 @@ stat_key_title_mapping = {
                 <a href="#wpChart" class="p-2 link-secondary">WP Chart</a>
                 <a href="#epChart" class="p-2 link-secondary">EPA Chart</a>
                 <% if (gameData.gameInfo.status.type.completed == true) { %>
-                    <a class="p-2 link-secondary" href="#box-score">Box Score</a>
+                    <!-- <a class="p-2 link-secondary" href="#box-score">Box Score</a> -->
                 <% } %>
                 <a href="#big-plays" class="p-2 link-secondary">Big Plays</a>
                 <a href="#most-imp-plays" class="p-2 link-secondary">Most Important Plays</a>
@@ -170,20 +170,6 @@ stat_key_title_mapping = {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.completed == true) { %>
-        <div class="row mb-3">
-            <div class="px-md-4">
-                <h2 id="box-score">Advanced Box Score</h2>
-                <p class="text-small">Data from CollegeFootballData.com. <i>Note: Does not include garbage time.</i></p>
-            </div>
-            <% if (gameData.boxScore != null) { %>
-                <pre><%- JSON.stringify(gameData.boxScore, null, 2) %></pre>
-            <% } else { %>
-                <p class="col-md-12 text-center text-muted">No box score data for this game.</p>
-            <% } %>
-        </div>
-        <% } %>
-
         <%
             var bigPlays = [...gameData.plays]
             bigPlays.sort((a, b) => {
