@@ -29,9 +29,18 @@ app.get('/cfb', async function(req, res, next) {
         if (response.data == null) {
             throw Error(`Data not available for /cfb/games. An internal service may be down.`)
         }
-        // debuglog(response.data)
+        let espnData = response.data;
+        var gameList = (espnData.events != null) ? espnData.events : [];
+        gameList = gameList.filter(g => {
+            const gameComp = g.competitions[0];
+            const homeComp = gameComp.competitors[0];
+            const awayComp = gameComp.competitors[1];
+
+            return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
+        })
+
         return res.render('pages/index', {
-            scoreboard: (response.data != null && response.data.events != null) ? response.data.events : []
+            scoreboard: gameList
         });
     } catch(err) {
         return next(err)
@@ -53,9 +62,13 @@ app.get('/cfb/game/:gameId', async function(req, res, next) {
             throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
         }
 
-        return res.render('pages/game', {
-            gameData: data
-        });
+        if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+            return res.json(data);
+        } else {
+            return res.render('pages/game', {
+                gameData: data
+            });
+        }
     } catch(err) {
         return next(err)
     }
@@ -116,5 +129,12 @@ app.listen(port, () => {
 
 app.use(function (err, req, res, next) {
     debuglog(err.stack)
-    return res.status(500).send(err.message)
+    if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+        return res.status(500).json({
+            status: 500,
+            message: err.message
+        });
+    } else {
+        return res.status(500).send(err.message)
+    }
 })

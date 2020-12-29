@@ -123,20 +123,21 @@ stat_key_title_mapping = {
                 <a href="#wpChart" class="p-2 link-secondary">WP Chart</a>
                 <a href="#epChart" class="p-2 link-secondary">EPA Chart</a>
                 <% if (gameData.gameInfo.status.type.completed == true) { %>
-                    <a class="p-2 link-secondary" href="#box-score">Box Score</a>
+                    <!-- <a class="p-2 link-secondary" href="#box-score">Box Score</a> -->
                 <% } %>
                 <a href="#big-plays" class="p-2 link-secondary">Big Plays</a>
                 <a href="#most-imp-plays" class="p-2 link-secondary">Most Important Plays</a>
                 <a href="#scoring-plays" class="p-2 link-secondary">Scoring Plays</a>
                 <a href="#all-plays" class="p-2 link-secondary">All Plays</a>
                 <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
+                <a class="p-2 link-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a>
             </nav>
         </div>
     </div>
     <div class="container-fluid">
         <% if (gameData.plays.length > 0) { %>
             <div class="row mb-3">
-                <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
+                <main class="ms-sm-auto col-lg-6 px-md-4">
                     <div>
                         <h1 class="h2">Win Probability</h1>
                         <%
@@ -153,12 +154,14 @@ stat_key_title_mapping = {
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
-                            <% } %>Spread: <%= printSpread() %> | 
-                            <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
+                            <% } %>Spread: <%= printSpread() %>
+                            <!-- can't offer download button here because of canvas security issues -->
+                             <!-- | 
+                            <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p> -->
                     </div>
                     <canvas class="my-4 w-100" id="wpChart" width="900" height="380"></canvas>
                 </main>
-                <main class="col-md-6 ms-sm-auto col-lg-6 px-md-4">
+                <main class="ms-sm-auto col-lg-6 px-md-4">
                     <div>
                         <h1 class="h2">Expected Points</h1>
                         <p class="text-small"><a id="ep-download" download="game-ep-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
@@ -167,243 +170,6 @@ stat_key_title_mapping = {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.completed == true) { %>
-        <div class="row mb-3">
-            <div class="px-md-4">
-                <h2 id="box-score">Advanced Box Score</h2>
-                <p class="text-small">Data from CollegeFootballData.com. <i>Note: Does not include garbage time.</i></p>
-            </div>
-            <% if (gameData.boxScore != null && gameData.boxScore.length > 0) { %>
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["ppa_plays","ppa_overall_total","ppa_overall_quarter1","ppa_overall_quarter2","ppa_overall_quarter3","ppa_overall_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-responsive">
-                        <% var columns = ["ppa_passing_total","ppa_passing_quarter1","ppa_passing_quarter2","ppa_passing_quarter3","ppa_passing_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-responsive">
-                        <% var columns = ["ppa_rushing_total","ppa_rushing_quarter1","ppa_rushing_quarter2","ppa_rushing_quarter3","ppa_rushing_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["success_rates_overall_total","success_rates_overall_quarter1","success_rates_overall_quarter2","success_rates_overall_quarter3","success_rates_overall_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-    
-                    <div class="table-responsive">
-                        <% var columns = ["success_rates_standard_downs_total","success_rates_standard_downs_quarter1","success_rates_standard_downs_quarter2","success_rates_standard_downs_quarter3","success_rates_standard_downs_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-    
-                    <div class="table-responsive">
-                        <% var columns = ["success_rates_passing_downs_total","success_rates_passing_downs_quarter1","success_rates_passing_downs_quarter2","success_rates_passing_downs_quarter3","success_rates_passing_downs_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["explosiveness_overall_total","explosiveness_overall_quarter1","explosiveness_overall_quarter2","explosiveness_overall_quarter3","explosiveness_overall_quarter4"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-responsive">
-                        <% var columns = ["rushing_power_success","rushing_stuff_rate","rushing_line_yds","rushing_second_lvl_yds","rushing_open_field_yds"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-responsive">
-                        <% var columns = ["havoc_total","havoc_front_seven","havoc_db","scoring_opps_opportunities","scoring_opps_points","scoring_opps_pts_per_opp","field_pos_avg_start","field_pos_avg_starting_predicted_pts"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
-                                    <% gameData.boxScore.map(group => group.team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.boxScore.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            <% } else { %>
-                <p class="col-md-12 text-center text-muted">No box score data for this game.</p>
-            <% } %>
-        </div>
-        <% } %>
-
         <%
             var bigPlays = [...gameData.plays]
             bigPlays.sort((a, b) => {
@@ -463,12 +229,13 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
@@ -513,12 +280,14 @@ stat_key_title_mapping = {
                                             period = `Q${play.period} ${play.clock.displayValue}`;
                                         }
 
-                                        var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                        var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                        var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                        var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+
+                                        var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                     %>
                                     <td align="left"><%= period %></td>
-                                    <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                    <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                    <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                    <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                     
                                     <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
                                     <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
@@ -529,7 +298,7 @@ stat_key_title_mapping = {
                     </table>
                 </div>
                 <% } else { %>
-                    <p class="text-center text-muted">No big plays listed for this game.</p>
+                    <p class="text-center text-muted">No important listed for this game.</p>
                 <% } %>
             </div>
         </div>
@@ -563,12 +332,14 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+
+                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
                                         <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
@@ -620,12 +391,14 @@ stat_key_title_mapping = {
                                                 period = `Q${play.period} ${play.clock.displayValue}`;
                                             }
 
-                                            var offense = (play.start.team.id == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.start.team.id == homeTeam.id) ? awayTeam : homeTeam;
+                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+
+                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
                                         <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.start.team.id %>.png" alt="ESPN team id <%= play.start.team.id %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %></td>
+                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         
                                         <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
@@ -645,8 +418,8 @@ stat_key_title_mapping = {
     </div>
     <%- include('../partials/footer') %>
     <%- include('../partials/scripts') %>        
-    <script src="/assets/js/feather.min.js" integrity="sha384-uO3SXW5IuS1ZpFPKugNNWqTZRRglnUJK6UAZ/gxOX80nxEkN9NcGZTftn6RzhGWE" crossorigin="anonymous"></script>
-    <script src="/assets/js/Chart.min.js" integrity="sha384-zNy6FEbO50N+Cg5wap8IKA4M/ZnLJgzc6w2NqACZaK0u0FXfOWRRJOnQtpZun8ha" crossorigin="anonymous"></script>
+    <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
+    <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
@@ -662,29 +435,6 @@ stat_key_title_mapping = {
             } else {
                 document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             }
-        }
-
-        if (gameData.plays.length > 0) {
-            // https://dev.to/noemelo/how-to-save-chart-as-image-chart-js-2l0i
-            //Download Chart Image
-            document.getElementById("wp-download").addEventListener('click', function() {
-                /*Get image of canvas element*/
-                var url_base64jp = document.getElementById("wpChart").toDataURL("image/jpg");
-                /*get download button (tag: <a></a>) */
-                var a =  document.getElementById("wp-download");
-                /*insert chart image url to download button (tag: <a></a>) */
-                a.href = url_base64jp;
-            });
-
-            // //Download Chart Image
-            document.getElementById("ep-download").addEventListener('click', function() {
-                /*Get image of canvas element*/
-                var url_base64jp = document.getElementById("epChart").toDataURL("image/jpg");
-                /*get download button (tag: <a></a>) */
-                var a =  document.getElementById("ep-download");
-                /*insert chart image url to download button (tag: <a></a>) */
-                a.href = url_base64jp;
-            });
         }
       </script>
     </script>

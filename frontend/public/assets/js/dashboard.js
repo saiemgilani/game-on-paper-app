@@ -166,7 +166,7 @@ if (gameData.plays.length > 0) {
 
     // if the homeTeamColor and the awayTeamColor are too similar, make the awayTeam use their alt
     let dEHome = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
-    if (dEHome <= 49) {
+    if (dEHome <= 49 && awayTeam.alternateColor != null) {
         awayTeamColor = hexToRgb(awayTeam.alternateColor)
         console.log(`updating away team color from primary ${JSON.stringify(hexToRgb(awayTeam.color))} to alt: ${JSON.stringify(awayTeamColor)}`)
     }
@@ -194,31 +194,19 @@ if (gameData.plays.length > 0) {
         console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
     }
 
-    var homeTeamWP = gameData.plays.map(p => ((p.start.team.id == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
-    var awayTeamWP = gameData.plays.map(p => ((p.start.team.id == awayTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before)));
+    var homeTeamWP = gameData.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == homeTeam.id)).map(p => p.expectedPoints.added));
-    var homePlays = [...Array(homeTeamEPA.length).keys()]
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.start.team.id == awayTeam.id)).map(p => p.expectedPoints.added));
-    var awayPlays = [...Array(awayTeamEPA.length).keys()]
-
-    var finalPlays = homePlays;
-    if (homePlays.length > awayPlays.length) {
-        finalPlays = homePlays;
-    } else {
-        finalPlays = awayPlays;
-    }
+    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
 
     // handle end of game
     if (gameData.gameInfo.status.type.completed == true) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
             timestamps.push(0)
             homeTeamWP.push(translateWP(1.0))
-            awayTeamWP.push(translateWP(0.0))
         } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
             timestamps.push(0)
             homeTeamWP.push(translateWP(0.0))
-            awayTeamWP.push(translateWP(1.0))
         }
     }
 
@@ -235,6 +223,8 @@ if (gameData.plays.length > 0) {
     //adding custom chart type
     // https://stackoverflow.com/questions/36916867/chart-js-line-different-fill-color-for-negative-point
     // https://stackoverflow.com/questions/52120036/chartjs-line-color-between-two-points
+    // https://stackoverflow.com/questions/63107181/drawing-images-on-top-of-graph-doesnt-work-with-chartjs
+    // https://stackoverflow.com/questions/2359537/how-to-change-the-opacity-alpha-transparency-of-an-element-in-a-canvas-elemen/8001254
     Chart.defaults.NegativeTransparentLine = Chart.helpers.clone(Chart.defaults.line);
     Chart.controllers.NegativeTransparentLine = Chart.controllers.line.extend({
         update: function () {
@@ -283,6 +273,39 @@ if (gameData.plays.length > 0) {
                 this.chart.data.datasets[i].pointHoverBackgroundColor = gradientStroke;
             }
             return Chart.controllers.line.prototype.update.apply(this, arguments);
+        },
+        draw: function(ease) {
+            // call the parent draw method (inheritance in javascript, whatcha gonna do?)
+            var ctx = this.chart.ctx;                                         // get the context
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            var sizeWidth = ctx.canvas.clientWidth;
+            var sizeHeight = ctx.canvas.clientHeight;
+            if (this.homeTeamImage) {                                       // if the image is loaded
+                ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (75.0/4.0), 75, 75);             // draw it - ~145 px per half
+            }
+
+            if (this.awayTeamImage) {                                    // if the image is loaded
+                ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (75.0/2.0), 75, 75);             // draw it - ~145 px per half
+            }
+            ctx.restore();
+            Chart.controllers.line.prototype.draw.call(this, ease);
+        },
+        initialize: function(chart, datasetIndex) {                     // override initialize too to preload the image, the image doesn't need to be outside as it is only used by this chart
+            Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
+            var homeImage = new Image();
+            homeImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+            homeImage.onload = () => {                                            // when the image loads
+                this.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
+                chart.render();                                                 // and force re-render to include it
+            };
+
+            var awayImage = new Image();
+            awayImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+            awayImage.onload = () => {                                            // when the image loads
+                this.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
+                chart.render();                                                 // and force re-render to include it
+            };
         }
     });
 
@@ -303,6 +326,7 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
+                responsive: true,
                 legend: false,
                 tooltips: false,
                 scales: {
@@ -310,10 +334,19 @@ if (gameData.plays.length > 0) {
                         ticks: {
                             suggestedMax: 1.0,
                             suggestedMin: -1.0,
-                            stepSize: 0.25,
+                            stepSize: 0.5,
                             
                             callback: function(value, index, values) {
-                                return (Math.round(Math.abs(value * 100) * 100) / 100) + '%'
+                                // return (Math.round(Math.abs(value * 100) * 100) / 100) + '%'
+                                if (value > 0) {
+                                    let transVal = baseTranslate(value, 0.0, 1.0, 50, 100); 
+                                    return (Math.round(Math.abs(transVal) * 100) / 100) + '%'
+                                } else if (value < 0) {
+                                    let transVal = baseTranslate(value, -1.0, 0.0, 100, 50); 
+                                    return (Math.round(Math.abs(transVal) * 100) / 100) + '%'
+                                } else {
+                                    return "50%";
+                                }
                             }
                         },
                         scaleLabel: {
@@ -341,15 +374,24 @@ if (gameData.plays.length > 0) {
             }
         })
 
+        // document.getElementById("wp-download").addEventListener('click', function() {
+        //     /*Get image of canvas element*/
+        //     var url_base64jp = wpChart.toBase64Image();
+        //     /*get download button (tag: <a></a>) */
+        //     var a =  document.getElementById("wp-download");
+        //     /*insert chart image url to download button (tag: <a></a>) */
+        //     a.href = url_base64jp;
+        // });
+
         var epCtx = document.getElementById('epChart')
             // eslint-disable-next-line no-unused-vars
         var epChart = new Chart(epCtx, {
-            type: 'line',
+            type: 'scatter',
             data: {
-                labels: finalPlays,
                 datasets: [
                     {
                         data: homeTeamEPA,
+                        showLine: true,
                         fill: false,
                         lineTension: 0,
                         label: homeTeam.abbreviation,
@@ -364,6 +406,7 @@ if (gameData.plays.length > 0) {
                     },
                     {
                         data: awayTeamEPA,
+                        showLine: true,
                         fill: false,
                         lineTension: 0,
                         label: awayTeam.abbreviation,
@@ -379,6 +422,8 @@ if (gameData.plays.length > 0) {
                 ]
             },
             options: {
+                showLine: true,
+                responsive: true,
                 legend: {
                     display: true
                 },
@@ -417,5 +462,14 @@ if (gameData.plays.length > 0) {
                 }
             }
         })
+
+        document.getElementById("ep-download").addEventListener('click', function() {
+            /*Get image of canvas element*/
+            var url_base64jp = epChart.toBase64Image();
+            /*get download button (tag: <a></a>) */
+            var a =  document.getElementById("ep-download");
+            /*insert chart image url to download button (tag: <a></a>) */
+            a.href = url_base64jp;
+        });
     })()
 }
