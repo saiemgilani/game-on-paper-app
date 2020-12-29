@@ -402,6 +402,7 @@ class PlayProcess(object):
         play_df["safety"] = play_df["text"].str.contains("safety")
             #-- Fumbles----
         play_df["fumble_vec"] = play_df["text"].str.contains("fumble")
+        play_df["forced_fumble"] = play_df["text"].str.contains("forced by")
             #-- Kicks----
         play_df["kickoff_play"] = np.where(play_df["type.text"].isin(kickoff_vec), True, False)
         play_df["kickoff_tb"] = np.where(play_df["text"].str.contains("touchback") & play_df.kickoff_play == True, True, False)
@@ -688,7 +689,7 @@ class PlayProcess(object):
 
         play_df['target'] = ((play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown", "Pass Incompletion"])) 
                             | (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) & play_df['pass'] == 1 & ~play_df["text"].str.contains("sacked")))
-
+        play_df['pass_breakup'] = play_df['text'].str.contains('broken up by')
             #--- Pass/Rush TDs ------
         play_df['pass_td'] = (play_df["type.text"] == "Passing Touchdown")
         play_df['rush_td'] = (play_df["type.text"] == "Rushing Touchdown")
@@ -1392,7 +1393,53 @@ class PlayProcess(object):
         play_df['rz_play'] =  np.where(play_df['start.yardsToEndzone']<=20, True, False)
         play_df['scoring_opp'] =  np.where(play_df['start.yardsToEndzone']<=40, True, False)
         play_df['stuffed_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed <=0), True, False)
-        
+        play_df['stopped_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed <=2), True, False)
+        play_df['opportunity_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed >=4), True, False)
+        play_df['highlight_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed >=8), True, False)
+        play_df['short_rush_success'] = np.where(
+            (play_df.distance < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df.distance), True, False
+        )
+        play_df['short_rush_attempt'] = np.where(
+            (play_df.distance < 2) & (play_df.rush==1), True, False
+        )
+        play_df['power_rush_success'] = np.where(
+            (play_df.distance < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df.distance), True, False
+        )
+        play_df['power_rush_attempt'] = np.where(
+            (play_df.distance < 2) & (play_df.rush==1), True, False
+        )
+        play_df['EPA_explosive'] = np.where(
+            ((play_df['pass'] == 1) & (play_df['EPA']>= 2.4))|
+            (((play_df['rush'] == 1) & (play_df['EPA']>= 1.8))), True, False)
+        play_df['EPA_explosive_pass'] = np.where(((play_df['pass'] == 1) & (play_df['EPA']>= 2.4)), True, False)
+        play_df['EPA_explosive_rush'] = np.where((((play_df['rush'] == 1) & (play_df['EPA']>= 1.8))), True, False)
+        play_df['standard_down'] = np.where(
+            play_df.down_1 == True, True, np.where(
+                (play_df.down_2==True) & (play_df.distance < 8), True, np.where(
+                    (play_df.down_3==True) & (play_df.distance < 5), True, np.where(
+                        (play_df.down_4 == True) & (play_df.distance < 5), True, False 
+                    )
+                )
+            )
+        )
+        play_df['passing_down'] = np.where(
+            (play_df.down_2 == True) & (play_df.distance >= 8), True, np.where(
+                (play_df.down_3==True) & (play_df.distance >= 5), True, np.where(
+                    (play_df.down_4==True) & (play_df.distance >= 5), True,  False 
+                )
+            )
+        )
+        play_df['sp'] = np.where(
+           (play_df.fg==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+        )
+        play_df['TFL'] = np.where(
+            (play_df['type.text'] != 'Penalty') & (play_df.sp==0) & (play_df.statYardage <= 0), True, False
+        )
+        play_df['havoc'] = np.where(
+            (play_df['forced_fumble']==True)|(play_df['int']==True)|(play_df['TFL']==True)|(play_df['pass_breakup']),
+            True, False
+        )
+
         return play_df
 
     def __process_wpa__(self, play_df):
@@ -1675,7 +1722,7 @@ class PlayProcess(object):
             Att= ('pass_attempt',sum),
             Yds= ('yds_receiving',sum),
             Pass_TD = ('pass_td', sum),
-            YPT= ('yds_receiving', mean),
+            YPA= ('yds_receiving', mean),
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
@@ -1704,11 +1751,19 @@ class PlayProcess(object):
             WPA= ('wpa', sum)
         )
         receiver_box = receiver_box.replace({np.nan: None})
+        
+        team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
+            Off_EPA= ('EPA', sum),
+            Def_EPA= ('def_EPA', sum)
+
+        )
+        team_box = team_box.replace({np.nan:None})
 
         return {
             "pass" : json.loads(passer_box.to_json(orient="records")),
             "rush" : json.loads(rusher_box.to_json(orient="records")),
-            "receiver" : json.loads(receiver_box.to_json(orient="records"))
+            "receiver" : json.loads(receiver_box.to_json(orient="records")),
+            "team" : json.loads(team_box.to_json(orient="records")),
         }
         
     def run_processing_pipeline(self):
