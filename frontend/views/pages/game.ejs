@@ -45,55 +45,38 @@ function formatDistance(down, type, distance, yardline) {
 }
 
 stat_key_title_mapping = {
-    "ppa_plays": "Plays",
-    "ppa_overall_total" : "Overall PPA",
-    "ppa_overall_quarter1" : "&emsp;Quarter 1",
-    "ppa_overall_quarter2" : "&emsp;Quarter 2",
-    "ppa_overall_quarter3" : "&emsp;Quarter 3",
-    "ppa_overall_quarter4" : "&emsp;Quarter 4",
-    "ppa_passing_total" : "Passing PPA",
-    "ppa_passing_quarter1" : "&emsp;Quarter 1",
-    "ppa_passing_quarter2" : "&emsp;Quarter 2",
-    "ppa_passing_quarter3" : "&emsp;Quarter 3",
-    "ppa_passing_quarter4" : "&emsp;Quarter 4",
-    "ppa_rushing_total" : "Rushing PPA",
-    "ppa_rushing_quarter1" : "&emsp;Quarter 1",
-    "ppa_rushing_quarter2" : "&emsp;Quarter 2",
-    "ppa_rushing_quarter3" : "&emsp;Quarter 3",
-    "ppa_rushing_quarter4" : "&emsp;Quarter 4",
-    "rushing_power_success" : "Power Success Rate",
-    "rushing_stuff_rate" : "Stuff Rate",
-    "rushing_line_yds" : "Line Yards",
-    "rushing_second_lvl_yds" : "Second-Level Yds",
-    "rushing_open_field_yds" : "Open-Field Yds",
-    "havoc_total" : "Havoc Rate",
-    "havoc_front_seven" : "&emsp;from Front 7",
-    "havoc_db" : "&emsp;from Secondary",
+    "EPA_plays": "Plays",
+    "EPA_overall_total" : "Overall EPA",
+    "EPA_passing_overall" : "Overall Passing EPA",
+    "EPA_rushing_overall" : "Overall Rushing EPA",
+    "rushes" : "Rushes",
+    "rushing_power_success" : "Power Success Runs",
+    "rushing_stuff_rate" : "Stuffed Runs",
+    "rushing_stopped_rate": "Stopped Runs",
+    "rushing_opportunity_rate" : "Opportunity Runs",
+    "rushing_highlight_run" : "Highlight Runs",
+    "havoc_total" : "Havoc Plays",
+    "havoc_total_pass" : "&emsp;Havoc Plays - Pass",
+    "havoc_total_rush" : "&emsp;Havoc Plays - Rush",
+    "EPA_fg" : "Field Goal EPA",
+    "EPA_punt" : "Punt EPA",
+    "EPA_kickoff" : "Kickoff EPA",
+    "TFL" : "TFLs",
+    "TFL_pass" : "TFLs - Passing",
+    "TFL_rush" : "TFLs - Rushing",
+    "EPA_success" : "EPA Success Plays",
+    "EPA_success_pass" : "&emsp;EPA Success Plays - Passing",
+    "EPA_success_rush" : "&emsp;EPA Success Plays - Rushing",
+    "EPA_success_standard_down" : "&emsp;EPA Success Plays - Standard Down",
+    "EPA_success_passing_down": "&emsp;EPA Success Plays - Passing Down",
+    "EPA_explosive" : "EPA Explosive Plays",
+    "EPA_explosive_passing" : "&emsp;EPA Explosive Plays - Passing",
+    "EPA_explosive_rushing" : "&emsp;EPA Explosive Plays - Rushing",
     "scoring_opps_opportunities" : "Scoring Opps",
     "scoring_opps_points" : "&emsp;Total Points",
     "scoring_opps_pts_per_opp" : "&emsp;Points per Opp",
     "field_pos_avg_start" : "Avg Starting FP",
-    "field_pos_avg_starting_predicted_pts" : "&emsp;Predicted Points",
-    "success_rates_standard_downs_total" : "Success Rate (Standard Downs)",
-    "success_rates_standard_downs_quarter1" : "&emsp;Quarter 1",
-    "success_rates_standard_downs_quarter2" : "&emsp;Quarter 2",
-    "success_rates_standard_downs_quarter3" : "&emsp;Quarter 3",
-    "success_rates_standard_downs_quarter4" : "&emsp;Quarter 4",
-    "success_rates_passing_downs_total" : "Success Rate (Passing Downs)",
-    "success_rates_passing_downs_quarter1" : "&emsp;Quarter 1",
-    "success_rates_passing_downs_quarter2" : "&emsp;Quarter 2",
-    "success_rates_passing_downs_quarter3" : "&emsp;Quarter 3",
-    "success_rates_passing_downs_quarter4" : "&emsp;Quarter 4",
-    "explosiveness_overall_total" : "Explosiveness Rate",
-    "explosiveness_overall_quarter1" : "&emsp;Quarter 1",
-    "explosiveness_overall_quarter2" : "&emsp;Quarter 2",
-    "explosiveness_overall_quarter3" : "&emsp;Quarter 3",
-    "explosiveness_overall_quarter4" : "&emsp;Quarter 4",
-    "success_rates_overall_total" : "Success Rate",
-    "success_rates_overall_quarter1" : "&emsp;Quarter 1",
-    "success_rates_overall_quarter2" : "&emsp;Quarter 2",
-    "success_rates_overall_quarter3" : "&emsp;Quarter 3",
-    "success_rates_overall_quarter4" : "&emsp;Quarter 4",
+    "field_pos_avg_starting_predicted_pts" : "&emsp;Predicted Points"
 }
 
 %>
@@ -170,6 +153,174 @@ stat_key_title_mapping = {
                 </main>
             </div>
         <% } %>
+        
+            <div class="row mb-3">
+                <div class="px-md-4">
+                    <h2 id="box-score">Advanced Box Score</h2>
+                </div>
+                <!-- <% if (gameData.boxScore != null) { %>
+                    <pre><%- JSON.stringify(gameData.boxScore.team, null, 2) %></pre>
+                <% } else { %>
+                    <p class="col-md-12 text-center text-muted">No box score data for this game.</p>
+                <% } %> -->
+            </div>
+            <div class="row mb-3">
+                <div class="px-md-4">
+                    <h2 id="box-score">Advanced Box Score</h2>
+                </div>
+                
+                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                    <div class="table-responsive">
+                        <% var columns = ["EPA_plays","EPA_overall_total","EPA_passing_overall","EPA_rushing_overall"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-responsive">
+                        <% var columns = ["rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                    <div class="table-responsive">
+                        <% var columns = ["EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+    
+                    <div class="table-responsive">
+                        <% var columns = ["EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                    <div class="table-responsive">
+                        <% var columns = ["havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>                                        
+                    <div class="table-responsive">
+                        <% var columns = ["EPA_fg","EPA_punt","EPA_kickoff"]; %>
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <% gameData.boxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.location) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                    <% }); %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% columns.forEach(item => { %>
+                                    <tr>
+                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <% gameData.boxScore.team.forEach(teamData => { %>
+                                            <td align="center"><%= teamData[item] %></td>
+                                        <% }); %>
+                                    </tr>
+                                    
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         <%
             var bigPlays = [...gameData.plays]
             bigPlays.sort((a, b) => {
@@ -298,7 +449,7 @@ stat_key_title_mapping = {
                     </table>
                 </div>
                 <% } else { %>
-                    <p class="text-center text-muted">No important listed for this game.</p>
+                    <p class="text-center text-muted">No important plays listed for this game.</p>
                 <% } %>
             </div>
         </div>
