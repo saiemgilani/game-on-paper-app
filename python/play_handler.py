@@ -1,4 +1,5 @@
 from numpy.core.fromnumeric import mean
+from flask import jsonify
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -34,7 +35,7 @@ wp_start_columns = ["pos_team_receives_2H_kickoff","spread_time","start.TimeSecs
 wp_end_columns = ["pos_team_receives_2H_kickoff","spread_time_end","end.TimeSecsRem","end.adj_TimeSecsRem","ExpScoreDiff_Time_Ratio_end","pos_score_diff","end.down","end.distance","end.yardsToEndzone","is_home","pos_team_timeouts","def_pos_team_timeouts","period"]
 
 ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
-ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff"]
+ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff_start_end"]
 
 ep_final_names = [        
     "TimeSecsRem",
@@ -185,7 +186,35 @@ int_vec = [
     "Pass Interception Return",
     "Pass Interception Return Touchdown"
 ]
-
+end_change_vec = [
+    "Blocked Field Goal",
+    "Blocked Field Goal Touchdown",
+    "Field Goal Missed",
+    "Missed Field Goal Return",
+    "Missed Field Goal Return Touchdown",
+    "Blocked Punt",
+    "Blocked Punt Touchdown",
+    "Punt",
+    "Punt Touchdown",
+    "Punt Return Touchdown",
+    "Kickoff Team Fumble Recovery",
+    "Kickoff Team Fumble Recovery Touchdown",
+    "Fumble Recovery (Opponent)",
+    "Fumble Recovery (Opponent) Touchdown",
+    "Fumble Return Touchdown",
+    "Sack Touchdown",
+    "Defensive 2pt Conversion",
+    "Interception",
+    "Interception Return",
+    "Interception Return Touchdown",
+    "Pass Interception Return",
+    "Pass Interception Return Touchdown",
+    "Uncategorized Touchdown"
+]
+kickoff_turnovers = [
+    "Kickoff Team Fumble Recovery", 
+    "Kickoff Team Fumble Recovery Touchdown"
+]
 class PlayProcess(object):
     plays_json = pd.DataFrame()
     homeTeamSpread = 2.5
@@ -1329,7 +1358,11 @@ class PlayProcess(object):
 
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
-
+        play_df["pos_score_diff_start_end"] = np.where(
+            (play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True), 
+            -1*play_df.pos_score_diff, 
+            play_df.pos_score_diff
+        )
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
         # self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
@@ -1342,8 +1375,9 @@ class PlayProcess(object):
         play_df['EP_end'] = EP_end
 
         play_df.EP_end = np.select([
-            (play_df.playType.isin(turnover_vec) | (play_df.turnover_vec == True)),
-            (play_df.playType.str.lower().str.contains("end of game") | play_df.playType.str.lower().str.contains("end of game") | play_df.playType.str.lower().str.contains("end of half") | play_df.playType.str.lower().str.contains("end of half")),
+            ((play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True)) & (play_df.kickoff_play==False),
+            (play_df["type.text"].isin(kickoff_turnovers)),
+            (play_df["type.text"].str.lower().str.contains("end of game") | play_df["type.text"].str.lower().str.contains("end of game") | play_df["type.text"].str.lower().str.contains("end of half") | play_df["type.text"].str.lower().str.contains("end of half")),
 
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('safety')),
             (play_df["type.text"].isin(defense_score_vec) & play_df.text.str.lower().str.contains('conversion') & play_df.text.str.lower().str.contains('failed')),
@@ -1359,6 +1393,7 @@ class PlayProcess(object):
             (play_df["type.text"].isin(offense_score_vec) & ~play_df.text.str.lower().str.contains('conversion') & ~play_df.text.str.lower().str.contains('missed'))
         ],
         [
+            (play_df.EP_end * -1),
             (play_df.EP_end * -1),
             0,
 
@@ -1382,13 +1417,8 @@ class PlayProcess(object):
             play_df['EP_end'] - play_df['EP_start']
         )
         play_df['def_EPA'] = -1*play_df['EPA']
-        play_df['home_EPA'] = np.where(play_df.pos_team == self.homeTeamId, play_df.EPA, play_df.def_EPA)
-        play_df['away_EPA'] = np.where(play_df.pos_team == self.awayTeamId, play_df.EPA, play_df.def_EPA)
-        play_df['home_EPA_rush'] = np.where((play_df.pos_team == self.homeTeamId) & (play_df.rush == 1), play_df.EPA, play_df.def_EPA)
-        play_df['away_EPA_rush'] = np.where((play_df.pos_team == self.awayTeamId) & (play_df.rush == 1), play_df.EPA, play_df.def_EPA)
-        play_df['home_EPA_pass'] = np.where((play_df.pos_team == self.homeTeamId) & (play_df['pass'] == 1), play_df.EPA, play_df.def_EPA)
-        play_df['away_EPA_pass'] = np.where((play_df.pos_team == self.awayTeamId) & (play_df['pass'] == 1), play_df.EPA, play_df.def_EPA)
-        play_df['EPA_success'] =  np.where(play_df.EPA > 0, True, False)
+        play_df['EPA_rush'] = np.where((play_df.rush == 1), play_df.EPA, None)
+        play_df['EPA_pass'] = np.where((play_df['pass'] == 1), play_df.EPA,None)
         play_df['middle_8'] =  np.where((play_df['start.adj_TimeSecsRem']>=1560) & (play_df['start.adj_TimeSecsRem']<=2040), True, False)
         play_df['rz_play'] =  np.where(play_df['start.yardsToEndzone']<=20, True, False)
         play_df['scoring_opp'] =  np.where(play_df['start.yardsToEndzone']<=40, True, False)
@@ -1429,17 +1459,52 @@ class PlayProcess(object):
                 )
             )
         )
+        play_df['EPA_success'] =  np.where(
+            play_df.EPA > 0, True, False
+        )
+        play_df['EPA_success_standard_down'] =  np.where(
+            (play_df.EPA > 0) & (play_df.standard_down==True), True, False
+        )
+        play_df['EPA_success_passing_down'] =  np.where(
+            (play_df.EPA > 0) & (play_df.passing_down==True), True, False
+        )
+        play_df['EPA_success_pass'] =  np.where(
+            (play_df.EPA > 0) & (play_df['pass']==1), True, False
+        )
+        play_df['EPA_success_rush'] =  np.where(
+            (play_df.EPA > 0) & (play_df.rush==1), True, False
+        )
         play_df['sp'] = np.where(
-           (play_df.fg==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+           (play_df.fg_inds==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+        )
+        play_df['EPA_fg'] = np.where(
+           (play_df.fg_inds==1), play_df['EPA'], None 
+        )
+        play_df['EPA_punt'] = np.where(
+           (play_df.punt==1), play_df['EPA'], None 
+        )
+        play_df['EPA_kickoff'] = np.where(
+           (play_df.kickoff_play==1), play_df['EPA'], None 
         )
         play_df['TFL'] = np.where(
-            (play_df['type.text'] != 'Penalty') & (play_df.sp==0) & (play_df.statYardage <= 0), True, False
+            (play_df['type.text'] != 'Penalty') & (play_df.sp==0) & (play_df.statYardage < 0), True, False
+        )
+        play_df['TFL_pass'] = np.where(
+            (play_df['TFL'] == True) & (play_df['pass']==1), True, False
+        )
+        play_df['TFL_rush'] = np.where(
+            (play_df['TFL'] == True) & (play_df['rush']==1), True, False
         )
         play_df['havoc'] = np.where(
-            (play_df['forced_fumble']==True)|(play_df['int']==True)|(play_df['TFL']==True)|(play_df['pass_breakup']),
+            (play_df['forced_fumble']==True)|(play_df['int']==True)|(play_df['TFL']==True)|(play_df['pass_breakup']==True),
             True, False
         )
-
+        play_df['havoc_pass'] = np.where(
+            (play_df['havoc']==True) & (play_df['pass']==1), True, False
+        )
+        play_df['havoc_rush'] = np.where(
+            (play_df['havoc']==True) & (play_df['rush']==1), True, False
+        )
         return play_df
 
     def __process_wpa__(self, play_df):
@@ -1713,7 +1778,43 @@ class PlayProcess(object):
         self.plays_json['pass_td'] = self.plays_json['pass_td'].astype(float)
         self.plays_json['EPA'] = self.plays_json['EPA'].astype(float)
         self.plays_json['wpa'] = self.plays_json['wpa'].astype(float)
-        
+        self.plays_json['int'] = self.plays_json['int'].astype(float)
+        self.plays_json['int_td'] = self.plays_json['int_td'].astype(float)
+        self.plays_json['def_EPA'] = self.plays_json['def_EPA'].astype(float)
+        self.plays_json['EPA_rush'] = self.plays_json['EPA_rush'].astype(float)
+        self.plays_json['EPA_pass'] = self.plays_json['EPA_pass'].astype(float)
+        self.plays_json['EPA_success'] = self.plays_json['EPA_success'].astype(float)
+        self.plays_json['EPA_success_pass'] = self.plays_json['EPA_success'].astype(float)
+        self.plays_json['EPA_success_rush'] = self.plays_json['EPA_success'].astype(float)
+        self.plays_json['EPA_success_standard_down'] = self.plays_json['EPA_success_standard_down'].astype(float)
+        self.plays_json['EPA_success_passing_down'] = self.plays_json['EPA_success_passing_down'].astype(float)
+        self.plays_json['middle_8'] = self.plays_json['middle_8'].astype(float)
+        self.plays_json['rz_play'] = self.plays_json['rz_play'].astype(float)
+        self.plays_json['scoring_opp'] = self.plays_json['scoring_opp'].astype(float)
+        self.plays_json['stuffed_run'] = self.plays_json['stuffed_run'].astype(float)
+        self.plays_json['stopped_run'] = self.plays_json['stopped_run'].astype(float)
+        self.plays_json['opportunity_run'] = self.plays_json['opportunity_run'].astype(float)
+        self.plays_json['highlight_run'] =  self.plays_json['highlight_run'].astype(float)
+        self.plays_json['short_rush_success'] = self.plays_json['short_rush_success'].astype(float)
+        self.plays_json['short_rush_attempt'] = self.plays_json['short_rush_attempt'].astype(float)
+        self.plays_json['power_rush_success'] = self.plays_json['power_rush_success'].astype(float)
+        self.plays_json['power_rush_attempt'] = self.plays_json['power_rush_attempt'].astype(float)
+        self.plays_json['EPA_explosive'] = self.plays_json['EPA_explosive'].astype(float)
+        self.plays_json['EPA_explosive_pass'] = self.plays_json['EPA_explosive_pass'].astype(float)
+        self.plays_json['EPA_explosive_rush'] = self.plays_json['EPA_explosive_rush'].astype(float)
+        self.plays_json['standard_down'] = self.plays_json['standard_down'].astype(float)
+        self.plays_json['passing_down'] = self.plays_json['passing_down'].astype(float)
+        self.plays_json['sp'] = self.plays_json['sp'].astype(float)
+        self.plays_json['EPA_fg'] = self.plays_json['EPA_fg'].astype(float)
+        self.plays_json['EPA_punt'] = self.plays_json['EPA_punt'].astype(float)
+        self.plays_json['EPA_kickoff'] = self.plays_json['EPA_kickoff'].astype(float)
+        self.plays_json['TFL'] = self.plays_json['TFL'].astype(float)
+        self.plays_json['TFL_pass'] = self.plays_json['TFL_pass'].astype(float)
+        self.plays_json['TFL_rush'] = self.plays_json['TFL_rush'].astype(float)
+        self.plays_json['havoc'] = self.plays_json['havoc'].astype(float)
+        self.plays_json['havoc_pass'] = self.plays_json['havoc_pass'].astype(float)
+        self.plays_json['havoc_rush'] = self.plays_json['havoc_rush'].astype(float)
+
         pass_box = self.plays_json[self.plays_json["pass"] == 1]
         rush_box = self.plays_json[self.plays_json.rush == 1]
 
@@ -1722,11 +1823,12 @@ class PlayProcess(object):
             Att= ('pass_attempt',sum),
             Yds= ('yds_receiving',sum),
             Pass_TD = ('pass_td', sum),
+            Int = ('int', sum),
             YPA= ('yds_receiving', mean),
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
-        )
+        ).round(1)
         passer_box = passer_box.replace({np.nan: None})
 
         rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
@@ -1737,7 +1839,7 @@ class PlayProcess(object):
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
-        )
+        ).round(1)
         rusher_box = rusher_box.replace({np.nan: None})
 
         receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"], as_index=False).agg(
@@ -1749,21 +1851,45 @@ class PlayProcess(object):
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum)
-        )
+        ).round(1)
         receiver_box = receiver_box.replace({np.nan: None})
         
         team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
-            Off_EPA= ('EPA', sum),
-            Def_EPA= ('def_EPA', sum)
-
-        )
+            EPA_plays = ('start.team.id', 'count'),
+            EPA_overall_total= ('EPA', sum),
+            EPA_passing_overall= ('EPA_pass', sum),
+            EPA_rushing_overall= ('EPA_rush', sum),
+            rushes = ('rush', sum),
+            rushing_power_success= ('power_rush_success', sum),
+            rushing_stuff_rate = ('stuffed_run', sum),
+            rushing_stopped_rate = ('stopped_run', sum),
+            rushing_opportunity_rate = ('opportunity_run', sum),
+            rushing_highlight_run = ('highlight_run', sum),
+            EPA_explosive = ('EPA_explosive', sum),
+            EPA_explosive_passing = ('EPA_explosive_pass', sum),
+            EPA_explosive_rushing = ('EPA_explosive_rush', sum),
+            EPA_success = ('EPA_success', sum),
+            EPA_success_pass = ('EPA_success_pass', sum),
+            EPA_success_rush = ('EPA_success_rush', sum),
+            EPA_success_standard_down = ('EPA_success_standard_down', sum),
+            EPA_success_passing_down = ('EPA_success_passing_down', sum),
+            EPA_fg = ('EPA_fg', sum),
+            EPA_punt = ('EPA_punt', sum),
+            EPA_kickoff = ('EPA_kickoff', sum),
+            TFL = ('TFL', sum),
+            TFL_pass = ('TFL_pass', sum),
+            TFL_rush = ('TFL_rush', sum),
+            havoc_total = ('havoc', sum),
+            havoc_total_pass = ('havoc_pass', sum),
+            havoc_total_rush = ('havoc_rush', sum)
+        ).round(1)
         team_box = team_box.replace({np.nan:None})
 
         return {
             "pass" : json.loads(passer_box.to_json(orient="records")),
             "rush" : json.loads(rusher_box.to_json(orient="records")),
             "receiver" : json.loads(receiver_box.to_json(orient="records")),
-            "team" : json.loads(team_box.to_json(orient="records")),
+            "team" : json.loads(team_box.to_json(orient="records"))
         }
         
     def run_processing_pipeline(self):
