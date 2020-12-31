@@ -1,5 +1,22 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700&family=Fira+Mono:wght@500&display=swap');
+@font-face {
+  font-family: 'Chivo';
+  src: url('../fonts/chivo/Chivo-Regular.ttf')  format('truetype'); /* Safari, Android, iOS */
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Chivo";
+  src: url('../fonts/chivo/Chivo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url('../fonts/fira-mono/FiraMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+}
+
 body {
   display: flex;
   align-items: center;
