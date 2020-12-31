@@ -56,27 +56,27 @@ stat_key_title_mapping = {
     "rushing_opportunity_rate" : "Opportunity Runs",
     "rushing_highlight_run" : "Highlight Runs",
     "havoc_total" : "Havoc Plays",
-    "havoc_total_pass" : "&emsp;Passing",
-    "havoc_total_rush" : "&emsp;Rushing",
+    "havoc_total_pass" : "&emsp;&emsp;Passing",
+    "havoc_total_rush" : "&emsp;&emsp;Rushing",
     "EPA_fg" : "Field Goal EPA",
     "EPA_punt" : "Punt EPA",
     "EPA_kickoff" : "Kickoff EPA",
     "TFL" : "TFLs",
-    "TFL_pass" : "&emsp;Passing",
-    "TFL_rush" : "&emsp;Rushing",
+    "TFL_pass" : "&emsp;&emsp;Passing",
+    "TFL_rush" : "&emsp;&emsp;Rushing",
     "EPA_success" : "EPA Success Plays",
-    "EPA_success_pass" : "&emsp;Passing",
-    "EPA_success_rush" : "&emsp;Rushing",
-    "EPA_success_standard_down" : "&emsp;Standard Down",
-    "EPA_success_passing_down": "&emsp;Passing Down",
+    "EPA_success_pass" : "&emsp;&emsp;Passing",
+    "EPA_success_rush" : "&emsp;&emsp;Rushing",
+    "EPA_success_standard_down" : "&emsp;&emsp;Standard Down",
+    "EPA_success_passing_down": "&emsp;&emsp;Passing Down",
     "EPA_explosive" : "EPA Explosive Plays",
-    "EPA_explosive_passing" : "&emsp;Passing",
-    "EPA_explosive_rushing" : "&emsp;Rushing",
+    "EPA_explosive_passing" : "&emsp;&emsp;Passing",
+    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing",
     "scoring_opps_opportunities" : "Scoring Opps",
-    "scoring_opps_points" : "&emsp;Total Points",
-    "scoring_opps_pts_per_opp" : "&emsp;Points per Opp",
+    "scoring_opps_points" : "&emsp;&emsp;Total Points",
+    "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
     "field_pos_avg_start" : "Avg Starting FP",
-    "field_pos_avg_starting_predicted_pts" : "&emsp;Predicted Points"
+    "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points"
 }
 
 %>
@@ -171,9 +171,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -195,9 +195,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -221,9 +221,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -246,9 +246,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -272,9 +272,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -296,9 +296,9 @@ stat_key_title_mapping = {
                             <tbody>
                                 <% columns.forEach(item => { %>
                                     <tr>
-                                        <td align="left"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                         <% gameData.boxScore.team.forEach(teamData => { %>
-                                            <td align="center"><%= teamData[item] %></td>
+                                            <td style="text-align: center;"><%= teamData[item] %></td>
                                         <% }); %>
                                     </tr>
                                     
@@ -371,13 +371,13 @@ stat_key_title_mapping = {
                                             var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
-                                        <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
+                                        <td style="text-align: left;"><%= period %></td>
+                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -423,13 +423,13 @@ stat_key_title_mapping = {
 
                                         var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                     %>
-                                    <td align="left"><%= period %></td>
-                                    <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                    <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
+                                    <td style="text-align: left;"><%= period %></td>
+                                    <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                    <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                     
-                                    <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                    <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                    <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                    <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                    <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                 </tr>
                             <% }); %>
                         </tbody>
@@ -475,13 +475,13 @@ stat_key_title_mapping = {
 
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
-                                        <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
+                                        <td style="text-align: left;"><%= period %></td>
+                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -534,14 +534,14 @@ stat_key_title_mapping = {
 
                                             var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
                                         %>
-                                        <td align="left"><%= period %></td>
-                                        <td align="center"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td align="left">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
+                                        <td style="text-align: left;"><%= period %></td>
+                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
+                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         
-                                        <td align="center"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td align="center"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td align="right"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
