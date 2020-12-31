@@ -1819,15 +1819,15 @@ class PlayProcess(object):
         rush_box = self.plays_json[self.plays_json.rush == 1]
 
         passer_box = pass_box.groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
-            Comp= ('completion', sum),
-            Att= ('pass_attempt',sum),
-            Yds= ('yds_receiving',sum),
+            Comp = ('completion', sum),
+            Att = ('pass_attempt',sum),
+            Yds = ('yds_receiving',sum),
             Pass_TD = ('pass_td', sum),
             Int = ('int', sum),
-            YPA= ('yds_receiving', mean),
-            EPA= ('EPA', sum),
-            EPA_per_Play= ('EPA', mean),
-            WPA= ('wpa', sum)
+            YPA = ('yds_receiving', mean),
+            EPA = ('EPA', sum),
+            EPA_per_Play = ('EPA', mean),
+            WPA = ('wpa', sum)
         ).round(1)
         passer_box = passer_box.replace({np.nan: None})
 
@@ -1856,9 +1856,12 @@ class PlayProcess(object):
         
         team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
             EPA_plays = ('start.team.id', 'count'),
-            EPA_overall_total= ('EPA', sum),
-            EPA_passing_overall= ('EPA_pass', sum),
-            EPA_rushing_overall= ('EPA_rush', sum),
+            EPA_overall_total = ('EPA', sum),
+            EPA_passing_overall = ('EPA_pass', sum),
+            EPA_rushing_overall = ('EPA_rush', sum),
+            EPA_per_play = ('EPA', mean),
+            EPA_passing_per_play = ('EPA_pass', mean),
+            EPA_rushing_per_play = ('EPA_rush', mean),
             rushes = ('rush', sum),
             rushing_power_success= ('power_rush_success', sum),
             rushing_stuff_rate = ('stuffed_run', sum),
@@ -1883,6 +1886,7 @@ class PlayProcess(object):
             havoc_total_pass = ('havoc_pass', sum),
             havoc_total_rush = ('havoc_rush', sum)
         ).round(1)
+
         team_box = team_box.replace({np.nan:None})
 
         return {
