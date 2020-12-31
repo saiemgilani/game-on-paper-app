@@ -1,4 +1,4 @@
-cfb-data-api
+# Game on Paper
 ---
 
 ## Development
