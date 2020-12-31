@@ -1867,7 +1867,7 @@ class PlayProcess(object):
             EPA_rushing_per_play = ('EPA_rush', mean),
             rushes = ('rush', sum),
             rushing_power_success= ('power_rush_success', sum),
-            rushing_power_success= ('power_rush_attempt', sum),
+            rushing_power_attempt= ('power_rush_attempt', sum),
             rushing_stuff_rate = ('stuffed_run', sum),
             rushing_stopped_rate = ('stopped_run', sum),
             rushing_opportunity_rate = ('opportunity_run', sum),
@@ -1890,7 +1890,7 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_pass = ('havoc_pass', sum),
             havoc_total_rush = ('havoc_rush', sum)
-        ).round(1)
+        ).round(2)
 
         team_box = team_box.replace({np.nan:None})
 
