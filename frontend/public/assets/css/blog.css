@@ -1,4 +1,5 @@
 /* stylelint-disable selector-list-comma-newline-after */
+@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700&family=Fira+Mono:wght@500&display=swap');
 
 .blog-header {
   line-height: 1;
@@ -6,7 +7,7 @@
 }
 
 .blog-header-logo {
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
   font-size: 2.25rem;
 }
 
@@ -15,9 +16,11 @@
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
 }
-
+table {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
 .display-4 {
   font-size: 2.5rem;
 }
