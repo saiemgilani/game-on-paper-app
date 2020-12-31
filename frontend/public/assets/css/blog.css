@@ -1,4 +1,21 @@
 /* stylelint-disable selector-list-comma-newline-after */
+@font-face {
+  font-family: 'Chivo';
+  src: url('../fonts/chivo/Chivo-Regular.ttf')  format('truetype'); /* Safari, Android, iOS */
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Chivo";
+  src: url('../fonts/chivo/Chivo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url('../fonts/fira-mono/FiraMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+}
 
 .blog-header {
   line-height: 1;
@@ -6,7 +23,7 @@
 }
 
 .blog-header-logo {
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
   font-size: 2.25rem;
 }
 
@@ -15,9 +32,11 @@
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
 }
-
+table {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
 .display-4 {
   font-size: 2.5rem;
 }

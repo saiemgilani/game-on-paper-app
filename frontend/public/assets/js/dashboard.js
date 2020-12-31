@@ -196,9 +196,18 @@ if (gameData.plays.length > 0) {
 
     var homeTeamWP = gameData.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": idx, "y": p } });
+    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
 
+    homeTeamEPA.splice(0, 0, {
+        x: 0,
+        y: 0
+    });
+
+    awayTeamEPA.splice(0, 0, {
+        x: 0,
+        y: 0
+    });
     // handle end of game
     if (gameData.gameInfo.status.type.completed == true) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
@@ -328,7 +337,6 @@ if (gameData.plays.length > 0) {
             options: {
                 responsive: true,
                 legend: false,
-                tooltips: false,
                 scales: {
                     yAxes: [{
                         ticks: {
@@ -370,6 +378,29 @@ if (gameData.plays.length > 0) {
                             labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
                         }
                     }]
+                },
+                tooltips: {
+                    callbacks: {
+                        title: function(tooltipItem, data) {
+                            if (gameData.gameInfo.status.type.completed == true) {
+                                return `Game Seconds Elapsed: ${Math.max(0, Math.min(3600, 3600 - tooltipItem[0].label))}`
+                            } else {
+                                return `Total Play Number: ${tooltipItem[0].label}`
+                            }
+                        },
+                        label: function(tooltipItem, data) {
+                            // value is always from perspective of home team
+                            if (tooltipItem.value > 0) {
+                                let transVal = baseTranslate(tooltipItem.value, 0.0, 1.0, 50, 100); 
+                                return `${homeTeam.abbreviation} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`
+                            } else if (tooltipItem.value < 0) {
+                                let transVal = baseTranslate(tooltipItem.value, -1.0, 0.0, 100, 50); 
+                                return `${awayTeam.abbreviation} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`;
+                            } else {
+                                return "50%";
+                            }
+                        }
+                    }
                 }
             }
         })
