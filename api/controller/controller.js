@@ -238,7 +238,7 @@ async function retrievePBP(req, res) {
     
         plays = processedGame["records"];
         // debuglog(plays)
-        pbp.boxScore = processedGame["box_score"];
+        pbp.advBoxScore = processedGame["box_score"];
         // debuglog(typeof pbp.boxScore)
         // debuglog(pbp.boxScore)
         
