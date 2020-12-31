@@ -136,6 +136,14 @@ stat_key_title_mapping = {
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
                             <% } %>Spread: <%= printSpread() %>
+                            <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") && gameData.plays.length > 0) { %>
+                                <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
+                                <% if (lastPlay.winProbability.before >= 0.5) { %>
+                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? homeTeam.abbreviation : awayTeam.abbreviation %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
+                                <% } else { %>
+                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? awayTeam.abbreviation : homeTeam.abbreviation %> <%= ((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1) %>%
+                                <% } %>
+                            <% } %>
                             <!-- can't offer download button here because of canvas security issues -->
                              <!-- | 
                             <a id="wp-download" download="game-wp-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p> -->
