@@ -49,19 +49,22 @@ stat_key_title_mapping = {
     "EPA_overall_total" : "Total EPA",
     "EPA_passing_overall" : "Passing EPA",
     "EPA_rushing_overall" : "Rushing EPA",
+    "EPA_per_play": "EPA/Play",
+    "EPA_passing_per_play": "Pass EPA/Play",
+    "EPA_rushing_per_play": "Rush EPA/Play",
     "rushes" : "Rushes",
     "rushing_power_success" : "Power Success Runs",
     "rushing_stuff_rate" : "Stuffed Runs",
     "rushing_stopped_rate": "Stopped Runs",
     "rushing_opportunity_rate" : "Opportunity Runs",
     "rushing_highlight_run" : "Highlight Runs",
-    "havoc_total" : "Havoc Plays",
+    "havoc_total" : "Havoc Plays Allowed",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
     "EPA_fg" : "Field Goal EPA",
     "EPA_punt" : "Punt EPA",
     "EPA_kickoff" : "Kickoff EPA",
-    "TFL" : "TFLs",
+    "TFL" : "TFLs Allowed",
     "TFL_pass" : "&emsp;&emsp;Passing",
     "TFL_rush" : "&emsp;&emsp;Rushing",
     "EPA_success" : "EPA Success Plays",
@@ -167,7 +170,7 @@ stat_key_title_mapping = {
             <div class="row mb-3">
                 <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
                     <div class="table-responsive">
-                        <% var columns = ["EPA_plays","EPA_overall_total","EPA_passing_overall","EPA_rushing_overall"]; %>
+                        <% var columns = ["EPA_plays","EPA_overall_total","EPA_per_play","EPA_passing_overall","EPA_passing_per_play","EPA_rushing_overall","EPA_rushing_per_play"]; %>
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
