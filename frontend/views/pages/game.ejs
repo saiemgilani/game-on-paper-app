@@ -80,7 +80,48 @@ stat_key_title_mapping = {
 }
 
 %>
-<%- include('../partials/head') %> 
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/assets/css/dashboard.css" rel="stylesheet">
+    <link href="/assets/css/blog.css" rel="stylesheet">
+
+    <%
+    var title = ""
+    var subtitle = ""
+    if (gameData.gameInfo.status.type.completed == true || gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS")) {
+        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} ${gameData.gameInfo.competitors[1].score}, ${gameData.gameInfo.competitors[0].team.nickname} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
+    } else {
+        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname} | Game on Paper`
+    }
+    subtitle = `${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname}`;
+    %>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="origin-when-cross-origin">
+    <link rel="canonical" href="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <title><%= title %></title>
+    <meta name="description" content="Advanced stats for <%= subtitle %>">
+
+    <meta property="og:site_name" content="GameOnPaper.com">
+    <meta property="og:url" content="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <meta property="og:title" content="<%= title %>">
+    <meta property="og:description" content="Advanced stats for <%= subtitle %>">
+    <meta property="og:image" content="https://s.espncdn.com/stitcher/sports/football/college-football/events/<%= gameData.id %>.png?templateId=espn.com.share.1">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
+    <meta name="twitter:site" content="Game on Paper">
+    <meta name="twitter:url" content="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <meta name="twitter:title" content="<%= title %>">
+    <meta name="twitter:description" content="<%= subtitle %>">
+    <meta name="twitter:card" content="summary">
+    <meta name="title" content="<%= title %>">
+    <meta name="medium" content="website">
+</head>
 <body>
     <div class="container-fluid">
         <header class="blog-header py-3">
