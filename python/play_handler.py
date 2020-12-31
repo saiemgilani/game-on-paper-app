@@ -1439,7 +1439,7 @@ class PlayProcess(object):
         play_df["EP_start_touchback"] = EP_start_touchback
         play_df['EP_start'] = EP_start
         play_df['EP_end'] = EP_end
-        kick = 'kick\)'
+        kick = 'kick)'
         play_df.EP_end = np.select([
             # End of Half
             (play_df["type.text"].str.lower().str.contains("end of game", case=False, flags=0, na=False, regex=True)) | 
@@ -1452,26 +1452,26 @@ class PlayProcess(object):
             # Defense TD + Successful Two-Point Conversion
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (~play_df["text"].str.lower().str.contains('failed\)', case=False, regex=False))),
+            (~play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
             # Defense TD + Failed Two-Point Conversion
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('failed\)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
             # Defense TD + Kick/PAT Missed
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.contains('PAT', case=True, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('missed\)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('missed)', case=False, regex=False))),
             # Defense TD + Kick/PAT Good
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains(kick, case=False, regex=False))),
             # Offense TD + Failed Two-Point Conversion
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('failed\)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
             # Offense TD + Successful Two-Point Conversion
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (~play_df["text"].str.lower().str.contains('failed\)', case=False, regex=False))),
+            (~play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
             # Offense Made FG
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["type.text"].str.lower().str.contains('field goal', case=False, flags=0, na=False, regex=True)) & 
@@ -1484,7 +1484,7 @@ class PlayProcess(object):
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (~play_df['text'].str.lower().str.contains('conversion', case=False, regex=False)) &
             ((play_df['text'].str.contains('PAT', case=True, regex=False))) & 
-            ((play_df['text'].str.lower().str.contains('missed\)', case=False, regex=False)))),
+            ((play_df['text'].str.lower().str.contains('missed)', case=False, regex=False)))),
             # Offense TD + Kick PAT Good
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df['text'].str.lower().str.contains(kick, case=False, regex=False))),
