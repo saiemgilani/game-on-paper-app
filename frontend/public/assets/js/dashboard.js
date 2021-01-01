@@ -55,6 +55,20 @@ function calculateCumulativeSums(arr) {
 // https://www.trysmudford.com/blog/linear-interpolation-functions/
 const lerp = (x, y, a) => x * (1 - a) + y * a;
 
+// https://stackoverflow.com/questions/45394053/how-to-detect-screen-size-or-view-port-on-bootstrap-4-with-javascript
+function getCurrentViewport() {
+// https://stackoverflow.com/a/8876069
+    const width = Math.max(
+        document.documentElement.clientWidth,
+        window.innerWidth || 0
+    )
+    if (width <= 576) return 'xs'
+    if (width <= 768) return 'sm'
+    if (width <= 992) return 'md'
+    if (width <= 1200) return 'lg'
+    return 'xl'
+}
+
 function interpolateTimestamps(plays) {
     if (plays.length == 0) {
         return plays;
@@ -289,20 +303,26 @@ if (gameData.plays.length > 0) {
         },
         draw: function(ease) {
             // call the parent draw method (inheritance in javascript, whatcha gonna do?)
-            var ctx = this.chart.ctx;                                         // get the context
-            ctx.save();
-            ctx.globalAlpha = 0.4;
-            var sizeWidth = ctx.canvas.clientWidth;
-            var sizeHeight = ctx.canvas.clientHeight;
-            if (this.homeTeamImage) {                                       // if the image is loaded
-                ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (75.0/4.0), 75, 75);             // draw it - ~145 px per half
-            }
+            let viewport = getCurrentViewport()
+            if (viewport == "xl" || viewport == "lg") {
+                var imgSize = 75.0;
 
-            if (this.awayTeamImage) {                                    // if the image is loaded
-                ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (75.0/2.0), 75, 75);             // draw it - ~145 px per half
+                var ctx = this.chart.ctx;                                         // get the context
+                ctx.save();
+                ctx.globalAlpha = 0.4;
+                var sizeWidth = ctx.canvas.clientWidth;
+                var sizeHeight = ctx.canvas.clientHeight;
+
+                if (this.homeTeamImage) {                                       // if the image is loaded
+                    ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (imgSize / 4.0), imgSize, imgSize);             // draw it - ~145 px per half
+                }
+
+                if (this.awayTeamImage) {                                    // if the image is loaded
+                    ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);             // draw it - ~145 px per half
+                }
+                ctx.restore();
+                Chart.controllers.line.prototype.draw.call(this, ease);
             }
-            ctx.restore();
-            Chart.controllers.line.prototype.draw.call(this, ease);
         },
         initialize: function(chart, datasetIndex) {                     // override initialize too to preload the image, the image doesn't need to be outside as it is only used by this chart
             Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
