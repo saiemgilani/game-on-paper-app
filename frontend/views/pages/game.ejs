@@ -172,7 +172,7 @@ function roundNumber(value, power10, fixed) {
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
-                    <a class="btn btn-sm btn-outline-secondary" href="https://github.com/saiemgilani/game-on-paper-app">GitHub</a>
+                    <button role="button" class="btn btn-sm btn-outline-secondary" onclick="producePDF()">PDF</button>
                   </div>
             </div>
         </header>
@@ -213,7 +213,7 @@ function roundNumber(value, power10, fixed) {
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
                             <% } %>Spread: <%= printSpread() %>
-                            <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
+                            <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
                                  | Current: <%= (lastPlay.pos_team == homeTeam.id) ? homeTeam.abbreviation : awayTeam.abbreviation %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
@@ -236,8 +236,8 @@ function roundNumber(value, power10, fixed) {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
-            <div id="team-stats" class="row mb-lg-1 mb-xs-3">
+        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
+            <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
                     <div class="panel-group">
@@ -422,7 +422,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= awayTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse collapse">
@@ -508,7 +508,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= homeTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse collapse">
@@ -881,9 +881,23 @@ function roundNumber(value, power10, fixed) {
     <%- include('../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <script src="/assets/js/html2canvas.min.js"></script>
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
+
+        function producePDF() {
+            html2canvas(document.body, {
+                onrendered: function(canvas) {
+                    var img = canvas.toDataURL("image/png");
+                    var doc = new jsPDF();
+                    doc.addImage(img, 'JPEG', 20, 20);
+                    doc.save(`game-${gameData.gameInfo.id}-report.pdf`);
+                }
+            });
+        }
+
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
