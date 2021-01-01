@@ -159,6 +159,7 @@ async function retrievePBP(req, res) {
             drives.forEach(d => {
                 d.plays.forEach(p => {
                     p.driveId = parseFloat(d.id);
+                    p.gameId = parseFloat(pbp.id);
                 })
             })
             plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
