@@ -46,24 +46,27 @@ function formatDistance(down, type, distance, yardline) {
 
 stat_key_title_mapping = {
     "EPA_plays": "Total Plays",
+    "scrimmage_plays": "Scrimmage Plays",
     "EPA_overall_total" : "Total EPA",
-    "EPA_passing_overall" : "Passing EPA",
-    "EPA_rushing_overall" : "Rushing EPA",
+    "EPA_passing_overall" : "&emsp;&emsp;Passing EPA",
+    "EPA_rushing_overall" : "&emsp;&emsp;Rushing EPA",
     "EPA_per_play": "EPA/Play",
-    "EPA_passing_per_play": "Pass EPA/Play",
-    "EPA_rushing_per_play": "Rush EPA/Play",
+    "EPA_passing_per_play": "&emsp;&emsp;Pass EPA/Play",
+    "EPA_rushing_per_play": "&emsp;&emsp;Rush EPA/Play",
     "rushes" : "Rushes",
-    "rushing_power_success" : "Power Success Runs",
-    "rushing_stuff_rate" : "Stuffed Runs",
-    "rushing_stopped_rate": "Stopped Runs",
-    "rushing_opportunity_rate" : "Opportunity Runs",
-    "rushing_highlight_run" : "Highlight Runs",
+    "rushing_power_success" : "&emsp;&emsp;Power Success Runs",
+    "rushing_stuff_rate" : "&emsp;&emsp;Stuffed Runs",
+    "rushing_stopped_rate": "&emsp;&emsp;Stopped Runs",
+    "rushing_opportunity_rate" : "&emsp;&emsp;Opportunity Runs",
+    "rushing_highlight_run" : "&emsp;&emsp;Highlight Runs",
     "havoc_total" : "Havoc Plays Allowed",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
-    "EPA_fg" : "Field Goal EPA",
-    "EPA_punt" : "Punt EPA",
-    "EPA_kickoff" : "Kickoff EPA",
+    "special_teams_plays": "Special Teams Plays",
+    "EPA_sp" : "Special Teams EPA",
+    "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
+    "EPA_punt" : "&emsp;&emsp;Punting EPA",
+    "EPA_kickoff" : "&emsp;&emsp;Kickoff Return EPA",
     "TFL" : "TFLs Allowed",
     "TFL_pass" : "&emsp;&emsp;Passing",
     "TFL_rush" : "&emsp;&emsp;Rushing",
@@ -244,7 +247,7 @@ function roundNumber(value, power10, fixed) {
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","EPA_overall_total","EPA_per_play","EPA_passing_overall","EPA_passing_per_play","EPA_rushing_overall","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_overall_total","EPA_passing_overall","EPA_rushing_overall","EPA_sp","EPA_penalty", EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -267,7 +270,7 @@ function roundNumber(value, power10, fixed) {
                                                 </table>
                                             </div>
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
+                                                <% var columns = ["scrimmage_plays","rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -292,7 +295,7 @@ function roundNumber(value, power10, fixed) {
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
+                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -316,7 +319,7 @@ function roundNumber(value, power10, fixed) {
                                             </div>
                             
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
+                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -341,7 +344,7 @@ function roundNumber(value, power10, fixed) {
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush"]; %>
+                                                <% var columns = ["EPA_plays","scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -364,7 +367,7 @@ function roundNumber(value, power10, fixed) {
                                                 </table>
                                             </div>                                        
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_fg","EPA_punt","EPA_kickoff"]; %>
+                                                <% var columns = ["special_teams_plays","EPA_sp","EPA_fg","EPA_punt","EPA_kickoff"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
