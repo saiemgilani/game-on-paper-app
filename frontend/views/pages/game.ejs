@@ -214,7 +214,7 @@ function roundNumber(value, power10, fixed) {
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
                             <% } %>Spread: <%= printSpread() %>
-                            <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
+                            <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
                                  | Current: <%= (lastPlay.pos_team == homeTeam.id) ? homeTeam.abbreviation : awayTeam.abbreviation %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
@@ -237,7 +237,7 @@ function roundNumber(value, power10, fixed) {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
+        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
