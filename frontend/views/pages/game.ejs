@@ -180,7 +180,7 @@ stat_key_title_mapping = {
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
                             <% } %>Spread: <%= printSpread() %>
-                            <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") && gameData.plays.length > 0) { %>
+                            <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
                                  | Current: <%= (lastPlay.pos_team == homeTeam.id) ? homeTeam.abbreviation : awayTeam.abbreviation %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
