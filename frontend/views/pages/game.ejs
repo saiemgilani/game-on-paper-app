@@ -107,6 +107,10 @@ turnover_vec = [
     "Uncategorized Touchdown"
 ]
 
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
 %>
 <head>
     <meta charset="utf-8">
@@ -255,7 +259,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -278,7 +282,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -303,7 +307,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -327,7 +331,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -352,7 +356,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -375,7 +379,7 @@ turnover_vec = [
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>
@@ -420,69 +424,77 @@ turnover_vec = [
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse collapse">
                             <div class="panel-body">
-                                <table class="table table-sm table-responsive">
-                                    <thead>
-                                      <tr>
-                                        <th rowspan="1" colspan="1"></th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                    <% if (awayTeamBox.pass.length > 0) { %>
-                                        <tr>
-                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
-                                        </tr>
-                                        <% awayTeamBox.pass.forEach(p => { %>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-responsive">
+                                        <thead>
+                                          <tr>
+                                            <th rowspan="1" colspan="1"></th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                        <% if (awayTeamBox.pass.length > 0) { %>
                                             <tr>
-                                                <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
-                                                <td style="text-align: center;"><%= p.YPA || 0 %></td>
-                                                <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                <td style="text-align: center;"><%= p.EPA %></td>
-                                                <td style="text-align: center;"><%= p.SR %></td>
-                                                <td style="text-align: center;"><%= p.WPA %></td>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
                                             </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    <% if (awayTeamBox.rush.length > 0) { %>
-                                        <tr>
-                                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
-                                        </tr>
-                                        <% awayTeamBox.rush.forEach(p => { %>
-                                        <tr>
-                                            <td style="text-align: left;"><%= p.rusher_player_name %></td>
-                                            <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
-                                            <td style="text-align: center;"><%= p.YPC || 0 %></td>
-                                            <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                            <td style="text-align: center;"><%= p.EPA %></td>
-                                            <td style="text-align: center;"><%= p.SR %></td>
-                                            <td style="text-align: center;"><%= p.WPA %></td>
-                                        </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    <% if (awayTeamBox.receiver.length > 0) { %>
-                                        <tr>
-                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
-                                        </tr>
-                                        <% awayTeamBox.receiver.forEach(p => { %>
-                                        <tr>
-                                            <td style="text-align: left;"><%= p.receiver_player_name %></td>
-                                            <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
-                                            <td style="text-align: center;"><%= p.YPT || 0 %></td>
-                                            <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                            <td style="text-align: center;"><%= p.EPA %></td>
-                                            <td style="text-align: center;"><%= p.SR %></td>
-                                            <td style="text-align: center;"><%= p.WPA %></td>
-                                        </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    </tbody>
-                                  </table>
+                                            <% awayTeamBox.pass.forEach(p => { %>
+                                                <% if (p.passer_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.passer_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPA || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        <% if (awayTeamBox.rush.length > 0) { %>
+                                            <tr>
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
+                                            </tr>
+                                            <% awayTeamBox.rush.forEach(p => { %>
+                                                <% if (p.rusher_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.rusher_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPC || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        <% if (awayTeamBox.receiver.length > 0) { %>
+                                            <tr>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
+                                            </tr>
+                                            <% awayTeamBox.receiver.forEach(p => { %>
+                                                <% if (p.receiver_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.receiver_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPT || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                           </div>
                         </div>
@@ -498,69 +510,77 @@ turnover_vec = [
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse collapse">
                             <div class="panel-body">
-                                <table class="table table-sm table-responsive">
-                                    <thead>
-                                      <tr>
-                                        <th rowspan="1" colspan="1"></th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
-                                        <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                    <% if (homeTeamBox.pass.length > 0) { %>
-                                        <tr>
-                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
-                                        </tr>
-                                        <% homeTeamBox.pass.forEach(p => { %>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-responsive">
+                                        <thead>
+                                          <tr>
+                                            <th rowspan="1" colspan="1"></th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                        <% if (homeTeamBox.pass.length > 0) { %>
                                             <tr>
-                                                <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
-                                                <td style="text-align: center;"><%= p.YPA || 0 %></td>
-                                                <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                <td style="text-align: center;"><%= p.EPA %></td>
-                                                <td style="text-align: center;"><%= p.SR %></td>
-                                                <td style="text-align: center;"><%= p.WPA %></td>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
                                             </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    <% if (homeTeamBox.rush.length > 0) { %>
-                                        <tr>
-                                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
-                                        </tr>
-                                        <% homeTeamBox.rush.forEach(p => { %>
-                                        <tr>
-                                            <td style="text-align: left;"><%= p.rusher_player_name %></td>
-                                            <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
-                                            <td style="text-align: center;"><%= p.YPC || 0 %></td>
-                                            <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                            <td style="text-align: center;"><%= p.EPA %></td>
-                                            <td style="text-align: center;"><%= p.SR %></td>
-                                            <td style="text-align: center;"><%= p.WPA %></td>
-                                        </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    <% if (homeTeamBox.receiver.length > 0) { %>
-                                        <tr>
-                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
-                                        </tr>
-                                        <% homeTeamBox.receiver.forEach(p => { %>
-                                        <tr>
-                                            <td style="text-align: left;"><%= p.receiver_player_name %></td>
-                                            <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
-                                            <td style="text-align: center;"><%= p.YPT || 0 %></td>
-                                            <td style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                            <td style="text-align: center;"><%= p.EPA %></td>
-                                            <td style="text-align: center;"><%= p.SR %></td>
-                                            <td style="text-align: center;"><%= p.WPA %></td>
-                                        </tr>
-                                        <% }); %>
-                                    <% } %>
-                                    </tbody>
-                                  </table>
+                                            <% homeTeamBox.pass.forEach(p => { %>
+                                                <% if (p.passer_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.passer_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPA || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        <% if (homeTeamBox.rush.length > 0) { %>
+                                            <tr>
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
+                                            </tr>
+                                            <% homeTeamBox.rush.forEach(p => { %>
+                                                <% if (p.rusher_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.rusher_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPC || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        <% if (homeTeamBox.receiver.length > 0) { %>
+                                            <tr>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
+                                            </tr>
+                                            <% homeTeamBox.receiver.forEach(p => { %>
+                                                <% if (p.receiver_player_name.length > 0) { %>
+                                                    <tr>
+                                                        <td style="text-align: left;"><%= p.receiver_player_name %></td>
+                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.YPT || 0 %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 3, 1) * 100 %>%</td>
+                                                    </tr>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                           </div>
                         </div>
@@ -645,9 +665,9 @@ turnover_vec = [
                                         <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                         <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
-                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -707,9 +727,9 @@ turnover_vec = [
                                     <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                     <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                     
-                                    <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                    <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                    <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                    <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                    <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                 </tr>
                             <% }); %>
                         </tbody>
@@ -769,9 +789,9 @@ turnover_vec = [
                                         <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
                                         <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
-                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -839,9 +859,9 @@ turnover_vec = [
                                         <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
                                         
                                         
-                                        <td style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
+                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
+                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
                                     </tr>
                                 <% }); %>
                             </tbody>

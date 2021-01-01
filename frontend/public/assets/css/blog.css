@@ -90,5 +90,8 @@ table {
   border-bottom-style: solid;
   border-bottom-width: 1px;
   border-bottom-color: #dee2e6;
+}
 
+.numeral {
+  font-family: "Chivo"; /* here to change font for just numerals in tables */
 }
