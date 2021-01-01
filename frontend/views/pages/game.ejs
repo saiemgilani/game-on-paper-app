@@ -173,7 +173,7 @@ function roundNumber(value, power10, fixed) {
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
-                    <button role="button" class="btn btn-sm btn-outline-secondary" onclick="producePDF()">PDF</button>
+                    <a class="btn btn-sm btn-outline-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a>
                   </div>
             </div>
         </header>
@@ -189,7 +189,6 @@ function roundNumber(value, power10, fixed) {
                 <a href="#scoring-plays" class="p-2 link-secondary">Scoring Plays</a>
                 <a href="#all-plays" class="p-2 link-secondary">All Plays</a>
                 <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
-                <a class="p-2 link-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a>
             </nav>
         </div>
     </div>
@@ -882,22 +881,9 @@ function roundNumber(value, power10, fixed) {
     <%- include('../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
-    <script src="/assets/js/html2canvas.min.js"></script>
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
-
-        function producePDF() {
-            html2canvas(document.body, {
-                onrendered: function(canvas) {
-                    var img = canvas.toDataURL("image/png");
-                    var doc = new jsPDF();
-                    doc.addImage(img, 'JPEG', 20, 20);
-                    doc.save(`game-${gameData.gameInfo.id}-report.pdf`);
-                }
-            });
-        }
 
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
