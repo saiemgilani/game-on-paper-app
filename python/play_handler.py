@@ -1947,7 +1947,7 @@ class PlayProcess(object):
             EPA_per_Play = ('EPA', mean),
             WPA = ('wpa', sum),
             SR = ('EPA_success', mean)
-        ).round(1)
+        )
         passer_box = passer_box.replace({np.nan: None})
 
         rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
@@ -1959,7 +1959,7 @@ class PlayProcess(object):
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum),
             SR = ('EPA_success', mean)
-        ).round(1)
+        )
         rusher_box = rusher_box.replace({np.nan: None})
 
         receiver_box = pass_box.groupby(by=["pos_team","receiver_player_name"], as_index=False).agg(
@@ -1972,7 +1972,7 @@ class PlayProcess(object):
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum),
             SR = ('EPA_success', mean)
-        ).round(1)
+        )
         receiver_box = receiver_box.replace({np.nan: None})
         
         team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
