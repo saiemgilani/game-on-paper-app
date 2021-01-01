@@ -45,24 +45,24 @@ function formatDistance(down, type, distance, yardline) {
 }
 
 stat_key_title_mapping = {
-    "EPA_plays": "Total Plays",
-    "scrimmage_plays": "Scrimmage Plays",
+    "EPA_plays" : "Total Plays",
+    "scrimmage_plays" : "Scrimmage Plays",
     "EPA_overall_total" : "Total EPA",
     "EPA_passing_overall" : "&emsp;&emsp;Passing EPA",
     "EPA_rushing_overall" : "&emsp;&emsp;Rushing EPA",
-    "EPA_per_play": "EPA/Play",
-    "EPA_passing_per_play": "&emsp;&emsp;Pass EPA/Play",
-    "EPA_rushing_per_play": "&emsp;&emsp;Rush EPA/Play",
+    "EPA_per_play" : "EPA/Play",
+    "EPA_passing_per_play" : "&emsp;&emsp;Pass EPA/Play",
+    "EPA_rushing_per_play" : "&emsp;&emsp;Rush EPA/Play",
     "rushes" : "Rushes",
     "rushing_power_success" : "&emsp;&emsp;Power Success Runs",
     "rushing_stuff_rate" : "&emsp;&emsp;Stuffed Runs",
-    "rushing_stopped_rate": "&emsp;&emsp;Stopped Runs",
+    "rushing_stopped_rate" : "&emsp;&emsp;Stopped Runs",
     "rushing_opportunity_rate" : "&emsp;&emsp;Opportunity Runs",
     "rushing_highlight_run" : "&emsp;&emsp;Highlight Runs",
     "havoc_total" : "Havoc Plays Allowed",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
-    "special_teams_plays": "Special Teams Plays",
+    "special_teams_plays" : "Special Teams Plays",
     "EPA_sp" : "Special Teams EPA",
     "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
     "EPA_punt" : "&emsp;&emsp;Punting EPA",
@@ -236,8 +236,8 @@ function roundNumber(value, power10, fixed) {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
-            <div id="team-stats" class="row mb-3">
+        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
+            <div id="team-stats" class="row mb-lg-1 mb-xs-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
                     <div class="panel-group">
@@ -247,7 +247,7 @@ function roundNumber(value, power10, fixed) {
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_overall_total","EPA_passing_overall","EPA_rushing_overall","EPA_sp","EPA_penalty", EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_sp", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -422,7 +422,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= awayTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse collapse">
@@ -508,7 +508,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= homeTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse collapse">
