@@ -446,12 +446,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.passer_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPA || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPA || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -464,12 +464,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.rusher_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.rusher_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPC || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Rush_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPC || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -482,12 +482,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.receiver_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.receiver_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPT || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Rec_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPT || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -532,12 +532,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.passer_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPA || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPA || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -550,12 +550,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.rusher_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.rusher_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPC || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Car %> carr<%= (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Rush_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPC || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.WPA %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -568,12 +568,12 @@ function roundNumber(value, power10, fixed) {
                                                 <% if (p.receiver_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.receiver_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.YPT || 0 %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA_per_Play %></td>
-                                                        <td class="numeral" style="text-align: center;"><%= p.EPA %></td>
+                                                        <td style="text-align: left;"><%= p.Rec %> catch<%= (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<%= (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Rec_TD %> TD</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPT || 0), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.SR) * 100, 2, 0) %>%</td>
-                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 3, 1) * 100 %>%</td>
+                                                        <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.WPA) * 100, 2, 1) %>%</td>
                                                     </tr>
                                                 <% } %>
                                             <% }); %>
@@ -638,7 +638,7 @@ function roundNumber(value, power10, fixed) {
                                 <% bigPlays.forEach(play => { %>
                                     <%
                                         var classText = "";
-                                        if (turnover_vec.includes(play.playType)) {
+                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
                                             classText = "table-danger"
                                         } else if (play.scoringPlay == true) {
                                             classText = "table-success"
@@ -699,7 +699,7 @@ function roundNumber(value, power10, fixed) {
                             <% mostImpPlays.forEach(play => { %>
                                 <%
                                         var classText = "";
-                                        if (turnover_vec.includes(play.playType)) {
+                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
                                             classText = "table-danger"
                                         } else if (play.scoringPlay == true) {
                                             classText = "table-success"
@@ -761,7 +761,7 @@ function roundNumber(value, power10, fixed) {
                                 <% gameData.scoringPlays.forEach(play => { %>
                                     <%
                                         var classText = "";
-                                        if (turnover_vec.includes(play.playType)) {
+                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
                                             classText = "table-danger"
                                         } else if (play.scoringPlay == true) {
                                             classText = "table-success"
@@ -830,7 +830,7 @@ function roundNumber(value, power10, fixed) {
                                 <% gameData.plays.forEach(play => { %>
                                     <%
                                         var classText = "";
-                                        if (turnover_vec.includes(play.playType)) {
+                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
                                             classText = "table-danger"
                                         } else if (play.scoringPlay == true) {
                                             classText = "table-success"
