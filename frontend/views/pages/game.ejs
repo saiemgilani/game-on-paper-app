@@ -230,7 +230,7 @@ turnover_vec = [
             </div>
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
-            <div id="team-stats" class="row mb-1">
+            <div id="team-stats" class="row mb-lg-1 mb-xs-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
                     <div class="panel-group">
@@ -410,7 +410,7 @@ turnover_vec = [
                     awayTeamBox.rush.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
                     awayTeamBox.receiver.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
                 %>
-                <div class="col-lg-6 px-md-4">
+                <div class="col-lg-6 ms-sm-auto px-md-4 mb-xs-3 mb-lg-0">
                     <div class="panel-group">
                         <div class="panel panel-default">
                           <div class="panel-heading">
@@ -488,7 +488,7 @@ turnover_vec = [
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6 px-md-4">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
                     <div class="panel-group">
                         <div class="panel panel-default">
                           <div class="panel-heading">
