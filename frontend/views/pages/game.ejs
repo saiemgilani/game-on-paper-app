@@ -203,161 +203,179 @@ stat_key_title_mapping = {
                 </main>
             </div>
         <% } %>
+        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %>
             <div class="row mb-0">
                 <div class="col-12 mb-0 px-md-4">
-                    <h2 id="box-score">Advanced Box Score</h2>
+                    <h2 id="box-score" class="d-inline">Advanced Box Score</h2> 
                 </div>
             </div>    
             <div class="row mb-1">
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_plays","EPA_overall_total","EPA_per_play","EPA_passing_overall","EPA_passing_per_play","EPA_rushing_overall","EPA_rushing_per_play"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_plays","rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_plays","EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-    
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>                                        
-                    <div class="table-responsive">
-                        <% var columns = ["EPA_fg","EPA_punt","EPA_kickoff"]; %>
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;"></th>
-                                    <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                    <% }); %>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% columns.forEach(item => { %>
-                                    <tr>
-                                        <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                        <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                            <td style="text-align: center;"><%= teamData[item] %></td>
-                                        <% }); %>
-                                    </tr>
-                                    
-                                <% }); %>
-                            </tbody>
-                        </table>
+                <div class="col-12 px-md-4">
+                    <div class="panel-group">
+                        <div class="panel panel-default">
+                            <div class="panel-heading">
+                                <div class="panel-title">
+                                    <h4 class="d-inline">Team Stats</h4> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
+                                </div>
+                            </div>
+                            <div id="boxScoreContent" class="panel-collapse collapse">
+                                <div class="panel-body">
+                                    <div class="row">
+                                        <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","EPA_overall_total","EPA_per_play","EPA_passing_overall","EPA_passing_per_play","EPA_rushing_overall","EPA_rushing_per_play"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                            
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>                                        
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_fg","EPA_punt","EPA_kickoff"]; %>
+                                                <table class="table table-striped table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;"></th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                            
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -391,7 +409,7 @@ stat_key_title_mapping = {
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse collapse">
                             <div class="panel-body">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-responsive">
                                     <thead class="gt_col_headings">
                                       <tr>
                                         <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1"></th>
@@ -469,7 +487,7 @@ stat_key_title_mapping = {
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse collapse">
                             <div class="panel-body">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-responsive">
                                     <thead class="gt_col_headings">
                                       <tr>
                                         <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1"></th>
@@ -538,6 +556,7 @@ stat_key_title_mapping = {
                     </div>
                 </div>
             </div>
+        <% } %>
         <%
             var bigPlays = [...gameData.plays]
             bigPlays.sort((a, b) => {
@@ -573,7 +592,7 @@ stat_key_title_mapping = {
                 </div>
                 <% if (bigPlays != null && bigPlays.length > 0) { %>
                     <div class="table-responsive">
-                        <table class="table table-striped table-sm">
+                        <table class="table table-striped table-sm table-responsive">
                             <thead>
                                 <tr>
                                     <th style="text-align: left;">Time</th>
@@ -624,7 +643,7 @@ stat_key_title_mapping = {
                 </div>
                 <% if (mostImpPlays != null && mostImpPlays.length > 0) { %>
                 <div class="table-responsive">
-                    <table class="table table-striped table-sm">
+                    <table class="table table-striped table-sm table-responsive">
                         <thead>
                             <tr>
                                 <th style="text-align: left;">Time</th>
@@ -676,7 +695,7 @@ stat_key_title_mapping = {
                 <h2 id="scoring-plays">Scoring Plays</h2>
                 <div class="table-responsive">
                     <% if (gameData.scoringPlays != null && gameData.scoringPlays.length > 0) { %>
-                        <table class="table table-striped table-sm">
+                        <table class="table table-striped table-sm table-responsive">
                             <thead>
                                 <tr>
                                     <th style="text-align: left;">Time</th>
@@ -735,7 +754,7 @@ stat_key_title_mapping = {
                 </div>
                 <div class="table-responsive">
                     <% if (gamePlays != null && gamePlays.length > 0) { %>
-                        <table class="table table-striped table-sm">
+                        <table class="table table-striped table-sm table-responsive">
                             <thead>
                                 <tr>
                                     <th style="text-align: left;">Time</th>
