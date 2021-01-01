@@ -773,8 +773,8 @@ class PlayProcess(object):
                             play_df['pass'] == 1 & ~play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
         play_df['pass_breakup'] = play_df['text'].str.contains('broken up by', case=False, flags=0, na=False, regex=True)
             #--- Pass/Rush TDs ------
-        play_df['pass_td'] = (play_df["type.text"] == "Passing Touchdown")
-        play_df['rush_td'] = (play_df["type.text"] == "Rushing Touchdown")
+        play_df['pass_td'] = (play_df["type.text"] == "Passing Touchdown") | ((play_df["pass"] == 1) & (play_df["td_play"] == 1))
+        play_df['rush_td'] = (play_df["type.text"] == "Rushing Touchdown") | ((play_df["rush"] == 1) & (play_df["td_play"] == 1))
         
             #-- Change of possession via turnover
         play_df['turnover_vec'] = play_df["type.text"].isin(turnover_vec)
