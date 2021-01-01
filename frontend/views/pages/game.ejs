@@ -236,8 +236,8 @@ function roundNumber(value, power10, fixed) {
                 </main>
             </div>
         <% } %>
-        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
-            <div id="team-stats" class="row mb-lg-1 mb-xs-3">
+        <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
+            <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
                     <div class="panel-group">
@@ -422,7 +422,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= awayTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse collapse">
@@ -508,7 +508,7 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= homeTeam.abbreviation %> Players</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
                             </div>
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse collapse">
