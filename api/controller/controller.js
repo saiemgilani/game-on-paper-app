@@ -159,6 +159,7 @@ async function retrievePBP(req, res) {
             drives.forEach(d => {
                 d.plays.forEach(p => {
                     p.driveId = parseFloat(d.id);
+                    p.gameId = parseFloat(pbp.id);
                 })
             })
             plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
@@ -238,7 +239,7 @@ async function retrievePBP(req, res) {
     
         plays = processedGame["records"];
         // debuglog(plays)
-        pbp.boxScore = processedGame["box_score"];
+        pbp.advBoxScore = processedGame["box_score"];
         // debuglog(typeof pbp.boxScore)
         // debuglog(pbp.boxScore)
         
