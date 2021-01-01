@@ -509,7 +509,7 @@ class PlayProcess(object):
         )
         play_df['pass'] = np.where(
             (
-            (play_df["type.text"].isin(["Pass Reception", "Pass Completion","Pass Touchdown","Sack","Pass","Inteception","Pass Interception Return", "Interception Return Touchdown","Pass Incompletion","Sack Touchdown","Interception Return"]))
+            (play_df["type.text"].isin(["Pass Reception", "Pass Completion","Passing Touchdown","Sack","Pass","Inteception","Pass Interception Return", "Interception Return Touchdown","Pass Incompletion","Sack Touchdown","Interception Return"]))
             | ((play_df["type.text"] == "Safety") & (play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
             | ((play_df["type.text"] == "Safety") & (play_df["text"].str.contains("pass complete", case=False, flags=0, na=False, regex=True)))
             | ((play_df["type.text"] == "Fumble Recovery (Own)") & (play_df["text"].str.contains(r"pass complete|pass incomplete|pass intercepted", case=False, flags=0, na=False, regex=True)))
@@ -1452,26 +1452,26 @@ class PlayProcess(object):
             # Defense TD + Successful Two-Point Conversion
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (~play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
+            (~play_df["text"].str.lower().str.contains('failed\s?\)', case=False, regex=True))),
             # Defense TD + Failed Two-Point Conversion
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('failed\s?\)', case=False, regex=True))),
             # Defense TD + Kick/PAT Missed
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.contains('PAT', case=True, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('missed)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('missed\s?\)', case=False, regex=True))),
             # Defense TD + Kick/PAT Good
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains(kick, case=False, regex=False))),
             # Offense TD + Failed Two-Point Conversion
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
+            (play_df["text"].str.lower().str.contains('failed\s?\)', case=False, regex=True))),
             # Offense TD + Successful Two-Point Conversion
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('conversion', case=False, regex=False)) & 
-            (~play_df["text"].str.lower().str.contains('failed)', case=False, regex=False))),
+            (~play_df["text"].str.lower().str.contains('failed\s?\)', case=False, regex=True))),
             # Offense Made FG
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df["type.text"].str.lower().str.contains('field goal', case=False, flags=0, na=False, regex=True)) & 
@@ -1484,7 +1484,7 @@ class PlayProcess(object):
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (~play_df['text'].str.lower().str.contains('conversion', case=False, regex=False)) &
             ((play_df['text'].str.contains('PAT', case=True, regex=False))) & 
-            ((play_df['text'].str.lower().str.contains('missed)', case=False, regex=False)))),
+            ((play_df['text'].str.lower().str.contains('missed\s?\)', case=False, regex=True)))),
             # Offense TD + Kick PAT Good
             ((play_df["type.text"].isin(offense_score_vec)) & 
             (play_df['text'].str.lower().str.contains(kick, case=False, regex=False))),
@@ -1586,6 +1586,22 @@ class PlayProcess(object):
         )
         play_df['sp'] = np.where(
            (play_df.fg_inds==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+        )
+        play_df['scrimmage_play'] = np.where(
+            (play_df.sp == False) & (play_df['type.text'] != 'Timeout'), True, False
+        )
+        play_df['EPA_penalty'] = np.select(
+            [
+                (play_df['type.text'].isin(["Penalty","Penalty (Kickoff)"])),
+                (play_df['penalty_in_text']==True)
+            ],
+            [
+                play_df['EPA'],
+                play_df['EP_end']-play_df['EP_start']
+            ], default = 0
+        )
+        play_df['EPA_sp'] = np.where(
+           (play_df.fg_inds==1)|(play_df.punt==1)|(play_df.kickoff_play==1),play_df['EPA'],False 
         )
         play_df['EPA_fg'] = np.where(
            (play_df.fg_inds==1), play_df['EPA'], None 
@@ -1919,10 +1935,17 @@ class PlayProcess(object):
         self.plays_json['EPA_explosive_rush'] = self.plays_json['EPA_explosive_rush'].astype(float)
         self.plays_json['standard_down'] = self.plays_json['standard_down'].astype(float)
         self.plays_json['passing_down'] = self.plays_json['passing_down'].astype(float)
+        self.plays_json['fumble_vec'] = self.plays_json['fumble_vec'].astype(float)
+        self.plays_json['sack'] = self.plays_json['sack'].astype(float)
+        self.plays_json['penalty_flag'] = self.plays_json['penalty_flag'].astype(float)
+        
+        self.plays_json['scrimmage_play'] = self.plays_json['scrimmage_play'].astype(float)
         self.plays_json['sp'] = self.plays_json['sp'].astype(float)
         self.plays_json['kickoff_play'] = self.plays_json['kickoff_play'].astype(float)
         self.plays_json['punt'] = self.plays_json['punt'].astype(float)
         self.plays_json['fg_inds'] = self.plays_json['fg_inds'].astype(float)
+        self.plays_json['EPA_penalty'] = self.plays_json['EPA_penalty'].astype(float)
+        self.plays_json['EPA_sp'] = self.plays_json['EPA_sp'].astype(float)
         self.plays_json['EPA_fg'] = self.plays_json['EPA_fg'].astype(float)
         self.plays_json['EPA_punt'] = self.plays_json['EPA_punt'].astype(float)
         self.plays_json['EPA_kickoff'] = self.plays_json['EPA_kickoff'].astype(float)
@@ -1977,6 +2000,7 @@ class PlayProcess(object):
         
         team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
             EPA_plays = ('start.team.id', 'count'),
+            scrimmage_plays = ('scrimmage_play', sum),
             EPA_overall_total = ('EPA', sum),
             EPA_passing_overall = ('EPA_pass', sum),
             EPA_rushing_overall = ('EPA_rush', sum),
@@ -1990,6 +2014,9 @@ class PlayProcess(object):
             rushing_stopped_rate = ('stopped_run', sum),
             rushing_opportunity_rate = ('opportunity_run', sum),
             rushing_highlight_run = ('highlight_run', sum),
+            passes = ('pass', sum),
+            passes_completed = ('completion', sum),
+            passes_attempted = ('pass_attempt', sum),
             EPA_explosive = ('EPA_explosive', sum),
             EPA_explosive_passing = ('EPA_explosive_pass', sum),
             EPA_explosive_rushing = ('EPA_explosive_rush', sum),
@@ -1998,6 +2025,9 @@ class PlayProcess(object):
             EPA_success_rush = ('EPA_success_rush', sum),
             EPA_success_standard_down = ('EPA_success_standard_down', sum),
             EPA_success_passing_down = ('EPA_success_passing_down', sum),
+            EPA_penalty = ('EPA_penalty', sum),
+            special_teams_plays = ('sp', sum),
+            EPA_sp = ('EPA_sp', sum),
             EPA_fg = ('EPA_fg', sum),
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
@@ -2008,7 +2038,7 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_pass = ('havoc_pass', sum),
             havoc_total_rush = ('havoc_rush', sum)
-        ).round(2)
+        )
 
         team_box = team_box.replace({np.nan:None})
 
