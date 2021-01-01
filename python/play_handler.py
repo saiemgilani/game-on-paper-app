@@ -2027,6 +2027,7 @@ class PlayProcess(object):
             EPA_success_passing_down = ('EPA_success_passing_down', sum),
             EPA_penalty = ('EPA_penalty', sum),
             special_teams_plays = ('sp', sum),
+            EPA_penalty= ('EPA_penalty', sum),
             EPA_sp = ('EPA_sp', sum),
             EPA_fg = ('EPA_fg', sum),
             EPA_punt = ('EPA_punt', sum),
