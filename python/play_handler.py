@@ -1535,16 +1535,16 @@ class PlayProcess(object):
         play_df['opportunity_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed >=4), True, False)
         play_df['highlight_run'] =  np.where((play_df.rush == 1) & (play_df.yds_rushed >=8), True, False)
         play_df['short_rush_success'] = np.where(
-            (play_df.distance < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df.distance), True, False
+            (play_df['start.distance'] < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df['start.distance']), True, False
         )
         play_df['short_rush_attempt'] = np.where(
-            (play_df.distance < 2) & (play_df.rush==1), True, False
+            (play_df['start.distance'] < 2) & (play_df.rush==1), True, False
         )
         play_df['power_rush_success'] = np.where(
-            (play_df.distance < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df.distance), True, False
+            (play_df['start.distance'] < 2) & (play_df.rush==1) & (play_df.statYardage >= play_df['start.distance']), True, False
         )
         play_df['power_rush_attempt'] = np.where(
-            (play_df.distance < 2) & (play_df.rush==1), True, False
+            (play_df['start.distance'] < 2) & (play_df.rush==1), True, False
         )
         play_df['EPA_explosive'] = np.where(
             ((play_df['pass'] == 1) & (play_df['EPA']>= 2.4))|
@@ -1553,17 +1553,19 @@ class PlayProcess(object):
         play_df['EPA_explosive_rush'] = np.where((((play_df['rush'] == 1) & (play_df['EPA']>= 1.8))), True, False)
         play_df['standard_down'] = np.where(
             play_df.down_1 == True, True, np.where(
-                (play_df.down_2==True) & (play_df.distance < 8), True, np.where(
-                    (play_df.down_3==True) & (play_df.distance < 5), True, np.where(
-                        (play_df.down_4 == True) & (play_df.distance < 5), True, False 
+                (play_df.down_2==True) & (play_df['start.distance'] < 8), True, np.where(
+                    (play_df.down_3==True) & (play_df['start.distance'] < 5), True, np.where(
+                        (play_df.down_4 == True) & (play_df['start.distance'] < 5), True, False 
                     )
                 )
             )
         )
         play_df['passing_down'] = np.where(
-            (play_df.down_2 == True) & (play_df.distance >= 8), True, np.where(
-                (play_df.down_3==True) & (play_df.distance >= 5), True, np.where(
-                    (play_df.down_4==True) & (play_df.distance >= 5), True,  False 
+            play_df.down_1 == True, False, np.where(
+                (play_df.down_2 == True) & (play_df['start.distance'] >= 8), True, np.where(
+                    (play_df.down_3==True) & (play_df['start.distance'] >= 5), True, np.where(
+                        (play_df.down_4==True) & (play_df['start.distance'] >= 5), True,  False 
+                    )
                 )
             )
         )
