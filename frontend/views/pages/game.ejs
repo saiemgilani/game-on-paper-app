@@ -208,14 +208,14 @@ stat_key_title_mapping = {
                     <h2 id="box-score">Advanced Box Score</h2>
                 </div>
             </div>    
-            <div class="row mb-3">
+            <div class="row mb-1">
                 <div class="col-md-4 ms-sm-auto col-lg-4 px-md-4">
                     <div class="table-responsive">
                         <% var columns = ["EPA_plays","EPA_overall_total","EPA_per_play","EPA_passing_overall","EPA_passing_per_play","EPA_rushing_overall","EPA_rushing_per_play"]; %>
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -239,7 +239,7 @@ stat_key_title_mapping = {
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -265,7 +265,7 @@ stat_key_title_mapping = {
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -290,7 +290,7 @@ stat_key_title_mapping = {
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -316,7 +316,7 @@ stat_key_title_mapping = {
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -340,7 +340,7 @@ stat_key_title_mapping = {
                         <table class="table table-striped table-sm">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;"><small><i>Stat</i></small></th>
+                                    <th style="text-align: left;"></th>
                                     <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                         <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                     <% }); %>
@@ -358,6 +358,183 @@ stat_key_title_mapping = {
                                 <% }); %>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <%
+                    let homeTeamBox = {
+                        "pass" : gameData.advBoxScore.pass.filter(g => g.pos_team == homeTeam.id),
+                        "rush" : gameData.advBoxScore.rush.filter(g => g.pos_team == homeTeam.id),
+                        "receiver" : gameData.advBoxScore.receiver.filter(g => g.pos_team == homeTeam.id)
+                    }
+                    homeTeamBox.pass.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+                    homeTeamBox.rush.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+                    homeTeamBox.receiver.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+
+                    let awayTeamBox = {
+                        "pass" : gameData.advBoxScore.pass.filter(g => g.pos_team == awayTeam.id),
+                        "rush" : gameData.advBoxScore.rush.filter(g => g.pos_team == awayTeam.id),
+                        "receiver" : gameData.advBoxScore.receiver.filter(g => g.pos_team == awayTeam.id)
+                    }
+                    awayTeamBox.pass.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+                    awayTeamBox.rush.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+                    awayTeamBox.receiver.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
+                %>
+                <div class="col-lg-6 px-md-4">
+                    <div class="panel-group">
+                        <div class="panel panel-default">
+                          <div class="panel-heading">
+                            <div class="panel-title">
+                                <h4 class="d-inline"><%= awayTeam.abbreviation %> Players</h4> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                            </div>
+                          </div>
+                          <div id="awayTeamCollapse" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <table class="table table-sm">
+                                    <thead class="gt_col_headings">
+                                      <tr>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1"></th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody class="gt_table_body">
+                                    <% if (awayTeamBox.pass.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
+                                        </tr>
+                                        <% awayTeamBox.pass.forEach(p => { %>
+                                            <tr>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.passer_player_name %></td>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPA %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    <% if (awayTeamBox.rush.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
+                                        </tr>
+                                        <% awayTeamBox.rush.forEach(p => { %>
+                                        <tr>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.rusher_player_name %></td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Car %> carr<% (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPC %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                        </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    <% if (awayTeamBox.receiver.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
+                                        </tr>
+                                        <% awayTeamBox.receiver.forEach(p => { %>
+                                        <tr>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.receiver_player_name %></td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Rec %> catch<% (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<% (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPT %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                        </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    </tbody>
+                                  </table>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 px-md-4">
+                    <div class="panel-group">
+                        <div class="panel panel-default">
+                          <div class="panel-heading">
+                            <div class="panel-title">
+                                <h4 class="d-inline"><%= homeTeam.abbreviation %> Players</h4> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                            </div>
+                          </div>
+                          <div id="homeTeamCollapse" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <table class="table table-sm">
+                                    <thead class="gt_col_headings">
+                                      <tr>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1"></th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
+                                        <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody class="gt_table_body">
+                                    <% if (homeTeamBox.pass.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
+                                        </tr>
+                                        <% homeTeamBox.pass.forEach(p => { %>
+                                            <tr>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.passer_player_name %></td>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yds, <%= p.Pass_TD %> TD, <%= p.Int %> INT</td>
+                                                <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPA %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                                <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    <% if (homeTeamBox.rush.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
+                                        </tr>
+                                        <% homeTeamBox.rush.forEach(p => { %>
+                                        <tr>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.rusher_player_name %></td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Car %> carr<% (parseInt(p.Car) == 1) ? "y" : "ies" %>, <%= p.Yds %> yds, <%= p.Rush_TD %> TD</td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPC %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                        </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    <% if (homeTeamBox.receiver.length > 0) { %>
+                                        <tr class="gt_group_heading_row">
+                                            <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
+                                        </tr>
+                                        <% homeTeamBox.receiver.forEach(p => { %>
+                                        <tr>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.receiver_player_name %></td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: left;"><%= p.Rec %> catch<% (parseInt(p.Rec) == 1) ? "" : "es" %> (<%= p.Tar %> target<% (parseInt(p.Tar) == 1) ? "" : "s" %>), <%= p.Yds %> yds, <%= p.Rec_TD %> TD</td>
+                                            <td class="gt_row gt_left gt_stub" style="text-align: center;"><%= p.YPT %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA_per_Play %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.EPA %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.SR %></td>
+                                            <td class="gt_row gt_center" style="text-align: center;"><%= p.WPA %></td>
+                                        </tr>
+                                        <% }); %>
+                                    <% } %>
+                                    </tbody>
+                                  </table>
+                            </div>
+                          </div>
+                        </div>
                     </div>
                 </div>
             </div>

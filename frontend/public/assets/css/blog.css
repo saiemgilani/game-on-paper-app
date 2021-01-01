@@ -84,3 +84,11 @@ table {
 @media (min-width: 768px) {
   .h-md-250 { height: 250px; }
 }
+
+.gt_group_heading {
+  box-sizing: border-box;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #dee2e6;
+
+}

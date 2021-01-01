@@ -1945,7 +1945,8 @@ class PlayProcess(object):
             YPA = ('yds_receiving', mean),
             EPA = ('EPA', sum),
             EPA_per_Play = ('EPA', mean),
-            WPA = ('wpa', sum)
+            WPA = ('wpa', sum),
+            SR = ('EPA_success', mean)
         ).round(1)
         passer_box = passer_box.replace({np.nan: None})
 
@@ -1956,7 +1957,8 @@ class PlayProcess(object):
             YPC= ('yds_rushed', mean),
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
-            WPA= ('wpa', sum)
+            WPA= ('wpa', sum),
+            SR = ('EPA_success', mean)
         ).round(1)
         rusher_box = rusher_box.replace({np.nan: None})
 
@@ -1968,7 +1970,8 @@ class PlayProcess(object):
             YPT= ('yds_receiving', mean),
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
-            WPA= ('wpa', sum)
+            WPA= ('wpa', sum),
+            SR = ('EPA_success', mean)
         ).round(1)
         receiver_box = receiver_box.replace({np.nan: None})
         
