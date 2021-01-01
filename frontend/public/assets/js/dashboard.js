@@ -169,6 +169,10 @@ if (gameData.plays.length > 0) {
     if (dEHome <= 49 && awayTeam.alternateColor != null) {
         awayTeamColor = hexToRgb(awayTeam.alternateColor)
         console.log(`updating away team color from primary ${JSON.stringify(hexToRgb(awayTeam.color))} to alt: ${JSON.stringify(awayTeamColor)}`)
+        if (deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b]) <= 49) {
+            awayTeamColor = hexToRgb(awayTeam.color)
+            console.log(`resetting away team color from alt ${JSON.stringify(hexToRgb(awayTeam.alternateColor))} from alt: ${JSON.stringify(awayTeamColor)} bc of similarity`)
+        }
     }
 
     // if either color is too similar to white, use gray
