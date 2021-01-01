@@ -230,15 +230,11 @@ turnover_vec = [
             </div>
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
-            <div class="row mb-1">
-                <div class="col-12">
+            <div id="team-stats" class="row mb-1">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
                     <div class="panel-group">
                         <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <div class="panel-title">
-                                    <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
-                                </div>
-                            </div>
                             <div id="boxScoreContent" class="panel-collapse collapse">
                                 <div class="panel-body">
                                     <div class="row">
