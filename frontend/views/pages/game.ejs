@@ -82,6 +82,31 @@ stat_key_title_mapping = {
     "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points"
 }
 
+turnover_vec = [
+    "Blocked Field Goal",
+    "Blocked Field Goal Touchdown",
+    "Blocked Punt",
+    "Blocked Punt Touchdown",
+    "Field Goal Missed",
+    "Missed Field Goal Return",
+    "Missed Field Goal Return Touchdown",
+    "Fumble Recovery (Opponent)",
+    "Fumble Recovery (Opponent) Touchdown",
+    "Fumble Return Touchdown",
+    "Defensive 2pt Conversion",
+    "Interception",
+    "Interception Return",
+    "Interception Return Touchdown",
+    "Pass Interception Return",
+    "Pass Interception Return Touchdown",
+    "Kickoff Team Fumble Recovery",
+    "Kickoff Team Fumble Recovery Touchdown",
+    "Punt Touchdown",
+    "Punt Return Touchdown",
+    "Sack Touchdown",
+    "Uncategorized Touchdown"
+]
+
 %>
 <head>
     <meta charset="utf-8">
@@ -595,7 +620,17 @@ stat_key_title_mapping = {
                             </thead>
                             <tbody>
                                 <% bigPlays.forEach(play => { %>
-                                    <tr>
+                                    <%
+                                        var classText = "";
+                                        if (turnover_vec.includes(play.playType)) {
+                                            classText = "table-danger"
+                                        } else if (play.scoringPlay == true) {
+                                            classText = "table-success"
+                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+                                            classText = "table-warning"
+                                        }
+                                    %>
+                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
                                         <% 
                                             var period = `Q${play.period}`;
                                             if (play.period > 5) {
@@ -646,7 +681,17 @@ stat_key_title_mapping = {
                         </thead>
                         <tbody>
                             <% mostImpPlays.forEach(play => { %>
-                                <tr>
+                                <%
+                                        var classText = "";
+                                        if (turnover_vec.includes(play.playType)) {
+                                            classText = "table-danger"
+                                        } else if (play.scoringPlay == true) {
+                                            classText = "table-success"
+                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+                                            classText = "table-warning"
+                                        }
+                                %>
+                                <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
                                     <% 
                                         var period = `Q${play.period}`;
                                         if (play.period > 5) {
@@ -698,7 +743,17 @@ stat_key_title_mapping = {
                             </thead>
                             <tbody>
                                 <% gameData.scoringPlays.forEach(play => { %>
-                                    <tr>
+                                    <%
+                                        var classText = "";
+                                        if (turnover_vec.includes(play.playType)) {
+                                            classText = "table-danger"
+                                        } else if (play.scoringPlay == true) {
+                                            classText = "table-success"
+                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+                                            classText = "table-warning"
+                                        }
+                                    %>
+                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
                                         <% 
                                             var period = `Q${play.period}`;
                                             if (play.period > 5) {
@@ -757,7 +812,17 @@ stat_key_title_mapping = {
                             </thead>
                             <tbody>
                                 <% gameData.plays.forEach(play => { %>
-                                    <tr>
+                                    <%
+                                        var classText = "";
+                                        if (turnover_vec.includes(play.playType)) {
+                                            classText = "table-danger"
+                                        } else if (play.scoringPlay == true) {
+                                            classText = "table-success"
+                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+                                            classText = "table-warning"
+                                        }
+                                    %>
+                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
                                         <% 
                                             var period = `Q${play.period}`;
                                             if (play.period > 5) {
