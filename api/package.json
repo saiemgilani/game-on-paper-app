@@ -17,16 +17,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SaiemGilani/game-on-paper-app.git"
+    "url": "git+https://github.com/SaiemGilani/game-on-paper.git"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "nodemon": "^2.0.6"
   },
   "bugs": {
-    "url": "https://github.com/SaiemGilani/game-on-paper-app/issues"
+    "url": "https://github.com/SaiemGilani/game-on-paper/issues"
   },
-  "homepage": "https://github.com/SaiemGilani/game-on-paper-app#readme",
+  "homepage": "https://github.com/SaiemGilani/game-on-paper#readme",
   "directories": {
     "test": "test"
   },
