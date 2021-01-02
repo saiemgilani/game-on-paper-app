@@ -233,7 +233,7 @@ async function retrievePBP(req, res) {
             p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
         });
         
-        const processedGame = await processPlays(plays, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        const processedGame = await processPlays(plays, drives, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
         // debuglog(processedGame)
         // debuglog(typeof processedGame)
     
@@ -341,9 +341,10 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-async function processPlays(plays, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
+async function processPlays(plays, drives, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
     var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
         data: plays,
+        drivesData: drives,
         homeTeamId: homeTeamId,
         awayTeamId: awayTeamId,
         homeTeamSpread: homeTeamSpread,
