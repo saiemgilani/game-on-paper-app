@@ -15,7 +15,7 @@ jobs:
       - name: Publish to GitHub Packages Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: saiemgilani/game-on-paper-test/gopimage
+          name: saiemgilani/game-on-paper-app/gopimage
           registry: docker.pkg.github.com
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -35,5 +35,5 @@ jobs:
           script: |
             docker stop $(docker ps -a -q)
             docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            docker pull docker.pkg.github.com/saiemgilani/game-on-paper-test/gopimage:latest
-            docker run -dit -p 8000:8000 docker.pkg.github.com/saiemgilani/game-on-paper-test/gopimage:latest  
+            docker pull docker.pkg.github.com/saiemgilani/game-on-paper-app/gopimage:latest
+            docker run -dit -p 8000:8000 docker.pkg.github.com/saiemgilani/game-on-paper-app/gopimage:latest  
