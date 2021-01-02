@@ -36,7 +36,7 @@ wp_end_columns = ["pos_team_receives_2H_kickoff","spread_time_end","end.TimeSecs
 
 ep_start_touchback_columns = ["start.TimeSecsRem","start.yardsToEndzone.touchback","start.distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
 ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
-ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff_start_end"]
+ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff_end"]
 
 ep_final_names = [        
     "TimeSecsRem",
@@ -218,6 +218,7 @@ kickoff_turnovers = [
 ]
 class PlayProcess(object):
     plays_json = pd.DataFrame()
+    drives_json = pd.DataFrame()
     homeTeamSpread = 2.5
     homeTeamId = 0
     awayTeamId = 0
@@ -225,8 +226,9 @@ class PlayProcess(object):
     logger = None
     ran_pipeline = False
 
-    def __init__(self, logger = None, json_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
+    def __init__(self, logger = None, json_data = [], drives_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
         self.plays_json = pd.json_normalize(json_data)
+        self.drives_json = pd.json_normalize(drives_data)
         self.homeTeamSpread = float(spread)
         self.homeTeamId = int(homeTeam)
         self.awayTeamId = int(awayTeam)
@@ -791,11 +793,11 @@ class PlayProcess(object):
         play_df['scoring_play'] = play_df["type.text"].isin(scores_vec)
         play_df['yds_punted'] = play_df["text"].str.extract(r"(?<= punt for)[^,]+(\d+)", flags=re.IGNORECASE).astype(float)
         play_df['yds_punt_gained'] = np.where(play_df.punt == 1, play_df["statYardage"], None)
-        play_df['fg_inds'] = play_df["type.text"].str.contains("Field Goal", case=False, flags=0, na=False, regex=True)
+        play_df['fg_attempt'] = play_df["type.text"].str.contains("Field Goal", case=False, flags=0, na=False, regex=True)
         play_df['fg_made'] = (play_df["type.text"] == "Field Goal Good")
         play_df['yds_fg'] = play_df["text"].str.extract(r"(\d{0,2}) Yd|Yard FG|Field", flags=re.IGNORECASE).astype(float)
         play_df['start.yardsToEndzone'] = np.where(
-            play_df['fg_inds'] == True, 
+            play_df['fg_attempt'] == True, 
             play_df['yds_fg'] - 17, 
             play_df["start.yardsToEndzone"])
 
@@ -803,7 +805,7 @@ class PlayProcess(object):
             [
                 play_df.punt == 1, 
                 play_df.kickoff_play == 1,
-                play_df.fg_inds == True,
+                play_df.fg_attempt == True,
                 play_df["type.text"] == "Defensive 2pt Conversion"
             ], 
             [
@@ -819,7 +821,7 @@ class PlayProcess(object):
             [
                 play_df.punt == 1, 
                 play_df.kickoff_play == 1,
-                play_df.fg_inds == True,
+                play_df.fg_attempt == True,
                 play_df["type.text"] == "Defensive 2pt Conversion"
             ], 
             [
@@ -1423,7 +1425,7 @@ class PlayProcess(object):
 
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
-        play_df["pos_score_diff_start_end"] = np.where(
+        play_df["pos_score_diff_end"] = np.where(
             (play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True), 
             -1*play_df.pos_score_diff, 
             play_df.pos_score_diff
@@ -1510,8 +1512,7 @@ class PlayProcess(object):
         ], default = play_df.EP_end)
         play_df['lag_EP_end'] = play_df['EP_end'].shift(1)
         play_df['EP_between'] = play_df['EP_start'] - play_df['lag_EP_end']
-            
-
+        
         play_df['EPA'] = np.select(
             [(play_df["scoring_play"]==False) & (play_df['end_of_half'] == True),
              (play_df["type.text"].isin(kickoff_vec)),
@@ -1584,27 +1585,45 @@ class PlayProcess(object):
         play_df['EPA_success_rush'] =  np.where(
             (play_df.EPA > 0) & (play_df.rush==1), True, False
         )
+        play_df['EPA_success_EPA'] = np.where(
+            play_df.EPA > 0, play_df.EPA, None
+        )
+        play_df['EPA_success_standard_down_EPA'] =  np.where(
+            (play_df.EPA > 0) & (play_df.standard_down==True), play_df.EPA, None
+        )
+        play_df['EPA_success_passing_down_EPA'] =  np.where(
+            (play_df.EPA > 0) & (play_df.passing_down==True), play_df.EPA, None
+        )
+        play_df['EPA_success_pass_EPA'] =  np.where(
+            (play_df.EPA > 0) & (play_df['pass']==1), play_df.EPA, None
+        )
+        play_df['EPA_success_rush_EPA'] =  np.where(
+            (play_df.EPA > 0) & (play_df.rush==1), True, False
+        )
         play_df['sp'] = np.where(
-           (play_df.fg_inds==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+           (play_df.fg_attempt==1)|(play_df.punt==1)|(play_df.kickoff_play==1),True,False 
+        )
+        play_df['play'] = np.where(
+            (play_df['type.text'] != 'Timeout'), True, False
         )
         play_df['scrimmage_play'] = np.where(
             (play_df.sp == False) & (play_df['type.text'] != 'Timeout'), True, False
         )
         play_df['EPA_penalty'] = np.select(
             [
-                (play_df['type.text'].isin(["Penalty","Penalty (Kickoff)"])),
-                (play_df['penalty_in_text']==True)
+                (play_df['type.text'].isin(['Penalty','Penalty (Kickoff)'])),
+                (play_df['penalty_in_text'] == True)
             ],
             [
                 play_df['EPA'],
                 play_df['EP_end']-play_df['EP_start']
-            ], default = 0
+            ], default = None
         )
         play_df['EPA_sp'] = np.where(
-           (play_df.fg_inds==1)|(play_df.punt==1)|(play_df.kickoff_play==1),play_df['EPA'],False 
+           (play_df.fg_attempt==1)|(play_df.punt==1)|(play_df.kickoff_play==1),play_df['EPA'],False 
         )
         play_df['EPA_fg'] = np.where(
-           (play_df.fg_inds==1), play_df['EPA'], None 
+           (play_df.fg_attempt==1), play_df['EPA'], None 
         )
         play_df['EPA_punt'] = np.where(
            (play_df.punt==1), play_df['EPA'], None 
@@ -1938,12 +1957,12 @@ class PlayProcess(object):
         self.plays_json['fumble_vec'] = self.plays_json['fumble_vec'].astype(float)
         self.plays_json['sack'] = self.plays_json['sack'].astype(float)
         self.plays_json['penalty_flag'] = self.plays_json['penalty_flag'].astype(float)
-        
+        self.plays_json['play'] = self.plays_json['play'].astype(float)
         self.plays_json['scrimmage_play'] = self.plays_json['scrimmage_play'].astype(float)
         self.plays_json['sp'] = self.plays_json['sp'].astype(float)
         self.plays_json['kickoff_play'] = self.plays_json['kickoff_play'].astype(float)
         self.plays_json['punt'] = self.plays_json['punt'].astype(float)
-        self.plays_json['fg_inds'] = self.plays_json['fg_inds'].astype(float)
+        self.plays_json['fg_attempt'] = self.plays_json['fg_attempt'].astype(float)
         self.plays_json['EPA_penalty'] = self.plays_json['EPA_penalty'].astype(float)
         self.plays_json['EPA_sp'] = self.plays_json['EPA_sp'].astype(float)
         self.plays_json['EPA_fg'] = self.plays_json['EPA_fg'].astype(float)
@@ -1999,7 +2018,7 @@ class PlayProcess(object):
         receiver_box = receiver_box.replace({np.nan: None})
         
         team_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
-            EPA_plays = ('start.team.id', 'count'),
+            EPA_plays = ('play', sum),
             scrimmage_plays = ('scrimmage_play', sum),
             EPA_overall_total = ('EPA', sum),
             EPA_passing_overall = ('EPA_pass', sum),
