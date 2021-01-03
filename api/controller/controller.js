@@ -158,7 +158,7 @@ async function retrievePBP(req, res) {
         if (drives.length > 0) {
             drives.forEach(d => {
                 d.plays.forEach((p, idx) => {
-                    p.driveId = parseFloat(d.id);
+                    p.driveId = d.id;
                     p.drive_play_index = parseFloat(idx + 1)
                     p.gameId = parseFloat(pbp.id);
                 })
@@ -166,16 +166,6 @@ async function retrievePBP(req, res) {
             plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
         }
 
-        // plays.sort((a, b) => {
-        //     var diff = parseInt(a.id) - parseInt(b.id)
-        //     if (diff < 0) {
-        //         return -1
-        //     } else if (diff == 0) {
-        //         return 0
-        //     } else {
-        //         return 1
-        //     }
-        // });
         var timeouts = {};
         timeouts[homeTeamId] = {
             "1": [],
@@ -234,7 +224,16 @@ async function retrievePBP(req, res) {
             p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
         });
         
-        const processedGame = await processPlays(plays, drives, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        let driveMetadata = drives.map(d => {
+            return {
+                id: d.id,
+                driveResult: d.displayResult,
+                description: d.description,
+                start: d.start
+            }
+        })
+
+        const processedGame = await processPlays(plays, driveMetadata, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
         // debuglog(processedGame)
         // debuglog(typeof processedGame)
     

@@ -229,6 +229,8 @@ class PlayProcess(object):
     def __init__(self, logger = None, json_data = [], drives_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
         self.plays_json = pd.json_normalize(json_data)
         self.drives_json = pd.json_normalize(drives_data)
+        self.plays_json = pd.merge(self.plays_json, self.drives_json, left_on="driveId", right_on="id", suffixes=[None, "_drive"])
+        
         self.homeTeamSpread = float(spread)
         self.homeTeamId = int(homeTeam)
         self.awayTeamId = int(awayTeam)
@@ -1915,8 +1917,12 @@ class PlayProcess(object):
     
     def __add_drive_data__(self, play_df):
         base_groups = play_df.groupby(['driveId'])
-        play_df['drive_start'] = base_groups['start.yardsToEndzone'].apply(lambda x: x.iloc[0])
-        play_df['drive_start_EP'] = base_groups.apply(lambda x: x[~x.playType.str.contains("Kickoff")].EP_start.iloc[0])
+        play_df['drive_start_EP'] = base_groups.apply(lambda x: x[~(x.playType.str.contains("Kickoff"))].EP_start.iloc[0])
+        play_df['drive_start'] = np.where(
+            play_df.pos_team == self.homeTeamId,
+            100 - play_df["start.yardLine_drive"].astype(float),
+            play_df["start.yardLine_drive"].astype(float)
+        )
         play_df['prog_drive_EPA'] = base_groups['EPA'].apply(lambda x: x.cumsum())
         play_df['prog_drive_WPA'] = base_groups['wpa'].apply(lambda x: x.cumsum())
         play_df['drive_total_yards'] = base_groups['statYardage'].apply(lambda x: x.cumsum())
