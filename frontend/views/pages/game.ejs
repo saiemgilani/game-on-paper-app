@@ -146,8 +146,6 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
         <td style="text-align: left;">${period}</td>
         <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
         <td style="text-align: left;">(${formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
-        
-        
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
         <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
@@ -164,9 +162,15 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             baseRow += `
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Play Type:</strong> ${play.playType}</p>
+                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>
+                <p style="text-align: center;"><strong>Expected Points (Drive Start):</strong> ${roundNumber(parseFloat(play.drive_start_EP), 2, 2)}</p>
+                <p style="text-align: center;"><strong>Expected Points (Current):</strong> ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)}</p>
             </div>
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
+                <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} plays, ${play.drive_total_yards} yards</p>
+                <p style="text-align: center;"><strong>Total Drive EPA (so far):</strong> ${roundNumber(parseFloat(play.prog_drive_EPA), 2, 2)}</p>
+                <p style="text-align: center;"><strong>Total Drive WPA (so far):</strong> ${roundNumber(parseFloat(play.prog_drive_WPA) * 100, 3, 1)}%</p>
             </div>
             `;
         } 

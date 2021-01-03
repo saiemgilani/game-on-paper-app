@@ -1912,6 +1912,15 @@ class PlayProcess(object):
                         play_df.away_wp_before - play_df.wpa)
 
         return play_df
+    
+    def __add_drive_data__(self, play_df):
+        base_groups = play_df.groupby(['driveId'])
+        play_df['drive_start'] = base_groups['start.yardsToEndzone'].apply(lambda x: x.iloc[0])
+        play_df['drive_start_EP'] = base_groups.apply(lambda x: x[~x.playType.str.contains("Kickoff")].EP_start.iloc[0])
+        play_df['prog_drive_EPA'] = base_groups['EPA'].apply(lambda x: x.cumsum())
+        play_df['prog_drive_WPA'] = base_groups['wpa'].apply(lambda x: x.cumsum())
+        play_df['drive_total_yards'] = base_groups['statYardage'].apply(lambda x: x.cumsum())
+        return play_df
 
     def create_box_score(self):
         if (self.ran_pipeline == False):
@@ -2075,6 +2084,7 @@ class PlayProcess(object):
             self.plays_json = self.__add_player_cols__(self.plays_json)
             self.plays_json = self.__process_epa__(self.plays_json)
             self.plays_json = self.__process_wpa__(self.plays_json)
+            self.plays_json = self.__add_drive_data__(self.plays_json)
             self.plays_json = self.plays_json.replace({np.nan: None})
             self.ran_pipeline = True
         else:

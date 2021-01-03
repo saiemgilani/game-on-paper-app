@@ -157,8 +157,9 @@ async function retrievePBP(req, res) {
         var plays = [];
         if (drives.length > 0) {
             drives.forEach(d => {
-                d.plays.forEach(p => {
+                d.plays.forEach((p, idx) => {
                     p.driveId = parseFloat(d.id);
+                    p.drive_play_index = parseFloat(idx + 1)
                     p.gameId = parseFloat(pbp.id);
                 })
             })
