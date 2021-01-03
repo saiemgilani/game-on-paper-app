@@ -157,10 +157,9 @@ function createPlayRow(play, canCollapse, collapsePrefix) {
         baseRow += `<tr>
             <td colspan="6" class="hiddenRow">
                 <div class="accordian-body collapse" id="play-${collapsePrefix}-${play.game_play_number}"> 
-                    <div class="row mt-1 mb-1">
+                    <div class="row p-1">
                         <div class="col-md-4 ms-sm-auto col-lg-4">
                             <p><strong>Play Type:</strong> ${play.playType}</p>
-                            
                         </div>
                         <div class="col-md-4 ms-sm-auto col-lg-4">
                             <p><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
