@@ -115,7 +115,7 @@ function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
-function createPlayRow(play, canCollapse, collapsePrefix) {
+function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) {
     var classText = "";
     if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
         classText = " table-danger"
@@ -157,17 +157,21 @@ function createPlayRow(play, canCollapse, collapsePrefix) {
         baseRow += `<tr>
             <td colspan="6" class="hiddenRow">
                 <div class="accordian-body collapse" id="play-${collapsePrefix}-${play.game_play_number}"> 
-                    <div class="row p-1">
-                        <div class="col-md-4 ms-sm-auto col-lg-4">
-                            <p><strong>Play Type:</strong> ${play.playType}</p>
-                        </div>
-                        <div class="col-md-4 ms-sm-auto col-lg-4">
-                            <p><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
-                        </div>
-                        <div class="col-md-4 ms-sm-auto col-lg-4">
-                            <p><strong>Play Type:</strong> ${play.playType}</p>
-                        </div>
-                    </div>
+                    <div class="row p-1">`;
+        if (expandingRowCallback != null) {
+            baseRow += expandingRowCallback(play);
+        } else {
+            baseRow += `<div class="col-md-4 ms-sm-auto col-lg-4">
+                <p><strong>Play Type:</strong> ${play.playType}</p>
+            </div>
+            <div class="col-md-4 ms-sm-auto col-lg-4">
+                <p><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
+            </div>
+            <div class="col-md-4 ms-sm-auto col-lg-4">
+                <p><strong>Play Type:</strong> ${play.playType}</p>
+            </div>`;
+        } 
+        baseRow += `</div>
                 </div>
             </td>
         </tr>`
@@ -176,7 +180,7 @@ function createPlayRow(play, canCollapse, collapsePrefix) {
     return baseRow;
 }
 
-function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide) {
+function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
     if (plays == null || plays.length == 0) {
         return `<p class="text-center text-muted">${errorMsg}</p>`;
     }
@@ -204,7 +208,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide) {
         </thead>
         <tbody>`;
     plays.forEach(play => {
-        baseTable += createPlayRow(play, expandable, prefix);
+        baseTable += createPlayRow(play, expandable, prefix, expandingRowCallback);
     });
     baseTable += `</tbody>
     </table>`;
