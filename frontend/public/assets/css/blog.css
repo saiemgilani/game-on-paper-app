@@ -95,3 +95,7 @@ table {
 .numeral {
   font-family: "Chivo"; /* here to change font for just numerals in tables */
 }
+
+.hiddenRow {
+  padding: 0 !important;
+}

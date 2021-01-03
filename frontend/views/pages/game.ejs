@@ -112,7 +112,104 @@ turnover_vec = [
 ]
 
 function roundNumber(value, power10, fixed) {
-    return (Math.round(parseFloat(value) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+function createPlayRow(play, canCollapse, collapsePrefix) {
+    var classText = "";
+    if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
+        classText = " table-danger"
+    } else if (play.scoringPlay == true) {
+        classText = " table-success"
+    } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+        classText = " table-warning"
+    }
+
+    var period = `Q${play.period}`;
+    if (play.period > 5) {
+        period = `${play.period - 4}OT`
+    } else if (play.period == 5) {
+        period = "OT"
+    } else {
+        period = `Q${play.period} ${play.clock.displayValue}`;
+    }
+
+    var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+    var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+
+    var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
+
+    var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
+
+    var baseRow = `
+    <tr ${collapsibleText} class="accordion-toggle${classText}">
+        <td style="text-align: left;">${period}</td>
+        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
+        <td style="text-align: left;">(${formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
+        
+        
+        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
+        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
+        <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
+    </tr>`;
+
+    if (canCollapse) {
+        baseRow += `<tr>
+            <td colspan="6" class="hiddenRow">
+                <div class="accordian-body collapse" id="play-${collapsePrefix}-${play.game_play_number}"> 
+                    <div class="row mt-1 mb-1">
+                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                            <p><strong>Play Type:</strong> ${play.playType}</p>
+                            
+                        </div>
+                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                            <p><strong>Play Type:</strong> ${play.playType}</p>
+                        </div>
+                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                            <p><strong>Play Type:</strong> ${play.playType}</p>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>`
+    }
+
+    return baseRow;
+}
+
+function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide) {
+    if (plays == null || plays.length == 0) {
+        return `<p class="text-center text-muted">${errorMsg}</p>`;
+    }
+
+    let guideText = (showGuide) ? `<caption>Play shading guide: 
+        <ul>
+            <li><strong>Yellow</strong> - penalty</li>
+            <li><strong>Red</strong> - turnover</li>
+            <li><strong>Green</strong> - scoring play</li>
+        </ul>
+    </caption>` : ""
+    
+    var baseTable = `
+    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
+        ${guideText}
+        <thead>
+            <tr>
+                <th style="text-align: left;">Time</th>
+                <th style="text-align: center;">Offense</th>
+                <th style="text-align: left;">Play Description</th>
+                <th style="text-align: center;">EPA</th>
+                <th style="text-align: center;">WP%</th>
+                <th style="text-align: right;">WPA</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    plays.forEach(play => {
+        baseTable += createPlayRow(play, expandable, prefix);
+    });
+    baseTable += `</tbody>
+    </table>`;
+    return baseTable;
 }
 
 %>
@@ -624,123 +721,19 @@ function roundNumber(value, power10, fixed) {
                     <h2>Big Plays</h2>
                     <p class="text-small">As determined by absolute EPA.</p>
                 </div>
-                <% if (bigPlays != null && bigPlays.length > 0) { %>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-responsive">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;">Time</th>
-                                    <th style="text-align: center;">Offense</th>
-                                    <th style="text-align: left;">Play Description</th>
-                                    <th style="text-align: center;">EPA</th>
-                                    <th style="text-align: center;">WP%</th>
-                                    <th style="text-align: right;">WPA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% bigPlays.forEach(play => { %>
-                                    <%
-                                        var classText = "";
-                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
-                                            classText = "table-danger"
-                                        } else if (play.scoringPlay == true) {
-                                            classText = "table-success"
-                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
-                                            classText = "table-warning"
-                                        }
-                                    %>
-                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
-                                        <% 
-                                            var period = `Q${play.period}`;
-                                            if (play.period > 5) {
-                                                period = `${play.period - 4}OT`
-                                            } else if (play.period == 5) {
-                                                period = "OT"
-                                            } else {
-                                                period = `Q${play.period} ${play.clock.displayValue}`;
-                                            }
-
-                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
-                                        %>
-                                        <td style="text-align: left;"><%= period %></td>
-                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
-                                        
-                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                <% } else { %>
-                    <p class="text-center text-muted">No big plays listed for this game.</p>
-                <% } %>
+                <div class="table-responsive">
+                    <%- buildPlayTable(bigPlays, "big-play", true, "No big plays listed for this game.", false); %>
+                </div>
+                
             </div>
             <div class="col-lg-6 ms-sm-auto px-md-4" id="most-imp-plays">
                 <div>
                     <h2>Most Important Plays</h2>
                     <p class="text-small">As determined by absolute WPA.</p>
                 </div>
-                <% if (mostImpPlays != null && mostImpPlays.length > 0) { %>
                 <div class="table-responsive">
-                    <table class="table table-sm table-responsive">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">Time</th>
-                                <th style="text-align: center;">Offense</th>
-                                <th style="text-align: left;">Play Description</th>
-                                <th style="text-align: center;">EPA</th>
-                                <th style="text-align: center;">WP%</th>
-                                <th style="text-align: right;">WPA</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% mostImpPlays.forEach(play => { %>
-                                <%
-                                        var classText = "";
-                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
-                                            classText = "table-danger"
-                                        } else if (play.scoringPlay == true) {
-                                            classText = "table-success"
-                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
-                                            classText = "table-warning"
-                                        }
-                                %>
-                                <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
-                                    <% 
-                                        var period = `Q${play.period}`;
-                                        if (play.period > 5) {
-                                            period = `${play.period - 4}OT`
-                                        } else if (play.period == 5) {
-                                            period = "OT"
-                                        } else {
-                                            period = `Q${play.period} ${play.clock.displayValue}`;
-                                        }
-
-                                        var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-                                        var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-
-                                        var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
-                                    %>
-                                    <td style="text-align: left;"><%= period %></td>
-                                    <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                    <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
-                                    
-                                    <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                    <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                </tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
+                    <%- buildPlayTable(mostImpPlays, "most-imp-play", true, "No important plays listed for this game.", false); %>
                 </div>
-                <% } else { %>
-                    <p class="text-center text-muted">No important plays listed for this game.</p>
-                <% } %>
             </div>
         </div>
         
@@ -748,130 +741,26 @@ function roundNumber(value, power10, fixed) {
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                 <h2 id="scoring-plays">Scoring Plays</h2>
                 <div class="table-responsive">
-                    <% if (gameData.scoringPlays != null && gameData.scoringPlays.length > 0) { %>
-                        <table class="table table-sm table-responsive">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;">Time</th>
-                                    <th style="text-align: center;">Offense</th>
-                                    <th style="text-align: left;">Play Description</th>
-                                    <th style="text-align: center;">EPA</th>
-                                    <th style="text-align: center;">WP%</th>
-                                    <th style="text-align: right;">WPA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% gameData.scoringPlays.forEach(play => { %>
-                                    <%
-                                        var classText = "";
-                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
-                                            classText = "table-danger"
-                                        } else if (play.scoringPlay == true) {
-                                            classText = "table-success"
-                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
-                                            classText = "table-warning"
-                                        }
-                                    %>
-                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
-                                        <% 
-                                            var period = `Q${play.period}`;
-                                            if (play.period > 5) {
-                                                period = `${play.period - 4}OT`
-                                            } else if (play.period == 5) {
-                                                period = "OT"
-                                            } else {
-                                                period = `Q${play.period} ${play.clock.displayValue}`;
-                                            }
-
-                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-
-                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
-                                        %>
-                                        <td style="text-align: left;"><%= period %></td>
-                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
-                                        
-                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    <% } else { %>
-                        <p class="text-center">No scoring plays in this game.</p>
-                    <% } %>
+                    <%- buildPlayTable(gameData.scoringPlays, "scoring-play", true, "No scoring plays in this game.", false); %>
                 </div>
             </main>
         </div>
         <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <%  var gamePlays = [...gameData.plays] 
+                <%  
+                    var gamePlays = [...gameData.plays] 
+                    var subTitle = ""
                     if (gameData.gameInfo.status.type.completed != true) {
+                        subTitle = '<p class="text-small">Most recent plays first.</p>';
                         gamePlays.reverse()
                     }
                 %>
                 <div>
                     <h2 id="all-plays">All Plays</h2>
-                    <p class="text-small"><% (gameData.gameInfo.status.type.completed == true) ? "" : "Most recent plays first." %></p>
+                    <%- subTitle %>
                 </div>
                 <div class="table-responsive">
-                    <% if (gamePlays != null && gamePlays.length > 0) { %>
-                        <table class="table table-sm table-responsive">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;">Time</th>
-                                    <th style="text-align: center;">Offense</th>
-                                    <th style="text-align: left;">Play Description</th>
-                                    <th style="text-align: center;">EPA</th>
-                                    <th style="text-align: center;">WP%</th>
-                                    <th style="text-align: right;">WPA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% gameData.plays.forEach(play => { %>
-                                    <%
-                                        var classText = "";
-                                        if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
-                                            classText = "table-danger"
-                                        } else if (play.scoringPlay == true) {
-                                            classText = "table-success"
-                                        } else if (play.text.toLocaleLowerCase().includes("penalty")) {
-                                            classText = "table-warning"
-                                        }
-                                    %>
-                                    <tr<%- (classText.length > 0) ? ` class="${classText}"` : "" %>>
-                                        <% 
-                                            var period = `Q${play.period}`;
-                                            if (play.period > 5) {
-                                                period = `${play.period - 4}OT`
-                                            } else if (play.period == 5) {
-                                                period = "OT"
-                                            } else {
-                                                period = `Q${play.period} ${play.clock.displayValue}`;
-                                            }
-
-                                            var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-                                            var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-
-                                            var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
-                                        %>
-                                        <td style="text-align: left;"><%= period %></td>
-                                        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= play.pos_team %>.png" alt="ESPN team id <%= play.pos_team %>"/></td>
-                                        <td style="text-align: left;">(<%= formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone) %> at <%= formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) %>) <%= play.text %><%- scoreText %></td>
-                                        
-                                        
-                                        <td class="numeral" style="text-align: center;"><%= (Math.round(play.expectedPoints.added * 100) / 100).toFixed(2) %></td>
-                                        <td class="numeral" style="text-align: center;"><%= ((Math.round(play.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                        <td class="numeral" style="text-align: right;"><%= ((Math.round(play.winProbability.added * 1000) / 1000) * 100).toFixed(1) %>%</td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    <% } else { %>
-                        <p class="text-center text-muted">No plays in this game.</p>
-                    <% } %>
+                    <%- buildPlayTable(gamePlays, "all", true, "No plays in this game.", true); %>
                 </div>
                 <!-- <p id="content"></p> -->
             </main>
