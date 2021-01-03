@@ -161,15 +161,14 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
         if (expandingRowCallback != null) {
             baseRow += expandingRowCallback(play);
         } else {
-            baseRow += `<div class="col-md-4 ms-sm-auto col-lg-4">
-                <p><strong>Play Type:</strong> ${play.playType}</p>
+            baseRow += `
+            <div class="ms-sm-auto col-lg-6">
+                <p style="text-align: center;"><strong>Play Type:</strong> ${play.playType}</p>
             </div>
-            <div class="col-md-4 ms-sm-auto col-lg-4">
-                <p><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
+            <div class="ms-sm-auto col-lg-6">
+                <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
             </div>
-            <div class="col-md-4 ms-sm-auto col-lg-4">
-                <p><strong>Play Type:</strong> ${play.playType}</p>
-            </div>`;
+            `;
         } 
         baseRow += `</div>
                 </div>
@@ -266,7 +265,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     <a class="btn btn-sm btn-outline-primary" href="/">Index</a>
                 </div>
                 <div class="col-8 text-center">
-                    <!-- <a class="blog-header-logo text-dark" href="#">Large</a> -->
                     <div>
                         <h2><%= awayTeam.nickname %> <%= awayComp.score %>, <%= homeTeam.nickname %> <%= homeComp.score %></h2>
                         <p class="text-small" id="game-date"></p>
@@ -274,7 +272,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
                     <a class="btn btn-sm btn-outline-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a>
-                  </div>
+                </div>
             </div>
         </header>
         
