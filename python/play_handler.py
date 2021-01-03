@@ -417,7 +417,7 @@ class PlayProcess(object):
         play_df.id = play_df.id.astype(float)
         play_df['game_play_number'] = np.arange(len(play_df))
         play_df["start.team.id"] = play_df["start.team.id"].astype(int)
-        play_df["end.team.id"] = play_df["end.team.id"].astype(int)
+        play_df["end.team.id"] = play_df["end.team.id"].fillna(value=play_df["start.team.id"]).astype(int)
         play_df["period"] = play_df["period"].astype(int)
 
         play_df['half'] = np.where(
