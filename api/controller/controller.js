@@ -1,4 +1,4 @@
-const cfb = require('cfb-data');
+const cfb = require('../cfb/app/app');
 const axios = require('axios');
 
 const util = require('util');
@@ -232,20 +232,24 @@ async function retrievePBP(req, res) {
                 start: d.start
             }
         })
+        boxScore = pbp.boxScore;
 
-        const processedGame = await processPlays(plays, driveMetadata, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        const processedGame = await processPlays(plays, driveMetadata, boxScore, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+        
         // debuglog(processedGame)
         // debuglog(typeof processedGame)
     
         plays = processedGame["records"];
         // debuglog(plays)
         pbp.advBoxScore = processedGame["box_score"];
+        pbp.boxScore = processedGame["boxScore"];
         // debuglog(typeof pbp.boxScore)
         // debuglog(pbp.boxScore)
         
         pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
         pbp.plays = plays;
         pbp.drives = drives;
+        pbp.boxScore = boxScore;
 
         if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
             if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
@@ -341,10 +345,11 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-async function processPlays(plays, drives, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
+async function processPlays(plays, drives, boxScore, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
     var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
         data: plays,
         drivesData: drives,
+        boxScore: boxScore,
         homeTeamId: homeTeamId,
         awayTeamId: awayTeamId,
         homeTeamSpread: homeTeamSpread,
