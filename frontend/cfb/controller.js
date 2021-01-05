@@ -126,6 +126,51 @@ async function getSummary(id) {
     return res.data;
 };
 
+// https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
+async function getSchedule(input) {
+    const baseUrl = 'http://cdn.espn.com/core/college-football/schedule';
+    if (input == null) {
+        input = {
+            year: null,
+            week: null,
+            group: null,
+            seasontype: null
+        }
+    }
+
+    const params = {
+        year: input.year,
+        week: input.week,
+        group: input.group || 80,
+        seasontype: input.seasontype || 2,
+        xhr: 1,
+        render: 'false',
+        userab: 18
+    }
+
+    const res = await axios.get(baseUrl, {
+        params
+    });
+    // console.log(res.config.url)
+    let espnContent = res.data;
+    if (espnContent == null) {
+        throw Error(`Data not available for ESPN's schedule endpoint.`)
+    }
+
+    if (typeof espnContent == 'str' && espnContent.includes("<html>")) {
+        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
+    }
+
+    var result = []
+    // console.log(espnContent)
+    Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+        if (schedule != null && schedule.games != null) {
+            result = result.concat(schedule.games)
+        }
+    })
+    return result;
+}
+
 async function retrievePBP(gameId) {
     // get game all game data
     let pbp = await getPlayByPlay(gameId);
@@ -419,6 +464,6 @@ async function getGameList(req, res) {
     return res.json(response.data)
 }
 
-exports.getGameList = getGameList
+exports.getGameList = getSchedule
 exports.getPBP = retrievePBP
 exports.getServiceHealth = getServiceHealth
