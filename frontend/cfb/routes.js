@@ -25,7 +25,10 @@ router.get('/', async function(req, res, next) {
         let gameList = await retrieveGameList(req.originalUrl, null);
 
         return res.render('pages/cfb/index', {
-            scoreboard: gameList
+            scoreboard: gameList,
+            year: req.params.year,
+            week: req.params.week,
+            seasontype: 2
         });
     } catch(err) {
         return next(err)
@@ -37,7 +40,10 @@ router.route('/year/:year/week/:week')
         try {
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, group: req.query.group, seasontype: 2 });
             return res.render('pages/cfb/index', {
-                scoreboard: gameList
+                scoreboard: gameList,
+                year: req.params.year,
+                week: req.params.week,
+                seasontype: 2
             });
         } catch(err) {
             return next(err)
@@ -57,7 +63,10 @@ router.route('/year/:year/type/:type/week/:week')
         try {
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, seasontype: req.params.type, group: req.query.group });
             return res.render('pages/cfb/index', {
-                scoreboard: gameList
+                scoreboard: gameList,
+                year: req.params.year,
+                week: req.params.week,
+                seasontype: req.params.type
             });
         } catch(err) {
             return next(err)

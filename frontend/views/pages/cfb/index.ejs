@@ -29,21 +29,21 @@
             <form class="row gx-3 row-cols-lg-auto mb-3 align-items-center form-picker" id="dropdown-form">
                 <div class="col-12">
                     <select class="form-select form-select-lg" id="yearSelect">
-                        <option value="-1" selected>Choose Season...</option>
+                        <option value="-1"<%= (year == null) ? " selected" : "" %>>Choose Season...</option>
                         <% let yrRange = range(2002, 2020); %>
                         <% yrRange.forEach(yr => { %>
-                            <option value="<%= yr %>"><%= yr %></option>
+                            <option value="<%= yr %>"<%= (year == yr) ? " selected" : "" %>><%= yr %></option>
                         <% }); %>
                     </select>
                 </div>
                 <div class="col-12">
                     <select class="form-select form-select-lg" id="weekSelect">
-                        <option value="-1" selected>Choose Week...</option>
+                        <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
                         <% let weekRange = range(1, 15); %>
                         <% weekRange.forEach(wk => { %>
-                            <option value="2;<%= wk %>"><%= wk %></option>
+                            <option value="2;<%= wk %>"<%= (week == wk && parseInt(seasontype) == parseInt("2")) ? " selected" : "" %>>Week <%= wk %></option>
                         <% }) %>
-                        <option value="3;1">Bowls</option>
+                        <option value="3;1"<%= (parseInt(seasontype) == parseInt("3")) ? " selected" : "" %>>Bowls</option>
                     </select>
                 </div>
                 <div class="col-12">
