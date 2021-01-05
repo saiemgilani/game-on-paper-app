@@ -1,7 +1,7 @@
 const axios = require('axios');
-
 const util = require('util');
 const debuglog = util.debuglog('[frontend]');
+const Schedule = require('./schedule');
 
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 debuglog("RDATA BASE URL: " + RDATA_BASE_URL)
@@ -128,29 +128,27 @@ async function getSummary(id) {
 
 // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
 async function getSchedule(input) {
-    const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
-    if (input == null) {
-        input = {
-            year: null,
-            week: null,
-            group: null,
-            seasontype: null
-        }
-    }
+    // const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
+    // if (input == null) {
+    //     input = {
+    //         year: null,
+    //         week: null,
+    //         group: null,
+    //         seasontype: null
+    //     }
+    // }
 
-    const params = {
-        year: parseInt(input.year),
-        week: parseInt(input.week),
-        group: input.group || 80,
-        seasontype: input.seasontype,
-        xhr: 1,
-        render: 'false',
-        userab: 18
-    }
+    // const params = {
+    //     year: parseInt(input.year),
+    //     week: parseInt(input.week),
+    //     group: input.group || 80,
+    //     seasontype: input.seasontype,
+    //     xhr: 1,
+    //     render: 'false',
+    //     userab: 18
+    // }
 
-    const res = await axios.get(baseUrl, {
-        params: params
-    });
+    const res = await Schedule.getGames(input.year, input.week, input.type);
     debuglog(JSON.stringify(params))
     debuglog(res.request.res.responseUrl)
     let espnContent = res.data;
