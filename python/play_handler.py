@@ -1919,7 +1919,6 @@ class PlayProcess(object):
     
     def __add_drive_data__(self, play_df):
         base_groups = play_df.groupby(['driveId'])
-        play_df['drive_start_EP'] = base_groups.apply(lambda x: x[~(x.playType.str.contains("Kickoff"))].EP_start.iloc[0])
         play_df['drive_start'] = np.where(
             play_df.pos_team == self.homeTeamId,
             100 - play_df["start.yardLine_drive"].astype(float),
