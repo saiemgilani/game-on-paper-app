@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: use Node.js 
+      - name: Setup Node.js service
         uses: actions/setup-node@v1
       - name: Publish to GitHub Packages Registry
         uses: elgohr/Publish-Docker-Github-Action@master
@@ -21,7 +21,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: Dockerfile
           tags: latest
-      - name: Deploy package to digitalocean
+      - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
             GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}

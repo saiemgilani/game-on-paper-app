@@ -219,6 +219,7 @@ kickoff_turnovers = [
 class PlayProcess(object):
     plays_json = pd.DataFrame()
     drives_json = pd.DataFrame()
+    box_score_json = pd.DataFrame()
     homeTeamSpread = 2.5
     homeTeamId = 0
     awayTeamId = 0
@@ -226,9 +227,12 @@ class PlayProcess(object):
     logger = None
     ran_pipeline = False
 
-    def __init__(self, logger = None, json_data = [], drives_data = [], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
+    def __init__(self, logger = None, json_data = [], drives_data = [], boxScore=[], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
         self.plays_json = pd.json_normalize(json_data)
         self.drives_json = pd.json_normalize(drives_data)
+        self.plays_json = pd.merge(self.plays_json, self.drives_json, left_on="driveId", right_on="id", suffixes=[None, "_drive"])
+        
+        self.box_score_json = pd.json_normalize(boxScore)
         self.homeTeamSpread = float(spread)
         self.homeTeamId = int(homeTeam)
         self.awayTeamId = int(awayTeam)
@@ -1912,6 +1916,18 @@ class PlayProcess(object):
                         play_df.away_wp_before - play_df.wpa)
 
         return play_df
+    
+    def __add_drive_data__(self, play_df):
+        base_groups = play_df.groupby(['driveId'])
+        play_df['drive_start'] = np.where(
+            play_df.pos_team == self.homeTeamId,
+            100 - play_df["start.yardLine_drive"].astype(float),
+            play_df["start.yardLine_drive"].astype(float)
+        )
+        play_df['prog_drive_EPA'] = base_groups['EPA'].apply(lambda x: x.cumsum())
+        play_df['prog_drive_WPA'] = base_groups['wpa'].apply(lambda x: x.cumsum())
+        play_df['drive_total_yards'] = base_groups['statYardage'].apply(lambda x: x.cumsum())
+        return play_df
 
     def create_box_score(self):
         if (self.ran_pipeline == False):
@@ -2075,6 +2091,7 @@ class PlayProcess(object):
             self.plays_json = self.__add_player_cols__(self.plays_json)
             self.plays_json = self.__process_epa__(self.plays_json)
             self.plays_json = self.__process_wpa__(self.plays_json)
+            self.plays_json = self.__add_drive_data__(self.plays_json)
             self.plays_json = self.plays_json.replace({np.nan: None})
             self.ran_pipeline = True
         else:

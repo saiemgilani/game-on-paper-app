@@ -39,12 +39,13 @@ def after_request(response):
 def process():
     base_data = request.get_json(force=True)['data']
     drives_data = request.get_json(force=True)['drivesData']
+    boxScore = request.get_json(force=True)['boxScore']
     spread = request.get_json(force=True)['homeTeamSpread']
     homeTeam = request.get_json(force=True)['homeTeamId']
     awayTeam = request.get_json(force=True)['awayTeamId']
     firstHalfKickoffTeam = request.get_json(force=True)['firstHalfKickoffTeamId']
 
-    processed_data = PlayProcess(logger = logging.getLogger("root"), json_data=base_data, drives_data=drives_data, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
+    processed_data = PlayProcess(logger = logging.getLogger("root"), json_data=base_data, drives_data=drives_data, boxScore = boxScore, spread=spread, homeTeam=homeTeam, awayTeam=awayTeam, firstHalfKickoffTeam=firstHalfKickoffTeam)
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
     jsonified_df = json.loads(tmp_json)
@@ -122,7 +123,8 @@ def process():
     result = {
         "count" : len(jsonified_df),
         "records" : jsonified_df,
-        "box_score" : box
+        "box_score" : box,
+        "boxScore": boxScore
     }
     # logging.getLogger("root").info(result)
     return jsonify(result)
