@@ -455,15 +455,6 @@ async function getServiceHealth(req, res) {
     })
 }
 
-async function getGameList(req, res) {
-    // get game all game data
-    const baseUrl = 'http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80';
-
-    const response = await axios.get(baseUrl);
-
-    return res.json(response.data)
-}
-
 exports.getGameList = getSchedule
 exports.getPBP = retrievePBP
 exports.getServiceHealth = getServiceHealth
