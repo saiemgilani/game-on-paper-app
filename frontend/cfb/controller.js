@@ -142,7 +142,7 @@ async function getSchedule(input) {
         year: input.year,
         week: input.week,
         group: input.group || 80,
-        seasontype: input.seasontype || 2,
+        scheduletype: input.scheduletype || 2,
         xhr: 1,
         render: 'false',
         userab: 18
@@ -151,13 +151,13 @@ async function getSchedule(input) {
     const res = await axios.get(baseUrl, {
         params
     });
-    // console.log(res.config.url)
+    // console.log(res.request.res.responseUrl)
     let espnContent = res.data;
     if (espnContent == null) {
         throw Error(`Data not available for ESPN's schedule endpoint.`)
     }
 
-    if (typeof espnContent == 'str' && espnContent.includes("<html>")) {
+    if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
         throw Error("Data returned from ESPN was HTML file, not valid JSON.")
     }
 
