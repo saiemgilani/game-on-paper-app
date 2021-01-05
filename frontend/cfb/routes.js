@@ -22,7 +22,7 @@ router.get('/', async function(req, res, next) {
             return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
         })
 
-        return res.render('pages/index', {
+        return res.render('pages/cfb/index', {
             scoreboard: gameList
         });
     } catch(err) {
@@ -41,7 +41,7 @@ router.route('/game/:gameId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
-                return res.render('pages/game', {
+                return res.render('pages/cfb/game', {
                     gameData: data
                 });
             }
