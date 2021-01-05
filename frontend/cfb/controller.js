@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const util = require('util');
-const debuglog = util.debuglog('[api]');
+const debuglog = util.debuglog('[frontend]');
 
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 debuglog("RDATA BASE URL: " + RDATA_BASE_URL)
@@ -128,7 +128,7 @@ async function getSummary(id) {
 
 // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
 async function getSchedule(input) {
-    const baseUrl = 'http://cdn.espn.com/core/college-football/schedule';
+    const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
     if (input == null) {
         input = {
             year: null,
@@ -139,25 +139,26 @@ async function getSchedule(input) {
     }
 
     const params = {
-        year: input.year,
-        week: input.week,
+        year: parseInt(input.year),
+        week: parseInt(input.week),
         group: input.group || 80,
-        scheduletype: input.scheduletype || 2,
+        seasontype: input.seasontype,
         xhr: 1,
         render: 'false',
         userab: 18
     }
 
     const res = await axios.get(baseUrl, {
-        params
+        params: params
     });
-    // console.log(res.request.res.responseUrl)
+    debuglog(JSON.stringify(params))
+    debuglog(res.request.res.responseUrl)
     let espnContent = res.data;
     if (espnContent == null) {
         throw Error(`Data not available for ESPN's schedule endpoint.`)
     }
 
-    if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
+    if ((typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) || !espnContent.hasOwnProperty("content")) {
         throw Error("Data returned from ESPN was HTML file, not valid JSON.")
     }
 
