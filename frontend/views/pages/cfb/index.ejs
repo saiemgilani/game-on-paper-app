@@ -31,7 +31,7 @@
                     <select class="form-select form-select-lg" id="yearSelect">
                         <option value="-1"<%= (year == null) ? " selected" : "" %>>Choose Season...</option>
                         <% let yrRange = range(2002, 2020); %>
-                        <% yrRange.forEach(yr => { %>
+                        <% yrRange.reverse().forEach(yr => { %>
                             <option value="<%= yr %>"<%= (year == yr) ? " selected" : "" %>><%= yr %></option>
                         <% }); %>
                     </select>
