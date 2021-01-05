@@ -163,7 +163,6 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Play Type:</strong> ${play.playType}</p>
                 <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>
-                <p style="text-align: center;"><strong>Expected Points (Drive Start):</strong> ${roundNumber(parseFloat(play.drive_start_EP), 2, 2)}</p>
                 <p style="text-align: center;"><strong>Expected Points (Current):</strong> ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)}</p>
             </div>
             <div class="ms-sm-auto col-lg-6">
