@@ -17,11 +17,12 @@ fs.readFile(`./schedule.json`, 'utf8', function (err, data) {
     debuglog(`Loaded schedules for ${Object.keys(schedule)}`)
 }); 
 
-exports.getGames = async function (year, week, type) {
+exports.getGames = async function (year, week, type, group) {
     var urls = []
+    var cleanGroup = group || 80; // FBS only
     if (year == null || week == null) {
         urls.push({
-            url: "http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
+            url: `http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${cleanGroup}`
         })
     } else {
         let season = schedule[year];
@@ -37,16 +38,13 @@ exports.getGames = async function (year, week, type) {
     if (urls.length == 0) {
         throw Error("No data URLs on file for specified week and year.")
     }
-    return await axios.get(urls[0], {
+    return await axios.get(`${urls[0]}&groups=${cleanGroup}`, {
         protocol: "https"
     })
 }
 
 exports.getWeeks = async function (year) {
-    if (year == null) {
-        return [];
-    }
-    let season = schedule[year];
+    let season = (year == null) ? schedule[schedule.length - 1] : schedule[year];
     return season.map(wk => {
         return {
             label: wk.label,

@@ -126,29 +126,8 @@ async function getSummary(id) {
     return res.data;
 };
 
-// https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
 async function getSchedule(input) {
-    // const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
-    // if (input == null) {
-    //     input = {
-    //         year: null,
-    //         week: null,
-    //         group: null,
-    //         seasontype: null
-    //     }
-    // }
-
-    // const params = {
-    //     year: parseInt(input.year),
-    //     week: parseInt(input.week),
-    //     group: input.group || 80,
-    //     seasontype: input.seasontype,
-    //     xhr: 1,
-    //     render: 'false',
-    //     userab: 18
-    // }
-
-    const res = await Schedule.getGames(input.year, input.week, input.type);
+    const res = await Schedule.getGames(input.year, input.week, input.type, input.group);
     debuglog(JSON.stringify(params))
     debuglog(res.request.res.responseUrl)
     let espnContent = res.data;
@@ -160,13 +139,7 @@ async function getSchedule(input) {
         throw Error("Data returned from ESPN was HTML file, not valid JSON.")
     }
 
-    var result = []
-    // console.log(espnContent)
-    Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
-        if (schedule != null && schedule.games != null) {
-            result = result.concat(schedule.games)
-        }
-    })
+    let result = (espnContent != null) ? espnContent.events : [];
     return result;
 }
 
