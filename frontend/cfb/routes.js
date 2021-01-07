@@ -1,6 +1,6 @@
 const express = require('express');
 const Controller = require('./controller');
-
+const Schedule = require('./schedule');
 const router = express.Router();
 
 router.get('/healthcheck', Controller.getServiceHealth)
@@ -23,9 +23,10 @@ async function retrieveGameList(url, params) {
 router.get('/', async function(req, res, next) {
     try {
         let gameList = await retrieveGameList(req.originalUrl, null);
-
+        let weekList = await Schedule.getWeeks(req.params.year);
         return res.render('pages/cfb/index', {
             scoreboard: gameList,
+            weekList: weekList,
             year: req.params.year,
             week: req.params.week,
             seasontype: 2
@@ -35,35 +36,14 @@ router.get('/', async function(req, res, next) {
     }
 });
 
-router.route('/year/:year/week/:week')
-    .get(async function(req, res, next) {
-        try {
-            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, group: req.query.group, seasontype: 2 });
-            return res.render('pages/cfb/index', {
-                scoreboard: gameList,
-                year: req.params.year,
-                week: req.params.week,
-                seasontype: 2
-            });
-        } catch(err) {
-            return next(err)
-        }
-    })
-    .post(async function(req, res, next) {
-        try {
-            let data = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, group: req.query.group, seasontype: 2 })
-            return res.json(data);
-        } catch(err) {
-            return next(err)
-        }
-    });
-
 router.route('/year/:year/type/:type/week/:week')
     .get(async function(req, res, next) {
         try {
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, seasontype: req.params.type, group: req.query.group });
+            let weekList = await Schedule.getWeeks(req.params.year);
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
+                weekList: weekList,
                 year: req.params.year,
                 week: req.params.week,
                 seasontype: req.params.type

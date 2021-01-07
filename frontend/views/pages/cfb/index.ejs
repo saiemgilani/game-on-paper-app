@@ -39,9 +39,10 @@
                 <div class="col-12 mb-xs-3 mb-sm-0">
                     <select class="form-select form-select-lg" id="weekSelect">
                         <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
-                        <% let weekRange = range(1, 15); %>
-                        <% weekRange.forEach(wk => { %>
-                            <option value="2;<%= wk %>"<%= (week == wk && parseInt(seasontype) == parseInt("2")) ? " selected" : "" %>>Week <%= wk %></option>
+                        <% weekList.forEach(wk => { %>
+                            <% if (!wk.label.includes("Bowls")) { %>
+                                <option value="<%= wk.type %>;<%= wk.value %>"<%= (week == wk && parseInt(seasontype) == parseInt("2")) ? " selected" : "" %>><%= wk.label %></option>
+                            <% } %>
                         <% }) %>
                         <option value="3;1"<%= (parseInt(seasontype) == parseInt("3")) ? " selected" : "" %>>Bowls</option>
                     </select>
