@@ -3,12 +3,13 @@ const fs = require('fs');
 const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 const axios = require('axios')
+const path = require("path");
 
 let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
 
 debuglog("Compiling schedule vars");
 let schedule = {}
-fs.readFile(`./schedule.json`, 'utf8', function (err, data) {
+fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
     if (err) {
         debuglog(err)
         throw err;
