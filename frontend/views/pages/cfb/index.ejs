@@ -28,7 +28,7 @@
             </div>
             <form class="row gx-3 row-cols-sm-auto mb-3 align-items-center form-picker" id="dropdown-form">
                 <div class="col-12 mb-xs-3 mb-sm-0">
-                    <select class="form-select form-select-lg" id="yearSelect">
+                    <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();" onfocus="this.selectedIndex = -1;">
                         <option value="-1"<%= (year == null) ? " selected" : "" %>>Choose Season...</option>
                         <% let yrRange = range(2002, 2020); %>
                         <% yrRange.reverse().forEach(yr => { %>
@@ -39,12 +39,6 @@
                 <div class="col-12 mb-xs-3 mb-sm-0">
                     <select class="form-select form-select-lg" id="weekSelect">
                         <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
-                        <% weekList.forEach(wk => { %>
-                            <% if (!wk.label.includes("Bowls")) { %>
-                                <option value="<%= wk.type %>;<%= wk.value %>"<%= (week == wk && parseInt(seasontype) == parseInt("2")) ? " selected" : "" %>><%= wk.label %></option>
-                            <% } %>
-                        <% }) %>
-                        <option value="3;1"<%= (parseInt(seasontype) == parseInt("3")) ? " selected" : "" %>>Bowls</option>
                     </select>
                 </div>
                 <div class="col-12 mb-xs-3 mb-sm-0">
@@ -167,7 +161,50 @@
                 console.log("no game dates found")
             }
     
-    
+            const weekData = <%- JSON.stringify(weekList) %>;
+            const selYear = <%- year == null ? "null" : year %>;
+            const selWeek = <%- week == null ? "null" : week %>;
+            const selSeasonType = <%- seasontype %>;
+
+            function clearSelect(id) {
+                var select = document.getElementById(id);
+                var length = select.options.length;
+                for (i = length-1; i >= 0; i--) {
+                    if (parseInt(select.options[i].value) != -1) {
+                        select.options[i] = null;
+                    }
+                }
+            }
+
+            function populateWeekSelect() {
+                let yr = document.getElementById("weekSelect").value;
+                clearSelect("weekSelect")
+                if (parseInt(yr) != -1) {
+                    if (yr == null) {
+                        let keys = Object.keys(weekData)
+                        yr = keys[keys.length - 1];
+                    }
+                    let selWeeks = weekData[yr] || [];
+                    let weekSelect = document.getElementById("weekSelect");
+                    
+                    selWeeks.forEach(wk => {
+                        if (!wk.label.includes("Bowls")) {
+                            var option = document.createElement("option");
+                            option.text = wk.label;
+                            option.value = `${wk.type};${wk.value}`
+                            option.selected = (parseInt(selSeasonType) == parseInt("2") && parseInt(selWeek) == parseInt(wk.value)) ? 'selected' : ''
+                            weekSelect.add(option);
+                        }
+                    })
+
+                    var option = document.createElement("option");
+                    option.text = "Bowls";
+                    option.value = `3;1`
+                    option.selected = (parseInt(selSeasonType) == parseInt("3")) ? 'selected' : ""
+                    weekSelect.add(option);
+                }
+            }
+            
         </script>
         <script>
             document.getElementById("game-id-form").addEventListener("submit", function(e) {

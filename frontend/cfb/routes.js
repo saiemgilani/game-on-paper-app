@@ -23,7 +23,7 @@ async function retrieveGameList(url, params) {
 router.get('/', async function(req, res, next) {
     try {
         let gameList = await retrieveGameList(req.originalUrl, null);
-        let weekList = await Schedule.getWeeks(req.params.year);
+        let weekList = await Schedule.getWeeksMap();
         return res.render('pages/cfb/index', {
             scoreboard: gameList,
             weekList: weekList,
@@ -40,7 +40,7 @@ router.route('/year/:year/type/:type/week/:week')
     .get(async function(req, res, next) {
         try {
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, seasontype: req.params.type, group: req.query.group });
-            let weekList = await Schedule.getWeeks(req.params.year);
+            let weekList = await Schedule.getWeeksMap();
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
                 weekList: weekList,

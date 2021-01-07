@@ -17,7 +17,23 @@ fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
     debuglog(`Loading schedules...`)
     schedule = JSON.parse(data);
     debuglog(`Loaded schedules for ${Object.keys(schedule)}`)
-}); 
+});
+
+exports.scheduleList = schedule;
+
+exports.getWeeksMap = function () {
+    var results = {};
+    Object.entries(schedule).forEach(([year, weeks]) => {
+        results[year] = weeks.map(wk => {
+            return {
+                label: wk.label,
+                value: wk.value,
+                type: wk.label.includes("Bowls") ? "3" : "2"
+            }
+        })
+    });
+    return results;
+}
 
 exports.getGames = async function (year, week, type, group) {
     var urls = []
