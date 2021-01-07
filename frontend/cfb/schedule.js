@@ -7,17 +7,15 @@ let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
 
 debuglog("Compiling schedule vars");
 let schedule = {}
-let yrRange = range(2002, 2020);
-yrRange.forEach(yr => {
-    fs.readFile(`schedules/${yr}.json`, 'utf8', function (err, data) {
-        if (err) {
-            debuglog(err)
-            throw err;
-        }
-        debuglog(`Loaded schedule for ${yr}`)
-        schedule[yr] = JSON.parse(data);
-    }); 
-})
+fs.readFile(`./schedule.json`, 'utf8', function (err, data) {
+    if (err) {
+        debuglog(err)
+        throw err;
+    }
+    debuglog(`Loading schedules...`)
+    schedule = JSON.parse(data);
+    debuglog(`Loaded schedules for ${Object.keys(schedule)}`)
+}); 
 
 exports.getGames = async function (year, week, type) {
     var urls = []
