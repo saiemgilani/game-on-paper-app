@@ -24,7 +24,7 @@ exports.getGames = async function (year, week, type, group) {
     var cleanGroup = group || 80; // FBS only
     if (year == null || week == null) {
         urls.push({
-            url: `http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${cleanGroup}`
+            url: `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?`
         })
     } else {
         let season = schedule[year];
@@ -46,7 +46,8 @@ exports.getGames = async function (year, week, type, group) {
 }
 
 exports.getWeeks = async function (year) {
-    let season = (year == null) ? schedule[schedule.length - 1] : schedule[year];
+    let years = Object.keys(schedule);
+    let season = (year == null) ? schedule[years[years.length - 1]] : schedule[year];
     return season.map(wk => {
         return {
             label: wk.label,

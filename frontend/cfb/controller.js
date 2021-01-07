@@ -127,16 +127,19 @@ async function getSummary(id) {
 };
 
 async function getSchedule(input) {
+    if (input == null) {
+        input = {
+            year: null,
+            week: null,
+            group: 80
+        }
+    }
     const res = await Schedule.getGames(input.year, input.week, input.type, input.group);
-    debuglog(JSON.stringify(params))
+    // debuglog(JSON.stringify(input))
     debuglog(res.request.res.responseUrl)
     let espnContent = res.data;
     if (espnContent == null) {
         throw Error(`Data not available for ESPN's schedule endpoint.`)
-    }
-
-    if ((typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) || !espnContent.hasOwnProperty("content")) {
-        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
     }
 
     let result = (espnContent != null) ? espnContent.events : [];
