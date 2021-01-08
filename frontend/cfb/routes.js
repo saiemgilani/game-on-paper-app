@@ -39,7 +39,7 @@ router.get('/', async function(req, res, next) {
 router.route('/year/:year/type/:type/week/:week')
     .get(async function(req, res, next) {
         try {
-            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, seasontype: req.params.type, group: req.query.group });
+            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, type: req.params.type, group: req.query.group });
             let weekList = await Schedule.getWeeksMap();
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
@@ -54,7 +54,7 @@ router.route('/year/:year/type/:type/week/:week')
     })
     .post(async function(req, res, next) {
         try {
-            let data = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, seasontype: req.params.type, group: req.query.group })
+            let data = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, type: req.params.type, group: req.query.group })
             return res.json(data);
         } catch(err) {
             return next(err)
