@@ -8,20 +8,46 @@
         <link href="/assets/css/index.css" rel="stylesheet">  
     </head>
     <body>
+        <% 
+        // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
+        let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+        %>
         <div class="container-fluid">
             <div class="row text-center mb-3">
                 <div class="form-signin col-12">
-                    <form id="game-id-form">
                     <h1 class="mb-3 fw-normal">Game on Paper</h1>
                     <% if(gameId !== null){ %>
                         <h3 class="mb-3 fw-normal"><%= gameId %> is an invalid GameID</h3>
                     <% } %>
-                    <label for="inputGameId" class="visually-hidden">Game ID</label>
-                    <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
-                    <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
+                    <form id="game-id-form">
+                        <label for="inputGameId" class="visually-hidden">Game ID</label>
+                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
+                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
                     </form>
                 </div>
             </div>
+            <div class="row mb-1">
+                <h3 class="text-center"> -- OR -- </h3>
+            </div>
+            <form class="row gx-3 row-cols-sm-auto mb-3 align-items-center form-picker" id="dropdown-form">
+                <div class="col-12 mb-xs-3 mb-sm-0">
+                    <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
+                        <option value="-1">Choose Season...</option>
+                        <% let yrRange = range(2002, 2020); %>
+                        <% yrRange.reverse().forEach(yr => { %>
+                            <option value="<%= yr %>"><%= yr %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="col-12 mb-xs-3 mb-sm-0">
+                    <select class="form-select form-select-lg" id="weekSelect">
+                        <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
+                    </select>
+                </div>
+                <div class="col-12 mb-xs-3 mb-sm-0">
+                    <button type="submit" class="btn btn-lg btn-primary">View</button>
+                </div>
+            </form>
             <div class="row mb-3">
                 <% 
                 function generateTeamImg(teamId) {
@@ -138,13 +164,99 @@
                 console.log("no game dates found")
             }
     
-    
+            const weekData = <%- JSON.stringify(weekList) %>;
+            const selYear = <%- year == null ? "null" : year %>;
+            const selWeek = <%- week == null ? "null" : week %>;
+            const selSeasonType = <%- seasontype %>;
+            const availYearKeys = Object.keys(weekData).reverse(); // as displayed
+
+            function clearSelect(id) {
+                var select = document.getElementById(id);
+                var length = select.options.length;
+                for (i = length-1; i >= 0; i--) {
+                    if (parseInt(select.options[i].value) != -1) {
+                        select.options[i] = null;
+                    }
+                }
+                select.selectedIndex = 0;
+            }
+
+            function populateWeekSelect(val) {
+                let yr = val || availYearKeys[0];
+                clearSelect("weekSelect")
+                console.log("Selected year: " + yr);
+                if (parseInt(yr) != -1) {
+                    console.log("is valid yr");
+                    if (yr == null) {
+                        
+                        yr = keys[keys.length - 1];
+                        console.log("edited yr bc null: " + yr);
+                    }
+                    let selWeeks = weekData[`${yr}`] || [];
+                    console.log("avail weeks: " + selWeeks.length);
+                    let weekSelect = document.getElementById("weekSelect");
+                    
+                    var selIndex = -1;
+                    selWeeks.forEach((wk, idx) => {
+                        console.log("adding week" + wk.label);
+                        if (!wk.label.includes("Bowls")) {
+                            var option = document.createElement("option");
+                            option.text = wk.label;
+                            option.value = `${wk.type};${wk.value}`
+                            if (parseInt(selSeasonType) == parseInt("2") && parseInt(selWeek) == parseInt(wk.value)) {
+                                selIndex = idx + 1;
+                            }
+                            
+                            weekSelect.add(option);
+                        }
+                    })
+
+                    var option = document.createElement("option");
+                    option.text = "Bowls";
+                    option.value = `3;1`
+                    if (parseInt(selSeasonType) == parseInt("3")) {
+                        selIndex = (selWeeks.length - 1) + 1;
+                    }
+                    weekSelect.add(option);
+
+                    weekSelect.selectedIndex = selIndex;
+                }
+            }
+
+            document.getElementById("yearSelect").selectedIndex = 0;
+            if (selYear != null) {
+                availYearKeys.forEach((yr, idx) => {
+                    if (selYear == yr) {
+                        console.log("setting selected to yr " + yr + " at idx " + idx);
+                        document.getElementById("yearSelect").selectedIndex = idx + 1;
+                    }
+                });
+            }
+
+            populateWeekSelect(selYear || -1);
         </script>
         <script>
             document.getElementById("game-id-form").addEventListener("submit", function(e) {
                 e.preventDefault()
                 var gameId = document.getElementById("inputGameId").value;
                 window.location = "/cfb/game/" + gameId;
+            });
+
+            document.getElementById("dropdown-form").addEventListener("submit", function(e) {
+                e.preventDefault()
+                var year = document.getElementById("yearSelect").value;
+                var week = document.getElementById("weekSelect").value;
+                var baseUrl = "/cfb/"
+                if (year != "-1" && week != "-1") {
+                    baseUrl += `year/${year}/type/`
+
+                    var cleanWeekItems = week.split(';')
+                    let scheduleType = cleanWeekItems[0]
+                    let cleanWeek = cleanWeekItems[1]
+
+                    baseUrl += `${scheduleType}/week/${cleanWeek}`
+                }
+                window.location = baseUrl;
             });
         </script>
     </body>

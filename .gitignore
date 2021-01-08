@@ -11,3 +11,5 @@ Procfile
 .Ruserdata
 cfb-data
 cfb-api
+.ipynb_checkpoints/*
+.ipynb_checkpoints
