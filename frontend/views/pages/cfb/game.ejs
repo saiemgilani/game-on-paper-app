@@ -117,7 +117,7 @@ function roundNumber(value, power10, fixed) {
 
 function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) {
     var classText = "";
-    if (turnover_vec.includes(play.playType) || play.text.includes("fumble")) {
+    if (turnover_vec.includes(play.playType)) {
         classText = " table-danger"
     } else if (play.scoringPlay == true) {
         classText = " table-success"
