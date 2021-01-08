@@ -36,41 +36,55 @@ exports.getWeeksMap = function () {
 }
 
 exports.getGames = async function (year, week, type, group) {
-    // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
-    const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
-
-    const params = {
-        year: year,
-        week: week,
-        group: group || 80,
-        seasontype: type || 2,
-        xhr: 1,
-        render: 'false',
-        userab: 18
-    }
-
-    const res = await axios.get(baseUrl, {
-        params
-    });
-    debuglog(JSON.stringify(params))
-    debuglog(res.request.res.responseUrl)
-    let espnContent = res.data;
-    if (espnContent == null) {
-        throw Error(`Data not available for ESPN's schedule endpoint.`)
-    }
-
-    if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
-        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
-    }
-
-    var result = []
-    // console.log(espnContent)
-    Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
-        if (schedule != null && schedule.games != null) {
-            result = result.concat(schedule.games)
+    if (year == null || week == null) {
+        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}`, {
+            protocol: "https"
+        })
+        debuglog(res.request.res.responseUrl)
+        let espnContent = res.data;
+        if (espnContent == null) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
         }
-    })
-    return result;
+
+        let result = (espnContent != null) ? espnContent.events : [];
+        return result;
+    } else {
+        // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
+        const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
+
+        const params = {
+            year: year,
+            week: week,
+            group: group || 80,
+            seasontype: type || 2,
+            xhr: 1,
+            render: 'false',
+            userab: 18
+        }
+
+        const res = await axios.get(baseUrl, {
+            params
+        });
+        debuglog(JSON.stringify(params))
+        debuglog(res.request.res.responseUrl)
+        let espnContent = res.data;
+        if (espnContent == null) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
+        }
+
+        if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
+            throw Error("Data returned from ESPN was HTML file, not valid JSON.")
+        }
+
+        var result = []
+        // console.log(espnContent)
+        Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+            if (schedule != null && schedule.games != null) {
+                result = result.concat(schedule.games)
+            }
+        })
+        return result;
+    }
 }
 
 exports.getWeeks = async function (year) {
