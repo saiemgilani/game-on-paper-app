@@ -134,16 +134,8 @@ async function getSchedule(input) {
             group: 80
         }
     }
-    const res = await Schedule.getGames(input.year, input.week, input.type, input.group);
-    // debuglog(JSON.stringify(input))
-    debuglog(res.request.res.responseUrl)
-    let espnContent = res.data;
-    if (espnContent == null) {
-        throw Error(`Data not available for ESPN's schedule endpoint.`)
-    }
-
-    let result = (espnContent != null) ? espnContent.events : [];
-    return result;
+    const games = await Schedule.getGames(input.year, input.week, input.type, input.group);
+    return games || [];
 }
 
 async function retrievePBP(gameId) {
