@@ -96,21 +96,25 @@ async function getPlayByPlay(id) {
         userab: 18
     };
 
-    const res = await axios.get(baseUrl, {
+    axios.get(baseUrl, {
         params
-    });
-
-    return {
-        scoringPlays: res.data.gamepackageJSON.scoringPlays,
-        videos: res.data.gamepackageJSON.videos,
-        drives: res.data.gamepackageJSON.drives,
-        teams: res.data.gamepackageJSON.header.competitions[0].competitors,
-        id: res.data.gamepackageJSON.header.id,
-        competitions: res.data.gamepackageJSON.header.competitions,
-        season: res.data.gamepackageJSON.header.season,
-        week: res.data.gamepackageJSON.header.week,
-        boxScore: res.data.gamepackageJSON.boxscore
-    };
+    }).then(res =>{
+        if(res.status === 200 && res.data.gamepackageJSON !== undefined ){
+            return {
+                scoringPlays: res.data.gamepackageJSON.scoringPlays,
+                videos: res.data.gamepackageJSON.videos,
+                drives: res.data.gamepackageJSON.drives,
+                teams: res.data.gamepackageJSON.header.competitions[0].competitors,
+                id: res.data.gamepackageJSON.header.id,
+                competitions: res.data.gamepackageJSON.header.competitions,
+                season: res.data.gamepackageJSON.header.season,
+                week: res.data.gamepackageJSON.header.week,
+                boxScore: res.data.gamepackageJSON.boxscore
+            };
+        }else{
+            return null;
+        }
+    });    
 };
 
 async function getSummary(id) {

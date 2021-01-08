@@ -79,7 +79,6 @@ router.route('/game/:gameId')
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
-    
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
@@ -88,7 +87,12 @@ router.route('/game/:gameId')
                 });
             }
         } catch(err) {
-            return next(err)
+            // invalid gameId should be routed to the index to select a different game
+            let gameList = await retrieveGameList(req.originalUrl, null);
+            return res.render('pages/cfb/index', {
+                gameId: req.params.gameId,
+                scoreboard: gameList
+            });
         }
     })
     .post(async function(req, res, next) {
