@@ -165,7 +165,7 @@
             const selYear = <%- year == null ? "null" : year %>;
             const selWeek = <%- week == null ? "null" : week %>;
             const selSeasonType = <%- seasontype %>;
-            const availYearKeys = Object.keys(weekData);
+            const availYearKeys = Object.keys(weekData).reverse(); // as displayed
 
             function clearSelect(id) {
                 var select = document.getElementById(id);
@@ -179,7 +179,7 @@
             }
 
             function populateWeekSelect(val) {
-                let yr = val || availYearKeys[Math.max(0, Math.min(availYearKeys.length - 1, document.getElementById("yearSelect").selectedIndex - 1))];
+                let yr = val || availYearKeys[0];
                 clearSelect("weekSelect")
                 console.log("Selected year: " + yr);
                 if (parseInt(yr) != -1) {
@@ -220,14 +220,14 @@
                 }
             }
 
-            if (selYear == null) {
-                document.getElementById("yearSelect").selectedIndex = 0;
-            } else {
+            document.getElementById("yearSelect").selectedIndex = 0;
+            if (selYear != null) {
                 availYearKeys.forEach((yr, idx) => {
-                if (selYear == yr) {
-                    document.getElementById("yearSelect").selectedIndex = idx + 1;
-                }
-            });
+                    if (selYear == yr) {
+                        console.log("setting selected to yr " + yr + " at idx " + idx);
+                        document.getElementById("yearSelect").selectedIndex = idx + 1;
+                    }
+                });
             }
 
             populateWeekSelect(selYear || -1);
