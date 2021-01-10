@@ -6,8 +6,8 @@
 Make sure you have Docker installed. Once you do, `cd` into the repo and run the following commands:
 
 ```Shell
-$ docker build -t <whatever you want to name the image> .
-$ docker run --rm -d -it -p 8000:8000 --name=game-on-paper --memory=2g --cpus=2.0 <whatever you want to name the image>
+$ docker build -t gopapp .
+$ docker run --rm -d -it -p 8000:8000 --name=game-on-paper --memory=2g --cpus=2.0 gopapp 
 ```
 
 This will setup the container just like how it would run on Google Cloud Run, installing all python and node dependencies and starting all three services in a Docker container.
@@ -25,5 +25,5 @@ Test the frontend using a browser -- load up `localhost:8000/cfb`.
 - [X] Advanced Box Scores
 - [X] Test requests during a live game
 - [X] Better home page
+- [X] EPA in box scores
 - [ ] Postgame win probabilities
-- [ ] EPA in box scores

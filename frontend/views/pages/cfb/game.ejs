@@ -5,13 +5,11 @@ const homeComp = gameData.gameInfo.competitors[0];
 const awayComp = gameData.gameInfo.competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
-
 function getNumberWithOrdinal(n) {
     var s = ["th", "st", "nd", "rd"];
     v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-
 function formatDown(down, playType) {
     if (playType.includes("Kickoff")) {
         return "Kickoff"
@@ -23,7 +21,6 @@ function formatDown(down, playType) {
         return down
     }
 }
-
 function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
     if (yardsToEndzone == 50) {
         return "50";
@@ -33,7 +30,6 @@ function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
         return `${offenseAbbrev} ${100 - yardsToEndzone}`
     }
 }
-
 function formatDistance(down, type, distance, yardline) {
     var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
     var downForm = formatDown(down, type)
@@ -43,7 +39,6 @@ function formatDistance(down, type, distance, yardline) {
         return downForm + " & " + dist
     }
 }
-
 stat_key_title_mapping = {
     "EPA_plays" : "Total Plays",
     "scrimmage_plays" : "Scrimmage Plays",
@@ -85,7 +80,6 @@ stat_key_title_mapping = {
     "field_pos_avg_start" : "Avg Starting FP",
     "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points"
 }
-
 turnover_vec = [
     "Blocked Field Goal",
     "Blocked Field Goal Touchdown",
@@ -110,21 +104,18 @@ turnover_vec = [
     "Sack Touchdown",
     "Uncategorized Touchdown"
 ]
-
 function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
-
 function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) {
     var classText = "";
-    if (turnover_vec.includes(play.playType)) {
+    if (turnover_vec.includes(play.type.text) || play.text.includes("fumble")) {
         classText = " table-danger"
     } else if (play.scoringPlay == true) {
         classText = " table-success"
     } else if (play.text.toLocaleLowerCase().includes("penalty")) {
         classText = " table-warning"
     }
-
     var period = `Q${play.period}`;
     if (play.period > 5) {
         period = `${play.period - 4}OT`
@@ -133,24 +124,19 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     } else {
         period = `Q${play.period} ${play.clock.displayValue}`;
     }
-
     var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
     var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-
     var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
-
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
-
     var baseRow = `
     <tr ${collapsibleText} class="accordion-toggle${classText}">
         <td style="text-align: left;">${period}</td>
         <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
-        <td style="text-align: left;">(${formatDistance(play.start.down, play.playType, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
+        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
         <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
     </tr>`;
-
     if (canCollapse) {
         baseRow += `<tr>
             <td colspan="6" class="hiddenRow">
@@ -161,8 +147,9 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
         } else {
             baseRow += `
             <div class="ms-sm-auto col-lg-6">
-                <p style="text-align: center;"><strong>Play Type:</strong> ${play.playType}</p>
+                <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
                 <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>
+                <p style="text-align: center;"><strong>Expected Points (Drive Start):</strong> ${roundNumber(parseFloat(play.drive_start_EP), 2, 2)}</p>
                 <p style="text-align: center;"><strong>Expected Points (Current):</strong> ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)}</p>
             </div>
             <div class="ms-sm-auto col-lg-6">
@@ -178,15 +165,12 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             </td>
         </tr>`
     }
-
     return baseRow;
 }
-
 function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
     if (plays == null || plays.length == 0) {
         return `<p class="text-center text-muted">${errorMsg}</p>`;
     }
-
     let guideText = (showGuide) ? `<caption>Play shading guide: 
         <ul>
             <li><strong>Yellow</strong> - penalty</li>
@@ -216,7 +200,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     </table>`;
     return baseTable;
 }
-
 %>
 <head>
     <meta charset="utf-8">
@@ -508,7 +491,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     homeTeamBox.pass.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
                     homeTeamBox.rush.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
                     homeTeamBox.receiver.sort((a, b) => parseFloat(b.EPA) - parseFloat(a.EPA))
-
                     let awayTeamBox = {
                         "pass" : gameData.advBoxScore.pass.filter(g => g.pos_team == awayTeam.id),
                         "rush" : gameData.advBoxScore.rush.filter(g => g.pos_team == awayTeam.id),
@@ -705,7 +687,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 }
             })
             bigPlays = bigPlays.slice(0, 10)
-
             var mostImpPlays = [...gameData.plays]
             mostImpPlays.sort((a, b) => {
                 var diff = Math.abs(a.winProbability.added) - Math.abs(b.winProbability.added)
@@ -777,7 +758,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
-
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
