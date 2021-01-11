@@ -815,14 +815,24 @@ class PlayProcess(object):
         play_df['scoring_play'] = play_df["type.text"].isin(scores_vec)
         play_df['yds_punted'] = play_df["text"].str.extract(r"(?<= punt for)[^,]+(\d+)", flags=re.IGNORECASE).astype(float)
         play_df['yds_punt_gained'] = np.where(play_df.punt == True, play_df["statYardage"], None)
-        play_df['fg_attempt'] = play_df["type.text"].str.contains("Field Goal", case=False, flags=0, na=False, regex=True)
+        play_df['fg_attempt'] =  np.where(
+            (play_df["type.text"].str.contains("Field Goal", case=False, flags=0, na=False, regex=True))|
+            (play_df["text"].str.contains("Field Goal", case=False, flags=0, na=False, regex=True)), 
+            True, False
+        )
         play_df['fg_made'] = (play_df["type.text"] == "Field Goal Good")
-        play_df['yds_fg'] = play_df["text"].str.extract(r"(\d{0,2}) Yd|(\d{0,2}) Yard FG|(\d{0,2}) Field|(\d+) Yard Field", 
+        play_df['yds_fg'] = play_df["text"].str.extract(r"(\\d{0,2}) Yd|(\\d{0,2}) Yard FG|(\\d{0,2}) Field|(\\d{0,2}) Yard Field", 
                                                         flags=re.IGNORECASE).bfill(axis=1)[0].astype(float)
         play_df['start.yardsToEndzone'] = np.where(
             play_df['fg_attempt'] == True, 
             play_df['yds_fg'] - 17, 
             play_df["start.yardsToEndzone"])
+        play_df["start.yardsToEndzone"] = np.where(
+            play_df["start.yardsToEndzone"].isna(),
+            (100 - play_df["start.yardLine"].astype(float)),
+            play_df["start.yardsToEndzone"]
+        )
+            
 
         play_df["pos_unit"] = np.select(
             [
