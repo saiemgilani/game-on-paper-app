@@ -937,7 +937,7 @@ class PlayProcess(object):
             play_df.text.str.extract(r"((?<= return for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
             play_df.text.str.replace("for a 1st", "").str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float)
         ], default = None)
-
+ 
         #     play_df['yds_fumble_return'] = None
         #     play_df['yds_penalty'] = None
     
