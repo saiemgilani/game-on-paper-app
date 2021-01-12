@@ -831,10 +831,15 @@ class PlayProcess(object):
             play_df['fg_attempt'] == True, 
             play_df['yds_fg'] - 17, 
             play_df["start.yardsToEndzone"])
-        play_df["start.yardsToEndzone"] = np.where(
-            (play_df["start.yardsToEndzone"].isna())&(~play_df["type.text"].isin(kickoff_vec)),
-            play_df["start.yardLine"].astype(float),
-            play_df["start.yardsToEndzone"]
+        play_df["start.yardsToEndzone"] = np.select(
+        [
+            (play_df["start.yardsToEndzone"].isna())&(~play_df["type.text"].isin(kickoff_vec)) &(play_df.is_home == True),
+            (play_df["start.yardsToEndzone"].isna())&(~play_df["type.text"].isin(kickoff_vec)) &(play_df.is_home == False)
+        ],
+        [   
+            100-play_df["start.yardLine"].astype(float),
+            play_df["start.yardLine"].astype(float)
+        ], default = play_df["start.yardsToEndzone"]
         )
             
 
