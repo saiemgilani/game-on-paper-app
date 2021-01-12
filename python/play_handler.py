@@ -227,15 +227,10 @@ class PlayProcess(object):
     logger = None
     ran_pipeline = False
 
-    def __init__(self, logger = None, json_data = [], drives_data = [], boxScore=[], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):
-        
-        self.plays_json = pd.json_normalize(json_data)
-        
-        self.drives_json = pd.json_normalize(drives_data)
-        
-
-        self.plays_json = pd.merge(self.plays_json, self.drives_json, left_on="driveId", right_on="id", suffixes=[None, "_drive"])
-        
+    def __init__(self, logger = None, json_data = [], drives_data = [], boxScore=[], spread = 2.5, homeTeam = 0, awayTeam = 0, firstHalfKickoffTeam = 0):        
+        self.plays_json = pd.json_normalize(json_data)        
+        self.drives_json = pd.json_normalize(drives_data)        
+        self.plays_json = pd.merge(self.plays_json, self.drives_json, left_on="driveId", right_on="id", suffixes=[None, "_drive"])        
         self.box_score_json = pd.json_normalize(boxScore)
         self.homeTeamSpread = float(spread)
         self.homeTeamId = int(homeTeam)
