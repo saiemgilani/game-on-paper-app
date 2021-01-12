@@ -126,7 +126,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     }
     var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
     var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
-    var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ""
+    var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ` - ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}`
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
     var baseRow = `
     <tr ${collapsibleText} class="accordion-toggle${classText}">
