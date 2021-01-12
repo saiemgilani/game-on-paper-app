@@ -900,13 +900,13 @@ class PlayProcess(object):
         ],[
             0.0,
             0.0,
-            -1 * play_df.text.str.extract(r"((?<=run for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            -1 * play_df.text.str.extract(r"((?<=rush for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.extract(r"((?<=run for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.extract(r"((?<=rush for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.extract(r"(\d{0,2}) Yd Run", flags=re.IGNORECASE)[0].astype(float),
-            play_df.text.str.extract(r"(\d{0,2}) Yd Rush", flags=re.IGNORECASE)[0].astype(float),
-            play_df.text.str.extract(r"(\d{0,2}) Yard Rush", flags=re.IGNORECASE)[0].astype(float)
+            -1 * play_df.text.str.extract(r"((?<=run for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            -1 * play_df.text.str.extract(r"((?<=rush for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.extract(r"((?<=run for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.extract(r"((?<=rush for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.extract(r"(\d+) Yd Run", flags=re.IGNORECASE)[0].astype(float),
+            play_df.text.str.extract(r"(\d+) Yd Rush", flags=re.IGNORECASE)[0].astype(float),
+            play_df.text.str.extract(r"(\d+) Yard Rush", flags=re.IGNORECASE)[0].astype(float)
         ], default = None)
         
         
@@ -917,8 +917,8 @@ class PlayProcess(object):
             (play_df["pass"] == True) & (play_df.text.str.contains("pass complete to", case=False)),
         ],[
             0.0,
-            -1 * play_df.text.str.extract(r"((?<=for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float)
+            -1 * play_df.text.str.extract(r"((?<=for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float)
         ], default = None)
 
         play_df['yds_int_return'] = None
@@ -930,12 +930,12 @@ class PlayProcess(object):
             (play_df["pass"] == True) & (play_df["int"] == True) & (play_df.text.str.contains(r"return for", case=False)),
             (play_df["pass"] == True) & (play_df["int"] == True)
         ],[
-            play_df.text.str.extract(r"(.+) Interception Return", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
+            play_df.text.str.extract(r"(.+) Interception Return", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
             0.0,
             -1 * play_df.text.str.extract(r"((?<= for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
-            play_df.text.str.extract(r"((?<= return for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.extract(r"((?<= return for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float),
-            play_df.text.str.replace("for a 1st", "").str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\\d+)")[0].astype(float)
+            play_df.text.str.extract(r"((?<= return for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.extract(r"((?<= return for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+            play_df.text.str.replace("for a 1st", "").str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float)
         ], default = None)
 
         #     play_df['yds_fumble_return'] = None
