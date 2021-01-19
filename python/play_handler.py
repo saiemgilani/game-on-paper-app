@@ -580,20 +580,11 @@ class PlayProcess(object):
              (play_df['H_score_diff'] > 1),
              (play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
-             (play_df['H_score_diff'] >= 9) & 
-             (play_df['H_score_diff'] > 1),
-             (play_df.scoringPlay == False) & 
-             (play_df['game_play_number'] != 1) &
              (play_df['H_score_diff'] >= -9) &
-             (play_df['H_score_diff'] < -1),
-             (play_df.scoringPlay == False) & 
-             (play_df['game_play_number'] != 1) &
-             (play_df['H_score_diff'] <= -9)
+             (play_df['H_score_diff'] < -1)
              ],
             [play_df['lag_homeScore'],
-             play_df['lag_homeScore'],
-             play_df['homeScore'],
-             play_df['lag_homeScore']], default = play_df['homeScore']
+             play_df['homeScore']], default = play_df['homeScore']
         )
         play_df['awayScore'] =  np.select(
             [(play_df.scoringPlay == False) & 
@@ -602,19 +593,10 @@ class PlayProcess(object):
              (play_df['A_score_diff'] > 1),
              (play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
-             (play_df['A_score_diff'] >= 9) & 
-             (play_df['A_score_diff'] > 1),
-             (play_df.scoringPlay == False) & 
-             (play_df['game_play_number'] != 1) &
              (play_df['A_score_diff'] >= -9) &
-             (play_df['A_score_diff'] < -1),
-             (play_df.scoringPlay == False) & 
-             (play_df['game_play_number'] != 1) &
-             (play_df['A_score_diff'] <= -9)],
+             (play_df['A_score_diff'] < -1)],
             [play_df['lag_awayScore'],
-             play_df['lag_awayScore'],
-             play_df['awayScore'],
-             play_df['lag_awayScore']], default = play_df['awayScore']
+             play_df['awayScore']], default = play_df['awayScore']
         )
         play_df.drop(['lag_homeScore','lag_awayScore'],axis=1, inplace=True)
         play_df['lag_homeScore'] = play_df['homeScore'].shift(1)
@@ -1664,10 +1646,10 @@ class PlayProcess(object):
             (play_df["type.text"] == "Two-Point Conversion Good"),
             # Two-Point Missed (pre-2014 data)
             (play_df["type.text"] == "Two-Point Conversion Missed"),
-            # # Flips for Turnovers that aren't kickoffs
-            # (((play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True)) & (play_df.kickoff_play==False)),
-            # # Flips for Turnovers that are on kickoffs
-            # (play_df["type.text"].isin(kickoff_turnovers))
+            # Flips for Turnovers that aren't kickoffs
+            (((play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True)) & (play_df.kickoff_play==False)),
+            # Flips for Turnovers that are on kickoffs
+            (play_df["type.text"].isin(kickoff_turnovers))
         ],
         [
             0,
@@ -1687,8 +1669,8 @@ class PlayProcess(object):
             0,
             2,
             0,
-            # (play_df.EP_end * -1),
-            # (play_df.EP_end * -1)
+            (play_df.EP_end * -1),
+            (play_df.EP_end * -1)
         ], default = play_df.EP_end)
         play_df['lag_EP_end'] = play_df['EP_end'].shift(1)
         play_df['lag_change_of_pos_team'] = play_df.change_of_pos_team.shift(1)
