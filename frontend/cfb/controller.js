@@ -74,7 +74,7 @@ kickoff = [
     "Kickoff Return Touchdown",
     "Kickoff Touchdown"
 ]
-
+// Filters out end of half and period plays, as well as any coin-toss plays
 function checkValidPlay(p) {
     if (p.type == null) {
         return false;
@@ -156,7 +156,7 @@ async function retrievePBP(gameId) {
     delete pbp.news;
     delete pbp.article;
     delete pbp.standings;
-    delete pbp.videos;
+    delete pbp.videos;    
     delete pbp.header;
     var gameSpread = 2.5;
     if (summary.pickcenter != null && summary.pickcenter.length > 0) {
@@ -171,7 +171,9 @@ async function retrievePBP(gameId) {
 
     pbp.gameInfo = pbp.competitions[0];
     var homeTeamId = pbp.competitions[0].competitors[0].id;
+    var homeTeamName = pbp.competitions[0].competitors[0].team.location;
     var awayTeamId = pbp.competitions[0].competitors[1].id;
+    var awayTeamName = pbp.competitions[0].competitors[1].team.location;
     delete pbp.competitions;
 
     if ("winprobability" in pbp) {
@@ -264,14 +266,15 @@ async function retrievePBP(gameId) {
         var intId = parseInt(p.id);
         var offenseId = p.start.team.id;
         var defenseId = (offenseId == homeTeamId) ? awayTeamId : homeTeamId
-
+        var endOffenseId = p.end.team.id;
+        var endDefenseId = (endOffenseId == homeTeamId) ? awayTeamId : homeTeamId
         var half = p.period <= 2 ? "1" : "2"
 
         p.start.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[offenseId][half].filter(t => t < intId).length))
         p.start.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t < intId).length))
 
-        p.end.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[offenseId][half].filter(t => t <= intId).length))
-        p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t <= intId).length))
+        p.end.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[endOffenseId][half].filter(t => t <= intId).length))
+        p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[endDefenseId][half].filter(t => t <= intId).length))
     });
     
     let driveMetadata = drives.map(d => {
@@ -283,8 +286,9 @@ async function retrievePBP(gameId) {
         }
     })
     boxScore = pbp.boxScore;
+    season = pbp.season;
 
-    const processedGame = await processPlays(plays, driveMetadata, boxScore, pbp.homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId);
+    const processedGame = await processPlays(plays, driveMetadata, boxScore, season, pbp.homeTeamSpread, homeTeamId, homeTeamName, awayTeamId, awayTeamName, firstHalfKickTeamId);
     
     // debuglog(processedGame)
     // debuglog(typeof processedGame)
@@ -391,13 +395,16 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-async function processPlays(plays, drives, boxScore, homeTeamSpread, homeTeamId, awayTeamId, firstHalfKickTeamId) {
+async function processPlays(plays, drives, boxScore, season, homeTeamSpread, homeTeamId, homeTeamName, awayTeamId, awayTeamName, firstHalfKickTeamId) {
     var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
         data: plays,
         drivesData: drives,
         boxScore: boxScore,
+        season: season,
         homeTeamId: homeTeamId,
+        homeTeamName: homeTeamName,
         awayTeamId: awayTeamId,
+        awayTeamName: awayTeamName,
         homeTeamSpread: homeTeamSpread,
         firstHalfKickoffTeamId: firstHalfKickTeamId
     })
