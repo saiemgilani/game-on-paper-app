@@ -576,7 +576,10 @@ class PlayProcess(object):
         play_df['homeScore'] = np.select(
             [(play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
-             (play_df['H_score_diff'] <= 9) & 
+             (play_df['H_score_diff'] >= 9),
+             (play_df.scoringPlay == False) & 
+             (play_df['game_play_number'] != 1) &
+             (play_df['H_score_diff'] < 9) & 
              (play_df['H_score_diff'] > 1),
              (play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
@@ -584,18 +587,23 @@ class PlayProcess(object):
              (play_df['H_score_diff'] < -1)
              ],
             [play_df['lag_homeScore'],
+             play_df['lag_homeScore'],
              play_df['homeScore']], default = play_df['homeScore']
         )
         play_df['awayScore'] =  np.select(
             [(play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
-             (play_df['A_score_diff'] <= 9) & 
+             (play_df['A_score_diff'] >= 9),
+             (play_df.scoringPlay == False) & 
+             (play_df['game_play_number'] != 1) &
+             (play_df['A_score_diff'] < 9) & 
              (play_df['A_score_diff'] > 1),
              (play_df.scoringPlay == False) & 
              (play_df['game_play_number'] != 1) &
              (play_df['A_score_diff'] >= -9) &
              (play_df['A_score_diff'] < -1)],
             [play_df['lag_awayScore'],
+             play_df['lag_awayScore'],
              play_df['awayScore']], default = play_df['awayScore']
         )
         play_df.drop(['lag_homeScore','lag_awayScore'],axis=1, inplace=True)
@@ -1835,7 +1843,7 @@ class PlayProcess(object):
         #---- prepare variables for wp_before calculations ----
         play_df['start.ExpScoreDiff'] = np.select(
             [(play_df["type.text"].isin(kickoff_vec)),
-             (play_df["penalty_in_text"]) & (play_df["type.text"] != "Penalty") & (~play_df["type.text"].isin(kickoff_vec))],
+             (play_df["penalty_in_text"] == True) & (play_df["type.text"] != "Penalty") & (~play_df["type.text"].isin(kickoff_vec))],
             [play_df['start.pos_score_diff']+play_df['EP_start_touchback'],
              play_df['start.pos_score_diff']+play_df['EP_start'] - play_df['EP_between']], 
             default = play_df['start.pos_score_diff'] + play_df.EP_start
