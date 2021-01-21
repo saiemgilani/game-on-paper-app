@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>College Football | Game on Paper</title>  
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">  
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row text-center mb-3">
+                <div class="form-signin col-12">
+                    <h1 class="mb-3 fw-normal">Error</h1>
+                    <h3 class="mb-3 fw-normal"><%= errorMessage %></h3>
+                    <form id="game-id-form">
+                        <label for="inputGameId" class="visually-hidden">Game ID</label>
+                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
+                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
+                    </form>
+                    <br>
+                    <a class="w-100 btn btn-lg btn-primary" href="/cfb">Home</a>
+                </div>
+            </div>
+        </div>
+        <script>
+            document.getElementById("game-id-form").addEventListener("submit", function(e) {
+                e.preventDefault()
+                var gameId = document.getElementById("inputGameId").value;
+                window.location = "/cfb/game/" + gameId;
+            });
+        </script>
+    </body>
+</html>

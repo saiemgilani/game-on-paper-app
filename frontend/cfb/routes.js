@@ -2,6 +2,8 @@ const express = require('express');
 const Controller = require('./controller');
 const Schedule = require('./schedule');
 const router = express.Router();
+const util = require('util');
+const debuglog = util.debuglog('[frontend]');
 
 router.get('/healthcheck', Controller.getServiceHealth)
 
@@ -77,10 +79,10 @@ router.route('/game/:gameId')
             }
         } catch(err) {
             // invalid gameId should be routed to the index to select a different game
-            let gameList = await retrieveGameList(req.originalUrl, null);
-            return res.render('pages/cfb/index', {
-                gameId: req.params.gameId,
-                scoreboard: gameList
+            debuglog(err);
+            console.log(err);
+            return res.render('pages/cfb/error', {
+                errorMessage:'GameId is invalid'
             });
         }
     })

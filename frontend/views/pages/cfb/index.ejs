@@ -16,9 +16,6 @@
             <div class="row text-center mb-3">
                 <div class="form-signin col-12">
                     <h1 class="mb-3 fw-normal">Game on Paper</h1>
-                    <% if(gameId !== null){ %>
-                        <h3 class="mb-3 fw-normal"><%= gameId %> is an invalid GameID</h3>
-                    <% } %>
                     <form id="game-id-form">
                         <label for="inputGameId" class="visually-hidden">Game ID</label>
                         <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
