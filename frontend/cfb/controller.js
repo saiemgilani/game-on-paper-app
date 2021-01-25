@@ -139,172 +139,21 @@ async function getSchedule(input) {
 }
 
 async function retrievePBP(gameId) {
-    // get game all game data
-    let pbp = await getPlayByPlay(gameId);
-    let summary = await getSummary(gameId);
-    // debuglog("retreived data for game " + req.params.gameId)
 
-    if (pbp == null) {
-        throw "No play-by-play available, game could have been postponed or cancelled OR is invalid."
-    }
-
-    if (summary == null) {
-        throw "No summary available, game could be invalid"
-    }
-
-    // strip out the unnecessary crap
-    delete pbp.news;
-    delete pbp.article;
-    delete pbp.standings;
-    delete pbp.videos;    
-    delete pbp.header;
-    var gameSpread = 2.5;
-    if (summary.pickcenter != null && summary.pickcenter.length > 0) {
-        let spreads = summary.pickcenter.filter(odds => (odds.spread != null))
-        let baseSpread = Math.abs(parseFloat(spreads[0].spread))
-        gameSpread = (spreads[0].homeTeamOdds.favorite == true) ? baseSpread : (-1 * baseSpread)
-    }
-    pbp.homeTeamSpread = (gameSpread || 2.5);
-    
-    delete pbp.pickcenter;
-    delete pbp.teams;
-
-    pbp.gameInfo = pbp.competitions[0];
-    var homeTeamId = pbp.competitions[0].competitors[0].id;
-    var homeTeamName = pbp.competitions[0].competitors[0].team.location;
-    var awayTeamId = pbp.competitions[0].competitors[1].id;
-    var awayTeamName = pbp.competitions[0].competitors[1].team.location;
-    delete pbp.competitions;
-
-    if ("winprobability" in pbp) {
-        pbp.espnWP = pbp.winprobability
-        delete pbp.winprobability
-    }
-
-    var drives = [];
-    if ("drives" in pbp && pbp.drives != null) {
-        if ("previous" in pbp.drives) {
-            drives = drives.concat(pbp.drives.previous);
-        }
-        if ("current" in pbp.drives) {
-            drives = drives.concat(pbp.drives.current);
-        }
-    }
-    drives.sort((a,b) => {
-        var diff = parseInt(a.id) - parseInt(b.id)
-        if (diff < 0) {
-            return -1
-        } else if (diff == 0) {
-            return 0
-        } else {
-            return 1
-        }
-    })
-    drives = drives.filter((thing, index, self) =>
-        index === self.findIndex((t) => (
-            parseInt(thing.id) == parseInt(t.id)
-        ))
-    )
-    var firstHalfKickTeamId = (drives.length > 0) ? drives[0].plays[0].start.team.id : null
-    var plays = [];
-    if (drives.length > 0) {
-        drives.forEach(d => {
-            d.plays.forEach((p, idx) => {
-                p.driveId = d.id;
-                p.drive_play_index = parseFloat(idx + 1)
-                p.gameId = parseFloat(pbp.id);
-            })
-        })
-        plays = drives.map(d => d.plays.filter(p => checkValidPlay(p))).reduce((acc, val) => acc.concat(val));
-    }
-
-    var timeouts = {};
-    timeouts[homeTeamId] = {
-        "1": [],
-        "2": []
-    };
-    timeouts[awayTeamId] = {
-        "1": [],
-        "2": []
-    };
-
-    plays.forEach(p => {
-        var yard = (p.start.team != null && p.start.team.id == homeTeamId) ? 100 - p.start.yardLine : p.start.yardLine
-        p.start.yardsToEndzone = (p.start.yardLine != null) ? yard : p.start.yardsToEndzone
-    })
-    plays.forEach(p => {
-        var yard = (p.end.team != null && p.end.team.id == homeTeamId) ? 100 - p.end.yardLine : p.end.yardLine
-        p.end.yardsToEndzone = (p.end.yardLine != null) ? yard : p.end.yardsToEndzone
-    })
-    plays.forEach(p => p.playType = (p.type != null) ? p.type.text : "Unknown")
-    plays.forEach(p => p.period = (p.period != null) ? parseInt(p.period.number) : 0)
-    plays.forEach(p => p.gameId = pbp.gameInfo.id)
-
-    for (var i = 0; i < plays.length; i += 1) {
-        var nextPlay = null
-        if ((i + 1) >= plays.length) {
-            nextPlay = null
-        } else {
-            nextPlay = plays[i + 1]
-        }
-
-        plays[i].start.TimeSecsRem = calculateHalfSecondsRemaining(plays[i].period, plays[i].clock.displayValue)
-        plays[i].start.adj_TimeSecsRem = calculateGameSecondsRemaining(plays[i].period, plays[i].start.TimeSecsRem)
-        
-        var endPeriod = (nextPlay != null) ? nextPlay.period : 5
-        var endClock = (nextPlay != null) ? nextPlay.clock.displayValue : "0:00"
-        plays[i].end.TimeSecsRem = calculateHalfSecondsRemaining(endPeriod, endClock)
-        plays[i].end.adj_TimeSecsRem = calculateGameSecondsRemaining(endPeriod, plays[i].end.TimeSecsRem)
-    }
-
-    timeouts[homeTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period <= 2).map(p => parseInt(p.id))
-    timeouts[awayTeamId]["1"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == awayTeamId && p.period <= 2).map(p => parseInt(p.id))
-    timeouts[homeTeamId]["2"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == homeTeamId && p.period > 2).map(p => parseInt(p.id))
-    timeouts[awayTeamId]["2"] = plays.filter(p => p.type.text.includes("Timeout") && p.start.team.id == awayTeamId && p.period > 2).map(p => parseInt(p.id))
-
-    plays.forEach(p => {
-        var intId = parseInt(p.id);
-        var offenseId = p.start.team.id;
-        var defenseId = (offenseId == homeTeamId) ? awayTeamId : homeTeamId
-        var endOffenseId = p.end.team.id;
-        var endDefenseId = (endOffenseId == homeTeamId) ? awayTeamId : homeTeamId
-        var half = p.period <= 2 ? "1" : "2"
-
-        p.start.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[offenseId][half].filter(t => t < intId).length))
-        p.start.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[defenseId][half].filter(t => t < intId).length))
-
-        p.end.posTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[endOffenseId][half].filter(t => t <= intId).length))
-        p.end.defTeamTimeouts = Math.max(0, Math.min(3, 3 - timeouts[endDefenseId][half].filter(t => t <= intId).length))
-    });
-    
-    let driveMetadata = drives.map(d => {
-        return {
-            id: d.id,
-            driveResult: d.displayResult,
-            description: d.description,
-            start: d.start
-        }
-    })
-    boxScore = pbp.boxScore;
-    season = pbp.season;
-
-    const processedGame = await processPlays(plays, driveMetadata, boxScore, season, pbp.homeTeamSpread, homeTeamId, homeTeamName, awayTeamId, awayTeamName, firstHalfKickTeamId);
+    const processedGame = await processPlays(gameId);
     
     // debuglog(processedGame)
     // debuglog(typeof processedGame)
-
-    plays = processedGame["records"];
+    pbp = processedGame;
+    pbp.plays = processedGame["plays"];
     // debuglog(plays)
     pbp.advBoxScore = processedGame["box_score"];
-    pbp.boxScore = processedGame["boxScore"];
-    // debuglog(typeof pbp.boxScore)
-    // debuglog(pbp.boxScore)
     
-    pbp.scoringPlays = plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
-    pbp.plays = plays;
-    pbp.drives = drives;
-    pbp.boxScore = boxScore;
-
+    pbp.scoringPlays = pbp.plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
+    delete pbp.records;
+    delete pbp.box_score;
+    homeTeamId = pbp.homeTeamId;
+    awayTeamId = pbp.awayTeamId;
     if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
         if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
             pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
@@ -395,18 +244,9 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
     }
 }
 
-async function processPlays(plays, drives, boxScore, season, homeTeamSpread, homeTeamId, homeTeamName, awayTeamId, awayTeamName, firstHalfKickTeamId) {
+async function processPlays(gameId) {
     var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
-        data: plays,
-        drivesData: drives,
-        boxScore: boxScore,
-        season: season,
-        homeTeamId: homeTeamId,
-        homeTeamName: homeTeamName,
-        awayTeamId: awayTeamId,
-        awayTeamName: awayTeamName,
-        homeTeamSpread: homeTeamSpread,
-        firstHalfKickoffTeamId: firstHalfKickTeamId
+        gameId: gameId
     })
     return response.data;
 }
