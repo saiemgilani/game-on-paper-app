@@ -152,8 +152,8 @@ async function retrievePBP(gameId) {
     pbp.scoringPlays = pbp.plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
     delete pbp.records;
     delete pbp.box_score;
-    homeTeamId = pbp.homeTeamId;
-    awayTeamId = pbp.awayTeamId;
+    var homeTeamId = pbp.homeTeamId;
+    var awayTeamId = pbp.awayTeamId;
     if (pbp != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
         if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
             pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
