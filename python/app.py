@@ -6,6 +6,7 @@ from flask_logs import LogSetup
 from play_handler import PlayProcess
 import os
 import logging
+import urllib
 import pandas as pd
 import json
 
@@ -37,18 +38,12 @@ def after_request(response):
 
 @app.route('/cfb/process', methods=['POST'])
 def process():
-    base_data = request.get_json(force=True)['data']
-    drives_data = request.get_json(force=True)['drivesData']
-    boxScore = request.get_json(force=True)['boxScore']
-    season = request.get_json(force=True)['season']
-    spread = request.get_json(force=True)['homeTeamSpread']
-    homeTeam = request.get_json(force=True)['homeTeamId']
-    homeName = request.get_json(force=True)['homeTeamName']
-    awayTeam = request.get_json(force=True)['awayTeamId']
-    awayName = request.get_json(force=True)['awayTeamName']
-    firstHalfKickoffTeam = request.get_json(force=True)['firstHalfKickoffTeamId']
-
-    processed_data = PlayProcess(logger = logging.getLogger("root"), json_data=base_data, drives_data=drives_data, boxScore = boxScore, season = season,  spread=spread, homeTeam=homeTeam, homeName=homeName, awayTeam=awayTeam, awayName=awayName, firstHalfKickoffTeam=firstHalfKickoffTeam)
+    gameId = request.get_json(force=True)['gameId']
+    
+    processed_data = PlayProcess(logger = logging.getLogger("root"), gameId = gameId)
+    pbp = processed_data.cfb_pbp()
+    
+    
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
     jsonified_df = json.loads(tmp_json)
@@ -110,9 +105,7 @@ def process():
             "def_pos_team_score" : record["start.def_pos_team_score"],
             "pos_score_diff" : record["start.pos_score_diff"],
             "posTeamTimeouts" : record["start.posTeamTimeouts"],
-            "defTeamTimeouts" : record["start.defTeamTimeouts"],
-            "pos_team_timeouts" : record["start.pos_team_timeouts"],
-            "def_pos_team_timeouts" : record["start.def_pos_team_timeouts"],
+            "defTeamTimeouts" : record["start.defPosTeamTimeouts"],
             "ExpScoreDiff" : record["start.ExpScoreDiff"],
             "ExpScoreDiff_Time_Ratio" : record["start.ExpScoreDiff_Time_Ratio"],
             "shortDownDistanceText" : record["start.shortDownDistanceText"],
@@ -140,9 +133,7 @@ def process():
             "def_pos_team_score" : record["end.def_pos_team_score"],
             "pos_score_diff" : record["end.pos_score_diff"],
             "posTeamTimeouts" : record["end.posTeamTimeouts"],
-            "defTeamTimeouts" : record["end.defTeamTimeouts"],
-            "pos_team_timeouts" : record["end.pos_team_timeouts"],
-            "def_pos_team_timeouts" : record["end.def_pos_team_timeouts"],
+            "defPosTeamTimeouts" : record["end.defPosTeamTimeouts"],
             "ExpScoreDiff" : record["end.ExpScoreDiff"],
             "ExpScoreDiff_Time_Ratio" : record["end.ExpScoreDiff_Time_Ratio"],
             "shortDownDistanceText" : record["end.shortDownDistanceText"],
@@ -156,9 +147,22 @@ def process():
 
     result = {
         "count" : len(jsonified_df),
-        "records" : jsonified_df,
+        "plays" : jsonified_df,
         "box_score" : box,
-        "boxScore": boxScore
+        "homeTeamId": pbp['header']['competitions'][0]['competitors'][0]['team']['id'],
+        "awayTeamId": pbp['header']['competitions'][0]['competitors'][1]['team']['id'],
+        "drives" : pbp['drives'],
+        "scoringPlays" : np.array(pbp['scoringPlays']).tolist(),
+        "winprobability" : np.array(pbp['winprobability']).tolist(),
+        "boxScore" : pbp['boxscore'],
+        "header" : pbp['header'],
+        "broadcasts" : np.array(pbp['broadcasts']).tolist(),
+        "videos" : np.array(pbp['videos']).tolist(),
+        "standings" : pbp['standings'],
+        "pickcenter" : np.array(pbp['pickcenter']).tolist(),
+        "espnWinProbability" : np.array(pbp['espnWP']).tolist(),
+        "gameInfo" : np.array(pbp['gameInfo']).tolist(),
+        "season" : np.array(pbp['season']).tolist()
     }
     # logging.getLogger("root").info(result)
     return jsonify(result)

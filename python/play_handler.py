@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import re
-from flask_logs import LogSetup
+import urllib
 import json
+from flask_logs import LogSetup
 
 ep_class_to_score_mapping = {
     0: 7,
@@ -31,8 +32,8 @@ ep_model.load_model('models/ep_model.model')
 wp_model = xgb.Booster({'nthread': 4})  # init model
 wp_model.load_model('models/wp_spread.model')
 
-wp_start_columns = ["pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio","start.pos_score_diff","start.down","start.distance","start.yardsToEndzone","is_home","start.pos_team_timeouts","start.def_pos_team_timeouts","period"]
-wp_end_columns = ["pos_team_receives_2H_kickoff","end.spread_time","end.TimeSecsRem","end.adj_TimeSecsRem","end.ExpScoreDiff_Time_Ratio","end.pos_score_diff","end.down","end.distance","end.yardsToEndzone","is_home","end.pos_team_timeouts","end.def_pos_team_timeouts","period"]
+wp_start_columns = ["pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio","start.pos_score_diff","start.down","start.distance","start.yardsToEndzone","is_home","start.posTeamTimeouts","start.defPosTeamTimeouts","period"]
+wp_end_columns = ["pos_team_receives_2H_kickoff","end.spread_time","end.TimeSecsRem","end.adj_TimeSecsRem","end.ExpScoreDiff_Time_Ratio","end.pos_score_diff","end.down","end.distance","end.yardsToEndzone","is_home","end.posTeamTimeouts","end.defPosTeamTimeouts","period"]
 
 ep_start_touchback_columns = ["start.TimeSecsRem","start.yardsToEndzone.touchback","distance","down_1","down_2","down_3","down_4","start.pos_score_diff"]
 ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","start.pos_score_diff"]
@@ -216,35 +217,272 @@ kickoff_turnovers = [
     "Kickoff Team Fumble Recovery Touchdown"
 ]
     #---------------------------------
-class PlayProcess(object):
-    plays_json = pd.DataFrame()
-    drives_json = pd.DataFrame()
-    box_score_json = pd.DataFrame()
-    season = pd.DataFrame()
-    homeTeamSpread = 2.5
-    homeTeamId = 0
-    homeTeamName = None
-    awayTeamId = 0
-    awayTeamName = None
-    firstHalfKickoffTeamId = 0
-    logger = None
+class PlayProcess(object):    
+    
+    gameId = 0
+    logger = None    
     ran_pipeline = False
 
-    def __init__(self, logger = None, json_data = [], drives_data = [], boxScore=[],season= [], spread = 2.5, homeTeam = 0, homeName = None, awayTeam = 0, awayName = None, firstHalfKickoffTeam = 0):        
-        self.plays_json = pd.json_normalize(json_data)        
-        self.drives_json = pd.json_normalize(drives_data)        
-        self.plays_json = pd.merge(self.plays_json, self.drives_json, left_on="driveId", right_on="id", suffixes=[None, "_drive"])        
-        self.box_score_json = pd.json_normalize(boxScore)
-        self.season = pd.json_normalize(season)
-        
-        self.homeTeamSpread = float(spread)
-        self.homeTeamId = int(homeTeam)
-        self.homeTeamName = str(homeName)
-        self.awayTeamId = int(awayTeam)
-        self.awayTeamName = str(awayName)
-        self.firstHalfKickoffTeamId = int(firstHalfKickoffTeam)
+    def __init__(self, logger = None, gameId = 0, ):          
+        self.gameId = int(gameId)
         self.logger = logger
         self.ran_pipeline = False
+
+    def cfb_pbp(self):
+        pbp_url = "http://cdn.espn.com/core/college-football/playbyplay?gameId={}&xhr=1&render=false&userab=18".format(self.gameId)
+        pbp_resp = urllib.request.urlopen(pbp_url)
+        pbp_txt = json.loads(pbp_resp.read())['gamepackageJSON']
+        summary_url = "http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event={}".format(self.gameId)
+        summary_resp = urllib.request.urlopen(summary_url)
+        summary = json.loads(summary_resp.read())
+        summary_txt = summary['pickcenter']
+        wp = "winprobability"
+        if wp in summary:
+            espnWP = summary["winprobability"]
+        else:
+            espnWP = np.array([])
+
+        del pbp_txt['news']
+        del pbp_txt['shop']
+        pbp_txt['plays'] = []
+        pbp_txt['pickcenter'] = np.array([])
+        pbp_txt['espnWP'] = np.array([])
+        pbp_txt['gameInfo'] = np.array([])
+        pbp_txt['season'] = np.array([])
+        pbp_txt['gameInfo'] = pbp_txt['header']['competitions'][0]
+        pbp_txt['season'] = pbp_txt['header']['season']
+        pbp_txt['pickcenter'] = summary_txt
+        pbp_txt['espnWP'] = espnWP
+        prev_drives = pd.json_normalize(
+            data = pbp_txt['drives']['previous'], 
+            record_path = 'plays',
+            meta = ['id', 'displayResult','isScore',
+                    ['team','shortDisplayName'],
+                    ['team','displayName'],
+                    ['team','name'],
+                    ['team','abbreviation'],
+                    'yards','offensivePlays','result',
+                    'description',
+                    'shortDisplayResult',
+                    ['timeElapsed','displayValue'],
+                    ['start','period','number'],
+                    ['start','period','type'],
+                    ['start','yardLine'],
+                    ['start','clock','displayValue'],
+                    ['start','text'],
+                    ['end','period','number'],
+                    ['end','period','type'],
+                    ['end','yardLine'],
+                    ['end','clock','displayValue']],
+            meta_prefix = 'drive.', errors = 'ignore')
+
+        if len(pbp_txt['drives'].keys()) > 1:
+            curr_drives = pd.json_normalize(
+                data = pbp_txt['drives']['current'], 
+                record_path = 'plays',
+                meta = ['id', 'displayResult','isScore',
+                        ['team','shortDisplayName'],
+                        ['team','displayName'],
+                        ['team','name'],
+                        ['team','abbreviation'],
+                        'yards','offensivePlays','result',
+                        'description',
+                        'shortDisplayResult',
+                        ['timeElapsed','displayValue'],
+                        ['start','period','number'],
+                        ['start','period','type'],
+                        ['start','yardLine'],
+                        ['start','clock','displayValue'],
+                        ['start','text'],
+                        ['end','period','number'],
+                        ['end','period','type'],
+                        ['end','yardLine'],
+                        ['end','clock','displayValue']],
+                meta_prefix = 'drive.', errors = 'ignore')
+            pbp_txt['plays'] = pd.concat([curr_drives, prev_drives], ignore_index=True)
+        else:
+            pbp_txt['plays'] = prev_drives
+
+        homeTeamId = int(pbp_txt['header']['competitions'][0]['competitors'][0]['team']['id'])
+        awayTeamId = int(pbp_txt['header']['competitions'][0]['competitors'][1]['team']['id'])
+        homeTeamMascot = pbp_txt['header']['competitions'][0]['competitors'][0]['team']['name']
+        awayTeamMascot = pbp_txt['header']['competitions'][0]['competitors'][1]['team']['name']
+        homeTeamName = pbp_txt['header']['competitions'][0]['competitors'][0]['team']['location']
+        awayTeamName = pbp_txt['header']['competitions'][0]['competitors'][1]['team']['location']
+        pbp_txt['plays']['season'] = pbp_txt['season']['year']
+        pbp_txt['plays']['seasonType'] = pbp_txt['season']['type']
+        pbp_txt['plays']["homeTeamId"] = homeTeamId
+        pbp_txt['plays']["awayTeamId"] = awayTeamId
+        pbp_txt['plays']["homeTeamName"] = homeTeamName
+        pbp_txt['plays']["awayTeamName"] = awayTeamName
+        pbp_txt['plays']["homeTeamMascot"] = homeTeamMascot
+        pbp_txt['plays']["awayTeamMascot"] = awayTeamMascot
+        pbp_txt['timeouts'] = {}
+        pbp_txt['timeouts'][homeTeamId] = {"1": [], "2": []}
+        pbp_txt['timeouts'][awayTeamId] = {"1": [], "2": []}
+        pbp_txt['plays']["homeTeamSpread"] = 2.5
+        if len(pbp_txt['pickcenter']) > 1:
+            gameSpread = pbp_txt['pickcenter'][1]['spread']
+            homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
+        else: 
+            gameSpread = 2.5
+            homeFavorite = True
+        pbp_txt['plays']["gameSpread"] = gameSpread
+        pbp_txt['plays']["homeFavorite"] = homeFavorite
+        if len(pbp_txt['espnWP']) > 1:
+            pbp_txt['espnWP'] = espnWP 
+        else: 
+            pbp_txt['espnWP'] = espnWP 
+        pbp_txt['plays']["gameSpread"] = gameSpread
+        pbp_txt['plays']["homeFavorite"] = homeFavorite
+
+
+        pbp_txt['plays']['clock.mm'] = pbp_txt['plays']['clock.displayValue'].str.split(pat=':')
+        pbp_txt['plays'][['clock.minutes','clock.seconds']] = pbp_txt['plays']['clock.mm'].to_list()
+        pbp_txt['plays']['start.TimeSecsRem'] = np.where(
+            pbp_txt['plays']['period.number'].isin([1,3]),
+            900 + 60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int),
+            60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int)
+        )
+        pbp_txt['plays']['start.adj_TimeSecsRem'] = np.select(
+            [   
+                pbp_txt['plays']['period.number'] == 1,
+                pbp_txt['plays']['period.number'] == 2,
+                pbp_txt['plays']['period.number'] == 3,
+                pbp_txt['plays']['period.number'] == 4
+            ],
+            [   
+                2700 + 60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int),
+                1800 + 60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int),
+                900 + 60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int),
+                60*pbp_txt['plays']['clock.minutes'].astype(int)+pbp_txt['plays']['clock.seconds'].astype(int)
+            ], default = 60*pbp_txt['plays']['clock.minutes'].astype(int) + pbp_txt['plays']['clock.seconds'].astype(int) 
+        )
+        pbp_txt['plays']['game_play_number'] = np.arange(len(pbp_txt['plays']))+1
+        pbp_txt['plays']["start.team.id"] = pbp_txt['plays']["start.team.id"].astype(int)
+        pbp_txt['plays']["end.team.id"] = pbp_txt['plays']["end.team.id"].fillna(value=pbp_txt['plays']["start.team.id"]).astype(int)
+        pbp_txt['plays']['start.pos_team.id'] = np.select(
+            [
+                (pbp_txt['plays']['type.text'].isin(kickoff_vec)) & 
+                (pbp_txt['plays']['start.team.id'].astype(int) == pbp_txt['plays']['homeTeamId'].astype(int)),
+                (pbp_txt['plays']['type.text'].isin(kickoff_vec)) & 
+                (pbp_txt['plays']['start.team.id'].astype(int) == pbp_txt['plays']['awayTeamId'].astype(int))
+            ],
+            [
+                pbp_txt['plays']['awayTeamId'].astype(int),
+                pbp_txt['plays']['homeTeamId'].astype(int)
+            ], default = pbp_txt['plays']['start.team.id'].astype(int)
+        )
+        pbp_txt['plays']['start.def_pos_team.id'] = np.where(
+            pbp_txt['plays']['start.pos_team.id'].astype(int) == pbp_txt['plays']['homeTeamId'].astype(int),
+            pbp_txt['plays']['awayTeamId'].astype(int),
+            pbp_txt['plays']['homeTeamId'].astype(int)    
+        )
+        pbp_txt['plays']["end.def_team.id"] = np.where(
+            pbp_txt['plays']["end.team.id"].astype(int) == pbp_txt['plays']['homeTeamId'].astype(int),
+            pbp_txt['plays']['awayTeamId'].astype(int),
+            pbp_txt['plays']['homeTeamId'].astype(int)
+        )
+        pbp_txt['plays']['end.pos_team.id'] = pbp_txt['plays']['end.team.id'].astype(int) 
+        pbp_txt['plays']['end.def_pos_team.id'] = pbp_txt['plays']['end.def_team.id'].astype(int) 
+        pbp_txt['plays']['half'] = np.where(pbp_txt['plays']['period.number']<= 2, "1","2")
+        pbp_txt['plays']['lag_half'] = pbp_txt['plays']['half'].shift(1)
+        pbp_txt['timeouts'][homeTeamId]["1"] = pbp_txt['plays'][(pbp_txt['plays']['type.text']=='Timeout') & 
+                     (pbp_txt['plays']['period.number']<=2) & 
+                     (pbp_txt['plays']['start.team.id'] == homeTeamId)].reset_index()['id']
+        pbp_txt['timeouts'][homeTeamId]["2"] = pbp_txt['plays'][(pbp_txt['plays']['type.text']=='Timeout') & 
+                     (pbp_txt['plays']['period.number']>2) & 
+                     (pbp_txt['plays']['start.team.id'] == homeTeamId)].reset_index()['id']
+        pbp_txt['timeouts'][awayTeamId]["1"] = pbp_txt['plays'][(pbp_txt['plays']['type.text']=='Timeout') & 
+                     (pbp_txt['plays']['period.number']<=2) & 
+                     (pbp_txt['plays']['start.team.id'] == awayTeamId)].reset_index()['id']
+        pbp_txt['timeouts'][awayTeamId]["2"] = pbp_txt['plays'][(pbp_txt['plays']['type.text']=='Timeout') & 
+                     (pbp_txt['plays']['period.number']>2) & 
+                     (pbp_txt['plays']['start.team.id'] == awayTeamId)].reset_index()['id']
+
+        pbp_txt['plays']['id'] = pbp_txt['plays']['id'].apply(lambda x: int(x))
+        pbp_txt['timeouts'][homeTeamId]["1"] = pbp_txt['timeouts'][homeTeamId]["1"].apply(lambda x: int(x)) 
+        pbp_txt['timeouts'][homeTeamId]["2"] = pbp_txt['timeouts'][homeTeamId]["2"].apply(lambda x: int(x)) 
+        pbp_txt['timeouts'][awayTeamId]["1"] = pbp_txt['timeouts'][awayTeamId]["1"].apply(lambda x: int(x))
+        pbp_txt['timeouts'][awayTeamId]["2"] = pbp_txt['timeouts'][awayTeamId]["2"].apply(lambda x: int(x))
+        pbp_txt['plays']['end.homeTeamTimeouts'] = 3 - pbp_txt['plays'].apply(
+            lambda x: ((pbp_txt['timeouts'][homeTeamId]["1"] <= x['id']) & (x['period.number'] <= 2))|
+                      ((pbp_txt['timeouts'][homeTeamId]["2"] <= x['id']) & (x['period.number'] > 2)), axis = 1
+        ).apply(lambda x: int(x.sum()), axis=1)
+        pbp_txt['plays']['end.awayTeamTimeouts'] = 3 - pbp_txt['plays'].apply(
+            lambda x: ((pbp_txt['timeouts'][awayTeamId]["1"] <= x['id']) & (x['period.number'] <= 2))|
+                      ((pbp_txt['timeouts'][awayTeamId]["2"] <= x['id']) & (x['period.number'] > 2)), axis = 1
+        ).apply(lambda x: int(x.sum()), axis=1)
+        pbp_txt['plays']['start.homeTeamTimeouts'] = pbp_txt['plays']['end.homeTeamTimeouts'].shift(1)
+        pbp_txt['plays']['start.awayTeamTimeouts'] = pbp_txt['plays']['end.awayTeamTimeouts'].shift(1)
+        pbp_txt['plays']['start.homeTeamTimeouts'] = np.where((pbp_txt['plays']['game_play_number'] == 1) |
+                                                              ((pbp_txt['plays']['half'] == "2") & 
+                                                              (pbp_txt['plays']['lag_half'] == "1")), 
+                                                              3, pbp_txt['plays']['start.homeTeamTimeouts'])
+        pbp_txt['plays']['start.awayTeamTimeouts'] = np.where((pbp_txt['plays']['game_play_number'] == 1)|
+                                                              ((pbp_txt['plays']['half'] == "2") & 
+                                                              (pbp_txt['plays']['lag_half'] == "1")), 
+                                                              3, pbp_txt['plays']['start.awayTeamTimeouts'])    
+        pbp_txt['plays']['start.homeTeamTimeouts'] = pbp_txt['plays']['start.homeTeamTimeouts'].apply(lambda x: int(x))
+        pbp_txt['plays']['start.awayTeamTimeouts'] = pbp_txt['plays']['start.awayTeamTimeouts'].apply(lambda x: int(x))
+        
+        pbp_txt['plays']['end.TimeSecsRem'] = pbp_txt['plays']['start.TimeSecsRem'].shift(1)
+        pbp_txt['plays']['end.adj_TimeSecsRem'] = pbp_txt['plays']['start.adj_TimeSecsRem'].shift(1)
+        pbp_txt['plays']['end.TimeSecsRem'] = np.where((pbp_txt['plays']['game_play_number'] == 1)|
+                                                       ((pbp_txt['plays']['half'] == "2") & 
+                                                        (pbp_txt['plays']['lag_half'] == "1")),
+                                                        1800, pbp_txt['plays']['end.TimeSecsRem']      
+        )
+        pbp_txt['plays']['end.adj_TimeSecsRem'] = np.select(
+            [(pbp_txt['plays']['game_play_number'] == 1),
+             ((pbp_txt['plays']['half'] == "2") & (pbp_txt['plays']['lag_half'] == "1"))
+            ],
+            [
+             3600, 
+             1800
+            ], default = pbp_txt['plays']['end.adj_TimeSecsRem']
+        )
+        pbp_txt['plays']['start.posTeamTimeouts'] = np.where(pbp_txt['plays']['start.pos_team.id'] == pbp_txt['plays']['homeTeamId'],
+                                                               pbp_txt['plays']['start.homeTeamTimeouts'], 
+                                                               pbp_txt['plays']['start.awayTeamTimeouts'])
+        pbp_txt['plays']['start.defPosTeamTimeouts'] = np.where(pbp_txt['plays']['start.def_pos_team.id'] == pbp_txt['plays']['homeTeamId'],
+                                                                   pbp_txt['plays']['start.homeTeamTimeouts'], 
+                                                                   pbp_txt['plays']['start.awayTeamTimeouts'])
+        pbp_txt['plays']['end.posTeamTimeouts'] = np.where(pbp_txt['plays']['end.pos_team.id'] == pbp_txt['plays']['homeTeamId'],
+                                                             pbp_txt['plays']['end.homeTeamTimeouts'], 
+                                                             pbp_txt['plays']['end.awayTeamTimeouts'])
+        pbp_txt['plays']['end.defPosTeamTimeouts'] = np.where(pbp_txt['plays']['end.def_pos_team.id'] == pbp_txt['plays']['homeTeamId'],
+                                                                 pbp_txt['plays']['end.homeTeamTimeouts'], 
+                                                                 pbp_txt['plays']['end.awayTeamTimeouts'])
+        pbp_txt['firstHalfKickoffTeamId'] = np.where((pbp_txt['plays']['game_play_number'] == 1) &
+                                                     (pbp_txt['plays']['type.text'].isin(kickoff_vec)) &
+                                                     (pbp_txt['plays']['start.team.id'] == pbp_txt['plays']['homeTeamId']),
+                                                     pbp_txt['plays']['homeTeamId'],
+                                                     pbp_txt['plays']['awayTeamId']
+                                                     )
+        pbp_txt['plays']['firstHalfKickoffTeamId'] = pbp_txt['firstHalfKickoffTeamId']
+        pbp_txt['plays']['period'] = pbp_txt['plays']['period.number']
+        del pbp_txt['plays']['clock.mm']
+        
+        self.plays_json = pbp_txt['plays']
+        pbp_json = {
+            "drives" : pbp_txt['drives'],
+            "scoringPlays" : np.array(pbp_txt['scoringPlays']).tolist(),
+            "winprobability" : np.array(pbp_txt['winprobability']).tolist(),
+            "boxscore" : pbp_txt['boxscore'],
+            "header" : pbp_txt['header'],
+            "broadcasts" : np.array(pbp_txt['broadcasts']).tolist(),
+            "videos" : np.array(pbp_txt['videos']).tolist(),
+            "standings" : pbp_txt['standings'],
+            "pickcenter" : np.array(pbp_txt['pickcenter']).tolist(),
+            "espnWP" : np.array(pbp_txt['espnWP']).tolist(),
+            "gameInfo" : np.array(pbp_txt['gameInfo']).tolist(),
+            "season" : np.array(pbp_txt['season']).tolist()
+        }
+        
+        self.json = pbp_json
+        return pbp_json
+
 
     def __setup_penalty_data__(self, play_df):
             ##-- 'Penalty' in play text ----
@@ -425,10 +663,8 @@ class PlayProcess(object):
 
     def __clean_pbp_data__(self, play_df):
         play_df.id = play_df.id.astype(float)
-        play_df['season'] = self.season.year
         play_df['season'] = play_df['season'].fillna(method = 'ffill')
         
-        play_df['seasonType'] = self.season.type
         play_df['seasonType'] = play_df['seasonType'].fillna(method = 'ffill')
         play_df['game_play_number'] = np.arange(len(play_df))+1
         play_df["start.team.id"] = play_df["start.team.id"].astype(int)
@@ -551,19 +787,19 @@ class PlayProcess(object):
         play_df['type.text'] = np.where(play_df["text"].str.contains(" coin toss "), "Coin Toss", play_df["type.text"])
 
         play_df['pos_team'] = np.select(
-            [(play_df["start.team.id"] == self.homeTeamId) & (play_df.kickoff_play == True),
-            (play_df["start.team.id"] == self.awayTeamId) & (play_df.kickoff_play == True)],
-            [self.awayTeamId,
-            self.homeTeamId],  default = play_df["start.team.id"]
+            [(play_df["start.team.id"] == play_df["homeTeamId"]) & (play_df.kickoff_play == True),
+            (play_df["start.team.id"] == play_df["awayTeamId"]) & (play_df.kickoff_play == True)],
+            [play_df["awayTeamId"],
+            play_df["homeTeamId"]],  default = play_df["start.team.id"]
         )
-        play_df['def_pos_team'] = np.where(play_df.pos_team == self.homeTeamId, self.awayTeamId, self.homeTeamId)
+        play_df['def_pos_team'] = np.where(play_df.pos_team == play_df["homeTeamId"], play_df["awayTeamId"], play_df["homeTeamId"])
         play_df['start.pos_team.id'] = play_df['pos_team']
         play_df['start.def_pos_team.id'] = play_df['def_pos_team']
         play_df['end.pos_team.id'] = play_df['end.team.id']
         play_df['end.def_pos_team.id'] = np.where(
-            play_df['end.pos_team.id'] == self.homeTeamId, self.awayTeamId, self.homeTeamId
+            play_df['end.pos_team.id'] == play_df["homeTeamId"], play_df["awayTeamId"], play_df["homeTeamId"]
         )
-        play_df['is_home'] = (play_df.pos_team == self.homeTeamId)
+        play_df['is_home'] = (play_df.pos_team == play_df["homeTeamId"])
         #--- Team Score variables ------
         play_df['lag_homeScore'] = play_df['homeScore'].shift(1)
         play_df['lag_awayScore'] = play_df['awayScore'].shift(1)
@@ -613,13 +849,13 @@ class PlayProcess(object):
         play_df['start.awayScore'] = play_df['lag_awayScore']
         play_df['end.homeScore'] = play_df['homeScore']
         play_df['end.awayScore'] = play_df['awayScore']
-        play_df['pos_team_score'] = np.where(play_df.pos_team == self.homeTeamId, play_df.homeScore, play_df.awayScore)
-        play_df['def_pos_team_score'] = np.where(play_df.pos_team == self.homeTeamId, play_df.awayScore, play_df.homeScore)
-        play_df['start.pos_team_score'] = np.where(play_df['start.pos_team.id'] == self.homeTeamId, play_df['start.homeScore'], play_df['start.awayScore'])
-        play_df['start.def_pos_team_score'] = np.where(play_df['start.pos_team.id'] == self.homeTeamId, play_df['start.awayScore'], play_df['start.homeScore'])
+        play_df['pos_team_score'] = np.where(play_df.pos_team == play_df["homeTeamId"], play_df.homeScore, play_df.awayScore)
+        play_df['def_pos_team_score'] = np.where(play_df.pos_team == play_df["homeTeamId"], play_df.awayScore, play_df.homeScore)
+        play_df['start.pos_team_score'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"], play_df['start.homeScore'], play_df['start.awayScore'])
+        play_df['start.def_pos_team_score'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"], play_df['start.awayScore'], play_df['start.homeScore'])
         play_df['start.pos_score_diff'] = play_df['start.pos_team_score'] - play_df['start.def_pos_team_score']
-        play_df['end.pos_team_score'] = np.where(play_df['end.pos_team.id'] == self.homeTeamId, play_df['end.homeScore'], play_df['end.awayScore'])
-        play_df['end.def_pos_team_score'] = np.where(play_df['end.pos_team.id'] == self.homeTeamId, play_df['end.awayScore'], play_df['end.homeScore'])
+        play_df['end.pos_team_score'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"], play_df['end.homeScore'], play_df['end.awayScore'])
+        play_df['end.def_pos_team_score'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"], play_df['end.awayScore'], play_df['end.homeScore'])
         play_df['end.pos_score_diff'] = play_df['end.pos_team_score'] - play_df['end.def_pos_team_score']
         play_df['lag_pos_team'] = play_df['pos_team'].shift(1)
         play_df.loc[play_df.lag_pos_team.isna() == True, 'lag_pos_team'] = play_df.pos_team
@@ -635,16 +871,8 @@ class PlayProcess(object):
             play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff
         )
         #--- Timeouts ------
-        play_df['pos_team_timeouts'] = np.where(play_df.kickoff_play == True, play_df["end.defTeamTimeouts"], play_df["end.posTeamTimeouts"])
-        play_df['def_pos_team_timeouts'] = np.where(play_df.kickoff_play == True, play_df["end.posTeamTimeouts"], play_df["end.defTeamTimeouts"])        
-        play_df['pos_team_timeouts_rem_before'] = np.where(play_df.kickoff_play == True, play_df["start.defTeamTimeouts"], play_df["start.posTeamTimeouts"])
-        play_df['def_pos_team_timeouts_rem_before'] = np.where(play_df.kickoff_play == True, play_df["start.posTeamTimeouts"], play_df["start.defTeamTimeouts"])        
-        play_df['start.pos_team_timeouts'] = np.where(play_df.kickoff_play == True, play_df["start.defTeamTimeouts"], play_df["start.posTeamTimeouts"])
-        play_df['start.def_pos_team_timeouts'] = np.where(play_df.kickoff_play == True, play_df["start.posTeamTimeouts"], play_df["start.defTeamTimeouts"])
-        play_df['end.pos_team_timeouts'] = play_df["end.posTeamTimeouts"]
-        play_df['end.def_pos_team_timeouts'] = play_df["end.defTeamTimeouts"]
         play_df.loc[play_df.pos_score_diff_start.isna() == True, 'pos_score_diff_start'] = play_df.pos_score_diff
-        play_df['pos_team_receives_2H_kickoff'] = (play_df.pos_team == self.firstHalfKickoffTeamId)
+        play_df['pos_team_receives_2H_kickoff'] = (play_df.pos_team == play_df.firstHalfKickoffTeamId)
         play_df['change_of_poss'] = np.where(play_df["pos_team"] == play_df["lead_pos_team"], False, True)
         play_df['change_of_poss'] = np.where(play_df['change_of_poss'].isna(), 0, play_df['change_of_poss'])
     #--------------------------------------------------
@@ -851,6 +1079,7 @@ class PlayProcess(object):
                 (play_df["text"].str.contains("Two-Point", case=False, flags=0, na=False, regex=True)),
                 "Two-Point Conversion Missed", play_df['type.text']
         )
+    #--------------------------------------------------        
         play_df = self.__setup_penalty_data__(play_df)
     #--------------------------------------------------
             #--- Sacks ----
@@ -917,8 +1146,8 @@ class PlayProcess(object):
         )
         play_df["start.yardsToEndzone"] = np.select(
         [
-            (play_df["start.yardsToEndzone"].isna()) & (~play_df["type.text"].isin(kickoff_vec)) & (play_df['start.pos_team.id'] == self.homeTeamId),
-            (play_df["start.yardsToEndzone"].isna()) & (~play_df["type.text"].isin(kickoff_vec)) & (play_df['start.pos_team.id'] == self.awayTeamId)
+            (play_df["start.yardsToEndzone"].isna()) & (~play_df["type.text"].isin(kickoff_vec)) & (play_df['start.pos_team.id'] == play_df["homeTeamId"]),
+            (play_df["start.yardsToEndzone"].isna()) & (~play_df["type.text"].isin(kickoff_vec)) & (play_df['start.pos_team.id'] == play_df["awayTeamId"])
         ],
         [   
             100-play_df["start.yardLine"].astype(float),
@@ -1851,13 +2080,13 @@ class PlayProcess(object):
         play_df['start.ExpScoreDiff_Time_Ratio'] = play_df['start.ExpScoreDiff'] / (play_df['start.adj_TimeSecsRem'] + 1)
 
         play_df['start.pos_team_spread'] = np.where(
-            (play_df["start.pos_team.id"] == self.homeTeamId), self.homeTeamSpread, -1 * self.homeTeamSpread
+            (play_df["start.pos_team.id"] == play_df["homeTeamId"]), play_df.homeTeamSpread, -1 * play_df.homeTeamSpread
         )
         play_df['start.elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
         play_df['start.spread_time'] = play_df['start.pos_team_spread'] * np.exp(-4 * play_df['start.elapsed_share'])        
         #---- prepare variables for wp_after calculations ----
         play_df['end.pos_team_spread'] = np.where(
-            (play_df["end.pos_team.id"] == self.homeTeamId), self.homeTeamSpread, -1 * self.homeTeamSpread
+            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df.homeTeamSpread, -1 * play_df.homeTeamSpread
         )
         play_df['end.ExpScoreDiff'] = np.select(
             [play_df["scoringPlay"] == False,
@@ -1872,7 +2101,7 @@ class PlayProcess(object):
         )
         play_df['end.ExpScoreDiff_Time_Ratio'] = play_df['end.ExpScoreDiff'] / (play_df["end.adj_TimeSecsRem"] + 1)
         play_df['end.pos_team_spread'] = np.where(
-            (play_df["end.pos_team.id"] == self.homeTeamId), self.homeTeamSpread, -1 * self.homeTeamSpread
+            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df.homeTeamSpread, -1 * play_df.homeTeamSpread
         )
         play_df['end.elapsed_share'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
         play_df['end.spread_time'] = play_df['end.pos_team_spread'] * np.exp(-4 * play_df['end.elapsed_share'])
@@ -2053,10 +2282,10 @@ class PlayProcess(object):
         ], default = play_df.wp_before)
 
         play_df['def_wp_before']  = 1 - play_df.wp_before
-        play_df['home_wp_before'] = np.where(play_df['start.pos_team.id'] == self.homeTeamId,
+        play_df['home_wp_before'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_before, 
                                              play_df.def_wp_before)
-        play_df['away_wp_before'] = np.where(play_df['start.pos_team.id'] != self.homeTeamId,
+        play_df['away_wp_before'] = np.where(play_df['start.pos_team.id'] != play_df["homeTeamId"],
                                              play_df.wp_before, 
                                              play_df.def_wp_before)
         #---- wp_after ----
@@ -2069,10 +2298,10 @@ class PlayProcess(object):
         play_df['wp_after'] = WP_end
 
         play_df['def_wp_after']  = 1 - play_df.wp_after
-        play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == self.homeTeamId,
+        play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_after,
                                              play_df.def_wp_after)
-        play_df['away_wp_after'] = np.where(play_df['end.pos_team.id'] != self.homeTeamId,
+        play_df['away_wp_after'] = np.where(play_df['end.pos_team.id'] != play_df["homeTeamId"],
                                             play_df.wp_after,
                                             play_df.def_wp_after)
         play_df['lead_wp_before'] = play_df['wp_before'].shift(-1)
@@ -2120,21 +2349,21 @@ class PlayProcess(object):
         
         # play_df['wp_after'] = play_df.wp_before + play_df.wpa
         # play_df['def_wp_after'] = 1 - play_df.wp_after
-        # play_df['home_wp_after'] = np.where(play_df['start.pos_team.id'] == self.homeTeamId,
+        # play_df['home_wp_after'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"],
         #                 play_df.home_wp_before + play_df.wpa,
         #                 play_df.home_wp_before - play_df.wpa)
-        # play_df['away_wp_after'] = np.where(play_df['start.pos_team.id'] != self.homeTeamId,
+        # play_df['away_wp_after'] = np.where(play_df['start.pos_team.id'] != play_df["homeTeamId"],
         #                 play_df.away_wp_before + play_df.wpa,
         #                 play_df.away_wp_before - play_df.wpa)
 
         return play_df
     
     def __add_drive_data__(self, play_df):
-        base_groups = play_df.groupby(['driveId'])
+        base_groups = play_df.groupby(['drive.id'])
         play_df['drive_start'] = np.where(
-            play_df['start.pos_team.id'] == self.homeTeamId,
-            100 - play_df["start.yardLine_drive"].astype(float),
-            play_df["start.yardLine_drive"].astype(float)
+            play_df['start.pos_team.id'] == play_df["homeTeamId"],
+            100 - play_df["drive.start.yardLine"].astype(float),
+            play_df["drive.start.yardLine"].astype(float)
         )
         play_df['prog_drive_EPA'] = base_groups['EPA'].apply(lambda x: x.cumsum())
         play_df['prog_drive_WPA'] = base_groups['wpa'].apply(lambda x: x.cumsum())
