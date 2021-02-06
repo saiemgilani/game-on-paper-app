@@ -86,46 +86,6 @@ function checkValidPlay(p) {
     return !(p.type.text.toLocaleLowerCase().includes("end of") || p.text.toLocaleLowerCase().includes("end of") || p.type.text.toLocaleLowerCase().includes("coin toss") || p.text.toLocaleLowerCase().includes("coin toss"))
 }
 
-// From https://github.com/BlueSCar/cfb-data/blob/master/app/services/game.service.js
-async function getPlayByPlay(id) {
-    const baseUrl = 'http://cdn.espn.com/core/college-football/playbyplay';
-    const params = {
-        gameId: id,
-        xhr: 1,
-        render: 'false',
-        userab: 18
-    };
-
-    const res = await axios.get(baseUrl, {
-        params
-    });
-
-    return {
-        scoringPlays: res.data.gamepackageJSON.scoringPlays,
-        videos: res.data.gamepackageJSON.videos,
-        drives: res.data.gamepackageJSON.drives,
-        teams: res.data.gamepackageJSON.header.competitions[0].competitors,
-        id: res.data.gamepackageJSON.header.id,
-        competitions: res.data.gamepackageJSON.header.competitions,
-        season: res.data.gamepackageJSON.header.season,
-        week: res.data.gamepackageJSON.header.week,
-        boxScore: res.data.gamepackageJSON.boxscore
-    };
-};
-
-async function getSummary(id) {
-    const baseUrl = 'http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary';
-    const params = {
-        event: id
-    };
-
-    const res = await axios.get(baseUrl, {
-        params
-    });
-
-    return res.data;
-};
-
 async function getSchedule(input) {
     if (input == null) {
         input = {
@@ -148,7 +108,9 @@ async function retrievePBP(gameId) {
     pbp.plays = processedGame["plays"];
     // debuglog(plays)
     pbp.advBoxScore = processedGame["box_score"];
+    pbp.boxScore = processedGame['boxScore'];
     
+
     pbp.scoringPlays = pbp.plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
     delete pbp.records;
     delete pbp.box_score;
@@ -213,36 +175,6 @@ function calculateGEI(plays, homeTeamId) {
     return normalizeFactor * gei
 }
 
-function calculateHalfSecondsRemaining(period, time) {
-    if (period == null) {
-        return 0
-    }
-
-    if (time == null) {
-        return 0
-    }
-
-    if (parseInt(period) > 4) {
-        return 0
-    }
-
-    var splitTime = time.split(":")
-
-    var minutes = (splitTime.length > 0) ? parseInt(splitTime[0]) : 0
-    var seconds = (splitTime.length > 1) ? parseInt(splitTime[1]) : 0
-
-    var adjMin = (parseInt(period) == 1 || parseInt(period) == 3) ? (15.0 + minutes) : minutes
-
-    return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
-}
-
-function calculateGameSecondsRemaining(period, halfSeconds) {
-    if (period <= 2) {
-        return Math.max(0, Math.min(3600, 1800.0 + halfSeconds))
-    } else {
-        return halfSeconds
-    }
-}
 
 async function processPlays(gameId) {
     var response = await axios.post(`${RDATA_BASE_URL}/cfb/process`, {
