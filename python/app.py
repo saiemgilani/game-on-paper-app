@@ -72,6 +72,40 @@ def process():
             "text" : record["type.text"],
             "abbreviation" : record["type.abbreviation"],
         }
+        record["modelInputs"] = {
+            "start" : {
+                "down" : record["start.down"],
+                "distance" : record["start.distance"],
+                "yardsToEndzone" : record["start.yardsToEndzone"],
+                "TimeSecsRem": record["start.TimeSecsRem"],
+                "adj_TimeSecsRem" : record["start.adj_TimeSecsRem"],
+                "pos_score_diff" : record["start.pos_score_diff"],
+                "posTeamTimeouts" : record["start.posTeamTimeouts"],
+                "defTeamTimeouts" : record["start.defPosTeamTimeouts"],
+                "ExpScoreDiff" : record["start.ExpScoreDiff"],
+                "ExpScoreDiff_Time_Ratio" : record["start.ExpScoreDiff_Time_Ratio"],
+                "spread_time" : record['start.spread_time'],
+                "pos_team_receives_2H_kickoff": record["start.pos_team_receives_2H_kickoff"],
+                "is_home": record["start.is_home"],
+                "period": record["period"]
+            },
+            "end" : {
+                "down" : record["end.down"],
+                "distance" : record["end.distance"],
+                "yardsToEndzone" : record["end.yardsToEndzone"],
+                "TimeSecsRem": record["end.TimeSecsRem"],
+                "adj_TimeSecsRem" : record["end.adj_TimeSecsRem"],
+                "posTeamTimeouts" : record["end.posTeamTimeouts"],
+                "defTeamTimeouts" : record["end.defPosTeamTimeouts"],
+                "pos_score_diff" : record["end.pos_score_diff"],
+                "ExpScoreDiff" : record["end.ExpScoreDiff"],
+                "ExpScoreDiff_Time_Ratio" : record["end.ExpScoreDiff_Time_Ratio"],
+                "spread_time" : record['end.spread_time'],
+                "pos_team_receives_2H_kickoff": record["end.pos_team_receives_2H_kickoff"],
+                "is_home": record["end.is_home"],
+                "period": record["period"]
+            }
+        }
 
         record["expectedPoints"] = {
             "before" : record["EP_start"],
@@ -91,9 +125,11 @@ def process():
             },
             "pos_team": {
                 "id" : record["start.pos_team.id"],
+                "name" : record["start.pos_team.name"]
             }, 
             "def_pos_team": {
                 "id" : record["start.def_pos_team.id"],
+                "name" : record["start.def_pos_team.name"],
             }, 
             "distance" : record["start.distance"],
             "yardLine" : record["start.yardLine"],
@@ -119,9 +155,11 @@ def process():
             },
             "pos_team": {
                 "id" : record["end.pos_team.id"],
+                "name" : record["end.pos_team.name"],
             }, 
             "def_pos_team": {
                 "id" : record["end.def_pos_team.id"],
+                "name" : record["end.def_pos_team.name"],
             }, 
             "distance" : record["end.distance"],
             "yardLine" : record["end.yardLine"],
@@ -141,6 +179,27 @@ def process():
             "downDistanceText" : record["end.downDistanceText"]
         }
 
+        record["players"] = {
+            'passer_player_name' : record["passer_player_name"],
+            'rusher_player_name' : record["rusher_player_name"],
+            'receiver_player_name' : record["receiver_player_name"],
+            'sack_player_name' : record["sack_player_name"],
+            'sack_player_name2' : record["sack_player_name2"],
+            'pass_breakup_player_name' : record["pass_breakup_player_name"],
+            'interception_player_name' : record["interception_player_name"],
+            'fg_kicker_player_name' : record["fg_kicker_player_name"],
+            'fg_block_player_name' : record["fg_block_player_name"],
+            'fg_return_player_name' : record["fg_return_player_name"],
+            'kickoff_player_name' : record["kickoff_player_name"],
+            'kickoff_return_player_name' : record["kickoff_return_player_name"],
+            'punter_player_name' : record["punter_player_name"],
+            'punt_block_player_name' : record["punt_block_player_name"],
+            'punt_return_player_name' : record["punt_return_player_name"],
+            'punt_block_return_player_name' : record["punt_block_return_player_name"],
+            'fumble_player_name' : record["fumble_player_name"],
+            'fumble_forced_player_name' : record["fumble_forced_player_name"],
+            'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
+        }
         # remove added columns
         for col in bad_cols:
             record.pop(col, None)
@@ -155,6 +214,7 @@ def process():
         "scoringPlays" : np.array(pbp['scoringPlays']).tolist(),
         "winprobability" : np.array(pbp['winprobability']).tolist(),
         "boxScore" : pbp['boxscore'],
+        "homeTeamSpread" : np.array(pbp['homeTeamSpread']).tolist(),
         "header" : pbp['header'],
         "broadcasts" : np.array(pbp['broadcasts']).tolist(),
         "videos" : np.array(pbp['videos']).tolist(),
