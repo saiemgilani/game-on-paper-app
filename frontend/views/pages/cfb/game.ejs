@@ -124,8 +124,8 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     } else {
         period = `Q${play.period} ${play.clock.displayValue}`;
     }
-    var offense = (play.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-    var defense = (play.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+    var offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
+    var defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
     var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ` - ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}`
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
     var baseRow = `
@@ -148,15 +148,20 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             baseRow += `
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
-                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>
-                <p style="text-align: center;"><strong>Expected Points (Drive Start):</strong> ${roundNumber(parseFloat(play.drive_start_EP), 2, 2)}</p>
-                <p style="text-align: center;"><strong>Expected Points (Current):</strong> ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)}</p>
+                <p style="text-align: center;"><strong>Yards to End Zone (Before -> After):</strong> ${play.start.yardsToEndzone} -> ${play.end.yardsToEndzone}</p>                
+                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>                
+                <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> ${roundNumber(parseFloat(play.expectedPoints.after), 2, 2)} - ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)} = ${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</p>
+                <p style="text-align: center;"><strong>Score Difference (Before):</strong> ${play.start.pos_score_diff} (${roundNumber(parseFloat(play.start.ExpScoreDiff), 2, 2)})</p>
+                <p style="text-align: center;"><strong>Score Difference (End):</strong> ${play.end.pos_score_diff} (${roundNumber(parseFloat(play.end.ExpScoreDiff), 2, 2)})</p>
+                <p style="text-align: center;"><strong>Change of Possession:</strong> ${play.change_of_poss}</p>                            
             </div>
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
                 <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} plays, ${play.drive_total_yards} yards</p>
-                <p style="text-align: center;"><strong>Total Drive EPA (so far):</strong> ${roundNumber(parseFloat(play.prog_drive_EPA), 2, 2)}</p>
-                <p style="text-align: center;"><strong>Total Drive WPA (so far):</strong> ${roundNumber(parseFloat(play.prog_drive_WPA) * 100, 3, 1)}%</p>
+                <p style="text-align: center;"><strong>Win Probability (Before):</strong> ${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</p>
+                <p style="text-align: center;"><strong>Win Probability (After):</strong> ${roundNumber(parseFloat(play.winProbability.after) * 100, 3, 1)}%</p>
+                <p style="text-align: center;"><strong>Away Score:</strong> ${play.start.awayScore} (${play.awayScore}) <strong>Home Score:</strong> ${play.start.homeScore} (${play.homeScore})</p>    
+                <p style="text-align: center;"><strong>Pos Team Timeouts:</strong> ${play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> ${play.end.defPosTeamTimeouts}</p>
             </div>
             `;
         } 
@@ -223,12 +228,12 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="origin-when-cross-origin">
-    <link rel="canonical" href="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <link rel="canonical" href="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
     <title><%= title %></title>
     <meta name="description" content="Advanced stats for <%= subtitle %>">
 
     <meta property="og:site_name" content="GameOnPaper.com">
-    <meta property="og:url" content="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <meta property="og:url" content="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
     <meta property="og:title" content="<%= title %>">
     <meta property="og:description" content="Advanced stats for <%= subtitle %>">
     <meta property="og:image" content="https://s.espncdn.com/stitcher/sports/football/college-football/events/<%= gameData.id %>.png?templateId=espn.com.share.1">
@@ -236,7 +241,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <meta property="og:image:height" content="630">
     <meta property="og:type" content="website">
     <meta name="twitter:site" content="Game on Paper">
-    <meta name="twitter:url" content="http://game-on-paper-csag6t5oia-uc.a.run.app/cfb/game/<%= gameData.id %>">
+    <meta name="twitter:url" content="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
     <meta name="twitter:title" content="<%= title %>">
     <meta name="twitter:description" content="<%= subtitle %>">
     <meta name="twitter:card" content="summary">
@@ -252,7 +257,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 </div>
                 <div class="col-8 text-center">
                     <div>
-                        <h2><%= awayTeam.nickname %> <%= awayComp.score %>, <%= homeTeam.nickname %> <%= homeComp.score %></h2>
+                        <h2><%= awayTeam.nickname %> <%= awayComp.score %> @ <%= homeTeam.nickname %> <%= homeComp.score %></h2>
                         <p class="text-small" id="game-date"></p>
                     </div>
                 </div>
@@ -323,10 +328,10 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;">[show]</a></span>
+                    <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
                     <div class="panel-group">
                         <div class="panel panel-default">
-                            <div id="boxScoreContent" class="panel-collapse collapse">
+                            <div id="boxScoreContent" class="panel-collapse show">
                                 <div class="panel-body">
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
@@ -505,10 +510,10 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
                             </div>
                           </div>
-                          <div id="awayTeamCollapse" class="panel-collapse collapse">
+                          <div id="awayTeamCollapse" class="panel-collapse show">
                             <div class="panel-body">
                                 <div class="table-responsive">
                                     <table class="table table-sm table-responsive">
@@ -591,10 +596,10 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;">[show]</a></span>
+                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
                             </div>
                           </div>
-                          <div id="homeTeamCollapse" class="panel-collapse collapse">
+                          <div id="homeTeamCollapse" class="panel-collapse show">
                             <div class="panel-body">
                                 <div class="table-responsive">
                                     <table class="table table-sm table-responsive">
@@ -712,9 +717,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 
             </div>
             <div class="col-lg-6 ms-sm-auto px-md-4" id="most-imp-plays">
-                <div>
-                    <h2>Most Important Plays</h2>
-                    <p class="text-small">As determined by absolute WPA.</p>
+                
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <h2>Most Important Plays</h2>
+                                <p class="text-small">As determined by absolute WPA.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <%- buildPlayTable(mostImpPlays, "most-imp-play", true, "No important plays listed for this game.", false); %>
@@ -724,9 +736,21 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         
         <div class="row mb-3">
             <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <h2 id="scoring-plays">Scoring Plays</h2>
-                <div class="table-responsive">
-                    <%- buildPlayTable(gameData.scoringPlays, "scoring-play", true, "No scoring plays in this game.", false); %>
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <h2 id="scoring-plays">Scoring Plays</h2><span class="d-inline text-small"><a data-bs-toggle="collapse" href="#scoringPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                            </div>
+                        </div>
+                        <div id="scoringPlayTable" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <div class="table-responsive">
+                                    <%- buildPlayTable(gameData.scoringPlays, "scoring-play", true, "No scoring plays in this game.", false); %>
+                                </div>
+                            </div>    
+                        </div>    
+                    </div>                    
                 </div>
             </main>
         </div>
@@ -740,13 +764,23 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         gamePlays.reverse()
                     }
                 %>
-                <div>
-                    <h2 id="all-plays">All Plays</h2>
-                    <%- subTitle %>
-                </div>
-                <div class="table-responsive">
-                    <%- buildPlayTable(gamePlays, "all", true, "No plays in this game.", true); %>
-                </div>
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <h2 id="all-plays">All Plays</h2><span class="d-inline text-small"><a data-bs-toggle="collapse" href="#allPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                                <%- subTitle %>
+                            </div>
+                        </div>
+                        <div id="allPlayTable" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <div class="table-responsive">                            
+                                    <%- buildPlayTable(gamePlays, "all", true, "No plays in this game.", true); %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>    
                 <!-- <p id="content"></p> -->
             </main>
         </div>
