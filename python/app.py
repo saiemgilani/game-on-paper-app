@@ -201,6 +201,7 @@ def process():
             record.pop(col, None)
 
     result = {
+        "id": gameId,
         "count" : len(jsonified_df),
         "plays" : jsonified_df,
         "box_score" : box,
