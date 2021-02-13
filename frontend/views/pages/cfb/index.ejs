@@ -30,7 +30,7 @@
                 <div class="col-12 mb-xs-3 mb-sm-0">
                     <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
                         <option value="-1">Choose Season...</option>
-                        <% let yrRange = range(2002, 2020); %>
+                        <% let yrRange = range(2002, 2021); %>
                         <% yrRange.reverse().forEach(yr => { %>
                             <option value="<%= yr %>"><%= yr %></option>
                         <% }); %>
