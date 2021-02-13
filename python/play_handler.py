@@ -255,7 +255,7 @@ class PlayProcess(object):
         """
         # play by play
         pbp_url = "http://cdn.espn.com/core/college-football/playbyplay?gameId={}&xhr=1&render=false&userab=18".format(self.gameId)
-        pbp_resp = urllib.request.urlopen(pbp_url)
+        pbp_resp = self.download(url=pbp_url)
         pbp_txt = {}
         pbp_txt['scoringPlays'] = np.array([])
         pbp_txt['winprobability'] = np.array([])
@@ -266,13 +266,14 @@ class PlayProcess(object):
         pbp_txt['espnWP'] = np.array([])
         pbp_txt['gameInfo'] = np.array([])
         pbp_txt['season'] = np.array([])
-        pbp_txt = json.loads(pbp_resp.read())['gamepackageJSON']
+        
+        pbp_txt = json.loads(pbp_resp)['gamepackageJSON']
         
         pbp_txt['timeouts'] = {}
         # summary endpoint for pickcenter array
         summary_url = "http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event={}".format(self.gameId)
-        summary_resp = urllib.request.urlopen(summary_url)
-        summary = json.loads(summary_resp.read())
+        summary_resp = self.download(summary_url)
+        summary = json.loads(summary_resp)
         summary_txt = summary['pickcenter']
         # ESPN's win probability
         wp = "winprobability"
