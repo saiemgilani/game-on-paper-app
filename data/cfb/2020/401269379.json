@@ -1,0 +1,1194 @@
+{
+    "drives": {},
+    "plays": [],
+    "boxscore": {
+        "teams": [
+            {
+                "team": {
+                    "shortDisplayName": "Wildcats",
+                    "uid": "s:20~l:23~t:12",
+                    "alternateColor": "00205b",
+                    "color": "002449",
+                    "displayName": "Arizona Wildcats",
+                    "name": "Wildcats",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/12.png",
+                    "location": "Arizona",
+                    "id": "12",
+                    "abbreviation": "ARIZ",
+                    "slug": "arizona-wildcats"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Golden Bears",
+                    "uid": "s:20~l:23~t:25",
+                    "alternateColor": "ffc423",
+                    "color": "031522",
+                    "displayName": "California Golden Bears",
+                    "name": "Golden Bears",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+                    "location": "California",
+                    "id": "25",
+                    "abbreviation": "CAL",
+                    "slug": "california-golden-bears"
+                },
+                "statistics": []
+            }
+        ],
+        "players": [
+            {
+                "team": {
+                    "shortDisplayName": "Wildcats",
+                    "uid": "s:20~l:23~t:12",
+                    "alternateColor": "00205b",
+                    "color": "002449",
+                    "displayName": "Arizona Wildcats",
+                    "name": "Wildcats",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/12.png",
+                    "location": "Arizona",
+                    "id": "12",
+                    "abbreviation": "ARIZ",
+                    "slug": "arizona-wildcats"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Golden Bears",
+                    "uid": "s:20~l:23~t:25",
+                    "alternateColor": "ffc423",
+                    "color": "031522",
+                    "displayName": "California Golden Bears",
+                    "name": "Golden Bears",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+                    "location": "California",
+                    "id": "25",
+                    "abbreviation": "CAL",
+                    "slug": "california-golden-bears"
+                },
+                "statistics": []
+            }
+        ]
+    },
+    "header": {
+        "uid": "s:20~l:23~e:401269379",
+        "week": 16,
+        "timeValid": false,
+        "league": {
+            "uid": "s:20~l:23",
+            "midsizeName": "NCAA Football",
+            "name": "NCAA - Football",
+            "links": [
+                {
+                    "rel": [
+                        "index",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "index",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/schedule",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "rankings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/rankings",
+                    "text": "Rankings"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/scoreboard",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "stats",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/stats",
+                    "text": "Stats"
+                },
+                {
+                    "rel": [
+                        "teams",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/teams",
+                    "text": "Teams"
+                },
+                {
+                    "rel": [
+                        "athletes",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/players",
+                    "text": "Players"
+                },
+                {
+                    "rel": [
+                        "injuries",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/injuries",
+                    "text": "Injuries"
+                }
+            ],
+            "id": "23",
+            "abbreviation": "NCAAF",
+            "slug": "college-football",
+            "isTournament": false
+        },
+        "competitions": [
+            {
+                "date": "2020-12-19T05:00Z",
+                "commentaryAvailable": false,
+                "conferenceCompetition": true,
+                "liveAvailable": false,
+                "broadcasts": [],
+                "groups": {
+                    "midsizeName": "Pac-12",
+                    "name": "Pac-12 Conference",
+                    "id": "9",
+                    "abbreviation": "pac12",
+                    "shortName": "Pac-12"
+                },
+                "playByPlaySource": "none",
+                "uid": "s:20~l:23~e:401269379~c:401269379",
+                "competitors": [
+                    {
+                        "uid": "s:20~l:23~t:25",
+                        "homeAway": "home",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "1-3",
+                                "displayValue": "1-3",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "1-3",
+                                "displayValue": "1-3",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "id": "25",
+                        "team": {
+                            "uid": "s:20~l:23~t:25",
+                            "alternateColor": "ffc423",
+                            "color": "031522",
+                            "displayName": "California Golden Bears",
+                            "name": "Golden Bears",
+                            "nickname": "Cal",
+                            "location": "California",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/25/california-golden-bears",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "25",
+                            "abbreviation": "CAL",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/25.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 0
+                    },
+                    {
+                        "uid": "s:20~l:23~t:12",
+                        "homeAway": "away",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "0-5",
+                                "displayValue": "0-5",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "0-5",
+                                "displayValue": "0-5",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "id": "12",
+                        "team": {
+                            "uid": "s:20~l:23~t:12",
+                            "alternateColor": "00205b",
+                            "color": "002449",
+                            "displayName": "Arizona Wildcats",
+                            "name": "Wildcats",
+                            "nickname": "Arizona",
+                            "location": "Arizona",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/12/arizona-wildcats",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "12",
+                            "abbreviation": "ARIZ",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/12.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/12.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 1
+                    }
+                ],
+                "onWatchESPN": false,
+                "boxscoreAvailable": false,
+                "id": "401269379",
+                "neutralSite": false,
+                "recent": false,
+                "boxscoreSource": "none",
+                "status": {
+                    "type": {
+                        "name": "STATUS_CANCELED",
+                        "description": "Canceled",
+                        "id": "5",
+                        "state": "post",
+                        "completed": false,
+                        "detail": "Canceled",
+                        "shortDetail": "Canceled"
+                    }
+                }
+            }
+        ],
+        "season": {
+            "year": 2020,
+            "type": 2
+        },
+        "links": [
+            {
+                "isExternal": false,
+                "shortText": "Summary",
+                "rel": [
+                    "summary",
+                    "desktop",
+                    "event"
+                ],
+                "href": "https://www.espn.com/college-football/game/_/gameId/401269379",
+                "text": "Gamecast",
+                "isPremium": false
+            }
+        ],
+        "id": "401269379"
+    },
+    "standings": {
+        "fullViewLink": {
+            "text": "Full Standings",
+            "href": "http://www.espn.com/college-football/standings"
+        },
+        "groups": [
+            {
+                "header": "2020 Pac-12 Conference Standings",
+                "href": "https://www.espn.com/college-football/standings/_/group/9/view/fbs-i-a",
+                "divisions": [
+                    {
+                        "header": "Pac 12 - North",
+                        "standings": {
+                            "entries": [
+                                {
+                                    "uid": "s:20~l:23~t:264",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-1",
+                                            "displayValue": "3-1",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-1",
+                                            "displayValue": "3-1",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/264/washington-huskies",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/264.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Washington",
+                                    "id": "264"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:24",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "4-2",
+                                            "displayValue": "4-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "4-2",
+                                            "displayValue": "4-2",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/24/stanford-cardinal",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/24.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Stanford",
+                                    "id": "24"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:2483",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "4-3",
+                                            "displayValue": "4-3",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-2",
+                                            "displayValue": "3-2",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/2483/oregon-ducks",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2483.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Oregon",
+                                    "id": "2483"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:204",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-5",
+                                            "displayValue": "2-5",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-5",
+                                            "displayValue": "2-5",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/204/oregon-state-beavers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/204.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Oregon State",
+                                    "id": "204"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:25",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "1-3",
+                                            "displayValue": "1-3",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "1-3",
+                                            "displayValue": "1-3",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/25/california-golden-bears",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "California",
+                                    "id": "25"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:265",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "1-3",
+                                            "displayValue": "1-3",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "1-3",
+                                            "displayValue": "1-3",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/265/washington-state-cougars",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/265.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Washington State",
+                                    "id": "265"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "header": "Pac 12 - South",
+                        "standings": {
+                            "entries": [
+                                {
+                                    "uid": "s:20~l:23~t:30",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "5-1",
+                                            "displayValue": "5-1",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "5-0",
+                                            "displayValue": "5-0",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/30/usc-trojans",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/30.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "USC",
+                                    "id": "30"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:38",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "4-2",
+                                            "displayValue": "4-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-1",
+                                            "displayValue": "3-1",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/38/colorado-buffaloes",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/38.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Colorado",
+                                    "id": "38"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:254",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-2",
+                                            "displayValue": "3-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-2",
+                                            "displayValue": "3-2",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/254/utah-utes",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/254.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Utah",
+                                    "id": "254"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:9",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-2",
+                                            "displayValue": "2-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-2",
+                                            "displayValue": "2-2",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/9/arizona-state-sun-devils",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/9.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Arizona State",
+                                    "id": "9"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:26",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-4",
+                                            "displayValue": "3-4",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-4",
+                                            "displayValue": "3-4",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/26/ucla-bruins",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "UCLA",
+                                    "id": "26"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:12",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "0-5",
+                                            "displayValue": "0-5",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "0-5",
+                                            "displayValue": "0-5",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/12/arizona-wildcats",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/12.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Arizona",
+                                    "id": "12"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "timeouts": {},
+    "scoringPlays": [],
+    "winprobability": [],
+    "homeTeamSpread": 13.5,
+    "broadcasts": [],
+    "videos": [],
+    "pickcenter": [
+        {
+            "provider": {
+                "id": "45",
+                "name": "William Hill (New Jersey)",
+                "priority": 1
+            },
+            "details": "CAL -13.5",
+            "overUnder": 51.5,
+            "spread": -13.5,
+            "awayTeamOdds": {
+                "favorite": false,
+                "underdog": true,
+                "spreadOdds": -110.0,
+                "teamId": "12"
+            },
+            "homeTeamOdds": {
+                "favorite": true,
+                "underdog": false,
+                "spreadOdds": -110.0,
+                "teamId": "25"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1003",
+                "name": "numberfire",
+                "priority": 0
+            },
+            "details": "CAL -13.5",
+            "overUnder": 51.5,
+            "spread": -13.5,
+            "awayTeamOdds": {
+                "averageScore": 20.3,
+                "winPercentage": 6.23,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 420,
+                "spreadOdds": 30.91,
+                "spreadReturn": -0.41,
+                "teamId": "12"
+            },
+            "homeTeamOdds": {
+                "averageScore": 39.66,
+                "winPercentage": 93.77,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -600,
+                "spreadOdds": 69.09,
+                "spreadReturn": 0.319,
+                "teamId": "25"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1002",
+                "name": "teamrankings",
+                "priority": 0
+            },
+            "details": "CAL -13.5",
+            "overUnder": 52.0,
+            "spread": -13.5,
+            "awayTeamOdds": {
+                "averageScore": 18.9,
+                "favorite": false,
+                "underdog": true,
+                "spreadRecord": {
+                    "wins": 1,
+                    "losses": 4,
+                    "pushes": 0,
+                    "summary": "1-4-0"
+                },
+                "spreadOdds": -108.0,
+                "teamId": "12"
+            },
+            "homeTeamOdds": {
+                "averageScore": 32.6,
+                "favorite": true,
+                "underdog": false,
+                "spreadRecord": {
+                    "wins": 1,
+                    "losses": 2,
+                    "pushes": 1,
+                    "summary": "1-2-1"
+                },
+                "spreadOdds": -112.0,
+                "teamId": "25"
+            },
+            "links": []
+        }
+    ],
+    "espnWP": [],
+    "gameInfo": {
+        "date": "2020-12-19T05:00Z",
+        "commentaryAvailable": false,
+        "conferenceCompetition": true,
+        "liveAvailable": false,
+        "broadcasts": [],
+        "groups": {
+            "midsizeName": "Pac-12",
+            "name": "Pac-12 Conference",
+            "id": "9",
+            "abbreviation": "pac12",
+            "shortName": "Pac-12"
+        },
+        "playByPlaySource": "none",
+        "uid": "s:20~l:23~e:401269379~c:401269379",
+        "competitors": [
+            {
+                "uid": "s:20~l:23~t:25",
+                "homeAway": "home",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "1-3",
+                        "displayValue": "1-3",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "1-3",
+                        "displayValue": "1-3",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "id": "25",
+                "team": {
+                    "uid": "s:20~l:23~t:25",
+                    "alternateColor": "ffc423",
+                    "color": "031522",
+                    "displayName": "California Golden Bears",
+                    "name": "Golden Bears",
+                    "nickname": "Cal",
+                    "location": "California",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/25/california-golden-bears",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "25",
+                    "abbreviation": "CAL",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/25.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 0
+            },
+            {
+                "uid": "s:20~l:23~t:12",
+                "homeAway": "away",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "0-5",
+                        "displayValue": "0-5",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "0-5",
+                        "displayValue": "0-5",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "id": "12",
+                "team": {
+                    "uid": "s:20~l:23~t:12",
+                    "alternateColor": "00205b",
+                    "color": "002449",
+                    "displayName": "Arizona Wildcats",
+                    "name": "Wildcats",
+                    "nickname": "Arizona",
+                    "location": "Arizona",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/12/arizona-wildcats",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "12",
+                    "abbreviation": "ARIZ",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/12.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/12.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 1
+            }
+        ],
+        "onWatchESPN": false,
+        "boxscoreAvailable": false,
+        "id": "401269379",
+        "neutralSite": false,
+        "recent": false,
+        "boxscoreSource": "none",
+        "status": {
+            "type": {
+                "name": "STATUS_CANCELED",
+                "description": "Canceled",
+                "id": "5",
+                "state": "post",
+                "completed": false,
+                "detail": "Canceled",
+                "shortDetail": "Canceled"
+            }
+        }
+    },
+    "season": {
+        "year": 2020,
+        "type": 2
+    }
+}

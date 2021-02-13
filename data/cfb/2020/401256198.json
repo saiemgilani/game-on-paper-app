@@ -1,0 +1,744 @@
+{
+    "drives": {},
+    "plays": [],
+    "boxscore": {
+        "teams": [
+            {
+                "team": {
+                    "shortDisplayName": "Razorbacks",
+                    "uid": "s:20~l:23~t:8",
+                    "alternateColor": "000000",
+                    "color": "9c1831",
+                    "displayName": "Arkansas Razorbacks",
+                    "name": "Razorbacks",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/8.png",
+                    "location": "Arkansas",
+                    "id": "8",
+                    "abbreviation": "ARK",
+                    "slug": "arkansas-razorbacks"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Horned Frogs",
+                    "uid": "s:20~l:23~t:2628",
+                    "alternateColor": "f1f2f3",
+                    "color": "3C377D",
+                    "displayName": "TCU Horned Frogs",
+                    "name": "Horned Frogs",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2628.png",
+                    "location": "TCU",
+                    "id": "2628",
+                    "abbreviation": "TCU",
+                    "slug": "tcu-horned-frogs"
+                },
+                "statistics": []
+            }
+        ],
+        "players": [
+            {
+                "team": {
+                    "shortDisplayName": "Razorbacks",
+                    "uid": "s:20~l:23~t:8",
+                    "alternateColor": "000000",
+                    "color": "9c1831",
+                    "displayName": "Arkansas Razorbacks",
+                    "name": "Razorbacks",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/8.png",
+                    "location": "Arkansas",
+                    "id": "8",
+                    "abbreviation": "ARK",
+                    "slug": "arkansas-razorbacks"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Horned Frogs",
+                    "uid": "s:20~l:23~t:2628",
+                    "alternateColor": "f1f2f3",
+                    "color": "3C377D",
+                    "displayName": "TCU Horned Frogs",
+                    "name": "Horned Frogs",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2628.png",
+                    "location": "TCU",
+                    "id": "2628",
+                    "abbreviation": "TCU",
+                    "slug": "tcu-horned-frogs"
+                },
+                "statistics": []
+            }
+        ]
+    },
+    "header": {
+        "uid": "s:20~l:23~e:401256198",
+        "week": 1,
+        "timeValid": true,
+        "league": {
+            "uid": "s:20~l:23",
+            "midsizeName": "NCAA Football",
+            "name": "NCAA - Football",
+            "links": [
+                {
+                    "rel": [
+                        "index",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "index",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/schedule",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "rankings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/rankings",
+                    "text": "Rankings"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/scoreboard",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "stats",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/stats",
+                    "text": "Stats"
+                },
+                {
+                    "rel": [
+                        "teams",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/teams",
+                    "text": "Teams"
+                },
+                {
+                    "rel": [
+                        "athletes",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/players",
+                    "text": "Players"
+                },
+                {
+                    "rel": [
+                        "injuries",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/injuries",
+                    "text": "Injuries"
+                }
+            ],
+            "id": "23",
+            "abbreviation": "NCAAF",
+            "slug": "college-football",
+            "isTournament": false
+        },
+        "competitions": [
+            {
+                "date": "2021-01-01T01:00Z",
+                "commentaryAvailable": false,
+                "conferenceCompetition": false,
+                "liveAvailable": false,
+                "broadcasts": [
+                    {
+                        "market": {
+                            "id": "1",
+                            "type": "National"
+                        },
+                        "media": {
+                            "shortName": "ESPN"
+                        },
+                        "type": {
+                            "id": "1",
+                            "shortName": "TV"
+                        },
+                        "lang": "en",
+                        "region": "us"
+                    }
+                ],
+                "playByPlaySource": "none",
+                "uid": "s:20~l:23~e:401256198~c:401256198",
+                "competitors": [
+                    {
+                        "uid": "s:20~l:23~t:2628",
+                        "homeAway": "home",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "6-4",
+                                "displayValue": "6-4",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "5-4",
+                                "displayValue": "5-4",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "id": "2628",
+                        "team": {
+                            "uid": "s:20~l:23~t:2628",
+                            "alternateColor": "f1f2f3",
+                            "color": "3C377D",
+                            "displayName": "TCU Horned Frogs",
+                            "name": "Horned Frogs",
+                            "nickname": "TCU",
+                            "location": "TCU",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/2628/tcu-horned-frogs",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "2628",
+                            "abbreviation": "TCU",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2628.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2628.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 0
+                    },
+                    {
+                        "uid": "s:20~l:23~t:8",
+                        "homeAway": "away",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "3-7",
+                                "displayValue": "3-7",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "3-7",
+                                "displayValue": "3-7",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "id": "8",
+                        "team": {
+                            "uid": "s:20~l:23~t:8",
+                            "alternateColor": "000000",
+                            "color": "9c1831",
+                            "displayName": "Arkansas Razorbacks",
+                            "name": "Razorbacks",
+                            "nickname": "Arkansas",
+                            "location": "Arkansas",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/8/arkansas-razorbacks",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "8",
+                            "abbreviation": "ARK",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/8.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/8.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 1
+                    }
+                ],
+                "onWatchESPN": true,
+                "boxscoreAvailable": false,
+                "id": "401256198",
+                "neutralSite": true,
+                "recent": false,
+                "boxscoreSource": "none",
+                "status": {
+                    "type": {
+                        "name": "STATUS_CANCELED",
+                        "description": "Canceled",
+                        "id": "5",
+                        "state": "post",
+                        "completed": false,
+                        "detail": "Canceled",
+                        "shortDetail": "Canceled"
+                    }
+                }
+            }
+        ],
+        "season": {
+            "year": 2020,
+            "type": 3
+        },
+        "links": [
+            {
+                "isExternal": false,
+                "shortText": "Summary",
+                "rel": [
+                    "summary",
+                    "desktop",
+                    "event"
+                ],
+                "href": "https://www.espn.com/college-football/game/_/gameId/401256198",
+                "text": "Gamecast",
+                "isPremium": false
+            }
+        ],
+        "id": "401256198",
+        "gameNote": "Mercari Texas Bowl"
+    },
+    "standings": {
+        "fullViewLink": {
+            "text": "Full Standings",
+            "href": "http://www.espn.com/college-football/standings"
+        },
+        "groups": [
+            {
+                "header": "2020 Southeastern Conference Standings",
+                "href": "https://www.espn.com/college-football/standings/_/group/8/view/fbs-i-a",
+                "divisions": [
+                    {
+                        "header": "SEC - East",
+                        "standings": {
+                            "entries": []
+                        }
+                    },
+                    {
+                        "header": "SEC - West",
+                        "standings": {
+                            "entries": []
+                        }
+                    }
+                ]
+            },
+            {
+                "header": "2020 Big 12 Conference Standings",
+                "standings": {
+                    "entries": []
+                }
+            }
+        ]
+    },
+    "timeouts": {},
+    "scoringPlays": [],
+    "winprobability": [],
+    "homeTeamSpread": 4.5,
+    "broadcasts": [],
+    "videos": [],
+    "pickcenter": [
+        {
+            "provider": {
+                "id": "45",
+                "name": "William Hill (New Jersey)",
+                "priority": 1
+            },
+            "details": "TCU -4.5",
+            "overUnder": 57.0,
+            "spread": -4.5,
+            "awayTeamOdds": {
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 170,
+                "spreadOdds": -110.0,
+                "teamId": "8"
+            },
+            "homeTeamOdds": {
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -200,
+                "spreadOdds": -110.0,
+                "teamId": "2628"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1004",
+                "name": "consensus",
+                "priority": 0
+            },
+            "details": "TCU -4.5",
+            "overUnder": 57.5,
+            "spread": -4.5,
+            "awayTeamOdds": {
+                "winPercentage": 41.0,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 169,
+                "spreadOdds": -111.0,
+                "teamId": "8"
+            },
+            "homeTeamOdds": {
+                "winPercentage": 59.0,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -202,
+                "spreadOdds": -109.0,
+                "teamId": "2628"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1003",
+                "name": "numberfire",
+                "priority": 0
+            },
+            "details": "TCU -4.5",
+            "overUnder": 56.5,
+            "spread": -4.5,
+            "awayTeamOdds": {
+                "averageScore": 23.96,
+                "winPercentage": 32.81,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 160,
+                "spreadOdds": 49.49,
+                "spreadReturn": -0.055,
+                "teamId": "8"
+            },
+            "homeTeamOdds": {
+                "averageScore": 29.08,
+                "winPercentage": 67.19,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -200,
+                "spreadOdds": 50.51,
+                "spreadReturn": -0.036,
+                "teamId": "2628"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1002",
+                "name": "teamrankings",
+                "priority": 0
+            },
+            "details": "TCU -4.0",
+            "overUnder": 57.0,
+            "spread": -4.0,
+            "awayTeamOdds": {
+                "averageScore": 23.6,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 160,
+                "spreadRecord": {
+                    "wins": 7,
+                    "losses": 3,
+                    "pushes": 0,
+                    "summary": "7-3-0"
+                },
+                "spreadOdds": -105.0,
+                "teamId": "8"
+            },
+            "homeTeamOdds": {
+                "averageScore": 30.0,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -191,
+                "spreadRecord": {
+                    "wins": 7,
+                    "losses": 3,
+                    "pushes": 0,
+                    "summary": "7-3-0"
+                },
+                "spreadOdds": -111.0,
+                "teamId": "2628"
+            },
+            "links": []
+        }
+    ],
+    "espnWP": [],
+    "gameInfo": {
+        "date": "2021-01-01T01:00Z",
+        "commentaryAvailable": false,
+        "conferenceCompetition": false,
+        "liveAvailable": false,
+        "broadcasts": [
+            {
+                "market": {
+                    "id": "1",
+                    "type": "National"
+                },
+                "media": {
+                    "shortName": "ESPN"
+                },
+                "type": {
+                    "id": "1",
+                    "shortName": "TV"
+                },
+                "lang": "en",
+                "region": "us"
+            }
+        ],
+        "playByPlaySource": "none",
+        "uid": "s:20~l:23~e:401256198~c:401256198",
+        "competitors": [
+            {
+                "uid": "s:20~l:23~t:2628",
+                "homeAway": "home",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "6-4",
+                        "displayValue": "6-4",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "5-4",
+                        "displayValue": "5-4",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "id": "2628",
+                "team": {
+                    "uid": "s:20~l:23~t:2628",
+                    "alternateColor": "f1f2f3",
+                    "color": "3C377D",
+                    "displayName": "TCU Horned Frogs",
+                    "name": "Horned Frogs",
+                    "nickname": "TCU",
+                    "location": "TCU",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/2628/tcu-horned-frogs",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "2628",
+                    "abbreviation": "TCU",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2628.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2628.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 0
+            },
+            {
+                "uid": "s:20~l:23~t:8",
+                "homeAway": "away",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "3-7",
+                        "displayValue": "3-7",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "3-7",
+                        "displayValue": "3-7",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "id": "8",
+                "team": {
+                    "uid": "s:20~l:23~t:8",
+                    "alternateColor": "000000",
+                    "color": "9c1831",
+                    "displayName": "Arkansas Razorbacks",
+                    "name": "Razorbacks",
+                    "nickname": "Arkansas",
+                    "location": "Arkansas",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/8/arkansas-razorbacks",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "8",
+                    "abbreviation": "ARK",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/8.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/8.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 1
+            }
+        ],
+        "onWatchESPN": true,
+        "boxscoreAvailable": false,
+        "id": "401256198",
+        "neutralSite": true,
+        "recent": false,
+        "boxscoreSource": "none",
+        "status": {
+            "type": {
+                "name": "STATUS_CANCELED",
+                "description": "Canceled",
+                "id": "5",
+                "state": "post",
+                "completed": false,
+                "detail": "Canceled",
+                "shortDetail": "Canceled"
+            }
+        }
+    },
+    "season": {
+        "year": 2020,
+        "type": 3
+    }
+}

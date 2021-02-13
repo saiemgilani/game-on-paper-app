@@ -1,0 +1,1318 @@
+{
+    "drives": {},
+    "plays": [],
+    "boxscore": {
+        "teams": [
+            {
+                "team": {
+                    "shortDisplayName": "Wolverines",
+                    "uid": "s:20~l:23~t:130",
+                    "alternateColor": "00274c",
+                    "color": "00274c",
+                    "displayName": "Michigan Wolverines",
+                    "name": "Wolverines",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                    "location": "Michigan",
+                    "id": "130",
+                    "abbreviation": "MICH",
+                    "slug": "michigan-wolverines"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Hawkeyes",
+                    "uid": "s:20~l:23~t:2294",
+                    "alternateColor": "ffe100",
+                    "color": "000000",
+                    "displayName": "Iowa Hawkeyes",
+                    "name": "Hawkeyes",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                    "location": "Iowa",
+                    "id": "2294",
+                    "abbreviation": "IOWA",
+                    "slug": "iowa-hawkeyes"
+                },
+                "statistics": []
+            }
+        ],
+        "players": [
+            {
+                "team": {
+                    "shortDisplayName": "Wolverines",
+                    "uid": "s:20~l:23~t:130",
+                    "alternateColor": "00274c",
+                    "color": "00274c",
+                    "displayName": "Michigan Wolverines",
+                    "name": "Wolverines",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                    "location": "Michigan",
+                    "id": "130",
+                    "abbreviation": "MICH",
+                    "slug": "michigan-wolverines"
+                },
+                "statistics": []
+            },
+            {
+                "team": {
+                    "shortDisplayName": "Hawkeyes",
+                    "uid": "s:20~l:23~t:2294",
+                    "alternateColor": "ffe100",
+                    "color": "000000",
+                    "displayName": "Iowa Hawkeyes",
+                    "name": "Hawkeyes",
+                    "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                    "location": "Iowa",
+                    "id": "2294",
+                    "abbreviation": "IOWA",
+                    "slug": "iowa-hawkeyes"
+                },
+                "statistics": []
+            }
+        ]
+    },
+    "header": {
+        "uid": "s:20~l:23~e:401269385",
+        "week": 16,
+        "timeValid": true,
+        "league": {
+            "uid": "s:20~l:23",
+            "midsizeName": "NCAA Football",
+            "name": "NCAA - Football",
+            "links": [
+                {
+                    "rel": [
+                        "index",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "index",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23",
+                    "text": "Index"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/schedule",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "schedule",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Schedule"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "standings",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=standings",
+                    "text": "Standings"
+                },
+                {
+                    "rel": [
+                        "rankings",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/rankings",
+                    "text": "Rankings"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/scoreboard",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "scores",
+                        "sportscenter",
+                        "app",
+                        "league"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23&section=scores",
+                    "text": "Scores"
+                },
+                {
+                    "rel": [
+                        "stats",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/stats",
+                    "text": "Stats"
+                },
+                {
+                    "rel": [
+                        "teams",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/teams",
+                    "text": "Teams"
+                },
+                {
+                    "rel": [
+                        "athletes",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "http://www.espn.com/college-football/players",
+                    "text": "Players"
+                },
+                {
+                    "rel": [
+                        "injuries",
+                        "desktop",
+                        "league"
+                    ],
+                    "href": "https://www.espn.com/college-football/injuries",
+                    "text": "Injuries"
+                }
+            ],
+            "id": "23",
+            "abbreviation": "NCAAF",
+            "slug": "college-football",
+            "isTournament": false
+        },
+        "competitions": [
+            {
+                "date": "2020-12-20T00:00Z",
+                "commentaryAvailable": false,
+                "conferenceCompetition": true,
+                "liveAvailable": false,
+                "broadcasts": [
+                    {
+                        "market": {
+                            "id": "1",
+                            "type": "National"
+                        },
+                        "media": {
+                            "shortName": "ESPN"
+                        },
+                        "type": {
+                            "id": "1",
+                            "shortName": "TV"
+                        },
+                        "lang": "en",
+                        "region": "us"
+                    }
+                ],
+                "groups": {
+                    "midsizeName": "Big Ten",
+                    "name": "Big Ten Conference",
+                    "id": "5",
+                    "abbreviation": "big10",
+                    "shortName": "Big Ten"
+                },
+                "playByPlaySource": "none",
+                "uid": "s:20~l:23~e:401269385~c:401269385",
+                "competitors": [
+                    {
+                        "uid": "s:20~l:23~t:2294",
+                        "homeAway": "home",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "6-2",
+                                "displayValue": "6-2",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "6-2",
+                                "displayValue": "6-2",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "rank": 16,
+                        "id": "2294",
+                        "team": {
+                            "uid": "s:20~l:23~t:2294",
+                            "alternateColor": "ffe100",
+                            "color": "000000",
+                            "displayName": "Iowa Hawkeyes",
+                            "name": "Hawkeyes",
+                            "nickname": "Iowa",
+                            "location": "Iowa",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/2294/iowa-hawkeyes",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "2294",
+                            "abbreviation": "IOWA",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2294.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 0
+                    },
+                    {
+                        "uid": "s:20~l:23~t:130",
+                        "homeAway": "away",
+                        "score": "0",
+                        "record": [
+                            {
+                                "summary": "2-4",
+                                "displayValue": "2-4",
+                                "type": "total"
+                            },
+                            {
+                                "summary": "2-4",
+                                "displayValue": "2-4",
+                                "type": "vsconf"
+                            }
+                        ],
+                        "possession": false,
+                        "id": "130",
+                        "team": {
+                            "uid": "s:20~l:23~t:130",
+                            "alternateColor": "00274c",
+                            "color": "00274c",
+                            "displayName": "Michigan Wolverines",
+                            "name": "Wolverines",
+                            "nickname": "Michigan",
+                            "location": "Michigan",
+                            "links": [
+                                {
+                                    "rel": [
+                                        "clubhouse",
+                                        "desktop",
+                                        "team"
+                                    ],
+                                    "href": "https://www.espn.com/college-football/team/_/id/130/michigan-wolverines",
+                                    "text": "Clubhouse"
+                                }
+                            ],
+                            "id": "130",
+                            "abbreviation": "MICH",
+                            "logos": [
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "default"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                                    "height": 500
+                                },
+                                {
+                                    "width": 500,
+                                    "alt": "",
+                                    "rel": [
+                                        "full",
+                                        "dark"
+                                    ],
+                                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/130.png",
+                                    "height": 500
+                                }
+                            ]
+                        },
+                        "order": 1
+                    }
+                ],
+                "onWatchESPN": true,
+                "boxscoreAvailable": false,
+                "id": "401269385",
+                "neutralSite": false,
+                "recent": false,
+                "boxscoreSource": "none",
+                "status": {
+                    "type": {
+                        "name": "STATUS_CANCELED",
+                        "description": "Canceled",
+                        "id": "5",
+                        "state": "post",
+                        "completed": false,
+                        "detail": "Canceled",
+                        "shortDetail": "Canceled"
+                    }
+                }
+            }
+        ],
+        "season": {
+            "year": 2020,
+            "type": 2
+        },
+        "links": [
+            {
+                "isExternal": false,
+                "shortText": "Summary",
+                "rel": [
+                    "summary",
+                    "desktop",
+                    "event"
+                ],
+                "href": "https://www.espn.com/college-football/game/_/gameId/401269385",
+                "text": "Gamecast",
+                "isPremium": false
+            }
+        ],
+        "id": "401269385"
+    },
+    "standings": {
+        "fullViewLink": {
+            "text": "Full Standings",
+            "href": "http://www.espn.com/college-football/standings"
+        },
+        "groups": [
+            {
+                "header": "2020 Big Ten Conference Standings",
+                "href": "https://www.espn.com/college-football/standings/_/group/5/view/fbs-i-a",
+                "divisions": [
+                    {
+                        "header": "Big Ten - East",
+                        "standings": {
+                            "entries": [
+                                {
+                                    "uid": "s:20~l:23~t:194",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "7-1",
+                                            "displayValue": "7-1",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "5-0",
+                                            "displayValue": "5-0",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/194/ohio-state-buckeyes",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/194.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Ohio State",
+                                    "id": "194"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:84",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "6-2",
+                                            "displayValue": "6-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "6-1",
+                                            "displayValue": "6-1",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/84/indiana-hoosiers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/84.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Indiana",
+                                    "id": "84"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:213",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "4-5",
+                                            "displayValue": "4-5",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "4-5",
+                                            "displayValue": "4-5",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/213/penn-state-nittany-lions",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/213.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Penn State",
+                                    "id": "213"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:120",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-3",
+                                            "displayValue": "2-3",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-3",
+                                            "displayValue": "2-3",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/120/maryland-terrapins",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/120.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Maryland",
+                                    "id": "120"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:164",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-6",
+                                            "displayValue": "3-6",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-6",
+                                            "displayValue": "3-6",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/164/rutgers-scarlet-knights",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Rutgers",
+                                    "id": "164"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:130",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-4",
+                                            "displayValue": "2-4",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-4",
+                                            "displayValue": "2-4",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/130/michigan-wolverines",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Michigan",
+                                    "id": "130"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:127",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-5",
+                                            "displayValue": "2-5",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-5",
+                                            "displayValue": "2-5",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/127/michigan-state-spartans",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/127.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Michigan State",
+                                    "id": "127"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "header": "Big Ten - West",
+                        "standings": {
+                            "entries": [
+                                {
+                                    "uid": "s:20~l:23~t:77",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "7-2",
+                                            "displayValue": "7-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "6-1",
+                                            "displayValue": "6-1",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/77/northwestern-wildcats",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/77.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Northwestern",
+                                    "id": "77"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:2294",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "6-2",
+                                            "displayValue": "6-2",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "6-2",
+                                            "displayValue": "6-2",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/2294/iowa-hawkeyes",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Iowa",
+                                    "id": "2294"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:275",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "4-3",
+                                            "displayValue": "4-3",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-3",
+                                            "displayValue": "3-3",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/275/wisconsin-badgers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/275.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Wisconsin",
+                                    "id": "275"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:135",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-4",
+                                            "displayValue": "3-4",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-4",
+                                            "displayValue": "3-4",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/135/minnesota-golden-gophers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/135.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Minnesota",
+                                    "id": "135"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:158",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "3-5",
+                                            "displayValue": "3-5",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "3-5",
+                                            "displayValue": "3-5",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/158/nebraska-cornhuskers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/158.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Nebraska",
+                                    "id": "158"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:2509",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-4",
+                                            "displayValue": "2-4",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-4",
+                                            "displayValue": "2-4",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/2509/purdue-boilermakers",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2509.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Purdue",
+                                    "id": "2509"
+                                },
+                                {
+                                    "uid": "s:20~l:23~t:356",
+                                    "stats": [
+                                        {
+                                            "shortDisplayName": "OVER",
+                                            "summary": "2-6",
+                                            "displayValue": "2-6",
+                                            "displayName": "Overall",
+                                            "name": "overall",
+                                            "description": "Overall Record",
+                                            "id": "0",
+                                            "abbreviation": "overall",
+                                            "type": "total"
+                                        },
+                                        {
+                                            "shortDisplayName": "CONF",
+                                            "summary": "2-6",
+                                            "displayValue": "2-6",
+                                            "displayName": "vs. Conference",
+                                            "name": "vsConf",
+                                            "description": "Conference Record",
+                                            "id": "9",
+                                            "abbreviation": "CONF",
+                                            "type": "vsconf"
+                                        }
+                                    ],
+                                    "link": "https://www.espn.com/college-football/team/_/id/356/illinois-fighting-illini",
+                                    "logo": [
+                                        {
+                                            "width": 500,
+                                            "alt": "",
+                                            "rel": [
+                                                "full",
+                                                "default"
+                                            ],
+                                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/356.png",
+                                            "height": 500
+                                        }
+                                    ],
+                                    "team": "Illinois",
+                                    "id": "356"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "timeouts": {},
+    "scoringPlays": [],
+    "winprobability": [],
+    "homeTeamSpread": 12.5,
+    "broadcasts": [],
+    "videos": [],
+    "pickcenter": [
+        {
+            "provider": {
+                "id": "1004",
+                "name": "consensus",
+                "priority": 0
+            },
+            "details": "IOWA -14.0",
+            "overUnder": 52.5,
+            "spread": -14.0,
+            "awayTeamOdds": {
+                "winPercentage": 33.0,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 380,
+                "spreadOdds": -110.0,
+                "teamId": "130"
+            },
+            "homeTeamOdds": {
+                "winPercentage": 67.0,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -588,
+                "spreadOdds": -110.0,
+                "teamId": "2294"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1003",
+                "name": "numberfire",
+                "priority": 0
+            },
+            "details": "IOWA -12.5",
+            "overUnder": 53.5,
+            "spread": -12.5,
+            "awayTeamOdds": {
+                "averageScore": 15.74,
+                "winPercentage": 5.49,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 410,
+                "spreadOdds": 27.36,
+                "spreadReturn": -0.478,
+                "teamId": "130"
+            },
+            "homeTeamOdds": {
+                "averageScore": 36.06,
+                "winPercentage": 94.51,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -590,
+                "spreadOdds": 72.64,
+                "spreadReturn": 0.387,
+                "teamId": "2294"
+            },
+            "links": []
+        },
+        {
+            "provider": {
+                "id": "1002",
+                "name": "teamrankings",
+                "priority": 0
+            },
+            "details": "IOWA -14.0",
+            "overUnder": 53.5,
+            "spread": -14.0,
+            "awayTeamOdds": {
+                "averageScore": 19.4,
+                "favorite": false,
+                "underdog": true,
+                "moneyLine": 430,
+                "spreadRecord": {
+                    "wins": 1,
+                    "losses": 5,
+                    "pushes": 0,
+                    "summary": "1-5-0"
+                },
+                "spreadOdds": -108.0,
+                "teamId": "130"
+            },
+            "homeTeamOdds": {
+                "averageScore": 34.9,
+                "favorite": true,
+                "underdog": false,
+                "moneyLine": -550,
+                "spreadRecord": {
+                    "wins": 5,
+                    "losses": 2,
+                    "pushes": 1,
+                    "summary": "5-2-1"
+                },
+                "spreadOdds": -112.0,
+                "teamId": "2294"
+            },
+            "links": []
+        }
+    ],
+    "espnWP": [],
+    "gameInfo": {
+        "date": "2020-12-20T00:00Z",
+        "commentaryAvailable": false,
+        "conferenceCompetition": true,
+        "liveAvailable": false,
+        "broadcasts": [
+            {
+                "market": {
+                    "id": "1",
+                    "type": "National"
+                },
+                "media": {
+                    "shortName": "ESPN"
+                },
+                "type": {
+                    "id": "1",
+                    "shortName": "TV"
+                },
+                "lang": "en",
+                "region": "us"
+            }
+        ],
+        "groups": {
+            "midsizeName": "Big Ten",
+            "name": "Big Ten Conference",
+            "id": "5",
+            "abbreviation": "big10",
+            "shortName": "Big Ten"
+        },
+        "playByPlaySource": "none",
+        "uid": "s:20~l:23~e:401269385~c:401269385",
+        "competitors": [
+            {
+                "uid": "s:20~l:23~t:2294",
+                "homeAway": "home",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "6-2",
+                        "displayValue": "6-2",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "6-2",
+                        "displayValue": "6-2",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "rank": 16,
+                "id": "2294",
+                "team": {
+                    "uid": "s:20~l:23~t:2294",
+                    "alternateColor": "ffe100",
+                    "color": "000000",
+                    "displayName": "Iowa Hawkeyes",
+                    "name": "Hawkeyes",
+                    "nickname": "Iowa",
+                    "location": "Iowa",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/2294/iowa-hawkeyes",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "2294",
+                    "abbreviation": "IOWA",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2294.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 0
+            },
+            {
+                "uid": "s:20~l:23~t:130",
+                "homeAway": "away",
+                "score": "0",
+                "record": [
+                    {
+                        "summary": "2-4",
+                        "displayValue": "2-4",
+                        "type": "total"
+                    },
+                    {
+                        "summary": "2-4",
+                        "displayValue": "2-4",
+                        "type": "vsconf"
+                    }
+                ],
+                "possession": false,
+                "id": "130",
+                "team": {
+                    "uid": "s:20~l:23~t:130",
+                    "alternateColor": "00274c",
+                    "color": "00274c",
+                    "displayName": "Michigan Wolverines",
+                    "name": "Wolverines",
+                    "nickname": "Michigan",
+                    "location": "Michigan",
+                    "links": [
+                        {
+                            "rel": [
+                                "clubhouse",
+                                "desktop",
+                                "team"
+                            ],
+                            "href": "https://www.espn.com/college-football/team/_/id/130/michigan-wolverines",
+                            "text": "Clubhouse"
+                        }
+                    ],
+                    "id": "130",
+                    "abbreviation": "MICH",
+                    "logos": [
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "default"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                            "height": 500
+                        },
+                        {
+                            "width": 500,
+                            "alt": "",
+                            "rel": [
+                                "full",
+                                "dark"
+                            ],
+                            "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/130.png",
+                            "height": 500
+                        }
+                    ]
+                },
+                "order": 1
+            }
+        ],
+        "onWatchESPN": true,
+        "boxscoreAvailable": false,
+        "id": "401269385",
+        "neutralSite": false,
+        "recent": false,
+        "boxscoreSource": "none",
+        "status": {
+            "type": {
+                "name": "STATUS_CANCELED",
+                "description": "Canceled",
+                "id": "5",
+                "state": "post",
+                "completed": false,
+                "detail": "Canceled",
+                "shortDetail": "Canceled"
+            }
+        }
+    },
+    "season": {
+        "year": 2020,
+        "type": 2
+    }
+}
