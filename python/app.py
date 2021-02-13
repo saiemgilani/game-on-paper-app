@@ -39,21 +39,17 @@ def after_request(response):
 @app.route('/cfb/process', methods=['POST'])
 def process():
     gameId = request.get_json(force=True)['gameId']
-    
     processed_data = PlayProcess(logger = logging.getLogger("root"), gameId = gameId)
     pbp = processed_data.cfb_pbp()
-    
-    
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
     jsonified_df = json.loads(tmp_json)
 
     box = processed_data.create_box_score()
-    
     bad_cols = [
         'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
         'start.shortDownDistanceText', 'start.possessionText', 'start.downDistanceText', 'start.pos_team_timeouts', 'start.def_pos_team_timeouts',
-        'clock.displayValue', 
+        'clock.displayValue',
         'type.id', 'type.text', 'type.abbreviation',
         'end.distance', 'end.yardLine', 'end.team.id','end.down', 'end.yardsToEndzone', 'end.posTeamTimeouts','end.defTeamTimeouts', 
         'end.shortDownDistanceText', 'end.possessionText', 'end.downDistanceText', 'end.pos_team_timeouts', 'end.def_pos_team_timeouts',
@@ -126,11 +122,11 @@ def process():
             "pos_team": {
                 "id" : record["start.pos_team.id"],
                 "name" : record["start.pos_team.name"]
-            }, 
+            },
             "def_pos_team": {
                 "id" : record["start.def_pos_team.id"],
                 "name" : record["start.def_pos_team.name"],
-            }, 
+            },
             "distance" : record["start.distance"],
             "yardLine" : record["start.yardLine"],
             "down" : record["start.down"],

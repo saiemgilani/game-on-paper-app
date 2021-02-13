@@ -5,7 +5,9 @@ import numpy as np
 import xgboost as xgb
 import re
 import urllib
+from urllib.error import URLError, HTTPError, ContentTooShortError
 import json
+import time
 from flask_logs import LogSetup
 
 ep_class_to_score_mapping = {
@@ -231,6 +233,19 @@ class PlayProcess(object):
         self.logger = logger
         self.ran_pipeline = False
 
+    def download(self, url, num_retries=5): 
+    #     print('Downloading:', url)
+        try:
+            html = urllib.request.urlopen(url).read()
+        except (URLError, HTTPError, ContentTooShortError) as e: 
+            print('Download error:', e.reason,url)
+            html = None 
+            if num_retries > 0: 
+                if hasattr(e, 'code') and 500 <= e.code < 600: 
+                    # recursively retry 5xx HTTP errors 
+                    return self.download(url, num_retries - 1) 
+        return html
+
     def cfb_pbp(self):
         """cfb_pbp()
         Pull the game by id
@@ -240,7 +255,7 @@ class PlayProcess(object):
         """
         # play by play
         pbp_url = "http://cdn.espn.com/core/college-football/playbyplay?gameId={}&xhr=1&render=false&userab=18".format(self.gameId)
-        pbp_resp = urllib.request.urlopen(pbp_url)
+        pbp_resp = self.download(url=pbp_url)
         pbp_txt = {}
         pbp_txt['scoringPlays'] = np.array([])
         pbp_txt['winprobability'] = np.array([])
@@ -251,12 +266,14 @@ class PlayProcess(object):
         pbp_txt['espnWP'] = np.array([])
         pbp_txt['gameInfo'] = np.array([])
         pbp_txt['season'] = np.array([])
+        
+        pbp_txt = json.loads(pbp_resp)['gamepackageJSON']
+        
         pbp_txt['timeouts'] = {}
-        pbp_txt = json.loads(pbp_resp.read())['gamepackageJSON']
         # summary endpoint for pickcenter array
         summary_url = "http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event={}".format(self.gameId)
-        summary_resp = urllib.request.urlopen(summary_url)
-        summary = json.loads(summary_resp.read())
+        summary_resp = self.download(summary_url)
+        summary = json.loads(summary_resp)
         summary_txt = summary['pickcenter']
         # ESPN's win probability
         wp = "winprobability"
@@ -305,8 +322,13 @@ class PlayProcess(object):
         # Spread definition
         pbp_txt['plays']["homeTeamSpread"] = 2.5
         if len(pbp_txt['pickcenter']) > 1:
-            gameSpread = pbp_txt['pickcenter'][1]['spread']
-            homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
+            if 'spread' in pbp_txt['pickcenter'][1].keys():
+                gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
+            else:
+                gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
+
         else:
             gameSpread = 2.5
             homeFavorite = True
@@ -391,8 +413,13 @@ class PlayProcess(object):
 
             pbp_txt['plays']["homeTeamSpread"] = 2.5
             if len(pbp_txt['pickcenter']) > 1:
-                gameSpread = pbp_txt['pickcenter'][1]['spread']
-                homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
+                if 'spread' in pbp_txt['pickcenter'][1].keys():
+                    gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                    homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
+                else:
+                    gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                    homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
+
             else:
                 gameSpread = 2.5
                 homeFavorite = True
@@ -604,12 +631,27 @@ class PlayProcess(object):
                 100 - pbp_txt['plays']['end.yardLine'],
                 pbp_txt['plays']['end.yardLine']
             )
+            pbp_txt['plays']['end.yard'] = np.where(
+                (pbp_txt['plays']['type.text'] == "Penalty") &
+                (pbp_txt['plays']["text"].str.contains("declined", case=False, flags=0, na=False, regex=True)),
+                pbp_txt['plays']['start.yard'],
+                pbp_txt['plays']['end.yard']
+            )
             pbp_txt['plays']['end.yardsToEndzone'] = np.where(
                 pbp_txt['plays']['end.yardLine'].isna() == False,
                 pbp_txt['plays']['end.yardsToEndzone'],
                 pbp_txt['plays']['end.yard']
             )
-            
+            pbp_txt['plays']['end.yardsToEndzone'] = np.where(
+                (pbp_txt['plays']['type.text'] == "Penalty") &
+                (pbp_txt['plays']["text"].str.contains("declined", case=False, flags=0, na=False, regex=True)),
+                pbp_txt['plays']['start.yardsToEndzone'],
+                pbp_txt['plays']['end.yardsToEndzone']
+            )
+            pbp_txt['timeouts'][homeTeamId]["1"] = np.array(pbp_txt['timeouts'][homeTeamId]["1"]).tolist()
+            pbp_txt['timeouts'][homeTeamId]["2"] = np.array(pbp_txt['timeouts'][homeTeamId]["2"]).tolist()
+            pbp_txt['timeouts'][awayTeamId]["1"] = np.array(pbp_txt['timeouts'][awayTeamId]["1"]).tolist()
+            pbp_txt['timeouts'][awayTeamId]["2"] = np.array(pbp_txt['timeouts'][awayTeamId]["2"]).tolist()
             if 'scoringType.displayName' in pbp_txt['plays'].keys():
                 pbp_txt['plays']['type.text'] = np.where(
                     pbp_txt['plays']['scoringType.displayName']=='Field Goal',
@@ -647,6 +689,17 @@ class PlayProcess(object):
             del pbp_txt['plays']['clock.mm']
         else:
             pbp_txt['drives']={}
+        
+        if 'scoringPlays' not in pbp_txt.keys():
+            pbp_txt['scoringPlays']=np.array([])
+        if 'winprobability' not in pbp_txt.keys():
+            pbp_txt['winprobability'] = np.array([])
+        if 'standings' not in pbp_txt.keys():
+            pbp_txt['standings'] = np.array([])
+        if 'videos' not in pbp_txt.keys():
+            pbp_txt['videos'] = np.array([])
+        if 'broadcasts' not in pbp_txt.keys():
+            pbp_txt['broadcasts'] = np.array([])  
         self.plays_json = pbp_txt['plays']
         pbp_json = {
             "drives" : pbp_txt['drives'],
@@ -1210,7 +1263,8 @@ class PlayProcess(object):
             "Punt Team Fumble Recovery", play_df['type.text']
         )
         play_df['type.text'] = np.where(
-            play_df['type.text'].isin(["Punt Touchdown"]),
+            (play_df['type.text'].isin(["Punt Touchdown"]))|
+            ((play_df['scoringPlay']==True) & (play_df["punt_play"] == True) & (play_df.change_of_poss == 0)),
             "Punt Team Fumble Recovery Touchdown", play_df['type.text']
         )
         play_df['type.text'] = np.where(
