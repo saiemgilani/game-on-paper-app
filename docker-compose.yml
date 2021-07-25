@@ -1,12 +1,14 @@
 version: "3.8"
 services:
     python:
+        image: "ghcr.io/game-on-paper-app/saiemgilani/gop-python"
         build: 
             context: ./python
             dockerfile: Dockerfile
         expose: 
             - 7000
     frontend:
+        image: "ghcr.io/game-on-paper-app/saiemgilani/gop-frontend"
         build:
             context: ./frontend
             dockerfile: Dockerfile
