@@ -6,3 +6,8 @@ README.md
 .vscode/*
 .github/*
 data/*
+.ipynb_checkpoints/*
+.ipynb_checkpoints
+*/__pycache__
+*/*.ipynb
+*.ipynb
