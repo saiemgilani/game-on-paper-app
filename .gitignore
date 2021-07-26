@@ -13,6 +13,3 @@ cfb-data
 cfb-api
 .ipynb_checkpoints/*
 .ipynb_checkpoints
-*/__pycache__
-*/*.ipynb
-*.ipynb

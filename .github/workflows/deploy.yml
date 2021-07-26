@@ -12,23 +12,14 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup Node.js service
         uses: actions/setup-node@v1
-      - name: Publish to GitHub Packages Registry [Python]
+      - name: Publish to GitHub Packages Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: saiemgilani/game-on-paper-app/gop-frontend
-          registry: gchr.io
+          name: saiemgilani/game-on-paper-app/gopapp
+          registry: docker.pkg.github.com
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: ./python/Dockerfile
-          tags: latest
-      - name: Publish to GitHub Packages Registry [Frontend]
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: saiemgilani/game-on-paper-app/gop-frontend
-          registry: gchr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: ./frontend/Dockerfile
+          dockerfile: Dockerfile
           tags: latest
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
@@ -43,7 +34,6 @@ jobs:
           envs: GITHUB_USERNAME, GITHUB_TOKEN
           script: |
             docker stop $(docker ps -a -q)
-            docker login gchr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            docker pull gchr.io/saiemgilani/game-on-paper-app/gop-python:latest
-            docker pull gchr.io/saiemgilani/game-on-paper-app/gop-frontend:latest
-            docker compose run -p 8000:8000 gchr.io/saiemgilani/game-on-paper-app/gop-frontend:latest  
+            docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+            docker pull docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest
+            docker run -dit -p 8000:8000 docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest  
