@@ -20,28 +20,6 @@ app.get('/', function(req, res) {
     res.redirect('/cfb/');
 });
 
-// Start the Python service
-const python = spawn('python app.py', {
-    shell: true,
-    cwd: "../python"
-});
-
-python.stdout.on('data', (data) => {
-    console.log(`[python] ${data}`);
-});
-
-python.stderr.on('data', (data) => {
-    console.error(`[python] ${data}`);
-});
-
-python.on('close', (code) => {
-    console.error(`[python] child process exited with code ${code}`);
-});
-
-python.on('error', (err) => {
-    console.error(`[python] Failed to start subprocess: ${err}`);
-});
-
 // Start the frontend service
 app.listen(port, () => {
     debuglog(`listening on port ${port}`)
