@@ -9,6 +9,7 @@ Make sure you have Docker installed. Once you do, `cd` into the repo and run the
 $ docker compose up --build
 ```
 
+This will start up both the Python and Node services in networked containers, installing all necessary dependencies in said containers. The Python container will not be exposed to the host (bare metal) machine.
 
 Test the frontend using a browser -- load up `localhost:8000/cfb`.
 
