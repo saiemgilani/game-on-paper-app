@@ -1,16 +1,31 @@
-FROM nikolaik/python-nodejs
+FROM nikolaik/python-nodejs as base
 
-WORKDIR /src
+WORKDIR /root/src
 
-COPY . .
+COPY ./python/requirements.txt ./python/requirements.txt
+COPY ./frontend/package.json ./frontend/package.json
 
-RUN cd ./python && pip install --no-cache-dir -r requirements.txt
+# ---- Dependencies ----
+FROM base AS pybuilder
+RUN cd ./python && pip install --user -r requirements.txt
 
+# install node packages
+FROM base AS nodebuilder
+RUN cd ./frontend && npm set progress=false && npm config set depth 0
 RUN cd ./frontend && npm install
+ 
+FROM nikolaik/python-nodejs
+WORKDIR /code
+
+COPY --from=nodebuilder /root/src/frontend/node_modules ./frontend/node_modules
+COPY --from=pybuilder /root/.local /root/.local
+
+COPY frontend ./frontend
+COPY python ./python
 
 EXPOSE 8000
 
 ENV RDATA_BASE_URL=http://0.0.0.0:7000
 ENV NODE_DEBUG=[frontend]
 
-CMD cd ./frontend && npm run start
+CMD cd ./frontend && node ./server.js
