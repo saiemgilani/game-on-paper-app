@@ -40,12 +40,23 @@ def after_request(response):
 def process():
     gameId = request.get_json(force=True)['gameId']
     processed_data = PlayProcess(logger = logging.getLogger("root"), gameId = gameId)
-    pbp = processed_data.cfb_pbp()
-    processed_data.run_processing_pipeline()
-    tmp_json = processed_data.plays_json.to_json(orient="records")
-    jsonified_df = json.loads(tmp_json)
+    git_cache_pbp = processed_data.git_pbp()
+    if (git_cache_pbp != None):
+        pbp = json.loads(git_cache_pbp)
+        box = pbp["advBoxScore"] if ("advBoxScore" in pbp.keys()) else pbp["box_score"]
+        for k in box.keys():
+            box_list = box[k]
+            for item in box_list:
+                item["pos_team"] = item["posteam"]
+            
+        jsonified_df = pbp["plays"]
+    else:
+        pbp = processed_data.cfb_pbp()
+        processed_data.run_processing_pipeline()
+        tmp_json = processed_data.plays_json.to_json(orient="records")
+        jsonified_df = json.loads(tmp_json)
+        box = processed_data.create_box_score()
 
-    box = processed_data.create_box_score()
     bad_cols = [
         'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
         'start.shortDownDistanceText', 'start.possessionText', 'start.downDistanceText', 'start.pos_team_timeouts', 'start.def_pos_team_timeouts',
@@ -59,6 +70,8 @@ def process():
     ]
     # clean records back into ESPN format
     for record in jsonified_df:
+        record["pos_team"] = record["pos_team"] if ("pos_team" in record.keys()) else record["posteam"]
+
         record["clock"] = {
             "displayValue" : record["clock.displayValue"]
         }
@@ -73,32 +86,32 @@ def process():
                 "down" : record["start.down"],
                 "distance" : record["start.distance"],
                 "yardsToEndzone" : record["start.yardsToEndzone"],
-                "TimeSecsRem": record["start.TimeSecsRem"],
-                "adj_TimeSecsRem" : record["start.adj_TimeSecsRem"],
-                "pos_score_diff" : record["start.pos_score_diff"],
-                "posTeamTimeouts" : record["start.posTeamTimeouts"],
-                "defTeamTimeouts" : record["start.defPosTeamTimeouts"],
+                "TimeSecsRem": record["start.TimeSecRem"] if ("start.TimeSecRem" in record.keys()) else record["start.half_seconds_remaining"],
+                "adj_TimeSecsRem" : record["start.adj_TimeSecRem"] if ("start.adj_TimeSecRem" in record.keys()) else record["start.game_seconds_remaining"],
+                "pos_score_diff" : record["start.pos_score_diff"] if ("start.pos_score_diff" in record.keys()) else record["start.posteam_score_differential"],
+                "posTeamTimeouts" : record["start.posTeamTimeouts"] if ("start.posTeamTimeouts" in record.keys()) else record["start.posteamTimeouts"],
+                "defTeamTimeouts" : record["start.defPosTeamTimeouts"] if ("start.defPosTeamTimeouts" in record.keys()) else record["start.defteamTimeouts"],
                 "ExpScoreDiff" : record["start.ExpScoreDiff"],
                 "ExpScoreDiff_Time_Ratio" : record["start.ExpScoreDiff_Time_Ratio"],
                 "spread_time" : record['start.spread_time'],
-                "pos_team_receives_2H_kickoff": record["start.pos_team_receives_2H_kickoff"],
-                "is_home": record["start.is_home"],
+                "pos_team_receives_2H_kickoff": record["start.pos_team_receives_2H_kickoff"] if ("start.pos_team_receives_2H_kickoff" in record.keys()) else record["start.posteam_receives_2H_kickoff"],
+                "is_home": record["start.is_home"] if ("start.is_home" in record.keys()) else (record["start.team.id"] == record["homeTeamId"]),
                 "period": record["period"]
             },
             "end" : {
                 "down" : record["end.down"],
                 "distance" : record["end.distance"],
                 "yardsToEndzone" : record["end.yardsToEndzone"],
-                "TimeSecsRem": record["end.TimeSecsRem"],
-                "adj_TimeSecsRem" : record["end.adj_TimeSecsRem"],
-                "posTeamTimeouts" : record["end.posTeamTimeouts"],
-                "defTeamTimeouts" : record["end.defPosTeamTimeouts"],
-                "pos_score_diff" : record["end.pos_score_diff"],
+                "TimeSecsRem": record["end.TimeSecRem"] if ("end.TimeSecRem" in record.keys()) else record["end.half_seconds_remaining"],
+                "adj_TimeSecsRem" : record["end.adj_TimeSecRem"] if ("end.adj_TimeSecRem" in record.keys()) else record["end.game_seconds_remaining"],
+                "posTeamTimeouts" : record["end.posTeamTimeouts"] if ("end.posTeamTimeouts" in record.keys()) else record["end.posteamTimeouts"],
+                "defTeamTimeouts" : record["end.defPosTeamTimeouts"] if ("end.defPosTeamTimeouts" in record.keys()) else record["end.defteamTimeouts"],
+                "pos_score_diff" : record["end.pos_score_diff"] if ("end.pos_score_diff" in record.keys()) else record["end.posteam_score_differential"],
                 "ExpScoreDiff" : record["end.ExpScoreDiff"],
                 "ExpScoreDiff_Time_Ratio" : record["end.ExpScoreDiff_Time_Ratio"],
                 "spread_time" : record['end.spread_time'],
-                "pos_team_receives_2H_kickoff": record["end.pos_team_receives_2H_kickoff"],
-                "is_home": record["end.is_home"],
+                "pos_team_receives_2H_kickoff": record["end.pos_team_receives_2H_kickoff"] if ("end.pos_team_receives_2H_kickoff" in record.keys()) else record["end.posteam_receives_2H_kickoff"],
+                "is_home": record["end.is_home"] if ("end.is_home" in record.keys()) else (record["end.team.id"] == record["homeTeamId"]),
                 "period": record["period"]
             }
         }
@@ -120,12 +133,12 @@ def process():
                 "id" : record["start.team.id"],
             },
             "pos_team": {
-                "id" : record["start.pos_team.id"],
-                "name" : record["start.pos_team.name"]
+                "id" : record["start.pos_team.id"] if ("start.pos_team.id" in record.keys()) else record["start.posteam.id"],
+                "name" : record["start.pos_team.name"] if ("start.pos_team.name" in record.keys()) else record["start.posteam.name"]
             },
             "def_pos_team": {
-                "id" : record["start.def_pos_team.id"],
-                "name" : record["start.def_pos_team.name"],
+                "id" : record["start.def_pos_team.id"] if ("start.def_pos_team.id" in record.keys()) else record["start.defteam.id"],
+                "name" : record["start.def_pos_team.name"] if ("start.def_pos_team.name" in record.keys()) else record["start.defteam.name"],
             },
             "distance" : record["start.distance"],
             "yardLine" : record["start.yardLine"],
@@ -133,11 +146,11 @@ def process():
             "yardsToEndzone" : record["start.yardsToEndzone"],
             "homeScore" : record["start.homeScore"],
             "awayScore" : record["start.awayScore"],
-            "pos_team_score" : record["start.pos_team_score"],
-            "def_pos_team_score" : record["start.def_pos_team_score"],
-            "pos_score_diff" : record["start.pos_score_diff"],
-            "posTeamTimeouts" : record["start.posTeamTimeouts"],
-            "defTeamTimeouts" : record["start.defPosTeamTimeouts"],
+            "pos_team_score" : record["start.pos_team_score"] if ("start.pos_team_score" in record.keys()) else record["start.posteam_score"],
+            "def_pos_team_score" : record["start.def_pos_team_score"] if ("start.def_pos_team_score" in record.keys()) else record["start.defteam_score"],
+            "pos_score_diff" : record["start.pos_score_diff"] if ("start.pos_score_diff" in record.keys()) else record["start.posteam_score_differential"],
+            "posTeamTimeouts" : record["start.posTeamTimeouts"] if ("start.posTeamTimeouts" in record.keys()) else record["start.posteamTimeouts"],
+            "defTeamTimeouts" : record["start.defPosTeamTimeouts"] if ("start.defPosTeamTimeouts" in record.keys()) else record["start.defteamTimeouts"],
             "ExpScoreDiff" : record["start.ExpScoreDiff"],
             "ExpScoreDiff_Time_Ratio" : record["start.ExpScoreDiff_Time_Ratio"],
             "shortDownDistanceText" : record["start.shortDownDistanceText"],
@@ -150,12 +163,12 @@ def process():
                 "id" : record["end.team.id"],
             },
             "pos_team": {
-                "id" : record["end.pos_team.id"],
-                "name" : record["end.pos_team.name"],
+                "id" : record["end.pos_team.id"] if ("end.pos_team.id" in record.keys()) else record["end.posteam.id"],
+                "name" : record["end.pos_team.name"] if ("end.pos_team.name" in record.keys()) else record["end.posteam.name"],
             }, 
             "def_pos_team": {
-                "id" : record["end.def_pos_team.id"],
-                "name" : record["end.def_pos_team.name"],
+                "id" : record["end.def_pos_team.id"] if ("end.def_pos_team.id" in record.keys()) else record["end.defteam.id"],
+                "name" : record["end.def_pos_team.name"] if ("end.def_pos_team.name" in record.keys()) else record["end.defteam.name"],
             }, 
             "distance" : record["end.distance"],
             "yardLine" : record["end.yardLine"],
@@ -163,11 +176,11 @@ def process():
             "yardsToEndzone" : record["end.yardsToEndzone"],
             "homeScore" : record["end.homeScore"],
             "awayScore" : record["end.awayScore"],
-            "pos_team_score" : record["end.pos_team_score"],
-            "def_pos_team_score" : record["end.def_pos_team_score"],
-            "pos_score_diff" : record["end.pos_score_diff"],
-            "posTeamTimeouts" : record["end.posTeamTimeouts"],
-            "defPosTeamTimeouts" : record["end.defPosTeamTimeouts"],
+            "pos_team_score" : record["end.pos_team_score"] if ("end.pos_team_score" in record.keys()) else record["end.posteam_score"],
+            "def_pos_team_score" : record["end.def_pos_team_score"] if ("end.def_pos_team_score" in record.keys()) else record["end.defteam_score"],
+            "pos_score_diff" : record["end.pos_score_diff"] if ("end.pos_score_diff" in record.keys()) else record["end.posteam_score_differential"],
+            "posTeamTimeouts" : record["end.posTeamTimeouts"] if ("end.posTeamTimeouts" in record.keys()) else record["end.posteamTimeouts"],
+            "defPosTeamTimeouts" : record["end.defPosTeamTimeouts"] if ("end.defPosTeamTimeouts" in record.keys()) else record["end.defteamTimeouts"],
             "ExpScoreDiff" : record["end.ExpScoreDiff"],
             "ExpScoreDiff_Time_Ratio" : record["end.ExpScoreDiff_Time_Ratio"],
             "shortDownDistanceText" : record["end.shortDownDistanceText"],
@@ -211,7 +224,7 @@ def process():
         "scoringPlays" : np.array(pbp['scoringPlays']).tolist(),
         "winprobability" : np.array(pbp['winprobability']).tolist(),
         "boxScore" : pbp['boxscore'],
-        "homeTeamSpread" : np.array(pbp['homeTeamSpread']).tolist(),
+        "homeTeamSpread" : np.array(pbp['homeTeamSpread']).tolist() if ("homeTeamSpread" in pbp.keys()) else jsonified_df[0]["homeTeamSpread"],
         "header" : pbp['header'],
         "broadcasts" : np.array(pbp['broadcasts']).tolist(),
         "videos" : np.array(pbp['videos']).tolist(),
@@ -221,6 +234,7 @@ def process():
         "gameInfo" : np.array(pbp['gameInfo']).tolist(),
         "season" : np.array(pbp['season']).tolist()
     }
+    
     # logging.getLogger("root").info(result)
     return jsonify(result)
 

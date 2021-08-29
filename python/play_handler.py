@@ -245,6 +245,18 @@ class PlayProcess(object):
                     # recursively retry 5xx HTTP errors 
                     return self.download(url, num_retries - 1) 
         return html
+    
+    def git_pbp(self):
+        """git_pbp()
+        Check if we have the pbp already processed and stored in Github. if so, use that instead of the ESPN live feed.
+        """
+        try:
+            url = f"https://raw.githubusercontent.com/saiemgilani/cfbfastR-raw/main/pbp_json_final/{self.gameId}.json"
+            html = urllib.request.urlopen(url).read()
+            return html
+        except (URLError, HTTPError, ContentTooShortError) as e: 
+            return None 
+        
 
     def cfb_pbp(self):
         """cfb_pbp()
