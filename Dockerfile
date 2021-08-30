@@ -1,4 +1,4 @@
-FROM nikolaik/python-nodejs as base
+FROM nikolaik/python-nodejs:latest as base
 
 WORKDIR /root/src
 
