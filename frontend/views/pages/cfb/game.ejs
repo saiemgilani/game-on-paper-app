@@ -66,11 +66,23 @@ stat_key_title_mapping = {
     "TFL" : "TFLs Generated",
     "TFL_pass" : "&emsp;&emsp;Passing",
     "TFL_rush" : "&emsp;&emsp;Rushing",
-    "EPA_success" : "EPA Success Plays",
-    "EPA_success_pass" : "&emsp;&emsp;Passing",
-    "EPA_success_rush" : "&emsp;&emsp;Rushing",
-    "EPA_success_standard_down" : "&emsp;&emsp;Standard Down",
-    "EPA_success_passing_down": "&emsp;&emsp;Passing Down",
+    "EPA_success" : "Successful Plays (EPA > 0)",
+    "EPA_success_pass" : "&emsp;&emsp;When Passing",
+    "EPA_success_rush" : "&emsp;&emsp;When Rushing",
+    "EPA_success_standard_down" : "&emsp;&emsp;On Standard Downs",
+    "EPA_success_passing_down": "&emsp;&emsp;On Passing Downs",
+    "EPA_success_early_down": "&emsp;&emsp;On Early Downs",
+    "EPA_success_early_down_pass": "&emsp;&emsp;Pass Success Rate",
+    "EPA_success_early_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "early_downs": "Early Downs",
+    "early_down_pass": "&emsp;&emsp;Passes",
+    "early_down_rush": "&emsp;&emsp;Rushes",
+    "EPA_success_late_down": "&emsp;&emsp;On Late Downs",
+    "EPA_success_late_down_pass": "&emsp;&emsp;Pass Success Rate",
+    "EPA_success_late_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "late_downs": "Late Downs",
+    "late_down_pass": "&emsp;&emsp;Passes",
+    "late_down_rush": "&emsp;&emsp;Rushes",
     "EPA_explosive" : "EPA Explosive Plays",
     "EPA_explosive_passing" : "&emsp;&emsp;Passing",
     "EPA_explosive_rushing" : "&emsp;&emsp;Rushing",
@@ -79,7 +91,14 @@ stat_key_title_mapping = {
     "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
     "field_pos_avg_start" : "Avg Starting FP",
     "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points",
-    "sacks" : "Sacks Generated"
+    "sacks" : "Sacks Generated",
+    "fumbles" : "Fumbles Generated",
+    "turnovers" : "Turnovers",
+    "expected_turnovers" : "Expected Turnovers",
+    "turnover_margin" : "Turnover Margin",
+    "expected_turnover_margin" : "Expected Turnover Margin",
+    "turnover_luck" : "Turnover Luck (pts)",
+    "PD" : "Passes Defensed"
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -328,17 +347,27 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays"]; 
-                function handleRates(item, teamInfo) {
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs"]; 
+                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck"];
+                function handleRates(item, teamInfo, useSuffix) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
                     var result = ""
-                    if (nonRateColumns.includes(item)) {
+                    if (nonRateDecimalColumns.includes(item)) {
+                        finalTeamInfo.forEach(teamData => {
+                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(teamData[item]), 2, 1)}</td>`;
+                        });
+                    } else if (nonRateColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
                             result += `<td class="numeral" style="text-align: center;">${teamData[item]}</td>`;
                         });
                     } else { 
                         finalTeamInfo.forEach(teamData => {
-                            let rate = 100.0 * (parseFloat(teamData[item]) / parseFloat(teamData["scrimmage_plays"]))
+                            var rate = 0.0;
+                            if (useSuffix) {
+                                rate = 100.0 * teamData[`${item}_rate`]
+                            } else {
+                                rate = 100.0 * (parseFloat(teamData[item]) / parseFloat(teamData["scrimmage_plays"]))
+                            }
                             result += `<td class="numeral" style="text-align: center;">${teamData[item]} (${roundNumber(parseFloat(rate), 2, 0)}%)</td>`;
                         });
                     }
@@ -401,11 +430,11 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down"]; %>
+                                                <% var columns = ["EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down", "EPA_success_early_down","EPA_success_late_down","early_downs","early_down_pass","early_down_rush","EPA_success_early_down_pass","EPA_success_early_down_rush"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Success Rates</th>
+                                                            <th style="text-align: left;color: black; font-weight: bold;">Situational</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -415,7 +444,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.situational, true); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
@@ -446,7 +475,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks"]; %>
+                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","turnover_margin","expected_turnover_margin","turnover_luck"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -457,13 +486,10 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <% let defBoxes = [...gameData.advBoxScore.team];
-                                                            defBoxes.reverse();
-                                                        %>
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, defBoxes); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.defensive); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
@@ -536,16 +562,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                             <th rowspan="1" colspan="1"></th>
                                             <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
                                             <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Total Expected Points Added">EPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Success Rate">SR</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Win Probability Added">WPA</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                         <% if (awayTeamBox.pass.length > 0) { %>
                                             <tr>
-                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;" title="Includes pass attempts and sacks.">Dropbacks</td>
                                             </tr>
                                             <% awayTeamBox.pass.forEach(p => { %>
                                                 <% if (p.passer_player_name.length > 0) { %>
@@ -622,16 +648,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                             <th rowspan="1" colspan="1"></th>
                                             <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
                                             <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">EPA</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">SR</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">WPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Total Expected Points Added">EPA</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Success Rate">SR</th>
+                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Win Probability Added">WPA</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                         <% if (homeTeamBox.pass.length > 0) { %>
                                             <tr>
-                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Dropbacks</td>
+                                                <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;" title="Includes pass attempts and sacks.">Dropbacks</td>
                                             </tr>
                                             <% homeTeamBox.pass.forEach(p => { %>
                                                 <% if (p.passer_player_name.length > 0) { %>
