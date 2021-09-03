@@ -1427,7 +1427,7 @@ class PlayProcess(object):
         )
         play_df['scrimmage_play'] = np.where(
             (play_df.sp == False) & 
-            (~play_df['type.text'].isin(['Timeout','Extra Point Good','Extra Point Missed','Two-Point Pass','Two-Point Rush'])), 
+            (~play_df['type.text'].isin(['Timeout','Extra Point Good','Extra Point Missed','Two-Point Pass','Two-Point Rush', 'Penalty'])), 
             True, False
         )
     #--------------------------------------------------
