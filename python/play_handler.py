@@ -1427,7 +1427,7 @@ class PlayProcess(object):
         )
         play_df['scrimmage_play'] = np.where(
             (play_df.sp == False) & 
-            (~play_df['type.text'].isin(['Timeout','Extra Point Good','Extra Point Missed','Two-Point Pass','Two-Point Rush'])), 
+            (~play_df['type.text'].isin(['Timeout','Extra Point Good','Extra Point Missed','Two-Point Pass','Two-Point Rush', 'Penalty'])), 
             True, False
         )
     #--------------------------------------------------
@@ -2800,7 +2800,8 @@ class PlayProcess(object):
             TFL_rush = ('TFL_rush', sum),
             havoc_total = ('havoc', sum),
             havoc_total_pass = ('havoc_pass', sum),
-            havoc_total_rush = ('havoc_rush', sum)
+            havoc_total_rush = ('havoc_rush', sum),
+            sacks = ('sack', sum)
         ).round(2)
 
         team_box = team_box.replace({np.nan:None})
