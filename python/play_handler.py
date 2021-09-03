@@ -1460,6 +1460,10 @@ class PlayProcess(object):
                 play_df['pos_score_diff_start'], -1*play_df['pos_score_diff_start']
             ], default = play_df['pos_score_diff_end']
         )
+
+        play_df["fumble_lost"] = np.where(
+            (play_df.fumble_vec == True) & (play_df.change_of_poss == True), True, False
+        )
         return play_df
 
     def __add_yardage_cols__(self, play_df):
@@ -2895,6 +2899,7 @@ class PlayProcess(object):
             havoc_total_pass = ('havoc_pass', sum),
             havoc_total_rush = ('havoc_rush', sum),
             sacks = ('sack', sum),
+            fumbles_lost = ('fumble_lost', sum),
             fumbles = ('fumble_vec', sum),
             Int = ('int', sum),
         )
@@ -2920,8 +2925,8 @@ class PlayProcess(object):
         def_box_json[0]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
         def_box_json[1]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]
         
-        away_to = def_box_json[1]["fumbles"] + def_box_json[1]["Int"]
-        home_to = def_box_json[0]["fumbles"] + def_box_json[0]["Int"]
+        away_to = def_box_json[1]["fumbles_lost"] + def_box_json[1]["Int"]
+        home_to = def_box_json[0]["fumbles_lost"] + def_box_json[0]["Int"]
 
         def_box_json[0]["turnovers"] = away_to
         def_box_json[1]["turnovers"] = home_to
