@@ -2912,7 +2912,8 @@ class PlayProcess(object):
         total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["fumbles"], def_box_json))
 
         for team in def_box_json:
-            team["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (team["PD"] + team["Int"]))
+            passes_def = team["PD"] if ("PD" in team.keys()) else 0
+            team["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (passes_def + team["Int"]))
         
         def_box_json[0]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
         def_box_json[1]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]

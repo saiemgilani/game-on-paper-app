@@ -354,21 +354,24 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     var result = ""
                     if (nonRateDecimalColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
-                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(teamData[item]), 2, 1)}</td>`;
+                            let val = teamData[item] || 0;
+                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 1)}</td>`;
                         });
                     } else if (nonRateColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
-                            result += `<td class="numeral" style="text-align: center;">${teamData[item]}</td>`;
+                            let val = teamData[item] || 0;
+                            result += `<td class="numeral" style="text-align: center;">${val}</td>`;
                         });
                     } else { 
                         finalTeamInfo.forEach(teamData => {
+                            let val = teamData[item] || 0;
                             var rate = 0.0;
                             if (useSuffix) {
                                 rate = 100.0 * teamData[`${item}_rate`]
                             } else {
-                                rate = 100.0 * (parseFloat(teamData[item]) / parseFloat(teamData["scrimmage_plays"]))
+                                rate = 100.0 * (parseFloat(val) / parseFloat(teamData["scrimmage_plays"]))
                             }
-                            result += `<td class="numeral" style="text-align: center;">${teamData[item]} (${roundNumber(parseFloat(rate), 2, 0)}%)</td>`;
+                            result += `<td class="numeral" style="text-align: center;">${val} (${roundNumber(parseFloat(rate), 2, 0)}%)</td>`;
                         });
                     }
                     return result;
