@@ -2535,7 +2535,7 @@ class PlayProcess(object):
                 (play_df["type.text"].isin(kickoff_vec))
             ],
             [
-                play_df['start.pos_score_diff'] + play_df['EP_start_touchback']
+                play_df['pos_score_diff_start'] + play_df['EP_start_touchback']
             ], default = 0.000
         )
         play_df['start.ExpScoreDiff'] = np.select(
@@ -2544,9 +2544,9 @@ class PlayProcess(object):
                 (play_df["type.text"] == "Timeout") & (play_df["lag_scoringPlay"] == True)
             ],
             [
-                play_df['start.pos_score_diff'] + play_df['EP_start'] - play_df['EP_between'],
-                (play_df["start.pos_score_diff"] + 0.92) 
-            ], default = play_df['start.pos_score_diff'] + play_df.EP_start
+                play_df['pos_score_diff_start'] + play_df['EP_start'] - play_df['EP_between'],
+                (play_df["pos_score_diff_start"] + 0.92) 
+            ], default = play_df['pos_score_diff_start'] + play_df.EP_start
         )
         play_df['start.ExpScoreDiff_Time_Ratio_touchback'] = play_df['start.ExpScoreDiff_touchback'] / (play_df['start.adj_TimeSecsRem'] + 1)
         play_df['start.ExpScoreDiff_Time_Ratio'] = play_df['start.ExpScoreDiff'] / (play_df['start.adj_TimeSecsRem'] + 1)
@@ -2578,14 +2578,14 @@ class PlayProcess(object):
             ],
             [
 
-                play_df['end.pos_score_diff'] - play_df.EP_end,
-                play_df['end.pos_score_diff'] + play_df.EP_end,
-                play_df['end.pos_score_diff'] + play_df.EP_end,
-                play_df['end.pos_score_diff'] + play_df.EP_end,
-                play_df['end.pos_score_diff'] + 0.92,
-                play_df['end.pos_score_diff'] + 0.92,
-                play_df['end.pos_score_diff'] + 0.92
-            ], default = play_df['end.pos_score_diff']
+                play_df['pos_score_diff_end'] - play_df.EP_end,
+                play_df['pos_score_diff_end'] + play_df.EP_end,
+                play_df['pos_score_diff_end'] + play_df.EP_end,
+                play_df['pos_score_diff_end'] + play_df.EP_end,
+                play_df['pos_score_diff_end'] + 0.92,
+                play_df['pos_score_diff_end'] + 0.92,
+                play_df['pos_score_diff_end'] + 0.92
+            ], default = play_df['pos_score_diff_end']
         )
         play_df['end.ExpScoreDiff_Time_Ratio'] = play_df['end.ExpScoreDiff'] / (play_df["end.adj_TimeSecsRem"] + 1)
         play_df['end.pos_team_spread'] = np.where(
