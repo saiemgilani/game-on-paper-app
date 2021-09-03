@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Error | Game on Paper</title>  
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">  
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h3>An internal server error has occurred.</h3>
+                    <p class="mb-0">This may be due to a lack of data from ESPN. If you're trying to access a specific game, double-check that the game has a gamecast page with play-by-play data on ESPN.com.</p>
+                    <p class="mb-3">If you need further technical support, lease reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Twitter with the URL you're trying to access.</p>
+
+                    <p class="text-muted text-small mb-0"><strong>Technical Details:</strong></p>
+                    <p class="text-muted text-small mb-0"><%= error.message %></p>
+                    <p class="text-muted text-small"><%= error.stack %></p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
