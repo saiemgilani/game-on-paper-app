@@ -1084,8 +1084,8 @@ class PlayProcess(object):
         play_df.drop(['lag_homeScore','lag_awayScore'], axis=1, inplace=True)
         play_df['lag_homeScore'] = play_df['homeScore'].shift(1)
         play_df['lag_awayScore'] = play_df['awayScore'].shift(1)
-        play_df['start.homeScore'] = np.where(play_df["game_play_number"] == 1, 0, play_df['lag_homeScore'])
-        play_df['start.awayScore'] =np.where(play_df["game_play_number"] == 1, 0, play_df['lag_awayScore'])
+        play_df['start.homeScore'] = np.where((play_df["game_play_number"] == 1) | (play_df.lag_homeScore.isna()), 0, play_df['lag_homeScore'])
+        play_df['start.awayScore'] = np.where((play_df["game_play_number"] == 1) | (play_df.lag_awayScore.isna()), 0, play_df['lag_awayScore'])
         play_df['end.homeScore'] = play_df['homeScore']
         play_df['end.awayScore'] = play_df['awayScore']
         play_df['pos_team_score'] = np.where(play_df.pos_team == play_df["homeTeamId"], play_df.homeScore, play_df.awayScore)
@@ -1102,7 +1102,7 @@ class PlayProcess(object):
         play_df['lead_pos_team2'] = play_df['pos_team'].shift(-2)
         play_df['pos_score_diff'] = play_df.pos_team_score - play_df.def_pos_team_score
         play_df['lag_pos_score_diff'] = play_df['pos_score_diff'].shift(1)
-        play_df.loc[play_df.pos_score_diff.isna() == True, 'lag_pos_score_diff'] = 0
+        play_df.loc[play_df.lag_pos_score_diff.isna(), 'lag_pos_score_diff'] = 0
         play_df['pos_score_pts'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.pos_score_diff - play_df.lag_pos_score_diff, play_df.pos_score_diff + play_df.lag_pos_score_diff)
         play_df['pos_score_diff_start'] = np.where(
             (play_df.kickoff_play == False) & (play_df.lag_pos_team == play_df.pos_team),
