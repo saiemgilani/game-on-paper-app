@@ -320,7 +320,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         %>
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
-                                Game Excitement Index: <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
+                                <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
                             <% } %>Spread: <%= printSpread() %>
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
