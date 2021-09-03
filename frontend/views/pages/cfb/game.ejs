@@ -447,9 +447,18 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
-                                                                <% }); %>
+                                                                <% if (item.includes("EPA_plays") || item.includes("scrimmage_plays")) { %>
+                                                                    <% let boxes = [...gameData.advBoxScore.team];
+                                                                        boxes.reverse();
+                                                                    %>
+                                                                    <% boxes.forEach(teamData => { %>
+                                                                        <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <% }); %>
+                                                                <% } else { %>
+                                                                    <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                        <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <% }); %>
+                                                                <% } %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
