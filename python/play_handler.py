@@ -922,6 +922,7 @@ class PlayProcess(object):
             * Fix change of poss variables
         """
         play_df.id = play_df.id.astype(float)
+        play_df.sort_values(by="id", inplace=True)
         play_df = play_df.loc[play_df['type.text'].str.contains("end of| coin toss |end period",case=False, regex=True) == False,:]
 
         play_df["period"] = play_df["period.number"].astype(int)
