@@ -9,6 +9,7 @@ from urllib.error import URLError, HTTPError, ContentTooShortError
 import json
 import time
 from flask_logs import LogSetup
+from functools import reduce
 
 ep_class_to_score_mapping = {
     0: 7,
@@ -2169,6 +2170,24 @@ class PlayProcess(object):
         play_df['power_rush_attempt'] = np.where(
             (play_df['start.distance'] < 2) & (play_df.rush == True), True, False
         )
+        play_df['early_down'] = np.where(
+            ((play_df.down_1 == True) | (play_df.down_2 == True)) & (play_df.scrimmage_play == True), True, False
+        )
+        play_df['late_down'] = np.where(
+            (play_df.early_down == False) & (play_df.scrimmage_play == True), True, False
+        )
+        play_df['early_down_pass'] =  np.where(
+            (play_df["pass"] == 1) & (play_df.early_down == True), True, False
+        )
+        play_df['early_down_rush'] =  np.where(
+            (play_df["rush"] == 1) & (play_df.early_down == True), True, False
+        )
+        play_df['late_down_pass'] =  np.where(
+            (play_df["pass"] == 1) & (play_df.late_down == True), True, False
+        )
+        play_df['late_down_rush'] =  np.where(
+            (play_df["rush"] == 1) & (play_df.late_down == True), True, False
+        )
         play_df['standard_down'] = np.where(
             play_df.down_1 == True, True, np.where(
                 (play_df.down_2 == True) & (play_df['start.distance'] < 8), True, np.where(
@@ -2433,6 +2452,24 @@ class PlayProcess(object):
         
         play_df['EPA_success'] =  np.where(
             play_df.EPA > 0, True, False
+        )
+        play_df['EPA_success_early_down'] =  np.where(
+            (play_df.EPA > 0) & (play_df.early_down == True), True, False
+        )
+        play_df['EPA_success_early_down_pass'] =  np.where(
+            (play_df["pass"] == True) & (play_df.EPA > 0) & (play_df.early_down == True), True, False
+        )
+        play_df['EPA_success_early_down_rush'] =  np.where(
+            (play_df["rush"] == True) & (play_df.EPA > 0) & (play_df.early_down == True), True, False
+        )
+        play_df['EPA_success_late_down'] =  np.where(
+            (play_df.EPA > 0) & (play_df.late_down == True), True, False
+        )
+        play_df['EPA_success_late_down_pass'] =  np.where(
+            (play_df["pass"] == True) & (play_df.EPA > 0) & (play_df.late_down == True), True, False
+        )
+        play_df['EPA_success_late_down_rush'] =  np.where(
+            (play_df["rush"] == True) & (play_df.EPA > 0) & (play_df.late_down == True), True, False
         )
         play_df['EPA_success_standard_down'] =  np.where(
             (play_df.EPA > 0) & (play_df.standard_down == True), True, False
@@ -2785,11 +2822,6 @@ class PlayProcess(object):
             EPA_explosive = ('EPA_explosive', sum),
             EPA_explosive_passing = ('EPA_explosive_pass', sum),
             EPA_explosive_rushing = ('EPA_explosive_rush', sum),
-            EPA_success = ('EPA_success', sum),
-            EPA_success_pass = ('EPA_success_pass', sum),
-            EPA_success_rush = ('EPA_success_rush', sum),
-            EPA_success_standard_down = ('EPA_success_standard_down', sum),
-            EPA_success_passing_down = ('EPA_success_passing_down', sum),
             EPA_penalty = ('EPA_penalty', sum),
             special_teams_plays = ('sp', sum),
             EPA_sp = ('EPA_sp', sum),
@@ -2797,22 +2829,112 @@ class PlayProcess(object):
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
             EPA_kickoff = ('EPA_kickoff', sum),
+        ).round(2)        
+        team_box = team_box.replace({np.nan:None})
+
+        situation_box_normal = self.plays_json.groupby(by=["pos_team"]).agg(
+            EPA_success = ('EPA_success', sum),
+            EPA_success_pass = ('EPA_success_pass', sum),
+            EPA_success_rush = ('EPA_success_rush', sum),
+
+            EPA_success_rate = ('EPA_success', mean),
+            EPA_success_pass_rate = ('EPA_success_pass', mean),
+            EPA_success_rush_rate = ('EPA_success_rush', mean),
+        )
+
+        situation_box_early = self.plays_json[self.plays_json.early_down == True].groupby(by=["pos_team"]).agg(
+            EPA_success_early_down = ('EPA_success_early_down', sum),
+            EPA_success_early_down_pass = ('EPA_success_early_down_pass', sum),
+            EPA_success_early_down_rush = ('EPA_success_early_down_rush', sum),
+            early_downs = ('early_down', sum),
+            early_down_pass = ('early_down_pass', sum),
+            early_down_rush = ('early_down_rush', sum),
+
+            EPA_success_early_down_rate = ('EPA_success_early_down', mean),
+            EPA_success_early_down_pass_rate = ('EPA_success_early_down_pass', mean),
+            EPA_success_early_down_rush_rate = ('EPA_success_early_down_rush', mean),
+            early_down_pass_rate = ('early_down_pass', mean),
+            early_down_rush_rate = ('early_down_rush', mean)
+        )
+
+        situation_box_late = self.plays_json[self.plays_json.late_down == True].groupby(by=["pos_team"]).agg(
+            EPA_success_late_down = ('EPA_success_late_down', sum),
+            EPA_success_late_down_pass = ('EPA_success_late_down_pass', sum),
+            EPA_success_late_down_rush = ('EPA_success_late_down_rush', sum),
+            late_downs = ('late_down', sum),
+            late_down_pass = ('late_down_pass', sum),
+            late_down_rush = ('late_down_rush', sum),
+
+            EPA_success_late_down_rate = ('EPA_success_late_down', mean),
+            EPA_success_late_down_pass_rate = ('EPA_success_late_down_pass', mean),
+            EPA_success_late_down_rush_rate = ('EPA_success_late_down_rush', mean),
+            late_down_pass_rate = ('late_down_pass', mean),
+            late_down_rush_rate = ('late_down_rush', mean)
+        )
+
+        situation_box_standard = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"]).agg(
+            EPA_success_standard_down = ('EPA_success_standard_down', sum),
+            EPA_success_standard_down_rate = ('EPA_success_standard_down', mean),
+        )
+        situation_box_passing = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"]).agg(
+            EPA_success_passing_down = ('EPA_success_passing_down', sum),
+            EPA_success_passing_down_rate = ('EPA_success_passing_down', mean),
+        )
+        situation_data_frames = [situation_box_normal, situation_box_early,situation_box_late, situation_box_standard, situation_box_passing]
+        situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
+        situation_box = situation_box.replace({np.nan:None})
+
+        def_box = self.plays_json.groupby(by=["def_pos_team"], as_index=False).agg(
+            scrimmage_plays = ('scrimmage_play', sum),
             TFL = ('TFL', sum),
             TFL_pass = ('TFL_pass', sum),
             TFL_rush = ('TFL_rush', sum),
             havoc_total = ('havoc', sum),
             havoc_total_pass = ('havoc_pass', sum),
             havoc_total_rush = ('havoc_rush', sum),
-            sacks = ('sack', sum)
-        ).round(2)
+            sacks = ('sack', sum),
+            fumbles = ('fumble_vec', sum),
+            Int = ('int', sum),
+        )
+        def_box = def_box.replace({np.nan:None})
 
-        team_box = team_box.replace({np.nan:None})
+        def_box_json = json.loads(def_box.to_json(orient="records"))
+        team_def_box = self.json["boxscore"]["players"] 
+        for (idx, team) in enumerate(team_def_box):
+            def_box_stats_search = list(filter(lambda x: "defensive" in x["name"], team["statistics"]))
+            if (len(def_box_stats_search) > 0):
+                def_box_stats = def_box_stats_search[0]
+                zipped_def_box_stat = zip(def_box_stats["labels"], def_box_stats["totals"])
+                # away first, home second
+                for (label, total) in zipped_def_box_stat:
+                    def_box_json[idx][label] = round(float(total), 2)
+
+        total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["fumbles"], def_box_json))
+
+        for team in def_box_json:
+            team["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (team["PD"] + team["Int"]))
+        
+        def_box_json[0]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
+        def_box_json[1]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]
+        
+        away_to = def_box_json[1]["fumbles"] + def_box_json[1]["Int"]
+        home_to = def_box_json[0]["fumbles"] + def_box_json[0]["Int"]
+
+        def_box_json[0]["turnovers"] = away_to
+        def_box_json[1]["turnovers"] = home_to
+        def_box_json[0]["turnover_margin"] = away_to - home_to
+        def_box_json[1]["turnover_margin"] = home_to - away_to
+
+        def_box_json[0]["turnover_luck"] = 5.0 * (def_box_json[0]["turnover_margin"] - def_box_json[0]["expected_turnover_margin"])
+        def_box_json[1]["turnover_luck"] = 5.0 * (def_box_json[1]["turnover_margin"] - def_box_json[1]["expected_turnover_margin"])
 
         return {
             "pass" : json.loads(passer_box.to_json(orient="records")),
             "rush" : json.loads(rusher_box.to_json(orient="records")),
             "receiver" : json.loads(receiver_box.to_json(orient="records")),
-            "team" : json.loads(team_box.to_json(orient="records"))
+            "team" : json.loads(team_box.to_json(orient="records")),
+            "situational" : json.loads(situation_box.to_json(orient="records")),
+            "defensive" : def_box_json
         }
 
     def run_processing_pipeline(self):
