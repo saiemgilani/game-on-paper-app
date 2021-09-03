@@ -253,8 +253,10 @@ class PlayProcess(object):
         * college-football/playbyplay
         * college-football/summary
         """
+
+        cache_buster = int(time.time() * 1000)
         # play by play
-        pbp_url = "http://cdn.espn.com/core/college-football/playbyplay?gameId={}&xhr=1&render=false&userab=18".format(self.gameId)
+        pbp_url = f"http://cdn.espn.com/core/college-football/playbyplay?gameId={self.gameId}&xhr=1&render=false&userab=18&{cache_buster}"
         pbp_resp = self.download(url=pbp_url)
         pbp_txt = {}
         pbp_txt['scoringPlays'] = np.array([])
@@ -271,7 +273,7 @@ class PlayProcess(object):
         
         pbp_txt['timeouts'] = {}
         # summary endpoint for pickcenter array
-        summary_url = "http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event={}".format(self.gameId)
+        summary_url = f"http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event={self.gameId}&{cache_buster}"
         summary_resp = self.download(summary_url)
         summary = json.loads(summary_resp)
         summary_txt = summary['pickcenter']
@@ -923,7 +925,7 @@ class PlayProcess(object):
         """
         play_df.id = play_df.id.astype(float)
         play_df.sort_values(by="id", inplace=True)
-        play_df = play_df.drop_duplicates(subset='id', keep="first")
+        play_df.drop_duplicates(subset=['text','id','type.text','start.down'], keep="last", inplace=True)
         play_df = play_df.loc[play_df['type.text'].str.contains("end of| coin toss |end period",case=False, regex=True) == False,:]
 
         play_df["period"] = play_df["period.number"].astype(int)
