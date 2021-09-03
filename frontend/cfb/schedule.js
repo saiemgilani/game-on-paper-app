@@ -37,7 +37,7 @@ exports.getWeeksMap = function () {
 
 exports.getGames = async function (year, week, type, group) {
     if (year == null || week == null) {
-        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}`, {
+        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}&${new Date().getTime()}`, {
             protocol: "https"
         })
         debuglog(res.request.res.responseUrl)
