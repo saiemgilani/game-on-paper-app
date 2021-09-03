@@ -2800,7 +2800,8 @@ class PlayProcess(object):
             TFL_rush = ('TFL_rush', sum),
             havoc_total = ('havoc', sum),
             havoc_total_pass = ('havoc_pass', sum),
-            havoc_total_rush = ('havoc_rush', sum)
+            havoc_total_rush = ('havoc_rush', sum),
+            sacks = ('sack', sum)
         ).round(2)
 
         team_box = team_box.replace({np.nan:None})
