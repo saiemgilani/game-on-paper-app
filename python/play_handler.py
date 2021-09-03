@@ -35,13 +35,13 @@ ep_model.load_model('models/ep_model.model')
 wp_model = xgb.Booster({'nthread': 4})  # init model
 wp_model.load_model('models/wp_spread.model')
 
-wp_start_touchback_columns = ["start.pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio_touchback","start.pos_score_diff","start.down","start.distance","start.yardsToEndzone.touchback","start.is_home","start.posTeamTimeouts","start.defPosTeamTimeouts","period"]
-wp_start_columns = ["start.pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio","start.pos_score_diff","start.down","start.distance","start.yardsToEndzone","start.is_home","start.posTeamTimeouts","start.defPosTeamTimeouts","period"]
+wp_start_touchback_columns = ["start.pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio_touchback","pos_score_diff_start","start.down","start.distance","start.yardsToEndzone.touchback","start.is_home","start.posTeamTimeouts","start.defPosTeamTimeouts","period"]
+wp_start_columns = ["start.pos_team_receives_2H_kickoff","start.spread_time","start.TimeSecsRem","start.adj_TimeSecsRem","start.ExpScoreDiff_Time_Ratio","pos_score_diff_start","start.down","start.distance","start.yardsToEndzone","start.is_home","start.posTeamTimeouts","start.defPosTeamTimeouts","period"]
 wp_end_columns = ["end.pos_team_receives_2H_kickoff","end.spread_time","end.TimeSecsRem","end.adj_TimeSecsRem","end.ExpScoreDiff_Time_Ratio","end.pos_score_diff","end.down","end.distance","end.yardsToEndzone","end.is_home","end.posTeamTimeouts","end.defPosTeamTimeouts","period"]
 
-ep_start_touchback_columns = ["start.TimeSecsRem","start.yardsToEndzone.touchback","distance","down_1","down_2","down_3","down_4","start.pos_score_diff"]
-ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","start.pos_score_diff"]
-ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","end.pos_score_diff"]
+ep_start_touchback_columns = ["start.TimeSecsRem","start.yardsToEndzone.touchback","distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
+ep_start_columns = ["start.TimeSecsRem","start.yardsToEndzone","start.distance","down_1","down_2","down_3","down_4","pos_score_diff_start"]
+ep_end_columns = ["end.TimeSecsRem","end.yardsToEndzone","end.distance","down_1_end","down_2_end","down_3_end","down_4_end","pos_score_diff_end"]
 
 ep_final_names = [
     "TimeSecsRem",
@@ -1086,9 +1086,11 @@ class PlayProcess(object):
         )
         play_df.drop(['lag_homeScore','lag_awayScore'], axis=1, inplace=True)
         play_df['lag_homeScore'] = play_df['homeScore'].shift(1)
+        play_df['lag_homeScore'] = np.where((play_df.lag_homeScore.isna()), 0, play_df['lag_homeScore'])
         play_df['lag_awayScore'] = play_df['awayScore'].shift(1)
-        play_df['start.homeScore'] = np.where((play_df["game_play_number"] == 1) | (play_df.lag_homeScore.isna()), 0, play_df['lag_homeScore'])
-        play_df['start.awayScore'] = np.where((play_df["game_play_number"] == 1) | (play_df.lag_awayScore.isna()), 0, play_df['lag_awayScore'])
+        play_df['lag_awayScore'] = np.where((play_df.lag_awayScore.isna()), 0, play_df['lag_awayScore'])
+        play_df['start.homeScore'] = np.where((play_df["game_play_number"] == 1), 0, play_df['lag_homeScore'])
+        play_df['start.awayScore'] = np.where((play_df["game_play_number"] == 1), 0, play_df['lag_awayScore'])
         play_df['end.homeScore'] = play_df['homeScore']
         play_df['end.awayScore'] = play_df['awayScore']
         play_df['pos_team_score'] = np.where(play_df.pos_team == play_df["homeTeamId"], play_df.homeScore, play_df.awayScore)
@@ -2660,7 +2662,7 @@ class PlayProcess(object):
                 (play_df.end_of_half == 1) & (play_df['type.text'] != "Timeout"),
                 (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 0),
                 (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 1),
-                play_df.wpa_change_ind == 1
+                (play_df.wpa_change_ind == 1)
             ],
             [
                 play_df.wpa_half_end,
