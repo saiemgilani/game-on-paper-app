@@ -925,7 +925,7 @@ class PlayProcess(object):
         """
         play_df.id = play_df.id.astype(float)
         play_df.sort_values(by="id", inplace=True)
-        play_df = play_df.drop_duplicates(subset='id', keep="first")
+        play_df.drop_duplicates(subset=['text','id','type.text','start.down'], inplace=True)
         play_df = play_df.loc[play_df['type.text'].str.contains("end of| coin toss |end period",case=False, regex=True) == False,:]
 
         play_df["period"] = play_df["period.number"].astype(int)
