@@ -259,6 +259,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/assets/css/dashboard.css" rel="stylesheet">
     <link href="/assets/css/blog.css" rel="stylesheet">
+    <link href="/assets/css/dark-game.css" rel="stylesheet"> 
 
     <%
     var title = ""
@@ -419,7 +420,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Overall</th>
+                                                            <th style="text-align: left;">Overall</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -442,7 +443,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Rushing</th>
+                                                            <th class="box-heading">Rushing</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -463,7 +464,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Explosiveness</th>
+                                                            <th class="box-heading">Explosiveness</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -511,7 +512,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Situational</th>
+                                                            <th class="box-heading">Situational</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -534,7 +535,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Defensive</th>
+                                                            <th class="box-heading">Defensive</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -555,7 +556,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Special Teams</th>
+                                                            <th class="box-heading">Special Teams</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
@@ -615,12 +616,12 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         <thead>
                                           <tr>
                                             <th rowspan="1" colspan="1"></th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Expected Points Added per Play">EPA/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Total Expected Points Added">EPA</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Success Rate">SR</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Win Probability Added">WPA</th>
+                                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Win Probability Added">WPA</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -701,12 +702,12 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         <thead>
                                           <tr>
                                             <th rowspan="1" colspan="1"></th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: left;">Stat line</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;">Yards/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Expected Points Added per Play">EPA/play</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Total Expected Points Added">EPA</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Success Rate">SR</th>
-                                            <th rowspan="1" colspan="1" style="color: black; font-weight: bold; text-align: center;" title="Win Probability Added">WPA</th>
+                                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Win Probability Added">WPA</th>
                                           </tr>
                                         </thead>
                                         <tbody>
