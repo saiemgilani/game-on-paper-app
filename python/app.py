@@ -60,7 +60,9 @@ def process():
     # clean records back into ESPN format
     for record in jsonified_df:
         record["clock"] = {
-            "displayValue" : record["clock.displayValue"]
+            "displayValue" : record["clock.displayValue"],
+            "minutes" : record["clock.minutes"],
+            "seconds" : record["clock.seconds"]
         }
 
         record["type"] = {
@@ -142,7 +144,8 @@ def process():
             "ExpScoreDiff_Time_Ratio" : record["start.ExpScoreDiff_Time_Ratio"],
             "shortDownDistanceText" : record["start.shortDownDistanceText"],
             "possessionText" : record["start.possessionText"],
-            "downDistanceText" : record["start.downDistanceText"]
+            "downDistanceText" : record["start.downDistanceText"],
+            "posTeamSpread" : record["start.pos_team_spread"]
         }
 
         record["end"] = {

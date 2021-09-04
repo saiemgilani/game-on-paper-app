@@ -327,15 +327,20 @@ class PlayProcess(object):
         if len(pbp_txt['pickcenter']) > 1:
             if 'spread' in pbp_txt['pickcenter'][1].keys():
                 gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                overUnder =  pbp_txt['pickcenter'][1]['overUnder']
                 homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
             else:
                 gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                overUnder =  pbp_txt['pickcenter'][0]['overUnder']
                 homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
 
         else:
             gameSpread = 2.5
+            overUnder = 55.5
             homeFavorite = True
+        
         pbp_txt['plays']["gameSpread"] = abs(gameSpread)
+        pbp_txt['plays']["overUnder"] = float(overUnder)
         pbp_txt['plays']["homeTeamSpread"] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
         pbp_txt['homeTeamSpread'] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
         pbp_txt['plays']["homeFavorite"] = homeFavorite
@@ -418,15 +423,20 @@ class PlayProcess(object):
             if len(pbp_txt['pickcenter']) > 1:
                 if 'spread' in pbp_txt['pickcenter'][1].keys():
                     gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                    overUnder =  pbp_txt['pickcenter'][1]['overUnder']
                     homeFavorite = pbp_txt['pickcenter'][1]['homeTeamOdds']['favorite']
                 else:
                     gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                    overUnder =  pbp_txt['pickcenter'][0]['overUnder']
                     homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
 
             else:
                 gameSpread = 2.5
+                overUnder = 55.5
                 homeFavorite = True
+            
             pbp_txt['plays']["gameSpread"] = abs(gameSpread)
+            pbp_txt['plays']["overUnder"] = float(overUnder)
             pbp_txt['plays']["homeTeamSpread"] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
             pbp_txt['homeTeamSpread'] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
             pbp_txt['plays']["homeFavorite"] = homeFavorite
