@@ -344,6 +344,13 @@ if (gameData.plays.length > 0) {
 
     (function () {
         'use strict'
+
+        let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let gridLines = {
+            color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+            zeroLineColor: (isDarkMode) ? "white" : "#ACACAC"
+        }
+        Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
         
         feather.replace()
         
@@ -382,7 +389,8 @@ if (gameData.plays.length > 0) {
                         scaleLabel: {
                             display: false,
                             labelString: "Win Probablity"
-                        }
+                        },
+                        gridLines: gridLines
                     }],
                     xAxes: [{
                         ticks: {
@@ -398,7 +406,8 @@ if (gameData.plays.length > 0) {
                         scaleLabel: {
                             display: true,
                             labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
-                        }
+                        },
+                        gridLines: gridLines
                     }]
                 },
                 tooltips: {
@@ -504,13 +513,15 @@ if (gameData.plays.length > 0) {
                             scaleLabel: {
                                 display: true,
                                 labelString: "Total Offensive EPA"
-                            }
+                            },
+                            gridLines: gridLines
                         }],
                         xAxes: [{
                             scaleLabel: {
                                 display: true,
                                 labelString: "Off Play Number"
-                            }
+                            },
+                            gridLines: gridLines
                         }]
                 }
             }
@@ -524,5 +535,5 @@ if (gameData.plays.length > 0) {
             /*insert chart image url to download button (tag: <a></a>) */
             a.href = url_base64jp;
         });
-    })()
+    })()    
 }
