@@ -1722,7 +1722,7 @@ class PlayProcess(object):
         
         play_df['pass_player'] = np.where(
             (play_df["type.text"] == "Passing Touchdown") & play_df.pass_player.isna(),
-            play_df.text.str.extract("(.+)pass (.+) complete to")[0],
+            play_df.text.str.extract("(.+)pass(.+)? complete to")[0],
             play_df['pass_player']
         )
         play_df['pass_player'] = play_df.pass_player.str.replace(" pass complete to(.+)", "", regex=True)
