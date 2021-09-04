@@ -2194,23 +2194,33 @@ class PlayProcess(object):
         play_df['late_down_rush'] =  np.where(
             (play_df["rush"] == 1) & (play_df.late_down == True), True, False
         )
-        play_df['standard_down'] = np.where(
-            play_df.down_1 == True, True, np.where(
-                (play_df.down_2 == True) & (play_df['start.distance'] < 8), True, np.where(
-                    (play_df.down_3 == True) & (play_df['start.distance'] < 5), True, np.where(
-                        (play_df.down_4 == True) & (play_df['start.distance'] < 5), True, False 
-                    )
-                )
-            )
+        play_df['standard_down'] = np.select(
+            [
+                (play_df.scrimmage_play == True) & (play_df.down_1 == True),
+                (play_df.scrimmage_play == True) & (play_df.down_2 == True) & (play_df['start.distance'] < 8),
+                (play_df.scrimmage_play == True) & (play_df.down_3 == True) & (play_df['start.distance'] < 5),
+                (play_df.scrimmage_play == True) & (play_df.down_4 == True) & (play_df['start.distance'] < 5)
+            ],
+            [
+                True,
+                True,
+                True,
+                True
+            ],
+            default=False
         )
-        play_df['passing_down'] = np.where(
-            play_df.down_1 == True, False, np.where(
-                (play_df.down_2 == True) & (play_df['start.distance'] >= 8), True, np.where(
-                    (play_df.down_3 == True) & (play_df['start.distance'] >= 5), True, np.where(
-                        (play_df.down_4 == True) & (play_df['start.distance'] >= 5), True,  False
-                    )
-                )
-            )
+        play_df['passing_down'] = np.select(
+            [
+                (play_df.scrimmage_play == True) & (play_df.down_2 == True) & (play_df['start.distance'] >= 8),
+                (play_df.scrimmage_play == True) & (play_df.down_3 == True) & (play_df['start.distance'] >= 5),
+                (play_df.scrimmage_play == True) & (play_df.down_4 == True) & (play_df['start.distance'] >= 5)
+            ],
+            [
+                True,
+                True,
+                True
+            ],
+            default=False
         )
         play_df['TFL'] = np.where(
             (play_df['type.text'] != 'Penalty') & (play_df.sp == False) & (play_df.statYardage < 0), True, False
@@ -2831,6 +2841,7 @@ class PlayProcess(object):
             EPA_penalty = ('EPA_penalty', sum),
             special_teams_plays = ('sp', sum),
             EPA_sp = ('EPA_sp', sum),
+            EPA_special_teams = ('EPA_sp', sum),
             EPA_fg = ('EPA_fg', sum),
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
@@ -2848,13 +2859,36 @@ class PlayProcess(object):
             EPA_success_rush_rate = ('EPA_success_rush', mean),
         )
 
+        situation_box_middle8 = self.plays_json[(self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+            middle_8 = ('middle_8', sum),
+            middle_8_pass = ('pass', sum),
+            middle_8_rush = ('rush', sum),
+            middle_8_pass_rate = ('pass', mean),
+            middle_8_rush_rate = ('rush', mean),
+
+            EPA_middle_8 = ('EPA', sum),
+            EPA_middle_8_per_play = ('EPA', mean),
+
+            EPA_middle_8_success = ('EPA_success', sum),
+            EPA_middle_8_success_pass = ('EPA_success_pass', sum),
+            EPA_middle_8_success_rush = ('EPA_success_rush', sum),
+
+            EPA_middle_8_success_rate = ('EPA_success', mean),
+            EPA_middle_8_success_pass_rate = ('EPA_success_pass', mean),
+            EPA_middle_8_success_rush_rate = ('EPA_success_rush', mean),
+        )
+
         situation_box_early = self.plays_json[self.plays_json.early_down == True].groupby(by=["pos_team"]).agg(
             EPA_success_early_down = ('EPA_success_early_down', sum),
             EPA_success_early_down_pass = ('EPA_success_early_down_pass', sum),
             EPA_success_early_down_rush = ('EPA_success_early_down_rush', sum),
+
             early_downs = ('early_down', sum),
             early_down_pass = ('early_down_pass', sum),
             early_down_rush = ('early_down_rush', sum),
+            
+            EPA_early_down = ('EPA', mean),
+            EPA_early_down_per_play = ('EPA', mean),
 
             EPA_success_early_down_rate = ('EPA_success_early_down', mean),
             EPA_success_early_down_pass_rate = ('EPA_success_early_down_pass', mean),
@@ -2867,9 +2901,13 @@ class PlayProcess(object):
             EPA_success_late_down = ('EPA_success_late_down', sum),
             EPA_success_late_down_pass = ('EPA_success_late_down_pass', sum),
             EPA_success_late_down_rush = ('EPA_success_late_down_rush', sum),
+
             late_downs = ('late_down', sum),
             late_down_pass = ('late_down_pass', sum),
             late_down_rush = ('late_down_rush', sum),
+
+            EPA_late_down = ('EPA', sum),
+            EPA_late_down_per_play = ('EPA', mean),
 
             EPA_success_late_down_rate = ('EPA_success_late_down', mean),
             EPA_success_late_down_pass_rate = ('EPA_success_late_down_pass', mean),
@@ -2881,12 +2919,18 @@ class PlayProcess(object):
         situation_box_standard = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"]).agg(
             EPA_success_standard_down = ('EPA_success_standard_down', sum),
             EPA_success_standard_down_rate = ('EPA_success_standard_down', mean),
+
+            EPA_standard_down = ('EPA_success_standard_down', sum),
+            EPA_standard_down_per_play = ('EPA_success_standard_down', mean)
         )
-        situation_box_passing = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"]).agg(
+        situation_box_passing = self.plays_json[self.plays_json.passing_down == True].groupby(by=["pos_team"]).agg(
             EPA_success_passing_down = ('EPA_success_passing_down', sum),
             EPA_success_passing_down_rate = ('EPA_success_passing_down', mean),
+
+            EPA_passing_down = ('EPA_success_standard_down', sum),
+            EPA_passing_down_per_play = ('EPA_success_standard_down', mean)
         )
-        situation_data_frames = [situation_box_normal, situation_box_early,situation_box_late, situation_box_standard, situation_box_passing]
+        situation_data_frames = [situation_box_normal, situation_box_early, situation_box_middle8, situation_box_late, situation_box_standard, situation_box_passing]
         situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
         situation_box = situation_box.replace({np.nan:None})
 

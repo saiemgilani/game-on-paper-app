@@ -57,9 +57,10 @@ stat_key_title_mapping = {
     "havoc_total" : "Havoc Plays Created",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
-    "EPA_penalty": "Penalty EPA",
+    "EPA_penalty": "&emsp;&emsp;Penalty EPA",
     "special_teams_plays" : "Special Teams Plays",
     "EPA_sp" : "Special Teams EPA",
+    "EPA_special_teams" : "&emsp;&emsp;Special Teams EPA",
     "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
     "EPA_punt" : "&emsp;&emsp;Punting EPA",
     "EPA_kickoff" : "&emsp;&emsp;Kickoff Return EPA",
@@ -72,14 +73,14 @@ stat_key_title_mapping = {
     "EPA_success_standard_down" : "&emsp;&emsp;On Standard Downs",
     "EPA_success_passing_down": "&emsp;&emsp;On Passing Downs",
     "EPA_success_early_down": "&emsp;&emsp;On Early Downs",
-    "EPA_success_early_down_pass": "&emsp;&emsp;Pass Success Rate",
-    "EPA_success_early_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "EPA_success_early_down_pass": "&emsp;&emsp;Successful Passes",
+    "EPA_success_early_down_rush": "&emsp;&emsp;Successful Rushes",
     "early_downs": "Early Downs",
     "early_down_pass": "&emsp;&emsp;Passes",
     "early_down_rush": "&emsp;&emsp;Rushes",
     "EPA_success_late_down": "&emsp;&emsp;On Late Downs",
-    "EPA_success_late_down_pass": "&emsp;&emsp;Pass Success Rate",
-    "EPA_success_late_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "EPA_success_late_down_pass": "&emsp;&emsp;Successful Passes",
+    "EPA_success_late_down_rush": "&emsp;&emsp;Successful Rushes",
     "late_downs": "Late Downs",
     "late_down_pass": "&emsp;&emsp;Passes",
     "late_down_rush": "&emsp;&emsp;Rushes",
@@ -99,7 +100,17 @@ stat_key_title_mapping = {
     "expected_turnover_margin" : "Expected Turnover Margin",
     "turnover_luck" : "Turnover Luck (pts)",
     "PD" : "Passes Defensed",
-    "fumbles" : "Fumbles Forced"
+    "fumbles" : "Fumbles Forced",
+    "middle_8": "\"Middle 8\" Plays",
+    "middle_8_pass": "&emsp;&emsp;Passes",
+    "middle_8_rush": "&emsp;&emsp;Rushes",
+    "EPA_middle_8": "&emsp;&emsp;EPA",
+    "EPA_middle_8_success": "&emsp;&emsp;During \"Middle 8\"",
+    "EPA_middle_8_success_pass": "&emsp;&emsp;Successful Passes",
+    "EPA_middle_8_success_rush": "&emsp;&emsp;Successful Rushes",
+    "EPA_middle_8_per_play" : "&emsp;&emsp;EPA/play",
+    "EPA_early_down" : "&emsp;&emsp;EPA",
+    "EPA_early_down_per_play" : "&emsp;&emsp;EPA/Play",
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -348,15 +359,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles"]; 
-                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck"];
-                function handleRates(item, teamInfo, useSuffix) {
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down"]; 
+                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down"];
+                function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
+                    let finalDecimalPoints = decimalPoints || 1;
                     var result = ""
                     if (nonRateDecimalColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
                             let val = teamData[item] || 0;
-                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 1)}</td>`;
+                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
                         });
                     } else if (nonRateColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
@@ -388,7 +400,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_sp", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_special_teams", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -434,7 +446,31 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down", "EPA_success_early_down","EPA_success_late_down","early_downs","early_down_pass","early_down_rush","EPA_success_early_down_pass","EPA_success_early_down_rush"]; %>
+                                                <% var columns = [
+                                                    "EPA_success",
+                                                    "EPA_success_pass",
+                                                    "EPA_success_rush",
+                                                    "EPA_success_standard_down",
+                                                    "EPA_success_passing_down",
+                                                    "EPA_success_early_down",
+                                                    "EPA_success_late_down",
+                                                    "EPA_middle_8_success",
+                                                    "early_downs",
+                                                    "EPA_early_down",
+                                                    "EPA_early_down_per_play",
+                                                    "early_down_pass",
+                                                    "early_down_rush",
+                                                    "EPA_success_early_down_pass",
+                                                    "EPA_success_early_down_rush",
+                                                    "middle_8",
+                                                    "EPA_middle_8",
+                                                    "EPA_middle_8_per_play",
+                                                    "middle_8_pass",
+                                                    "middle_8_rush",
+                                                    "EPA_middle_8_success_pass",
+                                                    "EPA_middle_8_success_rush"
+                                                ]; 
+                                                %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -448,7 +484,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, gameData.advBoxScore.situational, true); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.situational, true, 2); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
