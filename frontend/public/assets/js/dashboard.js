@@ -350,6 +350,7 @@ if (gameData.plays.length > 0) {
             color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
             zeroLineColor: (isDarkMode) ? "white" : "#ACACAC"
         }
+        Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
         
         feather.replace()
         
@@ -534,40 +535,5 @@ if (gameData.plays.length > 0) {
             /*insert chart image url to download button (tag: <a></a>) */
             a.href = url_base64jp;
         });
-
-        // set function for theme
-        function changeTheme(darkTheme = false) {
-            if (darkTheme) {
-                document.body.classList.add('dark-theme');
-                Chart.defaults.global.defaultFontColor = '#e8e6e3';
-                // Chart.defaults.elements.line.gridLines = {color: "#e8e6e3", zeroLineColor: "white" };
-            } else {
-                document.body.classList.remove('dark-theme');
-                Chart.defaults.global.defaultFontColor = '#525252';
-                // Chart.defaults.elements.line.gridLines = {color: "#525252", zeroLineColor: "black" };
-            }
-
-            // Force updates to all charts
-            Chart.helpers.each(Chart.instances, function(instance) {
-                instance.chart.options = {
-                    scales: {
-                        yAxes: [{
-                            gridLines: gridLines
-                        }],
-                        xAxes: [{
-                            gridLines: gridLines
-                        }]
-                    }
-                }
-                instance.chart.update();
-            });
-        }
-
-        changeTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-            changeTheme(event.matches);
-            console.log(event.matches);
-        })
     })()    
 }
