@@ -1119,9 +1119,15 @@ class PlayProcess(object):
         play_df['lag_pos_score_diff'] = play_df['pos_score_diff'].shift(1)
         play_df.loc[play_df.lag_pos_score_diff.isna(), 'lag_pos_score_diff'] = 0
         play_df['pos_score_pts'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.pos_score_diff - play_df.lag_pos_score_diff, play_df.pos_score_diff + play_df.lag_pos_score_diff)
-        play_df['pos_score_diff_start'] = np.where(
-            (play_df.kickoff_play == False) & (play_df.lag_pos_team == play_df.pos_team),
-            play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff
+        play_df['pos_score_diff_start'] = np.select([
+                (play_df.kickoff_play == True) & (play_df.lag_pos_team == play_df.pos_team),
+                (play_df.kickoff_play == True) | (play_df.lag_pos_team != play_df.pos_team)
+            ],
+            [
+                play_df.lag_pos_score_diff,
+                -1 * play_df.lag_pos_score_diff
+            ], 
+            default=play_df.lag_pos_score_diff
         )
         #--- Timeouts ------
         play_df.loc[play_df.pos_score_diff_start.isna() == True, 'pos_score_diff_start'] = play_df.pos_score_diff
