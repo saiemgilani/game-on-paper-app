@@ -2913,7 +2913,7 @@ class PlayProcess(object):
             EPA_success_pass_rate = ('EPA_success', mean),
         )
 
-        situation_box_rush = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
             EPA_success_rush = ('EPA_success', sum),
             EPA_success_rush_rate = ('EPA_success', mean),
         )
