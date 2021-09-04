@@ -1464,6 +1464,9 @@ class PlayProcess(object):
         play_df["fumble_lost"] = np.where(
             (play_df.fumble_vec == True) & (play_df.change_of_poss == True), True, False
         )
+        play_df["fumble_recovered"] = np.where(
+            (play_df.fumble_vec == True) & (play_df.change_of_poss == False), True, False
+        )
         return play_df
 
     def __add_yardage_cols__(self, play_df):
@@ -3005,6 +3008,7 @@ class PlayProcess(object):
             havoc_total_rush = ('havoc_rush', sum),
             sacks = ('sack', sum),
             fumbles_lost = ('fumble_lost', sum),
+            fumbles_recovered = ('fumble_recovered', sum),
             fumbles = ('fumble_vec', sum),
             Int = ('int', sum),
         )

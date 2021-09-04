@@ -101,7 +101,10 @@ stat_key_title_mapping = {
     "expected_turnover_margin" : "Expected Turnover Margin",
     "turnover_luck" : "Turnover Luck (pts)",
     "PD" : "Passes Defensed",
-    "fumbles" : "Fumbles Forced",
+    "INT" : "&emsp;&emsp;Interceptions",
+    "fumbles" : "&emsp;&emsp;Fumbles Forced",
+    "fumbles_lost" : "&emsp;&emsp;Fumbles Lost",
+    "fumbles_recovered" : "&emsp;&emsp;Fumbles Recovered",
     "middle_8": "\"Middle 8\" Plays",
     "middle_8_pass": "&emsp;&emsp;Passes",
     "middle_8_rush": "&emsp;&emsp;Rushes",
@@ -113,7 +116,8 @@ stat_key_title_mapping = {
     "EPA_early_down" : "&emsp;&emsp;EPA",
     "EPA_early_down_per_play" : "&emsp;&emsp;EPA/Play",
     "first_downs_created" : "First Downs Created",
-    "early_down_first_down" : "&emsp;&emsp;First Downs Created"
+    "early_down_first_down" : "&emsp;&emsp;First Downs Created",
+    
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -362,7 +366,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down"]; 
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered"]; 
                 let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down"];
                 function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
@@ -518,7 +522,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","fumbles","turnovers","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
+                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","turnovers","fumbles","fumbles_lost","fumbles_recovered","INT","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
