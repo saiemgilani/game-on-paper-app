@@ -935,7 +935,7 @@ class PlayProcess(object):
             * Fix change of poss variables
         """
         play_df.id = play_df.id.astype(float)
-        play_df.sort_values(by="id", inplace=True)
+        play_df.sort_values(by=["id", "start.adj_TimeSecsRem"], inplace=True)
         play_df.drop_duplicates(subset=['text','id','type.text','start.down'], keep="last", inplace=True)
         play_df = play_df.loc[play_df['type.text'].str.contains("end of| coin toss |end period",case=False, regex=True) == False,:]
 
