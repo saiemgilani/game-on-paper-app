@@ -344,6 +344,12 @@ if (gameData.plays.length > 0) {
 
     (function () {
         'use strict'
+
+        let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let gridLines = {
+            color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+            zeroLineColor: (isDarkMode) ? "white" : "#ACACAC"
+        }
         
         feather.replace()
         
@@ -382,7 +388,8 @@ if (gameData.plays.length > 0) {
                         scaleLabel: {
                             display: false,
                             labelString: "Win Probablity"
-                        }
+                        },
+                        gridLines: gridLines
                     }],
                     xAxes: [{
                         ticks: {
@@ -398,7 +405,8 @@ if (gameData.plays.length > 0) {
                         scaleLabel: {
                             display: true,
                             labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
-                        }
+                        },
+                        gridLines: gridLines
                     }]
                 },
                 tooltips: {
@@ -504,13 +512,15 @@ if (gameData.plays.length > 0) {
                             scaleLabel: {
                                 display: true,
                                 labelString: "Total Offensive EPA"
-                            }
+                            },
+                            gridLines: gridLines
                         }],
                         xAxes: [{
                             scaleLabel: {
                                 display: true,
                                 labelString: "Off Play Number"
-                            }
+                            },
+                            gridLines: gridLines
                         }]
                 }
             }
@@ -524,5 +534,40 @@ if (gameData.plays.length > 0) {
             /*insert chart image url to download button (tag: <a></a>) */
             a.href = url_base64jp;
         });
-    })()
+
+        // set function for theme
+        function changeTheme(darkTheme = false) {
+            if (darkTheme) {
+                document.body.classList.add('dark-theme');
+                Chart.defaults.global.defaultFontColor = '#e8e6e3';
+                // Chart.defaults.elements.line.gridLines = {color: "#e8e6e3", zeroLineColor: "white" };
+            } else {
+                document.body.classList.remove('dark-theme');
+                Chart.defaults.global.defaultFontColor = '#525252';
+                // Chart.defaults.elements.line.gridLines = {color: "#525252", zeroLineColor: "black" };
+            }
+
+            // Force updates to all charts
+            Chart.helpers.each(Chart.instances, function(instance) {
+                instance.chart.options = {
+                    scales: {
+                        yAxes: [{
+                            gridLines: gridLines
+                        }],
+                        xAxes: [{
+                            gridLines: gridLines
+                        }]
+                    }
+                }
+                instance.chart.update();
+            });
+        }
+
+        changeTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            changeTheme(event.matches);
+            console.log(event.matches);
+        })
+    })()    
 }
