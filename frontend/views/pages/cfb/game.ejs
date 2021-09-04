@@ -165,8 +165,8 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     }
     var offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
     var defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
-    var offScore = (play.start.pos_team.id == homeTeam.id) ? play.homeScore : play.awayScore;
-    var defScore = (play.start.pos_team.id == homeTeam.id) ? play.awayScore : play.homeScore;
+    var offScore = (play.start.pos_team.id == homeTeam.id) ? play.start.pos_team_score : play.start.def_pos_team_score;
+    var defScore = (play.start.pos_team.id == homeTeam.id) ? play.start.def_pos_team_score : play.start.pos_team_score;
 
     var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ` - ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}`
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
