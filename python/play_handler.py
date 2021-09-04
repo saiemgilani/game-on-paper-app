@@ -2857,6 +2857,7 @@ class PlayProcess(object):
         
         team_rush_base_box = self.plays_json[(self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             rushes_rate = ('rush', mean),
+            rushing_power_rate = ('power_rush_attempt', mean),
 
             first_downs_created = ('first_down_created', sum),
             first_downs_created_rate = ('first_down_created', mean)
@@ -2864,9 +2865,9 @@ class PlayProcess(object):
         team_rush_power_box = self.plays_json[(self.plays_json["power_rush_attempt"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_rushing_power = ('EPA', sum),
             EPA_rushing_power_per_play = ('EPA', mean),
-            # rushing_power_success = ('power_rush_success', sum),
+            rushing_power_success = ('power_rush_success', sum),
             rushing_power_success_rate = ('power_rush_success', mean),
-            rushing_power_success = ('power_rush_attempt', sum),
+            rushing_power = ('power_rush_attempt', sum),
         )
 
         team_rush_box = self.plays_json[(self.plays_json["rush"] == True)].groupby(by=["pos_team"], as_index=False).agg(

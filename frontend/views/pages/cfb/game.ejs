@@ -49,11 +49,12 @@ stat_key_title_mapping = {
     "EPA_passing_per_play" : "&emsp;&emsp;Pass EPA/Play",
     "EPA_rushing_per_play" : "&emsp;&emsp;Rush EPA/Play",
     "rushes" : "Rushes",
-    "rushing_power_success" : "&emsp;&emsp;Power Runs (Success Rate)",
-    "rushing_stuff" : "&emsp;&emsp;Stuffed Runs",
-    "rushing_stopped" : "&emsp;&emsp;Stopped Runs",
-    "rushing_opportunity" : "&emsp;&emsp;Opportunity Runs",
-    "rushing_highlight" : "&emsp;&emsp;Highlight Runs",
+    "rushing_power" : "&emsp;&emsp;Power Run Attempts (Distance &#8804; 2)",
+    "rushing_power_success" : "&emsp;&emsp;Successful Power Runs (Rate)",
+    "rushing_stuff" : "&emsp;&emsp;Stuffed Runs (Yds Gained &#8804; 0)",
+    "rushing_stopped" : "&emsp;&emsp;Stopped Runs (Yds Gained &#8804; 2)",
+    "rushing_opportunity" : "&emsp;&emsp;Opportunity Runs (Yds Gained &#8805; 4)",
+    "rushing_highlight" : "&emsp;&emsp;Highlight Runs (Yds Gained &#8805; 8)",
     "havoc_total" : "Havoc Plays Created",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
@@ -84,9 +85,9 @@ stat_key_title_mapping = {
     "late_downs": "Late Downs",
     "late_down_pass": "&emsp;&emsp;Passes",
     "late_down_rush": "&emsp;&emsp;Rushes",
-    "EPA_explosive" : "EPA Explosive Plays",
-    "EPA_explosive_passing" : "&emsp;&emsp;Passing",
-    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing",
+    "EPA_explosive" : "Explosive Plays",
+    "EPA_explosive_passing" : "&emsp;&emsp;Passing (EPA > 2.4)",
+    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing (EPA > 1.8)",
     "scoring_opps_opportunities" : "Scoring Opps",
     "scoring_opps_points" : "&emsp;&emsp;Total Points",
     "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
@@ -425,7 +426,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 </table>
                                             </div>
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","rushes","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","rushing_highlight"]; %>
+                                                <% var columns = ["scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","rushing_highlight"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
