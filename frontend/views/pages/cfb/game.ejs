@@ -49,7 +49,7 @@ stat_key_title_mapping = {
     "EPA_passing_per_play" : "&emsp;&emsp;Pass EPA/Play",
     "EPA_rushing_per_play" : "&emsp;&emsp;Rush EPA/Play",
     "rushes" : "Rushes",
-    "rushing_power_success" : "&emsp;&emsp;Power Runs",
+    "rushing_power_success" : "&emsp;&emsp;Power Runs (Success Rate)",
     "rushing_stuff" : "&emsp;&emsp;Stuffed Runs",
     "rushing_stopped" : "&emsp;&emsp;Stopped Runs",
     "rushing_opportunity" : "&emsp;&emsp;Opportunity Runs",
@@ -58,8 +58,8 @@ stat_key_title_mapping = {
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
     "EPA_penalty": "&emsp;&emsp;Penalty EPA",
-    "special_teams_plays" : "Special Teams Plays",
-    "EPA_sp" : "Special Teams EPA",
+    "special_teams_plays" : "Total Plays",
+    "EPA_sp" : "Total EPA",
     "EPA_special_teams" : "&emsp;&emsp;Special Teams EPA",
     "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
     "EPA_punt" : "&emsp;&emsp;Punting EPA",
@@ -73,14 +73,14 @@ stat_key_title_mapping = {
     "EPA_success_standard_down" : "&emsp;&emsp;On Standard Downs",
     "EPA_success_passing_down": "&emsp;&emsp;On Passing Downs",
     "EPA_success_early_down": "&emsp;&emsp;On Early Downs",
-    "EPA_success_early_down_pass": "&emsp;&emsp;Successful Passes",
-    "EPA_success_early_down_rush": "&emsp;&emsp;Successful Rushes",
+    "EPA_success_early_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_success_early_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
     "early_downs": "Early Downs",
     "early_down_pass": "&emsp;&emsp;Passes",
     "early_down_rush": "&emsp;&emsp;Rushes",
     "EPA_success_late_down": "&emsp;&emsp;On Late Downs",
-    "EPA_success_late_down_pass": "&emsp;&emsp;Successful Passes",
-    "EPA_success_late_down_rush": "&emsp;&emsp;Successful Rushes",
+    "EPA_success_late_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_success_late_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
     "late_downs": "Late Downs",
     "late_down_pass": "&emsp;&emsp;Passes",
     "late_down_rush": "&emsp;&emsp;Rushes",
@@ -106,11 +106,13 @@ stat_key_title_mapping = {
     "middle_8_rush": "&emsp;&emsp;Rushes",
     "EPA_middle_8": "&emsp;&emsp;EPA",
     "EPA_middle_8_success": "&emsp;&emsp;During \"Middle 8\"",
-    "EPA_middle_8_success_pass": "&emsp;&emsp;Successful Passes",
-    "EPA_middle_8_success_rush": "&emsp;&emsp;Successful Rushes",
+    "EPA_middle_8_success_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_middle_8_success_rush": "&emsp;&emsp;Successful Rushes (Rate)",
     "EPA_middle_8_per_play" : "&emsp;&emsp;EPA/play",
     "EPA_early_down" : "&emsp;&emsp;EPA",
     "EPA_early_down_per_play" : "&emsp;&emsp;EPA/Play",
+    "first_downs_created" : "First Downs Created",
+    "early_down_first_down" : "&emsp;&emsp;First Downs Created"
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -443,6 +445,27 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                     </tbody>
                                                 </table>
                                             </div>
+                                            <div class="table-responsive">
+                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;color: black; font-weight: bold;">Explosiveness</th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <%- handleRates(item); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
@@ -456,6 +479,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                     "EPA_success_late_down",
                                                     "EPA_middle_8_success",
                                                     "early_downs",
+                                                    "early_down_first_down",
                                                     "EPA_early_down",
                                                     "EPA_early_down_per_play",
                                                     "early_down_pass",
@@ -485,28 +509,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <%- handleRates(item, gameData.advBoxScore.situational, true, 2); %>
-                                                            </tr>
-                                                        <% }); %>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                            
-                                            <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
-                                                <table class="table table-sm table-responsive">
-                                                    <thead>
-                                                        <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Explosiveness</th>
-                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                            <% }); %>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% columns.forEach(item => { %>
-                                                            <tr>
-                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>

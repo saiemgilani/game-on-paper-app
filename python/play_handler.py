@@ -2466,6 +2466,10 @@ class PlayProcess(object):
         play_df['EPA_explosive_pass'] = np.where(((play_df['pass'] == True) & (play_df['EPA'] >= 2.4)), True, False)
         play_df['EPA_explosive_rush'] = np.where((((play_df['rush'] == True) & (play_df['EPA'] >= 1.8))), True, False)
         
+        play_df['first_down_created'] =  np.where(
+            (play_df.scrimmage_play == True) & (play_df["end.down"] == 1) & (play_df["start.pos_team.id"] == play_df["end.pos_team.id"]), True, False
+        )
+
         play_df['EPA_success'] =  np.where(
             play_df.EPA > 0, True, False
         )
@@ -2835,7 +2839,6 @@ class PlayProcess(object):
             EPA_passing_per_play = ('EPA_pass', mean),
             EPA_rushing_per_play = ('EPA_rush', mean),
             rushes = ('rush', sum),
-            rushes_rate = ('rush', mean),
             passes = ('pass', sum),
             passes_completed = ('completion', sum),
             passes_attempted = ('pass_attempt', sum),
@@ -2851,13 +2854,19 @@ class PlayProcess(object):
             kickoff_plays = ('kickoff_play', sum),
             EPA_kickoff = ('EPA_kickoff', sum),
         ).round(2)
+        
+        team_rush_base_box = self.plays_json[(self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+            rushes_rate = ('rush', mean),
 
+            first_downs_created = ('first_down_created', sum),
+            first_downs_created_rate = ('first_down_created', mean)
+        )
         team_rush_power_box = self.plays_json[(self.plays_json["power_rush_attempt"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_rushing_power = ('EPA', sum),
             EPA_rushing_power_per_play = ('EPA', mean),
-            rushing_power_success = ('power_rush_success', sum),
+            # rushing_power_success = ('power_rush_success', sum),
             rushing_power_success_rate = ('power_rush_success', mean),
-            rushing_power_attempt = ('power_rush_attempt', sum),
+            rushing_power_success = ('power_rush_attempt', sum),
         )
 
         team_rush_box = self.plays_json[(self.plays_json["rush"] == True)].groupby(by=["pos_team"], as_index=False).agg(
@@ -2870,7 +2879,7 @@ class PlayProcess(object):
             rushing_highlight = ('highlight_run', sum),
             rushing_highlight_rate = ('highlight_run', mean),
         )  
-        team_data_frames = [team_base_box, team_rush_power_box, team_rush_box]
+        team_data_frames = [team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None}) 
 
@@ -2927,6 +2936,9 @@ class PlayProcess(object):
             
             EPA_early_down = ('EPA', sum),
             EPA_early_down_per_play = ('EPA', mean),
+
+            early_down_first_down = ('first_down_created', sum),
+            early_down_first_down_rate = ('first_down_created', mean)
         )
 
         situation_box_early_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.early_down == True)].groupby(by=["pos_team"]).agg(
