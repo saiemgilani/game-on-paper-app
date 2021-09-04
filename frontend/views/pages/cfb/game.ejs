@@ -49,17 +49,19 @@ stat_key_title_mapping = {
     "EPA_passing_per_play" : "&emsp;&emsp;Pass EPA/Play",
     "EPA_rushing_per_play" : "&emsp;&emsp;Rush EPA/Play",
     "rushes" : "Rushes",
-    "rushing_power_success" : "&emsp;&emsp;Power Success Runs",
-    "rushing_stuff_rate" : "&emsp;&emsp;Stuffed Runs",
-    "rushing_stopped_rate" : "&emsp;&emsp;Stopped Runs",
-    "rushing_opportunity_rate" : "&emsp;&emsp;Opportunity Runs",
-    "rushing_highlight_run" : "&emsp;&emsp;Highlight Runs",
+    "rushing_power" : "&emsp;&emsp;Power Run Attempts (Distance &#8804; 2)",
+    "rushing_power_success" : "&emsp;&emsp;Successful Power Runs (Rate)",
+    "rushing_stuff" : "&emsp;&emsp;Stuffed Runs (Yds Gained &#8804; 0)",
+    "rushing_stopped" : "&emsp;&emsp;Stopped Runs (Yds Gained &#8804; 2)",
+    "rushing_opportunity" : "&emsp;&emsp;Opportunity Runs (Yds Gained &#8805; 4)",
+    "rushing_highlight" : "&emsp;&emsp;Highlight Runs (Yds Gained &#8805; 8)",
     "havoc_total" : "Havoc Plays Created",
     "havoc_total_pass" : "&emsp;&emsp;Passing",
     "havoc_total_rush" : "&emsp;&emsp;Rushing",
-    "EPA_penalty": "Penalty EPA",
-    "special_teams_plays" : "Special Teams Plays",
-    "EPA_sp" : "Special Teams EPA",
+    "EPA_penalty": "&emsp;&emsp;Penalty EPA",
+    "special_teams_plays" : "Total Plays",
+    "EPA_sp" : "Total EPA",
+    "EPA_special_teams" : "&emsp;&emsp;Special Teams EPA",
     "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
     "EPA_punt" : "&emsp;&emsp;Punting EPA",
     "EPA_kickoff" : "&emsp;&emsp;Kickoff Return EPA",
@@ -72,20 +74,20 @@ stat_key_title_mapping = {
     "EPA_success_standard_down" : "&emsp;&emsp;On Standard Downs",
     "EPA_success_passing_down": "&emsp;&emsp;On Passing Downs",
     "EPA_success_early_down": "&emsp;&emsp;On Early Downs",
-    "EPA_success_early_down_pass": "&emsp;&emsp;Pass Success Rate",
-    "EPA_success_early_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "EPA_success_early_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_success_early_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
     "early_downs": "Early Downs",
     "early_down_pass": "&emsp;&emsp;Passes",
     "early_down_rush": "&emsp;&emsp;Rushes",
     "EPA_success_late_down": "&emsp;&emsp;On Late Downs",
-    "EPA_success_late_down_pass": "&emsp;&emsp;Pass Success Rate",
-    "EPA_success_late_down_rush": "&emsp;&emsp;Rush Success Rate",
+    "EPA_success_late_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_success_late_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
     "late_downs": "Late Downs",
     "late_down_pass": "&emsp;&emsp;Passes",
     "late_down_rush": "&emsp;&emsp;Rushes",
-    "EPA_explosive" : "EPA Explosive Plays",
-    "EPA_explosive_passing" : "&emsp;&emsp;Passing",
-    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing",
+    "EPA_explosive" : "Explosive Plays",
+    "EPA_explosive_passing" : "&emsp;&emsp;Passing (EPA > 2.4)",
+    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing (EPA > 1.8)",
     "scoring_opps_opportunities" : "Scoring Opps",
     "scoring_opps_points" : "&emsp;&emsp;Total Points",
     "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
@@ -99,7 +101,23 @@ stat_key_title_mapping = {
     "expected_turnover_margin" : "Expected Turnover Margin",
     "turnover_luck" : "Turnover Luck (pts)",
     "PD" : "Passes Defensed",
-    "fumbles" : "Fumbles Forced"
+    "INT" : "&emsp;&emsp;Interceptions",
+    "fumbles" : "&emsp;&emsp;Fumbles Forced",
+    "fumbles_lost" : "&emsp;&emsp;Fumbles Lost",
+    "fumbles_recovered" : "&emsp;&emsp;Fumbles Recovered",
+    "middle_8": "\"Middle 8\" Plays",
+    "middle_8_pass": "&emsp;&emsp;Passes",
+    "middle_8_rush": "&emsp;&emsp;Rushes",
+    "EPA_middle_8": "&emsp;&emsp;EPA",
+    "EPA_middle_8_success": "&emsp;&emsp;During \"Middle 8\"",
+    "EPA_middle_8_success_pass": "&emsp;&emsp;Successful Passes (Rate)",
+    "EPA_middle_8_success_rush": "&emsp;&emsp;Successful Rushes (Rate)",
+    "EPA_middle_8_per_play" : "&emsp;&emsp;EPA/play",
+    "EPA_early_down" : "&emsp;&emsp;EPA",
+    "EPA_early_down_per_play" : "&emsp;&emsp;EPA/Play",
+    "first_downs_created" : "First Downs Created",
+    "early_down_first_down" : "&emsp;&emsp;First Downs Created",
+    
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -348,15 +366,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles"]; 
-                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck"];
-                function handleRates(item, teamInfo, useSuffix) {
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered"]; 
+                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down"];
+                function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
+                    let finalDecimalPoints = decimalPoints || 1;
                     var result = ""
                     if (nonRateDecimalColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
                             let val = teamData[item] || 0;
-                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 1)}</td>`;
+                            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
                         });
                     } else if (nonRateColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
@@ -388,7 +407,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_sp", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_special_teams", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -411,7 +430,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 </table>
                                             </div>
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","rushes","rushing_power_success","rushing_stuff_rate","rushing_stopped_rate","rushing_opportunity_rate","rushing_highlight_run"]; %>
+                                                <% var columns = ["scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","rushing_highlight"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -425,36 +444,12 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.team, true); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
                                                 </table>
                                             </div>
-                                        </div>
-                                        <div class="col-md-4 ms-sm-auto col-lg-4">
-                                            <div class="table-responsive">
-                                                <% var columns = ["EPA_success","EPA_success_pass","EPA_success_rush","EPA_success_standard_down","EPA_success_passing_down", "EPA_success_early_down","EPA_success_late_down","early_downs","early_down_pass","early_down_rush","EPA_success_early_down_pass","EPA_success_early_down_rush"]; %>
-                                                <table class="table table-sm table-responsive">
-                                                    <thead>
-                                                        <tr>
-                                                            <th style="text-align: left;color: black; font-weight: bold;">Situational</th>
-                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                            <% }); %>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% columns.forEach(item => { %>
-                                                            <tr>
-                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, gameData.advBoxScore.situational, true); %>
-                                                            </tr>
-                                                        <% }); %>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                            
                                             <div class="table-responsive">
                                                 <% var columns = ["EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing"]; %>
                                                 <table class="table table-sm table-responsive">
@@ -479,7 +474,55 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","fumbles","turnovers","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
+                                                <% var columns = [
+                                                    "EPA_success",
+                                                    "EPA_success_pass",
+                                                    "EPA_success_rush",
+                                                    "EPA_success_standard_down",
+                                                    "EPA_success_passing_down",
+                                                    "EPA_success_early_down",
+                                                    "EPA_success_late_down",
+                                                    "EPA_middle_8_success",
+                                                    "early_downs",
+                                                    "early_down_first_down",
+                                                    "EPA_early_down",
+                                                    "EPA_early_down_per_play",
+                                                    "early_down_pass",
+                                                    "early_down_rush",
+                                                    "EPA_success_early_down_pass",
+                                                    "EPA_success_early_down_rush",
+                                                    "middle_8",
+                                                    "EPA_middle_8",
+                                                    "EPA_middle_8_per_play",
+                                                    "middle_8_pass",
+                                                    "middle_8_rush",
+                                                    "EPA_middle_8_success_pass",
+                                                    "EPA_middle_8_success_rush"
+                                                ]; 
+                                                %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;color: black; font-weight: bold;">Situational</th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <%- handleRates(item, gameData.advBoxScore.situational, true, 2); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <div class="table-responsive">
+                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","turnovers","fumbles","fumbles_lost","fumbles_recovered","INT","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
