@@ -98,7 +98,8 @@ stat_key_title_mapping = {
     "turnover_margin" : "Turnover Margin",
     "expected_turnover_margin" : "Expected Turnover Margin",
     "turnover_luck" : "Turnover Luck (pts)",
-    "PD" : "Passes Defensed"
+    "PD" : "Passes Defensed",
+    "fumbles" : "Fumbles Forced"
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -347,7 +348,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs"]; 
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles"]; 
                 let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck"];
                 function handleRates(item, teamInfo, useSuffix) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
@@ -478,7 +479,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","turnover_margin","expected_turnover_margin","turnover_luck"]; %>
+                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","fumbles","turnovers","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
