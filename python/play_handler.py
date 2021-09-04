@@ -1119,9 +1119,15 @@ class PlayProcess(object):
         play_df['lag_pos_score_diff'] = play_df['pos_score_diff'].shift(1)
         play_df.loc[play_df.lag_pos_score_diff.isna(), 'lag_pos_score_diff'] = 0
         play_df['pos_score_pts'] = np.where(play_df.lag_pos_team == play_df.pos_team, play_df.pos_score_diff - play_df.lag_pos_score_diff, play_df.pos_score_diff + play_df.lag_pos_score_diff)
-        play_df['pos_score_diff_start'] = np.where(
-            (play_df.kickoff_play == False) & (play_df.lag_pos_team == play_df.pos_team),
-            play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff
+        play_df['pos_score_diff_start'] = np.select([
+                (play_df.kickoff_play == True) & (play_df.lag_pos_team == play_df.pos_team),
+                (play_df.kickoff_play == True) | (play_df.lag_pos_team != play_df.pos_team)
+            ],
+            [
+                play_df.lag_pos_score_diff,
+                -1 * play_df.lag_pos_score_diff
+            ], 
+            default=play_df.lag_pos_score_diff
         )
         #--- Timeouts ------
         play_df.loc[play_df.pos_score_diff_start.isna() == True, 'pos_score_diff_start'] = play_df.pos_score_diff
@@ -2899,12 +2905,17 @@ class PlayProcess(object):
 
         situation_box_normal = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
             EPA_success = ('EPA_success', sum),
-            EPA_success_pass = ('EPA_success_pass', sum),
-            EPA_success_rush = ('EPA_success_rush', sum),
-
             EPA_success_rate = ('EPA_success', mean),
-            EPA_success_pass_rate = ('EPA_success_pass', mean),
-            EPA_success_rush_rate = ('EPA_success_rush', mean),
+        )
+
+        situation_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+            EPA_success_pass = ('EPA_success', sum),
+            EPA_success_pass_rate = ('EPA_success', mean),
+        )
+
+        situation_box_rush = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+            EPA_success_rush = ('EPA_success', sum),
+            EPA_success_rush_rate = ('EPA_success', mean),
         )
 
         situation_box_middle8 = self.plays_json[(self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
@@ -3004,7 +3015,7 @@ class PlayProcess(object):
             EPA_passing_down = ('EPA_success_standard_down', sum),
             EPA_passing_down_per_play = ('EPA_success_standard_down', mean)
         )
-        situation_data_frames = [situation_box_normal, situation_box_early, situation_box_early_pass, situation_box_early_rush, situation_box_middle8, situation_box_middle8_pass, situation_box_middle8_rush, situation_box_late, situation_box_standard, situation_box_passing]
+        situation_data_frames = [situation_box_normal, situation_box_pass, situation_box_rush, situation_box_early, situation_box_early_pass, situation_box_early_rush, situation_box_middle8, situation_box_middle8_pass, situation_box_middle8_rush, situation_box_late, situation_box_standard, situation_box_passing]
         situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
         situation_box = situation_box.replace({np.nan:None})
 
