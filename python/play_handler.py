@@ -2897,7 +2897,7 @@ class PlayProcess(object):
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None}) 
 
-        situation_box_normal = self.plays_json.groupby(by=["pos_team"]).agg(
+        situation_box_normal = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
             EPA_success = ('EPA_success', sum),
             EPA_success_pass = ('EPA_success_pass', sum),
             EPA_success_rush = ('EPA_success_rush', sum),
