@@ -2904,12 +2904,12 @@ class PlayProcess(object):
 
         situation_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
             EPA_success_pass = ('EPA_success', sum),
-            EPA_success_pass_rate = ('EPA_success_pass', mean),
+            EPA_success_pass_rate = ('EPA_success', mean),
         )
 
         situation_box_rush = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
             EPA_success_rush = ('EPA_success', sum),
-            EPA_success_rush_rate = ('EPA_success_pass', mean),
+            EPA_success_rush_rate = ('EPA_success', mean),
         )
 
         situation_box_middle8 = self.plays_json[(self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
