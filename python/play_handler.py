@@ -1789,7 +1789,11 @@ class PlayProcess(object):
         play_df['pass_player'] = play_df.pass_player.str.replace(" pass,to(.+)", "", regex=True)
         play_df['pass_player'] = play_df.pass_player.str.replace(" pass,to", "", regex=True)
         play_df['pass_player'] = play_df.pass_player.str.replace(" \((.+)\)", "", regex=True)
-
+        play_df['pass_player'] = np.where(
+            (play_df["pass"] == 1) & ((play_df.pass_player.str.strip().str.len == 0) | play_df.pass_player.isna()),
+            "TEAM",
+            play_df.pass_player
+        )
         
         play_df['receiver_player'] = np.where(
             (play_df["pass"] == 1) & ~play_df.text.str.contains("sacked", case=False, flags=0, na=False, regex=True),
@@ -2842,7 +2846,7 @@ class PlayProcess(object):
         pass_box = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)]
         rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)]
         # pass_box.yds_receiving.fillna(0.0, inplace=True)
-        passer_box = pass_box[(pass_box["pass"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
+        passer_box = pass_box[(pass_box["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
             Yds = ('yds_receiving',sum),
