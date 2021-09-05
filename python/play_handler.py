@@ -1350,17 +1350,46 @@ class PlayProcess(object):
         play_df["int_td"] = play_df["type.text"].isin(["Interception Return Touchdown"])
 
         #--- Pass Completions, Attempts and Targets -------
-        play_df['completion'] = ((play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown"])) |
-                                 (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) &
-                                  play_df['pass'] == True & ~play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+        play_df["completion"] = np.select(
+            [
+                play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown"]),
+                (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) & (play_df['pass'] == True) & ~(play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+            ],
+            [
+                True,
+                True
+            ],
+            default=False
+        )
 
-        play_df['pass_attempt'] = ((play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown", "Pass Incompletion"])) |
-                                   (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) &
-                                    play_df['pass'] == True & ~play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+        play_df["pass_attempt"] = np.select(
+            [
+                (play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown", "Pass Incompletion"])),
+                (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) & (play_df['pass'] == True) & ~(play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True))),
+                ((play_df['pass'] == True) & ~(play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+            ],
+            [
+                True,
+                True,
+                True
+            ],
+            default=False
+        )
 
-        play_df['target'] = ((play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown", "Pass Incompletion"])) |
-                             (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) &
-                              play_df['pass'] == True & ~play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+        play_df['target'] = np.select(
+            [
+                (play_df['type.text'].isin(["Pass Reception", "Pass Completion", "Passing Touchdown", "Pass Incompletion"])),
+                (play_df['type.text'].isin(["Fumble Recovery (Own)", "Fumble Recovery (Own) Touchdown", "Fumble Recovery (Opponent)", "Fumble Recovery (Opponent) Touchdown"]) & (play_df['pass'] == True) & ~(play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True))),
+                ((play_df['pass'] == True) & ~(play_df["text"].str.contains("sacked", case=False, flags=0, na=False, regex=True)))
+            ],
+            [
+                True,
+                True,
+                True
+            ],
+            default=False
+        )
+
         play_df['pass_breakup'] = play_df['text'].str.contains('broken up by', case=False, flags=0, na=False, regex=True)
         #--- Pass/Rush TDs ------
         play_df['pass_td'] = (play_df["type.text"] == "Passing Touchdown") | ((play_df["pass"] == True) & (play_df["td_play"] == True))
@@ -1523,13 +1552,17 @@ class PlayProcess(object):
                 (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)) & (play_df.text.str.contains(r"for no gain", case=False)),
                 (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)) & (play_df.text.str.contains("for a loss", case=False)),
                 (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)),
-                (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False))
+                (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)),
+                (play_df["pass"] == True) & (play_df.text.str.contains("incomplete", case=False)),
+                (play_df["pass"] == True) & (play_df["type.text"].str.contains("incompletion", case=False)),
             ],
             [
                 0.0,
                 -1 * play_df.text.str.extract(r"((?<=for a loss of)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
-                play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float)
+                play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
+                0.0,
+                0.0
             ], default = None
         )
 
@@ -2806,10 +2839,10 @@ class PlayProcess(object):
         self.plays_json['havoc_pass'] = self.plays_json['havoc_pass'].astype(float)
         self.plays_json['havoc_rush'] = self.plays_json['havoc_rush'].astype(float)
 
-        pass_box = self.plays_json[self.plays_json["pass"] == 1]
-        rush_box = self.plays_json[self.plays_json.rush == 1]
-
-        passer_box = pass_box.groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
+        pass_box = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)]
+        rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)]
+        # pass_box.yds_receiving.fillna(0.0, inplace=True)
+        passer_box = pass_box[(pass_box.pass_attempt == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
             Yds = ('yds_receiving',sum),
@@ -2819,11 +2852,12 @@ class PlayProcess(object):
             EPA = ('EPA', sum),
             EPA_per_Play = ('EPA', mean),
             WPA = ('wpa', sum),
-            SR = ('EPA_success', mean)
+            SR = ('EPA_success', mean),
+            Sck = ('sack', sum)
         ).round(2)
         passer_box = passer_box.replace({np.nan: None})
 
-        rusher_box = rush_box.groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
+        rusher_box = rush_box.fillna(0.0).groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
             Car= ('rush', sum),
             Yds= ('yds_rushed',sum),
             Rush_TD = ('rush_td',sum),
