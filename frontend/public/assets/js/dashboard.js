@@ -247,6 +247,27 @@ if (gameData.plays.length > 0) {
         data: homeTeamWP
     };
 
+
+    Chart.plugins.register([
+        {
+            afterDraw: (chart) => {
+                let viewport = getCurrentViewport()
+                if (viewport == "xl" || viewport == "lg") {
+                    let sizeWidth = chart.ctx.canvas.clientWidth;
+                    let sizeHeight = chart.ctx.canvas.clientHeight;
+                    let imgSize = 75.0;
+        
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "right"
+                    chart.ctx.font = "8px Helvetica";
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.25 * (sizeHeight / 8) - 35)
+                    chart.ctx.restore();
+                }
+            }
+        }
+    ]);
+
     //adding custom chart type
     // https://stackoverflow.com/questions/36916867/chart-js-line-different-fill-color-for-negative-point
     // https://stackoverflow.com/questions/52120036/chartjs-line-color-between-two-points
@@ -268,6 +289,7 @@ if (gameData.plays.length > 0) {
     
                 // build a gradient that switches color at the 0 point
                 var ctx = this.chart.chart.ctx;
+                ctx.save()
                 var gradientFill = ctx.createLinearGradient(0, top, 0, bottom);
                 var gradientStroke = ctx.createLinearGradient(0, top, 0, bottom);
                 var ratio = Math.min((zero - top) / (bottom - top), 1);
@@ -298,6 +320,7 @@ if (gameData.plays.length > 0) {
                 this.chart.data.datasets[i].pointBackgroundColor = gradientStroke;
                 this.chart.data.datasets[i].pointHoverBorderColor = gradientStroke;
                 this.chart.data.datasets[i].pointHoverBackgroundColor = gradientStroke;
+                ctx.restore();
             }
             return Chart.controllers.line.prototype.update.apply(this, arguments);
         },
@@ -321,12 +344,14 @@ if (gameData.plays.length > 0) {
                     ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);             // draw it - ~145 px per half
                 }
                 ctx.restore();
+
                 Chart.controllers.line.prototype.draw.call(this, ease);
             }
         },
         initialize: function(chart, datasetIndex) {                     // override initialize too to preload the image, the image doesn't need to be outside as it is only used by this chart
             Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
             var homeImage = new Image();
+            homeImage.setAttribute('crossOrigin','anonymous');
             homeImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
             homeImage.onload = () => {                                            // when the image loads
                 this.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
@@ -334,6 +359,7 @@ if (gameData.plays.length > 0) {
             };
 
             var awayImage = new Image();
+            awayImage.setAttribute('crossOrigin','anonymous');
             awayImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
             awayImage.onload = () => {                                            // when the image loads
                 this.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
@@ -436,14 +462,14 @@ if (gameData.plays.length > 0) {
             }
         })
 
-        // document.getElementById("wp-download").addEventListener('click', function() {
-        //     /*Get image of canvas element*/
-        //     var url_base64jp = wpChart.toBase64Image();
-        //     /*get download button (tag: <a></a>) */
-        //     var a =  document.getElementById("wp-download");
-        //     /*insert chart image url to download button (tag: <a></a>) */
-        //     a.href = url_base64jp;
-        // });
+        document.getElementById("wp-download").addEventListener('click', function() {
+            /*Get image of canvas element*/
+            var url_base64jp = wpChart.toBase64Image();
+            /*get download button (tag: <a></a>) */
+            var a =  document.getElementById("wp-download");
+            /*insert chart image url to download button (tag: <a></a>) */
+            a.href = url_base64jp;
+        });
 
         var epCtx = document.getElementById('epChart')
             // eslint-disable-next-line no-unused-vars
