@@ -2842,7 +2842,7 @@ class PlayProcess(object):
         pass_box = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)]
         rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)]
         # pass_box.yds_receiving.fillna(0.0, inplace=True)
-        passer_box = pass_box[(pass_box.pass_attempt == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
+        passer_box = pass_box[(pass_box["pass"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
             Yds = ('yds_receiving',sum),
@@ -2888,21 +2888,15 @@ class PlayProcess(object):
         
         team_base_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
             EPA_plays = ('play', sum),
+            EPA_penalty = ('EPA_penalty', sum),
+        ).round(2)
+
+        team_scrimmage_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             scrimmage_plays = ('scrimmage_play', sum),
             EPA_overall_total = ('EPA', sum),
-            EPA_passing_overall = ('EPA_pass', sum),
-            EPA_rushing_overall = ('EPA_rush', sum),
             EPA_per_play = ('EPA', mean),
-            EPA_passing_per_play = ('EPA_pass', mean),
-            EPA_rushing_per_play = ('EPA_rush', mean),
-            rushes = ('rush', sum),
-            passes = ('pass', sum),
-            passes_completed = ('completion', sum),
-            passes_attempted = ('pass_attempt', sum),
             EPA_explosive = ('EPA_explosive', sum),
-            EPA_explosive_passing = ('EPA_explosive_pass', sum),
-            EPA_explosive_rushing = ('EPA_explosive_rush', sum),
-            EPA_penalty = ('EPA_penalty', sum),
+
             special_teams_plays = ('sp', sum),
             EPA_sp = ('EPA_sp', sum),
             EPA_special_teams = ('EPA_sp', sum),
@@ -2910,6 +2904,20 @@ class PlayProcess(object):
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
             EPA_kickoff = ('EPA_kickoff', sum),
+        ).round(2)
+
+        team_scrimmage_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+            passes = ('pass', sum),
+            EPA_passing_overall = ('EPA', sum),
+            EPA_passing_per_play = ('EPA', mean),
+            EPA_explosive_passing = ('EPA_explosive', sum),
+        ).round(2)
+
+        team_scrimmage_box_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+            EPA_rushing_overall = ('EPA', sum),
+            EPA_rushing_per_play = ('EPA', mean),
+            EPA_explosive_rushing = ('EPA_explosive', sum),
+            rushes = ('rush', sum),
         ).round(2)
         
         team_rush_base_box = self.plays_json[(self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
@@ -2937,7 +2945,7 @@ class PlayProcess(object):
             rushing_highlight = ('highlight_run', sum),
             rushing_highlight_rate = ('highlight_run', mean),
         )  
-        team_data_frames = [team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
+        team_data_frames = [team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None}) 
 
