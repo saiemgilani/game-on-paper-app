@@ -2831,7 +2831,9 @@ class PlayProcess(object):
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum),
-            SR = ('EPA_success', mean)
+            SR = ('EPA_success', mean),
+            Fum = ('fumble_vec', sum),
+            Fum_Lost = ('fumble_lost', sum)
         ).round(2)
         rusher_box = rusher_box.replace({np.nan: None})
 
@@ -2844,7 +2846,9 @@ class PlayProcess(object):
             EPA= ('EPA', sum),
             EPA_per_Play= ('EPA', mean),
             WPA= ('wpa', sum),
-            SR = ('EPA_success', mean)
+            SR = ('EPA_success', mean),
+            Fum = ('fumble_vec', sum),
+            Fum_Lost = ('fumble_lost', sum)
         ).round(2)
         receiver_box = receiver_box.replace({np.nan: None})
         
