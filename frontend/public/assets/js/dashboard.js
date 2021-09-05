@@ -247,6 +247,27 @@ if (gameData.plays.length > 0) {
         data: homeTeamWP
     };
 
+
+    Chart.plugins.register([
+        {
+            afterDraw: (chart) => {
+                let viewport = getCurrentViewport()
+                if (viewport == "xl" || viewport == "lg") {
+                    let sizeWidth = chart.ctx.canvas.clientWidth;
+                    let sizeHeight = chart.ctx.canvas.clientHeight;
+                    let imgSize = 75.0;
+        
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "right"
+                    chart.ctx.font = "8px Helvetica";
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.25 * (sizeHeight / 8) - 35)
+                    chart.ctx.restore();
+                }
+            }
+        }
+    ]);
+
     //adding custom chart type
     // https://stackoverflow.com/questions/36916867/chart-js-line-different-fill-color-for-negative-point
     // https://stackoverflow.com/questions/52120036/chartjs-line-color-between-two-points
@@ -322,13 +343,6 @@ if (gameData.plays.length > 0) {
                 if (this.awayTeamImage) {                                    // if the image is loaded
                     ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);             // draw it - ~145 px per half
                 }
-                ctx.restore();
-
-                ctx.save()
-                ctx.textAlign = "right"
-                ctx.font = "8px Helvetica";
-                ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.25 * (sizeHeight / 8) - 35)
                 ctx.restore();
 
                 Chart.controllers.line.prototype.draw.call(this, ease);
