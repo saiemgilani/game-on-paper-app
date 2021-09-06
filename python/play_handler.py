@@ -1353,6 +1353,7 @@ class PlayProcess(object):
                 (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)),
                 (play_df["pass"] == True) & (play_df.text.str.contains("incomplete", case=False)),
                 (play_df["pass"] == True) & (play_df["type.text"].str.contains("incompletion", case=False)),
+                (play_df["pass"] == True) & (play_df.text.str.contains("Yd pass", case=False)),
             ],
             [
                 0.0,
@@ -1360,7 +1361,8 @@ class PlayProcess(object):
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
                 0.0,
-                0.0
+                0.0,
+                play_df.text.str.extract(r"(\d+)\s+Yd\s+pass", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
             ], default = None
         )
 
@@ -2137,6 +2139,9 @@ class PlayProcess(object):
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
+        play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
+        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 75
+        
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
         # self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
