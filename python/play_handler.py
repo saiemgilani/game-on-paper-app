@@ -2902,6 +2902,7 @@ class PlayProcess(object):
             EPA_overall_offense = ('EPA', sum),
             EPA_per_play = ('EPA', mean),
             EPA_explosive = ('EPA_explosive', sum),
+            EPA_explosive_rate = ('EPA_explosive', mean),
             passes_rate = ('pass', mean)
         ).round(2)
 
@@ -2920,12 +2921,14 @@ class PlayProcess(object):
             EPA_passing_overall = ('EPA', sum),
             EPA_passing_per_play = ('EPA', mean),
             EPA_explosive_passing = ('EPA_explosive', sum),
+            EPA_explosive_passing_rate = ('EPA_explosive', mean),
         ).round(2)
 
         team_scrimmage_box_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_rushing_overall = ('EPA', sum),
             EPA_rushing_per_play = ('EPA', mean),
             EPA_explosive_rushing = ('EPA_explosive', sum),
+            EPA_explosive_rushing_rate = ('EPA_explosive', mean),
             rushes = ('rush', sum),
         ).round(2)
         
