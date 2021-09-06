@@ -3069,7 +3069,7 @@ class PlayProcess(object):
         situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
         situation_box = situation_box.replace({np.nan:None})
 
-        def_box = self.plays_json.groupby(by=["def_pos_team"], as_index=False).agg(
+        def_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["def_pos_team"], as_index=False).agg(
             scrimmage_plays = ('scrimmage_play', sum),
             TFL = ('TFL', sum),
             TFL_pass = ('TFL_pass', sum),
@@ -3098,18 +3098,28 @@ class PlayProcess(object):
 
         total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["fumbles"], def_box_json))
 
-        for team in def_box_json:
-            passes_def = team["PD"] if ("PD" in team.keys()) else 0
-            team["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (passes_def + team["Int"]))
+        away_passes_def = def_box_json[0]["PD"] if ("PD" in def_box_json[0].keys()) else 0
+        away_passes_int = def_box_json[0]["Int"] if ("Int" in def_box_json[0].keys()) else 0
+        def_box_json[1]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (away_passes_def + away_passes_int))
+
+        home_passes_def = def_box_json[1]["PD"] if ("PD" in def_box_json[1].keys()) else 0
+        home_passes_int = def_box_json[1]["Int"] if ("Int" in def_box_json[1].keys()) else 0
+        def_box_json[0]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (home_passes_def + home_passes_int))
         
-        def_box_json[0]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
-        def_box_json[1]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]
+        away_int_created = int(def_box_json[0]["Int"])
+        home_int_created = int(def_box_json[1]["Int"])
+        def_box_json[0]["Int"] = home_int_created
+        def_box_json[1]["Int"] = away_int_created
+        
+        def_box_json[1]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
+        def_box_json[0]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]
         
         away_to = def_box_json[1]["fumbles_lost"] + def_box_json[1]["Int"]
         home_to = def_box_json[0]["fumbles_lost"] + def_box_json[0]["Int"]
 
-        def_box_json[0]["turnovers"] = away_to
-        def_box_json[1]["turnovers"] = home_to
+        def_box_json[1]["turnovers"] = away_to
+        def_box_json[0]["turnovers"] = home_to
+
         def_box_json[0]["turnover_margin"] = away_to - home_to
         def_box_json[1]["turnover_margin"] = home_to - away_to
 
