@@ -2930,11 +2930,12 @@ class PlayProcess(object):
             EPA_explosive_rushing = ('EPA_explosive', sum),
             EPA_explosive_rushing_rate = ('EPA_explosive', mean),
             rushes = ('rush', sum),
+            rushing_power_rate = ('power_rush_attempt', mean),
         ).round(2)
         
         team_rush_base_box = self.plays_json[(self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             rushes_rate = ('rush', mean),
-            rushing_power_rate = ('power_rush_attempt', mean),
+
 
             first_downs_created = ('first_down_created', sum),
             first_downs_created_rate = ('first_down_created', mean)
