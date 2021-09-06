@@ -34,6 +34,7 @@ jobs:
           envs: GITHUB_USERNAME, GITHUB_TOKEN
           script: |
             docker stop $(docker ps -a -q)
+            docker system prune
             docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
             docker pull docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest
             docker run -dit -p 8000:8000 docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest  
