@@ -2935,8 +2935,6 @@ class PlayProcess(object):
         
         team_rush_base_box = self.plays_json[(self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
             rushes_rate = ('rush', mean),
-
-
             first_downs_created = ('first_down_created', sum),
             first_downs_created_rate = ('first_down_created', mean)
         )
