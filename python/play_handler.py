@@ -2341,6 +2341,9 @@ class PlayProcess(object):
         play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_4_end"] = False
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
+
+        play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
+        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 75
         
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
