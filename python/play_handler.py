@@ -3073,20 +3073,39 @@ class PlayProcess(object):
         situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
         situation_box = situation_box.replace({np.nan:None})
 
-        def_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["def_pos_team"], as_index=False).agg(
+        def_base_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["def_pos_team"], as_index=False).agg(
             scrimmage_plays = ('scrimmage_play', sum),
             TFL = ('TFL', sum),
             TFL_pass = ('TFL_pass', sum),
             TFL_rush = ('TFL_rush', sum),
             havoc_total = ('havoc', sum),
-            havoc_total_pass = ('havoc_pass', sum),
-            havoc_total_rush = ('havoc_rush', sum),
-            sacks = ('sack', sum),
+            havoc_total_rate = ('havoc', mean),
+            # havoc_total_pass = ('havoc_pass', sum),
+            # havoc_total_rush = ('havoc_rush', sum),
+            # sacks = ('sack', sum),
             fumbles_lost = ('fumble_lost', sum),
             fumbles_recovered = ('fumble_recovered', sum),
             fumbles = ('fumble_vec', sum),
             Int = ('int', sum),
         )
+        def_base_box = def_base_box.replace({np.nan:None})
+
+        def_box_havoc_pass = self.plays_json[(self.plays_json.scrimmage_play == True) & (self.plays_json["pass"] == True)].groupby(by=["def_pos_team"], as_index=False).agg(
+            havoc_total_pass = ('havoc', sum),
+            havoc_total_pass_rate = ('havoc', mean),
+            sacks = ('sack', sum),
+            sacks_rate = ('sack', mean)
+        )
+        def_box_havoc_pass = def_box_havoc_pass.replace({np.nan:None})
+
+        def_box_havoc_rush = self.plays_json[(self.plays_json.scrimmage_play == True) & (self.plays_json["rush"] == True)].groupby(by=["def_pos_team"], as_index=False).agg(
+            havoc_total_rush = ('havoc', sum),
+            havoc_total_rush_rate = ('havoc', mean),
+        )
+        def_box_havoc_rush = def_box_havoc_rush.replace({np.nan:None})
+
+        def_data_frames = [def_base_box,def_box_havoc_pass,def_box_havoc_rush]
+        def_box = reduce(lambda left,right: pd.merge(left,right,on=['def_pos_team'], how='outer'), def_data_frames)
         def_box = def_box.replace({np.nan:None})
 
         def_box_json = json.loads(def_box.to_json(orient="records"))
