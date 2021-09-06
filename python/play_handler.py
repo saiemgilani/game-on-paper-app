@@ -1555,6 +1555,7 @@ class PlayProcess(object):
                 (play_df["pass"] == True) & (play_df.text.str.contains("complete to", case=False)),
                 (play_df["pass"] == True) & (play_df.text.str.contains("incomplete", case=False)),
                 (play_df["pass"] == True) & (play_df["type.text"].str.contains("incompletion", case=False)),
+                (play_df["pass"] == True) & (play_df.text.str.contains("Yd pass", case=False)),
             ],
             [
                 0.0,
@@ -1562,7 +1563,8 @@ class PlayProcess(object):
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
                 0.0,
-                0.0
+                0.0,
+                play_df.text.str.extract(r"(\d+)\s+Yd\s+pass", flags=re.IGNORECASE)[0].str.extract(r"(\d+)")[0].astype(float),
             ], default = None
         )
 
