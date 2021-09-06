@@ -2948,14 +2948,14 @@ class PlayProcess(object):
     def run_processing_pipeline(self):
         if (self.ran_pipeline == False):
             self.plays_json = self.__clean_pbp_data(self.plays_json)
-            # self.plays_json = self.__add_yardage_cols(self.plays_json)
-            # self.plays_json = self.__add_player_cols(self.plays_json)
-            # self.plays_json = self.__after_cols(self.plays_json)
-            # self.plays_json = self.__process_epa(self.plays_json)
-            # self.plays_json = self.__process_wpa(self.plays_json)
-            # self.plays_json = self.__add_drive_data(self.plays_json)
-            # self.plays_json = self.plays_json.replace({np.nan: None})
-            # self.ran_pipeline = True
+            self.plays_json = self.__add_yardage_cols(self.plays_json)
+            self.plays_json = self.__add_player_cols(self.plays_json)
+            self.plays_json = self.__after_cols(self.plays_json)
+            self.plays_json = self.__process_epa(self.plays_json)
+            self.plays_json = self.__process_wpa(self.plays_json)
+            self.plays_json = self.__add_drive_data(self.plays_json)
+            self.plays_json = self.plays_json.replace({np.nan: None})
+            self.ran_pipeline = True
         else:
             self.logger.info("Already ran pipeline for this game. Doing nothing.")
         return self.plays_json
