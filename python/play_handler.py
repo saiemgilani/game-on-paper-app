@@ -2872,13 +2872,7 @@ class PlayProcess(object):
             TFL_rush = ('TFL_rush', sum),
             havoc_total = ('havoc', sum),
             havoc_total_rate = ('havoc', mean),
-            # havoc_total_pass = ('havoc_pass', sum),
-            # havoc_total_rush = ('havoc_rush', sum),
-            # sacks = ('sack', sum),
-            fumbles_lost = ('fumble_lost', sum),
-            fumbles_recovered = ('fumble_recovered', sum),
             fumbles = ('fumble_vec', sum),
-            Int = ('int', sum),
         )
         def_base_box = def_base_box.replace({np.nan:None})
 
@@ -2886,7 +2880,7 @@ class PlayProcess(object):
             havoc_total_pass = ('havoc', sum),
             havoc_total_pass_rate = ('havoc', mean),
             sacks = ('sack', sum),
-            sacks_rate = ('sack', mean)
+            sacks_rate = ('sack', mean),
         )
         def_box_havoc_pass = def_box_havoc_pass.replace({np.nan:None})
 
@@ -2899,8 +2893,17 @@ class PlayProcess(object):
         def_data_frames = [def_base_box,def_box_havoc_pass,def_box_havoc_rush]
         def_box = reduce(lambda left,right: pd.merge(left,right,on=['def_pos_team'], how='outer'), def_data_frames)
         def_box = def_box.replace({np.nan:None})
-
         def_box_json = json.loads(def_box.to_json(orient="records"))
+
+        turnover_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
+            fumbles_lost = ('fumble_lost', sum),
+            fumbles_recovered = ('fumble_recovered', sum),
+            total_fumbles = ('fumble_vec', sum),
+            Int = ('int', sum),
+        ).round(2)
+        turnover_box = turnover_box.replace({np.nan:None})
+        turnover_box_json = json.loads(turnover_box.to_json(orient="records"))
+
         team_def_box = self.json["boxscore"]["players"]
         for (idx, team) in enumerate(team_def_box):
             def_box_stats_search = list(filter(lambda x: "defensive" in x["name"], team["statistics"]))
@@ -2909,37 +2912,36 @@ class PlayProcess(object):
                 zipped_def_box_stat = zip(def_box_stats["labels"], def_box_stats["totals"])
                 # away first, home second
                 for (label, total) in zipped_def_box_stat:
+                    turnover_box_json[idx][label] = round(float(total), 2)
                     def_box_json[idx][label] = round(float(total), 2)
 
-        total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["fumbles"], def_box_json))
+        total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["total_fumbles"], turnover_box_json))
 
-        away_passes_def = def_box_json[0]["PD"] if ("PD" in def_box_json[0].keys()) else 0
-        away_passes_int = def_box_json[0]["Int"] if ("Int" in def_box_json[0].keys()) else 0
-        def_box_json[1]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (away_passes_def + away_passes_int))
+        away_passes_def = turnover_box_json[1]["PD"] if ("PD" in turnover_box_json[1].keys()) else 0
+        away_passes_int = turnover_box_json[0]["Int"] if ("Int" in turnover_box_json[0].keys()) else 0
+        turnover_box_json[0]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (away_passes_def + away_passes_int))
 
-        home_passes_def = def_box_json[1]["PD"] if ("PD" in def_box_json[1].keys()) else 0
-        home_passes_int = def_box_json[1]["Int"] if ("Int" in def_box_json[1].keys()) else 0
-        def_box_json[0]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (home_passes_def + home_passes_int))
+        home_passes_def = turnover_box_json[0]["PD"] if ("PD" in turnover_box_json[0].keys()) else 0
+        home_passes_int = turnover_box_json[1]["Int"] if ("Int" in turnover_box_json[1].keys()) else 0
+        turnover_box_json[1]["expected_turnovers"] = (0.5 * total_fumbles) + (0.22 * (home_passes_def + home_passes_int))
 
-        away_int_created = int(def_box_json[0]["Int"])
-        home_int_created = int(def_box_json[1]["Int"])
-        def_box_json[0]["Int"] = home_int_created
-        def_box_json[1]["Int"] = away_int_created
+        turnover_box_json[0]["Int"] = int(turnover_box_json[0]["Int"])
+        turnover_box_json[1]["Int"] = int(turnover_box_json[1]["Int"])
 
-        def_box_json[1]["expected_turnover_margin"] = def_box_json[0]["expected_turnovers"] - def_box_json[1]["expected_turnovers"]
-        def_box_json[0]["expected_turnover_margin"] = def_box_json[1]["expected_turnovers"] - def_box_json[0]["expected_turnovers"]
+        turnover_box_json[0]["expected_turnover_margin"] = turnover_box_json[0]["expected_turnovers"] - turnover_box_json[1]["expected_turnovers"]
+        turnover_box_json[1]["expected_turnover_margin"] = turnover_box_json[1]["expected_turnovers"] - turnover_box_json[0]["expected_turnovers"]
 
-        away_to = def_box_json[1]["fumbles_lost"] + def_box_json[1]["Int"]
-        home_to = def_box_json[0]["fumbles_lost"] + def_box_json[0]["Int"]
+        away_to = turnover_box_json[0]["fumbles_lost"] + turnover_box_json[0]["Int"]
+        home_to = turnover_box_json[1]["fumbles_lost"] + turnover_box_json[1]["Int"]
 
-        def_box_json[1]["turnovers"] = away_to
-        def_box_json[0]["turnovers"] = home_to
+        turnover_box_json[0]["turnovers"] = away_to
+        turnover_box_json[1]["turnovers"] = home_to
 
-        def_box_json[0]["turnover_margin"] = away_to - home_to
-        def_box_json[1]["turnover_margin"] = home_to - away_to
+        turnover_box_json[0]["turnover_margin"] = home_to - away_to
+        turnover_box_json[1]["turnover_margin"] = away_to - home_to
 
-        def_box_json[0]["turnover_luck"] = 5.0 * (def_box_json[0]["turnover_margin"] - def_box_json[0]["expected_turnover_margin"])
-        def_box_json[1]["turnover_luck"] = 5.0 * (def_box_json[1]["turnover_margin"] - def_box_json[1]["expected_turnover_margin"])
+        turnover_box_json[0]["turnover_luck"] = 5.0 * (turnover_box_json[0]["turnover_margin"] - turnover_box_json[0]["expected_turnover_margin"])
+        turnover_box_json[1]["turnover_luck"] = 5.0 * (turnover_box_json[1]["turnover_margin"] - turnover_box_json[1]["expected_turnover_margin"])
 
         return {
             "pass" : json.loads(passer_box.to_json(orient="records")),
@@ -2947,7 +2949,8 @@ class PlayProcess(object):
             "receiver" : json.loads(receiver_box.to_json(orient="records")),
             "team" : json.loads(team_box.to_json(orient="records")),
             "situational" : json.loads(situation_box.to_json(orient="records")),
-            "defensive" : def_box_json
+            "defensive" : def_box_json,
+            "turnover" : turnover_box_json
         }
 
     def run_processing_pipeline(self):
