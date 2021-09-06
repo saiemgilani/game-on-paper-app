@@ -2893,11 +2893,13 @@ class PlayProcess(object):
         team_base_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
             EPA_plays = ('play', sum),
             EPA_penalty = ('EPA_penalty', sum),
+            EPA_overall_total = ('EPA', sum),
         ).round(2)
 
         team_scrimmage_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             scrimmage_plays = ('scrimmage_play', sum),
-            EPA_overall_total = ('EPA', sum),
+            EPA_overall_off = ('EPA', sum),
+            EPA_overall_offense = ('EPA', sum),
             EPA_per_play = ('EPA', mean),
             EPA_explosive = ('EPA_explosive', sum),
         ).round(2)

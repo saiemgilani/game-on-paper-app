@@ -43,11 +43,13 @@ stat_key_title_mapping = {
     "EPA_plays" : "Total Plays",
     "scrimmage_plays" : "Scrimmage Plays",
     "EPA_overall_total" : "Total EPA",
-    "EPA_passing_overall" : "&emsp;&emsp;Passing EPA",
-    "EPA_rushing_overall" : "&emsp;&emsp;Rushing EPA",
-    "EPA_per_play" : "EPA/Play",
-    "EPA_passing_per_play" : "&emsp;&emsp;Pass EPA/Play",
-    "EPA_rushing_per_play" : "&emsp;&emsp;Rush EPA/Play",
+    "EPA_overall_off" : "Offensive EPA",
+    "EPA_overall_offense" : "&emsp;&emsp;Offensive EPA",
+    "EPA_passing_overall" : "Passing EPA",
+    "EPA_rushing_overall" : "Rushing EPA",
+    "EPA_per_play" : "&emsp;&emsp;EPA/Play",
+    "EPA_passing_per_play" : "&emsp;&emsp;EPA/Play",
+    "EPA_rushing_per_play" : "&emsp;&emsp;EPA/Play",
     "rushes" : "Rushes",
     "rushing_power" : "&emsp;&emsp;Power Run Attempts (Distance &#8804; 2)",
     "rushing_power_success" : "&emsp;&emsp;Successful Power Runs (Rate)",
@@ -416,11 +418,35 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays", "scrimmage_plays", "EPA_overall_total", "EPA_passing_overall", "EPA_rushing_overall", "EPA_special_teams", "EPA_penalty", "EPA_per_play","EPA_passing_per_play","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["EPA_plays", "EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
                                                             <th style="text-align: left;">Overall</th>
+                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
+                                                                <% }); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            
+                                            <div class="table-responsive">
+                                                <% var columns = ["scrimmage_plays","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play"]; %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;">Expected Points</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
