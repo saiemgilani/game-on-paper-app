@@ -88,8 +88,8 @@ stat_key_title_mapping = {
     "late_down_pass": "&emsp;&emsp;Passes",
     "late_down_rush": "&emsp;&emsp;Rushes",
     "EPA_explosive" : "Explosive Plays",
-    "EPA_explosive_passing" : "&emsp;&emsp;Passing (EPA > 2.4)",
-    "EPA_explosive_rushing" : "&emsp;&emsp;Rushing (EPA > 1.8)",
+    "EPA_explosive_passing" : "&emsp;&emsp;When Passing (EPA > 2.4)",
+    "EPA_explosive_rushing" : "&emsp;&emsp;When Rushing (EPA > 1.8)",
     "scoring_opps_opportunities" : "Scoring Opps",
     "scoring_opps_points" : "&emsp;&emsp;Total Points",
     "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
@@ -499,7 +499,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.team, true); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
