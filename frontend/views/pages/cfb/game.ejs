@@ -96,7 +96,6 @@ stat_key_title_mapping = {
     "field_pos_avg_start" : "Avg Starting FP",
     "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points",
     "sacks" : "Sacks Generated",
-    "fumbles" : "Fumbles Generated",
     "turnovers" : "Turnovers",
     "expected_turnovers" : "Expected Turnovers",
     "turnover_margin" : "Turnover Margin",
@@ -105,7 +104,8 @@ stat_key_title_mapping = {
     "PD" : "Passes Defensed",
     "INT" : "&emsp;&emsp;Interceptions",
     "Int" : "&emsp;&emsp;Interceptions",
-    "fumbles" : "&emsp;&emsp;Fumbles Forced",
+    "fumbles" : "Fumbles Forced",
+    "total_fumbles" : "&emsp;&emsp;Fumbles",
     "fumbles_lost" : "&emsp;&emsp;Fumbles Lost",
     "fumbles_recovered" : "&emsp;&emsp;Fumbles Recovered",
     "middle_8": "\"Middle 8\" Plays",
@@ -378,7 +378,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush"]; 
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles"]; 
                 let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play"];
                 function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
@@ -594,7 +594,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 </table>
                                             </div>
                                             <div class="table-responsive">
-                                                <% var columns = ["turnovers","fumbles_lost","fumbles_recovered","Int","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
+                                                <% var columns = ["turnovers","total_fumbles","fumbles_lost","fumbles_recovered","Int","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -608,7 +608,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, gameData.advBoxScore.defensive); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.turnover); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
