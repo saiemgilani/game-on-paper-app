@@ -2902,6 +2902,7 @@ class PlayProcess(object):
             EPA_overall_offense = ('EPA', sum),
             EPA_per_play = ('EPA', mean),
             EPA_explosive = ('EPA_explosive', sum),
+            passes_rate = ('pass', mean)
         ).round(2)
 
         team_sp_box = self.plays_json[(self.plays_json.sp == True)].groupby(by=["pos_team"], as_index=False).agg(
