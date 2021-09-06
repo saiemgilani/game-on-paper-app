@@ -528,7 +528,7 @@ if (gameData.plays.length > 0) {
                             if (label) {
                                 label += ': ';
                             }
-                            var roundValue = (Math.round(tooltipItem.value * 10) / 10)
+                            var roundValue = (Math.round(tooltipItem.value * 100) / 100)
                             label += (parseFloat(tooltipItem.value) > 0 ? ("+" + roundValue) : roundValue)
                             return label;
                         }
