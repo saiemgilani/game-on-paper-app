@@ -214,8 +214,8 @@ if (gameData.plays.length > 0) {
 
     var homeTeamWP = gameData.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id && p.play)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id && p.play)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
 
     homeTeamEPA.splice(0, 0, {
         x: 0,
@@ -528,7 +528,7 @@ if (gameData.plays.length > 0) {
                             if (label) {
                                 label += ': ';
                             }
-                            var roundValue = (Math.round(tooltipItem.value * 10) / 10)
+                            var roundValue = (Math.round(tooltipItem.value * 100) / 100)
                             label += (parseFloat(tooltipItem.value) > 0 ? ("+" + roundValue) : roundValue)
                             return label;
                         }
@@ -538,7 +538,7 @@ if (gameData.plays.length > 0) {
                         yAxes: [{
                             scaleLabel: {
                                 display: true,
-                                labelString: "Total Offensive EPA"
+                                labelString: "Total EPA"
                             },
                             gridLines: gridLines
                         }],
