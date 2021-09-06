@@ -408,6 +408,23 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     }
                     return result;
                 }
+
+                for (key in gameData.advBoxScore) {
+                    baseData = gameData.advBoxScore[key]
+                    var teamKey = "pos_team"
+                    if (Object.keys(baseData).includes("def_pos_team")) {
+                        teamKey = "def_pos_team"
+                    }
+                    baseData.sort((a,b) => {
+                        if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
+                            return -1;
+                        } else if (b[teamKey] == awayTeam.id && a[teamKey] == homeTeam.id) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    });
+                }
             %>
             <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
