@@ -2476,7 +2476,17 @@ class PlayProcess(object):
         # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
-        play_df['wp_after'] = WP_end
+        play_df['wp_after'] = np.select(
+            [
+                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
+                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+            ],
+            [
+                1.0,
+                0.0
+            ],
+            default = WP_end
+        )
         play_df['def_wp_after']  = 1 - play_df.wp_after
         play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_after,
