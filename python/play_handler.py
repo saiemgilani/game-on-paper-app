@@ -2000,10 +2000,10 @@ class PlayProcess(object):
             (play_df['start.distance'] < 2) & (play_df.rush == True), True, False
         )
         play_df['power_rush_success'] = np.where(
-            (play_df['start.distance'] < 2) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
+            (play_df['start.distance'] < 2) & (play_df['start.down'].isin([3, 4])) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
         )
         play_df['power_rush_attempt'] = np.where(
-            (play_df['start.distance'] < 2) & (play_df.rush == True), True, False
+            (play_df['start.distance'] < 2) & (play_df['start.down'].isin([3, 4])) & (play_df.rush == True), True, False
         )
         play_df['early_down'] = np.where(
             ((play_df.down_1 == True) | (play_df.down_2 == True)) & (play_df.scrimmage_play == True), True, False
@@ -2105,11 +2105,12 @@ class PlayProcess(object):
         EP_start = self.__calculate_ep_exp_val(EP_start_parts)
 
         play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.TimeSecsRem"] = 0
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.yardsToEndzone"] = 99
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_1_end"] = True
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_2_end"] = False
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_3_end"] = False
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_4_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "end.yardsToEndzone"] = 99
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_1_end"] = True
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_2_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_3_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_4_end"] = False
+
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
@@ -2475,7 +2476,17 @@ class PlayProcess(object):
         # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
-        play_df['wp_after'] = WP_end
+        play_df['wp_after'] = np.select(
+            [
+                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
+                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+            ],
+            [
+                1.0,
+                0.0
+            ],
+            default = WP_end
+        )
         play_df['def_wp_after']  = 1 - play_df.wp_after
         play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_after,
@@ -2846,6 +2857,7 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_rate = ('havoc', mean),
             fumbles = ('fumble_vec', sum),
+            def_int = ('int', sum)
         )
         def_base_box = def_base_box.replace({np.nan:None})
 
