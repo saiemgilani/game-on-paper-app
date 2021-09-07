@@ -39,7 +39,7 @@ class PlayProcess(object):
         self.ran_pipeline = False
 
     def download(self, url, num_retries=5): 
-    #     print('Downloading:', url)
+        #print('Downloading:', url)
         try:
             html = urllib.request.urlopen(url).read()
         except (URLError, HTTPError, ContentTooShortError) as e: 
