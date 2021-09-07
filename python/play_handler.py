@@ -152,32 +152,10 @@ class PlayProcess(object):
         # negotiating the drive meta keys into columns after unnesting drive plays
         # concatenating the previous and current drives categories when necessary
         if 'drives' in pbp_txt.keys():
-            prev_drives = pd.json_normalize(
-                data = pbp_txt['drives']['previous'],
-                record_path = 'plays',
-                meta = ['id', 'displayResult','isScore',
-                        ['team','shortDisplayName'],
-                        ['team','displayName'],
-                        ['team','name'],
-                        ['team','abbreviation'],
-                        'yards','offensivePlays','result',
-                        'description',
-                        'shortDisplayResult',
-                        ['timeElapsed','displayValue'],
-                        ['start','period','number'],
-                        ['start','period','type'],
-                        ['start','yardLine'],
-                        ['start','clock','displayValue'],
-                        ['start','text'],
-                        ['end','period','number'],
-                        ['end','period','type'],
-                        ['end','yardLine'],
-                        ['end','clock','displayValue']],
-                meta_prefix = 'drive.', errors = 'ignore')
-
-            if len(pbp_txt['drives'].keys()) > 1:
-                curr_drives = pd.json_normalize(
-                    data = pbp_txt['drives']['current'],
+            pbp_txt['plays']= pd.DataFrame()
+            for key in pbp_txt['drives'].keys():
+                prev_drives = pd.json_normalize(
+                    data = pbp_txt['drives'][key],
                     record_path = 'plays',
                     meta = ['id', 'displayResult','isScore',
                             ['team','shortDisplayName'],
@@ -198,9 +176,7 @@ class PlayProcess(object):
                             ['end','yardLine'],
                             ['end','clock','displayValue']],
                     meta_prefix = 'drive.', errors = 'ignore')
-                pbp_txt['plays'] = pd.concat([curr_drives, prev_drives], ignore_index=True)
-            else:
-                pbp_txt['plays'] = prev_drives
+                pbp_txt['plays'] = pd.concat([pbp_txt['plays'], prev_drives], ignore_index=True)
 
             pbp_txt['plays'] = pbp_txt['plays'].to_dict(orient='records')
             pbp_txt['plays'] = pd.DataFrame(pbp_txt['plays'])
@@ -217,11 +193,6 @@ class PlayProcess(object):
             pbp_txt['plays']["homeTeamNameAlt"] = str(homeTeamNameAlt)
             pbp_txt['plays']["awayTeamNameAlt"] = str(awayTeamNameAlt)
             pbp_txt['plays']['period.number'] = pbp_txt['plays']['period.number'].apply(lambda x: int(x))
-            #----- Figuring out Timeouts ---------
-            pbp_txt['timeouts'] = {}
-            pbp_txt['timeouts'][homeTeamId] = {"1": [], "2": []}
-            pbp_txt['timeouts'][awayTeamId] = {"1": [], "2": []}
-
             pbp_txt['plays']["homeTeamSpread"] = 2.5
             if len(pbp_txt['pickcenter']) > 1:
                 homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
@@ -244,6 +215,11 @@ class PlayProcess(object):
             pbp_txt['plays']["homeFavorite"] = homeFavorite
             pbp_txt['plays']["gameSpread"] = gameSpread
             pbp_txt['plays']["homeFavorite"] = homeFavorite
+
+            #----- Figuring out Timeouts ---------
+            pbp_txt['timeouts'] = {}
+            pbp_txt['timeouts'][homeTeamId] = {"1": [], "2": []}
+            pbp_txt['timeouts'][awayTeamId] = {"1": [], "2": []}
 
             #----- Time ---------------
             pbp_txt['plays']['clock.mm'] = pbp_txt['plays']['clock.displayValue'].str.split(pat=':')
@@ -2554,7 +2530,6 @@ class PlayProcess(object):
                 play_df.wpa_change
             ], default =  play_df.wpa_base
         )
-
         # play_df['wp_after'] = play_df.wp_before + play_df.wpa
         # play_df['def_wp_after'] = 1 - play_df.wp_after
         # play_df['home_wp_after'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"],
