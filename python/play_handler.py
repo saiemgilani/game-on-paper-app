@@ -710,16 +710,11 @@ class PlayProcess(object):
         play_df['yds_penalty'] = play_df.yds_penalty.str.replace( "yards\\)|Yards\\)|yds\\)|Yds\\)", "").str.replace( "\\(", "")
         return play_df
 
-    def __clean_pbp_data(self, play_df):
+    def __add_downs_data(self, play_df):
         """
         Creates the following columns in play_df:
             * id, drive_id, game_id
-            * down, distance, half, period
-            * Flags for fumbles, scores, kickoffs, punts, field goals
-            * Rush, Pass, Sacks
-            * Team Score variables
-            * Fix play types
-            * Fix change of poss variables
+            * down, ydstogo (distance), game_half, period
         """
         play_df = play_df.copy(deep=True)
         play_df.loc[:,"id"] = play_df.id.astype(float)
@@ -744,12 +739,20 @@ class PlayProcess(object):
         play_df['down_2_end'] = (play_df["end.down"] == 2)
         play_df['down_3_end'] = (play_df["end.down"] == 3)
         play_df['down_4_end'] = (play_df["end.down"] == 4)
+        return play_df
 
+    def __add_play_type_flags(self, play_df):
+        """
+        Creates the following columns in play_df:
+            * Flags for fumbles, scores, kickoffs, punts, field goals
+        """
         #--- Touchdown, Fumble, Special Teams flags -----------------
         play_df.loc[:,"scoring_play"] = False
         play_df.loc[play_df["type.text"].isin(scores_vec), 'scoring_play'] = True
         play_df["td_play"] = play_df.text.str.contains(r"touchdown|for a TD", case=False, flags=0, na=False, regex=True)
         play_df["touchdown"] = play_df["type.text"].str.contains("touchdown", case=False, flags=0, na=False, regex=True)
+        ## Portion of touchdown check for plays where touchdown is not listed in the play_type--
+        play_df["td_check"] = play_df["text"].str.contains("Touchdown", case=False, flags=0, na=False, regex=True)
         play_df["safety"] = play_df["text"].str.contains("safety", case=False, flags=0, na=False, regex=True)
         #--- Fumbles----
         play_df["fumble_vec"] = play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True)
@@ -791,6 +794,13 @@ class PlayProcess(object):
         play_df["punt_blocked"] = np.where(
             (play_df["text"].str.contains("blocked", case=False, flags=0, na=False, regex=True)) & (play_df.punt == True), True, False
         )
+        return play_df
+
+    def __add_rush_pass_flags(self, play_df):
+        """
+        Creates the following columns in play_df:
+            * Rush, Pass, Sacks
+        """
         #--- Pass/Rush----
         play_df['rush'] = np.where(
             ((play_df["type.text"] == "Rush") |
@@ -825,6 +835,14 @@ class PlayProcess(object):
                 ))
             ), True, False
         )
+        return play_df
+
+    def __add_team_score_variables(self, play_df):
+        """
+        Creates the following columns in play_df:
+            * Team Score variables
+            * Fix change of poss variables
+        """
         #-------------------------
         play_df['pos_team'] = play_df['start.pos_team.id']
         play_df['def_pos_team'] = play_df['start.def_pos_team.id']
@@ -898,7 +916,7 @@ class PlayProcess(object):
             [
                 play_df.lag_pos_score_diff,
                 -1 * play_df.lag_pos_score_diff
-            ], 
+            ],
             default=play_df.lag_pos_score_diff
         )
         #--- Timeouts ------
@@ -907,6 +925,13 @@ class PlayProcess(object):
         play_df['end.pos_team_receives_2H_kickoff'] = (play_df["end.pos_team.id"] == play_df.firstHalfKickoffTeamId)
         play_df['change_of_poss'] = np.where(play_df["start.pos_team.id"] == play_df["end.pos_team.id"], False, True)
         play_df['change_of_poss'] = np.where(play_df['change_of_poss'].isna(), 0, play_df['change_of_poss'])
+        return play_df
+
+    def __add_new_play_types(self, play_df):
+        """
+        Creates the following columns in play_df:
+            * Fix play types
+        """
         #--------------------------------------------------
         ## Fix Strip-Sacks to Fumbles----
         play_df['type.text'] = np.where(
@@ -932,8 +957,6 @@ class PlayProcess(object):
             (play_df.change_of_poss == 1) & (play_df.td_play == True),
             "Fumble Recovery (Opponent) Touchdown", play_df['type.text']
         )
-        ## Portion of touchdown check for plays where touchdown is not listed in the play_type--
-        play_df["td_check"] = play_df["text"].str.contains("Touchdown", case=False, flags=0, na=False, regex=True)
 
         #-- Fix kickoff fumble return TDs ----
         play_df['type.text'] = np.where(
@@ -1101,7 +1124,9 @@ class PlayProcess(object):
                 (play_df["text"].str.contains("Two-Point", case=False, flags=0, na=False, regex=True)),
                 "Two-Point Conversion Missed", play_df['type.text']
         )
-        play_df = self.__setup_penalty_data(play_df)
+        return play_df
+
+    def __add_play_category_flags(self, play_df):
         #--------------------------------------------------
         #--- Sacks ----
         play_df['sack'] = np.select(
@@ -2072,6 +2097,22 @@ class PlayProcess(object):
         )
         return play_df
 
+    def __add_spread_time(self, play_df):
+        play_df['start.pos_team_spread'] = np.where(
+            (play_df["start.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
+        )
+        play_df['start.elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
+        play_df['start.spread_time'] = play_df['start.pos_team_spread'] * np.exp(-4 * play_df['start.elapsed_share'])
+        play_df['end.pos_team_spread'] = np.where(
+            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
+        )
+        play_df['end.pos_team_spread'] = np.where(
+            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
+        )
+        play_df['end.elapsed_share'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
+        play_df['end.spread_time'] = play_df['end.pos_team_spread'] * np.exp(-4 * play_df['end.elapsed_share'])
+        return play_df
+
     def __calculate_ep_exp_val(self, matrix):
         return matrix[:,0] * ep_class_to_score_mapping[0] + matrix[:,1] * ep_class_to_score_mapping[1] + matrix[:,2] * ep_class_to_score_mapping[2] + matrix[:,3] * ep_class_to_score_mapping[3] + matrix[:,4] * ep_class_to_score_mapping[4] + matrix[:,5] * ep_class_to_score_mapping[5] + matrix[:,6] * ep_class_to_score_mapping[6]
 
@@ -2115,7 +2156,7 @@ class PlayProcess(object):
 
         play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
         play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 75
-        
+
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
         # self.logger.info(end_data.iloc[[36]].to_json(orient="records"))
@@ -2271,7 +2312,7 @@ class PlayProcess(object):
             default = (play_df['EP_end'] - play_df['EP_start'])
         )
         play_df['def_EPA'] = -1*play_df['EPA']
-    #----- EPA Summary flags ------
+        #----- EPA Summary flags ------
         play_df['EPA_scrimmage'] = np.select(
             [
                 (play_df.scrimmage_play == True)
@@ -2406,15 +2447,7 @@ class PlayProcess(object):
         play_df['start.ExpScoreDiff_Time_Ratio_touchback'] = play_df['start.ExpScoreDiff_touchback'] / (play_df['start.adj_TimeSecsRem'] + 1)
         play_df['start.ExpScoreDiff_Time_Ratio'] = play_df['start.ExpScoreDiff'] / (play_df['start.adj_TimeSecsRem'] + 1)
 
-        play_df['start.pos_team_spread'] = np.where(
-            (play_df["start.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
-        )
-        play_df['start.elapsed_share'] = ((3600 - play_df['start.adj_TimeSecsRem']) / 3600).clip(0, 3600)
-        play_df['start.spread_time'] = play_df['start.pos_team_spread'] * np.exp(-4 * play_df['start.elapsed_share'])        
         #---- prepare variables for wp_after calculations ----
-        play_df['end.pos_team_spread'] = np.where(
-            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
-        )
         play_df['end.ExpScoreDiff'] = np.select(
             [
                 # Flips for Turnovers that aren't kickoffs
@@ -2443,11 +2476,6 @@ class PlayProcess(object):
             ], default = play_df['pos_score_diff_end']
         )
         play_df['end.ExpScoreDiff_Time_Ratio'] = play_df['end.ExpScoreDiff'] / (play_df["end.adj_TimeSecsRem"] + 1)
-        play_df['end.pos_team_spread'] = np.where(
-            (play_df["end.pos_team.id"] == play_df["homeTeamId"]), play_df['homeTeamSpread'], -1 * play_df['homeTeamSpread']
-        )
-        play_df['end.elapsed_share'] = ((3600 - play_df["end.adj_TimeSecsRem"]) / 3600).clip(0, 3600)
-        play_df['end.spread_time'] = play_df['end.pos_team_spread'] * np.exp(-4 * play_df['end.elapsed_share'])
         #---- wp_before ----
         start_touchback_data = play_df[wp_start_touchback_columns]
         start_touchback_data.columns = wp_final_names
@@ -2928,10 +2956,17 @@ class PlayProcess(object):
 
     def run_processing_pipeline(self):
         if (self.ran_pipeline == False):
-            self.plays_json = self.__clean_pbp_data(self.plays_json)
+            self.plays_json = self.__add_downs_data(self.plays_json)
+            self.plays_json = self.__add_play_type_flags(self.plays_json)
+            self.plays_json = self.__add_rush_pass_flags(self.plays_json)
+            self.plays_json = self.__add_team_score_variables(self.plays_json)
+            self.plays_json = self.__add_new_play_types(self.plays_json)
+            self.plays_json = self.__setup_penalty_data(self.plays_json)
+            self.plays_json = self.__add_play_category_flags(self.plays_json)
             self.plays_json = self.__add_yardage_cols(self.plays_json)
             self.plays_json = self.__add_player_cols(self.plays_json)
             self.plays_json = self.__after_cols(self.plays_json)
+            self.plays_json = self.__add_spread_time(self.plays_json)
             self.plays_json = self.__process_epa(self.plays_json)
             self.plays_json = self.__process_wpa(self.plays_json)
             self.plays_json = self.__add_drive_data(self.plays_json)
