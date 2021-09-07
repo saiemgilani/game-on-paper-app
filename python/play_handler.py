@@ -2926,8 +2926,8 @@ class PlayProcess(object):
         turnover_box_json[0]["Int"] = int(turnover_box_json[0]["Int"])
         turnover_box_json[1]["Int"] = int(turnover_box_json[1]["Int"])
 
-        turnover_box_json[0]["expected_turnover_margin"] = turnover_box_json[0]["expected_turnovers"] - turnover_box_json[1]["expected_turnovers"]
-        turnover_box_json[1]["expected_turnover_margin"] = turnover_box_json[1]["expected_turnovers"] - turnover_box_json[0]["expected_turnovers"]
+        turnover_box_json[0]["expected_turnover_margin"] = turnover_box_json[1]["expected_turnovers"] - turnover_box_json[0]["expected_turnovers"]
+        turnover_box_json[1]["expected_turnover_margin"] = turnover_box_json[0]["expected_turnovers"] - turnover_box_json[1]["expected_turnovers"]
 
         away_to = turnover_box_json[0]["fumbles_lost"] + turnover_box_json[0]["Int"]
         home_to = turnover_box_json[1]["fumbles_lost"] + turnover_box_json[1]["Int"]
