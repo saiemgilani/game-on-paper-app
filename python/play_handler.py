@@ -2105,11 +2105,12 @@ class PlayProcess(object):
         EP_start = self.__calculate_ep_exp_val(EP_start_parts)
 
         play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.TimeSecsRem"] = 0
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "end.yardsToEndzone"] = 99
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_1_end"] = True
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_2_end"] = False
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_3_end"] = False
-        play_df.loc[play_df["end.TimeSecsRem"] <= 0, "down_4_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "end.yardsToEndzone"] = 99
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_1_end"] = True
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_2_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_3_end"] = False
+        play_df.loc[(play_df["end.TimeSecsRem"] <= 0) & (play_df.period < 5), "down_4_end"] = False
+
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
@@ -2846,6 +2847,7 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_rate = ('havoc', mean),
             fumbles = ('fumble_vec', sum),
+            def_int = ('int', sum)
         )
         def_base_box = def_base_box.replace({np.nan:None})
 

@@ -104,6 +104,7 @@ stat_key_title_mapping = {
     "PD" : "Passes Defensed",
     "INT" : "&emsp;&emsp;Interceptions",
     "Int" : "&emsp;&emsp;Interceptions",
+    "def_int" : "Interceptions",
     "fumbles" : "Fumbles Forced",
     "total_fumbles" : "&emsp;&emsp;Fumbles",
     "fumbles_lost" : "&emsp;&emsp;Fumbles Lost",
@@ -573,7 +574,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","fumbles"]; %>
+                                                <% var columns = ["scrimmage_plays","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","def_int","fumbles"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
