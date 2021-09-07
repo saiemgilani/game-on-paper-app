@@ -39,7 +39,7 @@ class PlayProcess(object):
         self.ran_pipeline = False
 
     def download(self, url, num_retries=5): 
-    #     print('Downloading:', url)
+        #print('Downloading:', url)
         try:
             html = urllib.request.urlopen(url).read()
         except (URLError, HTTPError, ContentTooShortError) as e: 
@@ -128,10 +128,15 @@ class PlayProcess(object):
             pbp_txt['espnWP'] = espnWP
         # Spread definition
         pbp_txt['plays']["homeTeamSpread"] = 2.5
-        if len(pbp_txt['pickcenter']) > 0:
-            gameSpread =  pbp_txt['pickcenter'][0]['spread']
-            overUnder =  pbp_txt['pickcenter'][0]['overUnder']
-            homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']  
+        if len(pbp_txt['pickcenter']) > 1:
+            homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
+            if 'spread' in pbp_txt['pickcenter'][1].keys():
+                gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                overUnder =  pbp_txt['pickcenter'][1]['overUnder']
+            else:
+                gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                overUnder =  pbp_txt['pickcenter'][0]['overUnder']
+            self.logger.info(f"Spread: {gameSpread}, home Favorite: {homeFavorite}, ou: {overUnder}")
         else:
             gameSpread = 2.5
             overUnder = 55.5
@@ -218,10 +223,15 @@ class PlayProcess(object):
             pbp_txt['timeouts'][awayTeamId] = {"1": [], "2": []}
 
             pbp_txt['plays']["homeTeamSpread"] = 2.5
-            if len(pbp_txt['pickcenter']) > 0:
-                gameSpread =  pbp_txt['pickcenter'][0]['spread']
-                overUnder =  pbp_txt['pickcenter'][0]['overUnder']
-                homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']  
+            if len(pbp_txt['pickcenter']) > 1:
+                homeFavorite = pbp_txt['pickcenter'][0]['homeTeamOdds']['favorite']
+                if 'spread' in pbp_txt['pickcenter'][1].keys():
+                    gameSpread =  pbp_txt['pickcenter'][1]['spread']
+                    overUnder =  pbp_txt['pickcenter'][1]['overUnder']
+                else:
+                    gameSpread =  pbp_txt['pickcenter'][0]['spread']
+                    overUnder =  pbp_txt['pickcenter'][0]['overUnder']
+                self.logger.info(f"Spread: {gameSpread}, home Favorite: {homeFavorite}, ou: {overUnder}")
             else:
                 gameSpread = 2.5
                 overUnder = 55.5
