@@ -2000,10 +2000,10 @@ class PlayProcess(object):
             (play_df['start.distance'] < 2) & (play_df.rush == True), True, False
         )
         play_df['power_rush_success'] = np.where(
-            (play_df['start.distance'] < 2) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
+            (play_df['start.distance'] < 2) & (play_df['start.down'].isin([3, 4])) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
         )
         play_df['power_rush_attempt'] = np.where(
-            (play_df['start.distance'] < 2) & (play_df.rush == True), True, False
+            (play_df['start.distance'] < 2) & (play_df['start.down'].isin([3, 4])) & (play_df.rush == True), True, False
         )
         play_df['early_down'] = np.where(
             ((play_df.down_1 == True) | (play_df.down_2 == True)) & (play_df.scrimmage_play == True), True, False
