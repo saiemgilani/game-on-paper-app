@@ -113,7 +113,7 @@ def process():
 
         record["winProbability"] = {
             "before" : record["wp_before"],
-            "after" : record["wp_after"],
+            "after" : record["wp_after"] if (record["start.pos_team.id"] == record["end.pos_team.id"]) else (1 - record["wp_after"]),
             "added" : record["wpa"]
         }
 
