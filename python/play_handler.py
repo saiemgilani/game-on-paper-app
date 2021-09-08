@@ -2959,9 +2959,10 @@ class PlayProcess(object):
         drives_data = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             drive_total_available_yards = ('drive_start', sum),
             drive_total_gained_yards = ('drive.yards', sum),
+            avg_field_position = ('drive.yards', mean),
             plays_per_drive = ('drive.offensivePlays', mean),
             yards_per_drive = ('drive.yards', mean),
-            drives = ('drive.id', pd.Series.nunique),
+            drives = ('drive.id', pd.Series.nunique)
         )
         drives_data['drive_total_gained_yards_rate'] = (100 * drives_data.drive_total_gained_yards / drives_data.drive_total_available_yards).round(2)
 

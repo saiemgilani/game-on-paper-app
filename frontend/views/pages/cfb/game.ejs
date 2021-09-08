@@ -126,7 +126,8 @@ stat_key_title_mapping = {
     "drives" : "Total",
     "drive_total_gained_yards_rate" : "Available Yards %",
     "yards_per_drive" : "Yards/Drive",
-    "plays_per_drive" : "Plays/Drive"
+    "plays_per_drive" : "Plays/Drive",
+    "avg_field_position": "Avg Starting Field Position"
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -383,14 +384,20 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate"]; 
-                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive"];
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position"]; 
+                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position"];
                 let nonRatePercentColumns = ["drive_total_gained_yards_rate"];
                 function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
                     let finalDecimalPoints = decimalPoints || 1;
                     var result = ""
-                    if (nonRatePercentColumns.includes(item)) {
+                    if (item == "avg_field_position") {
+                        finalTeamInfo.forEach(teamData => {
+                            let val = teamData[item] || 0;
+                            let prefix = parseFloat(val) >= 50 ? "Own" : "Opp"
+                            result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(parseFloat(val), 2, 0)}</td>`;
+                        });
+                    } else if (nonRatePercentColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
                             let val = teamData[item] || 0;
                             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
@@ -584,7 +591,8 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                             <div class="table-responsive">
                                                 <% var columns = [
                                                     "drives",
-                                                    ,"plays_per_drive",
+                                                    "avg_field_position",
+                                                    "plays_per_drive",
                                                     "yards_per_drive",
                                                     "drive_total_gained_yards_rate"
                                                 ]; 
