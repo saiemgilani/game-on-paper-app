@@ -394,8 +394,9 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     if (item == "avg_field_position") {
                         finalTeamInfo.forEach(teamData => {
                             let val = teamData[item] || 0;
-                            let prefix = parseFloat(val) >= 50 ? "Own" : "Opp"
-                            result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(parseFloat(val), 2, 0)}</td>`;
+                            let prefix = (val >= 50) ? "Own" : "Opp"
+                            let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
+                            result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
                         });
                     } else if (nonRatePercentColumns.includes(item)) {
                         finalTeamInfo.forEach(teamData => {
