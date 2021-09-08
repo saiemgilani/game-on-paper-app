@@ -2660,7 +2660,7 @@ class PlayProcess(object):
         pass_box = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)]
         rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)]
         # pass_box.yds_receiving.fillna(0.0, inplace=True)
-        passer_box = pass_box[(pass_box["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
+        passer_box = pass_box[(pass_box["pass"] == True) & (pass_box["scrimmage_play"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False).agg(
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
             Yds = ('yds_receiving',sum),
