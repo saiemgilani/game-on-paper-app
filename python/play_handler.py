@@ -2591,7 +2591,7 @@ class PlayProcess(object):
         play_df['drive_offense_plays'] = np.where((play_df['sp']==False) & (play_df['scrimmage_play'] == True), play_df['play'].astype(int), 0)
         play_df['prog_drive_EPA'] = base_groups['EPA_scrimmage'].apply(lambda x: x.cumsum())
         play_df['prog_drive_WPA'] = base_groups['wpa'].apply(lambda x: x.cumsum())
-        play_df['drive_offense_yards'] = np.where(play_df['sp']==False & (play_df['scrimmage_play'] == True), play_df['statYardage'], 0)
+        play_df['drive_offense_yards'] = np.where((play_df['sp']==False) & (play_df['scrimmage_play'] == True), play_df['statYardage'], 0)
         play_df['drive_total_yards'] = play_df.groupby(['drive.id'])['drive_offense_yards'].apply(lambda x: x.cumsum())
         return play_df
 
@@ -2956,6 +2956,15 @@ class PlayProcess(object):
         turnover_box_json[0]["turnover_luck"] = 5.0 * (turnover_box_json[0]["turnover_margin"] - turnover_box_json[0]["expected_turnover_margin"])
         turnover_box_json[1]["turnover_luck"] = 5.0 * (turnover_box_json[1]["turnover_margin"] - turnover_box_json[1]["expected_turnover_margin"])
 
+        drives_data = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
+            drive_total_available_yards = ('drive_start', sum),
+            drive_total_gained_yards = ('drive.yards', sum),
+            plays_per_drive = ('drive.offensivePlays', mean),
+            yards_per_drive = ('drive.yards', mean),
+            drives = ('drive.id', pd.Series.nunique),
+        )
+        drives_data['drive_total_gained_yards_rate'] = (100 * drives_data.drive_total_gained_yards / drives_data.drive_total_available_yards).round(2)
+
         return {
             "pass" : json.loads(passer_box.to_json(orient="records")),
             "rush" : json.loads(rusher_box.to_json(orient="records")),
@@ -2963,7 +2972,8 @@ class PlayProcess(object):
             "team" : json.loads(team_box.to_json(orient="records")),
             "situational" : json.loads(situation_box.to_json(orient="records")),
             "defensive" : def_box_json,
-            "turnover" : turnover_box_json
+            "turnover" : turnover_box_json,
+            "drives" : json.loads(drives_data.to_json(orient="records"))
         }
 
     def run_processing_pipeline(self):
