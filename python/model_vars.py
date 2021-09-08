@@ -147,7 +147,7 @@ defense_score_vec = [
     "Punt Return Touchdown",
     "Fumble Recovery (Opponent) Touchdown",
     "Fumble Return Touchdown",
-    "Kickoff Return Touchdown",
+    "Kickoff Touchdown", #<--- Kickoff Team recovers the return team fumble and scores
     "Defensive 2pt Conversion",
     "Safety",
     "Sack Touchdown",
@@ -201,7 +201,7 @@ offense_score_vec = [
     "Fumble Recovery (Own) Touchdown",
     "Punt Touchdown", #<--- Punting Team recovers the return team fumble and scores
     "Punt Team Fumble Recovery Touchdown",
-    "Kickoff Touchdown", #<--- Kickoff Team recovers the return team fumble and scores
+    "Kickoff Return Touchdown",
     "Kickoff Team Fumble Recovery Touchdown"
 ]
 punt_vec = [
