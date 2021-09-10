@@ -2732,7 +2732,7 @@ class PlayProcess(object):
         dtest_qbr = xgb.DMatrix(pass_qbr[qbr_vars])
         qbr_result = qbr_model.predict(dtest_qbr)
         pass_qbr["exp_qbr"] = qbr_result
-        passer_box = pd.merge(passer_box, pass_qbr, left_on="passer_player_name", right_on="athlete_name")
+        passer_box = pd.merge(passer_box, pass_qbr, left_on=["passer_player_name","pos_team"], right_on=["athlete_name","pos_team"])
 
         rusher_box = rush_box.fillna(0.0).groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
             Car= ('rush', sum),
