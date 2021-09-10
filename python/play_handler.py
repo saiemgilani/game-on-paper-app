@@ -26,6 +26,9 @@ ep_model.load_model('models/ep_model.model')
 wp_model = xgb.Booster({'nthread': 4})  # init model
 wp_model.load_model('models/wp_spread.model')
 
+qbr_model = xgb.Booster({'nthread': 4})  # init model
+qbr_model.load_model('models/qbr_model.model')
+
     #---------------------------------
 class PlayProcess(object):
 
@@ -2674,6 +2677,62 @@ class PlayProcess(object):
             Sck = ('sack', sum)
         ).round(2)
         passer_box = passer_box.replace({np.nan: None})
+        qbs_list = passer_box.passer_player_name.to_list()
+
+        pass_qbr_piece_box = self.plays_json[(self.plays_json["scrimmage_play"] == True) & ((self.plays_json.passer_player_name.isin(qbs_list)) | (self.plays_json.rusher_player_name.isin(qbs_list)))].copy()
+        pass_qbr_piece_box['qbr_epa'] = np.where(pass_qbr_piece_box.EPA < -5.0, -5.0, pass_qbr_piece_box.EPA)
+        pass_qbr_piece_box.qbr_epa = np.where(pass_qbr_piece_box.fumble_vec == 1, -3.5, pass_qbr_piece_box.qbr_epa)
+        pass_qbr_piece_box['weight'] = np.where((pass_qbr_piece_box.home_wp_before < .1) | (pass_qbr_piece_box.home_wp_before > .9), .6, 1)
+        pass_qbr_piece_box.weight = np.where((((pass_qbr_piece_box.home_wp_before >= .1) & (pass_qbr_piece_box.home_wp_before < .2)) | ((pass_qbr_piece_box.home_wp_before >= .8) & (pass_qbr_piece_box.home_wp_before < .9))), .9, pass_qbr_piece_box.weight)
+        pass_qbr_piece_box['non_fumble_sack'] = (pass_qbr_piece_box['sack_vec'] == 1) & (pass_qbr_piece_box['fumble_vec'] == 0)
+
+        pass_qbr_piece_box['sack_epa'] = np.where(pass_qbr_piece_box['non_fumble_sack'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
+        pass_qbr_piece_box['pass_epa'] = np.where(pass_qbr_piece_box['pass'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
+        pass_qbr_piece_box['rush_epa'] = np.where(pass_qbr_piece_box['rush'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
+        pass_qbr_piece_box['pen_epa'] = np.where(pass_qbr_piece_box['penalty_flag'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
+
+        pass_qbr_piece_box['sack_weight'] = np.where(pass_qbr_piece_box['non_fumble_sack'] == True, pass_qbr_piece_box['weight'], np.NaN)
+        pass_qbr_piece_box['pass_weight'] = np.where(pass_qbr_piece_box['pass'] == True, pass_qbr_piece_box['weight'], np.NaN)
+        pass_qbr_piece_box['rush_weight'] = np.where(pass_qbr_piece_box['rush'] == True, pass_qbr_piece_box['weight'], np.NaN)
+        pass_qbr_piece_box['pen_weight'] = np.where(pass_qbr_piece_box['penalty_flag'] == True, pass_qbr_piece_box['weight'], np.NaN)
+
+        pass_qbr_piece_box['action_play'] = (pass_qbr_piece_box.EPA != 0)
+        pass_qbr_piece_box['athlete_name'] = np.select(
+            [
+                pass_qbr_piece_box.passer_player_name.notna(),
+                pass_qbr_piece_box.rusher_player_name.notna(),
+            ],
+            [
+                pass_qbr_piece_box.passer_player_name,
+                pass_qbr_piece_box.rusher_player_name
+            ],
+            default=None
+        )
+        self.logger.info(f"Pass QBR has {len(pass_qbr_piece_box)} formatted records")
+
+        def weighted_mean(name, values, weights):
+            names = { name: (values * weights).sum() / weights.sum() }
+            return pd.Series(names)
+
+        pass_qbr_box = pass_qbr_piece_box[(pass_qbr_piece_box.athlete_name.notna() == True)]
+        qbr_weight = pass_qbr_box.weight
+        sack_weight = pass_qbr_box.sack_weight
+        pass_weight = pass_qbr_box.pass_weight
+        rush_weight = pass_qbr_box.rush_weight
+        pen_weight = pass_qbr_box.pen_weight
+        pass_qbr = pass_qbr_box.groupby(by=["pos_team","athlete_name"], as_index=False).agg(
+            qbr_epa = ('qbr_epa', lambda x: weighted_mean('qbr_epa', x, qbr_weight)),
+            sack_epa = ('sack_epa',lambda x: weighted_mean('sack_epa', x, sack_weight)),
+            pass_epa = ('pass_epa',lambda x: weighted_mean('pass_epa', x, pass_weight)),
+            rush_epa = ('rush_epa',lambda x: weighted_mean('rush_epa', x, rush_weight)),
+            pen_epa = ('pen_epa',lambda x: weighted_mean('pen_epa', x, pen_weight)),
+        )
+        # self.logger.info(pass_qbr[qbr_vars])
+
+        dtest_qbr = xgb.DMatrix(pass_qbr[qbr_vars])
+        qbr_result = qbr_model.predict(dtest_qbr)
+        pass_qbr["exp_qbr"] = qbr_result
+        passer_box = pd.merge(passer_box, pass_qbr, left_on=["passer_player_name","pos_team"], right_on=["athlete_name","pos_team"])
 
         rusher_box = rush_box.fillna(0.0).groupby(by=["pos_team","rusher_player_name"], as_index=False).agg(
             Car= ('rush', sum),
