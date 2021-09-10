@@ -264,11 +264,3 @@ kickoff_turnovers = [
     "Kickoff Team Fumble Recovery",
     "Kickoff Team Fumble Recovery Touchdown"
 ]
-
-qbr_vars = [
-    "qbr_epa",
-    "sack_epa",
-    "pass_epa",
-    "rush_epa",
-    "pen_epa"
-]
