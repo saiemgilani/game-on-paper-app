@@ -2428,6 +2428,37 @@ class PlayProcess(object):
         )
         return play_df
 
+    def __process_qbr__(self, play_df):
+        play_df['qbr_epa'] = np.where(play_df.EPA < -5.0, -5.0, play_df.EPA)
+        play_df.qbr_epa = np.where(play_df.fumble_vec == 1, -3.5, play_df.qbr_epa)
+        play_df['weight'] = np.where((play_df.home_wp_before < .1) | (play_df.home_wp_before > .9), .6, 1)
+        play_df.weight = np.where((((play_df.home_wp_before >= .1) & (play_df.home_wp_before < .2)) | ((play_df.home_wp_before >= .8) & (play_df.home_wp_before < .9))), .9, play_df.weight)
+        play_df['non_fumble_sack'] = (play_df['sack_vec'] == 1) & (play_df['fumble_vec'] == 0)
+
+        play_df['sack_epa'] = np.where(play_df['non_fumble_sack'] == True, play_df['qbr_epa'], np.NaN)
+        play_df['pass_epa'] = np.where(play_df['pass'] == True, play_df['qbr_epa'], np.NaN)
+        play_df['rush_epa'] = np.where(play_df['rush'] == True, play_df['qbr_epa'], np.NaN)
+        play_df['pen_epa'] = np.where(play_df['penalty_flag'] == True, play_df['qbr_epa'], np.NaN)
+
+        play_df['sack_weight'] = np.where(play_df['non_fumble_sack'] == True, play_df['weight'], np.NaN)
+        play_df['pass_weight'] = np.where(play_df['pass'] == True, play_df['weight'], np.NaN)
+        play_df['rush_weight'] = np.where(play_df['rush'] == True, play_df['weight'], np.NaN)
+        play_df['pen_weight'] = np.where(play_df['penalty_flag'] == True, play_df['weight'], np.NaN)
+
+        play_df['action_play'] = (play_df.EPA != 0)
+        play_df['athlete_name'] = np.select(
+            [
+                play_df.passer_player_name.notna(),
+                play_df.rusher_player_name.notna(),
+            ],
+            [
+                play_df.passer_player_name,
+                play_df.rusher_player_name
+            ],
+            default=None
+        )
+        return play_df
+
     def __process_wpa(self, play_df):
         #---- prepare variables for wp_before calculations ----
         play_df['start.ExpScoreDiff_touchback'] = np.select(
@@ -2679,42 +2710,11 @@ class PlayProcess(object):
         passer_box = passer_box.replace({np.nan: None})
         qbs_list = passer_box.passer_player_name.to_list()
 
-        pass_qbr_piece_box = self.plays_json[(self.plays_json["scrimmage_play"] == True) & ((self.plays_json.passer_player_name.isin(qbs_list)) | (self.plays_json.rusher_player_name.isin(qbs_list)))].copy()
-        pass_qbr_piece_box['qbr_epa'] = np.where(pass_qbr_piece_box.EPA < -5.0, -5.0, pass_qbr_piece_box.EPA)
-        pass_qbr_piece_box.qbr_epa = np.where(pass_qbr_piece_box.fumble_vec == 1, -3.5, pass_qbr_piece_box.qbr_epa)
-        pass_qbr_piece_box['weight'] = np.where((pass_qbr_piece_box.home_wp_before < .1) | (pass_qbr_piece_box.home_wp_before > .9), .6, 1)
-        pass_qbr_piece_box.weight = np.where((((pass_qbr_piece_box.home_wp_before >= .1) & (pass_qbr_piece_box.home_wp_before < .2)) | ((pass_qbr_piece_box.home_wp_before >= .8) & (pass_qbr_piece_box.home_wp_before < .9))), .9, pass_qbr_piece_box.weight)
-        pass_qbr_piece_box['non_fumble_sack'] = (pass_qbr_piece_box['sack_vec'] == 1) & (pass_qbr_piece_box['fumble_vec'] == 0)
-
-        pass_qbr_piece_box['sack_epa'] = np.where(pass_qbr_piece_box['non_fumble_sack'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
-        pass_qbr_piece_box['pass_epa'] = np.where(pass_qbr_piece_box['pass'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
-        pass_qbr_piece_box['rush_epa'] = np.where(pass_qbr_piece_box['rush'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
-        pass_qbr_piece_box['pen_epa'] = np.where(pass_qbr_piece_box['penalty_flag'] == True, pass_qbr_piece_box['qbr_epa'], np.NaN)
-
-        pass_qbr_piece_box['sack_weight'] = np.where(pass_qbr_piece_box['non_fumble_sack'] == True, pass_qbr_piece_box['weight'], np.NaN)
-        pass_qbr_piece_box['pass_weight'] = np.where(pass_qbr_piece_box['pass'] == True, pass_qbr_piece_box['weight'], np.NaN)
-        pass_qbr_piece_box['rush_weight'] = np.where(pass_qbr_piece_box['rush'] == True, pass_qbr_piece_box['weight'], np.NaN)
-        pass_qbr_piece_box['pen_weight'] = np.where(pass_qbr_piece_box['penalty_flag'] == True, pass_qbr_piece_box['weight'], np.NaN)
-
-        pass_qbr_piece_box['action_play'] = (pass_qbr_piece_box.EPA != 0)
-        pass_qbr_piece_box['athlete_name'] = np.select(
-            [
-                pass_qbr_piece_box.passer_player_name.notna(),
-                pass_qbr_piece_box.rusher_player_name.notna(),
-            ],
-            [
-                pass_qbr_piece_box.passer_player_name,
-                pass_qbr_piece_box.rusher_player_name
-            ],
-            default=None
-        )
-        self.logger.info(f"Pass QBR has {len(pass_qbr_piece_box)} formatted records")
-
         def weighted_mean(name, values, weights):
             names = { name: (values * weights).sum() / weights.sum() }
             return pd.Series(names)
 
-        pass_qbr_box = pass_qbr_piece_box[(pass_qbr_piece_box.athlete_name.notna() == True)]
+        pass_qbr_box = self.plays_json[(self.plays_json.athlete_name.notna() == True) & (self.plays_json.scrimmage_play == True) & (self.plays_json.athlete_name.isin(qbs_list))]
         qbr_weight = pass_qbr_box.weight
         sack_weight = pass_qbr_box.sack_weight
         pass_weight = pass_qbr_box.pass_weight
@@ -3052,6 +3052,7 @@ class PlayProcess(object):
             self.plays_json = self.__process_epa(self.plays_json)
             self.plays_json = self.__process_wpa(self.plays_json)
             self.plays_json = self.__add_drive_data(self.plays_json)
+            self.plays_json = self.__process_qbr__(self.plays_json)
             self.plays_json = self.plays_json.replace({np.nan: None})
             self.ran_pipeline = True
         else:
