@@ -574,7 +574,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                     <thead>
                                                         <tr>
                                                             <th class="box-heading">Situational</th>
-                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                            <% gameData.advBoxScore.situational.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
@@ -656,7 +656,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                     <thead>
                                                         <tr>
                                                             <th class="box-heading">Turnovers</th>
-                                                            <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
+                                                            <% gameData.advBoxScore.turnover.map(group => group.pos_team).forEach(value => { %>
                                                                 <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
