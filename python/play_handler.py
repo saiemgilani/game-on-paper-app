@@ -1005,6 +1005,12 @@ class PlayProcess(object):
             (play_df['text'].str.contains("for a TD", case=False, flags=0, na=False, regex=True)),
             "Blocked Field Goal Touchdown", play_df['type.text']
         )
+
+        play_df['type.text'] = np.where(
+            (play_df['type.text'].isin(["Blocked Punt"])) &
+            (play_df['text'].str.contains("for a TD", case=False, flags=0, na=False, regex=True)),
+            "Blocked Punt Touchdown", play_df['type.text']
+        )
         #-- Fix duplicated TD play_type labels----
         play_df['type.text'] = np.where(play_df['type.text'] == "Punt Touchdown Touchdown", "Punt Touchdown", play_df['type.text'])
         play_df['type.text'] = np.where(play_df['type.text'] == "Fumble Return Touchdown Touchdown", "Fumble Return Touchdown", play_df['type.text'])
