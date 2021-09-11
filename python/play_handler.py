@@ -2840,22 +2840,22 @@ class PlayProcess(object):
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None})
 
-        situation_box_normal = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_normal = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success = ('EPA_success', sum),
             EPA_success_rate = ('EPA_success', mean),
         )
 
-        situation_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_pass = ('EPA_success', sum),
             EPA_success_pass_rate = ('EPA_success', mean),
         )
 
-        situation_box_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_rush = ('EPA_success', sum),
             EPA_success_rush_rate = ('EPA_success', mean),
         )
 
-        situation_box_middle8 = self.plays_json[(self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_middle8 = self.plays_json[(self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             middle_8 = ('middle_8', sum),
             middle_8_pass_rate = ('pass', mean),
             middle_8_rush_rate = ('rush', mean),
@@ -2865,7 +2865,7 @@ class PlayProcess(object):
             EPA_middle_8_success_rate = ('EPA_success', mean),
         )
 
-        situation_box_middle8_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_middle8_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             middle_8_pass = ('pass', sum),
             EPA_middle_8_pass = ('EPA', sum),
             EPA_middle_8_pass_per_play = ('EPA', mean),
@@ -2873,7 +2873,7 @@ class PlayProcess(object):
             EPA_middle_8_success_pass_rate = ('EPA_success', mean),
         )
 
-        situation_box_middle8_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"]).agg(
+        situation_box_middle8_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["middle_8"] == True) & (self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
             middle_8_rush = ('rush', sum),
 
             EPA_middle_8_rush = ('EPA', sum),
@@ -2883,7 +2883,7 @@ class PlayProcess(object):
             EPA_middle_8_success_rush_rate = ('EPA_success', mean),
         )
 
-        situation_box_early = self.plays_json[(self.plays_json.early_down == True)].groupby(by=["pos_team"]).agg(
+        situation_box_early = self.plays_json[(self.plays_json.early_down == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_early_down = ('EPA_success', sum),
             EPA_success_early_down_rate = ('EPA_success', mean),
             early_downs = ('early_down', sum),
@@ -2895,7 +2895,7 @@ class PlayProcess(object):
             early_down_first_down_rate = ('first_down_created', mean)
         )
 
-        situation_box_early_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.early_down == True)].groupby(by=["pos_team"]).agg(
+        situation_box_early_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.early_down == True)].groupby(by=["pos_team"], as_index=False).agg(
             early_down_pass = ('pass', sum),
             EPA_early_down_pass = ('EPA', sum),
             EPA_early_down_pass_per_play = ('EPA', mean),
@@ -2903,7 +2903,7 @@ class PlayProcess(object):
             EPA_success_early_down_pass_rate = ('EPA_success', mean),
         )
 
-        situation_box_early_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.early_down == True)].groupby(by=["pos_team"]).agg(
+        situation_box_early_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.early_down == True)].groupby(by=["pos_team"], as_index=False).agg(
             early_down_rush = ('rush', sum),
             EPA_early_down_rush = ('EPA', sum),
             EPA_early_down_rush_per_play = ('EPA', mean),
@@ -2911,7 +2911,7 @@ class PlayProcess(object):
             EPA_success_early_down_rush_rate = ('EPA_success', mean),
         )
 
-        situation_box_late = self.plays_json[(self.plays_json.late_down == True)].groupby(by=["pos_team"]).agg(
+        situation_box_late = self.plays_json[(self.plays_json.late_down == True)].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_late_down = ('EPA_success_late_down', sum),
             EPA_success_late_down_pass = ('EPA_success_late_down_pass', sum),
             EPA_success_late_down_rush = ('EPA_success_late_down_rush', sum),
@@ -2927,13 +2927,13 @@ class PlayProcess(object):
             late_down_rush_rate = ('late_down_rush', mean)
         )
 
-        situation_box_standard = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"]).agg(
+        situation_box_standard = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_standard_down = ('EPA_success_standard_down', sum),
             EPA_success_standard_down_rate = ('EPA_success_standard_down', mean),
             EPA_standard_down = ('EPA_success_standard_down', sum),
             EPA_standard_down_per_play = ('EPA_success_standard_down', mean)
         )
-        situation_box_passing = self.plays_json[self.plays_json.passing_down == True].groupby(by=["pos_team"]).agg(
+        situation_box_passing = self.plays_json[self.plays_json.passing_down == True].groupby(by=["pos_team"], as_index=False).agg(
             EPA_success_passing_down = ('EPA_success_passing_down', sum),
             EPA_success_passing_down_rate = ('EPA_success_passing_down', mean),
             EPA_passing_down = ('EPA_success_standard_down', sum),
