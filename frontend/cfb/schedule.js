@@ -83,6 +83,25 @@ exports.getGames = async function (year, week, type, group) {
                 result = result.concat(schedule.games)
             }
         })
+        result.sort((a, b) => {
+            var aVal = a.status.type.id
+            var bVal = b.status.type.id
+            if (aVal < bVal) {
+                return -1
+            } else if (aVal > bVal) {
+                return 1
+            } else {
+                var aDate = Date.parse(a.startDate)
+                var bDate = Date.parse(b.startDate)
+                if (aDate > bDate) {
+                    return -1
+                } else if (aDate < bDate) {
+                    return 1
+                } else {
+                    return 0
+                }
+            }
+        })
         return result;
     }
 }
