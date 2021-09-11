@@ -1005,6 +1005,12 @@ class PlayProcess(object):
             (play_df['text'].str.contains("for a TD", case=False, flags=0, na=False, regex=True)),
             "Blocked Field Goal Touchdown", play_df['type.text']
         )
+
+        play_df['type.text'] = np.where(
+            (play_df['type.text'].isin(["Blocked Punt"])) &
+            (play_df['text'].str.contains("for a TD", case=False, flags=0, na=False, regex=True)),
+            "Blocked Punt Touchdown", play_df['type.text']
+        )
         #-- Fix duplicated TD play_type labels----
         play_df['type.text'] = np.where(play_df['type.text'] == "Punt Touchdown Touchdown", "Punt Touchdown", play_df['type.text'])
         play_df['type.text'] = np.where(play_df['type.text'] == "Fumble Return Touchdown Touchdown", "Fumble Return Touchdown", play_df['type.text'])
@@ -2711,7 +2717,7 @@ class PlayProcess(object):
         qbs_list = passer_box.passer_player_name.to_list()
 
         def weighted_mean(name, values, weights):
-            names = { name: (values * weights).sum() / weights.sum() }
+            names = { name: ((values * weights).sum() / weights.sum()) if (len(weights) > 0 and weights.sum() > 0) else 0 }
             return pd.Series(names)
 
         pass_qbr_box = self.plays_json[(self.plays_json.athlete_name.notna() == True) & (self.plays_json.scrimmage_play == True) & (self.plays_json.athlete_name.isin(qbs_list))]
