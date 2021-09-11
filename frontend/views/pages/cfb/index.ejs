@@ -117,9 +117,9 @@
                                     <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
                                         <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
                                             <p class="card-text text-muted mb-2">
-                                            <% if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK")) { %>
+                                            <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
                                                 (PAT) <%= gameComp.situation.lastPlay.text %>
-                                            <% } else if (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
+                                            <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
                                                 (Kickoff) <%= gameComp.situation.lastPlay.text %>
                                             <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
                                                 <%= gameComp.situation.lastPlay.text %>
