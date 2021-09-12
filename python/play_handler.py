@@ -2046,7 +2046,7 @@ class PlayProcess(object):
 
         play_df['highlight_yards'] = np.select(
             [
-                (play_df.rush == 1) & (play_df.line_yards > 4),
+                (play_df.rush == 1) & (play_df.yds_rushed > 4),
                 (play_df.rush == 1)
             ],
             [
