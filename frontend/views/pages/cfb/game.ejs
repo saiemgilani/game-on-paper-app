@@ -709,7 +709,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
                                                                 <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
+                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] || 0 %></td>
                                                                 <% }); %>
                                                             </tr>
                                                         <% }); %>

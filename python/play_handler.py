@@ -3037,6 +3037,8 @@ class PlayProcess(object):
         ).round(2)
         turnover_box = turnover_box.replace({np.nan:None})
         turnover_box_json = json.loads(turnover_box.to_json(orient="records"))
+        for i in range(len(turnover_box_json), 2):
+            turnover_box_json.append({})
 
         team_def_box = self.json["boxscore"]["players"]
         for (idx, team) in enumerate(team_def_box):
@@ -3049,7 +3051,7 @@ class PlayProcess(object):
                     turnover_box_json[idx][label] = round(float(total), 2)
                     def_box_json[idx][label] = round(float(total), 2)
 
-        total_fumbles = reduce(lambda x, y: x+y, map(lambda x: x["total_fumbles"], turnover_box_json))
+        total_fumbles = reduce(lambda x, y: x+y, map(lambda x: (x["total_fumbles"] if ("total_fumbles" in x.keys()) else 0), turnover_box_json))
 
         away_passes_def = turnover_box_json[1]["PD"] if ("PD" in turnover_box_json[1].keys()) else 0
         away_passes_int = turnover_box_json[0]["Int"] if ("Int" in turnover_box_json[0].keys()) else 0
