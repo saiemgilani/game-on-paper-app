@@ -2897,13 +2897,17 @@ class PlayProcess(object):
             rushing_highlight = ('highlight_run', sum),
             rushing_highlight_rate = ('highlight_run', mean),
             rushing_highlight_yards = ('highlight_yards', sum),
-            rushing_highlight_yards_per_opp = ('opp_highlight_yards', mean),
             line_yards = ('line_yards', sum),
             line_yards_per_carry = ('line_yards', mean),
             second_level_yards = ('second_level_yards', sum),
             open_field_yards = ('open_field_yards', sum)
         ).round(2)
-        team_data_frames = [team_pen_box, team_sp_box, team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
+
+        team_rush_opp_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["scrimmage_play"] == True) & (self.plays_json.opportunity_run == True)].fillna(0).groupby(by=["pos_team"], as_index=False).agg(
+            rushing_highlight_yards_per_opp = ('opp_highlight_yards', mean),
+        ).round(2)
+
+        team_data_frames = [team_rush_opp_box, team_pen_box, team_sp_box, team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None})
 
