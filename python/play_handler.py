@@ -723,7 +723,7 @@ class PlayProcess(object):
         play_df.loc[:,"id"] = play_df.id.astype(float)
         play_df.sort_values(by=["id", "start.adj_TimeSecsRem"], inplace=True)
         play_df.drop_duplicates(subset=['text','id','type.text','start.down'], keep="last", inplace=True)
-        play_df = play_df.loc[play_df['type.text'].str.contains("end of| coin toss |end period",case=False, regex=True) == False,:].copy()
+        play_df = play_df[(play_df['type.text'].str.contains("end of |coin toss|end period ", case=False, regex=True) == False)]
 
         play_df.loc[:,"period"] = play_df["period.number"].astype(int)
         play_df.loc[(play_df.period <= 2), 'half'] = 1
