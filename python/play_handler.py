@@ -2877,7 +2877,10 @@ class PlayProcess(object):
             rushing_power = ('power_rush_attempt', sum),
         )
 
-        team_rush_box = self.plays_json[(self.plays_json["rush"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+        self.plays_json.opp_highlight_yards = self.plays_json.opp_highlight_yards.astype(float)
+        self.plays_json.highlight_yards = self.plays_json.highlight_yards.astype(float)
+        self.plays_json.line_yards = self.plays_json.line_yards.astype(float)
+        team_rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0).groupby(by=["pos_team"], as_index=False).agg(
             rushing_stuff = ('stuffed_run', sum),
             rushing_stuff_rate = ('stuffed_run', mean),
             rushing_stopped = ('stopped_run', sum),
