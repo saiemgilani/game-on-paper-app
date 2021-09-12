@@ -43,7 +43,7 @@ stat_key_title_mapping = {
     "EPA_plays" : "Total Plays",
     "scrimmage_plays" : "Scrimmage Plays",
     "EPA_overall_total" : "Total EPA",
-    "EPA_overall_off" : "Offensive EPA",
+    "EPA_overall_off" : "&emsp;&emsp;EPA",
     "EPA_overall_offense" : "&emsp;&emsp;Offensive EPA",
     "EPA_passing_overall" : "&emsp;&emsp;EPA",
     "EPA_rushing_overall" : "&emsp;&emsp;EPA",
@@ -127,7 +127,22 @@ stat_key_title_mapping = {
     "drive_total_gained_yards_rate" : "Available Yards %",
     "yards_per_drive" : "Yards/Drive",
     "plays_per_drive" : "Plays/Drive",
-    "avg_field_position": "Avg Starting Field Position"
+    "avg_field_position": "Avg Starting Field Position",
+    "rushing_highlight_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">Highlight Yards</a>",
+    "rushing_highlight_yards_per_opp": "&emsp;&emsp;Per Rush Opportunity",
+    "line_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">OL Line Yards</a>",
+    "line_yards_per_carry": "&emsp;&emsp;Per Carry",
+    "yards_per_rush": "&emsp;&emsp;Yards/Play",
+    "yards_per_pass": "&emsp;&emsp;Yards/Play",
+    "yards_per_play": "&emsp;&emsp;Yards/Play",
+    "off_yards" : "&emsp;&emsp;Yards",
+    "rush_yards" : "&emsp;&emsp;Yards",
+    "pass_yards" : "&emsp;&emsp;Yards",
+    "total_yards":  "Total Yards",
+    "total_off_yards" : "&emsp;&emsp;Offensive Yards",
+    "total_sp_yards":"&emsp;&emsp;Special Teams Yards",
+    "total_pen_yards":"&emsp;&emsp;Penalty Yards",
+    "EPA_misc" : "&emsp;&emsp;Non-Scrimmage/Misc EPA"
 }
 turnover_vec = [
     "Blocked Field Goal",
@@ -384,14 +399,23 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         <% } %>
         <% if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME") || gameData.gameInfo.status.type.completed == true) { %> 
             <%
-                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position"]; 
-                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position"];
+                let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total"]; 
+                let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play"];
                 let nonRatePercentColumns = ["drive_total_gained_yards_rate"];
                 function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                     let finalTeamInfo = (teamInfo == null) ? gameData.advBoxScore.team : teamInfo;
                     let finalDecimalPoints = decimalPoints || 1;
                     var result = ""
-                    if (item == "avg_field_position") {
+                    if (item == "EPA_misc") {
+                        finalTeamInfo.forEach(teamData => {
+                            let overall = parseFloat(teamData['EPA_overall_total']) || 0;
+                            let off = parseFloat(teamData['EPA_overall_offense']) || 0;
+                            let sp_epa = parseFloat(teamData['EPA_special_teams']) || 0;
+                            let pen_epa = parseFloat(teamData['EPA_penalty']) || 0;
+                            let val = (overall - off - sp_epa - pen_epa)
+                            result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+                        });
+                    } else if (item == "avg_field_position") {
                         finalTeamInfo.forEach(teamData => {
                             let val = teamData[item] || 0;
                             let prefix = (val >= 50) ? "Own" : "Opp"
@@ -455,7 +479,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays", "EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty"]; %>
+                                                <% var columns = ["EPA_plays","EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty", "EPA_misc"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -469,9 +493,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <% gameData.advBoxScore.team.forEach(teamData => { %>
-                                                                    <td class="numeral" style="text-align: center;"><%= teamData[item] %></td>
-                                                                <% }); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.team, true, 2); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>
@@ -479,7 +501,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                             </div>
                                             
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","EPA_overall_off","EPA_per_play","passes","EPA_passing_overall","EPA_passing_per_play","rushes", "EPA_rushing_overall","EPA_rushing_per_play"]; %>
+                                                <% var columns = ["scrimmage_plays","off_yards","yards_per_play","EPA_overall_off","EPA_per_play","passes","pass_yards","yards_per_pass","EPA_passing_overall","EPA_passing_per_play","rushes","rush_yards","yards_per_rush", "EPA_rushing_overall","EPA_rushing_per_play"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -500,7 +522,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 </table>
                                             </div>
                                             <div class="table-responsive">
-                                                <% var columns = ["scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","rushing_highlight"]; %>
+                                                <% var columns = ["scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","line_yards","line_yards_per_carry","rushing_highlight_yards","rushing_highlight_yards_per_opp"]; %>
                                                 <table class="table table-sm table-responsive">
                                                     <thead>
                                                         <tr>
@@ -514,7 +536,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <% columns.forEach(item => { %>
                                                             <tr>
                                                                 <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, gameData.advBoxScore.team, true); %>
+                                                                <%- handleRates(item, gameData.advBoxScore.team, true, 2); %>
                                                             </tr>
                                                         <% }); %>
                                                     </tbody>

@@ -2027,6 +2027,45 @@ class PlayProcess(object):
         play_df['stopped_run'] =  np.where((play_df.rush == True) & (play_df.yds_rushed <= 2), True, False)
         play_df['opportunity_run'] =  np.where((play_df.rush == True) & (play_df.yds_rushed >= 4), True, False)
         play_df['highlight_run'] =  np.where((play_df.rush == True) & (play_df.yds_rushed >= 8), True, False)
+
+        play_df['line_yards'] = np.select(
+            [
+                (play_df.rush == 1) & (play_df.yds_rushed < 0),
+                (play_df.rush == 1) & (play_df.yds_rushed >= 0) & (play_df.yds_rushed <= 4),
+                (play_df.rush == 1) & (play_df.yds_rushed >= 5) & (play_df.yds_rushed <= 10),
+                (play_df.rush == 1) & (play_df.yds_rushed >= 11)
+            ],
+            [
+                -1.2 * play_df.yds_rushed,
+                play_df.yds_rushed,
+                0.5 * play_df.yds_rushed,
+                0.0
+            ],
+            default=None
+        )
+
+        play_df['highlight_yards'] = np.select(
+            [
+                (play_df.rush == 1) & (play_df.line_yards.notna())
+            ],
+            [
+                (play_df.yds_rushed - play_df.line_yards)
+            ],
+            default=None
+        )
+
+        play_df['opp_highlight_yards'] = np.select(
+            [
+                (play_df.opportunity_run == True)
+            ],
+            [
+                play_df['highlight_yards']
+            ],
+            default=None
+        )
+
+        play_df['second_level_yards'] = np.where((play_df.rush == 1) & (play_df.yds_rushed >= 5) & (play_df.yds_rushed <= 10), play_df.yds_rushed, None)
+
         play_df['short_rush_success'] = np.where(
             (play_df['start.distance'] < 2) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
         )
@@ -2772,8 +2811,13 @@ class PlayProcess(object):
 
         team_base_box = self.plays_json.groupby(by=["pos_team"], as_index=False).agg(
             EPA_plays = ('play', sum),
-            EPA_penalty = ('EPA_penalty', sum),
+            total_yards = ('statYardage', sum),
             EPA_overall_total = ('EPA', sum),
+        ).round(2)
+
+        team_pen_box = self.plays_json[(self.plays_json.penalty_flag == True)].groupby(by=["pos_team"], as_index=False).agg(
+            total_pen_yards = ('statYardage', sum),
+            EPA_penalty = ('EPA_penalty', sum),
         ).round(2)
 
         team_scrimmage_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False).agg(
@@ -2783,7 +2827,10 @@ class PlayProcess(object):
             EPA_per_play = ('EPA', mean),
             EPA_explosive = ('EPA_explosive', sum),
             EPA_explosive_rate = ('EPA_explosive', mean),
-            passes_rate = ('pass', mean)
+            passes_rate = ('pass', mean),
+            off_yards = ('statYardage', sum),
+            total_off_yards = ('statYardage', sum),
+            yards_per_play = ('statYardage', mean)
         ).round(2)
 
         team_sp_box = self.plays_json[(self.plays_json.sp == True)].groupby(by=["pos_team"], as_index=False).agg(
@@ -2793,11 +2840,13 @@ class PlayProcess(object):
             EPA_fg = ('EPA_fg', sum),
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
-            EPA_kickoff = ('EPA_kickoff', sum),
+            EPA_kickoff = ('EPA_kickoff', sum)
         ).round(2)
 
-        team_scrimmage_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+        team_scrimmage_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0).groupby(by=["pos_team"], as_index=False).agg(
             passes = ('pass', sum),
+            pass_yards = ('yds_receiving', sum),
+            yards_per_pass = ('yds_receiving', mean),
             EPA_passing_overall = ('EPA', sum),
             EPA_passing_per_play = ('EPA', mean),
             EPA_explosive_passing = ('EPA_explosive', sum),
@@ -2810,6 +2859,8 @@ class PlayProcess(object):
             EPA_explosive_rushing = ('EPA_explosive', sum),
             EPA_explosive_rushing_rate = ('EPA_explosive', mean),
             rushes = ('rush', sum),
+            rush_yards = ('yds_rushed', sum),
+            yards_per_rush = ('yds_rushed', mean),
             rushing_power_rate = ('power_rush_attempt', mean),
         ).round(2)
 
@@ -2835,8 +2886,12 @@ class PlayProcess(object):
             rushing_opportunity_rate = ('opportunity_run', mean),
             rushing_highlight = ('highlight_run', sum),
             rushing_highlight_rate = ('highlight_run', mean),
-        )
-        team_data_frames = [team_sp_box, team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
+            rushing_highlight_yards = ('highlight_yards', sum),
+            rushing_highlight_yards_per_opp = ('opp_highlight_yards', mean),
+            line_yards = ('line_yards', sum),
+            line_yards_per_carry = ('line_yards', mean),
+        ).round(2)
+        team_data_frames = [team_pen_box, team_sp_box, team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
         team_box = team_box.replace({np.nan:None})
 
