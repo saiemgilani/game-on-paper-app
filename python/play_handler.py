@@ -2840,11 +2840,10 @@ class PlayProcess(object):
             EPA_fg = ('EPA_fg', sum),
             EPA_punt = ('EPA_punt', sum),
             kickoff_plays = ('kickoff_play', sum),
-            EPA_kickoff = ('EPA_kickoff', sum),
-            total_sp_yards = ('statYardage', sum),
+            EPA_kickoff = ('EPA_kickoff', sum)
         ).round(2)
 
-        team_scrimmage_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].groupby(by=["pos_team"], as_index=False).agg(
+        team_scrimmage_box_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0).groupby(by=["pos_team"], as_index=False).agg(
             passes = ('pass', sum),
             pass_yards = ('yds_receiving', sum),
             yards_per_pass = ('yds_receiving', mean),
