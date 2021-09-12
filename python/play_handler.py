@@ -3037,8 +3037,9 @@ class PlayProcess(object):
         ).round(2)
         turnover_box = turnover_box.replace({np.nan:None})
         turnover_box_json = json.loads(turnover_box.to_json(orient="records"))
-        for i in range(len(turnover_box_json), 2):
-            turnover_box_json.append({})
+        if (len(turnover_box_json) < 2):
+            for i in range(len(turnover_box_json), 2):
+                turnover_box_json.append({})
 
         team_def_box = self.json["boxscore"]["players"]
         for (idx, team) in enumerate(team_def_box):
