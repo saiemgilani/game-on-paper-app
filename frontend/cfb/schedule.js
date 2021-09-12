@@ -84,15 +84,15 @@ exports.getGames = async function (year, week, type, group) {
             }
         })
         result.sort((a, b) => {
-            var aVal = a.status.type.id
-            var bVal = b.status.type.id
+            var aVal = parseInt(a.status.type.id)
+            var bVal = parseInt(b.status.type.id)
             if (aVal < bVal) {
                 return -1
             } else if (aVal > bVal) {
                 return 1
             } else {
-                var aDate = Date.parse(a.startDate)
-                var bDate = Date.parse(b.startDate)
+                var aDate = Date.parse(a.date)
+                var bDate = Date.parse(b.date)
                 if (aDate > bDate) {
                     return -1
                 } else if (aDate < bDate) {
