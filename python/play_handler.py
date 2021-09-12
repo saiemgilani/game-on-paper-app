@@ -2065,6 +2065,7 @@ class PlayProcess(object):
         )
 
         play_df['second_level_yards'] = np.where((play_df.rush == 1) & (play_df.yds_rushed >= 5) & (play_df.yds_rushed <= 10), play_df.yds_rushed, None)
+        play_df['open_field_yards'] = np.where((play_df.rush == 1) & (play_df.yds_rushed >= 11), play_df.yds_rushed, None)
 
         play_df['short_rush_success'] = np.where(
             (play_df['start.distance'] < 2) & (play_df.rush == True) & (play_df.statYardage >= play_df['start.distance']), True, False
@@ -2880,6 +2881,8 @@ class PlayProcess(object):
         self.plays_json.opp_highlight_yards = self.plays_json.opp_highlight_yards.astype(float)
         self.plays_json.highlight_yards = self.plays_json.highlight_yards.astype(float)
         self.plays_json.line_yards = self.plays_json.line_yards.astype(float)
+        self.plays_json.second_level_yards = self.plays_json.second_level_yards.astype(float)
+        self.plays_json.open_field_yards = self.plays_json.open_field_yards.astype(float)
         team_rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json["scrimmage_play"] == True)].fillna(0).groupby(by=["pos_team"], as_index=False).agg(
             rushing_stuff = ('stuffed_run', sum),
             rushing_stuff_rate = ('stuffed_run', mean),
@@ -2893,6 +2896,8 @@ class PlayProcess(object):
             rushing_highlight_yards_per_opp = ('opp_highlight_yards', mean),
             line_yards = ('line_yards', sum),
             line_yards_per_carry = ('line_yards', mean),
+            second_level_yards = ('second_level_yards', sum),
+            open_field_yards = ('open_field_yards', sum)
         ).round(2)
         team_data_frames = [team_pen_box, team_sp_box, team_scrimmage_box_rush, team_scrimmage_box_pass, team_scrimmage_box, team_base_box, team_rush_base_box, team_rush_power_box, team_rush_box]
         team_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), team_data_frames)
