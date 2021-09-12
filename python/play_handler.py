@@ -2588,12 +2588,16 @@ class PlayProcess(object):
         # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
+
+        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
         play_df['wp_after'] = np.select(
             [
-                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
-                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+                (play_df['type.text'] == "Timeout"),
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
             ],
             [
+                play_df.wp_before,
                 1.0,
                 0.0
             ],
