@@ -2036,7 +2036,7 @@ class PlayProcess(object):
                 (play_df.rush == 1) & (play_df.yds_rushed >= 11)
             ],
             [
-                -1.2 * play_df.yds_rushed,
+                1.2 * play_df.yds_rushed,
                 play_df.yds_rushed,
                 0.5 * play_df.yds_rushed,
                 0.0
@@ -2046,20 +2046,24 @@ class PlayProcess(object):
 
         play_df['highlight_yards'] = np.select(
             [
-                (play_df.rush == 1) & (play_df.line_yards.notna())
+                (play_df.rush == 1) & (play_df.line_yards > 4),
+                (play_df.rush == 1)
             ],
             [
-                (play_df.yds_rushed - play_df.line_yards)
+                (play_df.yds_rushed - play_df.line_yards),
+                0.0
             ],
             default=None
         )
 
         play_df['opp_highlight_yards'] = np.select(
             [
-                (play_df.opportunity_run == True)
+                (play_df.opportunity_run == True),
+                (play_df.opportunity_run == False) & (play_df.rush == 1)
             ],
             [
-                play_df['highlight_yards']
+                play_df['highlight_yards'],
+                0.0
             ],
             default=None
         )
