@@ -2139,8 +2139,16 @@ class PlayProcess(object):
             ],
             default=False
         )
-        play_df['TFL'] = np.where(
-            (play_df['type.text'] != 'Penalty') & (play_df.sp == False) & (play_df.statYardage < 0), True, False
+        play_df['TFL'] = np.select(
+            [
+                (play_df['type.text'] != 'Penalty') & (play_df.sp == False) & (play_df.statYardage < 0),
+                (play_df['sack_vec'] == True)
+            ],
+            [
+                True,
+                True
+            ],
+            default=False
         )
         play_df['TFL_pass'] = np.where(
             (play_df['TFL'] == True) & (play_df['pass'] == True), True, False
@@ -2149,7 +2157,7 @@ class PlayProcess(object):
             (play_df['TFL'] == True) & (play_df['rush'] == True), True, False
         )
         play_df['havoc'] = np.where(
-            (play_df['sack_vec'] == True)|(play_df['forced_fumble'] == True)|(play_df['int'] == True)|(play_df['TFL'] == True)|(play_df['pass_breakup'] == True),
+            (play_df['forced_fumble'] == True)|(play_df['int'] == True)|(play_df['TFL'] == True)|(play_df['pass_breakup'] == True),
             True, False
         )
         play_df['havoc_pass'] = np.where(
