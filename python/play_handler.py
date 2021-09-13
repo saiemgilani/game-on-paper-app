@@ -758,7 +758,17 @@ class PlayProcess(object):
         play_df["td_check"] = play_df["text"].str.contains("Touchdown", case=False, flags=0, na=False, regex=True)
         play_df["safety"] = play_df["text"].str.contains("safety", case=False, flags=0, na=False, regex=True)
         #--- Fumbles----
-        play_df["fumble_vec"] = play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True)
+        play_df["fumble_vec"] = np.select(
+            [
+                play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True),
+                (~play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True)) & (play_df["type.text"] == "Rush") & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"])
+            ],
+            [
+                True,
+                True
+            ],
+            default=False
+        )
         play_df["forced_fumble"] = play_df["text"].str.contains("forced by", case=False, flags=0, na=False, regex=True)
         #--- Kicks----
         play_df["kickoff_play"] = (play_df["type.text"].isin(kickoff_vec))
