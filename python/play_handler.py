@@ -2139,7 +2139,7 @@ class PlayProcess(object):
             (play_df['TFL'] == True) & (play_df['rush'] == True), True, False
         )
         play_df['havoc'] = np.where(
-            (play_df['forced_fumble'] == True)|(play_df['int'] == True)|(play_df['TFL'] == True)|(play_df['pass_breakup'] == True),
+            (play_df['sack_vec'] == True)|(play_df['forced_fumble'] == True)|(play_df['int'] == True)|(play_df['TFL'] == True)|(play_df['pass_breakup'] == True),
             True, False
         )
         play_df['havoc_pass'] = np.where(
