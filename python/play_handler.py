@@ -2692,6 +2692,7 @@ class PlayProcess(object):
             100 - play_df["drive.start.yardLine"],
             play_df["drive.start.yardLine"]
         )
+        play_df['drive_stopped'] = play_df["drive.result"].str.contains("punt|fumble|interception|downs",regex=True, case=False)
         play_df['drive_start'] = play_df['drive_start'].astype(float)
         play_df['drive_play_index'] = base_groups['scrimmage_play'].apply(lambda x: x.cumsum())
         play_df['drive_offense_plays'] = np.where((play_df['sp']==False) & (play_df['scrimmage_play'] == True), play_df['play'].astype(int), 0)
@@ -3043,8 +3044,10 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_rate = ('havoc', mean),
             fumbles = ('fumble_vec', sum),
-            def_int = ('int', sum)
+            def_int = ('int', sum),
+            drive_stopped_rate = ('drive_stopped', mean)
         )
+        def_base_box.drive_stopped_rate = 100 * def_base_box.drive_stopped_rate
         def_base_box = def_base_box.replace({np.nan:None})
 
         def_box_havoc_pass = self.plays_json[(self.plays_json.scrimmage_play == True) & (self.plays_json["pass"] == True)].groupby(by=["def_pos_team"], as_index=False).agg(
