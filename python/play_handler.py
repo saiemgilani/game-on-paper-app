@@ -3019,6 +3019,7 @@ class PlayProcess(object):
         situation_box = reduce(lambda left,right: pd.merge(left,right,on=['pos_team'], how='outer'), situation_data_frames)
         situation_box = situation_box.replace({np.nan:None})
 
+        self.plays_json.drive_stopped = self.plays_json.drive_stopped.astype(float)
         def_base_box = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["def_pos_team"], as_index=False).agg(
             scrimmage_plays = ('scrimmage_play', sum),
             TFL = ('TFL', sum),
