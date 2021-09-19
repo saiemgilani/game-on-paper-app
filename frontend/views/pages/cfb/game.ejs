@@ -231,7 +231,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             </div>
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
-                <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} plays, ${play.drive_total_yards} yards</p>
+                <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} play${(parseInt(play.drive_play_index) == 1) ? "" : "s"}, ${play.drive_total_yards} yards</p>
                 <p style="text-align: center;"><strong>Win Probability (Before):</strong> ${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</p>
                 <p style="text-align: center;"><strong>Win Probability (After):</strong> ${roundNumber(parseFloat(play.winProbability.after) * 100, 3, 1)}%</p>
                 <p style="text-align: center;"><strong>Away Score:</strong> ${play.start.awayScore} (${play.awayScore}) <strong>Home Score:</strong> ${play.start.homeScore} (${play.homeScore})</p>    
