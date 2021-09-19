@@ -2252,6 +2252,10 @@ class PlayProcess(object):
             (play_df["type.text"].str.lower().str.contains("end of game", case=False, flags=0, na=False, regex=True)) | 
             (play_df["type.text"].str.lower().str.contains("end of half", case=False, flags=0, na=False, regex=True)) | 
             (play_df["type.text"].str.lower().str.contains("end of half", case=False, flags=0, na=False, regex=True)),
+
+            # Def 2pt conversion is its own play
+            (play_df["type.text"].isin(["Defensive 2pt Conversion"])),
+
             # Safeties
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('safety', case=False, regex=True))),
@@ -2321,6 +2325,7 @@ class PlayProcess(object):
         ],
         [
             0,
+            -2,
             -2,
             -6,
             -8,
