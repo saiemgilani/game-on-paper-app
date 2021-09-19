@@ -1310,7 +1310,7 @@ class PlayProcess(object):
         )
         play_df['change_of_pos_team'] = np.where(play_df['change_of_poss'].isna(), False, play_df['change_of_pos_team'])
         play_df["pos_score_diff_end"] = np.where(
-            (play_df["type.text"].isin(end_change_vec)) | (play_df.downs_turnover == True),
+            ((play_df["type.text"].isin(end_change_vec)) & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"])) | (play_df.downs_turnover == True),
             -1*play_df.pos_score_diff,  play_df.pos_score_diff
         )
         play_df['pos_score_diff_end'] = np.select(
