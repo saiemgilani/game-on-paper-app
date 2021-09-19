@@ -250,9 +250,10 @@ class PlayProcess(object):
                 ], default = 60*pbp_txt['plays']['clock.minutes'].astype(int) + pbp_txt['plays']['clock.seconds'].astype(int)
             )
             # Pos Team - Start and End Id
+            pbp_txt['plays']['id'] = pbp_txt['plays']['id'].apply(lambda x: int(x))
+            pbp_txt['plays'] = pbp_txt['plays'].sort_values(by=["id", "start.adj_TimeSecsRem"])
             pbp_txt['plays']['game_play_number'] = np.arange(len(pbp_txt['plays']))+1
             pbp_txt['plays']['text'] = pbp_txt['plays']['text'].astype(str)
-            pbp_txt['plays']['id'] = pbp_txt['plays']['id'].apply(lambda x: int(x))
             pbp_txt['plays']["start.team.id"] = pbp_txt['plays']["start.team.id"].fillna(method='ffill').apply(lambda x: int(x))
             pbp_txt['plays']["end.team.id"] = pbp_txt['plays']["end.team.id"].fillna(value=pbp_txt['plays']["start.team.id"]).apply(lambda x: int(x))
             pbp_txt['plays']['start.pos_team.id'] = np.select(
@@ -723,7 +724,7 @@ class PlayProcess(object):
         play_df.loc[:,"id"] = play_df.id.astype(float)
         play_df.sort_values(by=["id", "start.adj_TimeSecsRem"], inplace=True)
         play_df.drop_duplicates(subset=['text','id','type.text','start.down'], keep="last", inplace=True)
-        play_df = play_df[(play_df['type.text'].str.contains("end of |coin toss|end period ", case=False, regex=True) == False)]
+        play_df = play_df[(play_df['type.text'].str.contains("end of|coin toss|end period", case=False, regex=True) == False)]
 
         play_df.loc[:,"period"] = play_df["period.number"].astype(int)
         play_df.loc[(play_df.period <= 2), 'half'] = 1
@@ -758,7 +759,17 @@ class PlayProcess(object):
         play_df["td_check"] = play_df["text"].str.contains("Touchdown", case=False, flags=0, na=False, regex=True)
         play_df["safety"] = play_df["text"].str.contains("safety", case=False, flags=0, na=False, regex=True)
         #--- Fumbles----
-        play_df["fumble_vec"] = play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True)
+        play_df["fumble_vec"] = np.select(
+            [
+                play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True),
+                (~play_df["text"].str.contains("fumble", case=False, flags=0, na=False, regex=True)) & (play_df["type.text"] == "Rush") & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"])
+            ],
+            [
+                True,
+                True
+            ],
+            default=False
+        )
         play_df["forced_fumble"] = play_df["text"].str.contains("forced by", case=False, flags=0, na=False, regex=True)
         #--- Kicks----
         play_df["kickoff_play"] = (play_df["type.text"].isin(kickoff_vec))
@@ -2129,8 +2140,16 @@ class PlayProcess(object):
             ],
             default=False
         )
-        play_df['TFL'] = np.where(
-            (play_df['type.text'] != 'Penalty') & (play_df.sp == False) & (play_df.statYardage < 0), True, False
+        play_df['TFL'] = np.select(
+            [
+                (play_df['type.text'] != 'Penalty') & (play_df.sp == False) & (play_df.statYardage < 0),
+                (play_df['sack_vec'] == True)
+            ],
+            [
+                True,
+                True
+            ],
+            default=False
         )
         play_df['TFL_pass'] = np.where(
             (play_df['TFL'] == True) & (play_df['pass'] == True), True, False
@@ -2234,6 +2253,10 @@ class PlayProcess(object):
             (play_df["type.text"].str.lower().str.contains("end of game", case=False, flags=0, na=False, regex=True)) | 
             (play_df["type.text"].str.lower().str.contains("end of half", case=False, flags=0, na=False, regex=True)) | 
             (play_df["type.text"].str.lower().str.contains("end of half", case=False, flags=0, na=False, regex=True)),
+
+            # Def 2pt conversion is its own play
+            (play_df["type.text"].isin(["Defensive 2pt Conversion"])),
+
             # Safeties
             ((play_df["type.text"].isin(defense_score_vec)) & 
             (play_df["text"].str.lower().str.contains('safety', case=False, regex=True))),
@@ -2303,6 +2326,7 @@ class PlayProcess(object):
         ],
         [
             0,
+            -2,
             -2,
             -6,
             -8,
@@ -2588,10 +2612,13 @@ class PlayProcess(object):
         # self.logger.info(start_data.iloc[[36]].to_json(orient="records"))
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
+
+        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
+
         play_df['wp_after'] = np.select(
             [
-                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
-                ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
             ],
             [
                 1.0,
@@ -2671,6 +2698,7 @@ class PlayProcess(object):
             100 - play_df["drive.start.yardLine"],
             play_df["drive.start.yardLine"]
         )
+        play_df['drive_stopped'] = play_df["drive.result"].str.contains("punt|fumble|interception|downs",regex=True, case=False)
         play_df['drive_start'] = play_df['drive_start'].astype(float)
         play_df['drive_play_index'] = base_groups['scrimmage_play'].apply(lambda x: x.cumsum())
         play_df['drive_offense_plays'] = np.where((play_df['sp']==False) & (play_df['scrimmage_play'] == True), play_df['play'].astype(int), 0)
@@ -3022,8 +3050,10 @@ class PlayProcess(object):
             havoc_total = ('havoc', sum),
             havoc_total_rate = ('havoc', mean),
             fumbles = ('fumble_vec', sum),
-            def_int = ('int', sum)
+            def_int = ('int', sum),
+            drive_stopped_rate = ('drive_stopped', mean)
         )
+        def_base_box.drive_stopped_rate = 100 * def_base_box.drive_stopped_rate
         def_base_box = def_base_box.replace({np.nan:None})
 
         def_box_havoc_pass = self.plays_json[(self.plays_json.scrimmage_play == True) & (self.plays_json["pass"] == True)].groupby(by=["def_pos_team"], as_index=False).agg(
