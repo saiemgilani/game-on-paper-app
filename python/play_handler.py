@@ -2612,19 +2612,45 @@ class PlayProcess(object):
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
 
-        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
+        play_df['lead_wp_before'] = play_df['wp_before'].shift(-1)
+        play_df['lead_wp_before2'] = play_df['wp_before'].shift(-2)
 
+        play_df['wp_after'] = WP_end
+        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
         play_df['wp_after'] = np.select(
             [
+                (play_df['type.text'] == "Timeout"),
                 game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
-                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0),
+
+                (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] == play_df.lead_pos_team) & (play_df['type.text'] != "Timeout"),
+                (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] != play_df['end.pos_team.id']) & (play_df['type.text'] != "Timeout"),
+                (play_df.end_of_half == 1) & (play_df['start.pos_team_receives_2H_kickoff'] == False) & (play_df['type.text'] == "Timeout"),
+
+                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 0),
+                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 1),
+
+                (play_df['kickoff_onside'] == True) & (play_df['start.def_pos_team.id'] == play_df['end.pos_team.id']), # onside recovery
+                (play_df['start.pos_team.id'] != play_df['end.pos_team.id'])
             ],
             [
+                play_df.wp_before,
                 1.0,
-                0.0
+                0.0,
+
+                play_df.lead_wp_before,
+                (1 - play_df.lead_wp_before),
+                play_df.wp_after,
+
+                play_df.lead_wp_before,
+                (1 - play_df.lead_wp_before),
+
+                play_df.wp_after,
+                (1 - play_df.wp_after)
             ],
-            default = WP_end
+            default = play_df.wp_after
         )
+
         play_df['def_wp_after']  = 1 - play_df.wp_after
         play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_after,
@@ -2632,62 +2658,8 @@ class PlayProcess(object):
         play_df['away_wp_after'] = np.where(play_df['end.pos_team.id'] != play_df["homeTeamId"],
                                             play_df.wp_after,
                                             play_df.def_wp_after)
-        play_df['lead_wp_before'] = play_df['wp_before'].shift(-1)
-        play_df['lead_wp_before2'] = play_df['wp_before'].shift(-2)
 
-        # base wpa
-        play_df['wpa_base'] = play_df.wp_after - play_df.wp_before
-        play_df['wpa_base_nxt'] = play_df.lead_wp_before - play_df.wp_before
-        play_df['wpa_base_nxt2'] = play_df.lead_wp_before2 - play_df.wp_before
-        play_df['wpa_base_ind'] = (play_df['start.pos_team.id'] == play_df['end.pos_team.id'])
-        play_df['wpa_base_nxt_ind'] = (play_df['start.pos_team.id'] == play_df.lead_pos_team)
-        play_df['wpa_base_nxt2_ind'] = (play_df['start.pos_team.id'] == play_df.lead_pos_team2)
-
-        # account for turnover
-        play_df['wpa_change'] = (1 - play_df.wp_after) - play_df.wp_before
-        play_df['wpa_change_nxt'] = (1 - play_df.lead_wp_before) - play_df.wp_before
-        play_df['wpa_change_nxt2'] = (1 - play_df.lead_wp_before2) - play_df.wp_before
-        play_df['wpa_change_ind'] = (play_df['start.pos_team.id'] != play_df['end.pos_team.id'])
-        play_df['wpa_change_nxt_ind'] = (play_df['start.pos_team.id'] != play_df.lead_pos_team)
-        play_df['wpa_change_nxt2_ind'] = (play_df['start.pos_team.id'] != play_df.lead_pos_team2)
-        play_df['wpa_half_end'] = np.select(
-            [
-                (play_df.end_of_half == 1) & (play_df.wpa_base_nxt_ind == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.end_of_half == 1) & (play_df.wpa_change_nxt_ind == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.end_of_half == 1) & (play_df['start.pos_team_receives_2H_kickoff'] == False) & (play_df['type.text'] == "Timeout"),
-                (play_df.wpa_change_ind == 1)
-            ],
-            [
-                play_df.wpa_base_nxt,
-                play_df.wpa_change_nxt,
-                play_df.wpa_base,
-                play_df.wpa_change
-            ], default = play_df.wpa_base
-        )
-
-        play_df['wpa'] = np.select(
-            [
-                (play_df.end_of_half == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 0),
-                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 1),
-                (play_df.wpa_change_ind == 1)
-            ],
-            [
-                play_df.wpa_half_end,
-                play_df.wpa_base_nxt,
-                play_df.wpa_change_nxt,
-                play_df.wpa_change
-            ], default =  play_df.wpa_base
-        )
-        # play_df['wp_after'] = play_df.wp_before + play_df.wpa
-        # play_df['def_wp_after'] = 1 - play_df.wp_after
-        # play_df['home_wp_after'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"],
-        #                 play_df.home_wp_before + play_df.wpa,
-        #                 play_df.home_wp_before - play_df.wpa)
-        # play_df['away_wp_after'] = np.where(play_df['start.pos_team.id'] != play_df["homeTeamId"],
-        #                 play_df.away_wp_before + play_df.wpa,
-        #                 play_df.away_wp_before - play_df.wpa)
-
+        play_df['wpa'] = play_df.wp_after - play_df.wp_before
         return play_df
 
     def __add_drive_data(self, play_df):
