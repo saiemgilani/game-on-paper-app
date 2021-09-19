@@ -377,7 +377,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> | 
-                            <% } %>Spread: <%= printSpread() %>
+                            <% } %>Odds: <%= printSpread() %>, O/U <%= roundNumber(parseFloat(gameData.overUnder), 2, 1) %>
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
@@ -474,7 +474,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             %>
             <div id="team-stats" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <h2 id="team-stats" class="d-inline">Team Stats</h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                    <h2 id="team-stats" class="d-inline">Team Stats <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#boxScoreContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                     <div class="panel-group">
                         <div class="panel panel-default">
                             <div id="boxScoreContent" class="panel-collapse show">
@@ -751,7 +751,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= awayTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                                <h2 class="d-inline"><%= awayTeam.location %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                             </div>
                           </div>
                           <div id="awayTeamCollapse" class="panel-collapse show">
@@ -837,7 +837,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <div class="panel panel-default">
                           <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 class="d-inline"><%= homeTeam.location %></h2> <span class="d-inline text-small"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                                <h2 class="d-inline"><%= homeTeam.location %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                             </div>
                           </div>
                           <div id="homeTeamCollapse" class="panel-collapse show">
@@ -948,29 +948,41 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         %>
         <div class="row mb-3">
             <div class="col-lg-6 ms-sm-auto px-md-4" id="big-plays">
-                <div>
-                    <h2>Big Plays</h2>
-                    <p class="text-small">As determined by absolute EPA.</p>
-                </div>
-                <div class="table-responsive">
-                    <%- buildPlayTable(bigPlays, "big-play", true, "No big plays listed for this game.", false); %>
-                </div>
-                
-            </div>
-            <div class="col-lg-6 ms-sm-auto px-md-4" id="most-imp-plays">
-                
                 <div class="panel-group">
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <div class="panel-title">
-                                <h2>Most Important Plays</h2>
-                                <p class="text-small">As determined by absolute WPA.</p>
+                                <h2>Big Plays <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#bigPlaysTable" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                                <p class="text-small">As determined by absolute EPA.</p>
+                            </div>
+                        </div>
+                        <div id="bigPlaysTable" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <div class="table-responsive">
+                                    <%- buildPlayTable(bigPlays, "big-play", true, "No big plays listed for this game.", false); %>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <%- buildPlayTable(mostImpPlays, "most-imp-play", true, "No important plays listed for this game.", false); %>
+            </div>
+            <div class="col-lg-6 ms-sm-auto px-md-4" id="most-imp-plays">
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <h2>Most Important Plays <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#importantPlaysTable" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                                <p class="text-small">As determined by absolute WPA.</p>
+                            </div>
+                        </div>
+                        <div id="importantPlaysTable" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <div class="table-responsive">
+                                    <%- buildPlayTable(mostImpPlays, "most-imp-play", true, "No important plays listed for this game.", false); %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -981,7 +993,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 id="scoring-plays">Scoring Plays</h2><span class="d-inline text-small"><a data-bs-toggle="collapse" href="#scoringPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                                <h2 id="scoring-plays">Scoring Plays <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#scoringPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                             </div>
                         </div>
                         <div id="scoringPlayTable" class="panel-collapse collapse">
@@ -1009,7 +1021,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <div class="panel-title">
-                                <h2 id="all-plays">All Plays</h2><span class="d-inline text-small"><a data-bs-toggle="collapse" href="#allPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show]</a></span>
+                                <h2 id="all-plays">All Plays <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#allPlayTable" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                                 <%- subTitle %>
                             </div>
                         </div>
