@@ -149,6 +149,7 @@ class PlayProcess(object):
         pbp_txt['plays']["overUnder"] = float(overUnder)
         pbp_txt['plays']["homeTeamSpread"] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
         pbp_txt['homeTeamSpread'] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
+        pbp_txt['overUnder'] = float(overUnder)
         pbp_txt['plays']["homeFavorite"] = homeFavorite
         pbp_txt['plays']["gameSpread"] = gameSpread
         pbp_txt['plays']["homeFavorite"] = homeFavorite
@@ -215,6 +216,7 @@ class PlayProcess(object):
             pbp_txt['plays']["overUnder"] = float(overUnder)
             pbp_txt['plays']["homeTeamSpread"] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
             pbp_txt['homeTeamSpread'] = np.where(homeFavorite == True, abs(gameSpread), -1*abs(gameSpread))
+            pbp_txt['overUnder'] = float(overUnder)
             pbp_txt['plays']["homeFavorite"] = homeFavorite
             pbp_txt['plays']["gameSpread"] = gameSpread
             pbp_txt['plays']["homeFavorite"] = homeFavorite
@@ -503,6 +505,7 @@ class PlayProcess(object):
             "boxscore" : pbp_txt['boxscore'],
             "header" : pbp_txt['header'],
             "homeTeamSpread" : np.array(pbp_txt['homeTeamSpread']).tolist(),
+            "overUnder" : np.array(pbp_txt['overUnder']).tolist(),
             "broadcasts" : np.array(pbp_txt['broadcasts']).tolist(),
             "videos" : np.array(pbp_txt['videos']).tolist(),
             "standings" : pbp_txt['standings'],
