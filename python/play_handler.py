@@ -250,9 +250,10 @@ class PlayProcess(object):
                 ], default = 60*pbp_txt['plays']['clock.minutes'].astype(int) + pbp_txt['plays']['clock.seconds'].astype(int)
             )
             # Pos Team - Start and End Id
+            pbp_txt['plays']['id'] = pbp_txt['plays']['id'].apply(lambda x: int(x))
+            pbp_txt['plays'] = pbp_txt['plays'].sort_values(by=["id", "start.adj_TimeSecsRem"])
             pbp_txt['plays']['game_play_number'] = np.arange(len(pbp_txt['plays']))+1
             pbp_txt['plays']['text'] = pbp_txt['plays']['text'].astype(str)
-            pbp_txt['plays']['id'] = pbp_txt['plays']['id'].apply(lambda x: int(x))
             pbp_txt['plays']["start.team.id"] = pbp_txt['plays']["start.team.id"].fillna(method='ffill').apply(lambda x: int(x))
             pbp_txt['plays']["end.team.id"] = pbp_txt['plays']["end.team.id"].fillna(value=pbp_txt['plays']["start.team.id"]).apply(lambda x: int(x))
             pbp_txt['plays']['start.pos_team.id'] = np.select(
@@ -2625,8 +2626,8 @@ class PlayProcess(object):
         play_df['wp_after'] = np.select(
             [
                 (play_df['type.text'] == "Timeout"),
-                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
-                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == len(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0),
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0),
 
                 (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] == play_df.lead_pos_team) & (play_df['type.text'] != "Timeout"),
                 (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] != play_df['end.pos_team.id']) & (play_df['type.text'] != "Timeout"),
