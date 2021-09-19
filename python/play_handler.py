@@ -9,7 +9,7 @@ from urllib.error import URLError, HTTPError, ContentTooShortError
 import json
 import time
 from flask_logs import LogSetup
-from functools import reduce
+from functools import reduce, partial
 from model_vars import *
 
 # "td" : float(p[0]),
@@ -2506,11 +2506,34 @@ class PlayProcess(object):
         return play_df
 
     def __process_qbr__(self, play_df):
-        play_df['qbr_epa'] = np.where(play_df.EPA < -5.0, -5.0, play_df.EPA)
-        play_df.qbr_epa = np.where(play_df.fumble_vec == 1, -3.5, play_df.qbr_epa)
-        play_df['weight'] = np.where((play_df.home_wp_before < .1) | (play_df.home_wp_before > .9), .6, 1)
-        play_df.weight = np.where((((play_df.home_wp_before >= .1) & (play_df.home_wp_before < .2)) | ((play_df.home_wp_before >= .8) & (play_df.home_wp_before < .9))), .9, play_df.weight)
-        play_df['non_fumble_sack'] = (play_df['sack_vec'] == 1) & (play_df['fumble_vec'] == 0)
+        play_df['qbr_epa'] = np.select(
+            [
+                (play_df.EPA < -5.0),
+                (play_df.fumble_vec == True),
+            ],
+            [
+                -5.0,
+                -3.5
+            ],
+            default = play_df.EPA
+        )
+
+        play_df['weight'] = np.select(
+            [
+                (play_df.home_wp_before < .1),
+                (play_df.home_wp_before >= .1) & (play_df.home_wp_before < .2),
+                (play_df.home_wp_before >= .8) & (play_df.home_wp_before < .9),
+                (play_df.home_wp_before > .9)
+            ],
+            [
+                0.6,
+                0.9,
+                0.9,
+                0.6
+            ],
+            default = 1
+        )
+        play_df['non_fumble_sack'] = (play_df['sack_vec'] == True) & (play_df['fumble_vec'] == False)
 
         play_df['sack_epa'] = np.where(play_df['non_fumble_sack'] == True, play_df['qbr_epa'], np.NaN)
         play_df['pass_epa'] = np.where(play_df['pass'] == True, play_df['qbr_epa'], np.NaN)
@@ -2792,25 +2815,23 @@ class PlayProcess(object):
         passer_box = passer_box.replace({np.nan: None})
         qbs_list = passer_box.passer_player_name.to_list()
 
-        def weighted_mean(name, values, weights):
-            names = { name: ((values * weights).sum() / weights.sum()) if (len(weights) > 0 and weights.sum() > 0) else 0 }
-            return pd.Series(names)
+        def weighted_mean(s, df, wcol):
+            s = s[s.notna() == True]
+            # self.logger.info(s)
+            if (len(s) == 0):
+                return 0
+            return np.average(s, weights=df.loc[s.index, wcol])
 
         pass_qbr_box = self.plays_json[(self.plays_json.athlete_name.notna() == True) & (self.plays_json.scrimmage_play == True) & (self.plays_json.athlete_name.isin(qbs_list))]
-        qbr_weight = pass_qbr_box.weight
-        sack_weight = pass_qbr_box.sack_weight
-        pass_weight = pass_qbr_box.pass_weight
-        rush_weight = pass_qbr_box.rush_weight
-        pen_weight = pass_qbr_box.pen_weight
         pass_qbr = pass_qbr_box.groupby(by=["pos_team","athlete_name"], as_index=False).agg(
-            qbr_epa = ('qbr_epa', lambda x: weighted_mean('qbr_epa', x, qbr_weight)),
-            sack_epa = ('sack_epa',lambda x: weighted_mean('sack_epa', x, sack_weight)),
-            pass_epa = ('pass_epa',lambda x: weighted_mean('pass_epa', x, pass_weight)),
-            rush_epa = ('rush_epa',lambda x: weighted_mean('rush_epa', x, rush_weight)),
-            pen_epa = ('pen_epa',lambda x: weighted_mean('pen_epa', x, pen_weight)),
+            qbr_epa = ('qbr_epa', partial(weighted_mean, df=pass_qbr_box, wcol='weight')),
+            sack_epa = ('sack_epa', partial(weighted_mean, df=pass_qbr_box, wcol='sack_weight')),
+            pass_epa = ('pass_epa', partial(weighted_mean, df=pass_qbr_box, wcol='pass_weight')),
+            rush_epa = ('rush_epa', partial(weighted_mean, df=pass_qbr_box, wcol='rush_weight')),
+            pen_epa = ('pen_epa', partial(weighted_mean, df=pass_qbr_box, wcol='pen_weight')),
             spread = ('start.pos_team_spread', lambda x: x.iloc[0])
         )
-        # self.logger.info(pass_qbr[qbr_vars])
+        self.logger.info(pass_qbr)
 
         dtest_qbr = xgb.DMatrix(pass_qbr[qbr_vars])
         qbr_result = qbr_model.predict(dtest_qbr)
