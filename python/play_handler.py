@@ -2808,6 +2808,7 @@ class PlayProcess(object):
             pass_epa = ('pass_epa',lambda x: weighted_mean('pass_epa', x, pass_weight)),
             rush_epa = ('rush_epa',lambda x: weighted_mean('rush_epa', x, rush_weight)),
             pen_epa = ('pen_epa',lambda x: weighted_mean('pen_epa', x, pen_weight)),
+            spread = ('start.pos_team_spread', lambda x: x.iloc[0])
         )
         # self.logger.info(pass_qbr[qbr_vars])
 

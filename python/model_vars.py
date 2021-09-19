@@ -270,5 +270,6 @@ qbr_vars = [
     "sack_epa",
     "pass_epa",
     "rush_epa",
-    "pen_epa"
+    "pen_epa",
+    "spread"
 ]
