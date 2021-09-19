@@ -442,6 +442,11 @@ class PlayProcess(object):
                 pbp_txt['plays']['start.yardsToEndzone'],
                 pbp_txt['plays']['end.yardsToEndzone']
             )
+
+            pbp_txt['plays']['start.distance'] = np.where(
+                (pbp_txt['plays']["start.distance"] == 0) & (pbp_txt['plays']["start.downDistanceText"].str.lower().str.contains("goal")), pbp_txt['plays']['start.yardsToEndzone'], pbp_txt['plays']['start.distance']
+            )
+
             pbp_txt['timeouts'][homeTeamId]["1"] = np.array(pbp_txt['timeouts'][homeTeamId]["1"]).tolist()
             pbp_txt['timeouts'][homeTeamId]["2"] = np.array(pbp_txt['timeouts'][homeTeamId]["2"]).tolist()
             pbp_txt['timeouts'][awayTeamId]["1"] = np.array(pbp_txt['timeouts'][awayTeamId]["1"]).tolist()
