@@ -72,3 +72,6 @@ h1, h2, h3, h4, h5, h6 {
   font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
 }
 
+.rounded, .btn, .badge, .form-select, .form-control {
+  border-radius: 0.5em !important;
+}
