@@ -18,6 +18,25 @@ async function retrieveGameList(url, params) {
 
         return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
     })
+    gameList.sort((a, b) => {
+        var aVal = parseInt(a.status.type.id)
+        var bVal = parseInt(b.status.type.id)
+        if (aVal < bVal) {
+            return -1
+        } else if (aVal > bVal) {
+            return 1
+        } else {
+            var aDate = Date.parse(a.date)
+            var bDate = Date.parse(b.date)
+            if (aDate < bDate) {
+                return -1
+            } else if (aDate > bDate) {
+                return 1
+            } else {
+                return 0
+            }
+        }
+    })
     return gameList;
 }
 
