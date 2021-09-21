@@ -99,3 +99,7 @@ table {
 .hiddenRow {
   padding: 0 !important;
 }
+
+.rounded, .btn, .badge, .form-select, .form-control {
+  border-radius: 0.5em !important;
+}

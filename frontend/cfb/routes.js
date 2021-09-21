@@ -1,12 +1,13 @@
 const express = require('express');
-const Controller = require('./controller');
+const Games = require('./games');
+const Teams = require('./teams');
 const Schedule = require('./schedule');
 const router = express.Router();
 
-router.get('/healthcheck', Controller.getServiceHealth)
+router.get('/healthcheck', Games.getServiceHealth)
 
 async function retrieveGameList(url, params) {
-    var gameList = await Controller.getGameList(params);
+    var gameList = await Games.getGameList(params);
     if (gameList == null) {
         throw Error(`Data not available for ${url} because of a service error.`)
     }
@@ -64,7 +65,7 @@ router.route('/year/:year/type/:type/week/:week')
 router.route('/game/:gameId')
     .get(async function(req, res, next) {
         try {
-            let data = await Controller.getPBP(req.params.gameId);
+            let data = await Games.getPBP(req.params.gameId);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
@@ -82,7 +83,7 @@ router.route('/game/:gameId')
     })
     .post(async function(req, res, next) {
         try {
-            let data = await Controller.getPBP(req, res);
+            let data = await Games.getPBP(req, res);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
@@ -92,5 +93,27 @@ router.route('/game/:gameId')
             return next(err)
         }
     });
+
+
+router.route('/year/:year/team/:teamId')
+    .get(async function(req, res, next) {
+        try {
+            let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
+            if (data == null) {
+                throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
+            }
+    
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(data);
+            } else {
+                return res.render('pages/cfb/team', {
+                    teamData: data,
+                    season: req.params.year
+                });
+            }
+        } catch(err) {
+            return next(err)
+        }
+    })
 
 module.exports = router
