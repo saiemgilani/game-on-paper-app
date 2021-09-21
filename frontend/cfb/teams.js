@@ -33,17 +33,23 @@ exports.getTeamInformation = async function (season, teamId) {
     });
 
     // debuglog(result);
-
-    let response = await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=${season}`, {
-        protocol: "https"
+    var schedulePromises = []
+    let types = [2, 3];
+    types.forEach(type => {
+        schedulePromises.push(axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=${season}&seasontype=${type}`, {
+            protocol: "https"
+        }))
     })
+    let responses = await Promise.all(schedulePromises);
     result.events = [];
 
-    Object.entries(response.data.events).forEach(([date, game]) => {
-        if (game != null && game.competitions != null) {
-            game.status = game.competitions[0].status;
-            result.events = result.events.concat(game)
-        }
+    responses.forEach(response => {
+        Object.entries(response.data.events).forEach(([date, game]) => {
+            if (game != null && game.competitions != null) {
+                game.status = game.competitions[0].status;
+                result.events = result.events.concat(game)
+            }
+        })
     })
 
     return result;
