@@ -62,88 +62,75 @@
                 %>
                 <% if (scoreboard.length > 0) { %>
                     <%
-                    const quarter = Math.ceil(scoreboard.length / 4);
-                    var slices = [];
-                    for (var i = 0; i < 4; i++) {
-                        slices.push([])
-                    }
-                    var index = 0;
-                    while (index < scoreboard.length) {
-                        slices[index % 4].push(scoreboard[index])
-                        index++;
-                    }
-                    slices.forEach(slice => { 
+                    scoreboard.forEach(game => { 
                     %>
                     <div class="col-xl-3 col-lg-6">
-                        <% slice.forEach(game => { %>
-                            <% 
+                        <% 
                                 const gameComp = game.competitions[0];
                                 const homeComp = gameComp.competitors[0];
                                 const awayComp = gameComp.competitors[1];
                                 const homeTeam = homeComp.team;
                                 const awayTeam = awayComp.team;
-                            %>
-                            <div class="row border rounded m-2 mb-4">
-                                <div class="col p-3">
-                                    <strong class="d-inline-block mb-2 text-primary">
-                                        <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
-                                        <span class="game-date"><%= game.date %></span>
-                                        <% } else if (game.status.type.completed == true) { %>
-                                        <span><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
-                                        <% } else { %>
-                                        <%= game.status.type.detail %>
-                                        <% } %>
-                                    </strong> 
-                                    <div class="m-0 clearfix">
-                                        <div class="d-flex justify-content-between">
-                                            <div class="text-left">
-                                                <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayComp.score, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="m-0 mb-2 clearfix">
-                                        <div class="d-flex justify-content-between">
-                                            <div class="text-left">
-                                                <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeComp.score, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
-                                        <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
-                                            <p class="card-text text-muted mb-2">
-                                            <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
-                                                (PAT) <%= gameComp.situation.lastPlay.text %>
-                                            <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
-                                                (Kickoff) <%= gameComp.situation.lastPlay.text %>
-                                            <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
-                                                <%= gameComp.situation.lastPlay.text %>
-                                            <% } else { %>
-                                                (<%= gameComp.situation.downDistanceText %>) <%= gameComp.situation.lastPlay.text %>
-                                            <% } %>
-                                            </p>
-                                        <% } %>
+                        %>
+                        <div class="row border rounded m-2 mb-4">
+                            <div class="col p-3">
+                                <strong class="d-inline-block mb-2 text-primary">
+                                    <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
+                                    <span class="game-date"><%= game.date %></span>
+                                    <% } else if (game.status.type.completed == true) { %>
+                                    <span><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
+                                    <% } else { %>
+                                    <%= game.status.type.detail %>
                                     <% } %>
+                                </strong> 
+                                <div class="m-0 clearfix">
                                     <div class="d-flex justify-content-between">
                                         <div class="text-left">
-                                            <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
-                                            <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                            <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
                                         </div>
                                         <div class="text-right">
-                                            <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { %>
-                                            <span class="badge bg-secondary bg-sm"><%= gameComp.geoBroadcasts[0].media.shortName %></span>
-                                            <% } %>
+                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayComp.score, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
                                         </div>
                                     </div>
                                 </div>
+                                <div class="m-0 mb-2 clearfix">
+                                    <div class="d-flex justify-content-between">
+                                        <div class="text-left">
+                                            <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeComp.score, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
+                                    <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
+                                        <p class="card-text text-muted mb-2">
+                                        <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
+                                            (PAT) <%= gameComp.situation.lastPlay.text %>
+                                        <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
+                                            (Kickoff) <%= gameComp.situation.lastPlay.text %>
+                                        <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
+                                            <%= gameComp.situation.lastPlay.text %>
+                                        <% } else { %>
+                                            (<%= gameComp.situation.downDistanceText %>) <%= gameComp.situation.lastPlay.text %>
+                                        <% } %>
+                                        </p>
+                                    <% } %>
+                                <% } %>
+                                <div class="d-flex justify-content-between">
+                                    <div class="text-left">
+                                        <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
+                                        <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                    </div>
+                                    <div class="text-right">
+                                        <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { %>
+                                        <span class="badge bg-secondary bg-sm"><%= gameComp.geoBroadcasts[0].media.shortName %></span>
+                                        <% } %>
+                                    </div>
+                                </div>
                             </div>
-                        <% }); %>
-                        
+                        </div>
                     </div>
                     <% }); %>
                 <% } else { %>
