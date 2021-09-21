@@ -47,7 +47,7 @@
                     </div>
                     <div class="col-8 text-center">
                         <div>
-                            <h2 class="mb-0 align-middle" style="line-height: 0.5em;"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= teamData.id %>.png" /> <%= teamData.location %></h2>
+                            <h2 class="mb-0 align-middle" style="line-height: 0.5em;"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> <%= teamData.location %></h2>
                             <%
                                 let records = teamData.record;
                                 let overall = records.filter(item => item.type == "total")[0].displayValue
