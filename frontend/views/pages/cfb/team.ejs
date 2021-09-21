@@ -48,7 +48,18 @@
                     <div class="col-8 text-center">
                         <div>
                             <h2 class="mb-0 align-middle" style="line-height: 0.5em;"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= teamData.id %>.png" /> <%= teamData.location %></h2>
-                            <p class="text-small text-muted"><%= season %> Season</p>
+                            <%
+                                let records = teamData.record;
+                                let overall = records.filter(item => item.type == "total")[0].displayValue
+                                var conf = ""
+                                let confRecs = records.filter(item => item.type == "vsconf")
+                                if (confRecs.length > 0) {
+                                    conf = ` (Conf: ${confRecs[0].displayValue})`;
+                                } else {
+                                    conf = ""
+                                }
+                            %>
+                            <p class="text-small text-muted"><%= season %> Season - Overall: <%= overall %><%= conf %></p>
                         </div>
                     </div>
                     <div class="col-2 d-flex justify-content-end align-items-center">
