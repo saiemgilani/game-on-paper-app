@@ -52,11 +52,13 @@
                     return `<img class="img-fluid d-inline-block" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
                 }
 
-                function formatScore(score, winner) {
-                    if (winner) {
+                function formatScore(score, winner, complete) {
+                    if (winner && complete) {
                         return `<strong>${score}</strong>`
+                    } else if (!winner && complete) {
+                        return `<span style="opacity: 0.5;">${score}</span>`
                     } else {
-                        return `${score}`
+                        return `<span>${score}</span>`
                     }
                 }
                 %>
@@ -86,20 +88,20 @@
                                 <div class="m-0 clearfix">
                                     <div class="d-flex justify-content-between">
                                         <div class="text-left">
-                                            <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
+                                            <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, parseInt(awayComp.score) > parseInt(homeComp.score), game.status.type.completed == true) %></span>
                                         </div>
                                         <div class="text-right">
-                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayComp.score, (parseInt(awayComp.score) > parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
+                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayComp.score, parseInt(awayComp.score) > parseInt(homeComp.score), game.status.type.completed == true) %></p>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="m-0 mb-2 clearfix">
                                     <div class="d-flex justify-content-between">
                                         <div class="text-left">
-                                            <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></span>
+                                            <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, parseInt(awayComp.score) < parseInt(homeComp.score), game.status.type.completed == true) %></span>
                                         </div>
                                         <div class="text-right">
-                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeComp.score, (parseInt(awayComp.score) < parseInt(homeComp.score) && game.status.type.completed == true)) %></p>
+                                            <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeComp.score, parseInt(awayComp.score) < parseInt(homeComp.score), game.status.type.completed == true) %></p>
                                         </div>
                                     </div>
                                 </div>
