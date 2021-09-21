@@ -47,7 +47,7 @@
                     </div>
                     <div class="col-8 text-center">
                         <div>
-                            <h2 class="mb-0"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= teamData.id %>.png" /> <%= teamData.displayName %></h2>
+                            <h2 class="mb-3" style="line-height: 0.5em;"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= teamData.id %>.png" /> <%= teamData.displayName %></h2>
                             <p class="text-small text-muted"><%= season %> Season</p>
                         </div>
                     </div>
@@ -73,11 +73,13 @@
                     return `<img class="img-fluid d-inline-block" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
                 }
 
-                function formatScore(score, winner) {
-                    if (winner) {
+                function formatScore(score, winner, complete) {
+                    if (winner && complete) {
                         return `<strong>${score}</strong>`
+                    } else if (!winner && complete) {
+                        return `<span style="opacity: 0.5;">${score}</span>`
                     } else {
-                        return `${score}`
+                        return `<span>${score}</span>`
                     }
                 }
                 %>
@@ -107,20 +109,20 @@
                                     <div class="m-0 clearfix">
                                         <div class="d-flex justify-content-between">
                                             <div class="text-left">
-                                                <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, (parseInt(awayScore) > parseInt(homeScore) && game.status.type.completed == true)) %></span>
+                                                <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></span>
                                             </div>
                                             <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayScore, (parseInt(awayScore) > parseInt(homeScore) && game.status.type.completed == true)) %></p>
+                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayScore, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></p>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="m-0 mb-2 clearfix">
                                         <div class="d-flex justify-content-between">
                                             <div class="text-left">
-                                                <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, (parseInt(awayScore) < parseInt(homeScore) && game.status.type.completed == true)) %></span>
+                                                <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></span>
                                             </div>
                                             <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeScore, (parseInt(awayScore) < parseInt(homeScore) && game.status.type.completed == true)) %></p>
+                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeScore, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></p>
                                             </div>
                                         </div>
                                     </div>
@@ -180,6 +182,5 @@
                 console.log("no game dates found")
             }
         </script>
-        <script src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" integrity="sha384-GNFwBvfVxBkLMJpYMOABq3c+d3KnQxudP/mGPkzpZSTYykLBNsZEnG2D9G/X/+7D" crossorigin="anonymous" async></script>
     </body>
 </html>
