@@ -21,9 +21,9 @@ async function retrieveGameList(url, params) {
     gameList.sort((a, b) => {
         var aVal = parseInt(a.status.type.id)
         var bVal = parseInt(b.status.type.id)
-        if (aVal < bVal) {
+        if (aVal > bVal) {
             return -1
-        } else if (aVal > bVal) {
+        } else if (aVal < bVal) {
             return 1
         } else {
             var aDate = Date.parse(a.date)
