@@ -1,12 +1,13 @@
 const express = require('express');
-const Controller = require('./controller');
+const Games = require('./games');
+const Teams = require('./teams');
 const Schedule = require('./schedule');
 const router = express.Router();
 
-router.get('/healthcheck', Controller.getServiceHealth)
+router.get('/healthcheck', Games.getServiceHealth)
 
 async function retrieveGameList(url, params) {
-    var gameList = await Controller.getGameList(params);
+    var gameList = await Games.getGameList(params);
     if (gameList == null) {
         throw Error(`Data not available for ${url} because of a service error.`)
     }
@@ -16,6 +17,25 @@ async function retrieveGameList(url, params) {
         const awayComp = gameComp.competitors[1];
 
         return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
+    })
+    gameList.sort((a, b) => {
+        var aVal = parseInt(a.status.type.id)
+        var bVal = parseInt(b.status.type.id)
+        if (aVal > bVal) {
+            return -1
+        } else if (aVal < bVal) {
+            return 1
+        } else {
+            var aDate = Date.parse(a.date)
+            var bDate = Date.parse(b.date)
+            if (aDate < bDate) {
+                return -1
+            } else if (aDate > bDate) {
+                return 1
+            } else {
+                return 0
+            }
+        }
     })
     return gameList;
 }
@@ -64,7 +84,7 @@ router.route('/year/:year/type/:type/week/:week')
 router.route('/game/:gameId')
     .get(async function(req, res, next) {
         try {
-            let data = await Controller.getPBP(req.params.gameId);
+            let data = await Games.getPBP(req.params.gameId);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
@@ -82,7 +102,7 @@ router.route('/game/:gameId')
     })
     .post(async function(req, res, next) {
         try {
-            let data = await Controller.getPBP(req, res);
+            let data = await Games.getPBP(req, res);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
@@ -92,5 +112,27 @@ router.route('/game/:gameId')
             return next(err)
         }
     });
+
+
+router.route('/year/:year/team/:teamId')
+    .get(async function(req, res, next) {
+        try {
+            let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
+            if (data == null) {
+                throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
+            }
+    
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(data);
+            } else {
+                return res.render('pages/cfb/team', {
+                    teamData: data,
+                    season: req.params.year
+                });
+            }
+        } catch(err) {
+            return next(err)
+        }
+    })
 
 module.exports = router
