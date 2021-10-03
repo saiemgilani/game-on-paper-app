@@ -445,6 +445,11 @@ class PlayProcess(object):
                 pbp_txt['plays']['start.yardsToEndzone'],
                 pbp_txt['plays']['end.yardsToEndzone']
             )
+
+            pbp_txt['plays']['start.distance'] = np.where(
+                (pbp_txt['plays']["start.distance"] == 0) & (pbp_txt['plays']["start.downDistanceText"].str.lower().str.contains("goal")), pbp_txt['plays']['start.yardsToEndzone'], pbp_txt['plays']['start.distance']
+            )
+
             pbp_txt['timeouts'][homeTeamId]["1"] = np.array(pbp_txt['timeouts'][homeTeamId]["1"]).tolist()
             pbp_txt['timeouts'][homeTeamId]["2"] = np.array(pbp_txt['timeouts'][homeTeamId]["2"]).tolist()
             pbp_txt['timeouts'][awayTeamId]["1"] = np.array(pbp_txt['timeouts'][awayTeamId]["1"]).tolist()
@@ -776,7 +781,17 @@ class PlayProcess(object):
         play_df["forced_fumble"] = play_df["text"].str.contains("forced by", case=False, flags=0, na=False, regex=True)
         #--- Kicks----
         play_df["kickoff_play"] = (play_df["type.text"].isin(kickoff_vec))
-        play_df["kickoff_tb"] = (play_df["text"].str.contains("touchback", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
+        play_df["kickoff_tb"] = np.select(
+            [
+                (play_df["text"].str.contains("touchback", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True),
+                (play_df["text"].str.contains("kickoff$", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
+            ],
+            [
+                True,
+                True
+            ],
+            default = False
+        )
         play_df["kickoff_onside"] = (play_df["text"].str.contains(r"on-side|onside|on side", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
         play_df["kickoff_oob"] = (play_df["text"].str.contains(r"out-of-bounds|out of bounds", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
         play_df["kickoff_fair_catch"] = (play_df["text"].str.contains(r"fair catch|fair caught", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
@@ -1093,11 +1108,18 @@ class PlayProcess(object):
             "Kickoff Team Fumble Recovery", play_df['type.text']
         )
 
-        play_df['type.text'] = np.where(
-            (play_df['type.text'] == "Punt Touchdown") &
-            (play_df.fumble_vec == False) & (play_df.change_of_poss == 1),
-            "Punt Return Touchdown", play_df['type.text']
+        play_df['type.text'] = np.select(
+            [
+                (play_df['type.text'] == "Punt Touchdown") & (play_df.fumble_vec == False) & (play_df.change_of_poss == 1),
+                (play_df["type.text"] == "Punt") & (play_df.text.str.contains("for a TD", case=False, flags=0, na=False, regex=True)) & (play_df.change_of_poss == 1)
+            ],
+            [
+                "Punt Return Touchdown",
+                "Punt Return Touchdown"
+            ],
+            default = play_df["type.text"]
         )
+
         play_df['type.text'] = np.where(
             (play_df['type.text'] == "Punt") & (play_df.fumble_vec == True) &
             (play_df.change_of_poss == 0),
@@ -2231,7 +2253,12 @@ class PlayProcess(object):
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
         play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
-        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 75
+        play_df.loc[play_df.kickoff_tb == True, "end.down"] = 1
+        play_df.loc[play_df.kickoff_tb == True, "end.distance"] = 10
+
+        play_df.loc[play_df.punt_tb == True, "end.down"] = 1
+        play_df.loc[play_df.punt_tb == True, "end.distance"] = 10
+        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 80
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
@@ -2639,19 +2666,45 @@ class PlayProcess(object):
         dtest_end = xgb.DMatrix(end_data)
         WP_end = wp_model.predict(dtest_end)
 
-        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
+        play_df['lead_wp_before'] = play_df['wp_before'].shift(-1)
+        play_df['lead_wp_before2'] = play_df['wp_before'].shift(-2)
 
+        play_df['wp_after'] = WP_end
+        game_complete = self.json["gameInfo"]["status"]["type"]["completed"]
         play_df['wp_after'] = np.select(
             [
+                (play_df['type.text'] == "Timeout"),
                 game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end > 0),
-                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0)
+                game_complete & ((play_df.lead_play_type.isna()) | (play_df.game_play_number == max(play_df.game_play_number))) & (play_df.pos_score_diff_end < 0),
+
+                (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] == play_df.lead_pos_team) & (play_df['type.text'] != "Timeout"),
+                (play_df.end_of_half == 1) & (play_df['start.pos_team.id'] != play_df['end.pos_team.id']) & (play_df['type.text'] != "Timeout"),
+                (play_df.end_of_half == 1) & (play_df['start.pos_team_receives_2H_kickoff'] == False) & (play_df['type.text'] == "Timeout"),
+
+                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 0),
+                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 1),
+
+                (play_df['kickoff_onside'] == True) & (play_df['start.def_pos_team.id'] == play_df['end.pos_team.id']), # onside recovery
+                (play_df['start.pos_team.id'] != play_df['end.pos_team.id'])
             ],
             [
+                play_df.wp_before,
                 1.0,
-                0.0
+                0.0,
+
+                play_df.lead_wp_before,
+                (1 - play_df.lead_wp_before),
+                play_df.wp_after,
+
+                play_df.lead_wp_before,
+                (1 - play_df.lead_wp_before),
+
+                play_df.wp_after,
+                (1 - play_df.wp_after)
             ],
-            default = WP_end
+            default = play_df.wp_after
         )
+
         play_df['def_wp_after']  = 1 - play_df.wp_after
         play_df['home_wp_after'] = np.where(play_df['end.pos_team.id'] == play_df["homeTeamId"],
                                              play_df.wp_after,
@@ -2659,62 +2712,8 @@ class PlayProcess(object):
         play_df['away_wp_after'] = np.where(play_df['end.pos_team.id'] != play_df["homeTeamId"],
                                             play_df.wp_after,
                                             play_df.def_wp_after)
-        play_df['lead_wp_before'] = play_df['wp_before'].shift(-1)
-        play_df['lead_wp_before2'] = play_df['wp_before'].shift(-2)
 
-        # base wpa
-        play_df['wpa_base'] = play_df.wp_after - play_df.wp_before
-        play_df['wpa_base_nxt'] = play_df.lead_wp_before - play_df.wp_before
-        play_df['wpa_base_nxt2'] = play_df.lead_wp_before2 - play_df.wp_before
-        play_df['wpa_base_ind'] = (play_df['start.pos_team.id'] == play_df['end.pos_team.id'])
-        play_df['wpa_base_nxt_ind'] = (play_df['start.pos_team.id'] == play_df.lead_pos_team)
-        play_df['wpa_base_nxt2_ind'] = (play_df['start.pos_team.id'] == play_df.lead_pos_team2)
-
-        # account for turnover
-        play_df['wpa_change'] = (1 - play_df.wp_after) - play_df.wp_before
-        play_df['wpa_change_nxt'] = (1 - play_df.lead_wp_before) - play_df.wp_before
-        play_df['wpa_change_nxt2'] = (1 - play_df.lead_wp_before2) - play_df.wp_before
-        play_df['wpa_change_ind'] = (play_df['start.pos_team.id'] != play_df['end.pos_team.id'])
-        play_df['wpa_change_nxt_ind'] = (play_df['start.pos_team.id'] != play_df.lead_pos_team)
-        play_df['wpa_change_nxt2_ind'] = (play_df['start.pos_team.id'] != play_df.lead_pos_team2)
-        play_df['wpa_half_end'] = np.select(
-            [
-                (play_df.end_of_half == 1) & (play_df.wpa_base_nxt_ind == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.end_of_half == 1) & (play_df.wpa_change_nxt_ind == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.end_of_half == 1) & (play_df['start.pos_team_receives_2H_kickoff'] == False) & (play_df['type.text'] == "Timeout"),
-                (play_df.wpa_change_ind == 1)
-            ],
-            [
-                play_df.wpa_base_nxt,
-                play_df.wpa_change_nxt,
-                play_df.wpa_base,
-                play_df.wpa_change
-            ], default = play_df.wpa_base
-        )
-
-        play_df['wpa'] = np.select(
-            [
-                (play_df.end_of_half == 1) & (play_df['type.text'] != "Timeout"),
-                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 0),
-                (play_df.lead_play_type.isin(["End Period", "End of Half"])) & (play_df.change_of_pos_team == 1),
-                (play_df.wpa_change_ind == 1)
-            ],
-            [
-                play_df.wpa_half_end,
-                play_df.wpa_base_nxt,
-                play_df.wpa_change_nxt,
-                play_df.wpa_change
-            ], default =  play_df.wpa_base
-        )
-        # play_df['wp_after'] = play_df.wp_before + play_df.wpa
-        # play_df['def_wp_after'] = 1 - play_df.wp_after
-        # play_df['home_wp_after'] = np.where(play_df['start.pos_team.id'] == play_df["homeTeamId"],
-        #                 play_df.home_wp_before + play_df.wpa,
-        #                 play_df.home_wp_before - play_df.wpa)
-        # play_df['away_wp_after'] = np.where(play_df['start.pos_team.id'] != play_df["homeTeamId"],
-        #                 play_df.away_wp_before + play_df.wpa,
-        #                 play_df.away_wp_before - play_df.wpa)
-
+        play_df['wpa'] = play_df.wp_after - play_df.wp_before
         return play_df
 
     def __add_drive_data(self, play_df):
