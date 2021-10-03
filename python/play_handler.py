@@ -778,7 +778,17 @@ class PlayProcess(object):
         play_df["forced_fumble"] = play_df["text"].str.contains("forced by", case=False, flags=0, na=False, regex=True)
         #--- Kicks----
         play_df["kickoff_play"] = (play_df["type.text"].isin(kickoff_vec))
-        play_df["kickoff_tb"] = (play_df["text"].str.contains("touchback", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
+        play_df["kickoff_tb"] = np.select(
+            [
+                (play_df["text"].str.contains("touchback", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True),
+                (play_df["text"].str.contains("kickoff$", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
+            ],
+            [
+                True,
+                True
+            ],
+            default = False
+        )
         play_df["kickoff_onside"] = (play_df["text"].str.contains(r"on-side|onside|on side", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
         play_df["kickoff_oob"] = (play_df["text"].str.contains(r"out-of-bounds|out of bounds", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
         play_df["kickoff_fair_catch"] = (play_df["text"].str.contains(r"fair catch|fair caught", case=False, flags=0, na=False, regex=True)) & (play_df.kickoff_play == True)
@@ -1095,11 +1105,18 @@ class PlayProcess(object):
             "Kickoff Team Fumble Recovery", play_df['type.text']
         )
 
-        play_df['type.text'] = np.where(
-            (play_df['type.text'] == "Punt Touchdown") &
-            (play_df.fumble_vec == False) & (play_df.change_of_poss == 1),
-            "Punt Return Touchdown", play_df['type.text']
+        play_df['type.text'] = np.select(
+            [
+                (play_df['type.text'] == "Punt Touchdown") & (play_df.fumble_vec == False) & (play_df.change_of_poss == 1),
+                (play_df["type.text"] == "Punt") & (play_df.text.str.contains("for a TD", case=False, flags=0, na=False, regex=True)) & (play_df.change_of_poss == 1)
+            ],
+            [
+                "Punt Return Touchdown",
+                "Punt Return Touchdown"
+            ],
+            default = play_df["type.text"]
         )
+
         play_df['type.text'] = np.where(
             (play_df['type.text'] == "Punt") & (play_df.fumble_vec == True) &
             (play_df.change_of_poss == 0),
@@ -2233,7 +2250,12 @@ class PlayProcess(object):
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
         play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
-        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 75
+        play_df.loc[play_df.kickoff_tb == True, "end.down"] = 1
+        play_df.loc[play_df.kickoff_tb == True, "end.distance"] = 10
+
+        play_df.loc[play_df.punt_tb == True, "end.down"] = 1
+        play_df.loc[play_df.punt_tb == True, "end.distance"] = 10
+        play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 80
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
