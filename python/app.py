@@ -3,10 +3,9 @@ import xgboost as xgb
 import numpy as np
 from datetime import datetime as dt
 from flask_logs import LogSetup
-from play_handler import PlayProcess
+from cfbfastR.cfb import PlayProcess
 import os
 import logging
-import urllib
 import pandas as pd
 import json
 
@@ -39,7 +38,7 @@ def after_request(response):
 @app.route('/cfb/process', methods=['POST'])
 def process():
     gameId = request.get_json(force=True)['gameId']
-    processed_data = PlayProcess(logger = logging.getLogger("root"), gameId = gameId)
+    processed_data = PlayProcess(gameId = gameId)
     pbp = processed_data.cfb_pbp()
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
