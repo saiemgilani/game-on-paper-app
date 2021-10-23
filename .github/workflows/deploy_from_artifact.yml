@@ -6,6 +6,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js service
+        uses: actions/setup-node@v1
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
