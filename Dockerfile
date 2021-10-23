@@ -1,4 +1,4 @@
-FROM nikolaik/python-nodejs:python3.9-nodejs17-slim as base
+FROM nikolaik/python-nodejs as base
 
 WORKDIR /root/src
 
