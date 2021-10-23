@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-import xgboost as xgb
 import numpy as np
 from datetime import datetime as dt
 from flask_logs import LogSetup
