@@ -16,12 +16,6 @@ app.config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", "INFO")
 logs = LogSetup()
 logs.init_app(app)
 
-ep_model = xgb.Booster({'nthread': 4})  # init model
-ep_model.load_model('models/ep_model.model')
-
-wp_model = xgb.Booster({'nthread': 4})  # init model
-wp_model.load_model('models/wp_spread.model')
-
 @app.after_request
 def after_request(response):
     logger = logging.getLogger("app.access")
