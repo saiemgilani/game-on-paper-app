@@ -1,0 +1,25 @@
+name: deploy_from_artifact
+
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy package to DigitalOcean
+          uses: appleboy/ssh-action@master
+          env:
+              GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            host: ${{ secrets.HOST }}
+            username: ${{ secrets.USERNAME }}
+            password: ${{ secrets.PASSWORD }}
+            port: ${{ secrets.PORT }}
+            envs: GITHUB_USERNAME, GITHUB_TOKEN
+            script: |
+              docker stop $(docker ps -a -q)
+              docker system prune --force
+              docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+              docker pull docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest
+              docker run -dit -p 8000:8000 docker.pkg.github.com/saiemgilani/game-on-paper-app/gopapp:latest  
