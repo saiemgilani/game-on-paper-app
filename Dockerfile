@@ -1,4 +1,4 @@
-FROM nikolaik/python-nodejs as base
+FROM nikolaik/python-nodejs:python3.9-nodejs17 as base
 
 WORKDIR /root/src
 
@@ -14,7 +14,7 @@ FROM base AS nodebuilder
 RUN cd ./frontend && npm set progress=false && npm config set depth 0
 RUN cd ./frontend && npm install
  
-FROM nikolaik/python-nodejs
+FROM base
 WORKDIR /code
 
 COPY --from=nodebuilder /root/src/frontend/node_modules ./frontend/node_modules
