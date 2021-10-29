@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import numpy as np
 from datetime import datetime as dt
 from flask_logs import LogSetup
-from cfbfastR.cfb import PlayProcess
+from sportsdataverse.cfb import CFBPlayProcess
 import os
 import logging
 import pandas as pd
@@ -31,8 +31,8 @@ def after_request(response):
 @app.route('/cfb/process', methods=['POST'])
 def process():
     gameId = request.get_json(force=True)['gameId']
-    processed_data = PlayProcess(gameId = gameId)
-    pbp = processed_data.cfb_pbp()
+    processed_data = CFBPlayProcess(gameId = gameId)
+    pbp = processed_data.espn_cfb_pbp()
     processed_data.run_processing_pipeline()
     tmp_json = processed_data.plays_json.to_json(orient="records")
     jsonified_df = json.loads(tmp_json)
