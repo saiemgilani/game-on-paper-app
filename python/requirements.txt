@@ -1,2 +1,2 @@
 Flask==1.1.2
-sportsdataverse==0.0.10
+sportsdataverse==0.0.11
