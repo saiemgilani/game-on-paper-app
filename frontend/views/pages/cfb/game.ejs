@@ -177,6 +177,14 @@ turnover_vec = [
     "Sack Touchdown",
     "Uncategorized Touchdown"
 ]
+function injectDetmerSpan() {
+    return `<span title="Stands for 'Downfield Eventful Throwing Metric Encouraging Ripping it'. Built to find the most sicko QB performances. Developed by the Moon Crew Discord & @SickosCommittee on Twitter.">DETMER</span>`;
+}
+function calculateDETMER(boxScore) {
+    // yds/(400#games) (TD+INT)/(1+|TD-INT|)
+    return (parseFloat(boxScore.Yds) / 400) * ((parseFloat(boxScore.Pass_TD) + parseFloat(boxScore.Int)) / (1 + Math.abs(parseFloat(boxScore.Pass_TD) - parseFloat(boxScore.Int))))
+}
+
 function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
@@ -785,7 +793,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <% if (p.passer_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT, <%= p.Sck %> Sck<%= (Math.abs(parseFloat(p.Sck)) == 1) ? "" : "s" %>, <%= roundNumber(parseFloat(p.exp_qbr), 2, 1) %> xQBR</td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT, <%= p.Sck %> Sck<%= (Math.abs(parseFloat(p.Sck)) == 1) ? "" : "s" %>, <%= roundNumber(parseFloat(p.exp_qbr), 2, 1) %> xQBR, <%= roundNumber(calculateDETMER(p), 2, 2) %> <%- injectDetmerSpan() %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPA || 0), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
@@ -871,7 +879,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <% if (p.passer_player_name.length > 0) { %>
                                                     <tr>
                                                         <td style="text-align: left;"><%= p.passer_player_name %></td>
-                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT, <%= p.Sck %> Sck<%= (Math.abs(parseFloat(p.Sck)) == 1) ? "" : "s" %>, <%= roundNumber(parseFloat(p.exp_qbr), 2, 1) %> xQBR</td>
+                                                        <td style="text-align: left;"><%= p.Comp %>/<%= p.Att %>, <%= p.Yds %> yd<%= (Math.abs(parseFloat(p.Yds)) == 1) ? "" : "s" %>, <%= p.Pass_TD %> TD, <%= p.Int %> INT, <%= p.Sck %> Sck<%= (Math.abs(parseFloat(p.Sck)) == 1) ? "" : "s" %>, <%= roundNumber(parseFloat(p.exp_qbr), 2, 1) %> xQBR, <%= roundNumber(calculateDETMER(p), 2, 2) %> <%- injectDetmerSpan() %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.YPA || 0), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA_per_Play), 2, 2) %></td>
                                                         <td class="numeral" style="text-align: center;"><%= roundNumber(parseFloat(p.EPA), 2, 2) %></td>
