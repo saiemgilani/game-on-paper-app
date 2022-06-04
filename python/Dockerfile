@@ -15,5 +15,4 @@ COPY --from=pybuilder /root/.local /root/.local
 
 COPY . ./
 
-
 CMD python app.py

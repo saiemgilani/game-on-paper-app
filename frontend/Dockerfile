@@ -16,5 +16,4 @@ COPY --from=nodebuilder /root/src/node_modules ./node_modules
 
 COPY . ./
 
-EXPOSE 8000
 CMD node ./server.js

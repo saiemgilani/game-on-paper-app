@@ -13,5 +13,5 @@ services:
       - python
   python:
     build: ./python
-    ports: 
+    expose: 
       - 7000
