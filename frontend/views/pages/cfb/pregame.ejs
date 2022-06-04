@@ -10,290 +10,44 @@ function getNumberWithOrdinal(n) {
     v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-function formatDown(down, playType) {
-    if (playType.includes("Kickoff")) {
-        return "Kickoff"
-    } else if (playType.includes("Extra Point") || playType.includes("Conversion")) {
-        return "PAT"
-    } else if (down > -1) {
-        return getNumberWithOrdinal(down)
-    } else {
-        return down
-    }
-}
-function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
-    if (yardsToEndzone == 50) {
-        return "50";
-    } else if (yardsToEndzone < 50) {
-        return `${defenseAbbrev} ${yardsToEndzone}`
-    } else {
-        return `${offenseAbbrev} ${100 - yardsToEndzone}`
-    }
-}
-function formatDistance(down, type, distance, yardline) {
-    var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
-    var downForm = formatDown(down, type)
-    if (downForm.includes("Kickoff") || downForm.includes("PAT")) {
-        return downForm
-    } else {
-        return downForm + " & " + dist
-    }
-}
+
 stat_key_title_mapping = {
-    "EPA_plays" : "Total Plays",
-    "scrimmage_plays" : "Scrimmage Plays",
-    "EPA_overall_total" : "Total EPA",
-    "EPA_overall_off" : "&emsp;&emsp;EPA",
-    "EPA_overall_offense" : "&emsp;&emsp;Offensive EPA",
-    "EPA_passing_overall" : "&emsp;&emsp;EPA",
-    "EPA_rushing_overall" : "&emsp;&emsp;EPA",
-    "EPA_per_play" : "&emsp;&emsp;EPA/Play",
-    "EPA_passing_per_play" : "&emsp;&emsp;EPA/Play",
-    "EPA_rushing_per_play" : "&emsp;&emsp;EPA/Play",
-    "rushes" : "Rushes",
-    "rushing_power" : "&emsp;&emsp;Power Run Attempts (Down &#8805; 3, Distance &#8804; 2)",
-    "rushing_power_success" : "&emsp;&emsp;Successful Power Runs (Rate)",
-    "rushing_stuff" : "&emsp;&emsp;Stuffed Runs (Yds Gained &#8804; 0)",
-    "rushing_stopped" : "&emsp;&emsp;Stopped Runs (Yds Gained &#8804; 2)",
-    "rushing_opportunity" : "&emsp;&emsp;Opportunity Runs (Yds Gained &#8805; 4)",
-    "rushing_highlight" : "&emsp;&emsp;Highlight Runs (Yds Gained &#8805; 8)",
-    "havoc_total" : "Havoc Plays Created",
-    "havoc_total_pass" : "&emsp;&emsp;Passing",
-    "havoc_total_rush" : "&emsp;&emsp;Rushing",
-    "EPA_penalty": "&emsp;&emsp;Penalty EPA",
-    "special_teams_plays" : "Total Plays",
-    "EPA_sp" : "Total EPA",
-    "EPA_special_teams" : "&emsp;&emsp;Special Teams EPA",
-    "EPA_fg" : "&emsp;&emsp;Field Goal EPA",
-    "EPA_punt" : "&emsp;&emsp;Punting EPA",
-    "EPA_kickoff" : "&emsp;&emsp;Kickoff Return EPA",
-    "TFL" : "TFLs Generated",
-    "TFL_pass" : "&emsp;&emsp;Passing",
-    "TFL_rush" : "&emsp;&emsp;Rushing",
-    "EPA_success" : "Successful Plays (EPA > 0)",
-    "EPA_success_pass" : "&emsp;&emsp;When Passing",
-    "EPA_success_rush" : "&emsp;&emsp;When Rushing",
-    "EPA_success_standard_down" : "&emsp;&emsp;On Standard Downs",
-    "EPA_success_passing_down": "&emsp;&emsp;On Passing Downs",
-    "EPA_success_early_down": "&emsp;&emsp;On Early Downs",
-    "EPA_success_early_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
-    "EPA_success_early_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
-    "early_downs": "Early Downs",
-    "early_down_pass": "&emsp;&emsp;Passes",
-    "early_down_rush": "&emsp;&emsp;Rushes",
-    "EPA_success_late_down": "&emsp;&emsp;On Late Downs",
-    "EPA_success_late_down_pass": "&emsp;&emsp;Successful Passes (Rate)",
-    "EPA_success_late_down_rush": "&emsp;&emsp;Successful Rushes (Rate)",
-    "late_downs": "Late Downs",
-    "late_down_pass": "&emsp;&emsp;Passes",
-    "late_down_rush": "&emsp;&emsp;Rushes",
-    "EPA_explosive" : "Explosive Plays",
-    "EPA_explosive_passing" : "&emsp;&emsp;When Passing (EPA > 2.4)",
-    "EPA_explosive_rushing" : "&emsp;&emsp;When Rushing (EPA > 1.8)",
-    "scoring_opps_opportunities" : "Scoring Opps",
-    "scoring_opps_points" : "&emsp;&emsp;Total Points",
-    "scoring_opps_pts_per_opp" : "&emsp;&emsp;Points per Opp",
-    "field_pos_avg_start" : "Avg Starting FP",
-    "field_pos_avg_starting_predicted_pts" : "&emsp;&emsp;Predicted Points",
-    "sacks" : "Sacks Generated",
-    "turnovers" : "Turnovers",
-    "expected_turnovers" : "Expected Turnovers",
-    "turnover_margin" : "Turnover Margin",
-    "expected_turnover_margin" : "Expected Turnover Margin",
-    "turnover_luck" : "Turnover Luck (pts)",
-    "PD" : "Passes Defensed",
-    "INT" : "&emsp;&emsp;Interceptions",
-    "Int" : "&emsp;&emsp;Interceptions",
-    "def_int" : "Interceptions",
-    "fumbles" : "Fumbles Forced",
-    "total_fumbles" : "&emsp;&emsp;Fumbles",
-    "fumbles_lost" : "&emsp;&emsp;Fumbles Lost",
-    "fumbles_recovered" : "&emsp;&emsp;Fumbles Recovered",
-    "middle_8": "\"Middle 8\" Plays",
-    "middle_8_pass": "&emsp;&emsp;Passes",
-    "middle_8_rush": "&emsp;&emsp;Rushes",
-    "EPA_middle_8": "&emsp;&emsp;EPA",
-    "EPA_middle_8_success": "&emsp;&emsp;During \"Middle 8\"",
-    "EPA_middle_8_success_pass": "&emsp;&emsp;Successful Passes (Rate)",
-    "EPA_middle_8_success_rush": "&emsp;&emsp;Successful Rushes (Rate)",
-    "EPA_middle_8_per_play" : "&emsp;&emsp;EPA/play",
-    "EPA_early_down" : "&emsp;&emsp;EPA",
-    "EPA_early_down_per_play" : "&emsp;&emsp;EPA/Play",
-    "first_downs_created" : "First Downs Created",
-    "early_down_first_down" : "&emsp;&emsp;First Downs Created",
-    "passes" : "Passes",
-    "rushes" : "Rushes",
-    "drives" : "Total",
-    "drive_total_gained_yards_rate" : "Available Yards %",
-    "yards_per_drive" : "Yards/Drive",
-    "plays_per_drive" : "Plays/Drive",
-    "avg_field_position": "Avg Starting Field Position",
-    "rushing_highlight_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">Highlight Yards</a>",
-    "rushing_highlight_yards_per_opp": "&emsp;&emsp;Per Rush Opportunity",
-    "line_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">OL Line Yards</a>",
-    "line_yards_per_carry": "&emsp;&emsp;Per Carry",
-    "yards_per_rush": "&emsp;&emsp;Yards/Play",
-    "yards_per_pass": "&emsp;&emsp;Yards/Play",
-    "yards_per_play": "&emsp;&emsp;Yards/Play",
-    "off_yards" : "&emsp;&emsp;Yards",
-    "rush_yards" : "&emsp;&emsp;Yards",
-    "pass_yards" : "&emsp;&emsp;Yards",
-    "total_yards":  "Total Yards",
-    "total_off_yards" : "&emsp;&emsp;Offensive Yards",
-    "total_sp_yards":"&emsp;&emsp;Special Teams Yards",
-    "total_pen_yards":"&emsp;&emsp;Penalty Yards",
-    "EPA_misc" : "&emsp;&emsp;Non-Scrimmage/Misc EPA",
-    "open_field_yards" : "Open-Field Yards",
-    "second_level_yards" : "Second-Level Yards",
-    "drive_stopped_rate" : "<a href=\"https://theathletic.com/2419632/2021/03/02/college-football-defense-rankings-stop-rate/\">Stop Rate</a>",
-    "EPA_non_explosive" : "EPA w/o Explosive Plays",
-    "EPA_non_explosive_per_play" : "&emsp;&emsp;EPA/Play",
-    "EPA_non_explosive_passing" : "&emsp;&emsp;When Passing",
-    "EPA_non_explosive_passing_per_play" : "&emsp;&emsp;&emsp;&emsp;EPA/Play",
-    "EPA_non_explosive_rushing" : "&emsp;&emsp;When Rushing",
-    "EPA_non_explosive_rushing_per_play" : "&emsp;&emsp;&emsp;&emsp;EPA/Play"
+    "plays_off" : "Off Plays",
+    "plays_def" : "Def Plays",
+
+    "playsgame_off" : "Off Plays/Game",
+    "playsgame_def" : "Def Plays/Game",
+
+    "TEPA_off" : "Off EPA",
+    "TEPA_def" : "Def EPA",
+
+    "EPAgame_off" : "Off EPA/Game",
+    "EPAgame_def" : "Def EPA/Game",
+
+    "EPAplay_off" : "Off EPA/Play",
+    "EPAplay_def" : "Def EPA/Play",
+
+    "success_off" : "Off Success Rate",
+    "success_def" : "Def Success Rate",
+
+    "success_off" : "Off Success Rate",
+    "success_def" : "Def Success Rate",
+
+    "start_position_off" : "Off Starting FP",
+    "start_position_def" : "Def Starting FP",
+
+    "TEPA_margin": "Total EPA",
+    "EPAplay_margin": "EPA/Play",
+    "EPAgame_margin": "EPA/Game",
+    "success_margin": "Success Rate",
+    "start_position_margin" : "Starting FP"
 }
-turnover_vec = [
-    "Blocked Field Goal",
-    "Blocked Field Goal Touchdown",
-    "Blocked Punt",
-    "Blocked Punt Touchdown",
-    "Field Goal Missed",
-    "Missed Field Goal Return",
-    "Missed Field Goal Return Touchdown",
-    "Fumble Recovery (Opponent)",
-    "Fumble Recovery (Opponent) Touchdown",
-    "Fumble Return Touchdown",
-    "Defensive 2pt Conversion",
-    "Interception",
-    "Interception Return",
-    "Interception Return Touchdown",
-    "Pass Interception Return",
-    "Pass Interception Return Touchdown",
-    "Kickoff Team Fumble Recovery",
-    "Kickoff Team Fumble Recovery Touchdown",
-    "Punt Touchdown",
-    "Punt Return Touchdown",
-    "Sack Touchdown",
-    "Uncategorized Touchdown"
-]
-function injectDetmerSpan() {
-    return `<span title="Stands for 'Downfield Eventful Throwing Metric Encouraging Ripping it'. Built to find the most sicko QB performances. Developed by the Moon Crew Discord & @SickosCommittee on Twitter.">DETMER</span>`;
-}
-function calculateDETMER(boxScore) {
-    // yds/(400#games) (TD+INT)/(1+|TD-INT|)
-    return (parseFloat(boxScore.Yds) / 400) * ((parseFloat(boxScore.Pass_TD) + parseFloat(boxScore.Int)) / (1 + Math.abs(parseFloat(boxScore.Pass_TD) - parseFloat(boxScore.Int))))
-}
+
 
 function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
-function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) {
-    var classText = "";
-    if (turnover_vec.includes(play.type.text) || play.text.includes("fumble")) {
-        classText = " table-danger"
-    } else if (play.scoringPlay == true) {
-        classText = " table-success"
-    } else if (play.text.toLocaleLowerCase().includes("penalty")) {
-        classText = " table-warning"
-    }
-    var period = `Q${play.period}`;
-    if (play.period > 5) {
-        period = `${play.period - 4}OT`
-    } else if (play.period == 5) {
-        period = "OT"
-    } else {
-        period = `Q${play.period} ${play.clock.displayValue}`;
-    }
-    var offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
-    var defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
-    var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ` - ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}`
-    var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
-
-    let fourthDownLink = `https://kazink.shinyapps.io/cfb_fourth_down/?team=${offense.location}&pos_score=${play.start.pos_team_score}&def_pos_score=${play.start.def_pos_team_score}&pos_timeouts=${play.start.posTeamTimeouts}&def_timeouts=${play.start.defTeamTimeouts}&distance=${play.start.distance}&yards_to_goal=${play.start.yardsToEndzone}&qtr=${play.period}&minutes=${play.clock.minutes}&seconds=${play.clock.seconds}&posteam_spread=${-1 * parseFloat(play.start.posTeamSpread)}&vegas_ou=${play.overUnder}&season=${play.season}&pos_team_receives_2H_kickoff=${play.modelInputs.start.pos_team_receives_2H_kickoff}&is_home=${play.modelInputs.start.is_home}`;
-    var fourthDownEval = ""
-    if (play.start.down == 4) {
-        fourthDownEval = `<p style="text-align: center;"><strong>Fouth Down Decision Evaluation:</strong> <a href="${fourthDownLink}" target="__blank">link</a></p>`;
-    }
-    var baseRow = `
-    <tr ${collapsibleText} class="accordion-toggle${classText}">
-        <td style="text-align: left;">${period}</td>
-        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
-        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
-        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
-        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
-        <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
-    </tr>`;
-    if (canCollapse) {
-        baseRow += `<tr>
-            <td colspan="6" class="hiddenRow">
-                <div class="accordian-body collapse" id="play-${collapsePrefix}-${play.game_play_number}"> 
-                    <div class="row p-1">`;
-        if (expandingRowCallback != null) {
-            baseRow += expandingRowCallback(play);
-        } else {
-            baseRow += `
-            <div class="ms-sm-auto col-lg-6">
-                <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
-                <p style="text-align: center;"><strong>Yards to End Zone (Before -> After):</strong> ${play.start.yardsToEndzone} -> ${play.end.yardsToEndzone}</p>                
-                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>                
-                <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> ${roundNumber(parseFloat(play.expectedPoints.after), 2, 2)} - ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)} = ${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</p>
-                <p style="text-align: center;"><strong>Score Difference (Before):</strong> ${play.start.pos_score_diff} (${roundNumber(parseFloat(play.start.ExpScoreDiff), 2, 2)})</p>
-                <p style="text-align: center;"><strong>Score Difference (End):</strong> ${play.end.pos_score_diff} (${roundNumber(parseFloat(play.end.ExpScoreDiff), 2, 2)})</p>
-                <p style="text-align: center;"><strong>Change of Possession:</strong> ${play.change_of_poss}</p>                            
-            </div>
-            <div class="ms-sm-auto col-lg-6">
-                <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
-                <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} play${(parseInt(play.drive_play_index) == 1) ? "" : "s"}, ${play.drive_total_yards} yards</p>
-                <p style="text-align: center;"><strong>Win Probability (Before):</strong> ${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</p>
-                <p style="text-align: center;"><strong>Win Probability (After):</strong> ${roundNumber(parseFloat(play.winProbability.after) * 100, 3, 1)}%</p>
-                <p style="text-align: center;"><strong>Away Score:</strong> ${play.start.awayScore} (${play.awayScore}) <strong>Home Score:</strong> ${play.start.homeScore} (${play.homeScore})</p>    
-                <p style="text-align: center;"><strong>Pos Team Timeouts:</strong> ${play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> ${play.end.defPosTeamTimeouts}</p>
-                ${fourthDownEval}
-            </div>
-            `;
-        } 
-        baseRow += `</div>
-                </div>
-            </td>
-        </tr>`
-    }
-    return baseRow;
-}
-function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
-    if (plays == null || plays.length == 0) {
-        return `<p class="text-center text-muted">${errorMsg}</p>`;
-    }
-    let guideText = (showGuide) ? `<caption>Play shading guide: 
-        <ul>
-            <li><strong>Yellow</strong> - penalty</li>
-            <li><strong>Red</strong> - turnover</li>
-            <li><strong>Green</strong> - scoring play</li>
-        </ul>
-    </caption>` : ""
-    
-    var baseTable = `
-    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
-        ${guideText}
-        <thead>
-            <tr>
-                <th style="text-align: left;">Time</th>
-                <th style="text-align: center;">Offense</th>
-                <th style="text-align: left;">Play Description</th>
-                <th style="text-align: center;">EPA</th>
-                <th style="text-align: center;">WP%</th>
-                <th style="text-align: right;">WPA</th>
-            </tr>
-        </thead>
-        <tbody>`;
-    plays.forEach(play => {
-        baseTable += createPlayRow(play, expandable, prefix, expandingRowCallback);
-    });
-    baseTable += `</tbody>
-    </table>`;
-    return baseTable;
-}
 %>
 <head>
     <meta charset="utf-8">
@@ -374,55 +128,51 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     </div>
     <div class="container-fluid">
             <%
-            let nonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"];
-            let nonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
-            let nonRatePercentColumns = ["drive_total_gained_yards_rate","drive_stopped_rate"];
+
+
+
             function handleRates(item, teamInfo, useSuffix, decimalPoints) {
                 let finalTeamInfo = (teamInfo == null) ? gameData.matchup.team : teamInfo;
                 let finalDecimalPoints = decimalPoints || 1;
                 var result = ""
-                if (item == "EPA_misc") {
-                    finalTeamInfo.forEach(teamData => {
-                        let overall = parseFloat(teamData['EPA_overall_total']) || 0;
-                        let off = parseFloat(teamData['EPA_overall_offense']) || 0;
-                        let sp_epa = parseFloat(teamData['EPA_special_teams']) || 0;
-                        let pen_epa = parseFloat(teamData['EPA_penalty']) || 0;
-                        let val = (overall - off - sp_epa - pen_epa)
-                        result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
-                    });
-                } else if (item == "avg_field_position") {
+                function produceNumerals(valueFormatter, isMargin) {
                     finalTeamInfo.forEach(teamData => {
                         let val = teamData[item] || 0;
-                        let prefix = (val >= 50) ? "Own" : "Opp"
-                        let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
-                        result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
-                    });
-                } else if (nonRatePercentColumns.includes(item)) {
-                    finalTeamInfo.forEach(teamData => {
-                        let val = teamData[item] || 0;
-                        result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
-                    });
-                } else if (nonRateDecimalColumns.includes(item)) {
-                    finalTeamInfo.forEach(teamData => {
-                        let val = teamData[item] || 0;
-                        result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
-                    });
-                } else if (nonRateColumns.includes(item)) {
-                    finalTeamInfo.forEach(teamData => {
-                        let val = teamData[item] || 0;
-                        result += `<td class="numeral" style="text-align: center;">${val}</td>`;
-                    });
-                } else { 
-                    finalTeamInfo.forEach(teamData => {
-                        let val = teamData[item] || 0;
-                        var rate = 0.0;
-                        if (useSuffix) {
-                            rate = 100.0 * teamData[`${item}_rate`]
-                        } else {
-                            rate = 100.0 * (parseFloat(val) / parseFloat(teamData["scrimmage_plays"]))
+                        let rank = teamData[`${item}_rank`]
+                        let color = "";
+                        let sign = "";
+                        if (isMargin) {
+                            if (val > 0) {
+                                color = " hulk-green"
+                                sign = "+"
+                            } else if (val < 0) {
+                                color = " hulk-purple"
+                            } else {
+                                color = ""
+                            }
                         }
-                        result += `<td class="numeral" style="text-align: center;">${val} (${roundNumber(parseFloat(rate), 2, 0)}%)</td>`;
+                        let rankString = rank ? ` (#${rank})` : ""
+
+                        result += `<td class="numeral${color}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
                     });
+                }
+
+                if (item.includes("start_position")) {
+                    produceNumerals((value) => {
+                        if (item.includes("margin")) {
+                            return `${roundNumber(parseFloat(value), 2, 0)}`;
+                        } else {
+                            let prefix = (value >= 50) ? "Own" : "Opp"
+                            let printedVal = (value >= 50) ? (100 - parseFloat(value)) : value
+                            return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
+                        }
+                    }, item.includes("margin"))
+                } else if (item.includes("EPA")) {
+                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, item.includes("margin"))
+                } else if (item.includes("success")) {
+                    produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, item.includes("margin"))
+                } else { 
+                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, item.includes("margin"))
                 }
                 return result;
             }
@@ -430,9 +180,6 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             Object.keys(gameData.matchup).forEach(key => {
                 const baseData = gameData.matchup[key]
                 var teamKey = "pos_team"
-                if (Object.keys(baseData).includes("def_pos_team")) {
-                    teamKey = "def_pos_team"
-                }
 
                 baseData.sort((a,b) => {
                     if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
@@ -455,13 +202,15 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <div id="boxScoreContent" class="panel-collapse show">
                             <div class="panel-body">
                                 <div class="row">
-                                    <div class="col-md-6 ms-sm-auto col-lg-6">
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
                                         <div class="table-responsive">
-                                            <% var columns = []; %>
+                                            <% var columns = [
+                                                "plays_off","playsgame_off","TEPA_off","EPAplay_off","EPAgame_off","success_off","start_position_off"
+                                            ]; %>
                                             <table class="table table-sm table-responsive">
                                                 <thead>
                                                     <tr>
-                                                        <th style="text-align: left;">Overall</th>
+                                                        <th style="text-align: left;">Offensive</th>
                                                         <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
                                                             <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                         <% }); %>
@@ -470,7 +219,8 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <tbody>
                                                     <% columns.forEach(item => { %>
                                                         <tr>
-                                                            
+                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
                                                         </tr>
                                                     <% }); %>
                                                 </tbody>
@@ -478,16 +228,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                         </div>
 
                                     </div>
-                                    <div class="col-md-6 ms-sm-auto col-lg-6">
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
                                         <div class="table-responsive">
                                             <% var columns = [
-
+                                                "plays_def","playsgame_def","TEPA_def","EPAplay_def","EPAgame_def","success_def","start_position_def"
                                             ]; 
                                             %>
                                             <table class="table table-sm table-responsive">
                                                 <thead>
                                                     <tr>
-                                                        <th class="box-heading">Situational</th>
+                                                        <th class="box-heading">Defensive</th>
                                                         <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
                                                             <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                         <% }); %>
@@ -496,7 +246,34 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                 <tbody>
                                                     <% columns.forEach(item => { %>
                                                         <tr>
-                                                            
+                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
+                                                        </tr>
+                                                    <% }); %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
+                                        <div class="table-responsive">
+                                            <% var columns = [
+                                                "TEPA_margin","EPAgame_margin","EPAplay_margin","success_margin","start_position_margin"
+                                            ]; 
+                                            %>
+                                            <table class="table table-sm table-responsive">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="box-heading">Margins</th>
+                                                        <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
+                                                            <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                        <% }); %>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% columns.forEach(item => { %>
+                                                        <tr>
+                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
                                                         </tr>
                                                     <% }); %>
                                                 </tbody>
@@ -528,6 +305,8 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             let airingNetwork = (airings != null && airings.length > 0) ? ` (${airings[0].network_shortName || airings[0].network_displayName})` : ""
             if (airingLink != null) {
                 document.body.querySelector("#game-date").innerHTML = `<a href="${airingLink}">LIVE</a>${airingNetwork} - ${statusDetail}`
+            } else if (statusDetail.includes("TBD")) {
+                document.body.querySelector("#game-date").innerText = "Scheduled - " + statusDetail
             } else {
                 document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             }
