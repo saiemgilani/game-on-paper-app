@@ -103,3 +103,11 @@ table {
 .rounded, .btn, .badge, .form-select, .form-control {
   border-radius: 0.5em !important;
 }
+
+.hulk-green {
+  color: #00BF57;
+}
+
+.hulk-purple {
+  color: #AE49D4;
+}
