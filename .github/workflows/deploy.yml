@@ -15,7 +15,7 @@ jobs:
         with:
           name: saiemgilani/game-on-paper-node
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend
           tags: latest
@@ -24,7 +24,7 @@ jobs:
         with:
           name: saiemgilani/game-on-paper-python
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./python
           tags: latest
