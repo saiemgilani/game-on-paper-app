@@ -3,6 +3,10 @@ const Games = require('./games');
 const Teams = require('./teams');
 const Schedule = require('./schedule');
 const router = express.Router();
+const axios = require('axios');
+const fs = require('fs/promises');
+const path = require('path');
+const csv = require('csvtojson');
 
 router.get('/healthcheck', Games.getServiceHealth)
 
@@ -45,6 +49,28 @@ async function retrieveGameList(url, params) {
     })
     return gameList;
 }
+
+async function retrieveTeamData(year, abbreviation) {
+    try {
+        const filename = path.join(__dirname, `/data/${year}/${abbreviation}/overall.csv`);
+        const result = await csv().fromFile(filename)
+        console.log(JSON.stringify(result));
+        return result;
+    } catch (err) {
+        console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
+        if (err) {
+            console.log(`also err: ${err}`);
+        }
+        if ((year - 1) < 2014) {
+            return {
+                pos_team: abbreviation
+            };
+        } else {
+            return retrieveTeamData(year - 1, abbreviation);
+        }
+    }
+}
+
 
 router.get('/', async function(req, res, next) {
     try {
@@ -90,7 +116,37 @@ router.route('/year/:year/type/:type/week/:week')
 router.route('/game/:gameId')
     .get(async function(req, res, next) {
         try {
-            let data = await Games.getPBP(req.params.gameId);
+            const cacheBuster = ((new Date()).getTime() * 1000);
+            // check if the game is active or in the future
+            pbp_url = `http://cdn.espn.com/core/college-football/playbyplay?gameId=${req.params.gameId}&xhr=1&render=false&userab=18&${cacheBuster}`;
+            const response = await axios.get(pbp_url);
+            const game = response.data["gamepackageJSON"]["header"]["competitions"][0];
+            const season = response.data["gamepackageJSON"]["header"]["season"]["year"];
+            const homeComp = game.competitors[0];
+            const awayComp = game.competitors[1];
+            const homeTeam = homeComp.team;
+            const awayTeam = awayComp.team;
+            const homeKey = homeTeam.abbreviation;
+            const awayKey = awayTeam.abbreviation;
+
+            // if it's in the future, send to pregame template
+            if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
+                const homeData = await retrieveTeamData(season, homeKey);
+                const awayData = await retrieveTeamData(season, awayKey);
+                return res.render('pages/cfb/pregame', {
+                    gameData: {
+                        gameInfo: game,
+                        matchup: {
+                            team: [
+                                ...awayData, ...homeData
+                            ]
+                        }
+                    }
+                });
+            }
+
+            // if it's past/live, send to normal template
+            const data = await Games.getPBP(req.params.gameId);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }

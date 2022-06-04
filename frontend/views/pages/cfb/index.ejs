@@ -123,7 +123,7 @@
                                 <div class="d-flex justify-content-between">
                                     <div class="text-left">
                                         <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
-                                        <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                        <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
                                     </div>
                                     <div class="text-right">
                                         <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { %>

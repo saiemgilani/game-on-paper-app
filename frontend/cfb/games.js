@@ -99,7 +99,6 @@ async function getSchedule(input) {
 }
 
 async function retrievePBP(gameId) {
-
     const processedGame = await processPlays(gameId);
     
     // debuglog(processedGame)
