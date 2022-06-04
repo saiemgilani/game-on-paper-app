@@ -1,0 +1,17 @@
+version: "3.7"
+services:
+  node:
+    build: ./frontend
+    command: ["bash", "./wait-for-it.sh", "--strict", "python:7000", "--", "node", "server.js"]
+    environment:
+      RDATA_BASE_URL: "http://python:7000"
+    ports: 
+      - 8000:8000
+    depends_on: 
+      - python
+    links: 
+      - python
+  python:
+    build: ./python
+    ports: 
+      - 7000
