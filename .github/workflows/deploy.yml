@@ -13,7 +13,7 @@ jobs:
       - name: Publish Node container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
         with:
-          name: saiemgilani/game-on-paper-node
+          image: saiemgilani/game-on-paper-node
           registry: ghcr.io
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -22,7 +22,7 @@ jobs:
       - name: Publish Python container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
         with:
-          name: saiemgilani/game-on-paper-python
+          image: saiemgilani/game-on-paper-python
           registry: ghcr.io
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
