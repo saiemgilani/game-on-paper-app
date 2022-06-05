@@ -32,9 +32,9 @@ jobs:
           tags: latest
       - name: Pipe docker-compose files
         run: |
-          CONTENT=`cat docker-compose.yml`
+          CONTENT=$(<docker-compose.yml)
           echo DOCKER_COMPOSE_FILE="${CONTENT}" >> $GITHUB_ENV
-          OVERRIDE_CONTENT=`cat docker-compose.do.yml`
+          OVERRIDE_CONTENT=$(<docker-compose.do.yml)
           echo DOCKER_COMPOSE_OVERRIDE_FILE="${OVERRIDE_CONTENT}" >> $GITHUB_ENV
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
