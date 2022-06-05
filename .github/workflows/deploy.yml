@@ -18,6 +18,7 @@ jobs:
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend
+          dockerfile: ./frontend/Dockerfile
           tags: latest
       - name: Publish Python container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
@@ -27,6 +28,7 @@ jobs:
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./python
+          dockerfile: ./python/Dockerfile
           tags: latest
       - name: Pipe docker-compose files
         run: |
