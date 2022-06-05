@@ -10,49 +10,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-#       - name: Publish Node container to GitHub
-#         uses: mr-smithers-excellent/docker-build-push@v5.5
-#         with:
-#           image: saiemgilani/game-on-paper-node
-#           registry: ghcr.io
-#           username: ${{ secrets.GH_USERNAME }}
-#           password: ${{ secrets.GITHUB_TOKEN }}
-#           directory: ./frontend
-#           dockerfile: ./frontend/Dockerfile
-#           tags: latest
-#       - name: Publish Python container to GitHub
-#         uses: mr-smithers-excellent/docker-build-push@v5.5
-#         with:
-#           image: saiemgilani/game-on-paper-python
-#           registry: ghcr.io
-#           username: ${{ secrets.GH_USERNAME }}
-#           password: ${{ secrets.GITHUB_TOKEN }}
-#           directory: ./python
-#           dockerfile: ./python/Dockerfile
-#           tags: latest
+      - name: Publish Node container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v5.5
+        with:
+          image: saiemgilani/game-on-paper-node
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./frontend
+          dockerfile: ./frontend/Dockerfile
+          tags: latest
+      - name: Publish Python container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v5.5
+        with:
+          image: saiemgilani/game-on-paper-python
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./python
+          dockerfile: ./python/Dockerfile
+          tags: latest
       - name: Pipe docker-compose files
         run: |
           CONTENT="$(<docker-compose.yml)"
           echo "DOCKER_COMPOSE_FILE="\"${CONTENT}\""" >> $GITHUB_ENV
           OVERRIDE_CONTENT="$(<docker-compose.do.yml)"
           echo "DOCKER_COMPOSE_OVERRIDE_FILE="\"${OVERRIDE_CONTENT}\""" >> $GITHUB_ENV
-#       - name: Deploy package to DigitalOcean
-#         uses: appleboy/ssh-action@master
-#         env:
-#             GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
-#             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#             DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
-#             DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
-#         with:
-#           host: ${{ secrets.HOST }}
-#           username: ${{ secrets.USERNAME }}
-#           password: ${{ secrets.PASSWORD }}
-#           port: ${{ secrets.PORT }}
-#           envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
-#           script: |
-#             docker stop $(docker ps -a -q)
-#             docker system prune --force
-#             docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-#             echo $DOCKER_COMPOSE_FILE >> docker-compose.yml
-#             echo $DOCKER_COMPOSE_OVERRIDE_FILE >> docker-compose.do.yml
-#             docker compose up -f docker-compose.yml docker-compose.do.yml
+      - name: Deploy package to DigitalOcean
+        uses: appleboy/ssh-action@master
+        env:
+            GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
+            DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
+          script: |
+            docker stop $(docker ps -a -q)
+            docker system prune --force
+            docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+            echo $DOCKER_COMPOSE_FILE >> docker-compose.yml
+            echo $DOCKER_COMPOSE_OVERRIDE_FILE >> docker-compose.do.yml
+            docker compose up -f docker-compose.yml docker-compose.do.yml
