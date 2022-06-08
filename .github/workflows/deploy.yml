@@ -10,37 +10,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Publish Node container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
+#       - name: Publish Node container to GitHub
+#         uses: mr-smithers-excellent/docker-build-push@v5.5
+#         with:
+#           image: saiemgilani/game-on-paper-node
+#           registry: ghcr.io
+#           username: ${{ secrets.GH_USERNAME }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#           directory: ./frontend
+#           dockerfile: ./frontend/Dockerfile
+#           tags: latest
+#       - name: Publish Python container to GitHub
+#         uses: mr-smithers-excellent/docker-build-push@v5.5
+#         with:
+#           image: saiemgilani/game-on-paper-python
+#           registry: ghcr.io
+#           username: ${{ secrets.GH_USERNAME }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#           directory: ./python
+#           dockerfile: ./python/Dockerfile
+#           tags: latest
+      - name: Push updated docker-compose file
+        uses: Creepios/sftp-action@v1.0.3
         with:
-          image: saiemgilani/game-on-paper-node
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./frontend
-          dockerfile: ./frontend/Dockerfile
-          tags: latest
-      - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
-        with:
-          image: saiemgilani/game-on-paper-python
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./python
-          dockerfile: ./python/Dockerfile
-          tags: latest
-      - name: Push up docker-compose files
-        uses: SamKirkland/FTP-Deploy-Action@4.3.0
-        with:
-          server: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          dry-run: true
-          exclude: |
-            !docker-compose.yml
-            !docker-compose.do.yml
+          localPath: 'docker-compose.yml'
+      - name: Push updated docker-compose override file
+        uses: Creepios/sftp-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          localPath: 'docker-compose.do.yml'
         
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
@@ -59,6 +64,4 @@ jobs:
             docker stop $(docker ps -a -q)
             docker system prune --force
             docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            echo $DOCKER_COMPOSE_FILE >> docker-compose.yml
-            echo $DOCKER_COMPOSE_OVERRIDE_FILE >> docker-compose.do.yml
             docker-compose -f docker-compose.yml -f docker-compose.do.yml up
