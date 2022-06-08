@@ -30,12 +30,18 @@ jobs:
           directory: ./python
           dockerfile: ./python/Dockerfile
           tags: latest
-      - name: Pipe docker-compose files
-        run: |
-          CONTENT="$(<docker-compose.yml)"
-          echo "DOCKER_COMPOSE_FILE="\"${CONTENT}\""" >> $GITHUB_ENV
-          OVERRIDE_CONTENT="$(<docker-compose.do.yml)"
-          echo "DOCKER_COMPOSE_OVERRIDE_FILE="\"${OVERRIDE_CONTENT}\""" >> $GITHUB_ENV
+      - name: Push up docker-compose files
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          dry-run: true
+          exclude: |
+            !docker-compose.yml
+            !docker-compose.do.yml
+        
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
