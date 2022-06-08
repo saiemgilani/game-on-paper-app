@@ -30,15 +30,6 @@ jobs:
           directory: ./python
           dockerfile: ./python/Dockerfile
           tags: latest
-      - name: Push updated docker-compose file
-        uses: Creepios/sftp-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          localPath: './docker-compose.yml'
-          remotePath: './docker-compose.yml'
       - name: Push updated docker-compose override file
         uses: Creepios/sftp-action@v1.0.3
         with:
