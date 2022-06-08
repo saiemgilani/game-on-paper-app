@@ -1,6 +1,18 @@
 version: "3.7"
 services:
   node:
+    command: ["bash", "./wait-for-it.sh", "--strict", "python:7000", "--", "node", "server.js"]
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-node:latest
+    environment:
+      RDATA_BASE_URL: "http://python:7000"
+    ports: 
+      - 8000:8000
+    depends_on: 
+      - python
+    links: 
+      - python
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
+    expose: 
+      - 7000
+
