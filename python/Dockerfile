@@ -7,7 +7,7 @@ COPY ./requirements.txt ./requirements.txt
 # ---- Dependencies ----
 FROM base AS pybuilder
 RUN pip install --user -r requirements.txt
- 
+
 FROM base
 WORKDIR /code
 

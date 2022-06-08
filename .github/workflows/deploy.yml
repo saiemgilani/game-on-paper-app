@@ -13,27 +13,32 @@ jobs:
       - name: Publish Node container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
         with:
-          name: saiemgilani/game-on-paper-node
+          image: saiemgilani/game-on-paper-node
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend
+          dockerfile: ./frontend/Dockerfile
           tags: latest
       - name: Publish Python container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
         with:
-          name: saiemgilani/game-on-paper-python
+          image: saiemgilani/game-on-paper-python
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./python
+          dockerfile: ./python/Dockerfile
           tags: latest
-      - name: Pipe docker-compose files
-        run: |
-          CONTENT=$(cat docker-compose.yml)
-          echo DOCKER_COMPOSE_FILE="${CONTENT}" >> $GITHUB_ENV
-          OVERRIDE_CONTENT=$(cat docker-compose.do.yml)
-          echo DOCKER_COMPOSE_OVERRIDE_FILE="${OVERRIDE_CONTENT}" >> $GITHUB_ENV
+      - name: Push updated docker-compose override file
+        uses: Creepios/sftp-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          localPath: './docker-compose.do.yml'
+          remotePath: './docker-compose.yml'
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
@@ -50,7 +55,5 @@ jobs:
           script: |
             docker stop $(docker ps -a -q)
             docker system prune --force
-            docker login docker.pkg.github.com -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            echo $DOCKER_COMPOSE_FILE >> docker-compose.yml
-            echo $DOCKER_COMPOSE_OVERRIDE_FILE >> docker-compose.do.yml
-            docker compose up -f docker-compose.yml docker-compose.do.yml
+            docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+            docker-compose -f docker-compose.yml up -d
