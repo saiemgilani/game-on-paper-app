@@ -1,6 +1,6 @@
 version: "3.7"
 services:
   node:
-    image: saiemgilani/game-on-paper-node:latest
+    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-node:latest
   python:
-    image: saiemgilani/game-on-paper-python:latest
+    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
