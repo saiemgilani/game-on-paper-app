@@ -50,7 +50,7 @@ jobs:
             DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
             DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
         with:
-          host: ${{ secrets.HOST }}
+          server: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
