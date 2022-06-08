@@ -38,6 +38,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           localPath: './docker-compose.yml'
+          remotePath: './docker-compose.yml'
       - name: Push updated docker-compose override file
         uses: Creepios/sftp-action@v1.0.3
         with:
@@ -46,7 +47,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           localPath: './docker-compose.do.yml'
-        
+          remotePath: './docker-compose.do.yml'
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
