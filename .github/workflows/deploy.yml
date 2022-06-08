@@ -65,4 +65,4 @@ jobs:
             docker stop $(docker ps -a -q)
             docker system prune --force
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            docker-compose -f docker-compose.yml up
+            docker-compose -f docker-compose.yml up -d
