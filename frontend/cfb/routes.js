@@ -4,9 +4,7 @@ const Teams = require('./teams');
 const Schedule = require('./schedule');
 const router = express.Router();
 const axios = require('axios');
-const fs = require('fs/promises');
 const path = require('path');
-const csv = require('csvtojson');
 
 router.get('/healthcheck', Games.getServiceHealth)
 
@@ -52,10 +50,8 @@ async function retrieveGameList(url, params) {
 
 async function retrieveTeamData(year, abbreviation) {
     try {
-        const filename = path.join(__dirname, `/data/${year}/${abbreviation}/overall.csv`);
-        const result = await csv().fromFile(filename)
-        console.log(JSON.stringify(result));
-        return result;
+        const response = await axios.get(`http://summary:3000/year/${year}/team/${abbreviation}`)
+        return response.data.results;
     } catch (err) {
         console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
         if (err) {

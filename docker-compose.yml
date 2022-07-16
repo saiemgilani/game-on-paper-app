@@ -1,16 +1,22 @@
 version: "3.7"
 services:
+  summary:
+    image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
+    expose:
+      - 3000
   node:
     build: ./frontend
-    command: ["bash", "./wait-for-it.sh", "--strict", "python:7000", "--", "node", "server.js"]
+    command: ["bash", "./wait-for-it.sh", "--strict", "python:7000", "--","./wait-for-it.sh","--strict", "summary:3000", "--", "node", "server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
     ports:
       - 8000:8000
     depends_on:
       - python
+      - summary
     links:
       - python
+      - summary
   python:
     build: ./python
     expose:

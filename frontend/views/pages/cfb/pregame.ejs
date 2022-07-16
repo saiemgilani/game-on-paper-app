@@ -12,35 +12,13 @@ function getNumberWithOrdinal(n) {
 }
 
 stat_key_title_mapping = {
-    "plays_off" : "Off Plays",
-    "plays_def" : "Def Plays",
-
-    "playsgame_off" : "Off Plays/Game",
-    "playsgame_def" : "Def Plays/Game",
-
-    "TEPA_off" : "Off EPA",
-    "TEPA_def" : "Def EPA",
-
-    "EPAgame_off" : "Off EPA/Game",
-    "EPAgame_def" : "Def EPA/Game",
-
-    "EPAplay_off" : "Off EPA/Play",
-    "EPAplay_def" : "Def EPA/Play",
-
-    "success_off" : "Off Success Rate",
-    "success_def" : "Def Success Rate",
-
-    "success_off" : "Off Success Rate",
-    "success_def" : "Def Success Rate",
-
-    "start_position_off" : "Off Starting FP",
-    "start_position_def" : "Def Starting FP",
-
-    "TEPA_margin": "Total EPA",
-    "EPAplay_margin": "EPA/Play",
-    "EPAgame_margin": "EPA/Game",
-    "success_margin": "Success Rate",
-    "start_position_margin" : "Starting FP"
+    "totalPlays" : "Plays",
+    "playsPerGame" : "Plays/Game",
+    "totalEPA": "Total EPA",
+    "epaPerPlay": "EPA/Play",
+    "epaPerGame": "EPA/Game",
+    "successRate": "Success Rate",
+    "startingFP" : "Starting FP"
 }
 
 
@@ -128,51 +106,112 @@ function roundNumber(value, power10, fixed) {
     </div>
     <div class="container-fluid">
             <%
-
-
-
-            function handleRates(item, teamInfo, useSuffix, decimalPoints) {
+            function handleRates(item, teamInfo, baseKey, useSuffix, decimalPoints) {
                 let finalTeamInfo = (teamInfo == null) ? gameData.matchup.team : teamInfo;
                 let finalDecimalPoints = decimalPoints || 1;
                 var result = ""
+                
+
+                // let DARK_MODE_COLOR_RAMP = [
+                //     "#BF5AF2FF",
+                //     "#CF83F5C0",
+                //     "#DFACF880",
+                //     "#EFD5FB64",
+                //     "#FFFFFF00",
+                //     "#FFFFFF00",
+                //     "#CBF3D564",
+                //     "#97E8AB80",
+                //     "#63DC81C0",
+                //     "#30D158FF"
+                // ]
+                let LIGHT_MODE_COLOR_RAMP = [
+                    "#AF52DEFF",
+                    "#C37DE6C0",
+                    "#D7A8EE80",
+                    "#EBD3F664",
+                    "#FFFFFF00",
+                    "#FFFFFF00",
+                    "#CCF1D564",
+                    "#99E3AC80",
+                    "#66D582C0",
+                    "#34C759FF"
+                ]
+
+                function generateColorRampValue(input, max, midColor, alpha) {
+                    if (!input) {
+                        return null;
+                    }
+                    let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+                    let step = Math.round(value / 0.1)
+                    let clampedStep = Math.min(Math.max(step, 0), 9)
+  
+                    let hex = null
+                    if (clampedStep == 4 || clampedStep == 5) {
+                        return null
+                    } else {
+                        hex = LIGHT_MODE_COLOR_RAMP[clampedStep]
+                    }
+                    
+                    if (alpha && hex) {
+                        return hex.substring(0, hex.length - 2) + alpha.toString(16)
+                    } else if (hex) {
+                        return hex
+                    } else {
+                        return null
+                    }
+                }
+
                 function produceNumerals(valueFormatter, isMargin) {
                     finalTeamInfo.forEach(teamData => {
-                        let val = teamData[item] || 0;
-                        let rank = teamData[`${item}_rank`]
-                        let color = "";
+                        let val = teamData[baseKey][item] || 0;
+                        let rank = teamData[baseKey][`${item}Rank`]
+                        let colorClass = null;
+                        let colorText = null;
                         let sign = "";
+
                         if (isMargin) {
                             if (val > 0) {
-                                color = " hulk-green"
+                                colorClass = " hulk-green"
                                 sign = "+"
                             } else if (val < 0) {
-                                color = " hulk-purple"
+                                colorClass = " hulk-purple"
                             } else {
-                                color = ""
+                                colorClass = null
                             }
+                            colorText = null;
+                        } else {
+                            colorClass = null
+                            colorText = generateColorRampValue(rank, 130, null, 255);
                         }
+                        
                         let rankString = rank ? ` (#${rank})` : ""
 
-                        result += `<td class="numeral${color}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        if (colorClass) {
+                            result += `<td class="numeral${colorClass}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        } else if (colorText) {
+                            result += `<td class="numeral" style="text-align: center; color:${colorText};">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        } else {
+                            result += `<td class="numeral" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        }
                     });
                 }
 
-                if (item.includes("start_position")) {
+                if (item.includes("startingFP")) {
                     produceNumerals((value) => {
-                        if (item.includes("margin")) {
+                        if (baseKey.includes("differential")) {
                             return `${roundNumber(parseFloat(value), 2, 0)}`;
                         } else {
                             let prefix = (value >= 50) ? "Own" : "Opp"
                             let printedVal = (value >= 50) ? (100 - parseFloat(value)) : value
                             return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
                         }
-                    }, item.includes("margin"))
-                } else if (item.includes("EPA")) {
-                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, item.includes("margin"))
+                    }, baseKey.includes("differential"))
+                } else if (item.toLocaleLowerCase().includes("epa")) {
+                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, baseKey.includes("differential"))
                 } else if (item.includes("success")) {
-                    produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, item.includes("margin"))
+                    produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, baseKey.includes("differential"))
                 } else { 
-                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, item.includes("margin"))
+                    produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, baseKey.includes("differential"))
                 }
                 return result;
             }
@@ -205,13 +244,13 @@ function roundNumber(value, power10, fixed) {
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
                                         <div class="table-responsive">
                                             <% var columns = [
-                                                "plays_off","playsgame_off","TEPA_off","EPAplay_off","EPAgame_off","success_off","start_position_off"
+                                                "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
                                             ]; %>
                                             <table class="table table-sm table-responsive">
                                                 <thead>
                                                     <tr>
                                                         <th style="text-align: left;">Offensive</th>
-                                                        <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
+                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
                                                             <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                         <% }); %>
                                                     </tr>
@@ -220,7 +259,7 @@ function roundNumber(value, power10, fixed) {
                                                     <% columns.forEach(item => { %>
                                                         <tr>
                                                             <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
+                                                            <%- handleRates(item, gameData.matchup.team, 'offensive', true, 2); %>
                                                         </tr>
                                                     <% }); %>
                                                 </tbody>
@@ -231,14 +270,14 @@ function roundNumber(value, power10, fixed) {
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
                                         <div class="table-responsive">
                                             <% var columns = [
-                                                "plays_def","playsgame_def","TEPA_def","EPAplay_def","EPAgame_def","success_def","start_position_def"
+                                                "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
                                             ]; 
                                             %>
                                             <table class="table table-sm table-responsive">
                                                 <thead>
                                                     <tr>
                                                         <th class="box-heading">Defensive</th>
-                                                        <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
+                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
                                                             <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                         <% }); %>
                                                     </tr>
@@ -247,7 +286,7 @@ function roundNumber(value, power10, fixed) {
                                                     <% columns.forEach(item => { %>
                                                         <tr>
                                                             <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
+                                                            <%- handleRates(item, gameData.matchup.team, 'defensive', true, 2); %>
                                                         </tr>
                                                     <% }); %>
                                                 </tbody>
@@ -257,14 +296,14 @@ function roundNumber(value, power10, fixed) {
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
                                         <div class="table-responsive">
                                             <% var columns = [
-                                                "TEPA_margin","EPAgame_margin","EPAplay_margin","success_margin","start_position_margin"
+                                                "totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
                                             ]; 
                                             %>
                                             <table class="table table-sm table-responsive">
                                                 <thead>
                                                     <tr>
                                                         <th class="box-heading">Margins</th>
-                                                        <% gameData.matchup.team.map(group => group.team_id).forEach(value => { %>
+                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
                                                             <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                         <% }); %>
                                                     </tr>
@@ -273,7 +312,7 @@ function roundNumber(value, power10, fixed) {
                                                     <% columns.forEach(item => { %>
                                                         <tr>
                                                             <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, true, 2); %>
+                                                            <%- handleRates(item, gameData.matchup.team, 'differential', true, 2); %>
                                                         </tr>
                                                     <% }); %>
                                                 </tbody>
@@ -288,6 +327,9 @@ function roundNumber(value, power10, fixed) {
             </div>
         </div>
     </div>
+    <!-- <div id="content">
+
+    </div> -->
     <%- include('../../partials/footer') %>
     <%- include('../../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
@@ -295,7 +337,8 @@ function roundNumber(value, power10, fixed) {
     <script>
         const DateTime = luxon.DateTime;
         var gameData = <%- JSON.stringify(gameData) %>;
-        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
+        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
+
         var statusDetail = gameData.gameInfo.status.type.detail;
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
@@ -312,7 +355,5 @@ function roundNumber(value, power10, fixed) {
             }
         }
     </script>
-    </script>
-    <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>
