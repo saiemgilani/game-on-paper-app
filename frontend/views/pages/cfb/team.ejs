@@ -1,5 +1,28 @@
 <!DOCTYPE html>
 <html>
+<%
+function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+stat_key_title_mapping = {
+    "totalPlays" : "Plays",
+    "playsPerGame" : "Plays/Game",
+    "totalEPA": "Total EPA",
+    "epaPerPlay": "EPA/Play",
+    "epaPerGame": "EPA/Game",
+    "successRate": "Success Rate",
+    "startingFP" : "Starting FP"
+}
+
+
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+%>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,15 +62,17 @@
         <meta name="medium" content="website">
     </head>
     <body>
-        <div class="container-fluid">
-            <header class="blog-header py-3">
-                <div class="row flex-nowrap justify-content-between align-items-center">
-                    <div class="col-2 pt-1">
-                        <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
-                    </div>
-                    <div class="col-8 text-center">
-                        <div>
-                            <h2 class="mb-0 align-middle" style="line-height: 0.5em;"><img class="h2 img img-fluid" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> <%= teamData.location %></h2>
+        <div class="container-fluid my-3 mx-2">
+            <div class="row">
+                <div class="col-lg-4 col-md-12">
+                    <div class="card noborder">
+                        <div class="card-body">
+                            <div class="card-title mb-0">
+                                <div class="d-flex align-items-center align-items-start">
+                                    <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> 
+                                    <h2><%= teamData.location %></h2>
+                                </div>
+                            </div>
                             <%
                                 let records = teamData.record;
                                 let overall = records.filter(item => item.type == "total")[0].displayValue
@@ -59,123 +84,333 @@
                                     conf = ""
                                 }
                             %>
-                            <p class="text-small text-muted"><%= season %> Season - Overall: <%= overall %><%= conf %></p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-responsive">
+                                    <thead>
+                                        <th class="text-center"><%= season %> Record</th>
+                                        <th class="text-center">AP Poll</th>
+                                        <th class="text-center">Coaches Poll</th>
+                                        <th class="text-center">CFP Rank</th>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-center"><%= overall %><%= conf %></td>
+                                            <td class="text-center">1st</td>
+                                            <td class="text-center">1st</td>
+                                            <td class="text-center">1st</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm table-responsive">
+                                    <caption class="text-small text-muted" style="text-align: right !important;">
+                                        <small><p class="mb-0">EPA/Play adjusted for opponent strength by Bud Davis (<a href="https://twitter.com/jbuddavis">@JBudDavis</a>).</p>
+                                        <p class="mb-1">Data from GameOnPaper.com.</p></small>
+                                    </caption>
+                                    <thead>
+                                        <th class="text-center">EPA/Play</th>
+                                        <th class="text-center">Yards/Play</th>
+                                        <th class="text-center">AY%</th>
+                                        <th class="text-center">Success%</th>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-center">1000.0 (1st)</td>
+                                            <td class="text-center">1000.0 (1st)</td>
+                                            <td class="text-center">1000.0 (1st)</td>
+                                            <td class="text-center">1000.0 (1st)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-2 d-flex justify-content-end align-items-center">
-                        <a class="btn btn-sm btn-outline-secondary" href="/cfb/year/<%= season %>/team/<%= teamData.id %>?json=1">Raw JSON</a>
-                    </div>
                 </div>
-            </header>
-            
-            <div class="nav-scroller py-1 mb-3">
-                <nav class="nav d-flex justify-content-between">
-                    <a href="#schedule" class="p-2 link-secondary">Schedule</a>
-                    <a class="p-2 link-secondary" href="https://www.espn.com/college-football/team/roster/_/id/<%= teamData.id %>">Roster</a>
-                    <a class="p-2 link-secondary" href="https://www.espn.com/college-football/team/_/id/<%= teamData.id %>/<%= teamData.slug %>">ESPN</a>
-                </nav>
             </div>
         </div>
         <div class="container-fluid">
-            <div id="schedule" class="row mb-3" data-masonry='{"percentPosition": true }'>
-                <% 
-                function generateTeamImg(teamId) {
-                    return `<img class="img-fluid d-inline-block" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
-                }
-
-                function formatScore(score, winner, complete) {
-                    if (winner && complete) {
-                        return `<strong>${score}</strong>`
-                    } else if (!winner && complete) {
-                        return `<span style="opacity: 0.5;">${score}</span>`
-                    } else {
-                        return `<span>${score}</span>`
+            <%
+                function handleRates(item, teamInfo, baseKey, useSuffix, decimalPoints) {
+                    let finalTeamInfo = (teamInfo == null) ? breakdown : teamInfo;
+                    let finalDecimalPoints = decimalPoints || 1;
+                    var result = ""
+                    
+                    function generateColorRampValue(input, max, midColor) {
+                        if (!input) {
+                            return null;
+                        }
+                        let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+                        let step = Math.round(value / 0.1)
+                        let clampedStep = Math.min(Math.max(step, 0), 9)
+    
+                        let hex = null
+                        if (clampedStep == 4 || clampedStep == 5) {
+                            return null
+                        } else {
+                            return ` hulk-text-level-${clampedStep}`
+                        }
                     }
+
+                    function produceNumerals(valueFormatter, isMargin) {
+                        finalTeamInfo.forEach(teamData => {
+                            let val = teamData[baseKey][item] || 0;
+                            let rank = teamData[baseKey][`${item}Rank`]
+                            let colorClass = null;
+                            let sign = "";
+
+                            if (isMargin) {
+                                if (val > 0) {
+                                    colorClass = " hulk-text-green"
+                                    sign = "+"
+                                } else if (val < 0) {
+                                    colorClass = " hulk-text-purple"
+                                } else {
+                                    colorClass = null
+                                }
+                            } else {
+                                colorClass = generateColorRampValue(rank, 130, null, 255)
+                            }
+                            
+                            let rankString = rank ? ` (#${rank})` : ""
+
+                            if (colorClass) {
+                                result += `<td class="numeral${colorClass}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                            } else {
+                                result += `<td class="numeral" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                            }
+                        });
+                    }
+
+                    if (item.includes("startingFP")) {
+                        produceNumerals((value) => {
+                            if (baseKey.includes("differential")) {
+                                return `${roundNumber(parseFloat(value), 2, 0)}`;
+                            } else {
+                                let prefix = (value >= 50) ? "Own" : "Opp"
+                                let printedVal = (value >= 50) ? (100 - parseFloat(value)) : value
+                                return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
+                            }
+                        }, baseKey.includes("differential"))
+                    } else if (item.toLocaleLowerCase().includes("epa")) {
+                        produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, baseKey.includes("differential"))
+                    } else if (item.includes("success")) {
+                        produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, baseKey.includes("differential"))
+                    } else { 
+                        produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, baseKey.includes("differential"))
+                    }
+                    return result;
                 }
-                %>
-                <% if (teamData.events.length > 0) { %>
-                    <% teamData.events.forEach(game => { %>
-                        <% 
-                            const gameComp = game.competitions[0];
-                            const homeComp = gameComp.competitors[0];
-                            const awayComp = gameComp.competitors[1];
-                            const homeTeam = homeComp.team;
-                            const awayTeam = awayComp.team;
-                            const homeScore = (homeComp.score != null) ? homeComp.score.displayValue : 0;
-                            const awayScore = (awayComp.score != null) ? awayComp.score.displayValue : 0;
-                        %>
-                        <div class="col-xl-3 col-lg-6">
-                            <div class="row border rounded m-2 mb-4">
-                                <div class="col p-3">
-                                    <strong class="d-inline-block mb-2 text-primary">
-                                        <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
-                                        <span class="game-date"><%= game.date %></span>
-                                        <% } else if (game.status.type.completed == true) { %>
-                                        <span><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
-                                        <% } else { %>
-                                        <%= game.status.type.detail %>
-                                        <% } %>
-                                    </strong> 
-                                    <div class="m-0 clearfix">
-                                        <div class="d-flex justify-content-between">
-                                            <div class="text-left">
-                                                <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></span>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayScore, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="m-0 mb-2 clearfix">
-                                        <div class="d-flex justify-content-between">
-                                            <div class="text-left">
-                                                <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></span>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeScore, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></p>
+            %>
+            <div id="breakdown" class="row mb-3" data-masonry='{"percentPosition": true }'>
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <h2 id="breakdown" class="d-inline">Breakdown <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#breakdownContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                    <div class="panel-group">
+                        <div class="panel panel-default">
+                            <div id="breakdownContent" class="panel-collapse show">
+                                <div class="panel-body">
+                                    <div class="row">
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <div class="table-responsive">
+                                                <% var columns = [
+                                                    "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
+                                                ]; %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align: left;">Offensive</th>
+                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <%- handleRates(item, breakdown, 'offensive', true, 2); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
-                                    </div>
-                                    <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
-                                        <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
-                                            <p class="card-text text-muted mb-2">
-                                            <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
-                                                (PAT) <%= gameComp.situation.lastPlay.text %>
-                                            <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
-                                                (Kickoff) <%= gameComp.situation.lastPlay.text %>
-                                            <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
-                                                <%= gameComp.situation.lastPlay.text %>
-                                            <% } else { %>
-                                                (<%= gameComp.situation.downDistanceText %>) <%= gameComp.situation.lastPlay.text %>
-                                            <% } %>
-                                            </p>
-                                        <% } %>
-                                    <% } %>
-                                    <div class="d-flex justify-content-between">
-                                        <div class="text-left">
-                                            <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
-                                            <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <div class="table-responsive">
+                                                <% var columns = [
+                                                    "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
+                                                ]; 
+                                                %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="box-heading">Defensive</th>
+                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <%- handleRates(item, breakdown, 'defensive', true, 2); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
-                                        <div class="text-right">
-                                            <% if (gameComp.broadcasts.length > 0 && gameComp.broadcasts[0].media != null && gameComp.broadcasts[0].media.shortName != null) { %>
-                                            <span class="badge bg-secondary bg-sm"><%= gameComp.broadcasts[0].media.shortName %></span>
-                                            <% } %>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <div class="table-responsive">
+                                                <% var columns = [
+                                                    "totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
+                                                ]; 
+                                                %>
+                                                <table class="table table-sm table-responsive">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="box-heading">Margins</th>
+                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
+                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                            <% }); %>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% columns.forEach(item => { %>
+                                                            <tr>
+                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                                                                <%- handleRates(item, breakdown, 'differential', true, 2); %>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    <% }); %>
-                <% } else { %>
-                    <p class="text-center text-muted">No games scheduled for this team.</p>
-                <% } %>
-            </div>
-            <div class="row text-center">
-                <%- include('../../partials/footer') %>
+                    </div>
+                </div>
             </div>
         </div>
+        <div class="container-fluid">
+            <div id="schedule" class="row mb-3">
+                <h2 class="ms-2">Schedule <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#scheduleContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div id="scheduleContent" class="panel-collapse show">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <% 
+                                    function generateTeamImg(teamId) {
+                                        return `<img class="img-fluid d-inline-block" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
+                                    }
+
+                                    function formatScore(score, winner, complete) {
+                                        if (winner && complete) {
+                                            return `<strong>${score}</strong>`
+                                        } else if (!winner && complete) {
+                                            return `<span style="opacity: 0.5;">${score}</span>`
+                                        } else {
+                                            return `<span>${score}</span>`
+                                        }
+                                    }
+                                    %>
+                                    <% if (teamData.events.length > 0) { %>
+                                        <% teamData.events.forEach(game => { %>
+                                            <% 
+                                                const gameComp = game.competitions[0];
+                                                const homeComp = gameComp.competitors[0];
+                                                const awayComp = gameComp.competitors[1];
+                                                const homeTeam = homeComp.team;
+                                                const awayTeam = awayComp.team;
+                                                const homeScore = (homeComp.score != null) ? homeComp.score.displayValue : 0;
+                                                const awayScore = (awayComp.score != null) ? awayComp.score.displayValue : 0;
+                                            %>
+                                            <div class="col-xl-3 col-lg-6">
+                                                <div class="row border rounded m-2 mb-4">
+                                                    <div class="col p-3">
+                                                        <strong class="d-inline-block mb-2 text-primary">
+                                                            <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
+                                                            <span class="game-date"><%= game.date %></span>
+                                                            <% } else if (game.status.type.completed == true) { %>
+                                                            <span><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
+                                                            <% } else { %>
+                                                            <%= game.status.type.detail %>
+                                                            <% } %>
+                                                        </strong> 
+                                                        <div class="m-0 clearfix">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div class="text-left">
+                                                                    <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></span>
+                                                                </div>
+                                                                <div class="text-right">
+                                                                    <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayScore, parseInt(awayScore) > parseInt(homeScore), game.status.type.completed == true) %></p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="m-0 mb-2 clearfix">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div class="text-left">
+                                                                    <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></span>
+                                                                </div>
+                                                                <div class="text-right">
+                                                                    <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeScore, parseInt(awayScore) < parseInt(homeScore), game.status.type.completed == true) %></p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
+                                                            <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
+                                                                <p class="card-text text-muted mb-2">
+                                                                <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
+                                                                    (PAT) <%= gameComp.situation.lastPlay.text %>
+                                                                <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
+                                                                    (Kickoff) <%= gameComp.situation.lastPlay.text %>
+                                                                <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
+                                                                    <%= gameComp.situation.lastPlay.text %>
+                                                                <% } else { %>
+                                                                    (<%= gameComp.situation.downDistanceText %>) <%= gameComp.situation.lastPlay.text %>
+                                                                <% } %>
+                                                                </p>
+                                                            <% } %>
+                                                        <% } %>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div class="text-left">
+                                                                <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
+                                                                <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <% if (gameComp.broadcasts.length > 0 && gameComp.broadcasts[0].media != null && gameComp.broadcasts[0].media.shortName != null) { %>
+                                                                <span class="badge bg-secondary bg-sm"><%= gameComp.broadcasts[0].media.shortName %></span>
+                                                                <% } %>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <p class="text-center text-muted">No games scheduled for this team.</p>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- <div id="testcontent">
+
+        </div> -->
+
         <%- include('../../partials/scripts') %>
         <script>
+            var teamData = <%- JSON.stringify(teamData) %>;
+            document.body.querySelector("#testcontent").innerHTML = "<pre>" + JSON.stringify(teamData, null, 2) +  "</pre>";
+
             const DateTime = luxon.DateTime;
             function formatDateTime(inputDate) {
                 return DateTime.fromISO(inputDate).toLocaleString(DateTime.DATETIME_SHORT)

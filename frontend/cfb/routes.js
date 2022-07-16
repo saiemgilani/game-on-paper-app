@@ -179,12 +179,15 @@ router.route('/year/:year/team/:teamId')
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
             }
+
+            let resp = await axios.get(`http://summary:3000/year/${req.params.year}/team/${data.abbreviation}`)
     
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
                 return res.render('pages/cfb/team', {
                     teamData: data,
+                    breakdown: resp.data.results,
                     season: req.params.year
                 });
             }
