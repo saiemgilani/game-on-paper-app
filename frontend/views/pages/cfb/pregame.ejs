@@ -98,33 +98,7 @@ function roundNumber(value, power10, fixed) {
                 let finalDecimalPoints = decimalPoints || 1;
                 var result = ""
                 
-
-                // let DARK_MODE_COLOR_RAMP = [
-                //     "#BF5AF2FF",
-                //     "#CF83F5C0",
-                //     "#DFACF880",
-                //     "#EFD5FB64",
-                //     "#FFFFFF00",
-                //     "#FFFFFF00",
-                //     "#CBF3D564",
-                //     "#97E8AB80",
-                //     "#63DC81C0",
-                //     "#30D158FF"
-                // ]
-                let LIGHT_MODE_COLOR_RAMP = [
-                    "#AF52DEFF",
-                    "#C37DE6C0",
-                    "#D7A8EE80",
-                    "#EBD3F664",
-                    "#FFFFFF00",
-                    "#FFFFFF00",
-                    "#CCF1D564",
-                    "#99E3AC80",
-                    "#66D582C0",
-                    "#34C759FF"
-                ]
-
-                function generateColorRampValue(input, max, midColor, alpha) {
+                function generateColorRampValue(input, max, midColor) {
                     if (!input) {
                         return null;
                     }
@@ -136,15 +110,7 @@ function roundNumber(value, power10, fixed) {
                     if (clampedStep == 4 || clampedStep == 5) {
                         return null
                     } else {
-                        hex = LIGHT_MODE_COLOR_RAMP[clampedStep]
-                    }
-                    
-                    if (alpha && hex) {
-                        return hex.substring(0, hex.length - 2) + alpha.toString(16)
-                    } else if (hex) {
-                        return hex
-                    } else {
-                        return null
+                        return ` hulk-text-level-${clampedStep}`
                     }
                 }
 
@@ -153,30 +119,25 @@ function roundNumber(value, power10, fixed) {
                         let val = teamData[baseKey][item] || 0;
                         let rank = teamData[baseKey][`${item}Rank`]
                         let colorClass = null;
-                        let colorText = null;
                         let sign = "";
 
                         if (isMargin) {
                             if (val > 0) {
-                                colorClass = " hulk-green"
+                                colorClass = " hulk-text-green"
                                 sign = "+"
                             } else if (val < 0) {
-                                colorClass = " hulk-purple"
+                                colorClass = " hulk-text-purple"
                             } else {
                                 colorClass = null
                             }
-                            colorText = null;
                         } else {
-                            colorClass = null
-                            colorText = generateColorRampValue(rank, 130, null, 255);
+                            colorClass = generateColorRampValue(rank, 130, null, 255)
                         }
                         
                         let rankString = rank ? ` (#${rank})` : ""
 
                         if (colorClass) {
                             result += `<td class="numeral${colorClass}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
-                        } else if (colorText) {
-                            result += `<td class="numeral" style="text-align: center; color:${colorText};">${sign}${valueFormatter(val)}${rankString}</td>`;
                         } else {
                             result += `<td class="numeral" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
                         }

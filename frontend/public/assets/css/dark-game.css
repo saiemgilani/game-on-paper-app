@@ -2492,12 +2492,40 @@ th.box-heading {
     border-bottom-color: #e8e6e3 !important;
 }
 
-.hulk-green {
-    color: #00CA57;
+.hulk-text-level-9, .hulk-text-green {
+    color: #30D158;
 }
 
-.hulk-purple {
-    color: #C051EA;
+.hulk-text-level-0, .hulk-text-purple {
+    color: #BF5AF2;
+}
+
+.hulk-text-level-1 {
+    color: #CF83F5;
+}
+
+.hulk-text-level-2 {
+    color: #DFACF8;
+}
+
+.hulk-text-level-3 {
+    color: #EFD5FB;
+}
+
+.hulk-text-level-4, .hulk-text-level-5 {
+    color: white;
+}
+
+.hulk-text-level-6 {
+    color: #CBF3D5;
+}
+
+.hulk-text-level-7 {
+    color: #97E8AB;
+}
+
+.hulk-text-level-8 {
+    color: #63DC81;
 }
 
 }

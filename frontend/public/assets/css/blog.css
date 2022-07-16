@@ -104,10 +104,38 @@ table {
   border-radius: 0.5em !important;
 }
 
-.hulk-green {
-  color: #00BF57;
+.hulk-text-level-9, .hulk-text-green {
+  color: #34C759;
 }
 
-.hulk-purple {
-  color: #AE49D4;
+.hulk-text-level-0, .hulk-text-purple {
+  color: #AF52DE;
+}
+
+.hulk-text-level-1 {
+  color: #C37DE6;
+}
+
+.hulk-text-level-2 {
+  color: #D7A8EE;
+}
+
+.hulk-text-level-3 {
+  color: #EBD3F6;
+}
+
+.hulk-text-level-4, .hulk-text-level-5 {
+  color: white;
+}
+
+.hulk-text-level-6 {
+  color: #CCF1D5;
+}
+
+.hulk-text-level-7 {
+  color: #99E3AC;
+}
+
+.hulk-text-level-8 {
+  color: #66D582;
 }
