@@ -139,3 +139,48 @@ table {
 .hulk-text-level-8 {
   color: #66D582;
 }
+
+.hulk-bg-level-9, .hulk-bg-green {
+  background: #34C759;
+  color: white;
+}
+
+.hulk-bg-level-0, .hulk-bg-purple {
+  background: #AF52DE;
+  color: white;
+}
+
+.hulk-bg-level-1 {
+  background: #C37DE6;
+  color: white;
+}
+
+.hulk-bg-level-2 {
+  background: #D7A8EE;
+  color: white;
+}
+
+.hulk-bg-level-3 {
+  background: #EBD3F6;
+  color: black;
+}
+
+.hulk-bg-level-4, .hulk-bg-level-5 {
+  background: white;
+  color: black;
+}
+
+.hulk-bg-level-6 {
+  background: #CCF1D5;
+  color: black;
+}
+
+.hulk-bg-level-7 {
+  background: #99E3AC;
+  color: white;
+}
+
+.hulk-bg-level-8 {
+  background: #66D582;
+  color: white;
+}

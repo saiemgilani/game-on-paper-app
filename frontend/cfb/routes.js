@@ -58,9 +58,9 @@ async function retrieveTeamData(year, abbreviation) {
             console.log(`also err: ${err}`);
         }
         if ((year - 1) < 2014) {
-            return {
+            return [{
                 pos_team: abbreviation
-            };
+            }];
         } else {
             return retrieveTeamData(year - 1, abbreviation);
         }
