@@ -7,21 +7,6 @@ function getNumberWithOrdinal(n) {
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-stat_key_title_mapping = {
-    "totalPlays" : "Plays",
-    "playsPerGame" : "Plays/Game",
-    "totalEPA": "Total EPA",
-    "epaPerPlay": "EPA/Play",
-    "epaPerGame": "EPA/Game",
-    "successRate": "Success Rate",
-    "startingFP" : "Starting FP"
-}
-
-
-function roundNumber(value, power10, fixed) {
-    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
-}
-
 %>
     <head>
         <meta charset="utf-8">
@@ -33,7 +18,7 @@ function roundNumber(value, power10, fixed) {
         <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"> 
     
         <%
-            let title = `Team: ${teamData.location} | Season: ${season} | Game on Paper`
+            let title = `${teamData.location} | ${season} | Game on Paper`
             let subtitle = `${teamData.location} during the ${season} season`;
         %>
     
@@ -67,84 +52,14 @@ function roundNumber(value, power10, fixed) {
                 <div class="col-lg-4 col-md-12">
                     <%- include('../../partials/team_card', {
                         teamData,
-                        breakdown
+                        breakdown,
+                        season
                     }) %>
                 </div>
             </div>
         </div>
         <div class="container-fluid">
-            <%
-                function handleRates(item, teamInfo, baseKey, useSuffix, decimalPoints) {
-                    let finalTeamInfo = (teamInfo == null) ? breakdown : teamInfo;
-                    let finalDecimalPoints = decimalPoints || 1;
-                    var result = ""
-                    
-                    function generateColorRampValue(input, max, midColor) {
-                        if (!input) {
-                            return null;
-                        }
-                        let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
-                        let step = Math.round(value / 0.1)
-                        let clampedStep = Math.min(Math.max(step, 0), 9)
-    
-                        let hex = null
-                        if (clampedStep == 4 || clampedStep == 5) {
-                            return null
-                        } else {
-                            return ` hulk-text-level-${clampedStep}`
-                        }
-                    }
-
-                    function produceNumerals(valueFormatter, isMargin) {
-                        finalTeamInfo.forEach(teamData => {
-                            let val = teamData[baseKey][item] || 0;
-                            let rank = teamData[baseKey][`${item}Rank`]
-                            let colorClass = null;
-                            let sign = "";
-
-                            if (isMargin) {
-                                if (val > 0) {
-                                    colorClass = " hulk-text-green"
-                                    sign = "+"
-                                } else if (val < 0) {
-                                    colorClass = " hulk-text-purple"
-                                } else {
-                                    colorClass = null
-                                }
-                            } else {
-                                colorClass = generateColorRampValue(rank, 130, null, 255)
-                            }
-                            
-                            let rankString = rank ? ` (#${rank})` : ""
-
-                            if (colorClass) {
-                                result += `<td class="numeral${colorClass}" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
-                            } else {
-                                result += `<td class="numeral" style="text-align: center;">${sign}${valueFormatter(val)}${rankString}</td>`;
-                            }
-                        });
-                    }
-
-                    if (item.includes("startingFP")) {
-                        produceNumerals((value) => {
-                            if (baseKey.includes("differential")) {
-                                return `${roundNumber(parseFloat(value), 2, 0)}`;
-                            } else {
-                                let prefix = (value >= 50) ? "Own" : "Opp"
-                                let printedVal = (value >= 50) ? (100 - parseFloat(value)) : value
-                                return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
-                            }
-                        }, baseKey.includes("differential"))
-                    } else if (item.toLocaleLowerCase().includes("epa")) {
-                        produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, baseKey.includes("differential"))
-                    } else if (item.includes("success")) {
-                        produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, baseKey.includes("differential"))
-                    } else { 
-                        produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, baseKey.includes("differential"))
-                    }
-                    return result;
-                }
-            %>
+            
             <div id="breakdown" class="row mb-3" data-masonry='{"percentPosition": true }'>
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="breakdown" class="d-inline">Breakdown <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#breakdownContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
@@ -152,83 +67,62 @@ function roundNumber(value, power10, fixed) {
                         <div class="panel panel-default">
                             <div id="breakdownContent" class="panel-collapse show">
                                 <div class="panel-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Offensive',
+                                                target: 'offensive',
+                                                situation: 'overall',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'When Passing',
+                                                target: 'offensive',
+                                                situation: 'passing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'When Rushing',
+                                                target: 'offensive',
+                                                situation: 'rushing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
-                                            <div class="table-responsive">
-                                                <% var columns = [
-                                                    "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                                ]; %>
-                                                <table class="table table-sm table-responsive">
-                                                    <thead>
-                                                        <tr>
-                                                            <th style="text-align: left;">Offensive</th>
-                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                            <% }); %>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% columns.forEach(item => { %>
-                                                            <tr>
-                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, breakdown, 'offensive', true, 2); %>
-                                                            </tr>
-                                                        <% }); %>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Defensive',
+                                                target: 'defensive',
+                                                situation: 'overall',
+                                                showTeamLogos: false
+                                            }) %>
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
-                                            <div class="table-responsive">
-                                                <% var columns = [
-                                                    "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                                ]; 
-                                                %>
-                                                <table class="table table-sm table-responsive">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="box-heading">Defensive</th>
-                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                            <% }); %>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% columns.forEach(item => { %>
-                                                            <tr>
-                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, breakdown, 'defensive', true, 2); %>
-                                                            </tr>
-                                                        <% }); %>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Against the Pass',
+                                                target: 'defensive',
+                                                situation: 'passing',
+                                                showTeamLogos: false
+                                            }) %>
                                         </div>
                                         <div class="col-md-4 ms-sm-auto col-lg-4">
-                                            <div class="table-responsive">
-                                                <% var columns = [
-                                                    "totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                                ]; 
-                                                %>
-                                                <table class="table table-sm table-responsive">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="box-heading">Margins</th>
-                                                            <% breakdown.map(group => group.teamId).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= value %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                            <% }); %>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% columns.forEach(item => { %>
-                                                            <tr>
-                                                                <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                                <%- handleRates(item, breakdown, 'differential', true, 2); %>
-                                                            </tr>
-                                                        <% }); %>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Against the Run',
+                                                target: 'defensive',
+                                                situation: 'rushing',
+                                                showTeamLogos: false
+                                            }) %>
                                         </div>
                                     </div>
                                 </div>
@@ -348,7 +242,8 @@ function roundNumber(value, power10, fixed) {
 
         </div> -->
 
-        <%- include('../../partials/scripts') %>
+        <%- include('../../partials/footer') %>
+        <%- include('../../partials/scripts') %>  
         <script>
             var teamData = <%- JSON.stringify(teamData) %>;
             // document.body.querySelector("#testcontent").innerHTML = "<pre>" + JSON.stringify(teamData, null, 2) +  "</pre>";

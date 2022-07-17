@@ -1,14 +1,29 @@
+<%
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+    function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+%>
+
 <div class="card border rounded">
     <div class="card-body">
         <div class="card-title mb-0">
-            <div class="d-flex align-items-center align-items-start">
-                <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> 
+            <div class="d-flex align-items-center justify-content-between">
                 <h2><%= teamData.location %></h2>
+                <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> 
             </div>
         </div>
         <%
-            let records = teamData.record;
-            let overall = records.filter(item => item.type == "total")[0].displayValue
+            const records = teamData.record || [];
+            const overallStuff = records.filter(item => item.type == "total")[0];
+            const overall = overallStuff?.displayValue || "0-0"
+            const finishes = overallStuff?.stats.filter(item => item.name == "playoffSeed") || []
+            const finish = (finishes.length > 0) ? getNumberWithOrdinal(parseInt(finishes[0].displayValue)) : 'N/A';
+
             var conf = ""
             let confRecs = records.filter(item => item.type == "vsconf")
             if (confRecs.length > 0) {
@@ -16,21 +31,35 @@
             } else {
                 conf = ""
             }
+
+            function generateColorRampValue(input, max, midColor) {
+                if (!input) {
+                    return null;
+                }
+                let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+                let step = Math.round(value / 0.1)
+                let clampedStep = Math.min(Math.max(step, 0), 9)
+
+                let hex = null
+                if (clampedStep == 4 || clampedStep == 5) {
+                    return null
+                } else {
+                    return ` hulk-bg-level-${clampedStep}`
+                }
+            }
         %>
         <div class="table-responsive">
             <table class="table table-sm table-responsive">
                 <thead>
-                    <th class="text-center"><%= season %> Record</th>
-                    <th class="text-center">AP Poll</th>
-                    <th class="text-center">Coaches Poll</th>
-                    <th class="text-center">CFP Rank</th>
+                    <th class="text-center" style="width: 33%"><%= season %> Record</th>
+                    <th class="text-center" style="width: 33%">Conf Finish</th>
+                    <th class="text-center" style="width: 33%">EPA/Play</th>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-center"><%= overall %><%= conf %></td>
-                        <td class="text-center">1st</td>
-                        <td class="text-center">1st</td>
-                        <td class="text-center">1st</td>
+                        <td class="text-center" style="width: 33%"><%= overall %><%= conf %></td>
+                        <td class="text-center" style="width: 33%"><%= finish %></td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential.overall.epaPerPlayRank, 130, null) %>" style="width: 33%"><%= roundNumber(parseFloat(breakdown[0].differential.overall.epaPerPlay), 2, 2) %> (#<%= breakdown[0].differential.overall.epaPerPlayRank %>)</td>
                     </tr>
                 </tbody>
             </table>
@@ -39,20 +68,18 @@
         <div class="table-responsive pe-0">
             <table class="table table-sm table-responsive">
                 <caption class="text-small text-muted"">
-                    <small><p class="mb-0">Stats shown as margins. EPA/Play adjusted for opponent strength by Bud Davis (<a href="https://twitter.com/jbuddavis">@JBudDavis</a>).</p>
+                    <small><p class="mb-0">Stats shown as margins. EPA/Play adjusted for opponent strength by Bud Davis (<a href="https://twitter.com/jbuddavis">@JBudDavis</a>). AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
                 </caption>
                 <thead>
-                    <th class="text-center">EPA/Play</th>
-                    <th class="text-center">Yards/Play</th>
-                    <th class="text-center">AY%</th>
-                    <th class="text-center">Success%</th>
+                    <th class="text-center" style="width: 33%">Yards/Play</th>
+                    <th class="text-center" style="width: 33%">AY%</th>
+                    <th class="text-center" style="width: 33%">Success %</th>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-center">1000.0 (1st)</td>
-                        <td class="text-center">1000.0 (1st)</td>
-                        <td class="text-center">1000.0 (1st)</td>
-                        <td class="text-center">1000.0 (1st)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential.overall.yardsPerPlayRank, 130, null) %>" style="width: 33%"><%= roundNumber(parseFloat(breakdown[0].differential.overall.yardsPerPlay), 2, 2) %> (#<%= breakdown[0].differential.overall.yardsPerPlayRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential.overall.availYardsPctRank, 130, null) %>" style="width: 33%"><%= roundNumber(100 * parseFloat(breakdown[0].differential.overall.availYardsPct), 2, 1) %> (#<%= breakdown[0].differential.overall.availYardsPctRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential.overall.successRateRank, 130, null) %>" style="width: 33%"><%= roundNumber(100 * parseFloat(breakdown[0].differential.overall.successRate), 2, 1) %>% (#<%= breakdown[0].differential.overall.successRateRank %>)</td>
                     </tr>
                 </tbody>
             </table>

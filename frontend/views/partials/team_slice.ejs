@@ -1,0 +1,129 @@
+<%
+    stat_key_title_mapping = {
+        "totalPlays" : "Plays",
+        "playsPerGame" : "Plays/Game",
+        "totalEPA": "Total EPA",
+        "epaPerPlay": "EPA/Play",
+        "epaPerGame": "EPA/Game",
+        "successRate": "Success Rate",
+        "startingFP" : "Starting FP"
+    }
+
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+
+    function handleRates(item, teamInfo, baseKey, subKey, useSuffix, decimalPoints, widthPct) {
+        let finalTeamInfo = (teamInfo == null) ? breakdown : teamInfo;
+        let finalDecimalPoints = decimalPoints || 1;
+        var result = ""
+        
+        function generateColorRampValue(input, max, midColor) {
+            if (!input) {
+                return null;
+            }
+            let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+            let step = Math.round(value / 0.1)
+            let clampedStep = Math.min(Math.max(step, 0), 9)
+
+            let hex = null
+            if (clampedStep == 4 || clampedStep == 5) {
+                return null
+            } else {
+                return ` hulk-text-level-${clampedStep}`
+            }
+        }
+
+        function produceNumerals(valueFormatter, isMargin) {
+            finalTeamInfo.forEach(teamData => {
+                let val = teamData[baseKey][subKey][item] || 0;
+                let rank = teamData[baseKey][subKey][`${item}Rank`]
+                let colorClass = null;
+                let sign = "";
+
+                if (isMargin) {
+                    if (val > 0) {
+                        colorClass = " hulk-text-green"
+                        sign = "+"
+                    } else if (val < 0) {
+                        colorClass = " hulk-text-purple"
+                    } else {
+                        colorClass = null
+                    }
+                } else {
+                    colorClass = generateColorRampValue(rank, 130, null, 255)
+                }
+                
+                let rankString = rank ? ` (#${rank})` : ""
+
+                if (colorClass) {
+                    result += `<td class="numeral${colorClass}" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                } else {
+                    result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                }
+            });
+        }
+
+        if (item.includes("startingFP")) {
+            produceNumerals((value) => {
+                if (baseKey.includes("differential")) {
+                    return `${roundNumber(parseFloat(value), 2, 0)}`;
+                } else {
+                    let prefix = (value >= 50) ? "Own" : "Opp"
+                    let printedVal = (value >= 50) ? (100 - parseFloat(value)) : value
+                    return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
+                }
+            }, baseKey.includes("differential"))
+        } else if (item.toLocaleLowerCase().includes("epa")) {
+            produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 2)}`, baseKey.includes("differential"))
+        } else if (item.includes("success")) {
+            produceNumerals((value) => `${roundNumber(parseFloat(value * 100), 2, 1)}%`, baseKey.includes("differential"))
+        } else { 
+            produceNumerals((value) => `${roundNumber(parseFloat(value), 2, 0)}`, baseKey.includes("differential"))
+        }
+        return result;
+    }
+%>
+<div class="table-responsive">
+    <% const columns = {
+        offensive: {
+            overall: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"],
+            passing: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate"],
+            rushing: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"]
+        },
+        defensive: {
+            overall: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"],
+            passing: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate"],
+            rushing: ["totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate"]
+        },
+        differential: {
+            overall: ["totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"],
+            passing: ["totalEPA","epaPerPlay","epaPerGame","successRate"],
+            rushing: ["totalEPA","epaPerPlay","epaPerGame","successRate"]
+        }
+    }; 
+    %>
+    <table class="table table-sm table-responsive">
+        <thead>
+            <tr>
+                <% const width = (showTeamLogos && homeTeam && awayTeam) ? 33 : 50 %>
+                <th style="text-align: left; width: <%= width %>%;"><%= title %></th>
+                <% if (showTeamLogos && homeTeam && awayTeam) { %>
+                    <% breakdown.map(group => group.teamId).forEach(value => { %>
+                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                    <% }); %>
+                <% } else { %>
+                    <th style="width: <%= width %>%"><span hidden>Value</span></th>
+                <% } %>
+            </tr>
+        </thead>
+        <tbody>
+            <% columns[target][situation].forEach(item => { %>
+                <tr>
+                    <td style="text-align: left; width: <%= width %>%;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
+                    <%- handleRates(item, breakdown, target, situation, true, 2, width); %>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</div>

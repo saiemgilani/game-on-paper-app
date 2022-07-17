@@ -92,6 +92,27 @@ function roundNumber(value, power10, fixed) {
         </header>
     </div>
     <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="col-2">
+                
+            </div>
+            <div class="col-4">
+                <%- include('../../partials/team_card', {
+                    teamData: awayTeam,
+                    breakdown: [gameData.matchup.team[0]],
+                    season: 2022
+                }) %>
+            </div>
+            <div class="col-4">
+                <%- include('../../partials/team_card', {
+                    teamData: homeTeam,
+                    breakdown: [gameData.matchup.team[1]],
+                    season: 2022
+                }) %>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid">
             <%
             function handleRates(item, teamInfo, baseKey, useSuffix, decimalPoints) {
                 let finalTeamInfo = (teamInfo == null) ? gameData.matchup.team : teamInfo;
@@ -183,89 +204,78 @@ function roundNumber(value, power10, fixed) {
         
         <div id="team-stats" class="row mb-3">
             <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                <h2 id="team-stats" class="d-inline">Matchup</h2>
                 <div class="panel-group">
                     <div class="panel panel-default">
                         <div id="boxScoreContent" class="panel-collapse show">
                             <div class="panel-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
+                                        <%- include('../../partials/team_slice', {
+                                            breakdown: gameData.matchup.team,
+                                            title: 'Offensive',
+                                            target: 'offensive',
+                                            situation: 'overall',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
+                                    </div>
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
+                                        <%- include('../../partials/team_slice', {
+                                            breakdown: gameData.matchup.team,
+                                            title: 'When Passing',
+                                            target: 'offensive',
+                                            situation: 'passing',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
+                                    </div>
+                                    <div class="col-md-4 ms-sm-auto col-lg-4">
+                                        <%- include('../../partials/team_slice', {
+                                           breakdown: gameData.matchup.team,
+                                            title: 'When Rushing',
+                                            target: 'offensive',
+                                            situation: 'rushing',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
+                                    </div>
+                                </div>
                                 <div class="row">
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
-                                        <div class="table-responsive">
-                                            <% var columns = [
-                                                "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                            ]; %>
-                                            <table class="table table-sm table-responsive">
-                                                <thead>
-                                                    <tr>
-                                                        <th style="text-align: left;">Offensive</th>
-                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
-                                                            <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                        <% }); %>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% columns.forEach(item => { %>
-                                                        <tr>
-                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, 'offensive', true, 2); %>
-                                                        </tr>
-                                                    <% }); %>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
+                                        <%- include('../../partials/team_slice', {
+                                            breakdown: gameData.matchup.team,
+                                            title: 'Defensive',
+                                            target: 'defensive',
+                                            situation: 'overall',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
                                     </div>
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
-                                        <div class="table-responsive">
-                                            <% var columns = [
-                                                "totalPlays","playsPerGame","totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                            ]; 
-                                            %>
-                                            <table class="table table-sm table-responsive">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="box-heading">Defensive</th>
-                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
-                                                            <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                        <% }); %>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% columns.forEach(item => { %>
-                                                        <tr>
-                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, 'defensive', true, 2); %>
-                                                        </tr>
-                                                    <% }); %>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        <%- include('../../partials/team_slice', {
+                                            breakdown: gameData.matchup.team,
+                                            title: 'Against the Pass',
+                                            target: 'defensive',
+                                            situation: 'passing',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
                                     </div>
                                     <div class="col-md-4 ms-sm-auto col-lg-4">
-                                        <div class="table-responsive">
-                                            <% var columns = [
-                                                "totalEPA","epaPerPlay","epaPerGame","successRate","startingFP"
-                                            ]; 
-                                            %>
-                                            <table class="table table-sm table-responsive">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="box-heading">Margins</th>
-                                                        <% gameData.matchup.team.map(group => group.teamId).forEach(value => { %>
-                                                            <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
-                                                        <% }); %>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% columns.forEach(item => { %>
-                                                        <tr>
-                                                            <td style="text-align: left;"><%- (Object.keys(stat_key_title_mapping).includes(item)) ? stat_key_title_mapping[item] : item %></td>
-                                                            <%- handleRates(item, gameData.matchup.team, 'differential', true, 2); %>
-                                                        </tr>
-                                                    <% }); %>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        <%- include('../../partials/team_slice', {
+                                           breakdown: gameData.matchup.team,
+                                            title: 'Against the Run',
+                                            target: 'defensive',
+                                            situation: 'rushing',
+                                            showTeamLogos: true,
+                                            homeTeam: homeTeam,
+                                            awayTeam: awayTeam
+                                        }) %>
                                     </div>
                                 </div>
                             </div>

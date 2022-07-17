@@ -19,7 +19,7 @@ th.box-heading {
        |  |__/  /  ______  \|  ____  \|  |  \  \
 _______|_______/__/ ____ \__\__|___\__\__|___\__\____
 |  ___  \ |  ____/ /    \   |  ___  \ |  ____|  ___  \
-|  |  \  \|  |___ /  /\  \  |  |  \  \|  |___|  |  \  \
+|  |  \  \|  |___ /  /\  \  |  |  \  \|  |___|  | x \  \
 |  |__/  /|  ____/  /__\  \ |  |   )  |  ____|  |__/  /
 |  ____  \|  |__/  ______  \|  |__/  /|  |___|  ____  \
 |__|   \__\____/__/      \__\_______/ |______|__|   \__\
@@ -2529,47 +2529,47 @@ th.box-heading {
 }
 
 .hulk-bg-level-9, .hulk-bg-green {
-    background: #30D158;
+    background: #30D158 !important;
     color: white;
 }
 
 .hulk-bg-level-0, .hulk-bg-purple {
-    background: #BF5AF2;
+    background: #BF5AF2 !important;
     color: white;
 }
 
 .hulk-bg-level-1 {
-    background: #CF83F5;
+    background: #CF83F5 !important;
     color: white;
 }
 
 .hulk-bg-level-2 {
-    background: #DFACF8;
+    background: #DFACF8 !important;
     color: white;
 }
 
 .hulk-bg-level-3 {
-    background: #EFD5FB;
+    background: #EFD5FB !important;
     color: black;
 }
 
 .hulk-bg-level-4, .hulk-bg-level-5 {
-    background: white;
+    background: white !important;
     color: black;
 }
 
 .hulk-bg-level-6 {
-    background: #CBF3D5;
+    background: #CBF3D5 !important;
     color: black;
 }
 
 .hulk-bg-level-7 {
-    background: #97E8AB;
+    background: #97E8AB !important;
     color: white;
 }
 
 .hulk-bg-level-8 {
-    background: #63DC81;
+    background: #63DC81 !important;
     color: white;
 }
 
