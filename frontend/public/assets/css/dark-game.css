@@ -4,6 +4,13 @@ th.box-heading {
     font-weight: bold;
 }
 
+p.box-heading {
+    text-align: center;
+    color: black;
+    font-weight: bold;
+}
+
+
 @media (prefers-color-scheme: dark) {
     /*
                         _______
@@ -2490,6 +2497,12 @@ th.box-heading {
     color: #e8e6e3 !important;
     font-weight: bold;
     border-bottom-color: #e8e6e3 !important;
+}
+
+p.box-heading {
+    text-align: center;
+    color: #e8e6e3 !important;
+    font-weight: bold;
 }
 
 .hulk-text-level-9, .hulk-text-green {

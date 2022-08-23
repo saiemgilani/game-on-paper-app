@@ -1,0 +1,55 @@
+<%
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+    function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+%>
+<style>
+.img-circle-bg {
+    background: rgba(0, 0, 0, 0.1);
+    width: 150px;
+    -webkit-clip-path: circle(closest-side);
+    clip-path: circle(closest-side);
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-circle-bg {
+        background: rgba(255, 255, 255, 0.1); !important;
+    }
+}
+
+</style>
+<div class="card border rounded">
+    <div class="card-body">
+        <div class="card-title mb-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2><%= season %> <%= teamData.location %> Leaders</h2>
+                <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> 
+            </div>
+        </div>
+        <div class="row">
+            <%
+            const player = {
+                id: 4432734,
+                name: 'J. Monroe',
+                statline: 'test test test test test'
+            }
+            const types = ['Passing', 'Rushing', 'Receiving'];
+            %>
+            <% types.forEach(t => { %>
+            <div class="col-lg-4">
+                <div class="text-center">
+                    <p class="box-heading"><%= t %></p>
+                    <img class="img img-fluid img-circle-bg mb-3" src="https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/<%= player.id %>.png&w=150" /> 
+                    <h4><%= player.name %></h4>
+                    <p><%= player.statline %></p>
+                </div>
+            </div>
+            <% }); %>
+        </div>
+    </div>
+</div>

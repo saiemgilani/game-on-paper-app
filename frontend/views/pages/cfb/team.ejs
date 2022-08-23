@@ -47,10 +47,17 @@ function getNumberWithOrdinal(n) {
         <meta name="medium" content="website">
     </head>
     <body>
-        <div class="container-fluid my-3 mx-2">
-            <div class="row">
-                <div class="col-lg-4 col-md-12">
+        <div class="container">
+            <div class="row my-3">
+                <div class="col-lg-4 col-md-12 mb-sm-3">
                     <%- include('../../partials/team_card', {
+                        teamData,
+                        breakdown,
+                        season
+                    }) %>
+                </div>
+                <div class="col-lg-8 col-md-12">
+                    <%- include('../../partials/team_player_cards', {
                         teamData,
                         breakdown,
                         season
@@ -58,9 +65,8 @@ function getNumberWithOrdinal(n) {
                 </div>
             </div>
         </div>
-        <div class="container-fluid">
-            
-            <div id="breakdown" class="row mb-3" data-masonry='{"percentPosition": true }'>
+        <div class="container">
+            <div id="breakdown" class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <h2 id="breakdown" class="d-inline">Breakdown <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#breakdownContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                     <div class="panel-group">
@@ -132,7 +138,7 @@ function getNumberWithOrdinal(n) {
                 </div>
             </div>
         </div>
-        <div class="container-fluid">
+        <div class="container">
             <div id="schedule" class="row mb-3">
                 <h2 class="ms-2">Schedule <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#scheduleContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                 <div class="panel-group">
