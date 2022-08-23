@@ -13,22 +13,10 @@
         // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
         let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
         %>
+        <%- include('../../partials/nav-header') %>
         <div class="container-fluid">
-            <div class="row text-center mb-3">
-                <div class="form-signin col-12">
-                    <h1 class="mb-3 fw-normal">Game on Paper</h1>
-                    <form id="game-id-form">
-                        <label for="inputGameId" class="visually-hidden">Game ID</label>
-                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
-                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
-                    </form>
-                </div>
-            </div>
-            <div class="row mb-1">
-                <h3 class="text-center"> -- OR -- </h3>
-            </div>
-            <form class="row gx-3 row-cols-sm-auto mb-3 align-items-center form-picker" id="dropdown-form">
-                <div class="col-12 mb-xs-3 mb-sm-0">
+            <form class="row mb-3 align-items-center form-picker" id="dropdown-form">
+                <div class="col-auto mb-xs-3 mb-sm-0">
                     <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
                         <option value="-1">Choose Season...</option>
                         <% let yrRange = range(2002, 2021); %>
@@ -37,12 +25,12 @@
                         <% }); %>
                     </select>
                 </div>
-                <div class="col-12 mb-xs-3 mb-sm-0">
+                <div class="col-auto mb-xs-3 mb-sm-0">
                     <select class="form-select form-select-lg" id="weekSelect">
                         <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
                     </select>
                 </div>
-                <div class="col-12 mb-xs-3 mb-sm-0">
+                <div class="col-auto mb-xs-3 mb-sm-0">
                     <button type="submit" class="btn btn-lg btn-primary">View</button>
                 </div>
             </form>
@@ -233,12 +221,6 @@
             populateWeekSelect(selYear || -1);
         </script>
         <script>
-            document.getElementById("game-id-form").addEventListener("submit", function(e) {
-                e.preventDefault()
-                var gameId = document.getElementById("inputGameId").value;
-                window.location = "/cfb/game/" + gameId;
-            });
-
             document.getElementById("dropdown-form").addEventListener("submit", function(e) {
                 e.preventDefault()
                 var year = document.getElementById("yearSelect").value;
