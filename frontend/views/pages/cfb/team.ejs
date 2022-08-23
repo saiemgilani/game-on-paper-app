@@ -59,6 +59,15 @@ function getNumberWithOrdinal(n) {
             }
         </style>
         <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item" aria-current="page"><a href="/cfb/years">Seasons</a></li>
+                  <li class="breadcrumb-item" aria-current="page"><a href="/cfb/year/<%= season %>"><%= season %></a></li>
+                  <li class="breadcrumb-item active" aria-current="page"><%= teamData.location %></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="container">
             <div class="row my-3">
                 <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
                     <%- include('../../partials/team_card', {
