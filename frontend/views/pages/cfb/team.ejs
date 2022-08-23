@@ -47,9 +47,20 @@ function getNumberWithOrdinal(n) {
         <meta name="medium" content="website">
     </head>
     <body>
+        <%- include('../../partials/nav-header') %>
+        <style>
+            .margin-override {
+                margin-bottom: 0;
+            }
+            @media (max-width: 767.98px) {
+                .margin-override {
+                    margin-bottom: 2em;
+                }
+            }
+        </style>
         <div class="container">
             <div class="row my-3">
-                <div class="col-lg-4 col-md-12 mb-sm-3">
+                <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
                     <%- include('../../partials/team_card', {
                         teamData,
                         breakdown,
