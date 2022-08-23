@@ -1,19 +1,25 @@
 <header class="p-3 mb-3 border-bottom">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
-            <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
+            <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
                 <span class="fs-4 blog-header-logo">Game on Paper</span>
-            </a>
+            </div>
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
-                <li><a href="#" class="nav-link px-2 link-secondary">Scores</a></li>
-                <li><a href="#" class="nav-link px-2 link-secondary">Seasons</a></li>
-                <li><a href="#" class="nav-link px-2 link-secondary">Teams</a></li>
+                <li><a href="/" class="nav-link px-2 link-secondary">Scores</a></li>
+                <li><a href="/cfb/years" class="nav-link px-2 link-secondary">Seasons</a></li>
             </ul>
 
-            <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
-                <input type="search" class="form-control" placeholder="Search for an ESPN game ID..." aria-label="Search">
+            <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search" id="game-id-form">
+                <input id="inputGameId" type="search" class="form-control" placeholder="Search for an ESPN game ID..." aria-label="Search">
             </form>
         </div>
     </div>
 </header>
+<script>
+    document.getElementById("game-id-form").addEventListener("submit", function(e) {
+        e.preventDefault()
+        var gameId = document.getElementById("inputGameId").value;
+        window.location = "/cfb/game/" + gameId;
+    });
+</script>
