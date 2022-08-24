@@ -48,6 +48,14 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                     return ` hulk-bg-level-${clampedStep}`
                 }
             }
+
+            function generateMarginalString(input, power10, fixed) {
+                if (input >= 0) {
+                    return `+${roundNumber(input, power10, fixed)}`;
+                } else {
+                    return roundNumber(input, power10, fixed);
+                }
+            }
         %>
         <div class="table-responsive">
             <table class="table table-sm table-responsive">
@@ -60,7 +68,7 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                     <tr>
                         <td class="text-center" style="width: 33%"><%= overall %><%= conf %></td>
                         <td class="text-center" style="width: 33%"><%= finish %></td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.epaPerPlayRank, 130, null) %>" style="width: 33%"><%= roundNumber(parseFloat(breakdown[0].differential?.overall?.epaPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.epaPerPlayRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.epaPerPlayRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.epaPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.epaPerPlayRank %>)</td>
                     </tr>
                 </tbody>
             </table>
@@ -78,9 +86,9 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, 130, null) %>" style="width: 33%"><%= roundNumber(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.yardsPerPlayRank %>)</td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availYardsPctRank, 130, null) %>" style="width: 33%"><%= roundNumber(100 * parseFloat(breakdown[0].differential?.overall?.availYardsPct), 2, 1) %> (#<%= breakdown[0].differential?.overall?.availYardsPctRank %>)</td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, 130, null) %>" style="width: 33%"><%= roundNumber(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.successRateRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.yardsPerPlayRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availYardsPctRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availYardsPct), 2, 1) %> (#<%= breakdown[0].differential?.overall?.availYardsPctRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.successRateRank %>)</td>
                     </tr>
                 </tbody>
             </table>
