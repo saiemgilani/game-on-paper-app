@@ -79,9 +79,15 @@ function roundNumber(value, power10, fixed) {
                     <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
                 </div>
                 <div class="col-8 text-center">
-                    <div>
+                    <div class="game-context">
                         <h2><%= awayTeam.nickname %> <%= awayComp.score %> @ <%= homeTeam.nickname %> <%= homeComp.score %></h2>
-                        <p class="text-small" id="game-date"></p>
+                        <% if (gameData.gameInfo.status.type.name.includes("STATUS_SCHEDULED")) { %>
+                        <span class="game-date"><%= gameData.gameInfo.date %></span>
+                        <% } else if (gameData.gameInfo.status.type.completed == true) { %>
+                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span> <span class="game-date"></span>  
+                        <% } else { %>
+                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span>
+                        <% } %>
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
@@ -100,14 +106,16 @@ function roundNumber(value, power10, fixed) {
                 <%- include('../../partials/team_card', {
                     teamData: awayTeam,
                     breakdown: [gameData.matchup.team[0]],
-                    season: 2022
+                    season: 2022,
+                    hideNavigation: false
                 }) %>
             </div>
             <div class="col-4">
                 <%- include('../../partials/team_card', {
                     teamData: homeTeam,
                     breakdown: [gameData.matchup.team[1]],
-                    season: 2022
+                    season: 2022,
+                    hideNavigation: false
                 }) %>
             </div>
         </div>
@@ -222,26 +230,6 @@ function roundNumber(value, power10, fixed) {
     <%- include('../../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
-    <script>
-        const DateTime = luxon.DateTime;
-        var gameData = <%- JSON.stringify(gameData) %>;
-        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData, null, 2) +  "</pre>";
-
-        var statusDetail = gameData.gameInfo.status.type.detail;
-        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
-            document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
-        } else {
-            var airings = gameData.gameInfo.airings;
-            var airingLink = (airings != null && airings.length > 0) ? airings[0].webAiringLink : null
-            let airingNetwork = (airings != null && airings.length > 0) ? ` (${airings[0].network_shortName || airings[0].network_displayName})` : ""
-            if (airingLink != null) {
-                document.body.querySelector("#game-date").innerHTML = `<a href="${airingLink}">LIVE</a>${airingNetwork} - ${statusDetail}`
-            } else if (statusDetail.includes("TBD")) {
-                document.body.querySelector("#game-date").innerText = "Scheduled - " + statusDetail
-            } else {
-                document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
-            }
-        }
-    </script>
+    <script src="/assets/js/date-replace.js" crossorigin="anonymous"></script>
 </body>
 </html>

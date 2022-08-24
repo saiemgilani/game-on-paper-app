@@ -7,6 +7,7 @@
     v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+const isBreakdownAvailable = (breakdown[0].differential != null);           
 %>
 
 <div class="card border rounded">
@@ -84,5 +85,9 @@
                 </tbody>
             </table>
         </div>
+
+        <% if (isBreakdownAvailable && !hideNavigation) { %>
+            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= teamData.id %>">View full profile</a>
+        <% } %>
     </div>
 </div>
