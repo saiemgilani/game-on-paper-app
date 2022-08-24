@@ -109,6 +109,19 @@ router.route('/year/:year/type/:type/week/:week')
         }
     });
 
+function cleanAbbreviation(abbrev) {
+    if (abbrev == 'NU') {
+        return 'NW'
+    }
+    if (abbrev == 'CLT') {
+        return 'CHAR'
+    }
+    if (abbrev == 'IU') {
+        return 'IND'
+    }
+    return abbrev;
+}
+
 router.route('/game/:gameId')
     .get(async function(req, res, next) {
         try {
@@ -122,8 +135,8 @@ router.route('/game/:gameId')
             const awayComp = game.competitors[1];
             const homeTeam = homeComp.team;
             const awayTeam = awayComp.team;
-            const homeKey = homeTeam.abbreviation;
-            const awayKey = awayTeam.abbreviation;
+            const homeKey = cleanAbbreviation(homeTeam.abbreviation);
+            const awayKey = cleanAbbreviation(awayTeam.abbreviation);
 
             // if it's in the future, send to pregame template
             if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
