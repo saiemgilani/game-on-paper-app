@@ -4,7 +4,17 @@ const Teams = require('./teams');
 const Schedule = require('./schedule');
 const router = express.Router();
 const axios = require('axios');
-const path = require('path');
+const redis = require('redis');
+
+const redisClient = redis.createClient({
+    url: 'redis://redis:6379'
+});
+
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
+
+redisClient.connect().then(() => {
+    console.log('connected to redis on port 6379');
+});
 
 router.get('/healthcheck', Games.getServiceHealth)
 
@@ -48,7 +58,7 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
-async function retrieveTeamData(year, abbreviation, type) {
+async function retrieveRemoteTeamData(year, abbreviation, type) {
     try {
         const response = await axios({
             method: 'POST',
@@ -59,9 +69,12 @@ async function retrieveTeamData(year, abbreviation, type) {
                 team: abbreviation,
                 type: type
             })
-        })
+        });
         
-        return response.data.results;
+        // update redis cache
+        const content = response.data.results;
+        await redisClient.set(`${year}-${abbreviation}-${type}`, JSON.stringify(content))
+        return content;
     } catch (err) {
         console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
         if (err) {
@@ -72,8 +85,22 @@ async function retrieveTeamData(year, abbreviation, type) {
                 pos_team: abbreviation
             }];
         } else {
-            return retrieveTeamData(year - 1, abbreviation, type);
+            return retrieveRemoteTeamData(year - 1, abbreviation, type);
         }
+    }
+}
+
+async function retrieveTeamData(year, abbreviation, type) {
+    try {
+        const key = `${year}-${abbreviation}-${type}`;
+        const content = await redisClient.get(key);
+        if (!content) {
+            throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
+        }
+        return JSON.parse(content);
+    } catch (err) {
+        console.log(err)
+        return retrieveRemoteTeamData(year, abbreviation, type);
     }
 }
 
