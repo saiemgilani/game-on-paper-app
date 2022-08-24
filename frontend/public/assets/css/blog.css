@@ -105,39 +105,39 @@ table {
 }
 
 .hulk-text-level-9, .hulk-text-green {
-  color: #34C759;
+  color: rgb(52, 199, 89);
 }
 
 .hulk-text-level-0, .hulk-text-purple {
-  color: #AF52DE;
+  color: rgb(175, 82, 222);
 }
 
 .hulk-text-level-1 {
-  color: #C37DE6;
+  color: #833DA6;
 }
 
 .hulk-text-level-2 {
-  color: #D7A8EE;
+  color: #57296F;
 }
 
 .hulk-text-level-3 {
-  color: #EBD3F6;
+  color: #2B1437;
 }
 
 .hulk-text-level-4, .hulk-text-level-5 {
-  color: white;
+  color: black;
 }
 
 .hulk-text-level-6 {
-  color: #CCF1D5;
+  color: #0D3116;
 }
 
 .hulk-text-level-7 {
-  color: #99E3AC;
+  color: #1A632C;
 }
 
 .hulk-text-level-8 {
-  color: #66D582;
+  color: #279542;
 }
 
 .hulk-bg-level-9, .hulk-bg-green {
