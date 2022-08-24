@@ -48,9 +48,19 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
-async function retrieveTeamData(year, abbreviation) {
+async function retrieveTeamData(year, abbreviation, type) {
     try {
-        const response = await axios.get(`http://summary:3000/year/${year}/team/${abbreviation}`)
+        const response = await axios({
+            method: 'POST',
+            url: `http://summary:3000/`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: new URLSearchParams({
+                year,
+                team: abbreviation,
+                type: type
+            })
+        })
+        
         return response.data.results;
     } catch (err) {
         console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
@@ -62,7 +72,7 @@ async function retrieveTeamData(year, abbreviation) {
                 pos_team: abbreviation
             }];
         } else {
-            return retrieveTeamData(year - 1, abbreviation);
+            return retrieveTeamData(year - 1, abbreviation, type);
         }
     }
 }
@@ -140,8 +150,8 @@ router.route('/game/:gameId')
 
             // if it's in the future, send to pregame template
             if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
-                const homeData = await retrieveTeamData(season, homeKey);
-                const awayData = await retrieveTeamData(season, awayKey);
+                const homeData = await retrieveTeamData(season, homeKey, 'overall');
+                const awayData = await retrieveTeamData(season, awayKey, 'overall');
                 return res.render('pages/cfb/pregame', {
                     gameData: {
                         gameInfo: game,
@@ -192,15 +202,18 @@ router.route('/year/:year/team/:teamId')
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
             }
-
-            let resp = await axios.get(`http://summary:3000/year/${req.params.year}/team/${data.abbreviation}`)
     
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
                 return res.render('pages/cfb/team', {
                     teamData: data,
-                    breakdown: resp.data.results,
+                    breakdown: await retrieveTeamData(req.params.year, data.abbreviation, 'overall'),
+                    players: {
+                        passing: await retrieveTeamData(req.params.year, data.abbreviation, 'passing'),
+                        rushing: await retrieveTeamData(req.params.year, data.abbreviation, 'rushing'),
+                        receiving: await retrieveTeamData(req.params.year, data.abbreviation, 'receiving')
+                    },
                     season: req.params.year
                 });
             }
