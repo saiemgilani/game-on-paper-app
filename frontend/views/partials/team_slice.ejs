@@ -16,7 +16,7 @@
     function handleRates(item, teamInfo, baseKey, subKey, useSuffix, decimalPoints, widthPct) {
         let finalTeamInfo = (teamInfo == null) ? breakdown : teamInfo;
         let finalDecimalPoints = decimalPoints || 1;
-        var result = ""
+        var result = "";
         
         function generateColorRampValue(input, max, midColor) {
             if (!input) {
@@ -36,36 +36,41 @@
 
         function produceNumerals(valueFormatter, isMargin) {
             finalTeamInfo.forEach(teamData => {
-                let val = teamData[baseKey][subKey][item] || 0;
-                let rank = teamData[baseKey][subKey][`${item}Rank`]
-                let colorClass = null;
-                let sign = "";
+                if (!(baseKey in teamData)) {
+                    result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">N/A (N/A)</td>`;
 
-                if (isMargin) {
-                    if (val > 0) {
-                        colorClass = " hulk-bg-green"
-                        sign = "+"
-                    } else if (val < 0) {
-                        colorClass = " hulk-bg-purple"
+                } else {
+                    let val = teamData[baseKey][subKey][item] || 0;
+                    let rank = teamData[baseKey][subKey][`${item}Rank`]
+                    let colorClass = null;
+                    let sign = "";
+
+                    if (isMargin) {
+                        if (val > 0) {
+                            colorClass = " hulk-bg-green"
+                            sign = "+"
+                        } else if (val < 0) {
+                            colorClass = " hulk-bg-purple"
+                        } else {
+                            colorClass = null
+                        }
                     } else {
-                        colorClass = null
+                        colorClass = generateColorRampValue(rank, 130, null, 255)
                     }
-                } else {
-                    colorClass = generateColorRampValue(rank, 130, null, 255)
-                }
-                
-                let tied = rank?.includes(".5")
-                let rankString = ""
-                if (rank && tied) {
-                    rankString = ` (T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)})`
-                } else if (rank) {
-                    rankString = ` (#${rank})`
-                }
+                    
+                    let tied = rank?.includes(".5")
+                    let rankString = ""
+                    if (rank && tied) {
+                        rankString = ` (T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)})`
+                    } else if (rank) {
+                        rankString = ` (#${rank})`
+                    }
 
-                if (colorClass) {
-                    result += `<td class="numeral${colorClass}" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
-                } else {
-                    result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                    if (colorClass) {
+                        result += `<td class="numeral${colorClass}" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                    } else {
+                        result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                    }
                 }
             });
         }
