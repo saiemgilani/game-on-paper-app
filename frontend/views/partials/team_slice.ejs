@@ -30,7 +30,7 @@
             if (clampedStep == 4 || clampedStep == 5) {
                 return null
             } else {
-                return ` hulk-text-level-${clampedStep}`
+                return ` hulk-bg-level-${clampedStep}`
             }
         }
 
@@ -43,10 +43,10 @@
 
                 if (isMargin) {
                     if (val > 0) {
-                        colorClass = " hulk-text-green"
+                        colorClass = " hulk-bg-green"
                         sign = "+"
                     } else if (val < 0) {
-                        colorClass = " hulk-text-purple"
+                        colorClass = " hulk-bg-purple"
                     } else {
                         colorClass = null
                     }
