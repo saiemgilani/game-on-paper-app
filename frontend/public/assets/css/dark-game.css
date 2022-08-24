@@ -2543,22 +2543,22 @@ p.box-heading {
 
 .hulk-bg-level-9, .hulk-bg-green {
     background: #30D158 !important;
-    color: white;
+    color: black;
 }
 
 .hulk-bg-level-0, .hulk-bg-purple {
     background: #BF5AF2 !important;
-    color: white;
+    color: black;
 }
 
 .hulk-bg-level-1 {
     background: #CF83F5 !important;
-    color: white;
+    color: black;
 }
 
 .hulk-bg-level-2 {
     background: #DFACF8 !important;
-    color: white;
+    color: black;
 }
 
 .hulk-bg-level-3 {
@@ -2578,12 +2578,12 @@ p.box-heading {
 
 .hulk-bg-level-7 {
     background: #97E8AB !important;
-    color: white;
+    color: black;
 }
 
 .hulk-bg-level-8 {
     background: #63DC81 !important;
-    color: white;
+    color: black;
 }
 
 }
