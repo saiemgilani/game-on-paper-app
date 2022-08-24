@@ -12,26 +12,28 @@
         <% 
         // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
         let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+        let yrRange = range(2002, 2022);
         %>
         <%- include('../../partials/nav-header') %>
-        <div class="container-fluid">
-            <form class="row mb-3 align-items-center form-picker" id="dropdown-form">
-                <div class="col-auto mb-xs-3 mb-sm-0">
-                    <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
-                        <option value="-1">Choose Season...</option>
-                        <% let yrRange = range(2002, 2021); %>
-                        <% yrRange.reverse().forEach(yr => { %>
-                            <option value="<%= yr %>"><%= yr %></option>
-                        <% }); %>
-                    </select>
-                </div>
-                <div class="col-auto mb-xs-3 mb-sm-0">
-                    <select class="form-select form-select-lg" id="weekSelect">
-                        <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
-                    </select>
-                </div>
-                <div class="col-auto mb-xs-3 mb-sm-0">
-                    <button type="submit" class="btn btn-lg btn-primary">View</button>
+        <div class="container">
+            <form class="form-picker mb-3" id="dropdown-form">
+                <div class="row">
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
+                            <option value="-1">Choose Season...</option>
+                            <% yrRange.reverse().forEach(yr => { %>
+                                <option value="<%= yr %>"><%= yr %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <select class="form-select form-select-lg" id="weekSelect">
+                            <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
+                        </select>
+                    </div>
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <button type="submit" class="btn btn-lg btn-primary">View</button>
+                    </div>
                 </div>
             </form>
             <div class="row mb-3">
