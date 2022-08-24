@@ -14,8 +14,20 @@
         let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
         let yrRange = range(2002, 2022);
         %>
-        <%- include('../../partials/nav-header') %>
         <div class="container">
+            <div class="row text-center mb-3">
+                <div class="form-signin col-12">
+                    <h1 class="mb-3 fw-normal">Game on Paper</h1>
+                    <form id="game-id-form">
+                        <label for="inputGameId" class="visually-hidden">Game ID</label>
+                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
+                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
+                    </form>
+                </div>
+            </div>
+            <div class="row mb-1">
+                <h3 class="text-center"> -- OR -- </h3>
+            </div>
             <form class="form-picker mb-3" id="dropdown-form">
                 <div class="row">
                     <div class="col-auto mb-xs-3 mb-sm-0">
