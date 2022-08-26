@@ -8,7 +8,7 @@ COPY ./package.json ./package.json
 FROM base AS nodebuilder
 RUN npm set progress=false && npm config set depth 0
 RUN npm install
- 
+
 FROM base
 WORKDIR /code
 

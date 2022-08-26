@@ -1,18 +1,53 @@
 version: "3.7"
 services:
+  redis:
+    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-redis:latest
+    expose:
+      - 6379
+    healthcheck:
+      test: redis-cli ping || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+  summary:
+    image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
+    expose:
+      - 3000
+    healthcheck:
+      test: curl --fail http://summary:3000/health || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
   node:
-    command: ["bash", "./wait-for-it.sh", "--strict", "python:7000", "--", "node", "server.js"]
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-node:latest
+    command: ["node", "server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
-    ports: 
+    ports:
       - 8000:8000
-    depends_on: 
+    depends_on:
       - python
-    links: 
+      - summary
+      - redis
+    links:
       - python
+      - summary
+      - redis
+    healthcheck:
+      test: curl --fail http://localhost:8000/healthcheck || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
-    expose: 
+    expose:
       - 7000
-
+    healthcheck:
+      test: curl --fail http://python:7000/healthcheck || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s

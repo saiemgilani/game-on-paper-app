@@ -12,8 +12,9 @@
         <% 
         // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
         let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+        let yrRange = range(2002, 2022);
         %>
-        <div class="container-fluid">
+        <div class="container">
             <div class="row text-center mb-3">
                 <div class="form-signin col-12">
                     <h1 class="mb-3 fw-normal">Game on Paper</h1>
@@ -27,23 +28,24 @@
             <div class="row mb-1">
                 <h3 class="text-center"> -- OR -- </h3>
             </div>
-            <form class="row gx-3 row-cols-sm-auto mb-3 align-items-center form-picker" id="dropdown-form">
-                <div class="col-12 mb-xs-3 mb-sm-0">
-                    <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
-                        <option value="-1">Choose Season...</option>
-                        <% let yrRange = range(2002, 2021); %>
-                        <% yrRange.reverse().forEach(yr => { %>
-                            <option value="<%= yr %>"><%= yr %></option>
-                        <% }); %>
-                    </select>
-                </div>
-                <div class="col-12 mb-xs-3 mb-sm-0">
-                    <select class="form-select form-select-lg" id="weekSelect">
-                        <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
-                    </select>
-                </div>
-                <div class="col-12 mb-xs-3 mb-sm-0">
-                    <button type="submit" class="btn btn-lg btn-primary">View</button>
+            <form class="form-picker mb-3" id="dropdown-form">
+                <div class="row">
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
+                            <option value="-1">Choose Season...</option>
+                            <% yrRange.reverse().forEach(yr => { %>
+                                <option value="<%= yr %>"><%= yr %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <select class="form-select form-select-lg" id="weekSelect">
+                            <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
+                        </select>
+                    </div>
+                    <div class="col-auto mb-xs-3 mb-sm-0">
+                        <button type="submit" class="btn btn-lg btn-primary">View</button>
+                    </div>
                 </div>
             </form>
             <div class="row mb-3">
@@ -123,7 +125,7 @@
                                 <div class="d-flex justify-content-between">
                                     <div class="text-left">
                                         <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
-                                        <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                                        <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
                                     </div>
                                     <div class="text-right">
                                         <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { %>
@@ -233,12 +235,6 @@
             populateWeekSelect(selYear || -1);
         </script>
         <script>
-            document.getElementById("game-id-form").addEventListener("submit", function(e) {
-                e.preventDefault()
-                var gameId = document.getElementById("inputGameId").value;
-                window.location = "/cfb/game/" + gameId;
-            });
-
             document.getElementById("dropdown-form").addEventListener("submit", function(e) {
                 e.preventDefault()
                 var year = document.getElementById("yearSelect").value;

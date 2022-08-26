@@ -30,6 +30,16 @@ jobs:
           directory: ./python
           dockerfile: ./python/Dockerfile
           tags: latest
+      - name: Publish Redis container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v5.5
+        with:
+          image: saiemgilani/game-on-paper-redis
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./redis
+          dockerfile: ./redis/Dockerfile
+          tags: latest
       - name: Push updated docker-compose override file
         uses: Creepios/sftp-action@v1.0.3
         with:
@@ -51,7 +61,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
           script: |
             docker stop $(docker ps -a -q)
             docker system prune --force

@@ -18,17 +18,10 @@
 }
 
 body {
-  display: flex;
-  align-items: center;
+  /* display: flex; */
+  /* align-items: center; */
   padding-top: 40px;
   padding-bottom: 40px;
-}
-
-.form-signin {
-  width: 100%;
-  max-width: 330px;
-  padding: 15px;
-  margin: auto;
 }
 
 .form-picker {
@@ -36,17 +29,6 @@ body {
   max-width: 600px;
   padding: 15px;
   margin: auto;
-}
-
-.form-signin .form-control {
-  position: relative;
-  box-sizing: border-box;
-  height: auto;
-  padding: 10px;
-  font-size: 16px;
-}
-.form-signin .form-control:focus {
-  z-index: 2;
 }
 
 .blog-header {
@@ -74,4 +56,22 @@ h1, h2, h3, h4, h5, h6 {
 
 .rounded, .btn, .badge, .form-select, .form-control {
   border-radius: 0.5em !important;
+}
+
+.form-signin {
+  width: 100%;
+  max-width: 330px;
+  padding: 15px;
+  margin: auto;
+}
+
+.form-signin .form-control {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+}
+.form-signin .form-control:focus {
+  z-index: 2;
 }
