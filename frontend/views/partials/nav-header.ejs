@@ -7,7 +7,21 @@
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
                 <li><a href="/" class="nav-link px-2 link-secondary">Scores</a></li>
-                <li><a href="/cfb/years" class="nav-link px-2 link-secondary">Seasons</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Seasons
+                    </a>
+                    <ul class="dropdown-menu">
+                    <% 
+                    // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
+                    let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                    let yrRange = range(2014, 2022);
+                    %>
+                    <% yrRange.forEach(yr => { %>
+                      <li><a class="dropdown-item" href="/cfb/year/<%= yr %>"><%= yr %></a></li>
+                    <% }); %>
+                    </ul>
+                  </li>
             </ul>
 
             <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search" id="game-id-form">

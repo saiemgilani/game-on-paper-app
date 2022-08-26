@@ -180,6 +180,7 @@ router.route('/game/:gameId')
                 const homeData = await retrieveTeamData(season, homeKey, 'overall');
                 const awayData = await retrieveTeamData(season, awayKey, 'overall');
                 return res.render('pages/cfb/pregame', {
+                    season,
                     gameData: {
                         gameInfo: game,
                         matchup: {
