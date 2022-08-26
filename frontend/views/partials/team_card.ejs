@@ -101,7 +101,7 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
         </div>
 
         <% if (isBreakdownAvailable && !hideNavigation) { %>
-            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= teamData.id %>">View full profile</a>
+            <a class="text-left" href="/cfb/year/<%= season == 2022 ? 2021 : season %>/team/<%= teamData.id %>">View full profile</a>
         <% } %>
     </div>
 </div>
