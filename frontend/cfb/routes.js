@@ -104,7 +104,6 @@ async function retrieveTeamData(year, abbreviation, type) {
     }
 }
 
-
 router.get('/', async function(req, res, next) {
     try {
         let gameList = await retrieveGameList(req.originalUrl, null);
@@ -141,6 +140,23 @@ router.route('/year/:year/type/:type/week/:week')
         try {
             let data = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, type: req.params.type, group: req.query.group })
             return res.json(data);
+        } catch(err) {
+            return next(err)
+        }
+    });
+
+router.route('/year/:year')
+    .get(async function(req, res, next) {
+        try {
+            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week: 1, type: 2, group: 80 });
+            let weekList = await Schedule.getWeeksMap();
+            return res.render('pages/cfb/index', {
+                scoreboard: gameList,
+                weekList: weekList,
+                year: req.params.year,
+                week: 1,
+                seasontype: 2
+            });
         } catch(err) {
             return next(err)
         }
@@ -251,5 +267,10 @@ router.route('/year/:year/team/:teamId')
             return next(err)
         }
     })
+
+router.route('/team/:teamId')
+.get(async function(req, res, next) {
+    return res.redirect(`/cfb/year/2021/team/${req.params.teamId}`);
+})
 
 module.exports = router
