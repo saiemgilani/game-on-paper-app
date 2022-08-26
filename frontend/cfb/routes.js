@@ -85,7 +85,7 @@ async function retrieveRemoteTeamData(year, abbreviation, type) {
                 pos_team: abbreviation
             }];
         } else {
-            return retrieveRemoteTeamData(year - 1, abbreviation, type);
+            return await retrieveRemoteTeamData(year - 1, abbreviation, type);
         }
     }
 }
@@ -100,7 +100,7 @@ async function retrieveTeamData(year, abbreviation, type) {
         return JSON.parse(content);
     } catch (err) {
         console.log(err)
-        return retrieveRemoteTeamData(year, abbreviation, type);
+        return await retrieveRemoteTeamData(year, abbreviation, type);
     }
 }
 

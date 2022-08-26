@@ -77,7 +77,7 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
         <div class="table-responsive pe-0">
             <table class="table table-sm table-responsive">
                 <caption class="text-small text-muted"">
-                    <small><p class="mb-0">Stats shown as margins. EPA/Play adjusted for opponent strength by Bud Davis (<a href="https://twitter.com/jbuddavis">@JBudDavis</a>). AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
+                    <small><p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
                 </caption>
                 <thead>
                     <th class="text-center" style="width: 33%">Yards/Play</th>
@@ -87,7 +87,7 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                 <tbody>
                     <tr>
                         <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.yardsPerPlayRank %>)</td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availYardsPctRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availYardsPct), 2, 1) %> (#<%= breakdown[0].differential?.overall?.availYardsPctRank %>)</td>
+                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availableYardsPctRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availableYardsPct), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.availableYardsPctRank %>)</td>
                         <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.successRateRank %>)</td>
                     </tr>
                 </tbody>
