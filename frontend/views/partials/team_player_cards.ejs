@@ -44,14 +44,22 @@
             <div class="col-lg-4">
                 <div class="text-center">
                     <% 
-                    const positional = players[t].filter(item => item.name.length > 0).sort((a, b) => {
-                        return parseFloat(a['statistics']['plays']) > parseFloat(b['statistics']['plays'])
+                    let positional = players[t].filter(item => item.name.length > 0).slice();
+                    positional.sort((a, b) => {
+                        let aVal = a.statistics.plays
+                        let bVal = b.statistics.plays
+                        return parseInt(bVal) - parseInt(aVal)
                     }); 
-                    const p = positional[0];
+
+                    let p = positional[0];
 
                     %>
                     <p class="box-heading"><%= t.charAt(0).toUpperCase() + t.slice(1) %></p>
-                    <a href="https://www.espn.com/college-football/player/_/id/<%= CONST_PLAYER.id %>"><img class="img img-fluid img-circle-bg mb-3" src="https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/<%= CONST_PLAYER.id %>.png&w=150" /></a>
+                    <% if (p.playerId && p.playerId != 'NA') { %>
+                        <a href="https://www.espn.com/college-football/player/_/id/<%= p.playerId %>"><img class="img img-fluid img-circle-bg mb-3" src="https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/<%= p.playerId %>.png&w=150" /></a>
+                    <% } else { %>
+                        <img class="img img-fluid img-circle-bg mb-3" src="https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=150&scale=crop" />
+                    <% } %>
                     <h5><%= p.name %></h5>
 
                     <% if (t === 'passing') { %>
