@@ -4,6 +4,22 @@ th.box-heading {
     font-weight: bold;
 }
 
+p.box-heading {
+    text-align: center;
+    color: black;
+    font-weight: bold;
+}
+
+.margin-override {
+    margin-bottom: 0;
+}
+@media (max-width: 767.98px) {
+    .margin-override {
+        margin-bottom: 2em;
+    }
+}
+
+
 @media (prefers-color-scheme: dark) {
     /*
                         _______
@@ -19,7 +35,7 @@ th.box-heading {
        |  |__/  /  ______  \|  ____  \|  |  \  \
 _______|_______/__/ ____ \__\__|___\__\__|___\__\____
 |  ___  \ |  ____/ /    \   |  ___  \ |  ____|  ___  \
-|  |  \  \|  |___ /  /\  \  |  |  \  \|  |___|  |  \  \
+|  |  \  \|  |___ /  /\  \  |  |  \  \|  |___|  | x \  \
 |  |__/  /|  ____/  /__\  \ |  |   )  |  ____|  |__/  /
 |  ____  \|  |__/  ______  \|  |__/  /|  |___|  ____  \
 |__|   \__\____/__/      \__\_______/ |______|__|   \__\
@@ -2490,6 +2506,93 @@ th.box-heading {
     color: #e8e6e3 !important;
     font-weight: bold;
     border-bottom-color: #e8e6e3 !important;
+}
+
+p.box-heading {
+    text-align: center;
+    color: #e8e6e3 !important;
+    font-weight: bold;
+}
+
+.hulk-text-level-9, .hulk-text-green {
+    color: #30D158;
+}
+
+.hulk-text-level-0, .hulk-text-purple {
+    color: #BF5AF2;
+}
+
+.hulk-text-level-1 {
+    color: #CF83F5;
+}
+
+.hulk-text-level-2 {
+    color: #DFACF8;
+}
+
+.hulk-text-level-3 {
+    color: #EFD5FB;
+}
+
+.hulk-text-level-4, .hulk-text-level-5 {
+    color: white;
+}
+
+.hulk-text-level-6 {
+    color: #CBF3D5;
+}
+
+.hulk-text-level-7 {
+    color: #97E8AB;
+}
+
+.hulk-text-level-8 {
+    color: #63DC81;
+}
+
+.hulk-bg-level-9, .hulk-bg-green {
+    background: #30D158 !important;
+    color: black;
+}
+
+.hulk-bg-level-0, .hulk-bg-purple {
+    background: #BF5AF2 !important;
+    color: black;
+}
+
+.hulk-bg-level-1 {
+    background: #CF83F5 !important;
+    color: black;
+}
+
+.hulk-bg-level-2 {
+    background: #DFACF8 !important;
+    color: black;
+}
+
+.hulk-bg-level-3 {
+    background: #EFD5FB !important;
+    color: black;
+}
+
+.hulk-bg-level-4, .hulk-bg-level-5 {
+    background: white !important;
+    color: black;
+}
+
+.hulk-bg-level-6 {
+    background: #CBF3D5 !important;
+    color: black;
+}
+
+.hulk-bg-level-7 {
+    background: #97E8AB !important;
+    color: black;
+}
+
+.hulk-bg-level-8 {
+    background: #63DC81 !important;
+    color: black;
 }
 
 }

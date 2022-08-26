@@ -103,3 +103,84 @@ table {
 .rounded, .btn, .badge, .form-select, .form-control {
   border-radius: 0.5em !important;
 }
+
+.hulk-text-level-9, .hulk-text-green {
+  color: rgb(52, 199, 89);
+}
+
+.hulk-text-level-0, .hulk-text-purple {
+  color: rgb(175, 82, 222);
+}
+
+.hulk-text-level-1 {
+  color: #833DA6;
+}
+
+.hulk-text-level-2 {
+  color: #57296F;
+}
+
+.hulk-text-level-3 {
+  color: #2B1437;
+}
+
+.hulk-text-level-4, .hulk-text-level-5 {
+  color: black;
+}
+
+.hulk-text-level-6 {
+  color: #0D3116;
+}
+
+.hulk-text-level-7 {
+  color: #1A632C;
+}
+
+.hulk-text-level-8 {
+  color: #279542;
+}
+
+.hulk-bg-level-9, .hulk-bg-green {
+  background: #34C759 !important;
+  color: black;
+}
+
+.hulk-bg-level-0, .hulk-bg-purple {
+  background: #AF52DE !important;
+  color: black;
+}
+
+.hulk-bg-level-1 {
+  background: #C37DE6 !important;
+  color: black;
+}
+
+.hulk-bg-level-2 {
+  background: #D7A8EE !important;
+  color: black;
+}
+
+.hulk-bg-level-3 {
+  background: #EBD3F6 !important;
+  color: black;
+}
+
+.hulk-bg-level-4, .hulk-bg-level-5 {
+  background: white !important;
+  color: black;
+}
+
+.hulk-bg-level-6 {
+  background: #CCF1D5 !important;
+  color: black;
+}
+
+.hulk-bg-level-7 {
+  background: #99E3AC !important;
+  color: black;
+}
+
+.hulk-bg-level-8 {
+  background: #66D582 !important;
+  color: black;
+}
