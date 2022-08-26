@@ -168,6 +168,7 @@ router.route('/game/:gameId')
             const response = await axios.get(pbp_url);
             const game = response.data["gamepackageJSON"]["header"]["competitions"][0];
             const season = response.data["gamepackageJSON"]["header"]["season"]["year"];
+            const week = response.data["gamepackageJSON"]["header"]["week"];
             const homeComp = game.competitors[0];
             const awayComp = game.competitors[1];
             const homeTeam = homeComp.team;
@@ -177,15 +178,16 @@ router.route('/game/:gameId')
 
             // if it's in the future, send to pregame template
             if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
-                const homeData = await retrieveTeamData(season, homeKey, 'overall');
-                const awayData = await retrieveTeamData(season, awayKey, 'overall');
+                const homeBreakdown = await retrieveTeamData(season, homeKey, 'overall');
+                const awayBreakdown = await retrieveTeamData(season, awayKey, 'overall');
                 return res.render('pages/cfb/pregame', {
                     season,
+                    week,
                     gameData: {
                         gameInfo: game,
                         matchup: {
                             team: [
-                                ...awayData, ...homeData
+                                ...awayBreakdown, ...homeBreakdown
                             ]
                         }
                     }

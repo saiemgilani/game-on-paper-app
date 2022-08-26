@@ -77,7 +77,13 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
         <div class="table-responsive pe-0">
             <table class="table table-sm table-responsive">
                 <caption class="text-small text-muted"">
-                    <small><p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
+                    <small>
+                        <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).
+                        <% if (week && week == 1 && season == 2022) { %>
+                            Rankings and metrics shown reflect team performance in <%= (season - 1) %>.
+                        <% } %>
+                        </p>
+                    </small>
                 </caption>
                 <thead>
                     <th class="text-center" style="width: 33%">Yards/Play</th>
