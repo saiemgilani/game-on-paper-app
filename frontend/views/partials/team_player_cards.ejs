@@ -63,7 +63,7 @@
                     <h5><%= p.name %></h5>
 
                     <% if (t === 'passing') { %>
-                        <p><%= roundNumber(parseFloat(p['advanced']['epaPerPlay']), 2, 2) %> EPA/Play, <%= roundNumber(100 * parseFloat(p['statistics']['completionPct']), 2, 0) %>% Comp%, <%= p['statistics']['yards'] %> yd<%= (Math.abs(parseFloat(p['statistics']['yards'])) == 1) ? "" : "s" %>, <%= p['statistics']['touchdowns'] %> TD, <%= p['statistics']['detmer'] %> DETMER</p>
+                        <p><%= roundNumber(parseFloat(p['advanced']['epaPerPlay']), 2, 2) %> EPA/Play, <%= roundNumber(100 * parseFloat(p['statistics']['completionPct']), 2, 0) %>% Comp%, <%= p['statistics']['yards'] %> yd<%= (Math.abs(parseFloat(p['statistics']['yards'])) == 1) ? "" : "s" %>, <%= p['statistics']['touchdowns'] %> TD, <%= roundNumber(parseFloat(p['statistics']['detmer']), 2, 2) %> DETMER</p>
                     <% } else if (t === 'rushing') { %>
                         <p><%= roundNumber(parseFloat(p['advanced']['epaPerPlay']), 2, 2) %> EPA/Play, <%= p['statistics']['plays'] %> Car, <%= p['statistics']['yards'] %> yd<%= (Math.abs(parseFloat(p['statistics']['yards'])) == 1) ? "" : "s" %>,  <%= p['statistics']['touchdowns'] %> TD </p>
                     <% } else if (t === 'receiving') { %>
