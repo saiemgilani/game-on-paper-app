@@ -108,6 +108,7 @@ async function retrievePBP(gameId) {
     // debuglog(plays)
     pbp.advBoxScore = processedGame["box_score"];
     pbp.boxScore = processedGame['boxScore'];
+    pbp.gameInfo = pbp.header.competitions[0];
     
 
     pbp.scoringPlays = pbp.plays.filter(p => ("scoringPlay" in p) && (p.scoringPlay == true))
