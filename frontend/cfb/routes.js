@@ -254,11 +254,11 @@ router.route('/year/:year/team/:teamId')
             } else {
                 return res.render('pages/cfb/team', {
                     teamData: data,
-                    breakdown: await retrieveTeamData(req.params.year, data.abbreviation, 'overall'),
+                    breakdown: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'overall'),
                     players: {
-                        passing: await retrieveTeamData(req.params.year, data.abbreviation, 'passing'),
-                        rushing: await retrieveTeamData(req.params.year, data.abbreviation, 'rushing'),
-                        receiving: await retrieveTeamData(req.params.year, data.abbreviation, 'receiving')
+                        passing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'passing'),
+                        rushing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'rushing'),
+                        receiving: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'receiving')
                     },
                     season: req.params.year
                 });
