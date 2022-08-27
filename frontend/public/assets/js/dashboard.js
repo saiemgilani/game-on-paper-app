@@ -167,9 +167,10 @@ function rgb2lab(rgb){
 }
 
 if (gameData.plays.length > 0) {
-    gameData.plays = interpolateTimestamps(gameData.plays)
+    // gameData.plays = interpolateTimestamps(gameData.plays)
+    const plays = [...gameData.plays].reverse();
     // console.log(gameData.plays[0])
-    var timestamps = (gameData.gameInfo.status.type.completed == true) ? gameData.plays.map(p => p.game_time_remaining) : [...Array(gameData.plays.length).keys()];
+    var timestamps = [...Array(plays.length).keys()];
     // console.log(timestamps)
     var homeComp = gameData.gameInfo.competitors[0];
     var awayComp = gameData.gameInfo.competitors[1];
@@ -212,10 +213,10 @@ if (gameData.plays.length > 0) {
         console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
     }
 
-    var homeTeamWP = gameData.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
+    var homeTeamWP = plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
-    var awayTeamEPA = calculateCumulativeSums(gameData.plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var homeTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
 
     homeTeamEPA.splice(0, 0, {
         x: 0,
@@ -246,6 +247,17 @@ if (gameData.plays.length > 0) {
         label: null,
         data: homeTeamWP
     };
+
+    console.log(`home: ${homeTeam.id}, ${homeTeam.abbreviation}`)
+    console.log(`away: ${awayTeam.id}, ${awayTeam.abbreviation}`)
+    var zipped = plays.map(function(e, i) {
+        return {
+          play: i,
+          team: e.pos_team,
+          homeWP: targetDataSet.data[i]
+        }//[e, b[i]];
+      });
+      console.log(zipped)
 
 
     Chart.plugins.register([
@@ -379,7 +391,6 @@ if (gameData.plays.length > 0) {
         Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
         
         feather.replace()
-        
         // Graphs
         var ctx = document.getElementById('wpChart')
         // eslint-disable-next-line no-unused-vars
@@ -422,16 +433,12 @@ if (gameData.plays.length > 0) {
                         ticks: {
                             // Include a dollar sign in the ticks
                             callback: function(value, index, values) {
-                                if (gameData.gameInfo.status.type.completed == true) {
-                                    return Math.max(0, Math.min(3600, 3600 - value))
-                                } else {
-                                    return value
-                                }
+                                return value
                             }
                         },
                         scaleLabel: {
                             display: true,
-                            labelString: (gameData.gameInfo.status.type.completed == true) ? "Game Seconds Elapsed (May look weird due to discrepancies in ESPN data)" : "Play Number"
+                            labelString: "Play Number"
                         },
                         gridLines: gridLines
                     }]
@@ -439,11 +446,7 @@ if (gameData.plays.length > 0) {
                 tooltips: {
                     callbacks: {
                         title: function(tooltipItem, data) {
-                            if (gameData.gameInfo.status.type.completed == true) {
-                                return `Game Seconds Elapsed: ${Math.max(0, Math.min(3600, 3600 - tooltipItem[0].label))}`
-                            } else {
-                                return `Total Play Number: ${tooltipItem[0].label}`
-                            }
+                            return `Total Play Number: ${tooltipItem[0].label}`
                         },
                         label: function(tooltipItem, data) {
                             // value is always from perspective of home team
