@@ -5,6 +5,32 @@ const Schedule = require('./schedule');
 const router = express.Router();
 const axios = require('axios');
 const redis = require('redis');
+const path = require("path");
+const fs = require('fs');
+const util = require('util');
+const debuglog = util.debuglog('[frontend]');
+const alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+let glossary = {};
+fs.readFile(path.resolve(__dirname, "glossary.json"), function (err, data) {
+    if (err) {
+        debuglog(err)
+        throw err;
+    }
+    debuglog(`Loading glossary...`)
+    const tmpGloss = JSON.parse(data);
+    alphabet.forEach(letter => {
+        let records = tmpGloss[letter];
+        if (records) {
+            let copyRec = [...records];
+            copyRec.sort((a, b) => {
+                return a.term.localeCompare(b.term)
+            });
+            glossary[letter] = copyRec;
+        }
+    });
+
+    debuglog(`Loaded glossary for ${Object.keys(glossary)} letters`)
+});
 
 const redisClient = redis.createClient({
     url: 'redis://redis:6379'
@@ -271,6 +297,14 @@ router.route('/year/:year/team/:teamId')
 router.route('/team/:teamId')
 .get(async function(req, res, next) {
     return res.redirect(`/cfb/year/2021/team/${req.params.teamId}`);
+})
+
+
+router.route('/glossary')
+.get(function(req, res, next) {
+    return res.render('pages/cfb/glossary', {
+        glossary
+    });
 })
 
 module.exports = router

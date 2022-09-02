@@ -1,0 +1,131 @@
+{
+    "E": [
+        {
+            "term": "Expected points added (EPA)",
+            "definition": "an estimate of how many points an offense gained or lost based on their performance on a specific play, taking into account scoreline, down, distance, and a few other situational factors. The link provided explains the NFL version of the model, but while the variables are slightly different, the fundamentals are the same.",
+            "source" : "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
+        },
+        {
+            "term": "Expected turnovers",
+            "definition": "(From FootballStudyHall.com) What a team's turnover margin would have been if it had recovered exactly 50 percent of all the fumbles that occurred in its games, and if the INTs-to-PDs for both teams was equal to the national average, which is generally around 21-22 percent.",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Expected QBR (xQBR)",
+            "definition": "an estimated version of <a href=''>ESPN's QBR</a> based on historical data.",
+            "source" : "https://github.com/akeaswaran/cfb_qbr"
+        },
+        {
+            "term": "Explosive play",
+            "definition": "On Game on Paper, a pass play that nets greater than 2.4 EPA OR a rushing play that nets greater than 1.8 EPA. These thresholds represent the 75th percentile of each play type. Other sites may cite this as any play that gains more than 15 yards.",
+            "source" : ""
+        },
+        {
+            "term": "Early down",
+            "definition": "First and second down.",
+            "source" : ""
+        }
+    ],
+    "H": [
+        {
+            "term": "Havoc Rate",
+            "definition": "(From FootballStudyHall.com) plays in which a defense either recorded a tackle for loss, forced a fumble, or defensed a pass (intercepted or broken up)",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Highlight yards",
+            "definition": "(From FootballStudyHall.com) portion of a given run that is credited only to the running back; after a certain number of yards, the line has done its job, and most of the rest of the run will be determined by the running back himself.",
+            "source" : "https://www.footballstudyhall.com/2011/4/13/2102634/the-toolbox-highlight-yards"
+        }
+    ],
+    "W": [
+        {
+            "term": "Win probability (WP%)",
+            "definition": "an instantaneous estimate of a team's chances to win a game given information about scoreline, down, distance, and a few other situational factors. The link provided explains the NFL version of the model, but while the variables are slightly different, the fundamentals are the same.",
+            "source" : "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
+        }
+    ],
+    "P": [
+        {
+            "term": "Power run",
+            "definition": "(From FootballStudyHall.com) runs on third or fourth down, two yards or less to go, that achieved a first down or touchdown",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Passing down",
+            "definition": "(From FootballStudyHall.com) Second-and-8 or more, third-and-5 or more, or fourth-and-5 or more. These are downs in which passing is easily the most likely option for gaining the necessary yardage, and defenses hold the upper hand. Offenses typically throw about two-thirds of the time on passing downs.",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "L": [
+        {
+            "term": "Late down",
+            "definition": "Third and fourth down.",
+            "source" : ""
+        }
+    ],
+    "R": [
+        {
+            "term": "Rush opportunity",
+            "definition": "(From FootballStudyHall.com) carries in which the offensive line 'does its job' and produces at least four yards of rushing for the runner",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "O": [
+        {
+            "term": "OL Line Yards",
+            "definition": "Portion of rushes that are credited to the work of the offensive line, rather than the rusher (see: highlight yards for the latter). Typically, line yards are calculated as follows: <table class='table table-sm table-responsive'><thead><tr><th>Yards Gained</th><th>Line Yards</th></tr></thead><tbody><tr><td>&lt;0 yds</td><td>1.2 * yards gained</td></tr><tr><td>0 to 4 yds</td><td>1.0 * yards gained</td></tr><tr><td>5+ yds</td><td>4 + (0.5 * (yards gained - 4))</td></tr></tbody></table>",
+            "source" : ""
+        }
+    ],
+    "S": [
+        {
+            "term": "Successful play / Success Rate",
+            "definition": "On Game on Paper, any play that nets more than 0 EPA. On other sites, successful plays may be dependent on the down and gained yardage as follows: <table class='table table-sm table-responsive'><thead><tr><th>Down</th><th>Success Criteria</th></tr></thead><tbody><tr><td>1</td><td>50%+ of distance </td></tr><tr><td>2</td><td>70+% of distance</td></tr><tr><td>3+</td><td>100% of distance</td></tr></tbody></table>",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Stuffed run",
+            "definition": "(From FootballStudyHall.com) Rushing play where the runner is tackled at or behind the line of scrimmage",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Stopped run",
+            "definition": "Rushing play where the runner gains zero to two yards.",
+            "source" : ""
+        },
+        {
+            "term": "Standard down",
+            "definition": "(From FootballStudyHall.com) First downs, second-and-7 or fewer, third-and-4 or fewer, and fourth-and-4 or fewer. These are the downs in which the offense could conceivably either run or pass and therefore has an overall advantage over the defense. Offenses typically run about 60 percent of the time on standard downs.",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "M": [
+        {
+            "term": "\"Middle 8\"",
+            "definition": "The last four minutes of the first half and the first four minutes of the second half. Conventional thinking posits that if a team controls the game heading into halftime and coming out of halftime (by scoring or holding the ball and preventing the other team from scoring), they create a massive momentum swing that increases their chances of winning. It is unclear whether this holds true based on historical data.",
+            "source" : ""
+        }
+    ],
+    "T": [
+        {
+            "term": "Turnover Luck",
+            "definition": "(From FootballStudyHall.com) the difference between a team's turnover and expected turnover margins and, using the average point value of a turnover (~5.0 points), projects how many points a team gained or lost per game.",
+            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "A": [
+        {
+            "term": "Available Yards %",
+            "definition": "(From bcftoys.com) Calculated by dividing drive yards earned by available yards measured from starting field position to end zone.",
+            "source" : "https://www.bcftoys.com/2022-ayp/"
+        }
+    ],
+    "D": [
+        {
+            "term": "DETMER",
+            "definition": "<b>D</b>ownfield <b>E</b>ventful <b>T</b>hrowing <b>M</b>etric <b>E</b>ncouraging <b>R</b>ippin' it. Measuring how 'sicko' a quarterback's performance is, based on their passing yardage, interceptions, and touchdowns.",
+            "source" : "https://sickoscommittee.substack.com/p/introducing-detmer-the-first-ever"
+        }
+    ]
+}
