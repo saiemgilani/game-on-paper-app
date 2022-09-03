@@ -168,7 +168,7 @@ function rgb2lab(rgb){
 
 if (gameData.plays.length > 0) {
     // gameData.plays = interpolateTimestamps(gameData.plays)
-    const plays = [...gameData.plays].reverse();
+    const plays = [...gameData.plays];
     // console.log(gameData.plays[0])
     var timestamps = [...Array(plays.length).keys()];
     // console.log(timestamps)
