@@ -61,19 +61,23 @@ async function retrieveGameList(url, params) {
             return -1;
         } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
             return 1;
+        } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
+            return -1;
+        } else if (b.status.type.name.includes("STATUS_HALFTIME") && !a.status.type.name.includes("STATUS_HALFTIME")) {
+            return 1;
         } else {
             var aDate = Date.parse(a.date)
             var bDate = Date.parse(b.date)
             if (aDate < bDate) {
                 return -1
-            } else if (aDate > bDate) {
+            } else if (bDate < aDate) {
                 return 1
             } else {
                 var aVal = parseInt(a.status.type.id)
                 var bVal = parseInt(b.status.type.id)
-                if (aVal > bVal) {
+                if (aVal < bVal) {
                     return -1
-                } else if (aVal < bVal) {
+                } else if (bVal < aVal) {
                     return 1
                 } else {
                     return 0
