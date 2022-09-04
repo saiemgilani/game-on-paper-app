@@ -65,13 +65,23 @@ slim_title_mapping = {
 function boxScoreRetrievePercentile(value, key) {
     if (percentiles.length == 0) {
         console.log('no pctls available')
-        return null;
+        return {
+            pctl: null,
+            min: null,
+            mid: null,
+            max: null
+        }
     }
 
     const adjKey = percentile_title_key_mapping[key];
     if (!adjKey) {
         console.log('bailing out of percentile title key with key ' + key)
-        return null;
+        return {
+            pctl: null,
+            min: null,
+            mid: null,
+            max: null
+        }
     }
 
     console.log(`calc pctl for val ${value}`)
@@ -123,7 +133,7 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
             let pct = boxScoreRetrievePercentile(val, finalKey);
             let colorRampClass = boxScoreGenerateColorRampValue(pct.pctl, 100, null)
             console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${boxScoreRoundNumber(parseFloat(val), 2, 0)}%</td>`;
+            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${boxScoreRoundNumber(parseFloat(pct.min), 2, 0)}%\nMedian: ${boxScoreRoundNumber(parseFloat(pct.mid), 2, 0)}%\nBest: ${boxScoreRoundNumber(parseFloat(pct.max), 2, 0)}%">${boxScoreRoundNumber(parseFloat(val), 2, 0)}% <small class="align-self-center" style="opacity: 50%">${boxScoreGetOrdinal(pct.pctl)} %ile</small></td>`;
         });
     } else if (boxScoreNonRateDecimalColumns.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {
@@ -131,7 +141,7 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
             let pct = boxScoreRetrievePercentile(val, finalKey);
             let colorRampClass = boxScoreGenerateColorRampValue(pct.pctl, 100, null)
             console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${boxScoreRoundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
+            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${boxScoreRoundNumber(parseFloat(pct.min), 2, finalDecimalPoints)}\nMedian: ${boxScoreRoundNumber(parseFloat(pct.mid), 2, finalDecimalPoints)}\nBest: ${boxScoreRoundNumber(parseFloat(pct.max), 2, finalDecimalPoints)}">${boxScoreRoundNumber(parseFloat(val), 2, finalDecimalPoints)} <small class="align-self-center" style="opacity: 50%">${boxScoreGetOrdinal(pct.pctl)} %ile</small></td>`;
         });
     } else if (boxScoreNonRateColumns.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {
@@ -139,7 +149,7 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
             let pct = boxScoreRetrievePercentile(val, finalKey);
             let colorRampClass = boxScoreGenerateColorRampValue(pct.pctl, 100, null)
             console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${val}</td>`;
+            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${val} <small class="align-self-center" style="opacity: 50%">${boxScoreGetOrdinal(pct.pctl)} %ile</small></td>`;
         });
     } else { 
         finalTeamInfo.forEach(teamData => {
@@ -153,7 +163,7 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
             let pct = boxScoreRetrievePercentile(rate, finalKey);
             let colorRampClass = boxScoreGenerateColorRampValue(pct.pctl, 100, null)
             console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${boxScoreRoundNumber(parseFloat(100.0 * rate), 2, 0)}%</td>`;
+            result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${boxScoreRoundNumber(parseFloat(100.0 * pct.min), 2, 0)}%\nMedian: ${boxScoreRoundNumber(parseFloat(100.0 * pct.mid), 2, 0)}%\nBest: ${boxScoreRoundNumber(parseFloat(100.0 * pct.max), 2, 0)}%">${boxScoreRoundNumber(parseFloat(100.0 * rate), 2, 0)}% <small class="align-self-center" style="opacity: 50%">${boxScoreGetOrdinal(pct.pctl)} %ile</small></td>`;
         });
     }
     return result;
@@ -190,7 +200,11 @@ Object.keys(gameData.advBoxScore).forEach(key => {
 <div class="table-responsive">
     <% var columns = ["EPA_per_play","situational.EPA_success", "yards_per_play", "EPA_passing_per_play", "EPA_rushing_per_play", "yards_per_pass", "EPA_explosive", "rushing_stuff", "defensive.havoc_total"]; %>
     <table class="table table-sm table-responsive">
-        <caption class="text-muted text-small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>).</caption>
+        <caption class="text-muted text-small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>).
+        <% if (percentiles.length > 0) { %>
+            Cell colors based on percentile performance against <%= percentiles[0]["season"] %> stats.
+        <% } %>
+        </caption>
         <thead>
             <tr>
                 <th style="text-align: left;">Overall</th>
