@@ -88,6 +88,54 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
+
+async function retrieveRemoteLeagueData(year, type) {
+    try {
+        const response = await axios({
+            method: 'POST',
+            url: `http://summary:3000/`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: new URLSearchParams({
+                year,
+                type: type
+            })
+        });
+        
+        // update redis cache
+        const content = response.data.results;
+        const key = `${year}-${type}`;
+        await redisClient.set(key, JSON.stringify(content))
+        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+        return content;
+    } catch (err) {
+        console.log(`could not find data for league in ${year}, checking ${year - 1}`)
+        if (err) {
+            console.log(`also err: ${err}`);
+        }
+        if ((year - 1) < 2014) {
+            return [];
+        } else {
+            return await retrieveRemoteLeagueData(year - 1, type);
+        }
+    }
+}
+
+async function retrieveLeagueData(year, type) {
+    const key = `${year}-${type}`;
+    try {
+        const content = await redisClient.get(key);
+        if (!content) {
+            throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
+        }
+        console.log(`found content for key ${key}: ${content}`)
+        return JSON.parse(content);
+    } catch (err) {
+        console.log(err)
+        console.log(`receieved some error from redis for key: ${key}, repulling league data`)
+        return await retrieveRemoteLeagueData(year, type);
+    }
+}
+
 async function retrieveRemoteTeamData(year, abbreviation, type) {
     try {
         const response = await axios({
@@ -103,7 +151,9 @@ async function retrieveRemoteTeamData(year, abbreviation, type) {
         
         // update redis cache
         const content = response.data.results;
-        await redisClient.set(`${year}-${abbreviation}-${type}`, JSON.stringify(content))
+        const key = `${year}-${abbreviation}-${type}`;
+        await redisClient.set(key, JSON.stringify(content))
+        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
         console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
@@ -249,8 +299,18 @@ router.route('/game/:gameId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
+                let percentiles = [];
+                try {
+                    const season = data["header"]["season"]["year"];
+                    console.log('retreiving percentiles for season ' + season)
+                    percentiles = await retrieveLeagueData(season, 'overall');
+                } catch (e) {
+                    console.log(`error while retrieving league percentiles: ${e}`)
+                }
+
                 return res.render('pages/cfb/game', {
-                    gameData: data
+                    gameData: data,
+                    percentiles
                 });
             }
         } catch(err) {
