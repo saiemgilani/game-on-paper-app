@@ -46,7 +46,7 @@ percentile_title_key_mapping = {
     "EPA_explosive" : "offensive.overall.explosiveRate",
     "yards_per_pass": "offensive.passing.yardsPerPlay",
     "yards_per_play": "offensive.overall.yardsPerPlay",
-    "rushing_stuff" : "offensive.rushing.stuffedPlayRate"
+    "rushing_stuff" : "defensive.rushing.stuffedPlayRate"
 }
 
 slim_title_mapping = {
@@ -54,7 +54,7 @@ slim_title_mapping = {
     "EPA_passing_per_play" : "EPA/Dropback",
     "EPA_rushing_per_play" : "EPA/Rush",
     "defensive.havoc_total" : "Havoc Rate",
-    "rushing_stuff" : "Off Stuffed Run Rate",
+    "rushing_stuff" : "Def Run Stuff Rate",
     "situational.EPA_success" : "Success Rate",
     "EPA_explosive" : "Explosive Play Rate",
     "yards_per_pass": "Yards/Dropback",
@@ -109,10 +109,11 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
     }
 
     let finalTeamInfo = [...baseTeamInfo[subKeys[0]]]
-    if (subKeys[0].includes('defensive')) {
+    const finalKey = subKeys[1];
+    if (subKeys[0].includes('defensive') || finalKey.includes('rushing_stuff')) {
         finalTeamInfo.reverse()
     }
-    const finalKey = subKeys[1];
+
 
     let finalDecimalPoints = decimalPoints || 1;
     var result = ""
@@ -187,7 +188,7 @@ Object.keys(gameData.advBoxScore).forEach(key => {
 %>
 
 <div class="table-responsive">
-    <% var columns = ["EPA_per_play","situational.EPA_success", "yards_per_play", "EPA_passing_per_play", "EPA_rushing_per_play", "yards_per_pass", "EPA_explosive","defensive.havoc_total", "rushing_stuff"]; %>
+    <% var columns = ["EPA_per_play","situational.EPA_success", "yards_per_play", "EPA_passing_per_play", "EPA_rushing_per_play", "yards_per_pass", "EPA_explosive", "rushing_stuff", "defensive.havoc_total"]; %>
     <table class="table table-sm table-responsive">
         <caption class="text-muted text-small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>).</caption>
         <thead>
