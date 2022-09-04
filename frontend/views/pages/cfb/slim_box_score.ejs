@@ -43,7 +43,7 @@ percentile_title_key_mapping = {
     "EPA_rushing_per_play" : "offensive.rushing.epaPerPlay",
     "havoc_total" : "defensive.overall.havocRate",
     "EPA_success" : "offensive.overall.successRate",
-    "EPA_explosive" : "offensive.overall.havocRate",
+    "EPA_explosive" : "offensive.overall.explosiveRate",
     "yards_per_pass": "offensive.passing.yardsPerPlay",
     "yards_per_play": "offensive.overall.yardsPerPlay",
     "rushing_stuff" : "offensive.rushing.stuffedPlayRate"
@@ -81,21 +81,13 @@ function boxScoreRetrievePercentile(value, key) {
         return parseFloat(val)
     })
     basePctls.sort((a, b) => {
-        if (adjKey.includes('defensive')) {
-            return parseFloat(b) - parseFloat(a)
-        } else {
-            return parseFloat(a) - parseFloat(b)
-        }
+        return parseFloat(a) - parseFloat(b)
     })
     
     let pctls = [...basePctls];
     console.log(`mapped pctls for key ${adjKey}: ${JSON.stringify(pctls, null, 2)}`)
     pctls = pctls.filter(item => {
-        if (adjKey.includes('defensive')) {
-            return parseFloat(item) >= parseFloat(value)
-        } else {
-            return parseFloat(item) <= parseFloat(value)
-        }
+        return parseFloat(item) <= parseFloat(value)
     });
 
     const pct = 100 * (pctls.length / percentiles.length)
