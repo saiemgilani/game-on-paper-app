@@ -219,7 +219,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     var baseRow = `
     <tr ${collapsibleText} class="accordion-toggle${classText}">
         <td style="text-align: left;">${period}</td>
-        <td style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
+        <td style="text-align: center;"><img class="img-fluid team-logo-${play.pos_team}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></td>
         <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
@@ -338,6 +338,10 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <meta name="twitter:card" content="summary">
     <meta name="title" content="<%= title %>">
     <meta name="medium" content="website">
+    <%- include('../../partials/logos', {
+        awayTeam,
+        homeTeam,
+    }) %>
 </head>
 <body>
     <div class="container-fluid">
@@ -511,7 +515,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th style="text-align: left;">Expected Points</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -532,7 +536,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th style="text-align: left;">Production</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -553,7 +557,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Rushing</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -576,7 +580,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Explosiveness</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -622,7 +626,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Situational</th>
                                                             <% gameData.advBoxScore.situational.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -652,7 +656,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Drives</th>
                                                             <% gameData.advBoxScore.drives.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -683,7 +687,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                             }) %>
 
                                                             <% gameData.advBoxScore.defensive.map(group => group.def_pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -704,7 +708,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Turnovers</th>
                                                             <% gameData.advBoxScore.turnover.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
@@ -725,7 +729,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                                         <tr>
                                                             <th class="box-heading">Special Teams</th>
                                                             <% gameData.advBoxScore.team.map(group => group.pos_team).forEach(value => { %>
-                                                                <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                                                                <th style="text-align: center;"><img class="img-fluid team-logo-<%= value %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                                                             <% }); %>
                                                         </tr>
                                                     </thead>
