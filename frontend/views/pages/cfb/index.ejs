@@ -7,6 +7,24 @@
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/index.css" rel="stylesheet"> 
         <link href="/assets/css/dark-index.css" rel="stylesheet"> 
+        <style>
+            @media (prefers-color-scheme: dark) { 
+        <% scoreboard.forEach(game => {  %>
+            <% let gameComp = game.competitions[0];%>
+            <%let homeComp = gameComp.competitors[0];%>
+            <%let awayComp = gameComp.competitors[1];%>
+            <%let homeTeam = homeComp.team;%>
+            <%let awayTeam = awayComp.team;%>
+            
+            img.team-logo-<%= homeTeam.id %> {
+                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= homeTeam.id %>.png') 
+            }
+            img.team-logo-<%= awayTeam.id %> {
+                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= awayTeam.id %>.png') 
+            }
+        <% }); %>
+        }
+        </style>
     </head>
     <body>
         <% 
@@ -51,7 +69,7 @@
             <div class="row mb-3">
                 <% 
                 function generateTeamImg(teamId) {
-                    return `<img class="img-fluid d-inline-block" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
+                    return `<img class="img-fluid d-inline-block team-logo-${teamId}" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
                 }
 
                 function formatScore(score, winner, complete) {

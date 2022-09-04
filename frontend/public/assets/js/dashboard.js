@@ -364,7 +364,7 @@ if (gameData.plays.length > 0) {
             Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
             var homeImage = new Image();
             homeImage.setAttribute('crossOrigin','anonymous');
-            homeImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+            homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
             homeImage.onload = () => {                                            // when the image loads
                 this.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                 chart.render();                                                 // and force re-render to include it
@@ -372,7 +372,7 @@ if (gameData.plays.length > 0) {
 
             var awayImage = new Image();
             awayImage.setAttribute('crossOrigin','anonymous');
-            awayImage.src = `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+            awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
             awayImage.onload = () => {                                            // when the image loads
                 this.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                 chart.render();                                                 // and force re-render to include it
