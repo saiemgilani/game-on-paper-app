@@ -162,10 +162,7 @@
                                         %>
                                         <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { 
                                             let networkName = gameComp.geoBroadcasts[0].media.shortName;
-                                            // console.log(JSON.stringify(gameComp.geoBroadcasts[0]));
-                                            var airings = gameComp.broadcasts;
-                                            console.log(JSON.stringify(airings));
-                                            
+
                                             if (networkMappings[networkName]) { %>
                                                 <a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href="<%= networkMappings[networkName] %>"><%= networkName %></a>
                                             <% } else if (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC')) { %>
