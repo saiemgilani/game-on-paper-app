@@ -1070,6 +1070,18 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
     <script>
         const DateTime = luxon.DateTime;
+        const networkMappings = {
+            "FOX" : 'https://www.foxsports.com/live',
+            "FS1" : 'https://www.foxsports.com/live/fs1',
+            "BTN" : 'https://www.foxsports.com/live/btn',
+            "NBC" : 'https://www.nbcsports.com/live',
+            "Peacock" : 'https://www.peacocktv.com',
+            "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+            "CBS" : 'https://www.cbssports.com/live/',
+            'PAC12' : 'https://pac-12.com/live',
+            'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
+        }
+
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
@@ -1078,14 +1090,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         } else {
             var airings = gameData.gameInfo.airings;
             var airingLink = (airings != null && airings.length > 0) ? airings[0].webAiringLink : null
-            let airingNetwork = (airings != null && airings.length > 0) ? ` (${airings[0].network_shortName || airings[0].network_displayName})` : ""
-            if (airingLink != null) {
-                document.body.querySelector("#game-date").innerHTML = `<a href="${airingLink}">LIVE</a>${airingNetwork} - ${statusDetail}`
+            let airingNetwork = (airings != null && airings.length > 0) ? airings[0].network_shortName || airings[0].network_displayName : null;
+            if (airingLink != null && airingNetwork != null) {
+                let airingString = ` (${airingNetwork})`;
+                document.body.querySelector("#game-date").innerHTML = `<a href="${airingLink}">LIVE</a>${airingString} - ${statusDetail}`
+            } else if (airingNetwork != null && networkMappings[airingNetwork]) {
+                document.body.querySelector("#game-date").innerHTML = `<a href="${networkMappings[airingNetwork]}">LIVE</a>${airingNetwork} - ${statusDetail}`
             } else {
                 document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             }
         }
-    </script>
     </script>
     <script src="/assets/js/dashboard.js"></script>
 </body>

@@ -146,8 +146,33 @@
                                         <a class="btn btn-sm btn-outline-primary <%= (game.status.type.name.includes("STATUS_DELAYED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
                                     </div>
                                     <div class="text-right">
-                                        <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { %>
-                                        <span class="badge bg-secondary bg-sm"><%= gameComp.geoBroadcasts[0].media.shortName %></span>
+                                        <%
+                                        const networkMappings = {
+                                            "FOX" : 'https://www.foxsports.com/live',
+                                            "FS1" : 'https://www.foxsports.com/live/fs1',
+                                            "BTN" : 'https://www.foxsports.com/live/btn',
+                                            "NBC" : 'https://www.nbcsports.com/live',
+                                            "Peacock" : 'https://www.peacocktv.com',
+                                            "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+                                            "CBS" : 'https://www.cbssports.com/live/',
+                                            'PAC12' : 'https://pac-12.com/live',
+                                            'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
+                                        }
+                                        
+                                        %>
+                                        <% if (gameComp.geoBroadcasts.length > 0 && gameComp.geoBroadcasts[0].media != null && gameComp.geoBroadcasts[0].media.shortName != null) { 
+                                            let networkName = gameComp.geoBroadcasts[0].media.shortName;
+                                            // console.log(JSON.stringify(gameComp.geoBroadcasts[0]));
+                                            var airings = gameComp.broadcasts;
+                                            console.log(JSON.stringify(airings));
+                                            
+                                            if (networkMappings[networkName]) { %>
+                                                <a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href="<%= networkMappings[networkName] %>"><%= networkName %></a>
+                                            <% } else if (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC')) { %>
+                                                <a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href="https://www.espn.com/watch/player/_/eventCalendarId/<%= gameComp.id %>"><%= networkName %></a>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary bg-sm align-self-center"><%= networkName %></span>
+                                            <% } %>
                                         <% } %>
                                     </div>
                                 </div>
