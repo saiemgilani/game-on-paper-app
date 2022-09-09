@@ -7,6 +7,7 @@
     v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+const maxTeams = (season == 2022) ? 131 : 130;
 const isBreakdownAvailable = (breakdown[0].differential != null);           
 %>
 
@@ -66,9 +67,9 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-center" style="width: 33%"><%= overall %><%= conf %></td>
-                        <td class="text-center" style="width: 33%"><%= finish %></td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.epaPerPlayRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.epaPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.epaPerPlayRank %>)</td>
+                        <td class="numeral text-center" style="width: 33%"><%= overall %><%= conf %></td>
+                        <td class="numeral text-center" style="width: 33%"><%= finish %></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.epaPerPlayRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.epaPerPlay), 2, 2) %> <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.epaPerPlayRank %></small></td>
                     </tr>
                 </tbody>
             </table>
@@ -79,9 +80,6 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                 <caption class="text-small text-muted"">
                     <small>
                         <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).
-                        <% if (week && week == 1 && season == 2022) { %>
-                            Rankings and metrics shown reflect team performance in <%= (season - 1) %>.
-                        <% } %>
                         </p>
                     </small>
                 </caption>
@@ -92,16 +90,16 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> (#<%= breakdown[0].differential?.overall?.yardsPerPlayRank %>)</td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availableYardsPctRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availableYardsPct), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.availableYardsPctRank %>)</td>
-                        <td class="text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, 130, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% (#<%= breakdown[0].differential?.overall?.successRateRank %>)</td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.yardsPerPlayRank %></small></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availableYardsPctRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availableYardsPct), 2, 1) %>% <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.availableYardsPctRank %></small></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.successRateRank %></small></td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
         <% if (isBreakdownAvailable && !hideNavigation) { %>
-            <a class="text-left" href="/cfb/year/<%= season == 2022 ? 2021 : season %>/team/<%= teamData.id %>">View full profile</a>
+            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= teamData.id %>">View full profile</a>
         <% } %>
     </div>
 </div>

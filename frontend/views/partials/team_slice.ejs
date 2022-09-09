@@ -61,15 +61,15 @@
                     let tied = rank?.includes(".5")
                     let rankString = ""
                     if (rank && tied) {
-                        rankString = ` (T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)})`
+                        rankString = ` <small class="align-self-center" style="opacity: 50%"> T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}</small>`;
                     } else if (rank) {
-                        rankString = ` (#${rank})`
+                        rankString = ` <small class="align-self-center" style="opacity: 50%"> #${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}</small>`
                     }
 
                     if (colorClass) {
-                        result += `<td class="numeral${colorClass}" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        result += `<td class="align-self-center numeral${colorClass}" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
                     } else {
-                        result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
+                        result += `<td class="align-self-center numeral" style="text-align: center;width: ${widthPct}%;">${sign}${valueFormatter(val)}${rankString}</td>`;
                     }
                 }
             });

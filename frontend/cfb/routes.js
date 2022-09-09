@@ -301,8 +301,9 @@ router.route('/game/:gameId')
             } else {
                 let percentiles = [];
                 try {
-                    const season = data["header"]["season"]["year"];
-                    console.log('retreiving percentiles for season ' + season)
+                    const inputSeason = data["header"]["season"]["year"];
+                    const season = Math.min(Math.max(inputSeason, 2014), 2021); // flipping this to 2022 after Wk 4
+                    console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2021`)
                     percentiles = await retrieveLeagueData(season, 'overall');
                 } catch (e) {
                     console.log(`error while retrieving league percentiles: ${e}`)
