@@ -37,7 +37,7 @@
         function produceNumerals(valueFormatter, isMargin) {
             finalTeamInfo.forEach(teamData => {
                 if (!(baseKey in teamData)) {
-                    result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">N/A (N/A)</td>`;
+                    result += `<td class="numeral" style="text-align: center;width: ${widthPct}%;">N/A <small class="align-self-center" style="opacity: 50%"> N/A</small></td>`;
 
                 } else {
                     let val = teamData[baseKey][subKey][item] || 0;
