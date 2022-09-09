@@ -249,8 +249,14 @@ function cleanAbbreviation(abbrev) {
     if (abbrev == 'CLT') {
         return 'CHAR'
     }
+    if (abbrev == 'BOIS') {
+        return 'BSU'
+    }
     if (abbrev == 'IU') {
         return 'IND'
+    }
+    if (abbrev == 'MIA') {
+        return 'MIAMI'
     }
     return abbrev;
 }
