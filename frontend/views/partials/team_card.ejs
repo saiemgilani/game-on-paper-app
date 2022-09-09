@@ -8,22 +8,23 @@
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 const maxTeams = (season == 2022) ? 131 : 130;
-const isBreakdownAvailable = (breakdown[0].differential != null);           
+const isBreakdownAvailable = (breakdown[0].differential != null);    
+const team = Object.keys(teamData).includes('team') ? teamData.team : teamData;       
 %>
 
 <div class="card border rounded">
     <div class="card-body">
         <div class="card-title mb-0">
             <div class="d-flex align-items-center justify-content-between">
-                <h2><%= teamData.location %></h2>
-                <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= teamData.id %>.png" /> 
+                <h2><%= team.location %></h2>
+                <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= team.id %>.png" /> 
             </div>
         </div>
         <%
-            const records = teamData.record || [];
-            const overallStuff = records.filter(item => item.type == "total")[0];
-            const overall = overallStuff?.displayValue || "0-0"
-            const finishes = overallStuff?.stats.filter(item => item.name == "playoffSeed") || []
+            const records = teamData["record"] || [];
+            const overallStuff = records.filter(item => item["type"] == "total")[0];
+            const overall = overallStuff?.displayValue || "0-0";
+            const finishes = overallStuff?.stats?.filter(item => item.name == "playoffSeed") || []
             const finish = (finishes.length > 0) ? getNumberWithOrdinal(parseInt(finishes[0].displayValue)) : 'N/A';
 
             var conf = ""
@@ -99,7 +100,7 @@ const isBreakdownAvailable = (breakdown[0].differential != null);
         </div>
 
         <% if (isBreakdownAvailable && !hideNavigation) { %>
-            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= teamData.id %>">View full profile</a>
+            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= team.id %>">View full profile</a>
         <% } %>
     </div>
 </div>
