@@ -127,7 +127,7 @@ async function retrieveLeagueData(year, type) {
         if (!content) {
             throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         }
-        console.log(`found content for key ${key}: ${content}`)
+        // console.log(`found content for key ${key}: ${content}`)
         return JSON.parse(content);
     } catch (err) {
         console.log(err)
