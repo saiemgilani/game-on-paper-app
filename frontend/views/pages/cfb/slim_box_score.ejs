@@ -1,5 +1,5 @@
 <%
-// //console.log(` pctls: ${JSON.stringify(percentiles, null, 2)}`)
+//console.log(` pctls: ${JSON.stringify(percentiles, null, 2)}`)
 
 let boxScoreNonRateDecimalColumns = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"];
 let boxScoreNonRateColumns = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
@@ -38,17 +38,17 @@ function boxScoreRoundNumber(value, power10, fixed) {
 }
 
 percentile_title_key_mapping = {
-    "EPA_per_play" : "offensive.overall.epaPerPlay",
-    "EPA_passing_per_play" : "offensive.passing.epaPerPlay",
-    "EPA_rushing_per_play" : "offensive.rushing.epaPerPlay",
-    "havoc_total" : "defensive.overall.havocRate",
-    "EPA_success" : "offensive.overall.successRate",
-    "EPA_explosive" : "offensive.overall.explosiveRate",
-    "yards_per_pass": "offensive.passing.yardsPerPlay",
-    "yards_per_play": "offensive.overall.yardsPerPlay",
-    "rushing_stuff" : "defensive.rushing.stuffedPlayRate",
-    "EPA_success_rate_third" : "offensive.overall.thirdDownSuccessRate",
-    "EPA_success_rate_rz" : "offensive.overall.redZoneSuccessRate"
+    "EPA_per_play" : "epaPerPlay",
+    "EPA_passing_per_play" : "epaPerDropback",
+    "EPA_rushing_per_play" : "epaPerRush",
+    "havoc_total" : "havocRate",
+    "EPA_success" : "successRate",
+    "EPA_explosive" : "explosivePlayRate",
+    "yards_per_pass": "yardsPerDropback",
+    "yards_per_play": "yardsPerPlay",
+    "rushing_stuff" : "playStuffedRate",
+    "EPA_success_rate_third" : "thirdDownSuccessRate",
+    "EPA_success_rate_rz" : "redZoneSuccessRate"
 }
 
 slim_title_mapping = {
@@ -98,7 +98,7 @@ function boxScoreRetrievePercentile(value, key) {
         return parseFloat(a) - parseFloat(b)
     })
 
-    if (!basePctls[0]) {
+    if (basePctls[0] == null || basePctls.length == 0) {
         //console.log('all ptcls null for key ' + adjKey)
         return {
             pctl: null,
@@ -114,7 +114,7 @@ function boxScoreRetrievePercentile(value, key) {
         return parseFloat(item) <= parseFloat(value)
     });
 
-    const pct = 100 * (pctls.length / percentiles.length)
+    const pct = pctls.length
     //console.log(`pct calc for key ${key} is ${pct}`)
     return {
         pctl: boxScoreRoundNumber(pct, 2, 0),
@@ -233,7 +233,7 @@ Object.keys(gameData.advBoxScore).forEach(key => {
     <table class="table table-sm table-responsive">
         <caption class="text-muted text-small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>).
         <% if (percentiles.length > 0) { %>
-            Cell colors reflect the percentile that a team's performance would be compared to every team's performance in that stat in <%= percentiles[0]["season"] %>.
+            Cell colors reflect the percentile of a team's performance against all single-game FBS vs FBS performances in that stat in <%= percentiles[0]["season"] %>.
         <% } %>
         </caption>
         <thead>

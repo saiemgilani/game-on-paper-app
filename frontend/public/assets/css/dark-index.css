@@ -2440,4 +2440,27 @@
         color: var(--darkreader-neutral-text) !important;
     }
 
+    .spice-level-none {
+        border-color: rgb(56, 61, 63) !important;
+    }
+
+    .spice-level-testing {
+        border-color: blue !important;
+    }
+
+    .spice-level-close-late {
+        border-color: #2ED017 !important;
+    }
+
+    .spice-level-ranked-upset {
+        border-color: #FFE700 !important;
+    }
+
+    .spice-level-ranked-close-late {
+        border-color: #FF9700 !important;
+    }
+
+    .spice-level-fcs-upset {
+        border-color: #FF0000 !important;
+    }
 }

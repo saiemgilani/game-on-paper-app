@@ -357,7 +357,35 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
-                    <!-- <a class="btn btn-sm btn-outline-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a> -->
+                    <%
+
+                    const networkMappings = {
+                        "FOX" : 'https://www.foxsports.com/live',
+                        "FS1" : 'https://www.foxsports.com/live/fs1',
+                        "BTN" : 'https://www.foxsports.com/live/btn',
+                        "NBC" : 'https://www.nbcsports.com/live',
+                        "Peacock" : 'https://www.peacocktv.com',
+                        "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+                        "CBS" : 'https://www.cbssports.com/live/',
+                        'PAC12' : 'https://pac-12.com/live',
+                        'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
+                    }
+                                        
+
+                    let networkName = gameData.gameInfo.broadcasts.length > 0 ? gameData.gameInfo.broadcasts[0].media.shortName : null;
+                    let actionPrefix = 'Watch';
+                    if (gameData.gameInfo.status.type.completed == true) {
+                        actionPrefix = 'Replay'
+                    } else if (gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) {
+                        actionPrefix = 'Watch'
+                    } else {
+                        actionPrefix = null;
+                    }
+                    if (actionPrefix != null && networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="https://www.espn.com/watch/player/_/eventCalendarId/<%= gameData.gameInfo.id %>" target="_blank"><%= actionPrefix %> (<%= networkName %>)</a>
+                    <% } else if (actionPrefix != null && networkName != null && networkMappings[networkName]) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="<%= networkMappings[networkName] %>" target="_blank"><%= actionPrefix %> (<%= networkName %>)</a>
+                    <%} %>
                 </div>
             </div>
         </header>
@@ -372,7 +400,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 <a href="#most-imp-plays" class="p-2 link-secondary">Most Important Plays</a>
                 <a href="#scoring-plays" class="p-2 link-secondary">Scoring Plays</a>
                 <a href="#all-plays" class="p-2 link-secondary">All Plays</a>
-                <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
+                <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">Gamecast</a>
             </nav>
         </div>
     </div>
@@ -1088,17 +1116,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
-            var airings = gameData.gameInfo.airings;
-            var airingLink = (airings != null && airings.length > 0) ? airings[0].webAiringLink : null
-            let airingNetwork = (airings != null && airings.length > 0) ? airings[0].network_shortName || airings[0].network_displayName : null;
-            if (airingLink != null && airingNetwork != null) {
-                let airingString = ` (${airingNetwork})`;
-                document.body.querySelector("#game-date").innerHTML = `<a href="${airingLink}">LIVE</a>${airingString} - ${statusDetail}`
-            } else if (airingNetwork != null && networkMappings[airingNetwork]) {
-                document.body.querySelector("#game-date").innerHTML = `<a href="${networkMappings[airingNetwork]}">LIVE</a>${airingNetwork} - ${statusDetail}`
-            } else {
-                document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
-            }
+            document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
         }
     </script>
     <script src="/assets/js/dashboard.js"></script>

@@ -88,6 +88,48 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
+async function retrieveRemotePercentiles(year) {
+    try {
+        const response = await axios({
+            method: 'GET',
+            url: `http://summary:3000/percentiles/${year}`
+        });
+        
+        // update redis cache
+        const content = response.data.results;
+        const key = `${year}-percentiles`;
+        await redisClient.set(key, JSON.stringify(content))
+        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+        return content;
+    } catch (err) {
+        console.log(`could not find percentiles for league in ${year}, checking ${year - 1}`)
+        if (err) {
+            console.log(`also err: ${err}`);
+        }
+        if ((year - 1) < 2014) {
+            return [];
+        } else {
+            return await retrieveRemotePercentiles(year - 1);
+        }
+    }
+}
+
+async function retrievePercentiles(year) {
+    const key = `${year}-percentiles`;
+    try {
+        const content = await redisClient.get(key);
+        if (!content) {
+            throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
+        }
+        // console.log(`found content for key ${key}: ${content}`)
+        return JSON.parse(content);
+    } catch (err) {
+        console.log(err)
+        console.log(`receieved some error from redis for key: ${key}, repulling league data`)
+        return await retrieveRemotePercentiles(year);
+    }
+}
+
 
 async function retrieveRemoteLeagueData(year, type) {
     try {
@@ -186,14 +228,17 @@ async function retrieveTeamData(year, abbreviation, type) {
 
 router.get('/', async function(req, res, next) {
     try {
-        let gameList = await retrieveGameList(req.originalUrl, null);
+        let gameList = await retrieveGameList(req.originalUrl, { group: req.query.group });
         let weekList = await Schedule.getWeeksMap();
+        let groupList = await Schedule.getGroups();
         return res.render('pages/cfb/index', {
             scoreboard: gameList,
             weekList: weekList,
+            groups: groupList,
             year: req.params.year,
             week: req.params.week,
-            seasontype: 2
+            seasontype: 2,
+            group: req.query.group || 80
         });
     } catch(err) {
         return next(err)
@@ -205,12 +250,15 @@ router.route('/year/:year/type/:type/week/:week')
         try {
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, type: req.params.type, group: req.query.group });
             let weekList = await Schedule.getWeeksMap();
+            let groupList = await Schedule.getGroups();
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
                 weekList: weekList,
+                groups: groupList,
                 year: req.params.year,
                 week: req.params.week,
-                seasontype: req.params.type
+                seasontype: req.params.type,
+                group: req.query.group || 80
             });
         } catch(err) {
             return next(err)
@@ -228,14 +276,17 @@ router.route('/year/:year/type/:type/week/:week')
 router.route('/year/:year')
     .get(async function(req, res, next) {
         try {
-            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week: 1, type: 2, group: 80 });
+            let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week: 1, type: 2, group: req.query.group });
             let weekList = await Schedule.getWeeksMap();
+            let groupList = await Schedule.getGroups();
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
                 weekList: weekList,
+                groups: groupList,
                 year: req.params.year,
                 week: 1,
-                seasontype: 2
+                seasontype: 2,
+                group: req.query.group || 80
             });
         } catch(err) {
             return next(err)
@@ -310,7 +361,7 @@ router.route('/game/:gameId')
                     const inputSeason = data["header"]["season"]["year"];
                     const season = Math.min(Math.max(inputSeason, 2014), 2021); // flipping this to 2022 after Wk 4
                     console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2021`)
-                    percentiles = await retrieveLeagueData(season, 'overall');
+                    percentiles = await retrievePercentiles(season);
                 } catch (e) {
                     console.log(`error while retrieving league percentiles: ${e}`)
                 }

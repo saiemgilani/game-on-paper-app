@@ -91,8 +91,27 @@ function roundNumber(value, power10, fixed) {
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
-                    <a class="btn btn-sm btn-outline-secondary me-2" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">ESPN</a>
-                    <!-- <a class="btn btn-sm btn-outline-secondary" href="/cfb/game/<%= gameData.gameInfo.id %>?json=1">Raw JSON</a> -->
+                    <%
+
+                    const networkMappings = {
+                        "FOX" : 'https://www.foxsports.com/live',
+                        "FS1" : 'https://www.foxsports.com/live/fs1',
+                        "BTN" : 'https://www.foxsports.com/live/btn',
+                        "NBC" : 'https://www.nbcsports.com/live',
+                        "Peacock" : 'https://www.peacocktv.com',
+                        "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+                        "CBS" : 'https://www.cbssports.com/live/',
+                        'PAC12' : 'https://pac-12.com/live',
+                        'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
+                    }
+                                        
+
+                    let networkName = gameData.gameInfo.broadcasts.length > 0 ? gameData.gameInfo.broadcasts[0].media.shortName : null;
+                    if (networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="https://www.espn.com/watch/player/_/eventCalendarId/<%= gameData.gameInfo.id %>" target="_blank">Watch (<%= networkName %>)</a>
+                    <% } else if (networkName != null && networkMappings[networkName]) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="<%= networkMappings[networkName] %>" target="_blank">Watch (<%= networkName %>)</a>
+                    <%} %>
                 </div>
             </div>
         </header>
