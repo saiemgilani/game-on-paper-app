@@ -62,6 +62,13 @@
                         </select>
                     </div>
                     <div class="col-auto mb-xs-3 mb-sm-0">
+                        <select class="form-select form-select-lg" id="groupSelect">
+                            <% groups.forEach(g => { %>
+                                <option value="<%= g.id %>" <%= (group == g.id || (group == null && g.id == 80)) ? " selected" : "" %>><%= g.name %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-auto mb-xs-3 mb-sm-0">
                         <button type="submit" class="btn btn-lg btn-primary">View</button>
                     </div>
                 </div>
@@ -356,6 +363,7 @@
                 e.preventDefault()
                 var year = document.getElementById("yearSelect").value;
                 var week = document.getElementById("weekSelect").value;
+                var group = document.getElementById("groupSelect").value;
                 var baseUrl = "/cfb/"
                 if (year != "-1" && week != "-1") {
                     baseUrl += `year/${year}/type/`
@@ -366,6 +374,11 @@
 
                     baseUrl += `${scheduleType}/week/${cleanWeek}`
                 }
+
+                if (group != null) {
+                    baseUrl += `?group=${group}`;
+                }
+
                 window.location = baseUrl;
             });
         </script>

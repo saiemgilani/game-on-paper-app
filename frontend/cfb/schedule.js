@@ -19,6 +19,17 @@ fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
     debuglog(`Loaded schedules for ${Object.keys(schedule)}`)
 });
 
+let groupMap = [];
+fs.readFile(path.resolve(__dirname, "groups.json"), function (err, data) {
+    if (err) {
+        debuglog(err)
+        throw err;
+    }
+    debuglog(`Loading groups...`)
+    groupMap = JSON.parse(data);
+    debuglog(`Loaded groups for ${Object.keys(groupMap)}`)
+});
+
 exports.scheduleList = schedule;
 
 exports.getWeeksMap = function () {
@@ -33,6 +44,10 @@ exports.getWeeksMap = function () {
         })
     });
     return results;
+}
+
+exports.getGroups = function() {
+    return groupMap;
 }
 
 exports.getGames = async function (year, week, type, group) {

@@ -1,0 +1,118 @@
+[
+    {
+        "id": 80,
+        "name": "FBS (I-A)"
+    },
+    {
+        "id": 1,
+        "name": "ACC"
+    },
+    {
+        "id": 151,
+        "name": "American"
+    },
+    {
+        "id": 4,
+        "name": "Big 12"
+    },
+    {
+        "id": 5,
+        "name": "Big Ten"
+    },
+    {
+        "id": 12,
+        "name": "C-USA"
+    },
+    {
+        "id": 18,
+        "name": "FBS Independents"
+    },
+    {
+        "id": 15,
+        "name": "MAC"
+    },
+    {
+        "id": 17,
+        "name": "Mountain West"
+    },
+    {
+        "id": 9,
+        "name": "Pac-12"
+    },
+    {
+        "id": 8,
+        "name": "SEC"
+    },
+    {
+        "id": 37,
+        "name": "Sun Belt"
+    },
+    {
+        "id": 81,
+        "name": "FCS (I-AA)"
+    },
+    {
+        "id": 176,
+        "name": "ASUN"
+    },
+    {
+        "id": 20,
+        "name": "Big Sky"
+    },
+    {
+        "id": 40,
+        "name": "Big South"
+    },
+    {
+        "id": 48,
+        "name": "CAA"
+    },
+    {
+        "id": 22,
+        "name": "Ivy"
+    },
+    {
+        "id": 24,
+        "name": "MEAC"
+    },
+    {
+        "id": 21,
+        "name": "MVFC"
+    },
+    {
+        "id": 25,
+        "name": "NEC"
+    },
+    {
+        "id": 26,
+        "name": "OVC"
+    },
+    {
+        "id": 27,
+        "name": "Patriot"
+    },
+    {
+        "id": 28,
+        "name": "Pioneer"
+    },
+    {
+        "id": 31,
+        "name": "SWAC"
+    },
+    {
+        "id": 29,
+        "name": "Southern"
+    },
+    {
+        "id": 30,
+        "name": "Southland"
+    },
+    {
+        "id": 16,
+        "name": "WAC"
+    },
+    {
+        "id": 35,
+        "name": "Div II/III"
+    }
+]
