@@ -38,7 +38,17 @@ jobs:
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./redis
-          dockerfile: ./redis/Dockerfile
+          dockerfile: ./redis/Dockerfile.lru
+          tags: latest
+      - name: Publish Redis container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v5.5
+        with:
+          image: saiemgilani/game-on-paper-cache
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./redis
+          dockerfile: ./redis/Dockerfile.cache
           tags: latest
       - name: Push updated docker-compose override file
         uses: Creepios/sftp-action@v1.0.3
