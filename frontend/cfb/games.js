@@ -139,7 +139,7 @@ async function _remoteRetrievePBP(gameId) {
 
     try {
         await redisClient.set(`cfb-${gameId}`, JSON.stringify(pbp));
-        await redisClient.expire(`cfb-${gameId}`, 60 * 2); // 2 min TTL
+        await redisClient.expire(`cfb-${gameId}`, 60 * 1); // 1 min TTL
     } catch (e) {
         console.log(`failed to write game data for key cfb-${gameId} to redis game cache, error: ${e}`);
     }
