@@ -39,7 +39,7 @@ const redisClient = redis.createClient({
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 redisClient.connect().then(() => {
-    console.log('connected to redis on port 6379');
+    console.log('connected to redis LRU cache on port 6379');
 });
 
 router.get('/healthcheck', Games.getServiceHealth)
