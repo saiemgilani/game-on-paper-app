@@ -116,35 +116,41 @@
                     }
 
                     if ((parseInt(g.status.period) == 2 && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) > 38))
-                    || (parseInt(g.status.period) == 3 && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) > 28))
-                    || (parseInt(g.status.period) == 4 && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) > 22))) {
+                        || (parseInt(g.status.period) == 3 && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) > 28))
+                        || (parseInt(g.status.period) == 4 && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) > 22))) {
                         return SPICE_LEVEL.BELL; // garbage time
                     }
                     //
-                    var isLateInHalf = g.status.type.name.includes("STATUS_IN_PROGRESS") && 
-                    (parseInt(g.status.period) > 4) 
-                    || (parseInt(g.status.period) == 2 && parseInt(g.status.clock) <= 300 && parseInt(g.status.clock) > 0) 
-                    || (parseInt(g.status.period) == 4 && parseInt(g.status.clock) <= 300 && parseInt(g.status.clock) > 0);
-
+                    var isLateInHalf = (g.status.type.name.includes("STATUS_IN_PROGRESS") || g.status.type.name.includes("STATUS_HALFTIME")) && (parseInt(g.status.period) > 4) || (parseInt(g.status.period) == 2 && parseInt(g.status.clock) <= 300 && parseInt(g.status.clock) > 0) || (parseInt(g.status.period) == 4 && parseInt(g.status.clock) <= 300 && parseInt(g.status.clock) > 0);
                     var isMiddleHalf = g.status.type.name.includes("STATUS_IN_PROGRESS") && (parseInt(g.status.period) >= 3 && parseInt(g.status.clock) <= 450 && parseInt(g.status.clock) > 0);
+                    var isEarlyGame = g.status.type.name.includes("STATUS_IN_PROGRESS") && (parseInt(g.status.period) == 1 && parseInt(g.status.clock) >= 450);
 
                     var oneScoreDriveTime = ((parseInt(g.status.clock) % 900) >= 60);
                     var twoScoreDriveTime = ((parseInt(g.status.clock) % 900) >= 120);
                     var oneScorePossibleByTrailingTeam = (oneScoreDriveTime && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) >= 0 && Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) <= 8));
                     var twoScoresPossibleByTrailingTeam = (twoScoreDriveTime && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) >= 9 && Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) <= 16));
+                    var fbsVsFcsGame = ((!fbs.includes(g.homeTeam.team.conferenceId) && fbs.includes(g.awayTeam.team.conferenceId)) || (!fbs.includes(g.awayTeam.team.conferenceId) && fbs.includes(g.homeTeam.team.conferenceId)))
+                    var homeFcsLeading = (!fbs.includes(g.homeTeam.team.conferenceId) && fbs.includes(g.awayTeam.team.conferenceId) && (parseInt(g.scores.home) - parseInt(g.scores.away)) >= 0);
+                    var awayFcsLeading = (fbs.includes(g.homeTeam.team.conferenceId) && !fbs.includes(g.awayTeam.team.conferenceId) && (parseInt(g.scores.home) - parseInt(g.scores.away)) <= 0)
 
                     if ((isMiddleHalf && (oneScorePossibleByTrailingTeam || twoScoresPossibleByTrailingTeam)) && ((g.homeTeam.rank < 26 && g.awayTeam.rank > 25)
                     || (g.awayTeam.rank < 26 && g.homeTeam.rank > 25))) {
                         return SPICE_LEVEL.CAYENNE;
-                    } else if ((isMiddleHalf && (oneScorePossibleByTrailingTeam || twoScoresPossibleByTrailingTeam)) && ((!fbs.includes(g.homeTeam.conferenceId) && fbs.includes(g.awayTeam.conferenceId)) || (!fbs.includes(g.awayTeam.conferenceId) && fbs.includes(g.homeTeam.conferenceId))) && oneScoreDriveTime) {
+                    }
+                    
+                    if (!isEarlyGame && fbsVsFcsGame && (homeFcsLeading || awayFcsLeading)) {
                         return SPICE_LEVEL.REAPER;
-                    } else if (isLateInHalf && (oneScorePossibleByTrailingTeam || twoScoresPossibleByTrailingTeam)) {
+                    }
+                    
+                    if (isLateInHalf && (oneScorePossibleByTrailingTeam || twoScoresPossibleByTrailingTeam)) {
                         if (g.homeTeam.rank < 26 && g.awayTeam.rank < 26) {
                             return SPICE_LEVEL.GHOST;
                         } else {
                             return SPICE_LEVEL.SERRANO;
                         }
-                    } else if (isLateInHalf && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) >= 0 && Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) < 8)) {
+                    }
+                    
+                    if (isLateInHalf && (Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) >= 0 && Math.abs(parseInt(g.scores.home) - parseInt(g.scores.away)) < 8)) {
                         return SPICE_LEVEL.SERRANO;
                     }
 
