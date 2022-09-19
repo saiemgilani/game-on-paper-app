@@ -347,29 +347,38 @@ router.route('/game/:gameId')
                 });
             }
 
-            // if it's past/live, send to normal template
-            const data = await Games.getPBP(req.params.gameId);
-            if (data == null || data.gameInfo == null) {
-                throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
-            }
-    
-            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-                return res.json(data);
-            } else {
-                let percentiles = [];
-                try {
-                    const inputSeason = data["header"]["season"]["year"];
-                    const season = Math.min(Math.max(inputSeason, 2014), 2021); // flipping this to 2022 after Wk 4
-                    console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2021`)
-                    percentiles = await retrievePercentiles(season);
-                } catch (e) {
-                    console.log(`error while retrieving league percentiles: ${e}`)
+            try {
+                // if it's past/live, send to normal template
+                const data = await Games.getPBP(req.params.gameId);
+                if (data == null || data.gameInfo == null) {
+                    throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
                 }
+        
+                if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                    return res.json(data);
+                } else {
+                    let percentiles = [];
+                    try {
+                        const inputSeason = data["header"]["season"]["year"];
+                        const season = Math.min(Math.max(inputSeason, 2014), 2021); // flipping this to 2022 after Wk 4
+                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2021`)
+                        percentiles = await retrievePercentiles(season);
+                    } catch (e) {
+                        console.log(`error while retrieving league percentiles: ${e}`)
+                    }
 
-                return res.render('pages/cfb/game', {
-                    gameData: data,
-                    percentiles
-                });
+                    return res.render('pages/cfb/game', {
+                        gameData: data,
+                        percentiles
+                    });
+                }
+            } catch (e) {
+                console.error(`Error while loading PBP data: ${e}`);
+                return res.render('pages/cfb/game_error', {
+                    gameData: {
+                        gameInfo: game
+                    }
+                }); 
             }
         } catch(err) {
             return next(err)
