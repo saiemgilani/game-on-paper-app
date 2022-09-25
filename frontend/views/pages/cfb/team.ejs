@@ -166,7 +166,7 @@ function roundNumber(value, power10, fixed) {
                     include('./player_box', {
                         title: 'Passing',
                         id: 'passing',
-                        players: players.passing,
+                        players: players.passing.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
@@ -176,7 +176,7 @@ function roundNumber(value, power10, fixed) {
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">INT</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Sacks</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">${injectDetmerSpan()}</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yards/dropback</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yds/dropback</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Dropback">EPA/dropback</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
@@ -208,15 +208,15 @@ function roundNumber(value, power10, fixed) {
                     include('./player_box', {
                         title: 'Rushing',
                         id: 'rushing',
-                        players: players.rushing,
+                        players: players.rushing.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Carries</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fumbles</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/rush</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fum</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/rush</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Rush">EPA/rush</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
@@ -245,17 +245,17 @@ function roundNumber(value, power10, fixed) {
                     include('./player_box', {
                         title: 'Receiving',
                         id: 'receiving',
-                        players: players.receiving,
+                        players: players.receiving.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catches</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Targets</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catch Rate</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fumbles</th>
-                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fum</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/play</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
