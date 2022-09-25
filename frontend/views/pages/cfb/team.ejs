@@ -167,6 +167,16 @@ function roundNumber(value, power10, fixed) {
                         title: 'Passing',
                         id: 'passing',
                         players: players.passing,
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yards/dropback</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Dropback">EPA/dropback</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
                         playerRowCallback: (p) => {
                            return `
                             <td style="text-align: left;">${ p.name }</td>
@@ -188,6 +198,16 @@ function roundNumber(value, power10, fixed) {
                         title: 'Rushing',
                         id: 'rushing',
                         players: players.rushing,
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/rush</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Rush">EPA/rush</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
                         playerRowCallback: (p) => {
                            return `
                             <td style="text-align: left;">${ p.name }</td>
@@ -209,6 +229,16 @@ function roundNumber(value, power10, fixed) {
                         title: 'Receiving',
                         id: 'receiving',
                         players: players.receiving,
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
                         playerRowCallback: (p) => {
                            return `
                             <td style="text-align: left;">${ p.name }</td>
