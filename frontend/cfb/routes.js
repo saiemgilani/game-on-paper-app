@@ -369,7 +369,8 @@ router.route('/game/:gameId')
 
                     return res.render('pages/cfb/game', {
                         gameData: data,
-                        percentiles
+                        percentiles,
+                        season
                     });
                 }
             } catch (e) {
