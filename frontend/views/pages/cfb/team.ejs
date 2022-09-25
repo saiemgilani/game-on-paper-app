@@ -170,7 +170,12 @@ function roundNumber(value, power10, fixed) {
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
-                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Comp/Att</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">INT</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Sacks</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">${injectDetmerSpan()}</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yards/dropback</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Dropback">EPA/dropback</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
@@ -178,9 +183,15 @@ function roundNumber(value, power10, fixed) {
                             `;
                         },
                         playerRowCallback: (p) => {
-                           return `
+                            let compPct = parseInt(p.statistics.attempts) == 0 ? 0 : (parseFloat(p.statistics.completions) / parseFloat(p.statistics.attempts))
+                            return `
                             <td style="text-align: left;">${ p.name }</td>
-                            <td style="text-align: left;">${ p.statistics.completions }/${ p.statistics.attempts }, ${ p.statistics.yards } yd${ (Math.abs(parseFloat(p.statistics.yards)) == 1) ? "" : "s" }, ${ p.statistics.touchdowns } TD, ${ p.statistics.interceptions } INT, ${ p.statistics.sacks } Sck${ (Math.abs(parseFloat(p.statistics.sacks)) == 1) ? "" : "s" }, ${ roundNumber(parseFloat(p.statistics.detmer || 0), 2, 2) } ${ injectDetmerSpan() }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.completions }/${ p.statistics.attempts } (${roundNumber(compPct * 100, 2, 0)}% Comp)</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.interceptions }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.sacks }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.detmer || 0), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerDropback || 0), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
@@ -201,7 +212,10 @@ function roundNumber(value, power10, fixed) {
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
-                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Carries</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fumbles</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/rush</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Rush">EPA/rush</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
@@ -211,7 +225,10 @@ function roundNumber(value, power10, fixed) {
                         playerRowCallback: (p) => {
                            return `
                             <td style="text-align: left;">${ p.name }</td>
-                            <td style="text-align: left;">${ p.statistics.plays } carr${ (parseInt(p.statistics.plays) == 1) ? "y" : "ies" }, ${ p.statistics.yards } yd${ (Math.abs(parseFloat(p.statistics.yards)) == 1) ? "" : "s" }, ${ p.statistics.touchdowns } TD, ${ p.statistics.fumbles } Fum</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.plays }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.fumbles }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerPlay || 0), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
@@ -232,7 +249,12 @@ function roundNumber(value, power10, fixed) {
                         playerHeaderCallback: () => {
                             return `
                             <th rowspan="1" colspan="1"></th>
-                            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catches</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Targets</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catch Rate</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fumbles</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
                             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
@@ -242,7 +264,12 @@ function roundNumber(value, power10, fixed) {
                         playerRowCallback: (p) => {
                            return `
                             <td style="text-align: left;">${ p.name }</td>
-                            <td style="text-align: left;">${ p.statistics.catches } catch${ (parseInt(p.statistics.catches) == 1) ? "" : "es" } (${ p.statistics.targets } target${ (parseInt(p.statistics.targets) == 1) ? "" : "s" } - ${roundNumber(parseFloat(p.statistics.catchPct) * 100, 2, 0)}% catch rate), ${ p.statistics.yards } yd${ (Math.abs(parseFloat(p.statistics.yards)) == 1) ? "" : "s" }, ${ p.statistics.touchdowns } TD, ${ p.statistics.fumbles } Fum</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.catches }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.targets }</td>
+                            <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(p.statistics.catchPct) * 100, 2, 0)}%</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.fumbles }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerPlay || 0), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
                             <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
