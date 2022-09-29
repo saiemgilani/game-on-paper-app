@@ -10,7 +10,7 @@ if (gameContexts.length > 0) {
         let dateSpan = contextElem.querySelector('.game-date')
         let statusSpan = contextElem.querySelector('.game-status')
         if (statusSpan && (statusSpan.innerText.includes('FINAL') || statusSpan.innerText.startsWith('F'))) {
-            dateSpan.innerText = formatDateTime(dateSpan.innerText, DateTime.DATE_SHORT)
+            dateSpan.innerText = formatDateTime(dateSpan.innerText, DateTime.DATETIME_SHORT)
         } else if (dateSpan) {
             dateSpan.innerText = formatDateTime(dateSpan.innerText, DateTime.DATETIME_SHORT)
         }

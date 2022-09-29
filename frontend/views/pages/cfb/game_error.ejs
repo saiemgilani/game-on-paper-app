@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<%
+const homeComp = gameData.gameInfo.competitors[0];
+const awayComp = gameData.gameInfo.competitors[1];
+const homeTeam = homeComp.team;
+const awayTeam = awayComp.team;
+function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+stat_key_title_mapping = {
+    "totalPlays" : "Plays",
+    "playsPerGame" : "Plays/Game",
+    "totalEPA": "Total EPA",
+    "epaPerPlay": "EPA/Play",
+    "epaPerGame": "EPA/Game",
+    "successRate": "Success Rate",
+    "startingFP" : "Starting FP"
+}
+
+
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+%>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/assets/css/dashboard.css" rel="stylesheet">
+    <link href="/assets/css/blog.css" rel="stylesheet">
+    <link href="/assets/css/dark-game.css" rel="stylesheet"> 
+    <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"> 
+
+    <%
+    var title = ""
+    var subtitle = ""
+    if (gameData.gameInfo.status.type.completed == true || gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS")) {
+        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} ${gameData.gameInfo.competitors[1].score}, ${gameData.gameInfo.competitors[0].team.nickname} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
+    } else {
+        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname} | Game on Paper`
+    }
+    subtitle = `${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname}`;
+    %>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="origin-when-cross-origin">
+    <link rel="canonical" href="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
+    <title><%= title %></title>
+    <meta name="description" content="Advanced stats for <%= subtitle %>">
+
+    <meta property="og:site_name" content="GameOnPaper.com">
+    <meta property="og:url" content="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
+    <meta property="og:title" content="<%= title %>">
+    <meta property="og:description" content="Advanced stats for <%= subtitle %>">
+    <meta property="og:image" content="https://s.espncdn.com/stitcher/sports/football/college-football/events/<%= gameData.id %>.png?templateId=espn.com.share.1">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
+    <meta name="twitter:site" content="Game on Paper">
+    <meta name="twitter:url" content="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
+    <meta name="twitter:title" content="<%= title %>">
+    <meta name="twitter:description" content="<%= subtitle %>">
+    <meta name="twitter:card" content="summary">
+    <meta name="title" content="<%= title %>">
+    <meta name="medium" content="website">
+</head>
+<body>
+    <div class="container-fluid">
+        <header class="blog-header py-3 mb-3">
+            <div class="row flex-nowrap justify-content-between align-items-center">
+                <div class="col-2 pt-1">
+                    <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
+                </div>
+                <div class="col-8 text-center">
+                    <div class="game-context">
+                        <h2><%= awayTeam.nickname %> <%= awayComp.score %> @ <%= homeTeam.nickname %> <%= homeComp.score %></h2>
+                        <% if (gameData.gameInfo.status.type.name.includes("STATUS_SCHEDULED")) { %>
+                        <span class="game-date"><%= gameData.gameInfo.date %></span>
+                        <% } else if (gameData.gameInfo.status.type.completed == true) { %>
+                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span> - <span class="game-date"><%= gameData.gameInfo.date %></span>  
+                        <% } else { %>
+                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span>
+                        <% } %>
+                    </div>
+                </div>
+                <div class="col-2 d-flex justify-content-end align-items-center">
+                    <%
+
+                    const networkMappings = {
+                        "FOX" : 'https://www.foxsports.com/live',
+                        "FS1" : 'https://www.foxsports.com/live/fs1',
+                        "BTN" : 'https://www.foxsports.com/live/btn',
+                        "NBC" : 'https://www.nbcsports.com/live',
+                        "Peacock" : 'https://www.peacocktv.com',
+                        "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+                        "CBS" : 'https://www.cbssports.com/live/',
+                        'PAC12' : 'https://pac-12.com/live',
+                        'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
+                    }
+                                        
+
+                    let networkName = gameData.gameInfo.broadcasts.length > 0 ? gameData.gameInfo.broadcasts[0].media.shortName : null;
+                    if (networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="https://www.espn.com/watch/player/_/eventCalendarId/<%= gameData.gameInfo.id %>" target="_blank">Watch (<%= networkName %>)</a>
+                    <% } else if (networkName != null && networkMappings[networkName]) { %>
+                        <a class="btn btn-sm btn-outline-secondary" href="<%= networkMappings[networkName] %>" target="_blank">Watch (<%= networkName %>)</a>
+                    <%} %>
+                </div>
+            </div>
+        </header>
+    </div>
+    <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="offset-lg-4 col-lg-4 col-md-12">
+                <p class="text-muted text-center">There is no play-by-play data available for this game. Please visit the <a href="https://www.espn.com/college-football/game?gameId=<%= gameData.gameInfo.id %>">ESPN Gamecast</a> to confirm this. If there is data available on ESPN or you believe this is an error, please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Twitter with the URL you're trying to access.</p>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+    <%- include('../../partials/scripts') %>        
+    <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
+    <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
+    <script src="/assets/js/date-replace.js" crossorigin="anonymous"></script>
+</body>
+</html>

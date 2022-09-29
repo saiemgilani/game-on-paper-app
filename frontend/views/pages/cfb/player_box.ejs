@@ -1,0 +1,35 @@
+<div class="panel-group ms-2">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <div class="panel-title">
+            <h2 class="d-inline"><%= title %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#<%= id %>Collapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+        </div>
+      </div>
+      <div id="<%= id %>Collapse" class="panel-collapse show">
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                      <tr>
+                        <%- playerHeaderCallback() %>
+                      </tr>
+                    </thead>
+                    <tbody>
+                    <% if (players.length > 0) { %>
+                        <% players.forEach(p => { %>
+                            <% if (p.name.length > 0) { %>
+                                <tr>
+                                    <%- playerRowCallback(p) %>
+                                </tr>
+                            <% } %>
+                        <% }); %>
+                    <% } else { %>
+                        <tr><p class="text-muted">No data available.</p></tr>
+                    <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      </div>
+    </div>
+</div>
