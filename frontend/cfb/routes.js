@@ -428,7 +428,7 @@ router.route('/year/:year/team/:teamId')
 
 router.route('/team/:teamId')
 .get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2021/team/${req.params.teamId}`);
+    return res.redirect(`/cfb/year/2022/team/${req.params.teamId}`);
 })
 
 
