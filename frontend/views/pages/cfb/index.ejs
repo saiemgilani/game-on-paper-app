@@ -86,9 +86,20 @@
                     </div>
                     <% }); %>
                 <% } else { %>
-                    <p class="text-center text-muted">No games scheduled today.</p>
+                    <p class="text-center text-muted">No games scheduled.</p>
                 <% } %>
             </div>
+            <% 
+            const activeGames = scoreboard.filter(item => {
+                return !(item.status.type.completed == true || item.status.type.name.includes("SCHEDULED") || item.status.type.name.includes("CANCEL") || item.status.type.name.includes("POSTPONE") || item.status.type.name.includes("DELAY"))
+            });
+            if (activeGames.length > 0) { %>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                    </div>
+                </div>
+            <% } %>
             <div class="row text-muted">
                 <div class="col-12">
                     <caption>Game border color guide: 
@@ -218,6 +229,12 @@
 
                 window.location = baseUrl;
             });
+
+            const hasActiveGames = <%= (activeGames.length > 0) %>; // injected via EJS template
+
+            if (hasActiveGames) {
+                setTimeout("location.reload(true);", 60 * 1000);
+            }
         </script>
     </body>
 </html>
