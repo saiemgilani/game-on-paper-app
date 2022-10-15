@@ -237,3 +237,11 @@ async function getServiceHealth(req, res) {
 exports.getGameList = getSchedule
 exports.getPBP = retrievePBP
 exports.getServiceHealth = getServiceHealth
+exports.setGameCacheValue = async (key, value, expiry) => {
+    await redisClient.set(key, value);
+    await redisClient.expire(key, expiry);
+}
+
+exports.getGameCacheValue = async (key) => {
+    return await redisClient.get(key);
+}
