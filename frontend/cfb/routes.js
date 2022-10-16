@@ -39,7 +39,7 @@ const redisClient = redis.createClient({
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 redisClient.connect().then(() => {
-    console.log('connected to redis on port 6379');
+    console.log('connected to redis LRU cache on port 6379');
 });
 
 router.get('/healthcheck', Games.getServiceHealth)
@@ -60,6 +60,10 @@ async function retrieveGameList(url, params) {
         if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
             return -1;
         } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
+            return 1;
+        } else if (a.status.type.name.includes("END_OF") && !b.status.type.name.includes("END_OF")) {
+            return -1;
+        } else if (b.status.type.name.includes("END_OF") && !a.status.type.name.includes("END_OF")) {
             return 1;
         } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
             return -1;

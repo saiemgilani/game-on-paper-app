@@ -4,6 +4,7 @@ const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 const axios = require('axios')
 const path = require("path");
+const Games = require('./games');
 
 let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
 
@@ -52,6 +53,26 @@ exports.getGroups = function() {
 
 exports.getGames = async function (year, week, type, group) {
     if (year == null || week == null) {
+        try {
+            console.log(`Looking for scoreboard for sport 'cfb' in game cache`)
+            const rawScoreboard = await Games.getGameCacheValue(`cfb-scoreboard`);
+            if (!rawScoreboard) {
+                throw new Error(`Failed to find scoreboard for sport 'cfb' in game cache, forcing retrieval from remote`)
+            }
+            console.log(`Found content for scoreboard for sport 'cfb' in game cache, returning to caller`)
+            // console.log(`content: ${rawPBP}`)
+            return JSON.parse(rawScoreboard);
+        } catch (e) {
+            console.log(`ERROR on redis scoreboard game cache retrieval: ${e}`)
+            return await _getRemoteGames(year, week, type, group);
+        }
+    } else {
+        return await _getRemoteGames(year, week, type, group); 
+    }
+}
+
+async function _getRemoteGames (year, week, type, group) {
+    if (year == null || week == null) {
         const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}&limit=1000&${new Date().getTime()}`, {
             protocol: "https"
         })
@@ -62,6 +83,11 @@ exports.getGames = async function (year, week, type, group) {
         }
 
         let result = (espnContent != null) ? espnContent.events : [];
+        try {
+            await Games.setGameCacheValue(`cfb-scoreboard`, JSON.stringify(result), 60 * 1); // 1 min TTL
+        } catch (e) {
+            console.log(`failed to write game data for key cfb-scoreboard to redis game cache, error: ${e}`);
+        }
         return result;
     } else {
         // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js

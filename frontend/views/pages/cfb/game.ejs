@@ -1102,6 +1102,15 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             </main>
         </div>
     </div>
+    <% 
+    var statusDetail = gameData.gameInfo.status.type.detail;
+    if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay")) { %>
+        <div class="row mb-3">
+            <div class="col-12">
+                <p class="text-small text-muted">Page will auto-refresh every minute.</p>
+            </div>
+        </div>
+    <% } %>
     <%- include('../../partials/footer') %>
     <%- include('../../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
@@ -1123,10 +1132,11 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
-        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone")) {
+        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay")) {
             document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
             document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
+            setTimeout("location.reload(true);", 60 * 1000);
         }
     </script>
     <script src="/assets/js/dashboard.js"></script>
