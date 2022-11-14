@@ -1102,16 +1102,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 <!-- <p id="content"></p> -->
             </main>
         </div>
-    </div>
-    <% 
-    var statusDetail = gameData.gameInfo.status.type.detail;
-    if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay")) { %>
-        <div class="row mb-3">
-            <div class="col-12">
-                <p class="text-small text-muted">Page will auto-refresh every minute.</p>
+        <% 
+        var statusDetail = gameData.gameInfo.status.type.detail;
+        if (!(statusDetail.includes("F") || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay"))) { %>
+            <div class="row mb-3">
+                <div class="col-12">
+                    <p class="text-small text-muted">Page will auto-refresh every minute.</p>
+                </div>
             </div>
-        </div>
-    <% } %>
+        <% } %>
+    </div>
     <%- include('../../partials/footer') %>
     <%- include('../../partials/scripts') %>        
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>

@@ -134,7 +134,7 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
 
     let finalTeamInfo = [...baseTeamInfo[subKeys[0]]]
     const finalKey = subKeys[1];
-    if (subKeys[0].includes('defensive') || finalKey.includes('rushing_stuff')) {
+    if (finalKey.includes('rushing_stuff')) {
         finalTeamInfo.reverse()
     }
 
