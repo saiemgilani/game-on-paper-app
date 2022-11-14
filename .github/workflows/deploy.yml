@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: ${{ github.repository }}
+          repository: saiemgilani/game-on-paper-app
       - name: Publish Node container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v5.5
         with:
