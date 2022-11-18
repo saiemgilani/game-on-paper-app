@@ -316,6 +316,11 @@ function cleanAbbreviation(abbrev) {
     return abbrev;
 }
 
+const QUARANTINE_LIST = [
+    '401411157',
+    '401403861'
+]
+
 router.route('/game/:gameId')
     .get(async function(req, res, next) {
         try {
@@ -352,6 +357,9 @@ router.route('/game/:gameId')
             }
 
             try {
+                if (QUARANTINE_LIST.includes(req.params.gameId)) {
+                    throw new Error(`Game ${req.params.gameId} has been quarantined`);
+                }
                 // if it's past/live, send to normal template
                 const data = await Games.getPBP(req.params.gameId);
                 if (data == null || data.gameInfo == null) {
@@ -382,7 +390,8 @@ router.route('/game/:gameId')
                 return res.render('pages/cfb/game_error', {
                     gameData: {
                         gameInfo: game
-                    }
+                    },
+                    errorType: (e.message.includes('quarantine')) ? 'quarantine' : 'pbp'
                 }); 
             }
         } catch(err) {

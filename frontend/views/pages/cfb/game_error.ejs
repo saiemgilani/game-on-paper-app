@@ -120,7 +120,11 @@ function roundNumber(value, power10, fixed) {
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="offset-lg-4 col-lg-4 col-md-12">
-                <p class="text-muted text-center">There is no play-by-play data available for this game. Please visit the <a href="https://www.espn.com/college-football/game?gameId=<%= gameData.gameInfo.id %>">ESPN Gamecast</a> to confirm this. If there is data available on ESPN or you believe this is an error, please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Twitter with the URL you're trying to access.</p>
+                <% if (errorType == 'quarantine') { %>
+                    <p class="text-muted text-center">This game has been quarantined due to issues with underlying ESPN data. If you believe this is an error, please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Twitter with the URL you're trying to access.</p>
+                <% } else { %>
+                    <p class="text-muted text-center">There is no play-by-play data available for this game. Please visit the <a href="https://www.espn.com/college-football/game?gameId=<%= gameData.gameInfo.id %>">ESPN Gamecast</a> to confirm this. If there is data available on ESPN or you believe this is an error, please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Twitter with the URL you're trying to access.</p>
+                <% } %>
             </div>
         </div>
     </div>
