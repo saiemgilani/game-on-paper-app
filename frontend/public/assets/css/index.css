@@ -99,3 +99,16 @@ h1, h2, h3, h4, h5, h6 {
 .spice-level-fcs-upset {
   border-color: #FF0000 !important;
 }
+
+.rotate {
+  animation: rotation 1s infinite linear;
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
+}

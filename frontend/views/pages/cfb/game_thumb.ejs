@@ -1,5 +1,7 @@
 <% 
 
+const SICKOS_GOTW = ["401404045"];
+
 const CONFERENCE_MAP = {
     80: "FBS (I-A)",
     1: "ACC",
@@ -186,15 +188,20 @@ const CONFERENCE_MAP = {
 %>
 <div class="row border rounded m-2 mb-4 spice-level-<%= spiceLevel %>">
     <div class="col p-3">
-        <strong class="d-inline-block mb-2 text-primary game-context small">
-            <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
-            <span class="game-date"><%= game.date %></span>
-            <% } else if (game.status.type.completed == true) { %>
-            <span class="game-status"><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
-            <% } else { %>
-            <%= game.status.type.detail %>
+        <div class="d-flex justify-content-between">
+            <strong class="d-inline-block mb-2 text-primary game-context small">
+                <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
+                <span class="game-date"><%= game.date %></span>
+                <% } else if (game.status.type.completed == true) { %>
+                <span class="game-status"><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
+                <% } else { %>
+                <%= game.status.type.detail %>
+                <% } %>
+            </strong>
+            <% if (SICKOS_GOTW.includes(game.id)) { %>
+                <img class="rotate" height="25px" src="/assets/img/sickos.png" alt="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)." title="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)."/>
             <% } %>
-        </strong> 
+        </div>
         <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, null) %>
         <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, "mb-2") %>
         <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
