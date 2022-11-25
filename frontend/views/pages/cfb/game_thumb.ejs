@@ -149,13 +149,19 @@ const CONFERENCE_MAP = {
             }
             return base;
         }
-                
 
+        const CLEAN_LIST = [61]
+        function cleanAbbreviation(team) {
+            if (CLEAN_LIST.includes(parseInt(team.id))) {
+                return team.abbreviation.toLocaleLowerCase()
+            }
+            return team.abbreviation
+        }
+        
         function generateTeamCell(comp, winner, completed, spacer) {
             const rank = comp.curatedRank?.current || 99;
             const rankString = formatScore((rank != 99) ? ("#" + rank) : "", winner, completed)
             const logoContent = `<img class="img-fluid team-logo-${comp.id}" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png" alt="ESPN team id ${comp.id}"/>`;
-            const teamContent = formatScore(comp.team.abbreviation, winner, completed)
             const scoreContent = (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(comp.score, winner, completed);
             return `
             <div class="m-0 ${spacer} d-flex">
@@ -164,7 +170,7 @@ const CONFERENCE_MAP = {
                     <div class="d-flex flex-column me-3 align-self-center">
                         <div class="d-flex align-items-center">
                             <span class="small text-muted ${(rank != 99) ? "me-1" : ""}">${(rank != 99) ? ("#" + rank) : ""}</span>
-                            <span class="align-self-center h4 mb-0">${formatScore(comp.team.abbreviation, winner, completed)}</span>
+                            <span class="align-self-center h4 mb-0">${formatScore(cleanAbbreviation(comp.team), winner, completed)}</span>
                         </div>
                         <span class="small text-muted h6">${getRecordString(comp)}</span>
                     </div>

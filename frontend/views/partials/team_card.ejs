@@ -9,14 +9,21 @@
 }
 const maxTeams = (season == 2022) ? 131 : 130;
 const isBreakdownAvailable = (breakdown[0].differential != null);    
-const team = Object.keys(teamData).includes('team') ? teamData.team : teamData;       
+const team = Object.keys(teamData).includes('team') ? teamData.team : teamData;
+const CLEAN_LIST = [61];
+function cleanLocation() {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team.location.toLocaleLowerCase()
+    }
+    return team.location
+}     
 %>
 
 <div class="card border rounded">
     <div class="card-body">
         <div class="card-title mb-0">
             <div class="d-flex align-items-center justify-content-between">
-                <h2><%= team.location %></h2>
+                <h2><%= cleanLocation() %></h2>
                 <img class="h2 img img-fluid me-1" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= team.id %>.png" /> 
             </div>
         </div>

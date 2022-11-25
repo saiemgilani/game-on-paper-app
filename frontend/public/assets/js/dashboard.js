@@ -26,6 +26,14 @@ function calculateGameSecondsRemaining(period, halfSeconds) {
   }
 }
 
+const CLEAN_LIST = [61]
+function cleanAbbreviation(team) {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team.abbreviation.toLocaleLowerCase()
+    }
+    return team.abbreviation
+}
+
 function hexToRgb(hex) {
   var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
@@ -248,8 +256,8 @@ if (gameData.plays.length > 0) {
         data: homeTeamWP
     };
 
-    console.log(`home: ${homeTeam.id}, ${homeTeam.abbreviation}`)
-    console.log(`away: ${awayTeam.id}, ${awayTeam.abbreviation}`)
+    console.log(`home: ${homeTeam.id}, ${cleanAbbreviation(homeTeam)}`)
+    console.log(`away: ${awayTeam.id}, ${cleanAbbreviation(awayTeam)}`)
     var zipped = plays.map(function(e, i) {
         return {
           play: i,
@@ -414,10 +422,10 @@ if (gameData.plays.length > 0) {
                             callback: function(value, index, values) {
                                 if (value > 0) {
                                     let transVal = baseTranslate(value, 0.0, 1.0, 50, 100); 
-                                    return `${homeTeam.abbreviation} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
+                                    return `${cleanAbbreviation(homeTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
                                 } else if (value < 0) {
                                     let transVal = baseTranslate(value, -1.0, 0.0, 100, 50); 
-                                    return `${awayTeam.abbreviation} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
+                                    return `${cleanAbbreviation(awayTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
                                 } else {
                                     return "50%";
                                 }
@@ -452,10 +460,10 @@ if (gameData.plays.length > 0) {
                             // value is always from perspective of home team
                             if (tooltipItem.value > 0) {
                                 let transVal = baseTranslate(tooltipItem.value, 0.0, 1.0, 50, 100); 
-                                return `${homeTeam.abbreviation} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`
+                                return `${cleanAbbreviation(homeTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`
                             } else if (tooltipItem.value < 0) {
                                 let transVal = baseTranslate(tooltipItem.value, -1.0, 0.0, 100, 50); 
-                                return `${awayTeam.abbreviation} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`;
+                                return `${cleanAbbreviation(awayTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`;
                             } else {
                                 return "50%";
                             }
@@ -485,7 +493,7 @@ if (gameData.plays.length > 0) {
                         showLine: true,
                         fill: false,
                         lineTension: 0,
-                        label: homeTeam.abbreviation,
+                        label: cleanAbbreviation(homeTeam),
                         backgroundColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 0.5)`],
                         borderColor: [`rgba(${homeTeamColor.r},${homeTeamColor.g},${homeTeamColor.b}, 1.0)`],
                         borderWidth: 3,
@@ -500,7 +508,7 @@ if (gameData.plays.length > 0) {
                         showLine: true,
                         fill: false,
                         lineTension: 0,
-                        label: awayTeam.abbreviation,
+                        label: cleanAbbreviation(awayTeam),
                         backgroundColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 0.5)`],
                         borderColor: [`rgba(${awayTeamColor.r},${awayTeamColor.g},${awayTeamColor.b}, 1.0)`],
                         borderWidth: 3,

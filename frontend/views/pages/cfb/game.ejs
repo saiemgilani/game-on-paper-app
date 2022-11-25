@@ -185,6 +185,25 @@ function calculateDETMER(boxScore) {
     return (parseFloat(boxScore.Yds) / 400) * ((parseFloat(boxScore.Pass_TD) + parseFloat(boxScore.Int)) / (1 + Math.abs(parseFloat(boxScore.Pass_TD) - parseFloat(boxScore.Int))))
 }
 
+const CLEAN_LIST = [61]
+function cleanField(team, field) {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team[field].toLocaleLowerCase()
+    }
+    return team[field]
+}
+function cleanAbbreviation(team) {
+    return cleanField(team, 'abbreviation')
+}
+
+function cleanName(team) {
+    return cleanField(team, 'nickname')
+}
+
+function cleanLocation(team) {
+    return cleanField(team, 'location')
+}
+        
 function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
@@ -208,7 +227,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     var offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
     var defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
-    var scoreText = (play.scoringPlay == true) ? ` - <strong>${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</strong>` : ` - ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}`
+    var scoreText = (play.scoringPlay == true) ? ` - <strong>${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}</strong>` : ` - ${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}`
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
 
     let fourthDownLink = `https://kazink.shinyapps.io/cfb_fourth_down/?team=${offense.location}&pos_score=${play.start.pos_team_score}&def_pos_score=${play.start.def_pos_team_score}&pos_timeouts=${play.start.posTeamTimeouts}&def_timeouts=${play.start.defTeamTimeouts}&distance=${play.start.distance}&yards_to_goal=${play.start.yardsToEndzone}&qtr=${play.period}&minutes=${play.clock.minutes}&seconds=${play.clock.seconds}&posteam_spread=${-1 * parseFloat(play.start.posTeamSpread)}&vegas_ou=${play.overUnder}&season=${play.season}&pos_team_receives_2H_kickoff=${play.modelInputs.start.pos_team_receives_2H_kickoff}&is_home=${play.modelInputs.start.is_home}`;
@@ -220,7 +239,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     <tr ${collapsibleText} class="accordion-toggle${classText}">
         <td style="text-align: left;">${period}</td>
         <td style="text-align: center;"><a href="/cfb/year/${play.season}/team/${play.pos_team}"><img class="img-fluid team-logo-${play.pos_team}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></a></td>
-        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, offense.abbreviation, defense.abbreviation) }) ${play.text}${scoreText}</td>
+        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${play.text}${scoreText}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
         <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
@@ -237,14 +256,14 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
                 <p style="text-align: center;"><strong>Yards to End Zone (Before -> After):</strong> ${play.start.yardsToEndzone} -> ${play.end.yardsToEndzone}</p>                
-                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, offense.abbreviation, defense.abbreviation)}</p>                
+                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, cleanAbbreviation(offense),cleanAbbreviation(defense))}</p>                
                 <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> ${roundNumber(parseFloat(play.expectedPoints.after), 2, 2)} - ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)} = ${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</p>
                 <p style="text-align: center;"><strong>Score Difference (Before):</strong> ${play.start.pos_score_diff} (${roundNumber(parseFloat(play.start.ExpScoreDiff), 2, 2)})</p>
                 <p style="text-align: center;"><strong>Score Difference (End):</strong> ${play.end.pos_score_diff} (${roundNumber(parseFloat(play.end.ExpScoreDiff), 2, 2)})</p>
                 <p style="text-align: center;"><strong>Change of Possession:</strong> ${play.change_of_poss}</p>                            
             </div>
             <div class="ms-sm-auto col-lg-6">
-                <p style="text-align: center;"><strong>Score:</strong> ${awayTeam.abbreviation} ${play.awayScore}, ${homeTeam.abbreviation} ${play.homeScore}</p>
+                <p style="text-align: center;"><strong>Score:</strong> ${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}</p>
                 <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} play${(parseInt(play.drive_play_index) == 1) ? "" : "s"}, ${play.drive_total_yards} yards</p>
                 <p style="text-align: center;"><strong>Win Probability (Before):</strong> ${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</p>
                 <p style="text-align: center;"><strong>Win Probability (After):</strong> ${roundNumber(parseFloat(play.winProbability.after) * 100, 3, 1)}%</p>
@@ -308,11 +327,11 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     var title = ""
     var subtitle = ""
     if (gameData.gameInfo.status.type.completed == true || gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS")) {
-        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} ${gameData.gameInfo.competitors[1].score}, ${gameData.gameInfo.competitors[0].team.nickname} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
+        title = `Game: ${cleanName(gameData.gameInfo.competitors[1].team)} ${gameData.gameInfo.competitors[1].score}, ${cleanName(gameData.gameInfo.competitors[0].team)} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
     } else {
-        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname} | Game on Paper`
+        title = `Game: ${cleanName(gameData.gameInfo.competitors[1].team)} vs ${cleanName(gameData.gameInfo.competitors[0].team)} | Game on Paper`
     }
-    subtitle = `${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname}`;
+    subtitle = `${cleanName(gameData.gameInfo.competitors[1].team)} vs ${cleanName(gameData.gameInfo.competitors[0].team)}`;
     %>
 
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -352,7 +371,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 </div>
                 <div class="col-8 text-center">
                     <div>
-                        <h2><%= awayTeam.nickname %> <%= awayComp.score %> @ <%= homeTeam.nickname %> <%= homeComp.score %></h2>
+                        <h2><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
                         <p class="text-small" id="game-date"></p>
                     </div>
                 </div>
@@ -414,9 +433,9 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <%
                             function printSpread() {
                                 if (parseFloat(gameData.homeTeamSpread) > 0) {
-                                    return `${homeTeam.abbreviation} -${gameData.homeTeamSpread}`
+                                    return `${cleanAbbreviation(homeTeam)} -${gameData.homeTeamSpread}`
                                 } else if (parseFloat(gameData.homeTeamSpread) < 0) {
-                                    return `${awayTeam.abbreviation} ${gameData.homeTeamSpread}`
+                                    return `${cleanAbbreviation(awayTeam)} ${gameData.homeTeamSpread}`
                                 } else {
                                     return "PUSH"
                                 }
@@ -429,9 +448,9 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
-                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? homeTeam.abbreviation : awayTeam.abbreviation %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
+                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam) %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
                                 <% } else { %>
-                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? awayTeam.abbreviation : homeTeam.abbreviation %> <%= ((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1) %>%
+                                 | Current: <%= (lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam) %> <%= ((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1) %>%
                                 <% } %>
                             <% } %>
                             <!-- can't offer download button here because of canvas security issues -->
@@ -811,7 +830,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                           <div class="panel-heading">
                             <div class="panel-title">
                                 <div class="d-flex justify-content-between">
-                                    <h2 class="d-inline"><%= awayTeam.location %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                                    <h2 class="d-inline"><%= cleanLocation(awayTeam) %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#awayTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                                     <th style="text-align: center;"><a href="/cfb/year/<%= season %>/team/<%= awayTeam.id %>"><img class="img-fluid team-logo-<%= awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= awayTeam.id %>.png" alt="ESPN team id <%= awayTeam.id %>"/></a></th>
                                 </div>
                             </div>
@@ -900,7 +919,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                           <div class="panel-heading">
                             <div class="panel-title">
                                 <div class="d-flex justify-content-between">
-                                    <h2 class="d-inline"><%= homeTeam.location %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                                    <h2 class="d-inline"><%= cleanLocation(homeTeam) %> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#homeTeamCollapse" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
                                     <th style="text-align: center;"><a href="/cfb/year/<%= season %>/team/<%= homeTeam.id %>"><img class="img-fluid team-logo-<%= homeTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= homeTeam.id %>.png" alt="ESPN team id <%= homeTeam.id %>"/></a></th>
                                 </div>
                             </div>

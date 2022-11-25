@@ -26,6 +26,21 @@ function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
+const CLEAN_LIST = [61]
+function cleanAbbreviation(team) {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team.abbreviation.toLocaleLowerCase()
+    }
+    return team.abbreviation
+}
+
+function cleanName(team) {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team.nickname.toLocaleLowerCase()
+    }
+    return team.nickname
+}
+
 %>
 <head>
     <meta charset="utf-8">
@@ -40,11 +55,11 @@ function roundNumber(value, power10, fixed) {
     var title = ""
     var subtitle = ""
     if (gameData.gameInfo.status.type.completed == true || gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS")) {
-        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} ${gameData.gameInfo.competitors[1].score}, ${gameData.gameInfo.competitors[0].team.nickname} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
+        title = `Game: ${cleanName(gameData.gameInfo.competitors[1].team)} ${gameData.gameInfo.competitors[1].score}, ${cleanName(gameData.gameInfo.competitors[0].team)} ${gameData.gameInfo.competitors[0].score} | Game on Paper`
     } else {
-        title = `Game: ${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname} | Game on Paper`
+        title = `Game: ${cleanName(gameData.gameInfo.competitors[1].team)} vs ${cleanName(gameData.gameInfo.competitors[0].team)} | Game on Paper`
     }
-    subtitle = `${gameData.gameInfo.competitors[1].team.nickname} vs ${gameData.gameInfo.competitors[0].team.nickname}`;
+    subtitle = `${cleanName(gameData.gameInfo.competitors[1].team)} vs ${cleanName(gameData.gameInfo.competitors[0].team)}`;
     %>
 
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -80,7 +95,7 @@ function roundNumber(value, power10, fixed) {
                 </div>
                 <div class="col-8 text-center">
                     <div class="game-context">
-                        <h2><%= awayTeam.nickname %> <%= awayComp.score %> @ <%= homeTeam.nickname %> <%= homeComp.score %></h2>
+                        <h2><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
                         <% if (gameData.gameInfo.status.type.name.includes("STATUS_SCHEDULED")) { %>
                         <span class="game-date"><%= gameData.gameInfo.date %></span>
                         <% } else if (gameData.gameInfo.status.type.completed == true) { %>

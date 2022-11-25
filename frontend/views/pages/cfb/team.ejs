@@ -15,6 +15,14 @@ function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
+const CLEAN_LIST = [61]
+function cleanLocation() {
+    if (CLEAN_LIST.includes(parseInt(teamData.id))) {
+        return teamData.location.toLocaleLowerCase()
+    }
+    return teamData.location
+}
+
 %>
     <head>
         <meta charset="utf-8">
@@ -26,8 +34,8 @@ function roundNumber(value, power10, fixed) {
         <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"> 
     
         <%
-            let title = `${teamData.location} | ${season} | Game on Paper`
-            let subtitle = `${teamData.location} during the ${season} season`;
+            let title = `${cleanLocation()} | ${season} | Game on Paper`
+            let subtitle = `${cleanLocation()} during the ${season} season`;
         %>
     
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -61,7 +69,7 @@ function roundNumber(value, power10, fixed) {
                 <ol class="breadcrumb">
                   <li class="breadcrumb-item" aria-current="page">Seasons</li>
                   <li class="breadcrumb-item" aria-current="page"><a href="/cfb/year/<%= season %>"><%= season %></a></li>
-                  <li class="breadcrumb-item active" aria-current="page"><%= teamData.location %></li>
+                  <li class="breadcrumb-item active" aria-current="page"><%= cleanLocation() %></li>
                 </ol>
             </nav>
         </div>
