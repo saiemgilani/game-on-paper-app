@@ -127,6 +127,9 @@ const CONFERENCE_MAP = {
         const spiceLevel = calculateSpiceLevel(game) || 'none';
 
         function getRecordString(competitor) {
+            if (!competitor.records) {
+                return '';
+            }
             const records = competitor.records || [];
             const overallStuff = records.filter(item => item.type == "total")[0];
             const overall = overallStuff?.summary || "0-0"
@@ -147,7 +150,7 @@ const CONFERENCE_MAP = {
             } else if (conf) {
                 base += ` ${conf}`
             }
-            return base;
+            return `<span class="small text-muted h6">${base}</span>`;
         }
 
         const CLEAN_LIST = [61]
@@ -172,7 +175,8 @@ const CONFERENCE_MAP = {
                             <span class="small text-muted ${(rank != 99) ? "me-1" : ""}">${(rank != 99) ? ("#" + rank) : ""}</span>
                             <span class="align-self-center h4 mb-0">${formatScore(cleanAbbreviation(comp.team), winner, completed)}</span>
                         </div>
-                        <span class="small text-muted h6">${getRecordString(comp)}</span>
+                        ${getRecordString(comp)}
+                        
                     </div>
                 </div>
                 <span class="align-self-center h4"><strong>${scoreContent}</strong></span>
