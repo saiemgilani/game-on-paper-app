@@ -215,8 +215,8 @@ if (gameData.plays.length > 0) {
 
     var homeTeamWP = plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
-    var homeTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
-    var awayTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var homeTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == homeTeam.id && p.scrimmage_play == true)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    var awayTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == awayTeam.id && p.scrimmage_play == true)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
 
     homeTeamEPA.splice(0, 0, {
         x: 0,
