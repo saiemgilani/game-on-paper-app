@@ -541,14 +541,14 @@ if (gameData.plays.length > 0) {
                         yAxes: [{
                             scaleLabel: {
                                 display: true,
-                                labelString: "Total EPA"
+                                labelString: "Total Offensive EPA"
                             },
                             gridLines: gridLines
                         }],
                         xAxes: [{
                             scaleLabel: {
                                 display: true,
-                                labelString: "Off Play Number"
+                                labelString: "Scrimmage Play Number"
                             },
                             gridLines: gridLines
                         }]
