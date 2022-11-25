@@ -199,7 +199,7 @@ const CONFERENCE_MAP = {
                 <% } %>
             </strong>
             <% if (SICKOS_GOTW.includes(game.id)) { %>
-                <img class="rotate" height="25px" src="/assets/img/sickos.png" alt="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)." title="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)."/>
+                <a href="https://twitter.com/sickoscommittee"><img class="rotate" height="25px" src="/assets/img/sickos.png" alt="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)." title="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)."/></a>
             <% } %>
         </div>
         <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, null) %>
