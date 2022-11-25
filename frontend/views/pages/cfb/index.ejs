@@ -118,23 +118,8 @@
             </div>
         </div>
         <%- include('../../partials/scripts') %>
-        <script>
-            const DateTime = luxon.DateTime;
-            function formatDateTime(inputDate) {
-                return DateTime.fromISO(inputDate).toLocaleString(DateTime.DATETIME_SHORT)
-            }
-            var gameDates = document.getElementsByClassName("game-date");
-            if (gameDates.length > 0) {
-                console.log(gameDates)
-                for (var i = 0; i < gameDates.length; i++) {
-                    var dateElem = gameDates[i];
-                    // console.log(dateElem)
-                    dateElem.innerText = formatDateTime(dateElem.innerText)
-                }
-            } else {
-                console.log("no game dates found")
-            }
-    
+        <script src="/assets/js/date-replace.js"></script>
+        <script>    
             const weekData = <%- JSON.stringify(weekList) %>;
             const selYear = <%- year == null ? "null" : year %>;
             const selWeek = <%- week == null ? "null" : week %>;

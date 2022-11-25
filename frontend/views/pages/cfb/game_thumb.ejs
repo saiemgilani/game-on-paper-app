@@ -1,8 +1,39 @@
 <% 
 
-        function generateTeamImg(teamId) {
-            return `<img class="img-fluid d-inline-block team-logo-${teamId}" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png" alt="ESPN team id ${teamId}"/>`;
-        }
+const CONFERENCE_MAP = {
+    80: "FBS (I-A)",
+    1: "ACC",
+    151: "AAC",
+    4: "Big 12",
+    5: "B1G",
+    12: "C-USA",
+    18: "Independent",
+    15: "MAC",
+    17: "MWC",
+    9: "Pac-12",
+    8: "SEC",
+    37: "Sun Belt",
+
+    81: "FCS (I-AA)",
+    176: "ASUN",
+    20: "Big Sky",
+    40: "Big South",
+    48: "CAA",
+    22: "Ivy",
+    24: "MEAC",
+    21: "MVFC",
+    25: "NEC",
+    26: "OVC",
+    27: "Patriot",
+    28: "Pioneer",
+    31: "SWAC",
+    29: "Southern",
+    30: "Southland",
+    26: "WAC",
+
+    35: "Div II/III"
+}
+
 
         function formatScore(score, winner, complete) {
             if (winner && complete) {
@@ -94,38 +125,68 @@
         const homeTeam = homeComp.team;
         const awayTeam = awayComp.team;
         const spiceLevel = calculateSpiceLevel(game) || 'none';
+
+        function getRecordString(competitor) {
+            const records = competitor.records || [];
+            const overallStuff = records.filter(item => item.type == "total")[0];
+            const overall = overallStuff?.summary || "0-0"
+            
+            let base = '';
+            if (overall) {
+                base += `${overall}`
+            }
+
+            const confStuff = records.filter(item => item.type == "vsconf")[0];
+            const confRec = confStuff?.summary || "0-0"
+
+            const indyConfs = [18, 35, 80, 81];
+            const confId = parseInt(competitor.team.conferenceId);
+            const conf = CONFERENCE_MAP[confId];
+            if (confStuff && conf && !indyConfs.includes(confId)) {
+                base += `, ${confRec} ${conf}`
+            } else if (conf) {
+                base += ` ${conf}`
+            }
+            return base;
+        }
+                
+
+        function generateTeamCell(comp, winner, completed, spacer) {
+            const rank = comp.curatedRank?.current || 99;
+            const rankString = formatScore((rank != 99) ? ("#" + rank) : "", winner, completed)
+            const logoContent = `<img class="img-fluid team-logo-${comp.id}" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png" alt="ESPN team id ${comp.id}"/>`;
+            const teamContent = formatScore(comp.team.abbreviation, winner, completed)
+            const scoreContent = (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(comp.score, winner, completed);
+            return `
+            <div class="m-0 ${spacer} d-flex">
+                <div class="d-flex me-auto">
+                    <img class="float-start align-self-center me-2 team-logo-${comp.id}" height="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png">
+                    <div class="d-flex flex-column me-3 align-self-center">
+                        <div class="d-flex align-items-center">
+                            <span class="small text-muted ${(rank != 99) ? "me-1" : ""}">${(rank != 99) ? ("#" + rank) : ""}</span>
+                            <span class="align-self-center h4 mb-0">${formatScore(comp.team.abbreviation, winner, completed)}</span>
+                        </div>
+                        <span class="small text-muted h6">${getRecordString(comp)}</span>
+                    </div>
+                </div>
+                <span class="align-self-center h4"><strong>${scoreContent}</strong></span>
+            </div>
+            `;
+        }
 %>
 <div class="row border rounded m-2 mb-4 spice-level-<%= spiceLevel %>">
     <div class="col p-3">
-        <strong class="d-inline-block mb-2 text-primary">
+        <strong class="d-inline-block mb-2 text-primary game-context small">
             <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
             <span class="game-date"><%= game.date %></span>
             <% } else if (game.status.type.completed == true) { %>
-            <span><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
+            <span class="game-status"><%= game.status.type.detail %> -</span> <span class="game-date"><%= game.date %></span>  
             <% } else { %>
             <%= game.status.type.detail %>
             <% } %>
         </strong> 
-        <div class="m-0 clearfix">
-            <div class="d-flex justify-content-between">
-                <div class="text-left">
-                    <%- generateTeamImg(awayComp.id) %> <span class="d-inline-block h4"><%- formatScore(awayTeam.abbreviation, parseInt(awayComp.score) > parseInt(homeComp.score), game.status.type.completed == true) %></span>
-                </div>
-                <div class="text-right">
-                    <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(awayComp.score, parseInt(awayComp.score) > parseInt(homeComp.score), game.status.type.completed == true) %></p>
-                </div>
-            </div>
-        </div>
-        <div class="m-0 mb-2 clearfix">
-            <div class="d-flex justify-content-between">
-                <div class="text-left">
-                    <%- generateTeamImg(homeComp.id) %> <span class="d-inline-block h4"><%- formatScore(homeTeam.abbreviation, parseInt(awayComp.score) < parseInt(homeComp.score), game.status.type.completed == true) %></span>
-                </div>
-                <div class="text-right">
-                    <p class="h4"><%- (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(homeComp.score, parseInt(awayComp.score) < parseInt(homeComp.score), game.status.type.completed == true) %></p>
-                </div>
-            </div>
-        </div>
+        <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, null) %>
+        <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, "mb-2") %>
         <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
             <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
                 <div class="card-text mb-2">
