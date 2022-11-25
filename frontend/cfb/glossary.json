@@ -98,6 +98,11 @@
             "term": "Standard down",
             "definition": "(From FootballStudyHall.com) First downs, second-and-7 or fewer, third-and-4 or fewer, and fourth-and-4 or fewer. These are the downs in which the offense could conceivably either run or pass and therefore has an overall advantage over the defense. Offenses typically run about 60 percent of the time on standard downs.",
             "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term" : "Stop Rate",
+            "definition": "(From <i>The Athletic</i>) the percentage of a defense's drives that end in punts, turnovers or a turnover on downs.",
+            "source" : "https://theathletic.com/3926800/2022/11/23/college-football-stop-rate-michigan-ohio-state/"
         }
     ],
     "M": [
