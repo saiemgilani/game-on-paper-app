@@ -313,6 +313,9 @@ function cleanAbbreviation(abbrev) {
     if (abbrev == 'MIA') {
         return 'MIAMI'
     }
+    if (abbrev == 'OU') {
+        return 'OKLA'
+    }
     return abbrev;
 }
 
