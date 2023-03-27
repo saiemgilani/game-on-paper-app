@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import numpy as np
 from datetime import datetime as dt
 from flask_logs import LogSetup
-from sportsdataverse.cfb import CFBPlayProcess
+from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
 import os
 import logging
 import pandas as pd
@@ -40,14 +40,14 @@ def process():
 
         box = processed_data.create_box_score()
         bad_cols = [
-            'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts', 
+            'start.distance', 'start.yardLine', 'start.team.id', 'start.down', 'start.yardsToEndzone', 'start.posTeamTimeouts', 'start.defTeamTimeouts',
             'start.shortDownDistanceText', 'start.possessionText', 'start.downDistanceText', 'start.pos_team_timeouts', 'start.def_pos_team_timeouts',
             'clock.displayValue',
             'type.id', 'type.text', 'type.abbreviation',
-            'end.distance', 'end.yardLine', 'end.team.id','end.down', 'end.yardsToEndzone', 'end.posTeamTimeouts','end.defTeamTimeouts', 
+            'end.distance', 'end.yardLine', 'end.team.id','end.down', 'end.yardsToEndzone', 'end.posTeamTimeouts','end.defTeamTimeouts',
             'end.shortDownDistanceText', 'end.possessionText', 'end.downDistanceText', 'end.pos_team_timeouts', 'end.def_pos_team_timeouts',
-            'expectedPoints.before', 'expectedPoints.after', 'expectedPoints.added', 
-            'winProbability.before', 'winProbability.after', 'winProbability.added', 
+            'expectedPoints.before', 'expectedPoints.after', 'expectedPoints.added',
+            'winProbability.before', 'winProbability.after', 'winProbability.added',
             'scoringType.displayName', 'scoringType.name', 'scoringType.abbreviation'
         ]
         # clean records back into ESPN format
@@ -148,11 +148,11 @@ def process():
                 "pos_team": {
                     "id" : record["end.pos_team.id"],
                     "name" : record["end.pos_team.name"],
-                }, 
+                },
                 "def_pos_team": {
                     "id" : record["end.def_pos_team.id"],
                     "name" : record["end.def_pos_team.name"],
-                }, 
+                },
                 "distance" : record["end.distance"],
                 "yardLine" : record["end.yardLine"],
                 "down" : record["end.down"],
