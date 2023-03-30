@@ -48,8 +48,8 @@ function cleanName(team) {
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/assets/css/dashboard.css" rel="stylesheet">
     <link href="/assets/css/blog.css" rel="stylesheet">
-    <link href="/assets/css/dark-game.css" rel="stylesheet"> 
-    <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"> 
+    <link href="/assets/css/dark-game.css" rel="stylesheet">
+    <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
 
     <%
     var title = ""
@@ -85,6 +85,7 @@ function cleanName(team) {
     <meta name="twitter:card" content="summary">
     <meta name="title" content="<%= title %>">
     <meta name="medium" content="website">
+    <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
 </head>
 <body>
     <div class="container-fluid">
@@ -99,7 +100,7 @@ function cleanName(team) {
                         <% if (gameData.gameInfo.status.type.name.includes("STATUS_SCHEDULED")) { %>
                         <span class="game-date"><%= gameData.gameInfo.date %></span>
                         <% } else if (gameData.gameInfo.status.type.completed == true) { %>
-                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span> - <span class="game-date"><%= gameData.gameInfo.date %></span>  
+                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span> - <span class="game-date"><%= gameData.gameInfo.date %></span>
                         <% } else { %>
                         <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span>
                         <% } %>
@@ -120,7 +121,7 @@ function cleanName(team) {
                         'PAC12' : 'https://pac-12.com/live',
                         'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live'
                     }
-                                        
+
 
                     let networkName = gameData.gameInfo.broadcasts.length > 0 ? gameData.gameInfo.broadcasts[0].media.shortName : null;
                     if (networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
@@ -145,7 +146,7 @@ function cleanName(team) {
     </div>
 
     <%- include('../../partials/footer') %>
-    <%- include('../../partials/scripts') %>        
+    <%- include('../../partials/scripts') %>
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/date-replace.js" crossorigin="anonymous"></script>

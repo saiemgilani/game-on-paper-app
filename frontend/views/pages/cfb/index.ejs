@@ -3,33 +3,34 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>College Football | Game on Paper</title>  
+        <title>College Football | Game on Paper</title>
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-        <link href="/assets/css/index.css" rel="stylesheet"> 
-        <link href="/assets/css/dark-index.css" rel="stylesheet"> 
+        <link href="/assets/css/index.css" rel="stylesheet">
+        <link href="/assets/css/dark-index.css" rel="stylesheet">
+        <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
         <style>
-            @media (prefers-color-scheme: dark) { 
+            @media (prefers-color-scheme: dark) {
         <% scoreboard.forEach(game => {  %>
             <% let gameComp = game.competitions[0];%>
             <%let homeComp = gameComp.competitors[0];%>
             <%let awayComp = gameComp.competitors[1];%>
             <%let homeTeam = homeComp.team;%>
             <%let awayTeam = awayComp.team;%>
-            
+
             img.team-logo-<%= homeTeam.id %> {
-                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= homeTeam.id %>.png') 
+                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= homeTeam.id %>.png')
             }
             img.team-logo-<%= awayTeam.id %> {
-                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= awayTeam.id %>.png') 
+                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= awayTeam.id %>.png')
             }
         <% }); %>
         }
         </style>
     </head>
     <body>
-        <% 
+        <%
         // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
-        let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+        let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
         let yrRange = range(2002, 2022);
         %>
         <div class="container">
@@ -76,7 +77,7 @@
             <div class="row mb-3">
                 <% if (scoreboard.length > 0) { %>
                     <%
-                    scoreboard.forEach(game => { 
+                    scoreboard.forEach(game => {
                     %>
                     <div class="col-xl-3 col-lg-6">
                         <%- include('./game_thumb', {
@@ -89,7 +90,7 @@
                     <p class="text-center text-muted">No games scheduled.</p>
                 <% } %>
             </div>
-            <% 
+            <%
             const activeGames = scoreboard.filter(item => {
                 return !(item.status.type.completed == true || item.status.type.name.includes("SCHEDULED") || item.status.type.name.includes("CANCEL") || item.status.type.name.includes("POSTPONE") || item.status.type.name.includes("DELAY"))
             });
@@ -102,7 +103,7 @@
             <% } %>
             <div class="row text-muted">
                 <div class="col-12">
-                    <caption>Game border color guide: 
+                    <caption>Game border color guide:
                         <ul>
                             <li><strong>Gray</strong> - normal</li>
                             <li><strong>Green</strong> - Close game late</li>
@@ -119,7 +120,7 @@
         </div>
         <%- include('../../partials/scripts') %>
         <script src="/assets/js/date-replace.js"></script>
-        <script>    
+        <script>
             const weekData = <%- JSON.stringify(weekList) %>;
             const selYear = <%- year == null ? "null" : year %>;
             const selWeek = <%- week == null ? "null" : week %>;
@@ -144,14 +145,14 @@
                 if (parseInt(yr) != -1) {
                     console.log("is valid yr");
                     if (yr == null) {
-                        
+
                         yr = keys[keys.length - 1];
                         console.log("edited yr bc null: " + yr);
                     }
                     let selWeeks = weekData[`${yr}`] || [];
                     console.log("avail weeks: " + selWeeks.length);
                     let weekSelect = document.getElementById("weekSelect");
-                    
+
                     var selIndex = -1;
                     selWeeks.forEach((wk, idx) => {
                         console.log("adding week" + wk.label);
@@ -162,7 +163,7 @@
                             if (parseInt(selSeasonType) == parseInt("2") && parseInt(selWeek) == parseInt(wk.value)) {
                                 selIndex = idx + 1;
                             }
-                            
+
                             weekSelect.add(option);
                         }
                     })

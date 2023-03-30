@@ -6,14 +6,14 @@
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/dashboard.css" rel="stylesheet">
         <link href="/assets/css/blog.css" rel="stylesheet">
-        <link href="/assets/css/dark-game.css" rel="stylesheet"> 
-        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"> 
-    
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
         <%
             let title = `Glossary | College Football | Game on Paper`;
             let subtitle = 'Advanced stats glossary for college football';
         %>
-    
+
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -21,7 +21,7 @@
         <link rel="canonical" href="https://gameonpaper.com/cfb/glossary">
         <title><%= title %></title>
         <meta name="description" content="<%= subtitle %>">
-    
+
         <meta property="og:site_name" content="GameOnPaper.com">
         <meta property="og:url" content="https://gameonpaper.com/cfb/glossary">
         <meta property="og:title" content="<%= title %>">
@@ -36,6 +36,7 @@
         <meta name="twitter:card" content="summary">
         <meta name="title" content="<%= title %>">
         <meta name="medium" content="website">
+        <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
     </head>
     <body>
         <%- include('../../partials/nav-header') %>
@@ -70,6 +71,6 @@
 
 
         <%- include('../../partials/footer') %>
-        <%- include('../../partials/scripts') %>  
+        <%- include('../../partials/scripts') %>
     </body>
 </html>
