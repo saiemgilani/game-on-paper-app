@@ -1,4 +1,4 @@
-FROM node:17 as base
+FROM node:lts as base
 
 WORKDIR /root/src
 
