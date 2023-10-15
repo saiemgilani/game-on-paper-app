@@ -225,7 +225,8 @@ def process():
             "status" : "bad",
             "message" : "ESPN payload is malformed. Data not available."
         }), 404
-    except:
+    except Exception as e:
+        logging.getLogger("root").error(f"Error while processing PBP on Python side: {e}")
         return jsonify({
             "status" : "bad",
             "message" : "Unknown error occurred, check logs."
