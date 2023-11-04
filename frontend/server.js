@@ -13,6 +13,35 @@ app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :ur
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
+
+const BANNED_USER_AGENT_LIST = [
+    'my-tiny-bot',
+    'fidget-spinner-bot'
+]
+
+app.use((req, res, next) => {
+    if (BANNED_USER_AGENT_LIST.includes(req.get('User-Agent').toLocaleLowerCase())) {
+        return res.status(429).json({
+            status: 429,
+            message: "Too many requests."
+        });
+    } else {
+        next()
+    }
+})
+
+app.use((req, res, next) => {
+    if (BANNED_USER_AGENT_LIST.includes(req.get('User-Agent').toLocaleLowerCase())) {
+        return res.status(429).json({
+            status: 429,
+            message: "Too many requests."
+        });
+    } else {
+        next()
+    }
+});
+
+
 app.use('/cfb', cfb);
 
 // index page
