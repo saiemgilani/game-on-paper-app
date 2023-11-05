@@ -431,7 +431,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             <div class="row mb-3">
                 <main class="ms-sm-auto col-lg-6 px-md-4">
                     <div>
-                        <h1 class="h2">Win Probability</h1>
+                        <h2 class="mb-0">Win Probability</h2>
                         <%
                             function printSpread() {
                                 if (parseFloat(gameData.homeTeamSpread) > 0) {
@@ -442,13 +442,16 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                     return "PUSH"
                                 }
                             }
+                            let lastPlay = gameData.plays[gameData.plays.length - 1]
                         %>
+                        <% if (lastPlay.gameSpreadAvailable == false) { %>
+                            <p class="m-0 text-muted text-small">ESPN does not list betting odds for this game, so we've used default values: <%= cleanAbbreviation(homeTeam) %> -2.5, O/U 55.5.</p>
+                        <% } %>
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
                                 <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> |
                             <% } %>Odds: <%= printSpread() %>, O/U <%= roundNumber(parseFloat(gameData.overUnder), 2, 1) %>
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
-                                <% let lastPlay = gameData.plays[gameData.plays.length - 1] %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
                                  | Current: <%= (lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam) %> <%= ((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1) %>%
                                 <% } else { %>
@@ -462,7 +465,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 </main>
                 <main class="ms-sm-auto col-lg-6 px-md-4">
                     <div>
-                        <h1 class="h2">Expected Points</h1>
+                        <h2 class="mb-0">Expected Points</h2>
                         <p class="text-small"><a id="ep-download" download="game-ep-<%= gameData.gameInfo.id %>.jpg" href="">Download Chart</a></p>
                     </div>
                     <canvas class="my-4 w-100" id="epChart" width="900" height="380"></canvas>
