@@ -121,7 +121,7 @@
                 <th style="text-align: left; width: <%= width %>%;"><%= title %></th>
                 <% if (showTeamLogos && homeTeam && awayTeam) { %>
                     <% breakdown.map(group => group.teamId).forEach(value => { %>
-                        <th style="text-align: center;"><img class="img-fluid" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
+                        <th style="text-align: center;"><img class="img-fluid team-logo-<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= (value == homeTeam.id) ? homeTeam.id : awayTeam.id %>.png" alt="ESPN team id <%= value %>"/></th>
                     <% }); %>
                 <% } else { %>
                     <th style="width: <%= width %>%"><span hidden>Value</span></th>
