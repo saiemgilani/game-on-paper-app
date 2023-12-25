@@ -566,8 +566,9 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                                             }) %>
 
                                             <div class="table-responsive">
-                                                <% var columns = ["EPA_plays","EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty", "EPA_misc"]; %>
+                                                <% var columns = ["EPA_plays","EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty"]; %>
                                                 <table class="table table-sm table-responsive">
+                                                    <caption class="text-muted text-small">Totals may not add up due to plays fitting in multiple categories (e.g. a penalty on a punt).</caption>
                                                     <thead>
                                                         <tr>
                                                             <th style="text-align: left;">Expected Points</th>
