@@ -115,11 +115,11 @@ function boxScoreRetrievePercentile(value, key) {
     });
 
     const pct = pctls.length
-    //console.log(`pct calc for key ${key} is ${pct}`)
+    // console.log(`pct calc for key ${key} is ${pct}`)
     return {
         pctl: boxScoreRoundNumber(pct, 2, 0),
         min: boxScoreRoundNumber(basePctls[0], 2, 2),
-        mid: boxScoreRoundNumber(basePctls[basePctls.length / 2], 2, 2),
+        mid: boxScoreRoundNumber(basePctls[Math.floor(basePctls.length / 2)], 2, 2),
         max: boxScoreRoundNumber(basePctls[basePctls.length - 1], 2, 2),
     }
 }
@@ -144,11 +144,14 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
         finalTeamInfo.forEach(teamData => {
             let val = retrieveValue(teamData, finalKey) || 0;
             let rate = parseFloat(JSON.parse(JSON.stringify(val)));
-            if (finalKey.includes('_third') || finalKey.includes('_rz')) {
-                rate *= 100
-            }
             let pct = boxScoreRetrievePercentile(val, finalKey);
             let colorRampClass = boxScoreGenerateColorRampValue(pct.pctl, 100, null)
+            if (finalKey.includes('_third') || finalKey.includes('_rz')) {
+                rate *= 100
+                pct.min *= 100
+                pct.mid *= 100
+                pct.max *= 100
+            }
             //console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
             result += `<td class="numeral${colorRampClass}" style="text-align: center;" title="Worst: ${boxScoreRoundNumber(parseFloat(pct.min), 2, 0)}%\nMedian: ${boxScoreRoundNumber(parseFloat(pct.mid), 2, 0)}%\nBest: ${boxScoreRoundNumber(parseFloat(pct.max), 2, 0)}%">${boxScoreRoundNumber(parseFloat(rate), 2, 0)}% <small class="align-self-center" style="opacity: 50%">${boxScoreGetOrdinal(pct.pctl)} %ile</small></td>`;
         });
