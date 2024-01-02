@@ -138,7 +138,6 @@ function handleBoxScoreRates(item, teamInfo, useSuffix, decimalPoints) {
         finalTeamInfo.reverse()
     }
 
-
     let finalDecimalPoints = decimalPoints || 1;
     var result = ""
     if (boxScoreNonRatePercentColumns.includes(finalKey)) {
@@ -198,10 +197,13 @@ function retrieveValue(dictionary, key) {
 
 Object.keys(gameData.advBoxScore).forEach(key => {
     baseData = gameData.advBoxScore[key]
+
+    statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
     var teamKey = "pos_team"
-    if (Object.keys(baseData).includes("def_pos_team")) {
+    if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
         teamKey = "def_pos_team"
     }
+    
     baseData.sort((a,b) => {
         if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
             return -1;
