@@ -15,7 +15,7 @@
                     <% 
                     // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
                     let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
-                    let yrRange = range(2014, 2022);
+                    let yrRange = range(2014, 2023);
                     %>
                     <% yrRange.forEach(yr => { %>
                       <li><a class="dropdown-item" href="/cfb/year/<%= yr %>"><%= yr %></a></li>
