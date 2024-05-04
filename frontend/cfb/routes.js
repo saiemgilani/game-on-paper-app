@@ -455,4 +455,9 @@ router.route('/glossary')
     });
 })
 
+router.route('/field')
+.get(function(req, res, next) {
+    return res.render('pages/cfb/field');
+})
+
 module.exports = router
