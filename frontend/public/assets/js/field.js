@@ -35,6 +35,14 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.fillRect(0, 0, this.fieldWidth, this.fieldHeight);
         this.fillEndZones();
         this.drawFieldLines();
+
+        this.ctx.save()
+        this.ctx.textAlign = "right"
+        this.ctx.font = "8px sans-serif";
+        this.ctx.fillStyle = '#e8e6e3';
+        this.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (75 / 8.0) + 5, this.fieldHeight - 15)
+        this.ctx.restore();
+
         this.isDrawn = true;
     }
 
