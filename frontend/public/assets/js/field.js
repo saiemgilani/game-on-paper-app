@@ -1,5 +1,5 @@
 
-function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png"}, team2 = {color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png"}, baseLineWidth = 10) {	
+function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png"}, team2 = {color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png"}, baseLineWidth = 10, subtitle = null) {	
     this.currentPoint = 0;
     this.currentPlayY = 15;
     this.isDrawn = false;
@@ -40,8 +40,17 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.textAlign = "right"
         this.ctx.font = "8px sans-serif";
         this.ctx.fillStyle = '#e8e6e3';
-        this.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (75 / 8.0) + 5, this.fieldHeight - 15)
+        this.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (75 / 8.0) + 5, this.fieldHeight - 10)
         this.ctx.restore();
+
+        if (subtitle) {
+            this.ctx.save()
+            this.ctx.textAlign = "left"
+            this.ctx.font = "8px sans-serif";
+            this.ctx.fillStyle = '#e8e6e3';
+            this.ctx.fillText(subtitle, 5, this.fieldHeight - 10)
+            this.ctx.restore();
+        }
 
         this.isDrawn = true;
     }
@@ -120,7 +129,13 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
                 this.drawVerticalLine((i * this.fieldSegment) + 5 * hashmarkWidth, (this.fieldHeight / 2) - (fiveYardHeight / 2), (this.fieldHeight / 2) + (fiveYardHeight / 2));
             }
 
-            this.drawVerticalLine(this.fieldSegment + (i * this.fieldSegment));
+            if ((i % 5) == 0) {
+                this.drawVerticalLine(this.fieldSegment + (i * this.fieldSegment), 0, this.fieldHeight, lineWidth = 5);
+            } else {
+                this.drawVerticalLine(this.fieldSegment + (i * this.fieldSegment), 0, this.fieldHeight, lineWidth = 2);
+            }
+
+            
         }
 
         let goalpostWidth = (18.5 * 1.875 / 300) * this.fieldHeight
@@ -129,18 +144,24 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         // this.drawMidfieldLogo(team1.url)
     }
     
-    this.drawVerticalLine = function(x, minY = 0, maxY = this.fieldHeight){
+    this.drawVerticalLine = function(x, minY = 0, maxY = this.fieldHeight, lineWidth = 2){
+        this.ctx.save()
+        this.ctx.lineWidth = lineWidth;
         this.ctx.beginPath();
         this.ctx.moveTo(x, minY);
         this.ctx.lineTo(x, maxY);
         this.ctx.stroke();
+        this.ctx.restore()
     }
 
-    this.drawHorizontalLine = function(minX = 0, maxX = this.fieldWidth, y = 0){
+    this.drawHorizontalLine = function(minX = 0, maxX = this.fieldWidth, y = 0, lineWidth = 2){
+        this.ctx.save()
+        this.ctx.lineWidth = lineWidth;
         this.ctx.beginPath();
         this.ctx.moveTo(minX, y);
         this.ctx.lineTo(maxX, y);
         this.ctx.stroke();
+        this.ctx.restore()
     }
 
     this.drawLine = function(minX = 0, minY = 0, maxX = this.fieldWidth, maxY = this.fieldHeight, lineWidth = null, color = null) {

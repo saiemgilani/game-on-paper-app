@@ -345,7 +345,8 @@ function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback
                 defense,
                 homeTeam,
                 result: drive.result,
-                isNeutralSite: gameData.gameInfo.neutralSite
+                isNeutralSite: gameData.gameInfo.neutralSite,
+                subtitle: `${offense.abbreviation} - ${drive.description}`
             })
             baseRow += `
             <div class="ms-sm-auto col-12 mb-3">

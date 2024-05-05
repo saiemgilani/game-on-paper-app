@@ -13,7 +13,7 @@
         }
 
         %>
-        let field = new Field('football-field-<%= id %>', '<%- fieldColor %>', <%- JSON.stringify(offense) %>, <%- JSON.stringify(defense) %>);
+        let field = new Field('football-field-<%= id %>', '<%- fieldColor %>', <%- JSON.stringify(offense) %>, <%- JSON.stringify(defense) %>, baseLineWidth = 10, subtitle = '<%= subtitle %>');
         <% for (var i = 0; i < plays.length; i++) { %>
             <% let play = plays[i]; %>
             <% let annotation = (i == plays.length - 1) ? `'${result}'` : null %>
