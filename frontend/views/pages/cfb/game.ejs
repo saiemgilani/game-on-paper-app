@@ -280,6 +280,130 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     }
     return baseRow;
 }
+
+function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback) {
+    var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#drive-${collapsePrefix}-${drive.id}" onclick="render${drive.id}()"` : ''
+
+    let offense = (drive.team.displayName == homeTeam.displayName) ? homeTeam : awayTeam;
+    let defense = (drive.team.displayName == homeTeam.displayName) ? awayTeam : homeTeam;
+
+    let periodNumber = drive.start.period.number
+    var period = `Q${periodNumber}`;
+    if (periodNumber > 5) {
+        period = `${periodNumber - 4}OT`
+    } else if (periodNumber == 5) {
+        period = "OT"
+    } else {
+        period = `Q${periodNumber} ${drive.start.clock.displayValue}`;
+    }
+
+
+    var classText = "";
+    if (["TURNOVER", "DOWNS", "MISSED FG", "FUMBLE", "SAFETY", "INT"].includes(drive.result)) {
+        classText = " table-danger"
+    } else if (["TD", "FG"].includes(drive.result)) {
+        classText = " table-success"
+    }
+
+    let drivePlays = gameData.plays.filter(p => p['drive.id'] == drive.id)
+
+    let maxEPA = drivePlays.reduce((prev, current) => (prev && prev.EPA > current.EPA) ? prev : current, Number.NEGATIVE_INFINITY)
+    let maxWPA = drivePlays.reduce((prev, current) => (prev && prev.WPA > current.WPA) ? prev : current, Number.NEGATIVE_INFINITY)
+
+    let totalEPA = drivePlays.map(p => p.EPA).reduce((acc, val) => acc + (val || 0))
+    let avgEPA = drivePlays.length == 0 ? 0 : (totalEPA / drivePlays.length)
+
+    let totalSuccess = drivePlays.map(p => p.EPA_success).reduce((acc, val) => acc + (val || 0))
+    let avgSR = drivePlays.length == 0 ? 0 : (totalSuccess / drivePlays.length)
+
+    let startWP = drivePlays.map(p => p.winProbability.before)[0]
+    var endWP = drivePlays.map(p => p.winProbability.after)
+    endWP = endWP[endWP.length - 1]
+
+    var baseRow = `
+    <tr ${collapsibleText} class="accordion-toggle${classText}">
+        <td style="text-align: left;vertical-align:center;">${period}</td>
+        <td style="text-align: center;vertical-align:center;"><img class="img-fluid team-logo-${offense.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png" alt="ESPN team id ${offense.id}"/></td>
+        <td style="text-align: left;vertical-align:center;">${drive.displayResult || 'In Progress'}</td>
+        <td style="text-align: left;vertical-align:center;">${drive.description}</td>
+        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(totalEPA), 2, 2)}</td>
+        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(startWP) * 100, 3, 1)}%</td>
+        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(endWP) * 100, 3, 1)}%</td>
+    </tr>`;
+    if (canCollapse) {
+        baseRow += `<tr>
+            <td colspan="7" class="hiddenRow">
+                <div class="accordian-body collapse" id="drive-${collapsePrefix}-${drive.id}">
+                    <div class="row p-1">`;
+        if (expandingRowCallback != null) {
+            baseRow += expandingRowCallback(play);
+        } else {
+            driveChart = include('./field', {
+                id: drive.id,
+                plays: drive.plays,
+                offense,
+                defense,
+                homeTeam,
+                result: drive.result,
+                isNeutralSite: gameData.gameInfo.neutralSite
+            })
+            baseRow += `
+            <div class="ms-sm-auto col-12 mb-3">
+                <p class="m-0 mb-1"><strong>Drive Chart</strong> <span>(Direction of play - left to right)</span>:</p>
+                ${driveChart}
+                <p class="m-0 text-muted"><small>Note: vertical position of plays does not indicate vertical position on field.</small></p>
+            </div>
+            <p class="m-0"><strong>EPA/Play:</strong> <span>${roundNumber(parseFloat(avgEPA), 2, 2)}</span></p>
+            <p class="m-0"><strong>Success Rate:</strong> <span>${roundNumber(parseFloat(avgSR) * 100, 3, 1)}%</span></p>
+            <p class="m-0"><strong>Biggest Play:</strong> <span>(${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${maxEPA.text} - EPA: ${roundNumber(parseFloat(maxEPA.EPA), 2, 2)}</span></p>
+            <p class="m-0"><strong>Most Important Play:</strong> <span>(${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${maxWPA.text} - WPA: ${roundNumber(parseFloat(maxWPA.winProbability.added) * 100, 3, 1)}%</span></p>
+            `;
+        }
+        baseRow += `</div>
+                </div>
+            </td>
+        </tr>`
+    }
+    return baseRow;
+}
+
+function buildDrivesTable(drives, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
+    if (drives == null || drives.length == 0) {
+        return `<p class="text-center text-muted">${errorMsg}</p>`;
+    }
+
+    let guideText = (showGuide) ? `<caption>Drive shading guide:
+        <ul>
+            <li><strong>Red</strong> - turnover</li>
+            <li><strong>Green</strong> - scoring drive</li>
+        </ul>
+    </caption>` : ""
+
+    var baseTable = `
+    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
+        ${guideText}
+        <thead>
+            <tr>
+                <th style="text-align: left;vertical-align:center;">Start</th>
+                <th style="text-align: center;vertical-align:center;">Offense</th>
+                <th style="text-align: left;vertical-align:center;">Result</th>
+                <th style="text-align: left;vertical-align:center;">Description</th>
+                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">EPA</th>
+                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">Start WP%</th>
+                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">End WP%</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    drives.forEach(drives => {
+        baseTable += createDriveRow(drives, expandable, prefix, expandingRowCallback);
+    });
+    baseTable += `</tbody>
+    </table>`;
+    return baseTable;
+
+}
+
+
 function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
     if (plays == null || plays.length == 0) {
         return `<p class="text-center text-muted">${errorMsg}</p>`;
@@ -322,6 +446,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     <link href="/assets/css/blog.css" rel="stylesheet">
     <link href="/assets/css/dark-game.css" rel="stylesheet">
     <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <script src="/assets/js/field.js"></script>
 
     <%
     var title = ""
@@ -421,6 +546,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                 <a href="#big-plays" class="p-2 link-secondary">Big Plays</a>
                 <a href="#most-imp-plays" class="p-2 link-secondary">Most Important Plays</a>
                 <a href="#scoring-plays" class="p-2 link-secondary">Scoring Plays</a>
+                <a href="#drives" class="p-2 link-secondary">Drives</a>
                 <a href="#all-plays" class="p-2 link-secondary">All Plays</a>
                 <a class="p-2 link-secondary" href="https://www.espn.com/college-football/game/_/gameId/<%= gameData.gameInfo.id %>">Gamecast</a>
             </nav>
@@ -1076,7 +1202,7 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         </div>
 
         <div class="row mb-3">
-            <main class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+            <main class="col-lg-6 ms-sm-auto px-md-4">
                 <div class="panel-group">
                     <div class="panel panel-default">
                         <div class="panel-heading">
@@ -1088,6 +1214,34 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                             <div class="panel-body">
                                 <div class="table-responsive">
                                     <%- buildPlayTable(gameData.scoringPlays, "scoring-play", true, "No scoring plays in this game.", false); %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <main class="col-lg-6 ms-sm-auto px-md-4">
+                <%
+                    var currentDrives = gameData.drives.current || [];
+                    var gameDrives = [...gameData.drives.previous, ...currentDrives]
+                    var subTitle = ""
+                    if (gameData.gameInfo.status.type.completed != true) {
+                        subTitle = '<p class="text-small">Most recent drives first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>';
+                        gameDrives.reverse()
+                    }
+                %>
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <h2 id="drives">Drives <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#drivesTable" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                                <%- subTitle %>
+                            </div>
+                        </div>
+                        <div id="drivesTable" class="panel-collapse collapse">
+                            <div class="panel-body">
+                                <div class="table-responsive">
+                                    <%- buildDrivesTable(gameDrives, "all", true, "No drives in this game.", true); %>
                                 </div>
                             </div>
                         </div>

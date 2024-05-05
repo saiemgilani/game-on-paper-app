@@ -1,0 +1,27 @@
+
+
+
+<canvas id="football-field-<%= id %>"></canvas>
+<script>
+    function render<%= id %>() {
+        <%
+        var fieldColor = "rgb(0, 153, 41)"
+        if (!isNeutralSite && homeTeam.id == 68) {
+            fieldColor = "#12329A"; // Boise State
+        } else if (!isNeutralSite && homeTeam.id == 324) {
+            fieldColor = "#307077"; // Coastal Carolina
+        }
+
+        %>
+        let field = new Field('football-field-<%= id %>', '<%- fieldColor %>', <%- JSON.stringify(offense) %>, <%- JSON.stringify(defense) %>);
+        <% for (var i = 0; i < plays.length; i++) { %>
+            <% let play = plays[i]; %>
+            <% let annotation = (i == plays.length - 1) ? `'${result}'` : null %>
+            <% var endYardsToEndzone = (play.end.team.id != play.start.team.id) ? 100 - play.end.yardsToEndzone : play.end.yardsToEndzone %>
+            <% endYardsToEndzone = (play.type.text.includes("Punt")) ? play.start.yardsToEndzone : endYardsToEndzone %>
+            <% if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)'].includes(play.type.text)) { %>
+                <%- `field.markPlay('#${offense.color}', ${play.start.yardsToEndzone}, ${endYardsToEndzone}, ${annotation});` %>
+            <% } %>
+        <% } %>
+    }
+</script>
