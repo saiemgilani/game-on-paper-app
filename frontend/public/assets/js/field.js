@@ -1,7 +1,7 @@
 
 function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png"}, team2 = {color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png"}, baseLineWidth = 10) {	
     this.currentPoint = 0;
-    this.currentPlayY = 10;
+    this.currentPlayY = 15;
     this.isDrawn = false;
 
     this.sourceElement = document.getElementById(elementId)
