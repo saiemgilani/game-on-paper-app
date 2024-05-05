@@ -326,9 +326,9 @@ function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback
         <td style="text-align: center;vertical-align:center;"><img class="img-fluid team-logo-${offense.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png" alt="ESPN team id ${offense.id}"/></td>
         <td style="text-align: left;vertical-align:center;">${drive.displayResult || 'In Progress'}</td>
         <td style="text-align: left;vertical-align:center;">${drive.description}</td>
-        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(totalEPA), 2, 2)}</td>
-        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(startWP) * 100, 3, 1)}%</td>
-        <td class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(endWP) * 100, 3, 1)}%</td>
+        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(totalEPA), 2, 2)}</td>
+        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(startWP) * 100, 3, 1)}%</td>
+        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(endWP) * 100, 3, 1)}%</td>
     </tr>`;
     if (canCollapse) {
         baseRow += `<tr>
@@ -388,9 +388,9 @@ function buildDrivesTable(drives, prefix, expandable, errorMsg, showGuide, expan
                 <th style="text-align: center;vertical-align:center;">Offense</th>
                 <th style="text-align: left;vertical-align:center;">Result</th>
                 <th style="text-align: left;vertical-align:center;">Description</th>
-                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">EPA</th>
-                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">Start WP%</th>
-                <th class="d-none d-lg-table-cell" style="text-align: center;vertical-align:center;">End WP%</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">EPA</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">Start WP%</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">End WP%</th>
             </tr>
         </thead>
         <tbody>`;
