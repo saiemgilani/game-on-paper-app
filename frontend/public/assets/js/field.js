@@ -39,22 +39,26 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.drawFieldLines();
         this.ctx.restore()
 
-        this.drawRoundedRectText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (0.5 * this.fieldWidth) + 5, this.fieldHeight - 15, "8px sans-serif")
+        this.drawRoundedRectText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (0.5 * this.fieldWidth) + 5, this.fieldHeight - 15)
 
         if (subtitle) {
-            this.drawRoundedRectText(subtitle, 5, (this.fieldHeight - 15), "8px sans-serif")
+            this.drawRoundedRectText(subtitle, 5, (this.fieldHeight - 15))
         }
 
         this.isDrawn = true;
     }
 
-    this.drawRoundedRectText = function(text, x, y, font = "10px sans-serif", rectColor = "rgba(0,0,0,0.7)", textColor = "white", textAlign = "left") {
+    this.drawRoundedRectText = function(text, x, y, font = "12px sans-serif", rectColor = "rgba(0,0,0,0.7)", textColor = "white", textAlign = "left", padding = 3) {
         this.ctx.save()
         this.ctx.beginPath()
         this.ctx.font = font;
         let textWidth = this.ctx.measureText(text).width;
         this.ctx.fillStyle = rectColor
-        this.ctx.roundRect(x - 1.5, y - 6.25, textWidth + 3, 12.5, 3.125);
+
+        let fontHeight = parseInt(font, 10)
+        let lineHeight = fontHeight + 2.5
+
+        this.ctx.roundRect(x - (padding / 2), y - (lineHeight / 2), textWidth + padding, lineHeight, (3.125 / 8) * fontHeight);
         this.ctx.fill();
         this.ctx.restore();
 
@@ -62,7 +66,7 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.font = font;
         this.ctx.textAlign = textAlign
         this.ctx.fillStyle = textColor;
-        this.ctx.fillText(text, x, y + 3)
+        this.ctx.fillText(text, x, y + padding)
         this.ctx.restore();
     }
 
