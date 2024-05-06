@@ -1,4 +1,4 @@
-
+/* Based off https://github.com/criscokid/Canvas-Field */
 function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png"}, team2 = {color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png"}, baseLineWidth = 10, subtitle = null) {	
     this.currentPoint = 0;
     this.currentPlayY = 15;
@@ -39,16 +39,16 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.drawFieldLines();
         this.ctx.restore()
 
-        this.drawRoundedRectText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (0.5 * this.fieldWidth) + 5, this.fieldHeight - 15)
+        this.drawRoundedRectText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", this.fieldWidth - (0.5 * this.fieldWidth) + 5, this.fieldHeight - 15, "8px sans-serif")
 
         if (subtitle) {
-            this.drawRoundedRectText(subtitle, 5, (this.fieldHeight - 15))
+            this.drawRoundedRectText(subtitle, 5, (this.fieldHeight - 15), "8px sans-serif")
         }
 
         this.isDrawn = true;
     }
 
-    this.drawRoundedRectText = function(text, x, y, font = "12px sans-serif", rectColor = "rgba(0,0,0,0.7)", textColor = "white", textAlign = "left", padding = 3) {
+    this.drawRoundedRectText = function(text, x, y, font = "10px sans-serif", rectColor = "rgba(0,0,0,0.7)", textColor = "white", textAlign = "left", padding = 3) {
         this.ctx.save()
         this.ctx.beginPath()
         this.ctx.font = font;
@@ -66,7 +66,7 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.font = font;
         this.ctx.textAlign = textAlign
         this.ctx.fillStyle = textColor;
-        this.ctx.fillText(text, x, y + padding)
+        this.ctx.fillText(text, x, y + (3 / 8) * fontHeight)
         this.ctx.restore();
     }
 
