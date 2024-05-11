@@ -205,7 +205,7 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         return (((100 - x) / 100) * (this.fieldWidth - (2 * this.fieldSegment))) + this.fieldSegment
     }
 
-    this.markPlay = function(color, startYardline, endYardline, text = null) {
+    this.markPlay = function(color, startYardline, endYardline, text = null, annotation = null) {
         this.ctx.save();
         startX = this.translateYardsToGoal(startYardline)
         endX = this.translateYardsToGoal(endYardline)
@@ -217,8 +217,17 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.drawLine(endX - capLength, this.currentPlayY, endX, this.currentPlayY, lineWidth = this.playLineWidth, color = capColor)
 
         if (text) {
+            var minX = (startYardline < endYardline) ? endYardline : startYardline
+            minX = this.translateYardsToGoal(minX - 0.5)
+            if (minX >= (endX - capLength) && minX <= endX) {
+                minX += (capLength + 2)
+            }
+            this.drawRoundedRectText(text, minX, this.currentPlayY, font = "8px sans-serif", rectColor = "#00000000", textColor = "white")
+        }
+
+        if (annotation) {
             let maxX = (startX > endX) ? startX : endX
-            this.drawRoundedRectText(text, maxX + 3, this.currentPlayY)
+            this.drawRoundedRectText(annotation, maxX + 3, this.currentPlayY)
         }
 
         this.currentPlayY = this.currentPlayY + this.playLineWidth + this.playYSpacer;
