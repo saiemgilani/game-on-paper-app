@@ -284,19 +284,22 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
 function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback) {
     var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#drive-${collapsePrefix}-${drive.id}" onclick="render${drive.id}()"` : ''
 
-    let offense = (drive.team.displayName == homeTeam.displayName) ? homeTeam : awayTeam;
-    let defense = (drive.team.displayName == homeTeam.displayName) ? awayTeam : homeTeam;
+    let drivePlays = gameData.plays.filter(p => p['drive.id'] == drive.id)
+    let firstPlay = drivePlays[0]
 
-    let periodNumber = drive.start.period.number
-    var period = `Q${periodNumber}`;
-    if (periodNumber > 5) {
-        period = `${periodNumber - 4}OT`
-    } else if (periodNumber == 5) {
+    let offense = (firstPlay.pos_team == homeTeam.id) ? homeTeam : awayTeam;
+    let defense = (firstPlay.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+
+    var period = `Q${firstPlay.period}`;
+    if (firstPlay.period > 5) {
+        period = `${firstPlay.period - 4}OT`
+    } else if (firstPlay.period == 5) {
         period = "OT"
+    } else if (firstPlay.clock) {
+        period = `Q${firstPlay.period} ${firstPlay.clock.displayValue}`;
     } else {
-        period = `Q${periodNumber} ${drive.start.clock.displayValue}`;
+        period = `Q${firstPlay.period}`;
     }
-
 
     var classText = "";
     if (["TURNOVER", "DOWNS", "MISSED FG", "FUMBLE", "SAFETY", "INT"].includes(drive.result)) {
@@ -304,8 +307,6 @@ function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback
     } else if (["TD", "FG"].includes(drive.result)) {
         classText = " table-success"
     }
-
-    let drivePlays = gameData.plays.filter(p => p['drive.id'] == drive.id)
 
     let maxEPA = drivePlays.reduce((prev, current) => (prev && prev.EPA > current.EPA) ? prev : current, Number.NEGATIVE_INFINITY)
     let maxWPA = drivePlays.reduce((prev, current) => (prev && prev.WPA > current.WPA) ? prev : current, Number.NEGATIVE_INFINITY)
@@ -395,6 +396,39 @@ function buildDrivesTable(drives, prefix, expandable, errorMsg, showGuide, expan
             </tr>
         </thead>
         <tbody>`;
+
+    drives = drives.map(d => {
+        let drivePlays = gameData.plays.filter(p => p['drive.id'] == d.id)
+        let firstPlay = drivePlays[0]
+        if (!Object.keys(d).includes("start")) {
+            d["start"] = {
+                "period": {},
+                "clock": {}
+            }
+        } else if (!Object.keys(d.start).includes("clock")) {
+            d["start"]["clock"] = {}
+        }
+        d["start"]["clock"]["game_play_number"] = firstPlay["game_play_number"]
+        d["start"]["period"]["number"] = firstPlay.period
+        return d
+    })
+
+    // console.log(drives.map(p => JSON.stringify(p.start?.period, null, 2)))
+    drives = drives.sort((a, b) => {
+        // console.log((a.start?.period?.number ?? 0))
+        // console.log((b.start?.period?.number ?? 0))
+        if ((a.start?.period?.number ?? 0) == (b.start?.period?.number ?? 0)) {
+            if ((a.start?.clock?.game_play_number ?? "") == (b.start?.clock?.game_play_number ?? "")) {
+                return a.id < b.id ? -1 : 1
+            } else {    
+                return (a.start?.clock?.game_play_number ?? 0) < (b.start?.clock?.game_play_number ?? 0) ? -1 : 1
+            }
+        } else {
+            return (a.start?.period?.number ?? 0) < (b.start?.period?.number ?? 0) ? -1 : 1
+        }
+    })
+    // console.log(drives.map(p => JSON.stringify(p.start?.period, null, 2)))
+
     drives.forEach(drives => {
         baseTable += createDriveRow(drives, expandable, prefix, expandingRowCallback);
     });
