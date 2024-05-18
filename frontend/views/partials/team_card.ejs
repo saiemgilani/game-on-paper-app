@@ -7,7 +7,7 @@
     v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-let maxTeams = 133;
+let maxTeams = 134;
 if (season == 2022) {
     maxTeams = 131
 } else if (season < 2022) {
@@ -76,8 +76,8 @@ function cleanLocation() {
             <table class="table table-sm table-responsive">
                 <thead>
                     <th class="text-center" style="width: 33%"><%= season %> Record</th>
-                    <th class="text-center" style="width: 33%">Conf Finish</th>
-                    <th class="text-center" style="width: 33%">EPA/Play</th>
+                    <th class="text-center" style="width: 33%"><%= season %> Conf Finish</th>
+                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>EPA/Play</th>
                 </thead>
                 <tbody>
                     <tr>
@@ -93,14 +93,13 @@ function cleanLocation() {
             <table class="table table-sm table-responsive">
                 <caption class="text-small text-muted"">
                     <small>
-                        <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).
-                        </p>
+                        <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
                     </small>
                 </caption>
                 <thead>
-                    <th class="text-center" style="width: 33%">Yards/Play</th>
-                    <th class="text-center" style="width: 33%">AY%</th>
-                    <th class="text-center" style="width: 33%">Success %</th>
+                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Yards/Play</th>
+                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>AY%</th>
+                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Success %</th>
                 </thead>
                 <tbody>
                     <tr>

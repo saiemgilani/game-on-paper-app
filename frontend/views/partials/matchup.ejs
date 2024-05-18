@@ -1,4 +1,36 @@
 <%
+
+    const CLEAN_LIST = [61];
+    function cleanNickname(team) {
+        if (CLEAN_LIST.includes(parseInt(team.id))) {
+            return team.nickname.toLocaleLowerCase()
+        }
+        return team.nickname
+    }
+
+    function cleanBreakdown(breakdown) {
+        if (!breakdown || !Object.keys(breakdown).includes("offensive")) {
+            breakdown = {
+                "offensive": {
+                    "overall": {},
+                    "passing": {},
+                    "rushing": {}
+                },
+                "defensive": {
+                    "overall": {},
+                    "passing": {},
+                    "rushing": {}
+                },
+                "differential" : {
+                    "overall": {},
+                    "passing": {},
+                    "rushing": {}
+                }
+            }
+        }
+        return breakdown
+    }
+
     function generateMarginalString(input, power10, fixed) {
         if (input >= 0) {
             return `+${roundNumber(input, power10, fixed)}`;
@@ -44,6 +76,9 @@
     }
 
     function roundNumber(value, power10, fixed) {
+        if (!value) {
+            return "N/A"
+        }
         return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
     }
 
@@ -77,10 +112,14 @@
         `
     }
 
+    function produceTeamLogoLink(team, headerType = "h4", showNickname = false) {
+        return `<${headerType} class="d-inline"><a href="/cfb/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a>${showNickname ? (" " + cleanNickname(team)) : ""}</${headerType}>`
+    }
+
     function produceTeamSector(team, breakdown) {
         return `
         <div class="col-md-12 ms-sm-auto col-lg-3">
-            <h4 class="text-center"><a href="/cfb/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a> ${team.nickname}</h4>
+            <div class="h4 text-center">${produceTeamLogoLink(team, "h4", true)}</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -92,8 +131,8 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="text-left">EPA/Play</td>
-                            <td class="text-center">${roundNumber(breakdown["differential"]["overall"]["epaPerPlay"], 2, 2)}</td>
+                            <td class="text-left">Net EPA/Play</td>
+                            <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["epaPerPlay"], 2, 2)}</td>
                             ${produceRankHtml(breakdown["differential"]["overall"]["epaPerPlayRank"])}
                         </tr>
                         <tr>
@@ -214,14 +253,20 @@
         </div>
         `;
     }
+
+
+    var awayTeamBreakdown = breakdown.filter(p => p.teamId == awayTeam.id)[0]
+    awayTeamBreakdown = cleanBreakdown(awayTeamBreakdown)
+    var homeTeamBreakdown = breakdown.filter(p => p.teamId == homeTeam.id)[0]
+    homeTeamBreakdown = cleanBreakdown(homeTeamBreakdown)
 %>
 
 
 <div class="container mb-3">
     <div class="row">
-        <%- produceTeamSector(awayTeam, breakdown[0]) %>
+        <%- produceTeamSector(awayTeam, awayTeamBreakdown) %>
         <div class="col-md-12 ms-sm-auto col-lg-6">
-            <h2 class="text-center"><img class="img-fluid team-logo-<%= awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= awayTeam.id %>.png" alt="ESPN team id <%= awayTeam.id %>"/> Offense vs <img class="img-fluid team-logo-<%= homeTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= homeTeam.id %>.png" alt="ESPN team id <%= homeTeam.id %>"/> Defense</h2>
+            <div class="h3 text-center"><%- produceTeamLogoLink(awayTeam, "h3", false) %> Offense vs <%- produceTeamLogoLink(homeTeam, "h3", false) %> Defense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -234,17 +279,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <%- produceMatchupRow("EPA/Pass", breakdown[0], breakdown[1], "offensive", "passing", "epaPerPlay") %>
-                        <%- produceMatchupRow("EPA/Rush", breakdown[0], breakdown[1], "offensive", "rushing", "epaPerPlay") %>
-                        <%- produceMatchupRow("Available Yards %", breakdown[0], breakdown[1], "offensive", "overall", "availableYardsPct") %>
-                        <%- produceMatchupRow("Starting Field Position", breakdown[0], breakdown[1], "offensive", "overall", "startingFP") %>
-                        <%- produceMatchupRow("Early Downs EPA/Play", breakdown[0], breakdown[1], "offensive", "overall", "earlyDownEPAPerPlay") %>
-                        <%- produceMatchupRow("3rd/4th Down Success", breakdown[0], breakdown[1], "offensive", "overall", "lateDownSuccessRate") %>
-                        <%- produceMatchupRow("Avg 3rd Down Distance", breakdown[0], breakdown[1], "offensive", "overall", "thirdDownDistance") %>
+                        <%- produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "offensive", "passing", "epaPerPlay") %>
+                        <%- produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "offensive", "rushing", "epaPerPlay") %>
+                        <%- produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "availableYardsPct") %>
+                        <%- produceMatchupRow("Starting Field Position", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "startingFP") %>
+                        <%- produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "earlyDownEPAPerPlay") %>
+                        <%- produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "lateDownSuccessRate") %>
+                        <%- produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "thirdDownDistance") %>
                     </tbody>
                 </table>
             </div>
-            <h2 class="text-center"><img class="img-fluid team-logo-<%= awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= awayTeam.id %>.png" alt="ESPN team id <%= awayTeam.id %>"/> Defense vs <img class="img-fluid team-logo-<%= homeTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= homeTeam.id %>.png" alt="ESPN team id <%= homeTeam.id %>"/> Offense</h2>
+            <div class="h3 text-center"><%- produceTeamLogoLink(awayTeam, "h3", false) %> Defense vs <%- produceTeamLogoLink(homeTeam, "h3", false) %> Offense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -257,22 +302,27 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <%- produceMatchupRow("EPA/Pass", breakdown[0], breakdown[1], "defensive", "passing", "epaPerPlay") %>
-                        <%- produceMatchupRow("EPA/Rush", breakdown[0], breakdown[1], "defensive", "rushing", "epaPerPlay") %>
-                        <%- produceMatchupRow("Available Yards %", breakdown[0], breakdown[1], "defensive", "overall", "availableYardsPct") %>
-                        <%- produceMatchupRow("Starting FP", breakdown[0], breakdown[1], "defensive", "overall", "startingFP") %>
-                        <%- produceMatchupRow("Early Downs EPA/Play", breakdown[0], breakdown[1], "defensive", "overall", "earlyDownEPAPerPlay") %>
-                        <%- produceMatchupRow("3rd Down Success", breakdown[0], breakdown[1], "defensive", "overall", "thirdDownSuccessRate") %>
-                        <%- produceMatchupRow("Avg 3rd Down Distance", breakdown[0], breakdown[1], "defensive", "overall", "thirdDownDistance") %>
+                        <%- produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "defensive", "passing", "epaPerPlay") %>
+                        <%- produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "defensive", "rushing", "epaPerPlay") %>
+                        <%- produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "availableYardsPct") %>
+                        <%- produceMatchupRow("Starting FP", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "startingFP") %>
+                        <%- produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "earlyDownEPAPerPlay") %>
+                        <%- produceMatchupRow("3rd Down Success", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "thirdDownSuccessRate") %>
+                        <%- produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "thirdDownDistance") %>
                     </tbody>
                 </table>
             </div>
         </div>
-        <%- produceTeamSector(homeTeam, breakdown[1]) %>
+        <%- produceTeamSector(homeTeam, homeTeamBreakdown) %>
     </div>
     <div class="row mb-3">
         <div class="col-12">
-            <p class="m-0 text-muted text-small"><small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</a></small></p>
+            <p class="m-0 text-muted text-small">
+                <small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</small>
+                <% if (awayTeamBreakdown.season) { %>
+                    <small> Ranks from <%= awayTeamBreakdown.season %> season.</small>
+                <% } %>
+            </p>
             <p class="m-0 text-muted text-small"><small>This feature is in beta. Please report any issues <a href="https://github.com/saiemgilani/game-on-paper-app/issues">here</a>. Click <a href="/cfb/game/<%= game_id %>?preview=full">here</a> to view the full preview page.</small></p>
         </div>
     </div>
