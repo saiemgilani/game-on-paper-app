@@ -319,8 +319,8 @@
         <div class="col-12">
             <p class="m-0 text-muted text-small">
                 <small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</small>
-                <% if (awayTeamBreakdown.season) { %>
-                    <small> Ranks from <%= awayTeamBreakdown.season %> season.</small>
+                <% if (awayTeamBreakdown.season || homeTeamBreakdown.season) { %>
+                    <small> Ranks from <%= awayTeamBreakdown.season || homeTeamBreakdown.season %> season.</small>
                 <% } %>
             </p>
             <p class="m-0 text-muted text-small"><small>This feature is in beta. Please report any issues <a href="https://github.com/saiemgilani/game-on-paper-app/issues">here</a>. Click <a href="/cfb/game/<%= game_id %>?preview=full">here</a> to view the full preview page.</small></p>
