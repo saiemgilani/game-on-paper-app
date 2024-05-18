@@ -348,6 +348,7 @@ router.route('/game/:gameId')
                 return res.render('pages/cfb/pregame', {
                     season,
                     week,
+                    view_full: (req.query.preview == "full"),
                     gameData: {
                         gameInfo: game,
                         matchup: {

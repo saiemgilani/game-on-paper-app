@@ -1,0 +1,279 @@
+<%
+    function generateMarginalString(input, power10, fixed) {
+        if (input >= 0) {
+            return `+${roundNumber(input, power10, fixed)}`;
+        } else {
+            return roundNumber(input, power10, fixed);
+        }
+    }
+
+    function produceRankHtml(rank, addClass = "", addStyle = "") {       
+        let tied = rank?.includes(".5")
+        let rankString = ""
+        if (rank && tied) {
+            rankString = `T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;
+        } else if (rank) {
+            rankString = `#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`
+        } else {
+            rankString = "N/A"
+        }
+
+        return `<td class="${generateColorRampValue(rank, 134) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
+    }
+
+    function generateColorRampValue(input, max) {
+        if (!input) {
+            return null;
+        }
+        let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+        let step = Math.round(value / 0.1)
+        let clampedStep = Math.min(Math.max(step, 0), 9)
+
+        let hex = null
+        if (clampedStep == 4 || clampedStep == 5) {
+            return null
+        } else {
+            return `hulk-bg-level-${clampedStep}`
+        }
+    }
+
+    function formatYardline(yardsToGoal) {
+        let prefix = (yardsToGoal >= 50) ? "Own" : "Opp"
+        let printedVal = (yardsToGoal >= 50) ? (100 - parseFloat(yardsToGoal)) : yardsToGoal
+        return `${prefix} ${roundNumber(printedVal, 2, 0)}`;
+    }
+
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+
+    function produceMatchupRow(title, awayBreakdown, homeBreakdown, awaySideOfBall, category, statKey) {
+        let homeSideOfBall = (awaySideOfBall == "offensive") ? "defensive" : "offensive"
+        let homeRank = homeBreakdown[homeSideOfBall][category][`${statKey}Rank`]
+        let awayRank = awayBreakdown[awaySideOfBall][category][`${statKey}Rank`]
+
+        var homeValue = homeBreakdown[homeSideOfBall][category][statKey]
+        var awayValue = awayBreakdown[awaySideOfBall][category][statKey]
+
+        if (['epaPerPlay', "thirdDownDistance", "earlyDownEPAPerPlay"].includes(statKey)) {
+            homeValue = roundNumber(homeValue, 2, 2)
+            awayValue = roundNumber(awayValue, 2, 2)
+        } else if (['successRate', "thirdDownSuccessRate", "availableYardsPct", "lateDownSuccessRate"].includes(statKey)) {
+            homeValue = `${roundNumber(homeValue * 100, 2, 1)}%`
+            awayValue = `${roundNumber(awayValue * 100, 2, 1)}%`
+        } else if (statKey == "startingFP") {
+            homeValue = formatYardline(homeValue)
+            awayValue = formatYardline(awayValue)
+        }
+
+        return `
+        <tr>
+            ${produceRankHtml(awayRank, "", "width: 10% !important;")}
+            <td class="text-center" style="width: 20% !important;" >${awayValue || "N/A"}</td>
+            <td class="text-center" style="width: 40% !important;">${title}</td>
+            <td class="text-center" style="width: 20% !important;" >${homeValue || "N/A"}</td>
+            ${produceRankHtml(homeRank, "", "width: 10% !important;")}
+        </tr>
+        `
+    }
+
+    function produceTeamSector(team, breakdown) {
+        return `
+        <div class="col-md-12 ms-sm-auto col-lg-3">
+            <h4 class="text-center"><a href="/cfb/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a> ${team.nickname}</h4>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="w-50" style="text-align: left;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-left">EPA/Play</td>
+                            <td class="text-center">${roundNumber(breakdown["differential"]["overall"]["epaPerPlay"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["differential"]["overall"]["epaPerPlayRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Offense</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["passing"]["epaPerPlay"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["offensive"]["passing"]["epaPerPlayRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Defense</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["passing"]["epaPerPlay"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["defensive"]["passing"]["epaPerPlayRank"])}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="w-50" style="text-align: left;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Offense Success</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["offensive"]["overall"]["successRateRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Pass</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["passing"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["offensive"]["passing"]["successRateRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Rush</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["rushing"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["offensive"]["rushing"]["successRateRank"])}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="w-50" style="text-align: left;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Defense Success</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["defensive"]["overall"]["successRateRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Pass</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["passing"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["defensive"]["passing"]["successRateRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Rush</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["rushing"]["successRate"] * 100, 2, 1)}%</td>
+                            ${produceRankHtml(breakdown["defensive"]["rushing"]["successRateRank"])}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="w-50" style="text-align: left;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Net EPA/Drive</td>
+                            <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["epaPerDrive"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["differential"]["overall"]["epaPerDriveRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Offense</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["epaPerDrive"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["offensive"]["overall"]["epaPerDriveRank"])}
+                        </tr>
+                        <tr>
+                            <td class="ps-4">Defense</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["epaPerDrive"], 2, 2)}</td>
+                            ${produceRankHtml(breakdown["defensive"]["overall"]["epaPerDriveRank"])}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="w-50" style="text-align: left;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                            <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="w-50">Net Field Position</td>
+                            <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["startingFP"], 2, 1)}</td>
+                            ${produceRankHtml(breakdown["differential"]["overall"]["startingFPRank"])}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    }
+%>
+
+
+<div class="container mb-3">
+    <div class="row">
+        <%- produceTeamSector(awayTeam, breakdown[0]) %>
+        <div class="col-md-12 ms-sm-auto col-lg-6">
+            <h2 class="text-center"><img class="img-fluid team-logo-<%= awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= awayTeam.id %>.png" alt="ESPN team id <%= awayTeam.id %>"/> Offense vs <img class="img-fluid team-logo-<%= homeTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= homeTeam.id %>.png" alt="ESPN team id <%= homeTeam.id %>"/> Defense</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 40% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%- produceMatchupRow("EPA/Pass", breakdown[0], breakdown[1], "offensive", "passing", "epaPerPlay") %>
+                        <%- produceMatchupRow("EPA/Rush", breakdown[0], breakdown[1], "offensive", "rushing", "epaPerPlay") %>
+                        <%- produceMatchupRow("Available Yards %", breakdown[0], breakdown[1], "offensive", "overall", "availableYardsPct") %>
+                        <%- produceMatchupRow("Starting Field Position", breakdown[0], breakdown[1], "offensive", "overall", "startingFP") %>
+                        <%- produceMatchupRow("Early Downs EPA/Play", breakdown[0], breakdown[1], "offensive", "overall", "earlyDownEPAPerPlay") %>
+                        <%- produceMatchupRow("3rd/4th Down Success", breakdown[0], breakdown[1], "offensive", "overall", "lateDownSuccessRate") %>
+                        <%- produceMatchupRow("Avg 3rd Down Distance", breakdown[0], breakdown[1], "offensive", "overall", "thirdDownDistance") %>
+                    </tbody>
+                </table>
+            </div>
+            <h2 class="text-center"><img class="img-fluid team-logo-<%= awayTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= awayTeam.id %>.png" alt="ESPN team id <%= awayTeam.id %>"/> Defense vs <img class="img-fluid team-logo-<%= homeTeam.id %>" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= homeTeam.id %>.png" alt="ESPN team id <%= homeTeam.id %>"/> Offense</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 40% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%- produceMatchupRow("EPA/Pass", breakdown[0], breakdown[1], "defensive", "passing", "epaPerPlay") %>
+                        <%- produceMatchupRow("EPA/Rush", breakdown[0], breakdown[1], "defensive", "rushing", "epaPerPlay") %>
+                        <%- produceMatchupRow("Available Yards %", breakdown[0], breakdown[1], "defensive", "overall", "availableYardsPct") %>
+                        <%- produceMatchupRow("Starting FP", breakdown[0], breakdown[1], "defensive", "overall", "startingFP") %>
+                        <%- produceMatchupRow("Early Downs EPA/Play", breakdown[0], breakdown[1], "defensive", "overall", "earlyDownEPAPerPlay") %>
+                        <%- produceMatchupRow("3rd Down Success", breakdown[0], breakdown[1], "defensive", "overall", "thirdDownSuccessRate") %>
+                        <%- produceMatchupRow("Avg 3rd Down Distance", breakdown[0], breakdown[1], "defensive", "overall", "thirdDownDistance") %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <%- produceTeamSector(homeTeam, breakdown[1]) %>
+    </div>
+    <div class="row mb-3">
+        <div class="col-12">
+            <p class="m-0 text-muted text-small"><small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</a></small></p>
+            <p class="m-0 text-muted text-small"><small>This feature is in beta. Please report any issues <a href="https://github.com/saiemgilani/game-on-paper-app/issues">here</a>. Click <a href="/cfb/game/<%= game_id %>?preview=full">here</a> to view the full preview page.</small></p>
+        </div>
+    </div>
+</div>
