@@ -106,13 +106,7 @@ function cleanName(team) {
                 <div class="col-8 text-center">
                     <div class="game-context">
                         <h2><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
-                        <% if (gameData.gameInfo.status.type.name.includes("STATUS_SCHEDULED")) { %>
-                        <span class="game-date"><%= gameData.gameInfo.date %></span>
-                        <% } else if (gameData.gameInfo.status.type.completed == true) { %>
-                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span> <span class="game-date"></span>
-                        <% } else { %>
-                        <span class="game-status"><%= gameData.gameInfo.status.type.detail %></span>
-                        <% } %>
+                        <p class="text-small" id="game-date"></p>
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
@@ -283,6 +277,31 @@ function cleanName(team) {
     <% } %>
     <%- include('../../partials/footer') %>
     <%- include('../../partials/scripts') %>
+    <script>
+        const DateTime = luxon.DateTime;
+        const networkMappings = {
+            "FOX" : 'https://www.foxsports.com/live',
+            "FS1" : 'https://www.foxsports.com/live/fs1',
+            "BTN" : 'https://www.foxsports.com/live/btn',
+            "NBC" : 'https://www.nbcsports.com/live',
+            "Peacock" : 'https://www.peacocktv.com',
+            "CBSSN" : 'https://www.cbssports.com/cbs-sports-network/',
+            "CBS" : 'https://www.cbssports.com/live/',
+            'PAC12' : 'https://pac-12.com/live',
+            'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live',
+            'CW NETWORK' : "https://www.cwtv.com/sports/"
+        }
+
+        var gameData = <%- JSON.stringify(gameData) %>;
+        // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
+        var statusDetail = gameData.gameInfo.status.type.detail;
+        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay") || statusDetail.includes("Scheduled")) {
+            document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+        } else {
+            document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
+            setTimeout("location.reload(true);", 60 * 1000);
+        }
+    </script>
     <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
     <script src="/assets/js/date-replace.js" crossorigin="anonymous"></script>

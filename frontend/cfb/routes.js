@@ -342,13 +342,13 @@ router.route('/game/:gameId')
             const awayKey = cleanAbbreviation(awayTeam.abbreviation);
 
             // if it's in the future, send to pregame template
-            if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
+            if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED' || (req.query.preview_mode && (req.query.preview_mode == "old" || req.query.preview_mode == "new"))) {
                 const homeBreakdown = await retrieveTeamData(season, homeKey, 'overall');
                 const awayBreakdown = await retrieveTeamData(season, awayKey, 'overall');
                 return res.render('pages/cfb/pregame', {
                     season,
                     week,
-                    view_full: (req.query.preview == "full"),
+                    view_full: (req.query.preview_mode == "old"),
                     gameData: {
                         gameInfo: game,
                         matchup: {
