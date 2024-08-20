@@ -79,7 +79,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Push updated docker-compose override file
-        uses: Creepios/sftp-action@v1.0.3
+        uses: vtisweden/sftp-action@v1.0.6
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
