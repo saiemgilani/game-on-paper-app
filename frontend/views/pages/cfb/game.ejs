@@ -1347,8 +1347,9 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
         var gameData = <%- JSON.stringify(gameData) %>;
         // document.body.querySelector("#content").innerHTML = "<pre>" + JSON.stringify(gameData.plays, null, 2) +  "</pre>";
         var statusDetail = gameData.gameInfo.status.type.detail;
-        if (gameData.gameInfo.status.type.completed == true || statusDetail.includes("Cancel") || statusDetail.includes("Postpone") || statusDetail.includes("Delay")) {
-            document.body.querySelector("#game-date").innerText = statusDetail + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
+        var statusDescription = gameData.gameInfo.status.type.description ?? "Scheduled";
+        if (gameData.gameInfo.status.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay")) {
+            document.body.querySelector("#game-date").innerText = statusDescription + " - " + DateTime.fromISO(gameData.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
         } else {
             document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             setTimeout("location.reload(true);", 60 * 1000);
