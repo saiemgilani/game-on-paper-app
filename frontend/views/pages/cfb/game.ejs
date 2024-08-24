@@ -1258,7 +1258,8 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
             </main>
             <main class="col-lg-6 ms-sm-auto px-md-4">
                 <%
-                    var currentDrives = gameData.drives.current || [];
+                    var curDrive = gameData.drives.current
+                    var currentDrives = (curDrive != null) ? [curDrive] : [];
                     var gameDrives = [...gameData.drives.previous, ...currentDrives]
                     var subTitle = ""
                     if (gameData.gameInfo.status.type.completed != true) {
