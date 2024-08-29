@@ -120,12 +120,12 @@ function cleanName(team) {
                         "CBS" : 'https://www.cbssports.com/live/',
                         'PAC12' : 'https://pac-12.com/live',
                         'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live',
-                        'CW NETWORK' : "https://www.cwtv.com/sports/"
+                        'CW NETWORK' : "https://www.cwtv.com/sports/",
+                        "THE CW NETWORK" : "https://www.cwtv.com/sports/",
                     }
 
-
                     let networkName = gameData.gameInfo.broadcasts.length > 0 ? gameData.gameInfo.broadcasts[0].media.shortName : null;
-                    if (networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('ACCN') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
+                    if (networkName != null && (networkName.includes('ESPN') || networkName.includes('LHN') || networkName.includes('Longhorn Network') || networkName.includes('ACCN') || networkName.includes('ACC Network') || networkName.includes('SEC Network') || networkName.includes('SECN') || networkName.includes('BIG12') || networkName.includes('ABC'))) { %>
                         <a class="btn btn-sm btn-outline-secondary" href="https://www.espn.com/watch/player/_/eventCalendarId/<%= gameData.gameInfo.id %>" target="_blank">Watch (<%= networkName %>)</a>
                     <% } else if (networkName != null && networkMappings[networkName]) { %>
                         <a class="btn btn-sm btn-outline-secondary" href="<%= networkMappings[networkName] %>" target="_blank">Watch (<%= networkName %>)</a>
