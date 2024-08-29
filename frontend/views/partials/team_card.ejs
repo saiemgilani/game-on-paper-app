@@ -77,7 +77,7 @@ function cleanLocation() {
                 <thead>
                     <th class="text-center" style="width: 33%"><%= season %> Record</th>
                     <th class="text-center" style="width: 33%"><%= season %> Conf Finish</th>
-                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>EPA/Play</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>EPA/Play</th>
                 </thead>
                 <tbody>
                     <tr>
@@ -97,9 +97,9 @@ function cleanLocation() {
                     </small>
                 </caption>
                 <thead>
-                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Yards/Play</th>
-                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>AY%</th>
-                    <th class="text-center" style="width: 33%"><%= (season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Success %</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Yards/Play</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>AY%</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Success %</th>
                 </thead>
                 <tbody>
                     <tr>
