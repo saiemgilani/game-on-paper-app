@@ -73,7 +73,7 @@ const CONFERENCE_MAP = {
             g.awayTeam = g.competitions[0].competitors[1];
             g.situation = g.competitions[0].situation;
             
-            if (g.status.type.completed == true || parseInt(g.status.period) < 1) {
+            if (g.status.type.completed == true || parseInt(g.status.period) < 1) || g.status.type.name.includes("STATUS_SCHEDULED") || g.status.type.detail.includes("Cancel") || g.status.type.detail.includes("Postpone")) {
                 return SPICE_LEVEL.BELL;
             }
 
