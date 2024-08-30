@@ -21,11 +21,13 @@ function formatDown(down, playType) {
         return down
     }
 }
-function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev) {
+function formatYardline(yardsToEndzone, offenseAbbrev, defenseAbbrev, playType) {
     if (yardsToEndzone == 50) {
         return "50";
     } else if (yardsToEndzone < 50) {
         return `${defenseAbbrev} ${yardsToEndzone}`
+    } else if (playType?.includes("Kickoff") ?? false) {
+        return `${defenseAbbrev} ${100 - yardsToEndzone}`
     } else {
         return `${offenseAbbrev} ${100 - yardsToEndzone}`
     }
@@ -239,7 +241,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     <tr ${collapsibleText} class="accordion-toggle${classText}">
         <td style="text-align: left;">${period}</td>
         <td style="text-align: center;"><a href="/cfb/year/${play.season}/team/${play.pos_team}"><img class="img-fluid team-logo-${play.pos_team}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></a></td>
-        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${play.text}${scoreText}</td>
+        <td style="text-align: left;">(${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }) ${play.text}${scoreText}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
         <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
         <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
@@ -256,7 +258,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
             <div class="ms-sm-auto col-lg-6">
                 <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
                 <p style="text-align: center;"><strong>Yards to End Zone (Before -> After):</strong> ${play.start.yardsToEndzone} -> ${play.end.yardsToEndzone}</p>
-                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, cleanAbbreviation(offense),cleanAbbreviation(defense))}</p>
+                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, cleanAbbreviation(offense),cleanAbbreviation(defense), play.type.text)}</p>
                 <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> ${roundNumber(parseFloat(play.expectedPoints.after), 2, 2)} - ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)} = ${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</p>
                 <p style="text-align: center;"><strong>Score Difference (Before):</strong> ${play.start.pos_score_diff} (${roundNumber(parseFloat(play.start.ExpScoreDiff), 2, 2)})</p>
                 <p style="text-align: center;"><strong>Score Difference (End):</strong> ${play.end.pos_score_diff} (${roundNumber(parseFloat(play.end.ExpScoreDiff), 2, 2)})</p>
@@ -357,8 +359,8 @@ function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback
             </div>
             <p class="m-0"><strong>EPA/Play:</strong> <span>${roundNumber(parseFloat(avgEPA), 2, 2)}</span></p>
             <p class="m-0"><strong>Success Rate:</strong> <span>${roundNumber(parseFloat(avgSR) * 100, 3, 1)}%</span></p>
-            <p class="m-0"><strong>Biggest Play:</strong> <span>(${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${maxEPA.text} - EPA: ${roundNumber(parseFloat(maxEPA.EPA), 2, 2)}</span></p>
-            <p class="m-0"><strong>Most Important Play:</strong> <span>(${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense)) }) ${maxWPA.text} - WPA: ${roundNumber(parseFloat(maxWPA.winProbability.added) * 100, 3, 1)}%</span></p>
+            <p class="m-0"><strong>Biggest Play:</strong> <span>(${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }) ${maxEPA.text} - EPA: ${roundNumber(parseFloat(maxEPA.EPA), 2, 2)}</span></p>
+            <p class="m-0"><strong>Most Important Play:</strong> <span>(${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }) ${maxWPA.text} - WPA: ${roundNumber(parseFloat(maxWPA.winProbability.added) * 100, 3, 1)}%</span></p>
             `;
         }
         baseRow += `</div>
