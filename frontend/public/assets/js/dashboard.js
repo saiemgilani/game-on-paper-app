@@ -1,3 +1,8 @@
+const specialImages = {
+    "61": "/assets/img/ennui-uga.png"
+};
+
+
 function calculateHalfSecondsRemaining(period, time) {
   if (period == null) {
       return 0
@@ -371,24 +376,26 @@ if (gameData.plays.length > 0) {
         initialize: function(chart, datasetIndex) {                     // override initialize too to preload the image, the image doesn't need to be outside as it is only used by this chart
             Chart.controllers.line.prototype.initialize.call(this, chart, datasetIndex);
             var homeImage = new Image();
+            var homeId = `${homeTeam.id}`;
             homeImage.setAttribute('crossOrigin','anonymous');
-            // if (homeTeam.id == 153) {
-            //     homeImage.src = `/assets/img/crying-jordan.png`;
-            // } else {
-            homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
-            // }
+            if (Object.keys(specialImages).includes(homeId)) {
+                homeImage.src = specialImages[homeId];
+            } else {
+                homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+            }
             homeImage.onload = () => {                                            // when the image loads
                 this.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                 chart.render();                                                 // and force re-render to include it
             };
 
             var awayImage = new Image();
+            var awayId = `${awayTeam.id}`;
             awayImage.setAttribute('crossOrigin','anonymous');
-            // if (awayTeam.id == 153) {
-            //     awayImage.src = `/assets/img/crying-jordan.png`;
-            // } else {
-            awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
-            // }
+            if (Object.keys(specialImages).includes(awayId)) {
+                awayImage.src = specialImages[awayId];
+            } else {
+                awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+            }
             awayImage.onload = () => {                                            // when the image loads
                 this.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                 chart.render();                                                 // and force re-render to include it
