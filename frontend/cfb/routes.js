@@ -325,7 +325,7 @@ const QUARANTINE_LIST = [
     // 2024 WK 1 - ESPN not providing statYardage on completed passes for these games
     // '401634299',
     // '401628455',
-    // '401628329',
+    '401628329',
     // '401634301',
     // '401634212',
     // '401628456',
