@@ -322,7 +322,8 @@ function cleanAbbreviation(abbrev) {
 const QUARANTINE_LIST = [
     '401411157',
     '401403861',
-    '401634299'
+    '401634299',
+    '401628455'
 ]
 
 router.route('/game/:gameId')
