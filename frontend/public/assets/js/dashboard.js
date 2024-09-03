@@ -1,5 +1,6 @@
 const specialImages = {
-    "61": "/assets/img/ennui-uga.png"
+    "61": "/assets/img/ennui-uga.png",
+    "52": "/assets/img/fsu-face-52.png",
 };
 
 
