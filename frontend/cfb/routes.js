@@ -427,6 +427,9 @@ router.route('/game/:gameId')
 router.route('/year/:year/team/:teamId')
     .get(async function(req, res, next) {
         try {
+            if (req.params.year == 2024) { // remove after week 2
+                return res.redirect(`/cfb/year/2023/team/${req.params.teamId}`);
+            }
             let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
