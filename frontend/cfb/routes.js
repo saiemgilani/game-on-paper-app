@@ -134,21 +134,24 @@ async function retrievePercentiles(year) {
     }
 }
 
+async function retrieveRemoteData(payload) {
+    const response = await axios({
+        method: 'POST',
+        url: `http://summary:3000/`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        data: new URLSearchParams(payload)
+    });
+    const content = response.data.results;
+    return content;
+}
 
 async function retrieveRemoteLeagueData(year, type) {
-    try {
-        const response = await axios({
-            method: 'POST',
-            url: `http://summary:3000/`,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: new URLSearchParams({
-                year,
-                type: type
-            })
-        });
-        
+    try {        
         // update redis cache
-        const content = response.data.results;
+        const content = await retrieveRemoteData({
+            year,
+            type: type
+        });
         const key = `${year}-${type}`;
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
@@ -184,19 +187,12 @@ async function retrieveLeagueData(year, type) {
 
 async function retrieveRemoteTeamData(year, abbreviation, type) {
     try {
-        const response = await axios({
-            method: 'POST',
-            url: `http://summary:3000/`,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: new URLSearchParams({
-                year,
-                team: abbreviation,
-                type: type
-            })
-        });
-        
         // update redis cache
-        const content = response.data.results;
+        const content = await retrieveRemoteData({
+            year,
+            team: abbreviation,
+            type: type
+        });
         const key = `${year}-${abbreviation}-${type}`;
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
@@ -227,6 +223,31 @@ async function retrieveTeamData(year, abbreviation, type) {
     } catch (err) {
         console.log(err)
         return await retrieveRemoteTeamData(year, abbreviation, type);
+    }
+}
+
+async function retrieveRemoteLastUpdated() {
+    const response = await axios({
+        method: 'GET',
+        url: `http://summary:3000/updated`
+    });
+    const content = response.data;
+    await redisClient.set(`summary-last-updated`, JSON.stringify(content))
+    await redisClient.expire(`summary-last-updated`, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+    return content.last_updated;
+}
+
+async function retrieveLastUpdated() {
+    try {
+        const key = `summary-last-updated`;
+        const content = await redisClient.get(key);
+        if (!content) {
+            throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
+        }
+        return JSON.parse(content).last_updated;
+    } catch (err) {
+        console.log(err)
+        return await retrieveRemoteLastUpdated();
     }
 }
 
@@ -459,6 +480,52 @@ router.route('/team/:teamId')
     return res.redirect(`/cfb/year/2024/team/${req.params.teamId}`);
 })
 
+router.route('/year/:year/teams')
+    .get(async function(req, res, next) {
+        return res.redirect(`/cfb/year/${req.params.year}/teams/differential`);
+    })
+
+function retrieveValue(dictionary, key) {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}
+
+router.route('/year/:year/teams/:type')
+    .get(async function(req, res, next) {
+        try {
+            const type = req.params.type ?? "differential";
+            const asc = (type == "defensive") // adjust for defensive stats where it makes sense
+            const sortKey = req.query.sort ?? `overall.epaPerPlay`
+            const baseData = await retrieveLeagueData(req.params.year, "overall") 
+
+            let content = baseData.map(t => {
+                let target = t[type]
+                return {
+                    teamId: t.teamId,
+                    team: t.team,
+                    ...target
+                }
+            })
+            content = content.sort((a, b) => {
+                const compVal = retrieveValue(a, sortKey) - retrieveValue(b, sortKey)
+                return asc ? compVal : (-1 * compVal)
+            })
+            // return res.json(content);
+            return res.render("pages/cfb/leaderboard", {
+                teams: content,
+                type,
+                season: req.params.year,
+                sort: sortKey,
+                last_updated: await retrieveLastUpdated()
+            })
+        } catch(err) {
+            return next(err)
+        }
+    })
 
 router.route('/glossary')
 .get(function(req, res, next) {

@@ -6,7 +6,7 @@
             </div>
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
-                <li><a href="/" class="nav-link px-2 link-secondary">Scores</a></li>
+                <li><a href="/" class="nav-link px-2 link-secondary">Scoreboard</a></li>
                 <li class="nav-item dropdown">
                     <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Seasons
@@ -18,7 +18,7 @@
                     let yrRange = range(2014, 2024);
                     %>
                     <% yrRange.forEach(yr => { %>
-                      <li><a class="dropdown-item" href="/cfb/year/<%= yr %>"><%= yr %></a></li>
+                      <li><a class="dropdown-item" href="/cfb/year/<%= yr %>/teams"><%= yr %></a></li>
                     <% }); %>
                     </ul>
                 </li>

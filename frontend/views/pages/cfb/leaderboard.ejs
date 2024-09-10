@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<%
+
+function generateMarginalString(input, power10, fixed) {
+    if (input >= 0 && type == "differential") {
+        return `+${roundNumber(input, power10, fixed)}`;
+    } else {
+        return roundNumber(input, power10, fixed);
+    }
+}
+
+function generateColorRampValue(input, max) {
+    if (!input) {
+        return null;
+    }
+    let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+    let step = Math.round(value / 0.1)
+    let clampedStep = Math.min(Math.max(step, 0), 9)
+
+    let hex = null
+    if (clampedStep == 4 || clampedStep == 5) {
+        return null
+    } else {
+        return `hulk-bg-level-${clampedStep}`
+    }
+}
+
+function retrieveValue(dictionary, key) {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}
+
+const CLEAN_LIST = [61]
+function cleanField(team, field) {
+    if (CLEAN_LIST.includes(parseInt(team.teamId))) {
+        return team[field].toLocaleLowerCase()
+    }
+    return team[field]
+}
+
+function roundNumber(value, power10, fixed) {
+    if (!value && value != 0) {
+        return "N/A"
+    }
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+function cleanRank(rank) {
+    let tied = rank?.includes(".5")
+    let rankString = ""
+    if (rank && tied) {
+        rankString = `T-${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;
+    } else if (rank) {
+        rankString = `${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`
+    } else {
+        rankString = "N/A"
+    }
+    return rankString
+}
+
+%>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/dashboard.css" rel="stylesheet">
+        <link href="/assets/css/blog.css" rel="stylesheet">
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
+        <%
+            let title = `Teams | ${season} | Game on Paper`
+            let subtitle = `Teams during the ${season} season`;
+        %>
+
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="referrer" content="origin-when-cross-origin">
+        <link rel="canonical" href="https://gameonpaper.com/cfb/year/<%= season %>/teams">
+        <title><%= title %></title>
+        <meta name="description" content="Advanced stats for <%= subtitle %>">
+
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:url" content="https://gameonpaper.com/cfb/year/<%= season %>/teams">
+        <meta property="og:title" content="<%= title %>">
+        <meta property="og:description" content="Advanced stats for <%= subtitle %>">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:type" content="website">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:url" content="https://gameonpaper.com/cfb/year/<%= season %>/teams">
+        <meta name="twitter:title" content="<%= title %>">
+        <meta name="twitter:description" content="<%= subtitle %>">
+        <meta name="twitter:card" content="summary">
+        <meta name="title" content="<%= title %>">
+        <meta name="medium" content="website">
+        <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <style>
+            @media (prefers-color-scheme: dark) {
+            <% teams.forEach(t => {  %>
+                img.team-logo-<%= t.teamId %> {
+                    content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= t.teamId %>.png')
+                }
+            <% }); %>
+            }
+            /* img.team-logo-153 {
+                content: url('/assets/img/crying-jordan.png');
+            }   */
+            img.team-logo-61 {
+                content: url('/assets/img/ennui-uga.png');
+                /* Sourced from the Moon Crew Discord server */
+            }
+            img.team-logo-52 {
+                content: url('/assets/img/fsu-face-52.png');
+            }
+        </style>
+    </head>
+    <body>
+        <%- include('../../partials/nav-header') %>
+        <%
+            var leaderTitle = "Statistics";
+            if (type == "differential") {
+                leaderTitle = "Net Statistics" 
+            } else if (type == "offensive") {
+                leaderTitle = "Offensive Statistics" 
+            } else if (type == "defensive") {
+                leaderTitle = "Defensive Statistics"
+            } else {
+                leaderTitle = type
+            }
+        %>
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item" aria-current="page">Seasons</li>
+                  <li class="breadcrumb-item" aria-current="page"><a href="/cfb/year/<%= season %>"><%= season %></a></li>
+                  <li class="breadcrumb-item" aria-current="page"><a href="/cfb/year/<%= season %>/<%= type %>"><%= leaderTitle %></a></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-6 col-xs-12 mb-xs-3">
+                    <h2><%= leaderTitle %> <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper on Twitter!">(Beta)</abbr></small></span></h2>
+                    <p class="m-0 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ slightly from ESPN. Note: metrics are <strong>not</strong> adjusted for quality of opponent.</p>
+                    <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
+                </div>
+                <div class="ms-auto col-lg-6 col-xs-12">
+                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                        <div class="row">
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="typeSelect">
+                                    <option value="-1">Choose Type...</option>
+                                    <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
+                                    <option value="offensive" <%= (type == "offensive") ? "selected": "" %>>Offensive</option>
+                                    <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
+                                </select>
+                            </div>
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="sortSelect">
+                                    <option value="-1">Choose Sort...</option>
+                                    <optgroup label="Overall">
+                                        <option value="overall.epaPerPlay" <%= (sort == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
+                                        <option value="overall.yardsPerPlay" <%= (sort == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
+                                        <option value="overall.successRate" <%= (sort == "overall.successRate") ? "selected": "" %>>SR%</option>
+                                    </optgroup>
+                                    <% if (["offensive", "defensive"].includes(type)) { %>
+                                        <optgroup label="Passing">
+                                            <option value="passing.epaPerPlay" <%= (sort == "passing.epaPerPlay") ? "selected": "" %>>EPA/Dropback</option>
+                                            <option value="passing.yardsPerPlay" <%= (sort == "passing.yardsPerPlay") ? "selected": "" %>>Yards/Dropback</option>
+                                            <option value="passing.successRate" <%= (sort == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
+                                        </optgroup>
+                                        <optgroup label="Rushing">
+                                            <option value="rushing.epaPerPlay" <%= (sort == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
+                                            <option value="rushing.yardsPerPlay" <%= (sort == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
+                                            <option value="rushing.successRate" <%= (sort == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
+                                        </optgroup>
+                                    <% } %>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="table-responsive"> <!-- team leaderboards -->
+                        <table class="table table-sm table-responsive">
+                            <%
+                                var arrowType = '<i class="bi bi-arrow-down"></i>';
+                                if (type == "defensive") {
+                                    arrowType = '<i class="bi bi-arrow-up"></i>'
+                                }
+                            %>
+                            <thead>
+                                <th class="text-right" colspan="1">Rk</th>
+                                <th class="text-left" colspan="1">Team</th>
+                                <th class="text-center" colspan="1">EPA/Play <%- (sort == "overall.epaPerPlay") ? arrowType : "" %></th>
+                                <th class="text-center" colspan="1">Yards/Play <%- (sort == "overall.yardsPerPlay") ? arrowType : "" %></th>
+                                <th class="text-center" colspan="1">SR% <%- (sort == "overall.successRate") ? arrowType : "" %></th>
+                                <% if (["offensive", "defensive"].includes(type)) { %>
+                                    <th class="text-center" colspan="1"><abbr title="DB: Dropbacks, includes pass attempts and sacks.">EPA/DB</abbr> <%- (sort == "passing.epaPerPlay") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1"><abbr title="DB: Dropbacks, includes pass attempts and sacks.">Yards/DB</abbr> <%- (sort == "passing.yardsPerPlay") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">Pass SR% <%- (sort == "passing.successRate") ? arrowType : "" %></th>
+
+                                    <th class="text-center" colspan="1">EPA/Rush <%- (sort == "rushing.epaPerPlay") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">Yards/Rush <%- (sort == "rushing.yardsPerPlay") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">Rush SR% <%- (sort == "rushing.successRate") ? arrowType : "" %></th>
+                                <% } %>
+                            </thead>
+                            <tbody>
+                                <% var sortPrefix = sort.split(".")[0] %>
+                                <% for (var i = 0; i < teams.length; i++) { %>
+                                    <% const t = teams[i]; %>
+                                    <tr>
+                                        <td class="text-right" colspan="1"><%= cleanRank(retrieveValue(t, `${sort}Rank`)) %></td>
+                                        <td class="text-left" colspan="1"><a href="/cfb/year/<%= season %>/team/<%= t.teamId %>"><img class="img-fluid team-logo-<%= t.teamId %> me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= t.teamId %>.png" alt="ESPN team id <%= t.teamId %>"/><strong><%= cleanField(t, "team") %></strong></a></td>
+                                        <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.epaPerPlay`), 2, 2)  %></td>
+                                        <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.yardsPerPlay`), 2, 2)  %></td>
+                                        <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.successRate`) * 100, 2, 1)  %>%</td>
+
+                                        <% if (["offensive", "defensive"].includes(type)) { %>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.epaPerPlay`), 2, 2)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.yardsPerPlay`), 2, 2)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.successRate`) * 100, 2, 1)  %>%</td>
+        
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.epaPerPlay`), 2, 2)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.yardsPerPlay`), 2, 2)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.successRate`) * 100, 2, 1)  %>%</td>
+        
+                                        <% } %>
+
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('../../partials/footer') %>
+        <%- include('../../partials/scripts') %>
+        <script src="/assets/js/date-replace.js"></script>
+        <script> 
+            document.getElementById("sortSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var sortKey = document.getElementById("sortSelect").value;
+                if (sortKey != "-1" && sortKey != -1) {
+                    const cleanWindowLocation = window.location.href.split("?")[0]
+                    window.location = cleanWindowLocation + `?sort=${sortKey}`;
+                }
+            });
+
+            document.getElementById("typeSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var typeKey = document.getElementById("typeSelect").value;
+                if (typeKey != "-1" && typeKey != -1) {
+                    const cleanWindowLocation = window.location.href.replace("<%= type %>", typeKey)
+                    window.location = cleanWindowLocation;
+                }
+            });
+        </script>
+    </body>
+</html>
