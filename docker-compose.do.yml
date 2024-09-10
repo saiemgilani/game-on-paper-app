@@ -1,4 +1,3 @@
-version: "3.7"
 services:
   redis:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-redis:latest

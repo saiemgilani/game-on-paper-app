@@ -384,8 +384,8 @@ router.route('/game/:gameId')
                     let percentiles = [];
                     try {
                         const inputSeason = data["header"]["season"]["year"];
-                        const season = Math.min(Math.max(inputSeason, 2014), 2023);
-                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2023`)
+                        const season = Math.min(Math.max(inputSeason, 2014), 2024);
+                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2024`)
                         percentiles = await retrievePercentiles(season);
                     } catch (e) {
                         console.log(`error while retrieving league percentiles: ${e}`)
@@ -427,9 +427,9 @@ router.route('/game/:gameId')
 router.route('/year/:year/team/:teamId')
     .get(async function(req, res, next) {
         try {
-            if (req.params.year == 2024) { // remove after week 2
-                return res.redirect(`/cfb/year/2023/team/${req.params.teamId}`);
-            }
+            // if (req.params.year == 2024) { // remove after week 2
+            //     return res.redirect(`/cfb/year/2023/team/${req.params.teamId}`);
+            // }
             let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
@@ -456,7 +456,7 @@ router.route('/year/:year/team/:teamId')
 
 router.route('/team/:teamId')
 .get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2023/team/${req.params.teamId}`);
+    return res.redirect(`/cfb/year/2024/team/${req.params.teamId}`);
 })
 
 
