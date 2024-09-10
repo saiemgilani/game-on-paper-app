@@ -181,6 +181,9 @@ function cleanRank(rank) {
                                             <option value="rushing.yardsPerPlay" <%= (sort == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
                                             <option value="rushing.successRate" <%= (sort == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
                                         </optgroup>
+                                        <optgroup label="Other">
+                                            <option value="overall.havocRate" <%= (sort == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
+                                        </optgroup>
                                     <% } %>
                                 </select>
                             </div>
@@ -194,7 +197,7 @@ function cleanRank(rank) {
                         <table class="table table-sm table-responsive">
                             <%
                                 var arrowType = '<i class="bi bi-arrow-down"></i>';
-                                if (type == "defensive") {
+                                if ((type == "defensive" && sort != "overall.havocRate") || (type == "offensive" && sort == "overall.havocRate")) {
                                     arrowType = '<i class="bi bi-arrow-up"></i>'
                                 }
                             %>
@@ -212,6 +215,8 @@ function cleanRank(rank) {
                                     <th class="text-center" colspan="1">EPA/Rush <%- (sort == "rushing.epaPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards/Rush <%- (sort == "rushing.yardsPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Rush SR% <%- (sort == "rushing.successRate") ? arrowType : "" %></th>
+
+                                    <th class="text-center" colspan="1">Havoc % <%- (sort == "overall.havocRate") ? arrowType : "" %></th>
                                 <% } %>
                             </thead>
                             <tbody>
@@ -234,6 +239,7 @@ function cleanRank(rank) {
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.yardsPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.successRate`) * 100, 2, 1)  %>%</td>
         
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.havocRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.havocRate`) * 100, 2, 1)  %>%</td>
                                         <% } %>
 
                                     </tr>
@@ -264,7 +270,10 @@ function cleanRank(rank) {
 
                 var typeKey = document.getElementById("typeSelect").value;
                 if (typeKey != "-1" && typeKey != -1) {
-                    const cleanWindowLocation = window.location.href.replace("<%= type %>", typeKey)
+                    let cleanWindowLocation = window.location.href.replace("<%= type %>", typeKey)
+                    if (typeKey == "differential" && (!cleanWindowLocation.includes("overall") || cleanWindowLocation.includes("havocRate"))) {
+                        cleanWindowLocation = cleanWindowLocation.split("?")[0]
+                    }
                     window.location = cleanWindowLocation;
                 }
             });

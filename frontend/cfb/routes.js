@@ -498,8 +498,12 @@ router.route('/year/:year/teams/:type')
     .get(async function(req, res, next) {
         try {
             const type = req.params.type ?? "differential";
-            const asc = (type == "defensive") // adjust for defensive stats where it makes sense
-            const sortKey = req.query.sort ?? `overall.epaPerPlay`
+            let sortKey = req.query.sort ?? `overall.epaPerPlay`
+            // can't do passing/rushing/havoc differentials
+            if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
+                sortKey = `overall.epaPerPlay`
+            }
+            const asc = (type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
             const baseData = await retrieveLeagueData(req.params.year, "overall") 
 
             let content = baseData.map(t => {
