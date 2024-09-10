@@ -485,6 +485,11 @@ router.route('/teams')
         return res.redirect(`/cfb/year/2024/teams/differential`);
     })
 
+router.route('/teams/:type')
+    .get(async function(req, res, next) {
+        return res.redirect(`/cfb/year/2024/teams/${req.params.type}`);
+    })
+
 router.route('/year/:year/teams')
     .get(async function(req, res, next) {
         return res.redirect(`/cfb/year/${req.params.year}/teams/differential`);
