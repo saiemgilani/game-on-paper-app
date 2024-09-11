@@ -707,7 +707,7 @@ function geiGenerateColorRampValue(input) {
                                     let geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
                                 %>
                                 
-                                <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <span class="px-1 <%= geiPctl.ramp_class %>" title="<%= geiTitle %>"><%= geiVal.toFixed(2) %></span> |
+                                <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1 <%= geiPctl.ramp_class %>" title="<%= geiTitle %>"><%= geiVal.toFixed(2) %></span> |
                             <% } %>Odds: <%= printSpread() %>, O/U <%= roundNumber(parseFloat(gameData.overUnder), 2, 1) %>
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
