@@ -23,6 +23,15 @@ function cleanLocation() {
     return teamData.location
 }
 
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
 %>
     <head>
         <meta charset="utf-8">
@@ -107,6 +116,34 @@ function cleanLocation() {
                 </div>
             </div>
         </div>
+        <% if (breakdown.length > 0) { %>
+            <div class="container">
+                <!-- team radar -->
+                 <div id="profile" class="row mb-3">
+                    <div class="col-md-12 col-lg-12 px-md-4">
+                        <h2 id="profile" class="d-inline">Profile <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper on Twitter!">(Beta)</abbr></small></span> <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#profileContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                        <p class="text-muted text-small m-0">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+                        <div class="panel-group">
+                            <div class="panel panel-default">
+                                <div id="profileContent" class="panel-collapse show">
+                                    <div class="panel-body">
+                                        <div class="row mb-3">
+                                            <% const radarWidth = 400; %>
+                                            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                                                <canvas id="offensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
+                                            </div>
+                                            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                                                <canvas id="defensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        <% } %>
         <div class="container">
             <div id="breakdown" class="row mb-3">
                 <div class="col-md-12 col-lg-12 px-md-4">
@@ -354,6 +391,183 @@ function cleanLocation() {
             } else {
                 console.log("no game dates found")
             }
+        </script>
+        <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
+        <script>
+            <% let colorContent = (teamData.id == "59") ? teamData.alternateColor : teamData.color; %>
+            const teamColor = JSON.parse('<%- JSON.stringify(hexToRgb(colorContent)) %>')
+
+            const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
+
+
+            function generatePercentile(input, max = 134) {
+                if (!input) {
+                    return 0;
+                }
+                let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+                let step = Math.round(value * 100)
+                return step
+            }
+
+            function generateDataset(titleKey) {
+                const key = titleKey.toLocaleLowerCase()
+                const breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+                return {
+                    labels: [
+                        'EPA/Play',
+                        'Early Downs EPA/Play',
+                        'Late Downs SR%',
+                        'Avg Distance (3rd)',
+
+                        'Rush EPA/Play',
+                        'Stuff %',
+                        'Line Yards',
+                        'Opportunity %',
+
+                        'Explosive %',
+                        'Pass Expl %',
+                        'Rush Expl %',
+                        'Non-Expl EPA/Play',
+
+                        'Pass EPA/Play',
+                        'Yds/DB',
+                        'Pass SR%',
+                        'Havoc %'
+                    ],
+                    datasets: [{
+                        label: `<%= cleanLocation() %> <%= season %> ${titleKey} Profile`,
+                        data: [
+                            generatePercentile(breakdown[key].overall.epaPerPlayRank, 134), 
+                            generatePercentile(breakdown[key].overall.earlyDownEPAPerPlayRank, 134), 
+                            generatePercentile(breakdown[key].overall.lateDownSuccessRateRank, 134), 
+                            generatePercentile(breakdown[key].overall.thirdDownDistanceRank, 134), 
+                            generatePercentile(breakdown[key].rushing.epaPerPlayRank, 134), 
+                            generatePercentile(breakdown[key].rushing.stuffedPlayRateRank, 134),
+                            generatePercentile(breakdown[key].rushing.lineYardsRank, 134),
+                            generatePercentile(breakdown[key].rushing.opportunityRateRank, 134), 
+                            generatePercentile(breakdown[key].overall.explosiveRateRank, 134), 
+                            generatePercentile(breakdown[key].passing.explosiveRateRank, 134), 
+                            generatePercentile(breakdown[key].rushing.explosiveRateRank, 134), 
+                            generatePercentile(breakdown[key].overall.nonExplosiveEpaPerPlayRank, 134),
+                            generatePercentile(breakdown[key].passing.epaPerPlayRank, 134), 
+                            generatePercentile(breakdown[key].passing.yardsPerPlayRank, 134), 
+                            generatePercentile(breakdown[key].passing.successRateRank, 134), 
+                            generatePercentile(breakdown[key].overall.havocRateRank, 134), 
+                        ],
+                        fill: true,
+                        backgroundColor: `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, 0.2)`,
+                        borderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
+                        pointBackgroundColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`
+                    }]
+              };
+            }
+
+
+
+
+              function getCurrentViewport() {
+                // https://stackoverflow.com/a/8876069
+                    const width = Math.max(
+                        document.documentElement.clientWidth,
+                        window.innerWidth || 0
+                    )
+                    if (width <= 576) return 'xs'
+                    if (width <= 768) return 'sm'
+                    if (width <= 992) return 'md'
+                    if (width <= 1200) return 'lg'
+                    return 'xl'
+                }
+
+              Chart.plugins.register([
+                {
+                    afterDraw: (chart) => {
+                        let viewport = getCurrentViewport()
+                        if (viewport == "xl" || viewport == "lg") {
+                            let sizeWidth = chart.ctx.canvas.clientWidth;
+                            let sizeHeight = chart.ctx.canvas.clientHeight;
+                            let imgSize = 25.0;
+                
+                            chart.ctx.save()
+                            chart.ctx.textAlign = "right"
+                            chart.ctx.font = "8px Helvetica";
+                            chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                            chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
+                            chart.ctx.restore();
+                        }
+                    }
+                }
+            ]);
+
+            function generateConfig(data, title) {
+                return {
+                    type: 'radar',
+                    data: data,
+                    fill: true,
+                    options: {
+                        title: {
+                            display: true,
+                            text: title,
+                            // padding: 5,
+                            fontSize: 15,
+                            fontFamily: '"Chivo", "Fira Mono", serif'
+                        },
+                        legend: false,
+                        responsive: true,
+                        elements: {
+                            line: {
+                                borderWidth: 3
+                                // borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                            }
+                        },
+                        scale: {
+                            angleLines: {
+                                color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            },
+                            gridLines: {
+                                color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            },
+                            ticks: {
+                                min: 0,
+                                max: 100,
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                stepSize: 25,
+                                backdropColor: (isDarkMode) ? 'rgb(56, 61, 63)' : 'rgba(255, 255, 255, 0.75)'
+                            }
+                        }
+                    },
+              }
+            }
+
+            (function() {
+                'use strict'
+
+
+
+                feather.replace()
+                const offRadarCtx = document.getElementById('offensive-canvas')
+                const offRadarChart = new Chart(
+                    offRadarCtx, 
+                    generateConfig(
+                        generateDataset("Offensive"), 
+                        '<%= cleanLocation() %> <%= season %> Offensive Profile'
+                    )
+                );
+
+                const defRadarCtx = document.getElementById('defensive-canvas')
+                const defRadarChart = new Chart(
+                    defRadarCtx, 
+                    generateConfig(
+                        generateDataset("Defensive"), 
+                        '<%= cleanLocation() %> <%= season %> Defensive Profile'
+                    )
+                );
+            })()
         </script>
     </body>
 </html>

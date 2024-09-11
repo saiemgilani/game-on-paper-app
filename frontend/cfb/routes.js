@@ -193,6 +193,7 @@ async function retrieveRemoteTeamData(year, abbreviation, type) {
             team: abbreviation,
             type: type
         });
+        // console.log(content)
         const key = `${year}-${abbreviation}-${type}`;
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
@@ -459,9 +460,11 @@ router.route('/year/:year/team/:teamId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
+                const brkd = await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'overall')
+                // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
-                    breakdown: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'overall'),
+                    breakdown: brkd,
                     players: {
                         passing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'passing'),
                         rushing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'rushing'),
