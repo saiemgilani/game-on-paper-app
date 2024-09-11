@@ -485,6 +485,79 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
     </table>`;
     return baseTable;
 }
+
+function retrieveValue(dictionary, key) {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}
+
+function geiGenerateColorRampValue(input) {
+    if (percentiles.length == 0) {
+        //console.log('no pctls available')
+        return {
+            pctl: null,
+            ramp_class: null,
+            min: null,
+            mid: null,
+            max: null
+        }
+    }
+
+    //console.log(`calc pctl for key ${adjKey} w/ val ${value}`)
+
+    let basePctls = percentiles.map(item => {
+        let val = item["gei"];
+        return parseFloat(val)
+    })
+    basePctls.sort((a, b) => {
+        return parseFloat(a) - parseFloat(b)
+    })
+
+    if (basePctls[0] == null || basePctls.length == 0) {
+        //console.log('all ptcls null for key ' + adjKey)
+        return {
+            pctl: null,
+            ramp_class: null,
+            min: null,
+            mid: null,
+            max: null
+        }
+    }
+    
+    let pctls = [...basePctls];
+    //console.log(`mapped pctls for key ${adjKey}: ${JSON.stringify(pctls, null, 2)}`)
+    pctls = pctls.filter(item => {
+        return parseFloat(item) <= parseFloat(input)
+    });
+
+    // console.log(`pct calc for key ${key} is ${pct}`)
+    let value = parseFloat(pctls.length) / 100
+    let step = Math.round(value / 0.1)
+    let clampedStep = Math.min(Math.max(step, 0), 9)
+
+    if (clampedStep == 4 || clampedStep == 5) {
+        return {
+            pctl: pctls.length,
+            ramp_class: null,
+            min: roundNumber(basePctls[0], 2, 2),
+            mid: roundNumber(basePctls[Math.floor(basePctls.length / 2)], 2, 2),
+            max: roundNumber(basePctls[basePctls.length - 1], 2, 2),
+        }
+    } else {
+        return {
+            pctl: pctls.length,
+            ramp_class: ` hulk-bg-level-${clampedStep}`,
+            min: roundNumber(basePctls[0], 2, 2),
+            mid: roundNumber(basePctls[Math.floor(basePctls.length / 2)], 2, 2),
+            max: roundNumber(basePctls[basePctls.length - 1], 2, 2),
+        }
+    }
+}
+
 %>
 <head>
     <meta charset="utf-8">
@@ -628,7 +701,13 @@ function buildPlayTable(plays, prefix, expandable, errorMsg, showGuide, expandin
                         <% } %>
                         <p class="text-small">
                             <% if (gameData.gameInfo.status.type.completed == true) { %>
-                                <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <%= (Math.round(gameData.gameInfo.gei * 100) / 100).toFixed(2) %> |
+                                <% 
+                                    let geiVal = (Math.round(gameData.gameInfo.gei * 100) / 100) 
+                                    let geiPctl = geiGenerateColorRampValue(geiVal)
+                                    let geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
+                                %>
+                                
+                                <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/">Game Excitement Index:</a> <span class="px-1 <%= geiPctl.ramp_class %>" title="<%= geiTitle %>"><%= geiVal.toFixed(2) %></span> |
                             <% } %>Odds: <%= printSpread() %>, O/U <%= roundNumber(parseFloat(gameData.overUnder), 2, 1) %>
                             <% if ((gameData.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || gameData.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || gameData.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && gameData.plays.length > 0) { %>
                                 <% if (lastPlay.winProbability.before >= 0.5) { %>
