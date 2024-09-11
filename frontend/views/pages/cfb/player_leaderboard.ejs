@@ -54,7 +54,7 @@ function cleanRank(rank) {
     if (rank == null || (!rank && rank != 0)) {
         return "N/A"
     }
-    <!-- console.log(`rank: ${rank}`) -->
+
     let tied = String(rank)?.includes(".5")
     let rankString = ""
     if (rank && tied) {

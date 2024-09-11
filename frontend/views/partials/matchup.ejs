@@ -40,7 +40,11 @@
     }
 
     function produceRankHtml(rank, addClass = "", addStyle = "") {       
-        let tied = rank?.includes(".5")
+        if (rank == null || (!rank && rank != 0)) {
+            return "N/A"
+        }
+    
+        let tied = String(rank)?.includes(".5")
         let rankString = ""
         if (rank && tied) {
             rankString = `T-#${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;

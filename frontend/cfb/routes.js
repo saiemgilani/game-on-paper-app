@@ -135,6 +135,7 @@ async function retrievePercentiles(year) {
 }
 
 async function retrieveRemoteData(payload) {
+    console.log(`loading from summary: ${JSON.stringify(payload)}`)
     const response = await axios({
         method: 'POST',
         url: `http://summary:3000/`,
@@ -193,7 +194,6 @@ async function retrieveRemoteTeamData(year, abbreviation, type) {
             team: abbreviation,
             type: type
         });
-        // console.log(content)
         const key = `${year}-${abbreviation}-${type}`;
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
@@ -322,6 +322,12 @@ router.route('/year/:year')
 function cleanAbbreviation(abbrev) {
     if (abbrev == 'NU') {
         return 'NW'
+    }
+    if (abbrev == 'NCSU') {
+        return 'NCST'
+    }
+    if (abbrev == "MASS") {
+        return "UMASS"
     }
     if (abbrev == 'CLT') {
         return 'CHAR'
