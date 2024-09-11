@@ -245,7 +245,7 @@ if (type == "passing") {
                                     <% const t = players[i]; %>
                                     <tr>
                                         <td class="text-right" colspan="1"><%= cleanRank(retrieveValue(t, `${sort}Rank`)) %></td>
-                                        <td class="text-left" colspan="1"><a href="/cfb/year/<%= season %>/team/<%= t.teamId %>"><img class="img-fluid team-logo-<%= t.teamId %> me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= t.teamId %>.png" alt="ESPN team id <%= t.teamId %> <%= cleanField(t, "team") %>" title="<%= t.team %>"/></a> <strong><%= cleanField(t, "name") %></strong></td>
+                                        <td class="text-left" colspan="1"><a href="/cfb/year/<%= season %>/team/<%= t.teamId %>"><img class="img-fluid team-logo-<%= t.teamId %> me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= t.teamId %>.png" alt="ESPN team id <%= t.teamId %> <%= cleanField(t, "team") %>" title="<%= t.team %>"/><span class="visually-hidden"><%= cleanField(t, "team") %></span></a> <strong><%= cleanField(t, "name") %></strong></td>
                                         <td class="text-center" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.games`), 2, 0)  %></td>
                                         <% if (type == "passing") { %>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.dropbacksRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.dropbacks`), 2, 0)  %></td>
