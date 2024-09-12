@@ -523,6 +523,7 @@ router.route('/year/:year/epa')
                 return {
                     teamId: t.teamId,
                     team: t.team,
+                    fbsClass: t.fbsClass,
                     adjOffEpa: t["offensive"]["overall"]["adjEpaPerPlay"],
                     adjDefEpa: t["defensive"]["overall"]["adjEpaPerPlay"],
                 }

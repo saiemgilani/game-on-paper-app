@@ -25,6 +25,7 @@ services:
       timeout: 10s
   summary:
     image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
+    platform: linux/amd64
     expose:
       - 3000
     healthcheck:
