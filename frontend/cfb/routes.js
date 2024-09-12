@@ -517,10 +517,10 @@ router.route('/year/:year/teams/:type')
     .get(async function(req, res, next) {
         try {
             const type = req.params.type ?? "differential";
-            let sortKey = req.query.sort ?? `overall.epaPerPlay`
+            let sortKey = req.query.sort ?? `overall.adjEpaPerPlay`
             // can't do passing/rushing/havoc differentials
             if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
-                sortKey = `overall.epaPerPlay`
+                sortKey = `overall.adjEpaPerPlay`
             }
             const asc = (type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
             const baseData = await retrieveLeagueData(req.params.year, "overall") 
@@ -533,14 +533,30 @@ router.route('/year/:year/teams/:type')
                     ...target
                 }
             })
+            // console.log(content[0])
             content = content.filter(p => {
                 const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
                 const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
+                if (sortKey.includes("adjEpaPerPlay")) {
+                    return true
+                }
                 return nonNullRank && nonNullValue
             }).sort((a, b) => {
-                const compVal = parseFloat(retrieveValue(a, sortKey)) - parseFloat(retrieveValue(b, sortKey))
-                return asc ? compVal : (-1 * compVal)
+                const aVal = retrieveValue(a, sortKey)
+                const bVal = retrieveValue(b, sortKey)
+                
+                if (aVal == null & bVal != null) {
+                    return 1
+                } else if (aVal != null & bVal == null) {
+                    return -1
+                } else if (aVal == null & bVal == null) {
+                    return 0
+                } else {
+                    const compVal = parseFloat(aVal) - parseFloat(bVal)
+                    return asc ? compVal : (-1 * compVal)
+                }
             })
+            // console.log(content[0])
             // return res.json(content);
             return res.render("pages/cfb/leaderboard", {
                 teams: content,

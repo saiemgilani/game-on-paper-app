@@ -3,7 +3,9 @@
 <%
 
 function generateMarginalString(input, power10, fixed) {
-    if (input >= 0 && type == "differential") {
+    if (input == null) {
+        return "N/A"
+    } else if (input >= 0 && type == "differential") {
         return `+${roundNumber(input, power10, fixed)}`;
     } else {
         return roundNumber(input, power10, fixed);
@@ -151,7 +153,8 @@ if (type == "differential") {
             <div class="row mb-3">
                 <div class="col-lg-6 col-xs-12 mb-xs-3">
                     <h2><%= leaderTitle %> <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper on Twitter!">(Beta)</abbr></small></span></h2>
-                    <p class="m-0 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: metrics are <strong>not</strong> adjusted for quality of opponent.</p>
+                    <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+                    <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- FBS teams that have not played FBS opponents are at the bottom.</p>
                     <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
                 </div>
                 <div class="ms-auto col-lg-6 col-xs-12">
@@ -182,6 +185,7 @@ if (type == "differential") {
                                 <select class="form-select form-select-md" id="sortSelect">
                                     <option value="-1">Choose Sort...</option>
                                     <optgroup label="Overall">
+                                        <option value="overall.adjEpaPerPlay" <%= (sort == "overall.adjEpaPerPlay") ? "selected": "" %>>Adj EPA/Play</option>
                                         <option value="overall.epaPerPlay" <%= (sort == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
                                         <option value="overall.yardsPerPlay" <%= (sort == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
                                         <option value="overall.successRate" <%= (sort == "overall.successRate") ? "selected": "" %>>SR%</option>
@@ -220,6 +224,7 @@ if (type == "differential") {
                             <thead>
                                 <th class="text-right" colspan="1">Rk</th>
                                 <th class="text-left" colspan="1">Team</th>
+                                <th class="text-center" colspan="1"><abbr title="Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.">Adj EPA/Play</abbr> <%- (sort == "overall.adjEpaPerPlay") ? arrowType : "" %></th>
                                 <th class="text-center" colspan="1">EPA/Play <%- (sort == "overall.epaPerPlay") ? arrowType : "" %></th>
                                 <th class="text-center" colspan="1">Yards/Play <%- (sort == "overall.yardsPerPlay") ? arrowType : "" %></th>
                                 <th class="text-center" colspan="1">SR% <%- (sort == "overall.successRate") ? arrowType : "" %></th>
@@ -240,8 +245,21 @@ if (type == "differential") {
                                 <% for (var i = 0; i < teams.length; i++) { %>
                                     <% const t = teams[i]; %>
                                     <tr>
-                                        <td class="text-right" colspan="1"><%= cleanRank(retrieveValue(t, `${sort}Rank`)) %></td>
+                                        <% 
+                                        let adjEPAStr = generateMarginalString(retrieveValue(t, `overall.adjEpaPerPlay`), 2, 2) 
+                                        let rankStr = cleanRank(retrieveValue(t, `${sort}Rank`))
+                                        if (adjEPAStr == "N/A") {
+                                            adjEPAStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${adjEPAStr}</abbr>`;
+                                        }
+
+                                        if (rankStr == "N/A" && sort == 'overall.adjEpaPerPlay') {
+                                            rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
+                                        }
+                                        
+                                        %>
+                                        <td class="text-right" colspan="1"><%- rankStr %></td>
                                         <td class="text-left" colspan="1"><a href="/cfb/year/<%= season %>/team/<%= t.teamId %>"><img class="img-fluid team-logo-<%= t.teamId %> me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= t.teamId %>.png" alt="ESPN team id <%= t.teamId %>"/><strong><%= cleanField(t, "team") %></strong></a></td>
+                                        <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.adjEpaPerPlayRank`), teams.length) %>" colspan="1"><%-  adjEPAStr  %></td>
                                         <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.epaPerPlay`), 2, 2)  %></td>
                                         <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.yardsPerPlay`), 2, 2)  %></td>
                                         <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.successRate`) * 100, 2, 1)  %>%</td>
