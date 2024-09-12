@@ -587,6 +587,11 @@ router.route('/year/:year/players/:type')
         }
     })
 
+router.route('/players')
+    .get(async function(req, res, next) {
+        return res.redirect(`/cfb/year/2024/players/passing`);
+    })
+
 router.route('/players/:type')
 .get(async function(req, res, next) {
     return res.redirect(`/cfb/year/2024/players/${req.params.type}`);
