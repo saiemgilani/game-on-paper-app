@@ -158,6 +158,19 @@ if (type == "differential") {
                     <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
                         <div class="row">
                             <div class="col-auto mb-xs-3 mb-sm-0">
+                                <%
+                                // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
+                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                                let yrRange = range(2014, 2024); // data only goes back to 2014
+                                %>
+                                <select class="form-select form-select-md mb-3" id="yearSelect">
+                                    <option value="-1">Choose Season...</option>
+                                    <% yrRange.reverse().forEach(yr => { %>
+                                        <option value="<%= yr %>" <%= (yr == season) ? "selected": ""%>><%= yr %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+                            <div class="col-auto mb-xs-3 mb-sm-0">
                                 <select class="form-select form-select-md" id="typeSelect">
                                     <option value="-1">Choose Type...</option>
                                     <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
@@ -258,6 +271,17 @@ if (type == "differential") {
         <%- include('../../partials/scripts') %>
         <script src="/assets/js/date-replace.js"></script>
         <script> 
+            document.getElementById("yearSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var seasonKey = document.getElementById("yearSelect").value;
+                if (seasonKey != "-1" && seasonKey != -1) {
+                    let cleanWindowLocation = window.location.href.replace("<%= season %>", seasonKey)
+                    cleanWindowLocation = cleanWindowLocation.split("?")[0] // reset entirely
+                    window.location = cleanWindowLocation;
+                }
+            });
+
             document.getElementById("sortSelect").addEventListener("change", function(e) {
                 e.preventDefault()
 
