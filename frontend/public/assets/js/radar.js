@@ -192,8 +192,8 @@ function generateConfig(data, title) {
             tooltips: {
                 callbacks: {
                     title: function(tooltipItem, data) {
-                        console.log(tooltipItem)
-                        console.log(data.labels)
+                        // console.log(tooltipItem)
+                        // console.log(data.labels)
                         const label = data.labels[tooltipItem[0].index]
                         return `${label}: ${getNumberWithOrdinal(tooltipItem[0].value)} %tile`
                     },

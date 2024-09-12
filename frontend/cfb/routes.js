@@ -513,6 +513,31 @@ function retrieveValue(dictionary, key) {
     return sub;
 }
 
+router.route('/year/:year/epa')
+    .get(async function(req, res, next) {
+        try {
+            const baseData = await retrieveLeagueData(req.params.year, "overall") 
+
+            let content = baseData.map(t => {
+                // let target = t[type]
+                return {
+                    teamId: t.teamId,
+                    team: t.team,
+                    adjOffEpa: t["offensive"]["overall"]["adjEpaPerPlay"],
+                    adjDefEpa: t["defensive"]["overall"]["adjEpaPerPlay"],
+                }
+            })
+
+            return res.render("pages/cfb/epa_chart", {
+                teams: content,
+                season: req.params.year,
+                last_updated: await retrieveLastUpdated()
+            })
+        } catch(err) {
+            return next(err)
+        }
+    })
+
 router.route('/year/:year/teams/:type')
     .get(async function(req, res, next) {
         try {
