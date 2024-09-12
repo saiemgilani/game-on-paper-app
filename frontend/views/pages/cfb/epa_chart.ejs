@@ -89,6 +89,7 @@
                 "61": "/assets/img/ennui-uga.png",
                 "52": "/assets/img/fsu-face-52.png",
             };
+            const imageSize = 37.5;
 
             function roundNumber(value, power10, fixed) {
                 return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
@@ -170,7 +171,7 @@
                     }
                 })
                 const images = base.map(t => {
-                    let img = new Image(25, 25)
+                    let img = new Image(imageSize, imageSize)
                     if (Object.keys(specialImages).includes(t.teamId)) {
                         img.src = specialImages[t.teamId];
                     } else {
@@ -207,7 +208,7 @@
                                     pointBackgroundColor: "black",
                                     showLine: false,
                                     pointStyle: images,
-                                    pointSize: 25,
+                                    pointSize: imageSize,
                                 },
                                 {
                                     label: 'Avg X',
@@ -263,9 +264,7 @@
                             tooltips: {
                                 callbacks: {
                                     title: function(tooltipItem, data) {
-
                                         return data.labels[tooltipItem[0].index]
-                                        // return `${label}: ${getNumberWithOrdinal(tooltipItem[0].value)} %tile`
                                     },
                                     label: function(tooltipItem, data) {
                                         console.log(tooltipItem)
