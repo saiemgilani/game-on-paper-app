@@ -554,48 +554,48 @@ router.route('/year/:year/teams/:type')
         }
     })
 
-// router.route('/year/:year/players/:type')
-//     .get(async function(req, res, next) {
-//         try {
-//             const type = req.params.type ?? "passing";
-//             let sortKey = req.query.sort ?? `advanced.epaPerPlay`
-//             // // can't do passing/rushing/havoc differentials
-//             // if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
-//             //     sortKey = `overall.epaPerPlay`
-//             // }
-//             const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
-//             let content = await retrieveLeagueData(req.params.year, type) 
+router.route('/year/:year/players/:type')
+    .get(async function(req, res, next) {
+        try {
+            const type = req.params.type ?? "passing";
+            let sortKey = req.query.sort ?? `advanced.epaPerPlay`
+            // // can't do passing/rushing/havoc differentials
+            // if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
+            //     sortKey = `overall.epaPerPlay`
+            // }
+            const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
+            let content = await retrieveLeagueData(req.params.year, type) 
 
-//             content = content.filter(p => {
-//                 const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
-//                 const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
-//                 return nonNullRank && nonNullValue
-//             }).sort((a, b) => {
-//                 const compVal = parseFloat(retrieveValue(a, sortKey)) - parseFloat(retrieveValue(b, sortKey))
-//                 return asc ? compVal : (-1 * compVal)
-//             })
-//             // return res.json(content);
-//             return res.render("pages/cfb/player_leaderboard", {
-//                 players: content,
-//                 type,
-//                 season: req.params.year,
-//                 sort: sortKey,
-//                 last_updated: await retrieveLastUpdated()
-//             })
-//         } catch(err) {
-//             return next(err)
-//         }
-//     })
+            content = content.filter(p => {
+                const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
+                const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
+                return nonNullRank && nonNullValue
+            }).sort((a, b) => {
+                const compVal = parseFloat(retrieveValue(a, sortKey)) - parseFloat(retrieveValue(b, sortKey))
+                return asc ? compVal : (-1 * compVal)
+            })
+            // return res.json(content);
+            return res.render("pages/cfb/player_leaderboard", {
+                players: content,
+                type,
+                season: req.params.year,
+                sort: sortKey,
+                last_updated: await retrieveLastUpdated()
+            })
+        } catch(err) {
+            return next(err)
+        }
+    })
 
-// router.route('/players/:type')
-// .get(async function(req, res, next) {
-//     return res.redirect(`/cfb/year/2024/players/${req.params.type}`);
-// })
+router.route('/players/:type')
+.get(async function(req, res, next) {
+    return res.redirect(`/cfb/year/2024/players/${req.params.type}`);
+})
 
-// router.route('/year/:year/players')
-// .get(async function(req, res, next) {
-//     return res.redirect(`/cfb/year/${req.params.year}/players/passing`);
-// })
+router.route('/year/:year/players')
+.get(async function(req, res, next) {
+    return res.redirect(`/cfb/year/${req.params.year}/players/passing`);
+})
 
 router.route('/glossary')
 .get(function(req, res, next) {
