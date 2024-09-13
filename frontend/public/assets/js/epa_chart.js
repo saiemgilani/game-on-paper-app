@@ -156,6 +156,7 @@ function generateConfig(title, teams) {
                     chart.ctx.save()
                     chart.ctx.textAlign = "right"
                     chart.ctx.font = "8px Helvetica";
+                    chart.ctx.globalAlpha = 0.75;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                     chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                     chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
@@ -163,6 +164,7 @@ function generateConfig(title, teams) {
                     chart.ctx.save()
                     chart.ctx.textAlign = "left"
                     chart.ctx.font = "8px Helvetica";
+                    chart.ctx.globalAlpha = 0.75;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                     chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * 0.0675, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                     chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * 0.0675, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
@@ -211,7 +213,6 @@ function generateConfig(title, teams) {
             title: {
                 display: true,
                 text: title,
-                // align: "start"
                 fontColor: (isDarkMode) ? "white" : "black",
                 fontSize: 20,
                 fontFamily: '"Chivo", "Fira Mono", serif'
