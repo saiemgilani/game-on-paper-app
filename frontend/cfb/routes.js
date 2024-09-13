@@ -515,7 +515,7 @@ function retrieveValue(dictionary, key) {
 
 router.route('/charts/team/epa')
     .get(async function(req, res, next) {
-        return res.redirect(`/year/2024/charts/team/epa`)
+        return res.redirect(`/cfb/year/2024/charts/team/epa`)
     })
 
 router.route('/year/:year/charts/team/epa')
