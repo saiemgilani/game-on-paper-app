@@ -513,7 +513,12 @@ function retrieveValue(dictionary, key) {
     return sub;
 }
 
-router.route('/year/:year/epa')
+router.route('/charts/team/epa')
+    .get(async function(req, res, next) {
+        return res.redirect(`/year/2024/charts/team/epa`)
+    })
+
+router.route('/year/:year/charts/team/epa')
     .get(async function(req, res, next) {
         try {
             const baseData = await retrieveLeagueData(req.params.year, "overall") 

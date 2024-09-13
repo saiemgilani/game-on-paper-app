@@ -139,7 +139,7 @@ function generateConfig(title, teams) {
     }
 
     const margin = 0.075
-    const baseMultiplier = 0.5
+    const baseMultiplier = 0.475
     const lineMultiplier = 0.125
     const xAdjust = 0.06
 
@@ -188,7 +188,7 @@ function generateConfig(title, teams) {
                     chart.ctx.globalAlpha = 0.5;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                     chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * margin)
-                    chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * (1 - margin - 0.01))
+                    chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * (1 - margin - 0.005))
                     chart.ctx.restore();
         
                     chart.ctx.save()
@@ -197,7 +197,7 @@ function generateConfig(title, teams) {
                     chart.ctx.globalAlpha = 0.5;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                     chart.ctx.fillText("Bad Offense, Good Defense", sizeWidth * (margin - 0.02), sizeHeight * margin)
-                    chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - margin - 0.01))
+                    chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - margin - 0.005))
                     chart.ctx.restore();
                 }
             }
