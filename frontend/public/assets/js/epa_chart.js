@@ -9,6 +9,13 @@ function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
+function translateValue(input, inMin, inMax, outMin, outMax) {
+    const leftRange = inMax - inMin;
+    const rightRange = outMax - outMin;
+    const scaledValue = (input - inMin) / leftRange;
+    return outMin + (scaledValue * rightRange);
+}
+
 function getCurrentViewport() {
 // https://stackoverflow.com/a/8876069
     const width = Math.max(
@@ -21,56 +28,6 @@ function getCurrentViewport() {
     if (width <= 1200) return 'lg'
     return 'xl'
 }
-    
-Chart.plugins.register([
-    {
-        afterDraw: (chart) => {
-            let viewport = getCurrentViewport()
-            if (viewport == "xl" || viewport == "lg") {
-                let sizeWidth = chart.ctx.canvas.clientWidth;
-                let sizeHeight = chart.ctx.canvas.clientHeight;
-                let imgSize = 25.0;
-                /* credit */
-                chart.ctx.save()
-                chart.ctx.textAlign = "right"
-                chart.ctx.font = "8px Helvetica";
-                chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack). Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth - (imgSize * 0.5) - 5, 7.1 * (sizeHeight / 8))
-                chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran) and Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize * 0.5) - 5, 7.25 * (sizeHeight / 8))
-                chart.ctx.restore();
-            }
-        },
-        beforeDraw: (chart) => {
-            let viewport = getCurrentViewport()
-            if (viewport == "xl" || viewport == "lg") {
-                let sizeWidth = chart.ctx.canvas.clientWidth;
-                let sizeHeight = chart.ctx.canvas.clientHeight;
-                let imgSize = 25.0;
-                /* good/bad labels*/
-                chart.ctx.save()
-                chart.ctx.textAlign = "right"
-                chart.ctx.font = "italic 10px Helvetica";
-                chart.ctx.globalAlpha = 0.75;
-                chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                chart.ctx.fillText("Good Offense, Good Defense", sizeWidth - (imgSize * 0.5) - 10, 3.75 * (sizeHeight / 8))
-                chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth - (imgSize * 0.5) - 10, 4.15 * (sizeHeight / 8))
-                chart.ctx.restore();
-
-                chart.ctx.save()
-                chart.ctx.textAlign = "left"
-                chart.ctx.font = "italic 10px Helvetica";
-                chart.ctx.globalAlpha = 0.75;
-                chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                chart.ctx.fillText("Bad Offense, Good Defense", (sizeWidth * 0.075) - 5, 3.75 * (sizeHeight / 8))
-                chart.ctx.fillText("Bad Offense, Bad Defense", (sizeWidth * 0.075) - 5, 4.15 * (sizeHeight / 8))
-                chart.ctx.restore();
-    
-
-
-            }
-        }
-    }
-]);
 
 function buildData(base) {
     const data = base.map(t => {
@@ -100,6 +57,17 @@ function buildData(base) {
     console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
     console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
+    const suggestedRange = {
+        min: {
+            x: parseFloat(roundNumber(minX, 1, 1)) - 0.1,
+            y: parseFloat(roundNumber(minY, 1, 1)) - 0.1,
+        },
+        max: {
+            x: parseFloat(roundNumber(maxX, 1, 1)) + 0.1,
+            y: parseFloat(roundNumber(maxY, 1, 1)) + 0.1
+        }
+    }
+
     const datasets = [
         {
             label: labels,
@@ -115,11 +83,11 @@ function buildData(base) {
             data: [
                 {
                     x: averageX,
-                    y: -1
+                    y: suggestedRange.min.y
                 },
                 {
                     x: averageX,
-                    y: 1
+                    y: suggestedRange.max.y
                 }
             ],
             borderDash: [5, 15],
@@ -133,11 +101,11 @@ function buildData(base) {
             label: 'Avg Y',
             data: [
                 {
-                    x: -1,
+                    x: suggestedRange.min.x,
                     y: averageY,
                 },
                 {
-                    x: 1,
+                    x: suggestedRange.max.x,
                     y: averageY,
                 }
             ],
@@ -157,18 +125,95 @@ function buildData(base) {
 }
 
 function generateConfig(title, teams) {
+    const chartData = buildData(teams);
+
+    const suggestedRange = {
+        min: {
+            x: chartData.datasets[2].data[0].x,
+            y: chartData.datasets[1].data[0].y,
+        },
+        max: {
+            x: chartData.datasets[2].data[1].x,
+            y: chartData.datasets[1].data[1].y
+        }
+    }
+
     return {
         type: 'scatter',
-        data: buildData(teams),
-        options: {
+        data: chartData,
+        plugins: [{
+            id: "captions-plugin",
+            afterDraw: (chart) => {
+                let viewport = getCurrentViewport()
+                if (viewport == "xl" || viewport == "lg") {
+                    let sizeWidth = chart.ctx.canvas.clientWidth;
+                    let sizeHeight = chart.ctx.canvas.clientHeight;
+                    let imgSize = 25.0;
 
+                    const baseMultiplier = 0.5
+                    const lineMultiplier = 0.15
+                    /* credit */
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "right"
+                    chart.ctx.font = "8px Helvetica";
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                    chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                    chart.ctx.restore();
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "left"
+                    chart.ctx.font = "8px Helvetica";
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * 0.0675, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                    chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * 0.0675, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                    chart.ctx.restore();
+                }
+            },
+            // move to corners
+            beforeDatasetsDraw: (chart) => {
+                let viewport = getCurrentViewport()
+                if (viewport == "xl" || viewport == "lg") {
+                    const sizeWidth = chart.ctx.canvas.clientWidth;
+                    const sizeHeight = chart.ctx.canvas.clientHeight;
+                    // const imgSize = 25.0;
+        
+                    // let midY = translateValue(chart.data.datasets[2].data[0].y, -0.8, 0.8, 0, sizeHeight)
+                    // console.log(`${chart.config.options.title.text}: ${chart.data.datasets[2].data[0].y} -> ${midY}`)
+
+                    // const adjuster = 15
+                    // midY = chart.config.options.title.text.includes("G5") || chart.config.options.title.text.includes("G6") ? (midY - 10) : midY // weird to have to have this carve out but ok?
+                    const margin = 0.0875
+        
+                    /* good/bad labels*/
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "right"
+                    chart.ctx.font = "italic 12px Helvetica";
+                    chart.ctx.globalAlpha = 0.5;
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - (margin - 0.065)), sizeHeight * margin)
+                    chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - (margin - 0.065)), sizeHeight * (1 - (margin + 0.015)))
+                    chart.ctx.restore();
+        
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "left"
+                    chart.ctx.font = "italic 12px Helvetica";
+                    chart.ctx.globalAlpha = 0.5;
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("Bad Offense, Good Defense", sizeWidth * (margin - 0.02), sizeHeight * margin)
+                    chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - (margin + 0.015)))
+                    chart.ctx.restore();
+                }
+            }
+        }],
+        options: {
             legend: false,
             responsive: true,
             title: {
                 display: true,
                 text: title,
+                // align: "start"
                 fontColor: (isDarkMode) ? "white" : "black",
-                fontSize: 18,
+                fontSize: 20,
                 fontFamily: '"Chivo", "Fira Mono", serif'
             },
             tooltips: {
@@ -200,8 +245,8 @@ function generateConfig(title, teams) {
                     type: 'linear',
                     position: 'bottom',
                     ticks: {
-                        min: -0.8,
-                        max: 0.8
+                        min: suggestedRange.min.x,
+                        max: suggestedRange.max.x
                     }
                 }],
                 yAxes: [{
@@ -221,8 +266,8 @@ function generateConfig(title, teams) {
                     position: 'left',
                     ticks: {
                         reverse: true,
-                        min: -0.8,
-                        max: 0.8
+                        min: suggestedRange.min.y,
+                        max: suggestedRange.max.y
                     }
                 }]
             }

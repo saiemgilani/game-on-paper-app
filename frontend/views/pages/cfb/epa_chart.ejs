@@ -10,7 +10,7 @@
         <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
 
         <%
-            let leaderTitle = "Adj EPA/Play"
+            let leaderTitle = "Adj EPA/Play Comparison"
             let title = `${leaderTitle} | ${season} | Game on Paper`
             let subtitle = `${leaderTitle} during the ${season} season`;
         %>
@@ -71,6 +71,35 @@
         </div>
         <div class="container">
             <div class="row mb-3">
+                <div class="col-lg-6 col-xs-12 mb-xs-3">
+                    <h2><%= leaderTitle %> <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper on Twitter!">(Beta)</abbr></small></span></h2>
+                    <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+                    <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- FBS teams that have not played FBS opponents are at the bottom.</p>
+                    <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
+                </div>
+                <div class="ms-auto col-lg-6 col-xs-12">
+                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                        <div class="row">
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <%
+                                // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
+                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                                let yrRange = range(2014, 2024); // data only goes back to 2014
+                                %>
+                                <select class="form-select form-select-md mb-3" id="yearSelect">
+                                    <option value="-1">Choose Season...</option>
+                                    <% yrRange.reverse().forEach(yr => { %>
+                                        <option value="<%= yr %>" <%= (yr == season) ? "selected": ""%>><%= yr %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row mb-3">
                 <div class="col-lg-10 offset-lg-1 col-xs-12">
                     <canvas id="p4_chart_canvas" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
                 </div>
@@ -123,6 +152,18 @@
 
 
             })()
+        </script>
+        <script> 
+            document.getElementById("yearSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var seasonKey = document.getElementById("yearSelect").value;
+                if (seasonKey != "-1" && seasonKey != -1) {
+                    let cleanWindowLocation = window.location.href.replace("<%= season %>", seasonKey)
+                    cleanWindowLocation = cleanWindowLocation.split("?")[0] // reset entirely
+                    window.location = cleanWindowLocation;
+                }
+            });
         </script>
     </body>
 </html>
