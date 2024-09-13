@@ -138,6 +138,11 @@ function generateConfig(title, teams) {
         }
     }
 
+    const margin = 0.075
+    const baseMultiplier = 0.5
+    const lineMultiplier = 0.125
+    const xAdjust = 0.06
+
     return {
         type: 'scatter',
         data: chartData,
@@ -150,24 +155,22 @@ function generateConfig(title, teams) {
                     let sizeHeight = chart.ctx.canvas.clientHeight;
                     let imgSize = 25.0;
 
-                    const baseMultiplier = 0.5
-                    const lineMultiplier = 0.15
                     /* credit */
                     chart.ctx.save()
                     chart.ctx.textAlign = "right"
                     chart.ctx.font = "8px Helvetica";
                     chart.ctx.globalAlpha = 0.75;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                    chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-                    chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth - (imgSize * 0.5) - 5, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                    chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                    chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                     chart.ctx.restore();
                     chart.ctx.save()
                     chart.ctx.textAlign = "left"
                     chart.ctx.font = "8px Helvetica";
                     chart.ctx.globalAlpha = 0.75;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * 0.0675, (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-                    chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * 0.0675, (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * (margin - 0.02), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                    chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                     chart.ctx.restore();
                 }
             },
@@ -177,14 +180,6 @@ function generateConfig(title, teams) {
                 if (viewport == "xl" || viewport == "lg") {
                     const sizeWidth = chart.ctx.canvas.clientWidth;
                     const sizeHeight = chart.ctx.canvas.clientHeight;
-                    // const imgSize = 25.0;
-        
-                    // let midY = translateValue(chart.data.datasets[2].data[0].y, -0.8, 0.8, 0, sizeHeight)
-                    // console.log(`${chart.config.options.title.text}: ${chart.data.datasets[2].data[0].y} -> ${midY}`)
-
-                    // const adjuster = 15
-                    // midY = chart.config.options.title.text.includes("G5") || chart.config.options.title.text.includes("G6") ? (midY - 10) : midY // weird to have to have this carve out but ok?
-                    const margin = 0.0875
         
                     /* good/bad labels*/
                     chart.ctx.save()
@@ -192,8 +187,8 @@ function generateConfig(title, teams) {
                     chart.ctx.font = "italic 12px Helvetica";
                     chart.ctx.globalAlpha = 0.5;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                    chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - (margin - 0.065)), sizeHeight * margin)
-                    chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - (margin - 0.065)), sizeHeight * (1 - (margin + 0.015)))
+                    chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * margin)
+                    chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * (1 - margin - 0.01))
                     chart.ctx.restore();
         
                     chart.ctx.save()
@@ -202,7 +197,7 @@ function generateConfig(title, teams) {
                     chart.ctx.globalAlpha = 0.5;
                     chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                     chart.ctx.fillText("Bad Offense, Good Defense", sizeWidth * (margin - 0.02), sizeHeight * margin)
-                    chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - (margin + 0.015)))
+                    chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - margin - 0.01))
                     chart.ctx.restore();
                 }
             }
