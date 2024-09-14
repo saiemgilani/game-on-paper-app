@@ -70,10 +70,10 @@ function cleanRank(rank) {
 var leaderTitle = "Statistics";
 var statMinimum = " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."
 if (type == "passing") {
-    leaderTitle = "Passing Statistics" 
+    leaderTitle = "Passing Statistics"
     statMinimum = "min. 14 dropbacks per team-game" + statMinimum
 } else if (type == "rushing") {
-    leaderTitle = "Rushing Statistics" 
+    leaderTitle = "Rushing Statistics"
     statMinimum = "min. 6.25 carries per team-game" + statMinimum
 } else if (type == "receiving") {
     leaderTitle = "Receiving Statistics"
@@ -137,9 +137,6 @@ if (type == "passing") {
                 content: url('/assets/img/ennui-uga.png');
                 /* Sourced from the Moon Crew Discord server */
             }
-            img.team-logo-52 {
-                content: url('/assets/img/fsu-face-52.png');
-            }
         </style>
     </head>
     <body>
@@ -166,7 +163,7 @@ if (type == "passing") {
                             <div class="col-auto mb-xs-3 mb-sm-0">
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
-                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
                                 let yrRange = range(2014, 2024); // data only goes back to 2014
                                 %>
                                 <select class="form-select form-select-md mb-3" id="yearSelect">
@@ -294,7 +291,7 @@ if (type == "passing") {
         <%- include('../../partials/footer') %>
         <%- include('../../partials/scripts') %>
         <script src="/assets/js/date-replace.js"></script>
-        <script> 
+        <script>
             document.getElementById("yearSelect").addEventListener("change", function(e) {
                 e.preventDefault()
 

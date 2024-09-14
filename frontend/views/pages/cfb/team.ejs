@@ -79,9 +79,6 @@ function hexToRgb(hex) {
                 content: url('/assets/img/ennui-uga.png');
                 /* Sourced from the Moon Crew Discord server */
             }
-            img.team-logo-52 {
-                content: url('/assets/img/fsu-face-52.png');
-            }
         </style>
     </head>
     <body>
@@ -406,18 +403,18 @@ function hexToRgb(hex) {
                 feather.replace()
                 const offRadarCtx = document.getElementById('offensive-canvas')
                 const offRadarChart = new Chart(
-                    offRadarCtx, 
+                    offRadarCtx,
                     generateConfig(
-                        generateDataset("Offensive"), 
+                        generateDataset("Offensive"),
                         '<%= cleanLocation() %> <%= season %> Offensive Profile'
                     )
                 );
 
                 const defRadarCtx = document.getElementById('defensive-canvas')
                 const defRadarChart = new Chart(
-                    defRadarCtx, 
+                    defRadarCtx,
                     generateConfig(
-                        generateDataset("Defensive"), 
+                        generateDataset("Defensive"),
                         '<%= cleanLocation() %> <%= season %> Defensive Profile'
                     )
                 );

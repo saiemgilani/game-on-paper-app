@@ -34,17 +34,12 @@
             content: url('/assets/img/ennui-uga.png');
             /* Sourced from the Moon Crew Discord server */
         }
-
-        img.team-logo-52 {
-            content: url('/assets/img/fsu-face-52.png');
-        }
-
         </style>
     </head>
     <body>
         <%
         // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
-        let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+        let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
         let yrRange = range(2002, 2024);
         %>
         <div class="container">

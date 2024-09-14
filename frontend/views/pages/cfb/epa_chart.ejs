@@ -53,9 +53,6 @@
                 content: url('/assets/img/ennui-uga.png');
                 /* Sourced from the Moon Crew Discord server */
             }
-            img.team-logo-52 {
-                content: url('/assets/img/fsu-face-52.png');
-            }
         </style>
     </head>
     <body>
@@ -85,7 +82,7 @@
                             <div class="col-auto mb-xs-3 mb-sm-0">
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
-                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
                                 let yrRange = range(2014, 2024); // data only goes back to 2014
                                 %>
                                 <select class="form-select form-select-md mb-3" id="yearSelect">
@@ -128,25 +125,25 @@
                 if (season == 2024) {
                     const p4 = teams.filter(t => t.adjOffEpa && t.adjDefEpa && t.fbsClass == 'P4');
                     const g6 = teams.filter(t => t.adjOffEpa && t.adjDefEpa && t.fbsClass != 'P4');
-                    
+
                     const p4Chart = new Chart(
-                        document.getElementById('p4_chart_canvas'), 
+                        document.getElementById('p4_chart_canvas'),
                         generateConfig("Opponent Adjusted EPA/Play (P4) - <%= season %>", p4)
                     );
                     const g6Chart = new Chart(
-                        document.getElementById('g6_chart_canvas'), 
+                        document.getElementById('g6_chart_canvas'),
                         generateConfig("Opponent Adjusted EPA/Play (G6) - <%= season %>", g6)
                     );
                 } else {
                     const p5 = teams.filter(t => t.adjOffEpa && t.adjDefEpa && t.fbsClass == 'P5');
                     const g5 = teams.filter(t => t.adjOffEpa && t.adjDefEpa && t.fbsClass != 'P5');
-                    
+
                     const p5Chart = new Chart(
-                        document.getElementById('p4_chart_canvas'), 
+                        document.getElementById('p4_chart_canvas'),
                         generateConfig("Opponent Adjusted EPA/Play (P5) - <%= season %>", p5)
                     );
                     const g5Chart = new Chart(
-                        document.getElementById('g6_chart_canvas'), 
+                        document.getElementById('g6_chart_canvas'),
                         generateConfig("Opponent Adjusted EPA/Play (G5) - <%= season %>", g5)
                     );
                 }
@@ -155,7 +152,7 @@
 
             })()
         </script>
-        <script> 
+        <script>
             document.getElementById("yearSelect").addEventListener("change", function(e) {
                 e.preventDefault()
 

@@ -71,9 +71,9 @@ function cleanRank(rank) {
 
 var leaderTitle = "Statistics";
 if (type == "differential") {
-    leaderTitle = "Net Statistics" 
+    leaderTitle = "Net Statistics"
 } else if (type == "offensive") {
-    leaderTitle = "Offensive Statistics" 
+    leaderTitle = "Offensive Statistics"
 } else if (type == "defensive") {
     leaderTitle = "Defensive Statistics"
 } else {
@@ -133,9 +133,6 @@ if (type == "differential") {
                 content: url('/assets/img/ennui-uga.png');
                 /* Sourced from the Moon Crew Discord server */
             }
-            img.team-logo-52 {
-                content: url('/assets/img/fsu-face-52.png');
-            }
         </style>
     </head>
     <body>
@@ -163,7 +160,7 @@ if (type == "differential") {
                             <div class="col-auto mb-xs-3 mb-sm-0">
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
-                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
+                                let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
                                 let yrRange = range(2014, 2024); // data only goes back to 2014
                                 %>
                                 <select class="form-select form-select-md mb-3" id="yearSelect">
@@ -245,8 +242,8 @@ if (type == "differential") {
                                 <% for (var i = 0; i < teams.length; i++) { %>
                                     <% const t = teams[i]; %>
                                     <tr>
-                                        <% 
-                                        let adjEPAStr = generateMarginalString(retrieveValue(t, `overall.adjEpaPerPlay`), 2, 2) 
+                                        <%
+                                        let adjEPAStr = generateMarginalString(retrieveValue(t, `overall.adjEpaPerPlay`), 2, 2)
                                         let rankStr = cleanRank(retrieveValue(t, `${sort}Rank`))
                                         if (adjEPAStr == "N/A") {
                                             adjEPAStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${adjEPAStr}</abbr>`;
@@ -255,7 +252,7 @@ if (type == "differential") {
                                         if (rankStr == "N/A" && sort == 'overall.adjEpaPerPlay') {
                                             rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
                                         }
-                                        
+
                                         %>
                                         <td class="text-right" colspan="1"><%- rankStr %></td>
                                         <td class="text-left" colspan="1"><a href="/cfb/year/<%= season %>/team/<%= t.teamId %>"><img class="img-fluid team-logo-<%= t.teamId %> me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= t.teamId %>.png" alt="ESPN team id <%= t.teamId %>"/><strong><%= cleanField(t, "team") %></strong></a></td>
@@ -268,11 +265,11 @@ if (type == "differential") {
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.epaPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.yardsPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `passing.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `passing.successRate`) * 100, 2, 1)  %>%</td>
-        
+
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.epaPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.epaPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.yardsPerPlayRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.yardsPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `rushing.successRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `rushing.successRate`) * 100, 2, 1)  %>%</td>
-        
+
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `overall.havocRateRank`), teams.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `overall.havocRate`) * 100, 2, 1)  %>%</td>
                                         <% } %>
 
@@ -288,7 +285,7 @@ if (type == "differential") {
         <%- include('../../partials/footer') %>
         <%- include('../../partials/scripts') %>
         <script src="/assets/js/date-replace.js"></script>
-        <script> 
+        <script>
             document.getElementById("yearSelect").addEventListener("change", function(e) {
                 e.preventDefault()
 
