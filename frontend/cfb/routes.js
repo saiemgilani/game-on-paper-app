@@ -320,30 +320,9 @@ router.route('/year/:year')
     });
 
 function cleanAbbreviation(abbrev) {
-    if (abbrev == 'NU') {
-        return 'NW'
-    }
-    if (abbrev == 'NCSU') {
-        return 'NCST'
-    }
-    if (abbrev == "MASS") {
-        return "UMASS"
-    }
-    if (abbrev == 'CLT') {
-        return 'CHAR'
-    }
-    if (abbrev == 'BOIS') {
-        return 'BSU'
-    }
-    if (abbrev == 'IU') {
-        return 'IND'
-    }
-    if (abbrev == 'MIA') {
-        return 'MIAMI'
-    }
-    if (abbrev == 'OU') {
-        return 'OKLA'
-    }
+    
+    
+    // add summary abbreviation overrides here
     return abbrev;
 }
 
