@@ -186,20 +186,20 @@ async function retrieveLeagueData(year, type) {
     }
 }
 
-async function retrieveRemoteTeamData(year, abbreviation, type) {
+async function retrieveRemoteTeamData(year, team_id, type) {
     try {
         // update redis cache
         const content = await retrieveRemoteData({
             year,
-            team: abbreviation,
+            team: team_id,
             type: type
         });
-        const key = `${year}-${abbreviation}-${type}`;
+        const key = `${year}-${team_id}-${type}`;
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find data for ${abbreviation} in ${year}, checking ${year - 1}`)
+        console.log(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
         if (err) {
             console.log(`also err: ${err}`);
         }
@@ -208,14 +208,14 @@ async function retrieveRemoteTeamData(year, abbreviation, type) {
                 pos_team: abbreviation
             }];
         } else {
-            return await retrieveRemoteTeamData(year - 1, abbreviation, type);
+            return await retrieveRemoteTeamData(year - 1, team_id, type);
         }
     }
 }
 
-async function retrieveTeamData(year, abbreviation, type) {
+async function retrieveTeamData(year, team_id, type) {
     try {
-        const key = `${year}-${abbreviation}-${type}`;
+        const key = `${year}-${team_id}-${type}`;
         const content = await redisClient.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
@@ -223,7 +223,7 @@ async function retrieveTeamData(year, abbreviation, type) {
         return JSON.parse(content);
     } catch (err) {
         console.log(err)
-        return await retrieveRemoteTeamData(year, abbreviation, type);
+        return await retrieveRemoteTeamData(year, team_id, type);
     }
 }
 
@@ -320,8 +320,6 @@ router.route('/year/:year')
     });
 
 function cleanAbbreviation(abbrev) {
-    
-    
     // add summary abbreviation overrides here
     return abbrev;
 }
@@ -358,8 +356,8 @@ router.route('/game/:gameId')
 
             // if it's in the future, send to pregame template
             if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED' || (req.query.preview_mode && (req.query.preview_mode == "old" || req.query.preview_mode == "new"))) {
-                const homeBreakdown = await retrieveTeamData(season, homeKey, 'overall');
-                const awayBreakdown = await retrieveTeamData(season, awayKey, 'overall');
+                const homeBreakdown = await retrieveTeamData(season, homeTeam.id, 'overall');
+                const awayBreakdown = await retrieveTeamData(season, awayTeam.id, 'overall');
                 return res.render('pages/cfb/pregame', {
                     season,
                     week,
@@ -445,15 +443,15 @@ router.route('/year/:year/team/:teamId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
-                const brkd = await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'overall')
+                const brkd = await retrieveTeamData(req.params.year, req.params.teamId, 'overall')
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
                     breakdown: brkd,
                     players: {
-                        passing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'passing'),
-                        rushing: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'rushing'),
-                        receiving: await retrieveTeamData(req.params.year, cleanAbbreviation(data.abbreviation), 'receiving')
+                        passing: await retrieveTeamData(req.params.year, req.params.teamId, 'passing'),
+                        rushing: await retrieveTeamData(req.params.year, req.params.teamId, 'rushing'),
+                        receiving: await retrieveTeamData(req.params.year, req.params.teamId, 'receiving')
                     },
                     season: req.params.year
                 });

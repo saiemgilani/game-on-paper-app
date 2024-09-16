@@ -175,7 +175,7 @@ function cleanName(team) {
 
             Object.keys(gameData.matchup).forEach(key => {
                 const baseData = gameData.matchup[key]
-                var teamKey = "pos_team"
+                var teamKey = "teamId"
 
                 baseData.sort((a,b) => {
                     if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
