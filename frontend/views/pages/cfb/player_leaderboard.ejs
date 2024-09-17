@@ -190,6 +190,7 @@ if (type == "passing") {
                                     <% if (type == "passing") { %>
                                         <optgroup label="Passing">
                                             <option value="statistics.sackAdjustedYards" <%= (sort == "statistics.sackAdjustedYards") ? "selected": "" %>>Sack-Adj Yds</option>
+                                            <option value="advanced.totalEPA" <%= (sort == "advanced.totalEPA") ? "selected": "" %>>EPA</option>
                                             <option value="statistics.yardsPerDropback" <%= (sort == "statistics.yardsPerDropback") ? "selected": "" %>>Yards/DB</option>
                                             <option value="advanced.epaPerPlay" <%= (sort == "advanced.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
                                             <option value="advanced.successRate" <%= (sort == "advanced.successRate") ? "selected": "" %>>Pass SR%</option>
@@ -197,6 +198,7 @@ if (type == "passing") {
                                     <% } else if (type == "rushing") { %>
                                         <optgroup label="Rushing">
                                             <option value="statistics.yards" <%= (sort == "statistics.yards") ? "selected": "" %>>Yards</option>
+                                            <option value="advanced.totalEPA" <%= (sort == "advanced.totalEPA") ? "selected": "" %>>EPA</option>
                                             <option value="statistics.yardsPerPlay" <%= (sort == "statistics.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
                                             <option value="advanced.epaPerPlay" <%= (sort == "advanced.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
                                             <option value="advanced.successRate" <%= (sort == "advanced.successRate") ? "selected": "" %>>Rush SR%</option>
@@ -204,6 +206,7 @@ if (type == "passing") {
                                     <% } else if (type == "receiving") { %>
                                         <optgroup label="Receiving">
                                             <option value="statistics.yards" <%= (sort == "statistics.yards") ? "selected": "" %>>Yards</option>
+                                            <option value="advanced.totalEPA" <%= (sort == "advanced.totalEPA") ? "selected": "" %>>EPA</option>
                                             <option value="statistics.yardsPerPlay" <%= (sort == "statistics.yardsPerPlay") ? "selected": "" %>>Yards/Tgt</option>
                                             <option value="advanced.epaPerPlay" <%= (sort == "advanced.epaPerPlay") ? "selected": "" %>>EPA/Tgt</option>
                                             <option value="advanced.successRate" <%= (sort == "advanced.successRate") ? "selected": "" %>>Rec SR%</option>
@@ -232,6 +235,7 @@ if (type == "passing") {
                                 <% if (type == "passing") { %>
                                     <th class="text-center" colspan="1">Dropbacks <%- (sort == "statistics.dropbacks") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Sack-Adj Yds <%- (sort == "statistics.sackAdjustedYards") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">EPA <%- (sort == "advanced.totalEPA") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards/DB <%- (sort == "statistics.yardsPerDropback") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">EPA/DB <%- (sort == "advanced.epaPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">SR% <%- (sort == "advanced.successRate") ? arrowType : "" %></th>
@@ -239,6 +243,7 @@ if (type == "passing") {
                                 <% } else if (type == "rushing") { %>
                                     <th class="text-center" colspan="1">Carries <%- (sort == "statistics.plays") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards <%- (sort == "statistics.yards") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">EPA <%- (sort == "advanced.totalEPA") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards/Rush <%- (sort == "statistics.yardsPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">EPA/Rush <%- (sort == "advanced.epaPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">SR% <%- (sort == "advanced.successRate") ? arrowType : "" %></th>
@@ -248,6 +253,7 @@ if (type == "passing") {
                                     <th class="text-center" colspan="1">Catch % <%- (sort == "statistics.catchPct") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards <%- (sort == "statistics.yards") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">Yards/Tgt <%- (sort == "statistics.yardsPerPlay") ? arrowType : "" %></th>
+                                    <th class="text-center" colspan="1">EPA <%- (sort == "advanced.totalEPA") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">EPA/Tgt <%- (sort == "advanced.epaPerPlay") ? arrowType : "" %></th>
                                     <th class="text-center" colspan="1">SR% <%- (sort == "advanced.successRate") ? arrowType : "" %></th>
                                 <% } %>
@@ -263,6 +269,7 @@ if (type == "passing") {
                                         <% if (type == "passing") { %>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.dropbacksRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.dropbacks`), 2, 0)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.sackAdjustedYardsRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.sackAdjustedYards`), 2, 1)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.totalEPARank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.totalEPA`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.yardsPerDropbackRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.yardsPerDropback`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.epaPerPlayRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.epaPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.successRateRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.successRate`) * 100, 2, 1)  %>%</td>
@@ -270,6 +277,7 @@ if (type == "passing") {
                                         <% } else if (type == "rushing") { %>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.playsRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.plays`), 2, 0)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.yardsRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.yards`), 2, 1)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.totalEPARank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.totalEPA`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.yardsPerPlayRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.yardsPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.epaPerPlayRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.epaPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.successRateRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.successRate`) * 100, 2, 1)  %>%</td>
@@ -278,6 +286,7 @@ if (type == "passing") {
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.targetsRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.targets`), 2, 0)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.catchPctRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.catchPct`) * 100, 2, 1)  %>%</td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.yardsRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.yards`), 2, 1)  %></td>
+                                            <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.totalEPARank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.totalEPA`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `statistics.yardsPerPlayRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `statistics.yardsPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.epaPerPlayRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.epaPerPlay`), 2, 2)  %></td>
                                             <td class="text-center <%= generateColorRampValue(retrieveValue(t, `advanced.successRateRank`), players.length) %>" colspan="1"><%=  generateMarginalString(retrieveValue(t, `advanced.successRate`) * 100, 2, 1)  %>%</td>
