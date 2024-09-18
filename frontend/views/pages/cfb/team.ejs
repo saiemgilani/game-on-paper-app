@@ -409,7 +409,7 @@ function hexToRgb(hex) {
                     offRadarCtx, 
                     generateConfig(
                         generateDataset("Offensive"), 
-                        '<%= cleanLocation() %> <%= season %> Offensive Profile'
+                        '<%- cleanLocation() %> <%= season %> Offensive Profile'
                     )
                 );
 
@@ -418,7 +418,7 @@ function hexToRgb(hex) {
                     defRadarCtx, 
                     generateConfig(
                         generateDataset("Defensive"), 
-                        '<%= cleanLocation() %> <%= season %> Defensive Profile'
+                        '<%- cleanLocation() %> <%= season %> Defensive Profile'
                     )
                 );
             })()
