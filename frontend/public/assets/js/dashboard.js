@@ -1,6 +1,5 @@
 const specialImages = {
     "61": "/assets/img/ennui-uga.png",
-    "52": "/assets/img/fsu-face-52.png",
 };
 
 
@@ -22,7 +21,7 @@ function calculateHalfSecondsRemaining(period, time) {
   var seconds = (splitTime.length > 1) ? parseInt(splitTime[1]) : 0
   var adjMin = (period == 1 || period == 3) ? (15.0 + minutes) : minutes
   return Math.max(0, Math.min(1800, (adjMin * 60.0) + seconds))
-  
+
 }
 function calculateGameSecondsRemaining(period, halfSeconds) {
   if (period <= 2) {
@@ -113,7 +112,7 @@ function interpolateTimestamps(plays) {
 
     plays[0].time_remaining = 1800
     plays[plays.length - 1].time_remaining = 0
-    
+
     // game is probably in progress?
     if (ind.length == 0) {
         ind.push(plays.length - 1)
@@ -133,13 +132,13 @@ function interpolateTimestamps(plays) {
         // console.log("pct: " + pct)
         plays[i].time_remaining = Math.round(lerp(1800, 0, pct))
     }
-    
+
     for (var i = halfPoint + 1; i < plays.length; i++) {
         var pct = ((i - (halfPoint + 1)) / (plays.length - (halfPoint + 1)))
         // console.log("pct: " + pct)
         plays[i].time_remaining = Math.round(lerp(1800, 0, pct))
     }
-    
+
     plays.forEach(p => p.game_time_remaining = calculateGameSecondsRemaining(p.period, p.time_remaining))
 
     return plays;
@@ -165,7 +164,7 @@ function deltaE(rgbA, rgbB) {
     let i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
     return i < 0 ? 0 : Math.sqrt(i);
 }
-  
+
 function rgb2lab(rgb){
     let r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, x, y, z;
     r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
@@ -219,7 +218,7 @@ if (gameData.plays.length > 0) {
             console.log(`updating color at index ${idx} to gray bc of background`)
         }
     })
-    
+
     // if both colors are now gray, reset the homeTeamColor
     let dEHomeAdj = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
     if (dEHomeAdj <= 49 && adjusted) {
@@ -282,7 +281,7 @@ if (gameData.plays.length > 0) {
                     let sizeWidth = chart.ctx.canvas.clientWidth;
                     let sizeHeight = chart.ctx.canvas.clientHeight;
                     let imgSize = 75.0;
-        
+
                     chart.ctx.save()
                     chart.ctx.textAlign = "right"
                     chart.ctx.font = "8px Helvetica";
@@ -307,12 +306,12 @@ if (gameData.plays.length > 0) {
                 var min = Math.min.apply(null, this.chart.data.datasets[i].data);
                 var max = Math.max.apply(null, this.chart.data.datasets[i].data);
                 var yScale = this.getScaleForId(this.chart.data.datasets[i].yAxisID);
-    
+
                 // figure out the pixels for these and the value 0
                 var top = yScale.getPixelForValue(max);
                 var zero = yScale.getPixelForValue(0);
                 var bottom = yScale.getPixelForValue(min);
-    
+
                 // build a gradient that switches color at the 0 point
                 var ctx = this.chart.chart.ctx;
                 ctx.save()
@@ -413,7 +412,7 @@ if (gameData.plays.length > 0) {
             zeroLineColor: (isDarkMode) ? "white" : "#ACACAC"
         }
         Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
-        
+
         feather.replace()
         // Graphs
         var ctx = document.getElementById('wpChart')
@@ -437,10 +436,10 @@ if (gameData.plays.length > 0) {
                             stepSize: 0.5,
                             callback: function(value, index, values) {
                                 if (value > 0) {
-                                    let transVal = baseTranslate(value, 0.0, 1.0, 50, 100); 
+                                    let transVal = baseTranslate(value, 0.0, 1.0, 50, 100);
                                     return `${cleanAbbreviation(homeTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
                                 } else if (value < 0) {
-                                    let transVal = baseTranslate(value, -1.0, 0.0, 100, 50); 
+                                    let transVal = baseTranslate(value, -1.0, 0.0, 100, 50);
                                     return `${cleanAbbreviation(awayTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
                                 } else {
                                     return "50%";
@@ -475,10 +474,10 @@ if (gameData.plays.length > 0) {
                         label: function(tooltipItem, data) {
                             // value is always from perspective of home team
                             if (tooltipItem.value > 0) {
-                                let transVal = baseTranslate(tooltipItem.value, 0.0, 1.0, 50, 100); 
+                                let transVal = baseTranslate(tooltipItem.value, 0.0, 1.0, 50, 100);
                                 return `${cleanAbbreviation(homeTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`
                             } else if (tooltipItem.value < 0) {
-                                let transVal = baseTranslate(tooltipItem.value, -1.0, 0.0, 100, 50); 
+                                let transVal = baseTranslate(tooltipItem.value, -1.0, 0.0, 100, 50);
                                 return `${cleanAbbreviation(awayTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`;
                             } else {
                                 return "50%";
@@ -588,5 +587,5 @@ if (gameData.plays.length > 0) {
             /*insert chart image url to download button (tag: <a></a>) */
             a.href = url_base64jp;
         });
-    })()    
+    })()
 }

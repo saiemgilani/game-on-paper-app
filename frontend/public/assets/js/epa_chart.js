@@ -1,7 +1,6 @@
 const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const specialImages = {
     "61": "/assets/img/ennui-uga.png",
-    "52": "/assets/img/fsu-face-52.png",
 };
 const imageSize = 37.5;
 
@@ -180,7 +179,7 @@ function generateConfig(title, teams) {
                 if (viewport == "xl" || viewport == "lg") {
                     const sizeWidth = chart.ctx.canvas.clientWidth;
                     const sizeHeight = chart.ctx.canvas.clientHeight;
-        
+
                     /* good/bad labels*/
                     chart.ctx.save()
                     chart.ctx.textAlign = "right"
@@ -190,7 +189,7 @@ function generateConfig(title, teams) {
                     chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * margin)
                     chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * (1 - margin - 0.005))
                     chart.ctx.restore();
-        
+
                     chart.ctx.save()
                     chart.ctx.textAlign = "left"
                     chart.ctx.font = "italic 12px Helvetica";
