@@ -124,6 +124,11 @@
             "term": "Available Yards %",
             "definition": "(From bcftoys.com) Calculated by dividing drive yards earned by available yards measured from starting field position to end zone.",
             "source" : "https://www.bcftoys.com/2022-ayp/"
+        },
+        {
+            "term": "Adjusted EPA/Play",
+            "definition": "(AKA: Adj EPA/Play) Augments EPA/play by stripping out garbage time plays and applying adjustments for home-field advantage and quality of opponent for FBS vs FBS games. As a result, adjusted EPA/Play and normal EPA/Play numbers may differ <i>significantly</i> until all teams have played multiple FBS vs FBS games, as EPA/Play <i>includes</i> non-FBS games. Methodology adapted from <a href='https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/'>this article</a> by <a href='https://twitter.com/makennnahack'>Makenna Hack</a> and <a href='https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/'>this article</a> from <a href='https://twitter.com/jbuddavis'>Bud Davis</a>.",
+            "source" : "https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/"
         }
     ],
     "D": [
