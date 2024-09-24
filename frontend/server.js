@@ -16,31 +16,30 @@ app.use(express.static(__dirname + '/public'));
 
 const BANNED_USER_AGENT_LIST = [
     'my-tiny-bot',
-    'fidget-spinner-bot'
+    'fidget-spinner-bot',
+    'facebot',
+    'twitterbot',
+    'bingbot',
+    'facebookexternalhit',
+    'ahrefssiteaudit'
 ]
+const BANNED_USER_AGENT_LIST_REGEX = new RegExp(BANNED_USER_AGENT_LIST.join("|"))
 
 app.use((req, res, next) => {
-    if (BANNED_USER_AGENT_LIST.includes(req.get('User-Agent').toLocaleLowerCase())) {
+    if (req.get('User-Agent').toLocaleLowerCase().match(BANNED_USER_AGENT_LIST_REGEX)) {
         return res.status(429).json({
             status: 429,
             message: "Too many requests."
+        });
+    } else if (!["GET", "POST"].includes(req.method)) {
+        return res.status(405).json({
+            status: 405,
+            message: "Method not allowed."
         });
     } else {
         next()
     }
 })
-
-app.use((req, res, next) => {
-    if (BANNED_USER_AGENT_LIST.includes(req.get('User-Agent').toLocaleLowerCase())) {
-        return res.status(429).json({
-            status: 429,
-            message: "Too many requests."
-        });
-    } else {
-        next()
-    }
-});
-
 
 app.use('/cfb', cfb);
 
