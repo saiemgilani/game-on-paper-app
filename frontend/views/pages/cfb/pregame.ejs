@@ -86,15 +86,10 @@ function cleanName(team) {
     <meta name="title" content="<%= title %>">
     <meta name="medium" content="website">
     <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
-    <style>
-        /* img.team-logo-153 {
-            content: url('/assets/img/crying-jordan.png');
-        }  */
-        img.team-logo-61 {
-            content: url('/assets/img/ennui-uga.png');
-            /* Sourced from the Moon Crew Discord server */
-        }
-    </style>
+    <%- include('../../partials/logos', {
+        awayTeam,
+        homeTeam,
+    }) %>
 </head>
 <body>
     <div class="container-fluid">
