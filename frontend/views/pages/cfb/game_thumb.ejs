@@ -1,5 +1,9 @@
 <% 
 
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
 const SICKOS_GOTW = ["401520242"];
 
 const CONFERENCE_MAP = {
@@ -163,11 +167,13 @@ const CONFERENCE_MAP = {
             return team.abbreviation
         }
         
-        function generateTeamCell(comp, winner, completed, spacer) {
+        function generateTeamCell(comp, winner, completed, hasBall, isRedZone, spacer) {
             const rank = comp.curatedRank?.current || 99;
             const rankString = formatScore((rank != 99) ? ("#" + rank) : "", winner, completed)
             const logoContent = `<img class="img-fluid team-logo-${comp.id}" width="30px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png" alt="ESPN team id ${comp.id}"/>`;
             const scoreContent = (game.status.type.name.includes("STATUS_SCHEDULED") || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone")) ? "" : formatScore(comp.score, winner, completed);
+            const possessionClass = isRedZone ? "text-danger" : "text-primary";
+            const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
             return `
             <div class="m-0 ${spacer} d-flex">
                 <div class="d-flex me-auto">
@@ -175,10 +181,9 @@ const CONFERENCE_MAP = {
                     <div class="d-flex flex-column me-3 align-self-center">
                         <div class="d-flex align-items-center">
                             <span class="small text-muted ${(rank != 99) ? "me-1" : ""}">${(rank != 99) ? ("#" + rank) : ""}</span>
-                            <span class="align-self-center h4 mb-0">${formatScore(cleanAbbreviation(comp.team), winner, completed)}</span>
+                            <span class="align-self-center h4 mb-0">${formatScore(cleanAbbreviation(comp.team), winner, completed)}${possessionMarker}</span>
                         </div>
                         ${getRecordString(comp)}
-                        
                     </div>
                 </div>
                 <span class="align-self-center h4"><strong>${scoreContent}</strong></span>
@@ -202,22 +207,32 @@ const CONFERENCE_MAP = {
                 <a href="https://twitter.com/sickoscommittee"><img class="rotate" height="25px" src="/assets/img/sickos.png" alt="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)." title="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)."/></a>
             <% } %>
         </div>
-        <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, null) %>
-        <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, "mb-2") %>
+        <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == awayComp.id, gameComp.situation?.lastPlay?.isRedZone, null) %>
+        <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == homeComp.id, gameComp.situation?.lastPlay?.isRedZone, "mb-2") %>
         <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
             <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
                 <div class="card-text mb-2">
                 <% if (gameComp.situation.lastPlay.text != null && (gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("two-point conversion") || gameComp.situation.lastPlay.text.includes("KICK"))) { %>
+                    <p class="mb-0 text-muted"><strong>Last Play:</strong> <%= gameComp.situation.lastPlay.text %></p>
                     <p class="mb-0 text-muted"><strong>Next:</strong> PAT</p>
-                    <p class="mb-0 text-muted"><strong>Last Play:</strong> <%= gameComp.situation.lastPlay.text %></p>
                 <% } else if (gameComp.situation.lastPlay.text != null && gameComp.situation.lastPlay.text.toLocaleLowerCase().includes("kickoff")) { %>
-                    <p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>
                     <p class="mb-0 text-muted"><strong>Last Play:</strong> <%= gameComp.situation.lastPlay.text %></p>
+                    <p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>
                 <% } else if (gameComp.situation.downDistanceText == null || (gameComp.situation.downDistanceText != null && gameComp.situation.downDistanceText.length == 0)) { %>
                     <p class="mb-0 text-muted"><strong>Last Play:</strong> <%= gameComp.situation.lastPlay.text %></p>
                 <% } else { %>
-                    <p class="mb-0 text-muted"><strong>Next:</strong> <%= gameComp.situation.downDistanceText %></p>
                     <p class="mb-0 text-muted"><strong>Last Play:</strong> <%= gameComp.situation.lastPlay.text %></p>
+                    <p class="mb-0 text-muted"><strong>Next:</strong> <%= gameComp.situation.downDistanceText %></p>
+                <% } %>
+
+                <% if (gameComp.situation.lastPlay.probability != null) { %>
+                    <% if (gameComp.situation.lastPlay.probability.homeWinPercentage > gameComp.situation.lastPlay.probability.awayWinPercentage) { %>
+                        <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> <%= cleanAbbreviation(homeTeam) %> <%= roundNumber(gameComp.situation.lastPlay.probability.homeWinPercentage * 100, 2, 1) %>%</p>
+                    <% } else if (gameComp.situation.lastPlay.probability.homeWinPercentage > gameComp.situation.lastPlay.probability.awayWinPercentage) { %>
+                        <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> <%= cleanAbbreviation(awayTeam) %> <%= roundNumber(gameComp.situation.lastPlay.probability.awayWinPercentage * 100, 2, 1) %>%</p>
+                    <% } else { %>
+                        <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> 50%</p>
+                    <% } %>
                 <% } %>
                 </div>
             <% } %>
