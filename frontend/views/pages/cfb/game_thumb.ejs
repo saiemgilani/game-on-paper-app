@@ -228,7 +228,7 @@ const CONFERENCE_MAP = {
                 <% if (gameComp.situation.lastPlay.probability != null) { %>
                     <% if (gameComp.situation.lastPlay.probability.homeWinPercentage > gameComp.situation.lastPlay.probability.awayWinPercentage) { %>
                         <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> <%= cleanAbbreviation(homeTeam) %> <%= roundNumber(gameComp.situation.lastPlay.probability.homeWinPercentage * 100, 2, 1) %>%</p>
-                    <% } else if (gameComp.situation.lastPlay.probability.homeWinPercentage > gameComp.situation.lastPlay.probability.awayWinPercentage) { %>
+                    <% } else if (gameComp.situation.lastPlay.probability.homeWinPercentage < gameComp.situation.lastPlay.probability.awayWinPercentage) { %>
                         <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> <%= cleanAbbreviation(awayTeam) %> <%= roundNumber(gameComp.situation.lastPlay.probability.awayWinPercentage * 100, 2, 1) %>%</p>
                     <% } else { %>
                         <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> 50%</p>
