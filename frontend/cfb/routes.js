@@ -205,7 +205,7 @@ async function retrieveRemoteTeamData(year, team_id, type) {
         }
         if ((year - 1) < 2014) {
             return [{
-                pos_team: abbreviation
+                pos_team: team_id
             }];
         } else {
             return await retrieveRemoteTeamData(year - 1, team_id, type);

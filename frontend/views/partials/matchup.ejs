@@ -41,7 +41,7 @@
 
     function produceRankHtml(rank, addClass = "", addStyle = "") {       
         if (rank == null || (!rank && rank != 0)) {
-            return "N/A"
+            return `<td class="${addClass} text-center" style="${addStyle}">N/A</td>`
         }
     
         let tied = String(rank)?.includes(".5")
