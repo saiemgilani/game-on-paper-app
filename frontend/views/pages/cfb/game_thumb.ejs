@@ -207,8 +207,8 @@ const CONFERENCE_MAP = {
                 <a href="https://twitter.com/sickoscommittee"><img class="rotate" height="25px" src="/assets/img/sickos.png" alt="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)." title="Nominated as 'Sickos Game of the Week' by SickosCommittee (@SickosCommittee on Twitter)."/></a>
             <% } %>
         </div>
-        <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == awayComp.id, gameComp.situation?.lastPlay?.isRedZone, null) %>
-        <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == homeComp.id, gameComp.situation?.lastPlay?.isRedZone, "mb-2") %>
+        <%- generateTeamCell(awayComp, parseInt(awayComp.score) > parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == awayComp.id, gameComp.situation?.isRedZone, null) %>
+        <%- generateTeamCell(homeComp, parseInt(awayComp.score) < parseInt(homeComp.score),  game.status.type.completed == true, gameComp.situation?.lastPlay?.end?.team?.id == homeComp.id, gameComp.situation?.isRedZone, "mb-2") %>
         <% if (!(game.status.type.completed == true || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone"))) { %>
             <% if (gameComp.situation != null && gameComp.situation.lastPlay != null) { %>
                 <div class="card-text mb-2">
