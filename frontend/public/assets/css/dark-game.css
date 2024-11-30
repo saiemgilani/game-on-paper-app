@@ -2468,7 +2468,7 @@ iframe {
 }
 .blog-footer {
     color: rgb(160, 152, 139);
-    background-color: rgb(27, 30, 31);
+    /* background-color: rgb(27, 30, 31); */
     border-top-color: rgb(55, 60, 62);
 }
 .blog-header {

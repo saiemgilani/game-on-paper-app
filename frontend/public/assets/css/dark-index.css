@@ -2463,4 +2463,10 @@
     .spice-level-fcs-upset {
         border-color: #FF0000 !important;
     }
+
+    .blog-footer {
+        color: rgb(160, 152, 139);
+        /* background-color: rgb(27, 30, 31); */
+        border-top-color: rgb(55, 60, 62);
+    }
 }

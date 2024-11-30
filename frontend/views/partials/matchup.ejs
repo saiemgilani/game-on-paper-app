@@ -141,12 +141,12 @@
                         </tr>
                         <tr>
                             <td class="ps-4">Offense</td>
-                            <td class="text-center">${roundNumber(breakdown["offensive"]["passing"]["epaPerPlay"], 2, 2)}</td>
+                            <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["epaPerPlay"], 2, 2)}</td>
                             ${produceRankHtml(breakdown["offensive"]["passing"]["epaPerPlayRank"])}
                         </tr>
                         <tr>
                             <td class="ps-4">Defense</td>
-                            <td class="text-center">${roundNumber(breakdown["defensive"]["passing"]["epaPerPlay"], 2, 2)}</td>
+                            <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["epaPerPlay"], 2, 2)}</td>
                             ${produceRankHtml(breakdown["defensive"]["passing"]["epaPerPlayRank"])}
                         </tr>
                     </tbody>
