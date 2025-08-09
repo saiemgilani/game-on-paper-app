@@ -221,12 +221,13 @@ def process():
         # logging.getLogger("root").info(result)
         return jsonify(result), 200
     except KeyError:
+        logging.getLogger("root").error(f"Error while processing PBP on Python side, threw 404: {e}")
         return jsonify({
             "status" : "bad",
             "message" : "ESPN payload is malformed. Data not available."
         }), 404
     except Exception as e:
-        logging.getLogger("root").error(f"Error while processing PBP on Python side: {e}")
+        logging.getLogger("root").error(f"Error while processing PBP on Python side, threw 500: {e}")
         return jsonify({
             "status" : "bad",
             "message" : "Unknown error occurred, check logs."
