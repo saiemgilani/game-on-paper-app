@@ -166,9 +166,9 @@ def process():
                 "defPosTeamTimeouts" : record["end.defPosTeamTimeouts"],
                 "ExpScoreDiff" : record["end.ExpScoreDiff"],
                 "ExpScoreDiff_Time_Ratio" : record["end.ExpScoreDiff_Time_Ratio"],
-                "shortDownDistanceText" : record["end.shortDownDistanceText"],
-                "possessionText" : record["end.possessionText"],
-                "downDistanceText" : record["end.downDistanceText"]
+                "shortDownDistanceText" : record.get("end.shortDownDistanceText"),
+                "possessionText" : record.get("end.possessionText"),
+                "downDistanceText" : record.get("end.downDistanceText")
             }
 
             record["players"] = {
