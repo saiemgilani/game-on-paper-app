@@ -4482,5 +4482,169 @@
             "endDate": "2025-01-22T07:59Z",
             "year": "2024"
         }
+    ],
+    "2025": [
+        {
+            "label": "Week 1",
+            "alternateLabel": "Week 1",
+            "detail": "Aug 23-Sep 1",
+            "value": "1",
+            "startDate": "2025-08-23T07:00Z",
+            "endDate": "2025-09-02T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 2",
+            "alternateLabel": "Week 2",
+            "detail": "Sep 2-7",
+            "value": "2",
+            "startDate": "2025-09-02T07:00Z",
+            "endDate": "2025-09-08T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 3",
+            "alternateLabel": "Week 3",
+            "detail": "Sep 8-14",
+            "value": "3",
+            "startDate": "2025-09-08T07:00Z",
+            "endDate": "2025-09-15T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 4",
+            "alternateLabel": "Week 4",
+            "detail": "Sep 15-21",
+            "value": "4",
+            "startDate": "2025-09-15T07:00Z",
+            "endDate": "2025-09-22T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 5",
+            "alternateLabel": "Week 5",
+            "detail": "Sep 22-28",
+            "value": "5",
+            "startDate": "2025-09-22T07:00Z",
+            "endDate": "2025-09-29T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 6",
+            "alternateLabel": "Week 6",
+            "detail": "Sep 29-Oct 5",
+            "value": "6",
+            "startDate": "2025-09-29T07:00Z",
+            "endDate": "2025-10-06T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 7",
+            "alternateLabel": "Week 7",
+            "detail": "Oct 6-12",
+            "value": "7",
+            "startDate": "2025-10-06T07:00Z",
+            "endDate": "2025-10-13T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 8",
+            "alternateLabel": "Week 8",
+            "detail": "Oct 13-19",
+            "value": "8",
+            "startDate": "2025-10-13T07:00Z",
+            "endDate": "2025-10-20T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 9",
+            "alternateLabel": "Week 9",
+            "detail": "Oct 20-26",
+            "value": "9",
+            "startDate": "2025-10-20T07:00Z",
+            "endDate": "2025-10-27T06:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 10",
+            "alternateLabel": "Week 10",
+            "detail": "Oct 27-Nov 2",
+            "value": "10",
+            "startDate": "2025-10-27T07:00Z",
+            "endDate": "2025-11-03T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 11",
+            "alternateLabel": "Week 11",
+            "detail": "Nov 3-9",
+            "value": "11",
+            "startDate": "2025-11-03T08:00Z",
+            "endDate": "2025-11-10T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 12",
+            "alternateLabel": "Week 12",
+            "detail": "Nov 10-16",
+            "value": "12",
+            "startDate": "2025-11-10T08:00Z",
+            "endDate": "2025-11-17T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 13",
+            "alternateLabel": "Week 13",
+            "detail": "Nov 17-23",
+            "value": "13",
+            "startDate": "2025-11-17T08:00Z",
+            "endDate": "2025-11-24T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 14",
+            "alternateLabel": "Week 14",
+            "detail": "Nov 24-30",
+            "value": "14",
+            "startDate": "2025-11-24T08:00Z",
+            "endDate": "2025-12-01T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 15",
+            "alternateLabel": "Week 15",
+            "detail": "Dec 1-7",
+            "value": "15",
+            "startDate": "2025-12-01T08:00Z",
+            "endDate": "2025-12-08T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Week 16",
+            "alternateLabel": "Week 16",
+            "detail": "Dec 8-13",
+            "value": "16",
+            "startDate": "2025-12-08T08:00Z",
+            "endDate": "2026-12-14T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "Bowls",
+            "alternateLabel": "Bowls",
+            "detail": "Dec 13-Jan 20",
+            "value": "1",
+            "startDate": "2025-12-13T08:00Z",
+            "endDate": "2026-01-21T07:59Z",
+            "year": "2025"
+        },
+        {
+            "label": "CFP",
+            "alternateLabel": "CFP",
+            "detail": "Dec 19-Jan 20",
+            "value": "999",
+            "startDate": "2025-12-19T08:00Z",
+            "endDate": "2026-01-20T07:59Z",
+            "year": "2025"
+        }
     ]
 }

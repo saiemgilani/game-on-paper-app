@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "pandas",
+#     "requests",
+# ]
+# ///
 import requests
 import pandas as pd
 import json
@@ -24,4 +31,4 @@ def get_calendar(year: int):
     print(json.dumps(result))
 
 # update this to any arbitrary year and add it to frontend/cfb/schedule.json to update the weeks available in the switcher.
-get_calendar(2024)
+get_calendar(2025)
