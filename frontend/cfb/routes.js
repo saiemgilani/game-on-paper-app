@@ -8,6 +8,7 @@ const redis = require('redis');
 const path = require("path");
 const fs = require('fs');
 const util = require('util');
+const cachePage = require('../utils/cache');
 const debuglog = util.debuglog('[frontend]');
 const alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 let glossary = {};
@@ -252,7 +253,7 @@ async function retrieveLastUpdated() {
     }
 }
 
-router.get('/', async function(req, res, next) {
+router.get('/', cachePage(60), async function(req, res, next) {
     try {
         let gameList = await retrieveGameList(req.originalUrl, { group: req.query.group });
         let weekList = await Schedule.getWeeksMap();
@@ -338,7 +339,7 @@ const QUARANTINE_LIST = [
     '401628398'
 ]
 
-router.route('/game/:gameId')
+router.route('/game/:gameId', cachePage(60))
     .get(async function(req, res, next) {
         try {
             const cacheBuster = ((new Date()).getTime() * 1000);
@@ -430,7 +431,7 @@ router.route('/game/:gameId')
     });
 
 
-router.route('/year/:year/team/:teamId')
+router.route('/year/:year/team/:teamId', cachePage(60 * 60 * 24))
     .get(async function(req, res, next) {
         try {
             if (req.params.year == 2025) { // remove after week 2
@@ -496,7 +497,7 @@ router.route('/charts/team/epa')
         return res.redirect(`/cfb/year/2024/charts/team/epa`)
     })
 
-router.route('/year/:year/charts/team/epa')
+router.route('/year/:year/charts/team/epa', cachePage(60 * 60 * 24))
     .get(async function(req, res, next) {
         try {
             const baseData = await retrieveLeagueData(req.params.year, "overall") 
@@ -522,7 +523,7 @@ router.route('/year/:year/charts/team/epa')
         }
     })
 
-router.route('/year/:year/teams/:type')
+router.route('/year/:year/teams/:type', cachePage(60 * 60 * 24))
     .get(async function(req, res, next) {
         try {
             const type = req.params.type ?? "differential";
@@ -579,7 +580,7 @@ router.route('/year/:year/teams/:type')
         }
     })
 
-router.route('/year/:year/players/:type')
+router.route('/year/:year/players/:type', cachePage(60 * 60 * 24))
     .get(async function(req, res, next) {
         try {
             const type = req.params.type ?? "passing";
@@ -627,7 +628,7 @@ router.route('/year/:year/players')
     return res.redirect(`/cfb/year/${req.params.year}/players/passing`);
 })
 
-router.route('/glossary')
+router.route('/glossary', cachePage(60 * 60 * 24))
 .get(function(req, res, next) {
     return res.render('pages/cfb/glossary', {
         glossary
