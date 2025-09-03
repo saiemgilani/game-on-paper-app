@@ -1,11 +1,23 @@
+<%
+
+function formatTeamDarkLogo(team) {
+    if (!team) {
+        return "";
+    }
+    return `
+    img.team-logo-${team.id} \{
+        content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${team.id}.png')
+    \}
+    `
+}
+%>
+
+
 <style>
     @media (prefers-color-scheme: dark) {
-        img.team-logo-<%=homeTeam.id%> {
-            content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%=homeTeam.id%>.png')
-        }
-        img.team-logo-<%=awayTeam.id%> {
-            content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%=awayTeam.id%>.png')
-        }
+        <%- formatTeamDarkLogo(team) %>
+        <%- formatTeamDarkLogo(homeTeam) %>
+        <%- formatTeamDarkLogo(awayTeam) %>
     }
     /* img.team-logo-153 {
         content: url('/assets/img/crying-jordan.png');
