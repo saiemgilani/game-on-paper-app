@@ -72,50 +72,70 @@ exports.getGames = async function (year, week, type, group) {
 }
 
 async function _getRemoteGames (year, week, type, group) {
-    // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
-    const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
-
-    const params = {
-        year: year,
-        week: week,
-        group: group || 80,
-        seasontype: type || 2,
-        xhr: 1,
-        render: 'false',
-        userab: 18
-    }
-
-    const res = await axios.get(baseUrl, {
-        params
-    });
-    debuglog(JSON.stringify(params))
-    debuglog(res.request.res.responseUrl)
-    let espnContent = res.data;
-    if (espnContent == null) {
-        throw Error(`Data not available for ESPN's schedule endpoint.`)
-    }
-
-    if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
-        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
-    }
-
-    var result = []
-    // console.log(espnContent)
-    Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
-        if (schedule != null && schedule.games != null) {
-            result = result.concat(schedule.games)
-        }
-    })
-
     if (year == null || week == null) {
+        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}&size=100000&${new Date().getTime()}`, {
+            protocol: "https"
+        })
+        debuglog(res.request.res.responseUrl)
+        let espnContent = res.data;
+        if (espnContent == null) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
+        }
+
+        let result = (espnContent != null) ? espnContent.events : [];
         try {
             await Games.setGameCacheValue(`cfb-scoreboard`, JSON.stringify(result), 60 * 1); // 1 min TTL
         } catch (e) {
             console.log(`failed to write game data for key cfb-scoreboard to redis game cache, error: ${e}`);
         }
-    }
+        return result;
+    } else {
+        // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
+        const baseUrl = 'https://cdn.espn.com/core/college-football/schedule?';
 
-    return result;
+        const query = {
+            year: year,
+            week: week,
+            group: group || 80,
+            seasontype: type || 2,
+            xhr: 1,
+            render: 'false',
+            userab: 18,
+        }
+
+        for (let param in query) { /* You can get copy by spreading {...query} */
+            if (query[param] === undefined /* In case of undefined assignment */
+                || query[param] === null 
+                || query[param] === ""
+            ) {    
+                delete query[param];
+            }
+        }
+
+        const url = baseUrl + (new URLSearchParams(query)).toString() + `&${new Date().getTime()}`;
+        console.log(url)
+        const res = await axios.get(url);
+        // debuglog(JSON.stringify(params))
+        // debuglog(res.request.res.responseUrl)
+        let espnContent = res.data;
+        if (espnContent == null) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
+        }
+
+        if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
+            throw Error("Data returned from ESPN was HTML file, not valid JSON.")
+        }
+
+        var result = []
+        // console.log(espnContent)
+        Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+            if (schedule != null && schedule.games != null) {
+                result = result.concat(schedule.games)
+            }
+        })
+
+        return result;
+    }
 }
 
 exports.getWeeks = async function (year) {
