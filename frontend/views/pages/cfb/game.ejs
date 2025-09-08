@@ -221,7 +221,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     var classText = "";
     if (turnover_vec.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_poss == 1) || (play.start.down == 4 && parseFloat(play.statYardage) < parseFloat(play.start.distance) && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
         classText = " table-danger"
-    } else if (play.scoringPlay == true) {
+    } else if (play.scoringPlay == true || play.scoring_play == true) {
         classText = " table-success"
     } else if (play.text.toLocaleLowerCase().includes("penalty")) {
         classText = " table-warning"
