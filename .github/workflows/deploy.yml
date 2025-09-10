@@ -3,12 +3,12 @@ name: deploy
 on:
   push:
     branches:
-    - main
+      - main
   schedule:
     - cron: "0 12 * * 1"
   workflow_dispatch:
   workflow_call:
-    
+
 jobs:
   build-node:
     runs-on: ubuntu-latest
@@ -17,7 +17,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Node container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
+        uses: mr-smithers-excellent/docker-build-push
         with:
           image: saiemgilani/game-on-paper-node
           registry: ghcr.io
@@ -33,7 +33,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
+        uses: mr-smithers-excellent/docker-build-push@v6.7
         with:
           image: saiemgilani/game-on-paper-python
           registry: ghcr.io
@@ -49,7 +49,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
+        uses: mr-smithers-excellent/docker-build-push@v6.7
         with:
           image: saiemgilani/game-on-paper-redis
           registry: ghcr.io
@@ -59,7 +59,7 @@ jobs:
           dockerfile: ./redis/Dockerfile.lru
           tags: latest
       - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v5.5
+        uses: mr-smithers-excellent/docker-build-push@v6.7
         with:
           image: saiemgilani/game-on-paper-cache
           registry: ghcr.io
@@ -85,15 +85,15 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          localPath: './docker-compose.do.yml'
-          remotePath: './docker-compose.yml'
+          localPath: "./docker-compose.do.yml"
+          remotePath: "./docker-compose.yml"
       - name: Deploy package to DigitalOcean
         uses: appleboy/ssh-action@master
         env:
-            GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
-            DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+          GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
+          DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
