@@ -33,7 +33,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6.7
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: saiemgilani/game-on-paper-python
           registry: ghcr.io
@@ -49,7 +49,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6.7
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: saiemgilani/game-on-paper-redis
           registry: ghcr.io
@@ -59,7 +59,7 @@ jobs:
           dockerfile: ./redis/Dockerfile.lru
           tags: latest
       - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6.7
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: saiemgilani/game-on-paper-cache
           registry: ghcr.io
