@@ -390,8 +390,8 @@ router.route('/game/:gameId')
                     let percentiles = [];
                     try {
                         const inputSeason = data["header"]["season"]["year"];
-                        const season = Math.min(Math.max(inputSeason, 2014), 2024); // still clamped to 2023 until week 4
-                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2024`)
+                        const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
+                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
                         percentiles = await retrievePercentiles(season);
                     } catch (e) {
                         console.log(`error while retrieving league percentiles: ${e}`)
@@ -490,7 +490,7 @@ function retrieveValue(dictionary, key) {
 
 router.route('/charts/team/epa')
     .get(async function(req, res, next) { // change after week 4
-        return res.redirect(`/cfb/year/2024/charts/team/epa`)
+        return res.redirect(`/cfb/year/2025/charts/team/epa`)
     })
 
 router.route('/year/:year/charts/team/epa')

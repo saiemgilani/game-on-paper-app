@@ -74,12 +74,6 @@
                     <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality.</p>
                     <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- FBS teams that have not played FBS opponents are at the bottom.</p>
                     <p class="m-0 mb-2 text-muted text-small"><strong>Warning: </strong>This page is best viewed on desktop.</p>
-                    <% if (season == 2024) { %>
-                        <p class="m-0 mb-2 text-muted text-small"><strong>Update (14-Oct-2024):</strong> 2024 Week 2's UNC vs Charlotte game was removed due to data quality issues affecting both teams. This game will be reintegrated into these metrics when the underlying data is cleaned.</p>
-                    <% } %>
-                    <% if (season == 2025) { %>
-                        <p class="m-0 mb-2 text-muted text-small"><strong>Note:</strong> Reliable Adj EPA/Play (values, ranks, and charts) will not be available for 2025 until all teams have played two FBS opponents (around Week 4).</p>
-                    <% } %>
                     <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
                 </div>
                 <div class="ms-auto col-lg-6 col-xs-12">
