@@ -11,6 +11,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   cache:
     build: 
       context: ./redis
@@ -23,6 +28,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   summary:
     image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
     platform: linux/amd64
@@ -34,6 +44,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   node:
     build: ./frontend
     command: ["node", "server.js"]
@@ -52,11 +67,16 @@ services:
       - redis
       - cache
     healthcheck:
-      test: curl --fail http://localhost:8000/healthcheck || exit 1
+      test: curl --fail http://localhost:8000/cfb/healthcheck || exit 1
       interval: 60s
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        reservations:
+          cpus: 1
+          memory: 1gb
   python:
     build: ./python
     expose:
@@ -67,3 +87,8 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        reservations:
+          cpus: 1
+          memory: 1gb
