@@ -71,7 +71,7 @@ services:
       resources:
         reservations:
           cpus: 1
-          memory: 1gb
+          memory: 2gb
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
     expose:

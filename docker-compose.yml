@@ -76,7 +76,7 @@ services:
       resources:
         reservations:
           cpus: 1
-          memory: 1gb
+          memory: 2gb
   python:
     build: ./python
     expose:
