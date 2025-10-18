@@ -6,6 +6,8 @@ on:
       - main
   schedule:
     - cron: "0 12 * * 1"
+  repository_dispatch:
+    types: [deploy]
   workflow_dispatch:
   workflow_call:
 
