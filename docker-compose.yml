@@ -74,9 +74,9 @@ services:
       timeout: 10s
     deploy:
       resources:
-        reservations:
-          cpus: 1
-          memory: 2gb
+        limits:
+          cpus: 0.5
+          memory: 1gb
   python:
     build: ./python
     expose:
@@ -89,6 +89,5 @@ services:
       timeout: 10s
     deploy:
       resources:
-        reservations:
-          cpus: 1
-          memory: 1gb
+        limits:
+          memory: 4gb

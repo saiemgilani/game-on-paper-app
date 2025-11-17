@@ -69,9 +69,9 @@ services:
       timeout: 10s
     deploy:
       resources:
-        reservations:
-          cpus: 1
-          memory: 2gb
+        limits:
+          cpus: 0.5
+          memory: 1gb
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
     expose:
@@ -84,6 +84,5 @@ services:
       timeout: 10s
     deploy:
       resources:
-        reservations:
-          cpus: 1
-          memory: 1gb
+        limits:
+          memory: 4gb
