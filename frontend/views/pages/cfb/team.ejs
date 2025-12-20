@@ -389,9 +389,15 @@ function hexToRgb(hex) {
         <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
         <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
         <script>
-            const primaryColor = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
-            const altColor = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
-            const breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+            const prim = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
+            const alt = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
+            let breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+            breakdown = {
+                ...breakdown,
+                teamName: '<%- cleanLocation() %>',
+                alternateColor: '<%- teamData.alternateColor ?? '#000000' %>',
+                color: '<%- teamData.color %>'
+            }
         </script>
         <script src="/assets/js/radar.js"></script>
         <script>
@@ -402,7 +408,7 @@ function hexToRgb(hex) {
                 const offRadarChart = new Chart(
                     offRadarCtx,
                     generateConfig(
-                        generateDataset("Offensive"),
+                        generateDataset([breakdown], "Offensive"),
                         '<%- cleanLocation() %> <%= season %> Offensive Profile'
                     )
                 );
@@ -411,7 +417,7 @@ function hexToRgb(hex) {
                 const defRadarChart = new Chart(
                     defRadarCtx,
                     generateConfig(
-                        generateDataset("Defensive"),
+                        generateDataset([breakdown], "Defensive"),
                         '<%- cleanLocation() %> <%= season %> Defensive Profile'
                     )
                 );

@@ -41,6 +41,16 @@ function cleanName(team) {
     return team.nickname
 }
 
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
 %>
 <head>
     <meta charset="utf-8">
@@ -163,6 +173,20 @@ function cleanName(team) {
                     week,
                     hideNavigation: false
                 }) %>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid mb-3">
+        <div class="row mb-3">
+            <div class="col-lg-2 col-md-0">
+
+            </div>
+            <% const radarWidth = 200; %>
+            <div class="col-lg-4 col-xs-12 mb-xs-3">
+            <canvas id="offensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
+            </div>
+            <div class="col-lg-4 col-xs-12 mb-xs-3">
+            <canvas id="defensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
             </div>
         </div>
     </div>
@@ -316,6 +340,52 @@ function cleanName(team) {
             document.body.querySelector("#game-date").innerText = "LIVE - " + statusDetail
             setTimeout("location.reload(true);", 60 * 1000);
         }
+    </script>
+    <script src="/assets/js/radar.js"></script>
+    <script>
+        // const homeColor = JSON.parse('<%- JSON.stringify(hexToRgb(homeTeam.color)) %>')
+        // const homeAlt = JSON.parse('<%- JSON.stringify(hexToRgb(homeTeam.alternateColor ?? '#000000')) %>')
+        // const awayColor = JSON.parse('<%- JSON.stringify(hexToRgb(awayTeam.color)) %>')
+        // const awayAlt = JSON.parse('<%- JSON.stringify(hexToRgb(awayTeam.alternateColor ?? '#000000')) %>')
+
+        const firstCanvasTitle = "<%= cleanName(awayTeam) %> Offense vs <%= cleanName(homeTeam) %> Defense"
+        const secondCanvasTitle = "<%= cleanName(homeTeam) %> Offense vs <%= cleanName(awayTeam) %> Defense"
+
+        let breakdowns = JSON.parse('<%- JSON.stringify(gameData.matchup.team) %>')
+        breakdowns = [{
+            ...breakdowns[0],
+            teamName: '<%- cleanName(awayTeam) %>',
+            alternateColor: '<%= awayTeam.alternateColor ?? '#000000' %>',
+            color: '<%= awayTeam.color %>'
+        }, {
+            ...breakdowns[1],
+            teamName: '<%- cleanName(homeTeam) %>',
+            alternateColor: '<%= homeTeam.alternateColor ?? '#000000' %>',
+            color: '<%= homeTeam.color %>'
+        }]
+
+        function drawRadarCanvases() {
+            'use strict'
+            feather.replace()
+            const offRadarCtx = document.getElementById('offensive-canvas')
+            const offRadarChart = new Chart(
+                offRadarCtx,
+                generateConfig(
+                    generateDataset(breakdowns, "Offensive", "Defensive"),
+                    firstCanvasTitle
+                )
+            );
+
+            const defRadarCtx = document.getElementById('defensive-canvas')
+            const defRadarChart = new Chart(
+                defRadarCtx,
+                generateConfig(
+                    generateDataset(breakdowns, "Defensive", "Offensive"),
+                    secondCanvasTitle
+                )
+            );
+        }
+        drawRadarCanvases()
     </script>
 </body>
 </html>
