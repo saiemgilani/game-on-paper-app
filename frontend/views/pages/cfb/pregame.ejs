@@ -348,8 +348,8 @@ function hexToRgb(hex) {
         // const awayColor = JSON.parse('<%- JSON.stringify(hexToRgb(awayTeam.color)) %>')
         // const awayAlt = JSON.parse('<%- JSON.stringify(hexToRgb(awayTeam.alternateColor ?? '#000000')) %>')
 
-        const firstCanvasTitle = "<%= cleanName(awayTeam) %> Offense vs <%= cleanName(homeTeam) %> Defense"
-        const secondCanvasTitle = "<%= cleanName(homeTeam) %> Offense vs <%= cleanName(awayTeam) %> Defense"
+        const firstCanvasTitle = "<%- cleanName(awayTeam) %> Offense vs <%- cleanName(homeTeam) %> Defense"
+        const secondCanvasTitle = "<%- cleanName(homeTeam) %> Offense vs <%- cleanName(awayTeam) %> Defense"
 
         let breakdowns = JSON.parse('<%- JSON.stringify(gameData.matchup.team) %>')
         breakdowns = [{
