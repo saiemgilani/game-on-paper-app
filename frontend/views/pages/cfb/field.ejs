@@ -22,8 +22,10 @@
             <% var endYardsToEndzone = (play.end.team.id != play.start.team.id) ? 100 - play.end.yardsToEndzone : play.end.yardsToEndzone %>
             <% endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone %>
             <% endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone %>
-            <% if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)'].includes(play.type.text)) { %>
+            <% if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) { %>
                 <%- `field.markPlay('#${offense.color}', ${play.start.yardsToEndzone}, ${endYardsToEndzone}, text = ${text}, annotation = ${annotation});` %>
+            <% } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) { %>
+                <%- `field.markPlay('#${offense.color}', ${play.start.yardsToEndzone}, ${play.start.yardsToEndzone}, text = ${text}, annotation = ${annotation});` %>
             <% } %>
         <% } %>
     }
