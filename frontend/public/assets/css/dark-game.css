@@ -2595,4 +2595,16 @@ p.box-heading {
     color: black;
 }
 
+.tm-row {
+    border-top-color: #e8e6e3 !important; 
+}
+
+.tm-section-title  {
+    border-inline-end-color: #545b5e !important; 
+}
+
+.tm-segment  {
+    border-inline-end-color: #545b5e !important; 
+}
+
 }

@@ -125,93 +125,91 @@
 
     //console.log(passMatrix)
 
-    let sortableAttempts = [];
-    for (const depth of Object.keys(passMatrix)) {
-        const element = passMatrix[depth]
-        for (const direction of Object.keys(element)) {
-            const epa = element[direction];
+    //let sortableAttempts = [];
+    //for (const depth of Object.keys(passMatrix)) {
+    //    const element = passMatrix[depth]
+    //    for (const direction of Object.keys(element)) {
+    //        const epa = element[direction];
+    //
+    //        sortableAttempts.push([depth, direction, epa["EPA"]])
+    //    }
+    //}
 
-            sortableAttempts.push([depth, direction, epa["EPA"]])
-        }
-    }
-
-    sortableAttempts.sort((a, b) => (a[2] - b[2]))
+    //sortableAttempts.sort((a, b) => (a[2] - b[2]))
     //console.log(sortableAttempts)
-    let sortedAttempts = {
-        "short": {
-            "left": "",
-            "middle": "",
-            "right": ""
-        },
-        "deep": {
-            "left": "",
-            "middle": "",
-            "right": ""
-        }
-    }
-    for (const i in sortableAttempts) {
-        let element = sortableAttempts[i]
-        let value = (i / sortableAttempts.length)
-        let step = Math.round(value / 0.1)
-        let clampedStep = Math.min(Math.max(step, 0), 9)
-        if (clampedStep >= 4 && clampedStep <= 5) {
-            sortedAttempts[element[0]][element[1]] = ``;
-        } else {
-            sortedAttempts[element[0]][element[1]] = `hulk-bg-level-${clampedStep}`;
-        }
-    }
+    //let sortedAttempts = {
+    //    "short": {
+    //        "left": "",
+    //        "middle": "",
+    //        "right": ""
+    //    },
+    //    "deep": {
+    //        "left": "",
+    //        "middle": "",
+    //        "right": ""
+    //    }
+    //}
+    //for (const i in sortableAttempts) {
+        //let element = sortableAttempts[i]
+        //let value = (i / sortableAttempts.length)
+        //let step = Math.round(value / 0.1)
+        //let clampedStep = Math.min(Math.max(step, 0), 9)
+        //if (clampedStep >= 4 && clampedStep <= 5) {
+        //    sortedAttempts[element[0]][element[1]] = ``;
+        //} else {
+        //    sortedAttempts[element[0]][element[1]] = `hulk-bg-level-${clampedStep}`;
+        //}
+    //}
     //console.log(sortedAttempts)
 %>
 
 <% if (countableAttempts > 0) { %>
 <h3 class="mt-3 mb-2">Target Matrix  <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper.com on Bluesky!">(Beta)</abbr></small></span></h3>
 <div class="table table-responsive">
-    <table class="table table-sm table-responsive text-center">
+    <table class="table table-sm table-responsive text-center target-matrix">
         <tbody>
-            <tr style="border-top-color: #e8e6e3 !important; border-top: 1px solid;">
-                <td style="rotate: -90deg !important; padding-bottom: 3em; padding-top: 3em; width: 5em; line-height: 1em;">
+            <tr class="tm-row">
+                <td class="tm-section-title">
                     <span class="d-block"><strong>Deep</strong></span>
                     <span class="text-muted"><small>12+ air yards</small></span>
                 </td>
-                <td class="align-middle <%= sortedAttempts["deep"]["left"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["left"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["left"]["completions"] || 0 %>/<%= passMatrix["deep"]["left"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["left"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["left"]["TD"] || 0 %> TD</small></small></p>
                 </td>
-                <td class="align-middle <%= sortedAttempts["deep"]["middle"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["middle"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["middle"]["completions"] || 0 %>/<%= passMatrix["deep"]["middle"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["middle"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["middle"]["TD"] || 0 %> TD</small></small></p>
                 </td>
-                <td class="align-middle <%= sortedAttempts["deep"]["right"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["right"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["right"]["completions"] || 0 %>/<%= passMatrix["deep"]["right"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["right"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["right"]["TD"] || 0 %> TD</small></p>
                 </td>
             </tr>
             <tr>
-                <td style="rotate: -90deg !important; padding-bottom: 3em; padding-top: 3em; width: 5em; line-height: 1em;">
+                <td class="tm-section-title">
                     <span class="d-block"><strong>Short</strong></span>
                     <span class="text-muted"><small>0-12 air yards</small></span>
                 </td>
-                <td class="align-middle <%= sortedAttempts["short"]["left"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["left"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["left"]["completions"] || 0 %>/<%= passMatrix["short"]["left"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["left"]["yards"] || 0 %> yds, <%= passMatrix["short"]["left"]["TD"] || 0 %> TD</small></small></p>
                 </td>
-                <td class="align-middle <%= sortedAttempts["short"]["middle"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["middle"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["middle"]["completions"] || 0 %>/<%= passMatrix["short"]["middle"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["middle"]["yards"] || 0 %> yds, <%= passMatrix["short"]["middle"]["TD"] || 0 %> TD</small></small></p>
                 </td>
-                <td class="align-middle <%= sortedAttempts["short"]["right"] %>" style="line-height: 1em;">
+                <td class="align-middle tm-segment">
                     <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["right"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["right"]["completions"] || 0 %>/<%= passMatrix["short"]["right"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["right"]["yards"] || 0 %> yds, <%= passMatrix["short"]["right"]["TD"] || 0 %> TD</small></p>
                 </td>
             </tr>
-        </tbody>
-        <tfoot>
             <tr>
                 <th></th>
                 <th class="align-middle">Left</th>
@@ -219,7 +217,7 @@
                 <th class="align-middle">Right</th>
             </tr>
         </tfoot>
-        <caption>Built off play-by-play data that started appearing in 2025. Colors based on rank within dataset. Sacks and passes that lack depth and direction information are not included.</caption>
+        <caption>Built off play-by-play data that started appearing in 2025. Sacks and passes that lack depth and direction information are not included.</caption>
     </table>
 </div>
 <% } %>
