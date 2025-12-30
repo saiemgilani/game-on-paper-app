@@ -220,7 +220,7 @@ def process():
         }
         # logging.getLogger("root").info(result)
         return jsonify(result), 200
-    except KeyError:
+    except KeyError as e:
         logging.getLogger("root").error("Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e))
         return jsonify({
             "status" : "bad",

@@ -1,5 +1,5 @@
 Flask==2.1.3
-sportsdataverse==0.0.36.2.36
+sportsdataverse==0.0.36.2.37
 setuptools
 xgboost<=3.0
 Werkzeug==2.3.7
