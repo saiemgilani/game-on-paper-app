@@ -66,7 +66,7 @@
         if (p["pass"] != 1) {
             continue
         }
-        console.log(`${p['text']}: ${p['yds_passing']}`)
+        //console.log(`${p['text']}: ${p['yds_passing']}`)
 
         const depthMatches = p["text"].match(depthRegex)
         if (depthMatches && depthMatches.length > 0) {
@@ -112,8 +112,8 @@
                     }
                 }
 
-                console.log(depth)
-                console.log(direction)
+                //console.log(depth)
+                //console.log(direction)
                 passMatrix[depth][direction]["attempts"] += 1
                 passMatrix[depth][direction]["EPA"] += parseFloat(p["EPA"] || 0)
                 passMatrix[depth][direction]["TD"] += parseInt(p["pass_td"] || 0)
@@ -123,7 +123,7 @@
         }
     }
 
-    console.log(passMatrix)
+    //console.log(passMatrix)
 
     let sortableAttempts = [];
     for (const depth of Object.keys(passMatrix)) {
@@ -136,7 +136,7 @@
     }
 
     sortableAttempts.sort((a, b) => (a[2] - b[2]))
-    console.log(sortableAttempts)
+    //console.log(sortableAttempts)
     let sortedAttempts = {
         "short": {
             "left": "",
@@ -174,17 +174,17 @@
                     <span class="text-muted"><small>12+ air yards</small></span>
                 </td>
                 <td class="align-middle <%= sortedAttempts["deep"]["left"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["left"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["left"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["left"]["completions"] || 0 %>/<%= passMatrix["deep"]["left"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["left"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["left"]["TD"] || 0 %> TD</small></small></p>
                 </td>
                 <td class="align-middle <%= sortedAttempts["deep"]["middle"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["middle"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["middle"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["middle"]["completions"] || 0 %>/<%= passMatrix["deep"]["middle"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["middle"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["middle"]["TD"] || 0 %> TD</small></small></p>
                 </td>
                 <td class="align-middle <%= sortedAttempts["deep"]["right"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["right"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["deep"]["right"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["right"]["completions"] || 0 %>/<%= passMatrix["deep"]["right"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["deep"]["right"]["yards"] || 0 %> yds, <%= passMatrix["deep"]["right"]["TD"] || 0 %> TD</small></p>
                 </td>
@@ -195,17 +195,17 @@
                     <span class="text-muted"><small>0-12 air yards</small></span>
                 </td>
                 <td class="align-middle <%= sortedAttempts["short"]["left"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["left"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["left"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["left"]["completions"] || 0 %>/<%= passMatrix["short"]["left"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["left"]["yards"] || 0 %> yds, <%= passMatrix["short"]["left"]["TD"] || 0 %> TD</small></small></p>
                 </td>
                 <td class="align-middle <%= sortedAttempts["short"]["middle"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["middle"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["middle"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["middle"]["completions"] || 0 %>/<%= passMatrix["short"]["middle"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["middle"]["yards"] || 0 %> yds, <%= passMatrix["short"]["middle"]["TD"] || 0 %> TD</small></small></p>
                 </td>
                 <td class="align-middle <%= sortedAttempts["short"]["right"] %>" style="line-height: 1em;">
-                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["right"]["EPA"] || 0), 2, 2) %> EPA</strong></p>
+                    <p class="m-0"><strong><%= roundNumber((passMatrix["short"]["right"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
                     <p class="m-0"><small><%= passMatrix["short"]["right"]["completions"] || 0 %>/<%= passMatrix["short"]["right"]["attempts"] || 0 %></small></p>
                     <p class="m-0"><small><%= passMatrix["short"]["right"]["yards"] || 0 %> yds, <%= passMatrix["short"]["right"]["TD"] || 0 %> TD</small></p>
                 </td>
