@@ -179,11 +179,79 @@ function rgb2lab(rgb){
     return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
 }
 
+
+function createVerticalLinePlugin(id, title, value, color, lineWidth) {
+    return {
+        id: id,
+        beforeDraw: (chart) => {
+            const xScale = chart.scales['x-axis-0'];//['x-axis-0'];
+            const yScale = chart.scales['y-axis-0'];
+            var top = yScale.getPixelForValue(1.0);
+            var bottom = yScale.getPixelForValue(-1.0);
+            const xValue = xScale.getPixelForValue(value);
+            const ctx = chart.ctx;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(xValue, bottom);
+            ctx.lineTo(xValue, top);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+            ctx.restore();
+
+            // only draw titles when there's space
+            let viewport = getCurrentViewport()
+            if (viewport == "xl" || viewport == "lg") {
+                chart.ctx.save()
+                chart.ctx.textAlign = "left"
+                chart.ctx.font = "10px Helvetica";
+                chart.ctx.fillStyle = color;
+                chart.ctx.fillText(title, xValue + 5, top + 15)
+                chart.ctx.restore();
+            }
+        }
+    };
+}
+
 if (gameData.plays.length > 0) {
     // gameData.plays = interpolateTimestamps(gameData.plays)
     const plays = [...gameData.plays];
     // console.log(gameData.plays[0])
     var timestamps = [...Array(plays.length).keys()];
+    let periodMarkers = []
+    let periodTracks = {}
+    for (let i = 0; i < (plays.length - 1); i++) {
+        const j = (i - 1);
+        const prevPlay = plays[j];
+        const curPlay = plays[i];
+
+        if (!prevPlay || ((parseInt(prevPlay["period"]) < parseInt(curPlay["period"])) && (parseInt(curPlay["period"]) <= 5))) {
+            const title = parseInt(curPlay["period"]) < 5 ? `Q${curPlay["period"]}` : `OT`;
+
+            if (Object.keys(periodTracks).includes(title)) {
+                continue;
+            }
+
+            periodMarkers.push(
+                createVerticalLinePlugin(
+                    `period-${curPlay["period"]}`,
+                    title,
+                    i,
+                    window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
+                    2.5
+                )
+            )
+            periodTracks[title] = i;
+            // console.log([
+            //     `period-${curPlay["period"]}`,
+            //     title,
+            //     i,
+            //     window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
+            //     2.5
+            // ])
+        }
+    }
     // console.log(timestamps)
     var homeComp = gameData.gameInfo.competitors[0];
     var awayComp = gameData.gameInfo.competitors[1];
@@ -253,16 +321,17 @@ if (gameData.plays.length > 0) {
 
     var targetDataSet = {
         yAxisID : 'y-axis-0',
+        xAxisID : 'x-axis-0',
         fill: true,
         lineTension: 0,
         pointRadius: 0,
         borderWidth: 3,
         label: null,
-        data: homeTeamWP
+        data: homeTeamWP,
     };
 
-    console.log(`home: ${homeTeam.id}, ${cleanAbbreviation(homeTeam)}`)
-    console.log(`away: ${awayTeam.id}, ${cleanAbbreviation(awayTeam)}`)
+    // console.log(`home: ${homeTeam.id}, ${cleanAbbreviation(homeTeam)}`)
+    // console.log(`away: ${awayTeam.id}, ${cleanAbbreviation(awayTeam)}`)
     var zipped = plays.map(function(e, i) {
         return {
           play: i,
@@ -270,7 +339,6 @@ if (gameData.plays.length > 0) {
           homeWP: targetDataSet.data[i]
         }//[e, b[i]];
       });
-      console.log(zipped)
 
 
     Chart.plugins.register([
@@ -301,7 +369,7 @@ if (gameData.plays.length > 0) {
     Chart.defaults.NegativeTransparentLine = Chart.helpers.clone(Chart.defaults.line);
     Chart.controllers.NegativeTransparentLine = Chart.controllers.line.extend({
         update: function () {
-            for(let i = 0; i < this.chart.data.datasets.length; i++) {
+            for (let i = 0; i < 1; i++) { //this.chart.data.datasets.length; i++) {
                 // get the min and max values
                 var min = Math.min.apply(null, this.chart.data.datasets[i].data);
                 var max = Math.max.apply(null, this.chart.data.datasets[i].data);
@@ -419,10 +487,11 @@ if (gameData.plays.length > 0) {
         // eslint-disable-next-line no-unused-vars
         var wpChart = new Chart(ctx, {
             type: 'NegativeTransparentLine',
+            plugins: periodMarkers,
             data: {
                 labels: timestamps,
                 datasets: [
-                    targetDataSet
+                    targetDataSet,
                 ]
             },
             options: {
