@@ -365,6 +365,7 @@ router.route('/game/:gameId')
                     view_full: (req.query.preview_mode == "old"),
                     gameData: {
                         gameInfo: game,
+                        header: response.data["gamepackageJSON"]["header"],
                         matchup: {
                             team: [
                                 ...awayBreakdown, ...homeBreakdown

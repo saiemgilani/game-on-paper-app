@@ -5,6 +5,17 @@ const homeComp = gameData.gameInfo.competitors[0];
 const awayComp = gameData.gameInfo.competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
+const gameNote = gameData?.header?.gameNote ?? "";
+const isChampionshipEvent = (
+    gameNote.includes("CFP")
+    || gameNote.includes("College Football Playoff")
+    || gameNote.includes("National Championship")
+    || gameNote.includes("FCS Championship")
+    || gameNote.includes("Celebration Bowl") // HBCU National Championship
+    || gameNote.includes("Division II Championship")
+    || gameNote.includes("Division III Championship")
+);
+
 function unique(a) {
     return a.sort().filter(function(item, pos, ary) {
         return !pos || item != ary[pos - 1];
@@ -568,6 +579,9 @@ function geiGenerateColorRampValue(input) {
     <link href="/assets/css/blog.css" rel="stylesheet">
     <link href="/assets/css/dark-game.css" rel="stylesheet">
     <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <% if (isChampionshipEvent) { %>
+        <link href="/assets/css/championship.css" rel="stylesheet">
+    <% } %>
     <script src="/assets/js/field.js"></script>
 
     <%
@@ -620,8 +634,13 @@ function geiGenerateColorRampValue(input) {
                 </div>
                 <div class="col-8 text-center">
                     <div>
-                        <h2><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
-                        <p class="text-small" id="game-date"></p>
+                        <h2 class="mb-0"><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
+                        <% if (gameNote != "" && isChampionshipEvent) { %>
+                            <p class="text-small mt-0 mb-3 championship-text"><strong><%= gameNote %></strong></p>
+                        <% } else if (gameNote != "") { %>
+                            <p class="text-small mt-0 mb-3"><%= gameNote %></p>
+                        <% } %>
+                        <p class="text-small m-0" id="game-date"></p>
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
