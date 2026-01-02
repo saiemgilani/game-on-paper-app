@@ -141,3 +141,7 @@ h1, h2, h3, h4, h5, h6 {
 .outline-championship {
     border-color: #b3a369 !important; /* #eeb211*/
 }
+
+.text-championship {
+  color: #b3a369 !important; /* #eeb211*/
+}

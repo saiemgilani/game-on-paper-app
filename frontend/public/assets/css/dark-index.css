@@ -2484,4 +2484,8 @@
     .outline-championship {
         border-color: #b3a369 !important; /* #eeb211*/
     }
+
+    .text-championship {
+        color: #b3a369 !important; /* #eeb211*/
+    }
 }
