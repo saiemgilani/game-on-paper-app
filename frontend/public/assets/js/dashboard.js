@@ -179,39 +179,50 @@ function rgb2lab(rgb){
     return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
 }
 
+function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null, method = "beforeDatasetsDraw") {
+    console.log(
+        [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
+    )
 
-function createVerticalLinePlugin(id, title, value, color, lineWidth) {
-    return {
-        id: id,
-        beforeDraw: (chart) => {
-            const xScale = chart.scales['x-axis-0'];//['x-axis-0'];
-            const yScale = chart.scales['y-axis-0'];
-            var top = yScale.getPixelForValue(1.0);
-            var bottom = yScale.getPixelForValue(-1.0);
-            const xValue = xScale.getPixelForValue(value);
-            const ctx = chart.ctx;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(xValue, bottom);
-            ctx.lineTo(xValue, top);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = lineWidth;
-            ctx.stroke();
-            ctx.restore();
-
-            // only draw titles when there's space
-            let viewport = getCurrentViewport()
-            if (viewport == "xl" || viewport == "lg") {
-                chart.ctx.save()
-                chart.ctx.textAlign = "left"
-                chart.ctx.font = "10px Helvetica";
-                chart.ctx.fillStyle = color;
-                chart.ctx.fillText(title, xValue + 5, top + 15)
-                chart.ctx.restore();
-            }
+    const callback = (chart) => {
+        const xScale = chart.scales[xAxisId];
+        const yScale = chart.scales[yAxisId];
+        
+        var top = chart.chartArea.top;
+        var bottom = chart.chartArea.bottom;
+        if (yMin != null && yMax != null) {
+            top = yScale.getPixelForValue(yMax);
+            bottom = yScale.getPixelForValue(yMin);
         }
+
+        const xValue = xScale.getPixelForValue(value);
+        const ctx = chart.ctx;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(xValue, top);
+        ctx.lineTo(xValue, bottom);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        ctx.restore();
+
+        // only draw titles when there's space
+        let viewport = getCurrentViewport()
+        if (viewport == "xl" || viewport == "lg") {
+            chart.ctx.save()
+            chart.ctx.textAlign = "left"
+            chart.ctx.font = "10px Helvetica";
+            chart.ctx.fillStyle = color;
+            chart.ctx.fillText(title, xValue + 5, top + 15)
+            chart.ctx.restore();
+        }
+    }
+    let plugin = {
+        id: id,
     };
+    plugin[method] = callback;
+    return plugin;
 }
 
 if (gameData.plays.length > 0) {
@@ -239,17 +250,14 @@ if (gameData.plays.length > 0) {
                     title,
                     i,
                     window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
-                    2.5
+                    2.5,
+                    'x-axis-0',
+                    'y-axis-0',
+                    -1,
+                    1
                 )
             )
             periodTracks[title] = i;
-            // console.log([
-            //     `period-${curPlay["period"]}`,
-            //     title,
-            //     i,
-            //     window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
-            //     2.5
-            // ])
         }
     }
     // console.log(timestamps)
