@@ -179,7 +179,7 @@ function rgb2lab(rgb){
     return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
 }
 
-function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null, method = "beforeDatasetsDraw") {
+function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null, method = "beforeDraw") {
     console.log(
         [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
     )
