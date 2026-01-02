@@ -319,10 +319,10 @@ if (gameData.plays.length > 0) {
     // handle end of game
     if (gameData.gameInfo.status.type.completed == true) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
-            timestamps.push(0)
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
             homeTeamWP.push(translateWP(1.0))
         } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
-            timestamps.push(0)
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
             homeTeamWP.push(translateWP(0.0))
         }
     }
