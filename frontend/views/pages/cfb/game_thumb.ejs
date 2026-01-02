@@ -131,6 +131,18 @@ const CONFERENCE_MAP = {
         const homeTeam = homeComp.team;
         const awayTeam = awayComp.team;
         const spiceLevel = calculateSpiceLevel(game) || 'none';
+        const gameNote = (gameComp.notes.length > 0) ? gameComp.notes[0].headline : "";
+        const isChampionshipEvent = (
+            gameNote.includes("CFP")
+            || gameNote.includes("College Football Playoff")
+            || gameNote.includes("National Championship")
+            || gameNote.includes("FCS Championship")
+            || gameNote.includes("Celebration Bowl") // HBCU National Championship
+            || gameNote.includes("Division II Championship")
+            || gameNote.includes("Division III Championship")
+        );
+
+        const btnTheme = isChampionshipEvent ? "btn-outline-championship" : "btn-outline-primary";
 
         function getRecordString(competitor) {
             if (!competitor.records) {
@@ -191,7 +203,7 @@ const CONFERENCE_MAP = {
             `;
         }
 %>
-<div class="row border rounded m-2 mb-4 spice-level-<%= spiceLevel %>">
+<div class="row border rounded m-2 mb-4 <%= isChampionshipEvent ? "outline-championship" : "" %> spice-level-<%= spiceLevel %>">
     <div class="col p-3">
         <div class="d-flex justify-content-between">
             <strong class="d-inline-block mb-2 text-primary game-context small">
@@ -241,9 +253,9 @@ const CONFERENCE_MAP = {
             <div class="text-left">
                 <% let hasLastPlay = (gameComp.situation != null && gameComp.situation.lastPlay != null); %>
                 <% if (game.status.type.name.includes("STATUS_SCHEDULED")) { %>
-                    <a class="btn btn-sm btn-outline-primary" role="button" href="/cfb/game/<%= game.id %>">Preview</a>
+                    <a class="btn btn-sm <%= btnTheme %>" role="button" href="/cfb/game/<%= game.id %>">Preview</a>
                 <% } else { %>
-                    <a class="btn btn-sm btn-outline-primary <%= ((game.status.type.name.includes("STATUS_DELAYED") && !hasLastPlay) || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
+                    <a class="btn btn-sm <%= btnTheme %> <%= ((game.status.type.name.includes("STATUS_DELAYED") && !hasLastPlay) || game.status.type.detail.includes("Cancel") || game.status.type.detail.includes("Postpone") || (game.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)) ? "disabled" : "" %>" role="button" href="/cfb/game/<%= game.id %>">Stats</a>
                 <% } %>
             </div>
             <div class="text-right">
