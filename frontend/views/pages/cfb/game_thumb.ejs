@@ -203,7 +203,16 @@ const CONFERENCE_MAP = {
             `;
         }
 %>
-<div class="row border rounded m-2 mb-4 <%= isChampionshipEvent ? "outline-championship" : "" %> spice-level-<%= spiceLevel %>">
+
+<%
+var borderClass = `spice-level-${spiceLevel}`;
+if (spiceLevel == 'none' && isChampionshipEvent) {
+    borderClass = ""
+}
+
+%>
+
+<div class="row border rounded m-2 mb-4 <%= isChampionshipEvent ? "outline-championship" : "" %> <%= borderClass %>">
     <div class="col p-3">
         <div class="d-flex justify-content-between">
             <strong class="d-inline-block mb-2 text-primary game-context small">
