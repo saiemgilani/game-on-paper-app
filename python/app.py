@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import numpy as np
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone as tz
 from flask_logs import LogSetup
 from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
 import os
@@ -21,7 +21,7 @@ def after_request(response):
     logger.info(
         "[python] %s [%s] %s %s %s",
         request.remote_addr,
-        dt.utcnow().strftime("%d/%b/%Y:%H:%M:%S.%f")[:-3],
+        dt.now(tz=tz.utc).strftime("%d/%b/%Y:%H:%M:%S.%f")[:-3],
         request.method,
         request.path,
         response.status

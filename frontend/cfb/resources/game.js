@@ -2,7 +2,7 @@ const axios = require('axios');
 const Schedule = require('./schedule');
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 
-console.log("RDATA BASE URL: " + RDATA_BASE_URL)
+// console.log("RDATA BASE URL: " + RDATA_BASE_URL)
 
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
@@ -204,33 +204,56 @@ async function processPlays(gameId) {
     return response.data;
 }
 
-async function getServiceHealth(req, res) {
-    const rdataCheck = await axios.get(RDATA_BASE_URL + '/healthcheck');
-    const cfbDataCheck = await axios.get('https://collegefootballdata.com');
 
-    var cfbdCheck = {
-        status: (cfbDataCheck.status == 200) ? "ok" : "bad"
+async function retrieveGameList(url, params) {
+    var gameList = await getSchedule(params);
+    if (gameList == null) {
+        throw Error(`Data not available for ${url} because of a service error.`)
     }
+    gameList = gameList.filter(g => {
+        const gameComp = g.competitions[0];
+        const homeComp = gameComp.competitors[0];
+        const awayComp = gameComp.competitors[1];
 
-    const selfCheck = {
-        "status" : "ok"
-    }
-    
-    return res.json({
-        "python" : rdataCheck.data,
-        "node" : selfCheck,
-        "cfbData" : cfbdCheck
+        return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
     })
+    gameList.sort((a, b) => {
+        if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
+            return -1;
+        } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
+            return 1;
+        } else if ((a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD")) && !(b.status.type.name.includes("END_OF") || b.status.type.name.includes("END_PERIOD"))) {
+            return -1;
+        } else if ((b.status.type.name.includes("END_PERIOD") || b.status.type.name.includes("END_OF")) && !(a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD"))) {
+            return 1;
+        } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
+            return -1;
+        } else if (b.status.type.name.includes("STATUS_HALFTIME") && !a.status.type.name.includes("STATUS_HALFTIME")) {
+            return 1;
+        } else {
+            var aDate = Date.parse(a.date)
+            var bDate = Date.parse(b.date)
+            if (aDate < bDate) {
+                return -1
+            } else if (bDate < aDate) {
+                return 1
+            } else {
+                var aVal = parseInt(a.status.type.id)
+                var bVal = parseInt(b.status.type.id)
+                if (aVal < bVal) {
+                    return -1
+                } else if (bVal < aVal) {
+                    return 1
+                } else {
+                    return 0
+                }
+            }
+        }
+    })
+    return gameList;
 }
 
-exports.getGameList = getSchedule
-exports.getPBP = retrievePBP
-exports.getServiceHealth = getServiceHealth
-// exports.setGameCacheValue = async (key, value, expiry) => {
-//     await redisClient.set(key, value);
-//     await redisClient.expire(key, expiry);
-// }
-
-// exports.getGameCacheValue = async (key) => {
-//     return await redisClient.get(key);
-// }
+module.exports = {
+    retrieveGameList,
+    retrievePBP
+}

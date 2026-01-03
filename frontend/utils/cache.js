@@ -21,16 +21,21 @@ const setCache = async (key, value, duration) => {
 }
 
 const lockAndTransact = async (key, promiseFunc) => {
+    debuglog(`locking for ${key}`)
     await redisClient.setNX(`${key}-lock`, "locked")
-    await redisClient.expire(key, 60 * 60 * 24)
+    await redisClient.expire(key, 60 * 60) // one hour lock
     await promiseFunc()
+    debuglog(`unlocking for ${key}`)
     await redisClient.del(`${key}-lock`)
 }
 
 // https://medium.com/the-node-js-collection/simple-server-side-cache-for-express-js-with-node-js-45ff296ca0f0
 const cachePage = (duration) => {
+    debuglog("activating page cache")
+    console.log()
     return (req, res, next) => {
         const key = `__express__-${req.originalUrl || req.url}`
+        debuglog(`cache logic: ${key}`)
         // attempt to acquire lock before read.         
         lockAndTransact(key, async () => {
             // if not locked, lock --> update --> unlock

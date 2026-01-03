@@ -4,13 +4,10 @@ const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 const axios = require('axios')
 const path = require("path");
-const Games = require('./games');
-
-let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
 
 debuglog("Compiling schedule vars");
 let schedule = {}
-fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
+fs.readFile(path.resolve(__dirname, "..", "..", "static", "schedule.json"), function (err, data) {
     if (err) {
         debuglog(err)
         throw err;
@@ -21,14 +18,14 @@ fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
 });
 
 let groupMap = [];
-fs.readFile(path.resolve(__dirname, "groups.json"), function (err, data) {
+fs.readFile(path.resolve(__dirname, "..", "..", "static", "groups.json"), function (err, data) {
     if (err) {
         debuglog(err)
         throw err;
     }
     debuglog(`Loading groups...`)
     groupMap = JSON.parse(data);
-    debuglog(`Loaded groups for ${Object.keys(groupMap)}`)
+    debuglog(`Loaded groups: ${groupMap.map(p => p.id)}`)
 });
 
 exports.scheduleList = schedule;
@@ -52,23 +49,7 @@ exports.getGroups = function() {
 }
 
 exports.getGames = async function (year, week, type, group) {
-    // if (year == null || week == null) {
-    //     try {
-    //         console.log(`Looking for scoreboard for sport 'cfb' in game cache`)
-    //         const rawScoreboard = await Games.getGameCacheValue(`cfb-scoreboard`);
-    //         if (!rawScoreboard) {
-    //             throw new Error(`Failed to find scoreboard for sport 'cfb' in game cache, forcing retrieval from remote`)
-    //         }
-    //         console.log(`Found content for scoreboard for sport 'cfb' in game cache, returning to caller`)
-    //         // console.log(`content: ${rawPBP}`)
-    //         return JSON.parse(rawScoreboard);
-    //     } catch (e) {
-    //         console.log(`ERROR on redis scoreboard game cache retrieval: ${e}`)
-    //         return await _getRemoteGames(year, week, type, group);
-    //     }
-    // } else {
-        return await _getRemoteGames(year, week, type, group); 
-    // }
+    return await _getRemoteGames(year, week, type, group); 
 }
 
 async function _getRemoteGames (year, week, type, group) {
