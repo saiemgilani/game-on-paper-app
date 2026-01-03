@@ -1,19 +1,20 @@
 const axios = require('axios');
 const redis = require('redis');
+const logger = require("../../utils/logger");
 
 const redisClient = redis.createClient({
     url: 'redis://redis:6379'
 });
 
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
+redisClient.on('error', (err) => logger.error('Redis Client Error', err));
 
 redisClient.connect().then(() => {
-    console.log('connected to redis LRU cache on port 6379');
+    logger.info('connected to redis LRU cache on port 6379');
 });
 
 
 async function retrieveRemoteData(payload) {
-    console.log(`loading from summary: ${JSON.stringify(payload)}`)
+    logger.info(`loading from summary: ${JSON.stringify(payload)}`)
     const response = await axios({
         method: 'POST',
         url: `http://summary:3000/`,
@@ -36,9 +37,9 @@ async function retrieveRemoteLeagueData(year, type) {
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find data for league in ${year}, checking ${year - 1}`)
+        logger.error(`could not find data for league in ${year}, checking ${year - 1}`)
         if (err) {
-            console.log(`also err: ${err}`);
+            logger.error(`also err: ${err}`);
         }
         if ((year - 1) < 2014) {
             return [];
@@ -55,11 +56,11 @@ async function retrieveLeagueData(year, type) {
         if (!content) {
             throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         }
-        // console.log(`found content for key ${key}: ${content}`)
+        // logger.info(`found content for key ${key}: ${content}`)
         return JSON.parse(content);
     } catch (err) {
-        console.log(err)
-        console.log(`receieved some error from redis for key: ${key}, repulling league data`)
+        logger.error(err)
+        logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
         return await retrieveRemoteLeagueData(year, type);
     }
 }
@@ -85,7 +86,7 @@ async function retrieveLastUpdated() {
         }
         return JSON.parse(content).last_updated;
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         return await retrieveRemoteLastUpdated();
     }
 }
@@ -104,9 +105,9 @@ async function retrieveRemotePercentiles(year) {
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find percentiles for league in ${year}, checking ${year - 1}`)
+        logger.error(`could not find percentiles for league in ${year}, checking ${year - 1}`)
         if (err) {
-            console.log(`also err: ${err}`);
+            logger.error(`also err: ${err}`);
         }
         if ((year - 1) < 2014) {
             return [];
@@ -123,11 +124,11 @@ async function retrievePercentiles(year) {
         if (!content) {
             throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         }
-        // console.log(`found content for key ${key}: ${content}`)
+        // logger.info(`found content for key ${key}: ${content}`)
         return JSON.parse(content);
     } catch (err) {
-        console.log(err)
-        console.log(`receieved some error from redis for key: ${key}, repulling league data`)
+        logger.error(err)
+        logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
         return await retrieveRemotePercentiles(year);
     }
 }
@@ -145,9 +146,9 @@ async function retrieveRemoteTeamData(year, team_id, type) {
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
+        logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
         if (err) {
-            console.log(`also err: ${err}`);
+            logger.error(`also err: ${err}`);
         }
         if ((year - 1) < 2014) {
             return [{
@@ -168,7 +169,7 @@ async function retrieveTeamData(year, team_id, type) {
         }
         return JSON.parse(content);
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         return await retrieveRemoteTeamData(year, team_id, type);
     }
 }

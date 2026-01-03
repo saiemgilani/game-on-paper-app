@@ -3,7 +3,11 @@ const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
+const logger = require("../../utils/logger");
+
 const router = express.Router();
+logger.info("activating years page cache")
+router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 function retrieveValue(dictionary, key) {
     const subKeys = key.split('.')
@@ -79,7 +83,7 @@ router.get('/teams/:type', async (req, res, next) => {
                     ...target
                 }
             })
-            // console.log(content[0])
+            // logger.info(content[0])
             content = content.filter(p => {
                 const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
                 const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
@@ -102,7 +106,7 @@ router.get('/teams/:type', async (req, res, next) => {
                     return asc ? compVal : (-1 * compVal)
                 }
             })
-            // console.log(content[0])
+            // logger.info(content[0])
             // return res.json(content);
             return res.render("pages/cfb/leaderboard", {
                 teams: content,
@@ -163,7 +167,7 @@ router.get('/team/:teamId', async (req, res, next) => {
                 return res.json(data);
             } else {
                 const brkd = await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'overall')
-                // console.log(brkd[0])
+                // logger.info(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
                     breakdown: brkd,

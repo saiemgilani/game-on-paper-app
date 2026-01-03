@@ -54,7 +54,6 @@ services:
     command: ["node", "server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
-      NODE_DEBUG: '[frontend]'
     ports:
       - 8000:8000
     depends_on:

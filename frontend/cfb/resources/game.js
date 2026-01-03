@@ -1,8 +1,9 @@
 const axios = require('axios');
 const Schedule = require('./schedule');
+const logger = require("../../utils/logger");
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 
-// console.log("RDATA BASE URL: " + RDATA_BASE_URL)
+logger.info("RDATA BASE URL: " + RDATA_BASE_URL)
 
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
@@ -99,11 +100,8 @@ async function getSchedule(input) {
 async function _remoteRetrievePBP(gameId) {
     const processedGame = await processPlays(gameId);
     
-    // console.log(processedGame)
-    // console.log(typeof processedGame)
     pbp = processedGame;
     pbp.plays = processedGame["plays"];
-    // console.log(plays)
     pbp.advBoxScore = processedGame["box_score"];
     pbp.boxScore = processedGame['boxScore'];
     pbp.gameInfo = pbp.header.competitions[0];
@@ -126,28 +124,10 @@ async function _remoteRetrievePBP(gameId) {
         pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
     }
 
-    // try {
-    //     await redisClient.set(`cfb-${gameId}`, JSON.stringify(pbp));
-    //     await redisClient.expire(`cfb-${gameId}`, 60 * 1); // 1 min TTL
-    // } catch (e) {
-    //     console.log(`failed to write game data for key cfb-${gameId} to redis game cache, error: ${e}`);
-    // }
-
     return pbp;
 }
 
 async function retrievePBP(gameId) {
-    // try {
-    //     console.log(`Looking for ${gameId} for sport 'cfb' in game cache`)
-    //     const rawPBP = await redisClient.get(`cfb-${gameId}`);
-    //     if (!rawPBP) {
-    //         throw new Error(`Failed to find gameID ${gameId} for sport 'cfb' in game cache, forcing retrieval from remote`)
-    //     }
-    //     console.log(`Found content for ${gameId} for sport 'cfb' in game cache, returning to caller`)
-    //     // console.log(`content: ${rawPBP}`)
-    //     return JSON.parse(rawPBP);
-    // } catch (e) {
-    //     console.log(`ERROR on redis game cache retrieval: ${e}`)
         return await _remoteRetrievePBP(gameId);
     // }
 }

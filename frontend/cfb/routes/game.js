@@ -3,9 +3,11 @@ const cachePage = require('../../utils/cache');
 const Games = require('../resources/game');
 const SummaryModel = require("../resources/summary")
 const axios = require('axios');
-const router = express.Router();
+const logger = require("../../utils/logger");
 
-router.use(cachePage(60))
+const router = express.Router();
+logger.info("activating games route page cache")
+router.use(cachePage(60)) // 1 minute TTL for stuff that does change
 
 const QUARANTINE_LIST = [
     '401411157',
@@ -74,10 +76,10 @@ router.route('/:gameId')
                     try {
                         const inputSeason = data["header"]["season"]["year"];
                         const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
-                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
+                        logger.info(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
                         percentiles = await SummaryModel.retrievePercentiles(season);
                     } catch (e) {
-                        console.log(`error while retrieving league percentiles: ${e}`)
+                        logger.error(`error while retrieving league percentiles: ${e}`)
                     }
 
                     return res.render('pages/cfb/game', {
