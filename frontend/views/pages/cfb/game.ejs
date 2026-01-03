@@ -635,10 +635,8 @@ function geiGenerateColorRampValue(input) {
                 <div class="col-8 text-center">
                     <div>
                         <h2 class="mb-0"><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
-                        <% if (gameNote != "" && isChampionshipEvent) { %>
-                            <p class="text-small mt-0 mb-3 championship-text"><strong><%= gameNote %></strong></p>
-                        <% } else if (gameNote != "") { %>
-                            <p class="text-small mt-0 mb-3"><%= gameNote %></p>
+                        <% if (gameNote != "") { %>
+                            <p class="text-small mt-0 mb-3 <%= isChampionshipEvent ? "championship-text" : "text-primary" %>"><strong><%= gameNote %></strong></p>
                         <% } %>
                         <p class="text-small m-0" id="game-date"></p>
                     </div>
