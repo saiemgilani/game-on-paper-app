@@ -179,11 +179,87 @@ function rgb2lab(rgb){
     return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
 }
 
+function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null, method = "beforeDraw") {
+    console.log(
+        [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
+    )
+
+    const callback = (chart) => {
+        const xScale = chart.scales[xAxisId];
+        const yScale = chart.scales[yAxisId];
+        
+        var top = chart.chartArea.top;
+        var bottom = chart.chartArea.bottom;
+        if (yMin != null && yMax != null) {
+            top = yScale.getPixelForValue(yMax);
+            bottom = yScale.getPixelForValue(yMin);
+        }
+
+        const xValue = xScale.getPixelForValue(value);
+        const ctx = chart.ctx;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(xValue, top);
+        ctx.lineTo(xValue, bottom);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        ctx.restore();
+
+        // only draw titles when there's space
+        let viewport = getCurrentViewport()
+        if (viewport == "xl" || viewport == "lg") {
+            chart.ctx.save()
+            chart.ctx.textAlign = "left"
+            chart.ctx.font = "10px Helvetica";
+            chart.ctx.fillStyle = color;
+            chart.ctx.fillText(title, xValue + 5, top + 15)
+            chart.ctx.restore();
+        }
+    }
+    let plugin = {
+        id: id,
+    };
+    plugin[method] = callback;
+    return plugin;
+}
+
 if (gameData.plays.length > 0) {
     // gameData.plays = interpolateTimestamps(gameData.plays)
     const plays = [...gameData.plays];
     // console.log(gameData.plays[0])
     var timestamps = [...Array(plays.length).keys()];
+    let periodMarkers = []
+    let periodTracks = {}
+    for (let i = 0; i < (plays.length - 1); i++) {
+        const j = (i - 1);
+        const prevPlay = plays[j];
+        const curPlay = plays[i];
+
+        if (!prevPlay || ((parseInt(prevPlay["period"]) < parseInt(curPlay["period"])) && (parseInt(curPlay["period"]) <= 5))) {
+            const title = parseInt(curPlay["period"]) < 5 ? `Q${curPlay["period"]}` : `OT`;
+
+            if (Object.keys(periodTracks).includes(title)) {
+                continue;
+            }
+
+            periodMarkers.push(
+                createVerticalLinePlugin(
+                    `period-${curPlay["period"]}`,
+                    title,
+                    i,
+                    window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
+                    2.5,
+                    'x-axis-0',
+                    'y-axis-0',
+                    -1,
+                    1
+                )
+            )
+            periodTracks[title] = i;
+        }
+    }
     // console.log(timestamps)
     var homeComp = gameData.gameInfo.competitors[0];
     var awayComp = gameData.gameInfo.competitors[1];
@@ -243,26 +319,27 @@ if (gameData.plays.length > 0) {
     // handle end of game
     if (gameData.gameInfo.status.type.completed == true) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
-            timestamps.push(0)
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
             homeTeamWP.push(translateWP(1.0))
         } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
-            timestamps.push(0)
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
             homeTeamWP.push(translateWP(0.0))
         }
     }
 
     var targetDataSet = {
         yAxisID : 'y-axis-0',
+        xAxisID : 'x-axis-0',
         fill: true,
         lineTension: 0,
         pointRadius: 0,
         borderWidth: 3,
         label: null,
-        data: homeTeamWP
+        data: homeTeamWP,
     };
 
-    console.log(`home: ${homeTeam.id}, ${cleanAbbreviation(homeTeam)}`)
-    console.log(`away: ${awayTeam.id}, ${cleanAbbreviation(awayTeam)}`)
+    // console.log(`home: ${homeTeam.id}, ${cleanAbbreviation(homeTeam)}`)
+    // console.log(`away: ${awayTeam.id}, ${cleanAbbreviation(awayTeam)}`)
     var zipped = plays.map(function(e, i) {
         return {
           play: i,
@@ -270,7 +347,6 @@ if (gameData.plays.length > 0) {
           homeWP: targetDataSet.data[i]
         }//[e, b[i]];
       });
-      console.log(zipped)
 
 
     Chart.plugins.register([
@@ -301,7 +377,7 @@ if (gameData.plays.length > 0) {
     Chart.defaults.NegativeTransparentLine = Chart.helpers.clone(Chart.defaults.line);
     Chart.controllers.NegativeTransparentLine = Chart.controllers.line.extend({
         update: function () {
-            for(let i = 0; i < this.chart.data.datasets.length; i++) {
+            for (let i = 0; i < 1; i++) { //this.chart.data.datasets.length; i++) {
                 // get the min and max values
                 var min = Math.min.apply(null, this.chart.data.datasets[i].data);
                 var max = Math.max.apply(null, this.chart.data.datasets[i].data);
@@ -419,10 +495,11 @@ if (gameData.plays.length > 0) {
         // eslint-disable-next-line no-unused-vars
         var wpChart = new Chart(ctx, {
             type: 'NegativeTransparentLine',
+            plugins: periodMarkers,
             data: {
                 labels: timestamps,
                 datasets: [
-                    targetDataSet
+                    targetDataSet,
                 ]
             },
             options: {

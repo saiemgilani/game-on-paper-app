@@ -171,27 +171,27 @@ def process():
                 "downDistanceText" : record.get("end.downDistanceText")
             }
 
-            record["players"] = {
-                'passer_player_name' : record["passer_player_name"],
-                'rusher_player_name' : record["rusher_player_name"],
-                'receiver_player_name' : record["receiver_player_name"],
-                'sack_player_name' : record["sack_player_name"],
-                'sack_player_name2' : record["sack_player_name2"],
-                'pass_breakup_player_name' : record["pass_breakup_player_name"],
-                'interception_player_name' : record["interception_player_name"],
-                'fg_kicker_player_name' : record["fg_kicker_player_name"],
-                'fg_block_player_name' : record["fg_block_player_name"],
-                'fg_return_player_name' : record["fg_return_player_name"],
-                'kickoff_player_name' : record["kickoff_player_name"],
-                'kickoff_return_player_name' : record["kickoff_return_player_name"],
-                'punter_player_name' : record["punter_player_name"],
-                'punt_block_player_name' : record["punt_block_player_name"],
-                'punt_return_player_name' : record["punt_return_player_name"],
-                'punt_block_return_player_name' : record["punt_block_return_player_name"],
-                'fumble_player_name' : record["fumble_player_name"],
-                'fumble_forced_player_name' : record["fumble_forced_player_name"],
-                'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
-            }
+            # record["players"] = {
+            #     'passer_player_name' : record["passer_player_name"],
+            #     'rusher_player_name' : record["rusher_player_name"],
+            #     'receiver_player_name' : record["receiver_player_name"],
+            #     'sack_player_name' : record["sack_player_name"],
+            #     'sack_player_name2' : record["sack_player_name2"],
+            #     'pass_breakup_player_name' : record["pass_breakup_player_name"],
+            #     'interception_player_name' : record["interception_player_name"],
+            #     'fg_kicker_player_name' : record["fg_kicker_player_name"],
+            #     'fg_block_player_name' : record["fg_block_player_name"],
+            #     'fg_return_player_name' : record["fg_return_player_name"],
+            #     'kickoff_player_name' : record["kickoff_player_name"],
+            #     'kickoff_return_player_name' : record["kickoff_return_player_name"],
+            #     'punter_player_name' : record["punter_player_name"],
+            #     'punt_block_player_name' : record["punt_block_player_name"],
+            #     'punt_return_player_name' : record["punt_return_player_name"],
+            #     'punt_block_return_player_name' : record["punt_block_return_player_name"],
+            #     'fumble_player_name' : record["fumble_player_name"],
+            #     'fumble_forced_player_name' : record["fumble_forced_player_name"],
+            #     'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
+            # }
             # remove added columns
             for col in bad_cols:
                 record.pop(col, None)
@@ -220,14 +220,16 @@ def process():
         }
         # logging.getLogger("root").info(result)
         return jsonify(result), 200
-    except KeyError:
-        logging.getLogger("root").error(f"Error while processing PBP on Python side, threw 404: {e}")
+    except KeyError as e:
+        logging.getLogger("root").error("Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e))
         return jsonify({
             "status" : "bad",
             "message" : "ESPN payload is malformed. Data not available."
         }), 404
     except Exception as e:
-        logging.getLogger("root").error(f"Error while processing PBP on Python side, threw 500: {e}")
+        logging.getLogger("root").error("Error while processing PBP on Python side, threw 500: %r (%s)" % (e, e))
+        import traceback
+        traceback.print_tb(e.__traceback__)
         return jsonify({
             "status" : "bad",
             "message" : "Unknown error occurred, check logs."

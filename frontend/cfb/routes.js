@@ -366,6 +366,7 @@ router.route('/game/:gameId', cachePage(60))
                     view_full: (req.query.preview_mode == "old"),
                     gameData: {
                         gameInfo: game,
+                        header: response.data["gamepackageJSON"]["header"],
                         matchup: {
                             team: [
                                 ...awayBreakdown, ...homeBreakdown
@@ -391,8 +392,8 @@ router.route('/game/:gameId', cachePage(60))
                     let percentiles = [];
                     try {
                         const inputSeason = data["header"]["season"]["year"];
-                        const season = Math.min(Math.max(inputSeason, 2014), 2024); // still clamped to 2023 until week 4
-                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} but clamped to 2014 to 2024`)
+                        const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
+                        console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
                         percentiles = await retrievePercentiles(season);
                     } catch (e) {
                         console.log(`error while retrieving league percentiles: ${e}`)
@@ -434,9 +435,6 @@ router.route('/game/:gameId', cachePage(60))
 router.route('/year/:year/team/:teamId', cachePage(60 * 60 * 24))
     .get(async function(req, res, next) {
         try {
-            if (req.params.year == 2025) { // remove after week 2
-                return res.redirect(`/cfb/year/2024/team/${req.params.teamId}`);
-            }
             let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
@@ -465,17 +463,17 @@ router.route('/year/:year/team/:teamId', cachePage(60 * 60 * 24))
 
 router.route('/team/:teamId')
 .get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2024/team/${req.params.teamId}`);
+    return res.redirect(`/cfb/year/2025/team/${req.params.teamId}`);
 })
 
 router.route('/teams')
     .get(async function(req, res, next) {
-        return res.redirect(`/cfb/year/2024/teams/differential`);
+        return res.redirect(`/cfb/year/2025/teams/differential`);
     })
 
 router.route('/teams/:type')
     .get(async function(req, res, next) {
-        return res.redirect(`/cfb/year/2024/teams/${req.params.type}`);
+        return res.redirect(`/cfb/year/2025/teams/${req.params.type}`);
     })
 
 router.route('/year/:year/teams')
@@ -493,8 +491,8 @@ function retrieveValue(dictionary, key) {
 }
 
 router.route('/charts/team/epa')
-    .get(async function(req, res, next) {
-        return res.redirect(`/cfb/year/2024/charts/team/epa`)
+    .get(async function(req, res, next) { // change after week 4
+        return res.redirect(`/cfb/year/2025/charts/team/epa`)
     })
 
 router.route('/year/:year/charts/team/epa', cachePage(60 * 60 * 24))
@@ -615,12 +613,12 @@ router.route('/year/:year/players/:type', cachePage(60 * 60 * 24))
 
 router.route('/players')
     .get(async function(req, res, next) {
-        return res.redirect(`/cfb/year/2024/players/passing`);
+        return res.redirect(`/cfb/year/2025/players/passing`);
     })
 
 router.route('/players/:type')
 .get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2024/players/${req.params.type}`);
+    return res.redirect(`/cfb/year/2025/players/${req.params.type}`);
 })
 
 router.route('/year/:year/players')

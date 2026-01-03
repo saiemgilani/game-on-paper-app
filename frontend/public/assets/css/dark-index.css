@@ -2469,4 +2469,23 @@
         /* background-color: rgb(27, 30, 31); */
         border-top-color: rgb(55, 60, 62);
     }
+
+    .btn-championship {
+        color: white !important; 
+        background-color: #b3a369 !important;/* #eeb211*/
+
+    }
+
+    .btn-outline-championship {
+        border-color: #b3a369 !important; /* #eeb211*/
+        color: #b3a369 !important; /* #eeb211*/
+    }
+
+    .outline-championship {
+        border-color: #b3a369 !important; /* #eeb211*/
+    }
+
+    .text-championship {
+        color: #b3a369 !important; /* #eeb211*/
+    }
 }

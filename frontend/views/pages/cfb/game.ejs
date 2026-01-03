@@ -5,6 +5,17 @@ const homeComp = gameData.gameInfo.competitors[0];
 const awayComp = gameData.gameInfo.competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
+const gameNote = gameData?.header?.gameNote ?? "";
+const isChampionshipEvent = (
+    gameNote.includes("CFP")
+    || gameNote.includes("College Football Playoff")
+    || gameNote.includes("National Championship")
+    || gameNote.includes("FCS Championship")
+    || gameNote.includes("Celebration Bowl") // HBCU National Championship
+    || gameNote.includes("Division II Championship")
+    || gameNote.includes("Division III Championship")
+);
+
 function unique(a) {
     return a.sort().filter(function(item, pos, ary) {
         return !pos || item != ary[pos - 1];
@@ -221,7 +232,7 @@ function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) 
     var classText = "";
     if (turnover_vec.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_poss == 1) || (play.start.down == 4 && parseFloat(play.statYardage) < parseFloat(play.start.distance) && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
         classText = " table-danger"
-    } else if (play.scoringPlay == true) {
+    } else if (play.scoringPlay == true || play.scoring_play == true) {
         classText = " table-success"
     } else if (play.text.toLocaleLowerCase().includes("penalty")) {
         classText = " table-warning"
@@ -562,11 +573,15 @@ function geiGenerateColorRampValue(input) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/assets/css/dashboard.css" rel="stylesheet">
     <link href="/assets/css/blog.css" rel="stylesheet">
     <link href="/assets/css/dark-game.css" rel="stylesheet">
     <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <% if (isChampionshipEvent) { %>
+        <link href="/assets/css/championship.css" rel="stylesheet">
+    <% } %>
     <script src="/assets/js/field.js"></script>
 
     <%
@@ -606,6 +621,7 @@ function geiGenerateColorRampValue(input) {
     <%- include('../../partials/logos', {
         awayTeam,
         homeTeam,
+        team: null
     }) %>
     <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
 </head>
@@ -618,8 +634,13 @@ function geiGenerateColorRampValue(input) {
                 </div>
                 <div class="col-8 text-center">
                     <div>
-                        <h2><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
-                        <p class="text-small" id="game-date"></p>
+                        <h2 class="mb-0"><%= cleanName(awayTeam) %> <%= awayComp.score %> @ <%= cleanName(homeTeam) %> <%= homeComp.score %></h2>
+                        <% if (gameNote != "" && isChampionshipEvent) { %>
+                            <p class="text-small mt-0 mb-3 championship-text"><strong><%= gameNote %></strong></p>
+                        <% } else if (gameNote != "") { %>
+                            <p class="text-small mt-0 mb-3"><%= gameNote %></p>
+                        <% } %>
+                        <p class="text-small m-0" id="game-date"></p>
                     </div>
                 </div>
                 <div class="col-2 d-flex justify-content-end align-items-center">
@@ -641,6 +662,7 @@ function geiGenerateColorRampValue(input) {
                         "The CW Network" : "https://www.cwtv.com/sports/",
                         "MWSN": "https://themw.com/watch/",
                         "MWN": "https://themw.com/watch/",
+                        "MWN App": "https://themw.com/watch/",
                         "truTV": "https://www.trutv.com/watchtrutv",
                         "TNT": "https://www.tntdrama.com/watchtnt"
                     }
@@ -1181,6 +1203,9 @@ function geiGenerateColorRampValue(input) {
                                         </tbody>
                                     </table>
                                 </div>
+                                <%- include('../../partials/pass_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == awayTeam.id)
+                                }) %>
                             </div>
                           </div>
                         </div>
@@ -1270,6 +1295,9 @@ function geiGenerateColorRampValue(input) {
                                         </tbody>
                                     </table>
                                 </div>
+                                <%- include('../../partials/pass_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == homeTeam.id)
+                                }) %>
                             </div>
                           </div>
                         </div>
@@ -1460,6 +1488,7 @@ function geiGenerateColorRampValue(input) {
             "The CW Network" : "https://www.cwtv.com/sports/",
             "MWSN": "https://themw.com/watch/",
             "MWN": "https://themw.com/watch/",
+            "MWN App": "https://themw.com/watch/",
             "truTV": "https://www.trutv.com/watchtrutv",
             "TNT": "https://www.tntdrama.com/watchtnt"
         }

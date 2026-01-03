@@ -9,6 +9,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   cache:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-cache:latest
     expose:
@@ -19,6 +24,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   summary:
     image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
     expose:
@@ -29,6 +39,11 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   node:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-node:latest
     command: ["node", "server.js"]
@@ -47,11 +62,16 @@ services:
       - redis
       - cache
     healthcheck:
-      test: curl --fail http://localhost:8000/healthcheck || exit 1
+      test: curl --fail http://localhost:8000/cfb/healthcheck || exit 1
       interval: 60s
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
     expose:
@@ -62,3 +82,7 @@ services:
       retries: 5
       start_period: 20s
       timeout: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 4gb

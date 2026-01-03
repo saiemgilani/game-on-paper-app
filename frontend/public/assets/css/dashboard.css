@@ -130,3 +130,28 @@ body {
 .blog-footer p:last-child {
   margin-bottom: 0;
 }
+
+/*
+Target Matrix
+*/
+
+.tm-row {
+  border-top-color: black !important; 
+  border-top: 1px solid; 
+}
+
+.tm-section-title {
+  rotate: -90deg !important; 
+  padding-bottom: 3em !important; 
+  padding-top: 3em !important; 
+  width: 5em !important; 
+  line-height: 1em !important; 
+  border-inline-end: 1px solid !important;
+  border-inline-end-color: #e5e5e5 !important; 
+}
+
+.tm-segment {
+  line-height: 1em !important;
+  border-inline-end: 1px solid !important;
+  border-inline-end-color: #e5e5e5 !important; 
+}

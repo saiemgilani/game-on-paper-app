@@ -126,3 +126,22 @@ h1, h2, h3, h4, h5, h6 {
 .blog-footer p:last-child {
   margin-bottom: 0;
 }
+
+.btn-championship {
+    color: white !important; 
+    background-color: #b3a369 !important;/* #eeb211*/
+
+}
+
+.btn-outline-championship {
+    border-color: #b3a369 !important; /* #eeb211*/
+    color: #b3a369 !important; /* #eeb211*/
+}
+
+.outline-championship {
+    border-color: #b3a369 !important; /* #eeb211*/
+}
+
+.text-championship {
+  color: #b3a369 !important; /* #eeb211*/
+}

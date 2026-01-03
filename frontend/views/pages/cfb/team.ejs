@@ -36,6 +36,7 @@ function hexToRgb(hex) {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/dashboard.css" rel="stylesheet">
         <link href="/assets/css/blog.css" rel="stylesheet">
@@ -54,7 +55,6 @@ function hexToRgb(hex) {
         <link rel="canonical" href="https://gameonpaper.com/cfb/year/<%= season %>/team/<%= teamData.id %>">
         <title><%= title %></title>
         <meta name="description" content="Advanced stats for <%= subtitle %>">
-
         <meta property="og:site_name" content="GameOnPaper.com">
         <meta property="og:url" content="https://gameonpaper.com/cfb/year/<%= season %>/team/<%= teamData.id %>">
         <meta property="og:title" content="<%= title %>">
@@ -71,15 +71,11 @@ function hexToRgb(hex) {
         <meta name="title" content="<%= title %>">
         <meta name="medium" content="website">
         <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
-        <style>
-            /* img.team-logo-153 {
-                content: url('/assets/img/crying-jordan.png');
-            }   */
-            img.team-logo-61 {
-                content: url('/assets/img/ennui-uga.png');
-                /* Sourced from the Moon Crew Discord server */
-            }
-        </style>
+        <%- include('../../partials/logos', {
+            team: teamData,
+            homeTeam: null,
+            awayTeam: null
+        }) %>
     </head>
     <body>
         <%- include('../../partials/nav-header') %>
@@ -145,6 +141,7 @@ function hexToRgb(hex) {
             <div id="breakdown" class="row mb-3">
                 <div class="col-md-12 col-lg-12 px-md-4">
                     <h2 id="breakdown" class="d-inline">Breakdown <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#breakdownContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                    <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
                     <div class="panel-group">
                         <div class="panel panel-default">
                             <div id="breakdownContent" class="panel-collapse show">
@@ -392,9 +389,15 @@ function hexToRgb(hex) {
         <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
         <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
         <script>
-            const primaryColor = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
-            const altColor = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
-            const breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+            const prim = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
+            const alt = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
+            let breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+            breakdown = {
+                ...breakdown,
+                teamName: '<%- cleanLocation() %>',
+                alternateColor: '<%- teamData.alternateColor ?? '#000000' %>',
+                color: '<%- teamData.color %>'
+            }
         </script>
         <script src="/assets/js/radar.js"></script>
         <script>
@@ -405,7 +408,7 @@ function hexToRgb(hex) {
                 const offRadarChart = new Chart(
                     offRadarCtx,
                     generateConfig(
-                        generateDataset("Offensive"),
+                        generateDataset([breakdown], "Offensive"),
                         '<%- cleanLocation() %> <%= season %> Offensive Profile'
                     )
                 );
@@ -414,7 +417,7 @@ function hexToRgb(hex) {
                 const defRadarChart = new Chart(
                     defRadarCtx,
                     generateConfig(
-                        generateDataset("Defensive"),
+                        generateDataset([breakdown], "Defensive"),
                         '<%- cleanLocation() %> <%= season %> Defensive Profile'
                     )
                 );

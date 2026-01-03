@@ -44,23 +44,75 @@ function hexToRgb(hex) {
 }
 
 
-const compColor = (isDarkMode) ? hexToRgb("#000000") : hexToRgb("#FFFFFF")
-let dEBGTeam = deltaE([primaryColor.r, primaryColor.g, primaryColor.b], [compColor.r, compColor.g, compColor.b])
-let dEBGAlt = deltaE([altColor.r, altColor.g, altColor.b], [compColor.r, compColor.g, compColor.b])
+function adjustColor(primaryColor, altColor) {
+    const compColor = (isDarkMode) ? hexToRgb("#000000") : hexToRgb("#FFFFFF")
+    let dEBGTeam = deltaE([primaryColor.r, primaryColor.g, primaryColor.b], [compColor.r, compColor.g, compColor.b])
+    let dEBGAlt = deltaE([altColor.r, altColor.g, altColor.b], [compColor.r, compColor.g, compColor.b])
 
-var teamColor = primaryColor;
-if (dEBGTeam > 49) {
-    teamColor = primaryColor
-    console.log(`set team color to primary ${JSON.stringify(primaryColor)} because no similarity to background`)
-} else if (dEBGTeam <= 49 && dEBGAlt > 49) {
-    teamColor = altColor
-    console.log(`set team color to alt ${JSON.stringify(altColor)} because of similarity to background`)
-} else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
-    teamColor = hexToRgb("#CCCCCC")
-    console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
-} else {
-    teamColor = primaryColor
-    console.log(`set team color to primary ${JSON.stringify(primaryColor)} because backup`)
+    var teamColor = primaryColor;
+    if (dEBGTeam > 49) {
+        teamColor = primaryColor
+        console.log(`set team color to primary ${JSON.stringify(primaryColor)} because no similarity to background`)
+    } else if (dEBGTeam <= 49 && dEBGAlt > 49) {
+        teamColor = altColor
+        console.log(`set team color to alt ${JSON.stringify(altColor)} because of similarity to background`)
+    } else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
+        teamColor = hexToRgb("#CCCCCC")
+        console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
+    } else {
+        teamColor = primaryColor
+        console.log(`set team color to primary ${JSON.stringify(primaryColor)} because backup`)
+    }
+    return teamColor
+}
+
+function adjustTeamColors(awayTeam, homeTeam) {
+    var awayTeamColor = hexToRgb(awayTeam.color)
+    var homeTeamColor = hexToRgb(homeTeam.color)
+
+    if (!homeTeamColor) {
+        return [awayTeamColor, hexToRgb("#CCCCCC")]
+    }
+
+    if (!awayTeamColor) {
+        return [hexToRgb("#CCCCCC"), homeTeamColor]
+    }
+
+    // if the homeTeamColor and the awayTeamColor are too similar, make the awayTeam use their alt
+    let dEHome = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
+    if (dEHome <= 49 && awayTeam.alternateColor != null) {
+        awayTeamColor = hexToRgb(awayTeam.alternateColor)
+        console.log(`updating away team color from primary ${JSON.stringify(hexToRgb(awayTeam.color))} to alt: ${JSON.stringify(awayTeamColor)}`)
+        if (deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b]) <= 49) {
+            awayTeamColor = hexToRgb(awayTeam.color)
+            console.log(`resetting away team color from alt ${JSON.stringify(hexToRgb(awayTeam.alternateColor))} from alt: ${JSON.stringify(awayTeamColor)} bc of similarity`)
+        }
+    }
+
+    // if either color is too similar to white, use gray
+    let colors = [homeTeamColor, awayTeamColor]
+    var adjusted = false;
+    colors.forEach((clr, idx) => {
+        var dEBackground = deltaE([clr.r, clr.g, clr.b], [255,255,255])
+        if (dEBackground <= 49) {
+            adjusted = true;
+            if (idx == 0) {
+                homeTeamColor = hexToRgb("#CCCCCC")
+            } else {
+                awayTeamColor = hexToRgb("#CCCCCC")
+            }
+            console.log(`updating color at index ${idx} to gray bc of background`)
+        }
+    })
+
+    // if both colors are now gray, reset the homeTeamColor
+    let dEHomeAdj = deltaE([awayTeamColor.r, awayTeamColor.g, awayTeamColor.b], [homeTeamColor.r, homeTeamColor.g, homeTeamColor.b])
+    if (dEHomeAdj <= 49 && adjusted) {
+        homeTeamColor = hexToRgb(homeTeam.color);
+        console.log(`resetting home color to ${JSON.stringify(homeTeamColor)} because of similarity to gray away color`)
+    }
+
+    return [awayTeamColor, homeTeamColor];
 }
 
 Chart.defaults.global.defaultFontColor = (isDarkMode) ? '#e8e6e3' : '#525252';
@@ -81,48 +133,61 @@ function retrieveValue(dictionary, key) {
         // if (!sub) {
         //     console.log(k)
         // }
-        sub = sub[k];
+        if (sub) {
+            sub = sub[k];
+        }
     }
     return sub;
 }
 
-function generateRadarPercentiles(titleKey) {
+function generateRadarPercentiles(breakdown, titleKey) {
     const key = titleKey.toLocaleLowerCase()
     return [
-        { title: 'EPA/Play', key: "overall.epaPerPlay", percentile: generatePercentile(breakdown[key].overall.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.epaPerPlay"), 2, 2) }, 
-        { title: 'Early Downs EPA/Play', key: "overall.earlyDownEPAPerPlay", percentile: generatePercentile(breakdown[key].overall.earlyDownEPAPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.earlyDownEPAPerPlay"), 2, 2) }, 
-        { title: 'Late Downs SR%', key: "overall.lateDownSuccessRate", percentile: generatePercentile(breakdown[key].overall.lateDownSuccessRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.lateDownSuccessRate") * 100, 2, 1)}%` }, 
-        { title: 'Avg Distance (3rd)', key: "overall.thirdDownDistance", percentile: generatePercentile(breakdown[key].overall.thirdDownDistanceRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.thirdDownDistance"), 2, 2) }, 
-        { title: 'Rush EPA/Play', key: "rushing.epaPerPlay", percentile: generatePercentile(breakdown[key].rushing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.epaPerPlay"), 2, 2) }, 
-        { title: 'Stuff %', key: "rushing.stuffedPlayRate", percentile: generatePercentile(breakdown[key].rushing.stuffedPlayRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.stuffedPlayRate") * 100, 2, 1)}%` },
-        { title: 'Line Yards', key: "rushing.lineYards", percentile: generatePercentile(breakdown[key].rushing.lineYardsRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.lineYards"), 2, 2) },
-        { title: 'Opportunity %', key: "rushing.opportunityRate", percentile: generatePercentile(breakdown[key].rushing.opportunityRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.opportunityRate") * 100, 2, 1)}%` }, 
-        { title: 'Explosive %', key: "overall.explosiveRate", percentile: generatePercentile(breakdown[key].overall.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.explosiveRate") * 100, 2, 1)}%` }, 
-        { title: 'Pass Expl %', key: "passing.explosiveRate", percentile: generatePercentile(breakdown[key].passing.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "passing.explosiveRate") * 100, 2, 1)}%` }, 
-        { title: 'Rush Expl %', key: "rushing.explosiveRate", percentile: generatePercentile(breakdown[key].rushing.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.explosiveRate") * 100, 2, 1)}%` }, 
-        { title: 'Non-Expl EPA/Play', key: "overall.nonExplosiveEpaPerPlay", percentile: generatePercentile(breakdown[key].overall.nonExplosiveEpaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.nonExplosiveEpaPerPlay"), 2, 2) },
-        { title: 'Pass EPA/Play', key: "passing.epaPerPlay", percentile: generatePercentile(breakdown[key].passing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.epaPerPlay"), 2, 2) }, 
-        { title: 'Yds/DB', key: "passing.yardsPerPlay", percentile: generatePercentile(breakdown[key].passing.yardsPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.yardsPerPlay"), 2, 2) }, 
-        { title: 'Pass SR%', key: "passing.successRate", percentile: generatePercentile(breakdown[key].passing.successRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "passing.successRate") * 100, 2, 1)}%` }, 
-        { title: 'Havoc %', key: "overall.havocRate", percentile: generatePercentile(breakdown[key].overall.havocRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.havocRate") * 100, 2, 1)}%` }, 
+        { title: 'EPA/Play', key: "overall.epaPerPlay", percentile: generatePercentile(breakdown[key]?.overall.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.epaPerPlay"), 2, 2) }, 
+        { title: 'Early Downs EPA/Play', key: "overall.earlyDownEPAPerPlay", percentile: generatePercentile(breakdown[key]?.overall.earlyDownEPAPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.earlyDownEPAPerPlay"), 2, 2) }, 
+        { title: 'Late Downs SR%', key: "overall.lateDownSuccessRate", percentile: generatePercentile(breakdown[key]?.overall.lateDownSuccessRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.lateDownSuccessRate") * 100, 2, 1)}%` }, 
+        { title: 'Avg Distance (3rd)', key: "overall.thirdDownDistance", percentile: generatePercentile(breakdown[key]?.overall.thirdDownDistanceRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.thirdDownDistance"), 2, 2) }, 
+        { title: 'Rush EPA/Play', key: "rushing.epaPerPlay", percentile: generatePercentile(breakdown[key]?.rushing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.epaPerPlay"), 2, 2) }, 
+        { title: 'Stuff %', key: "rushing.stuffedPlayRate", percentile: generatePercentile(breakdown[key]?.rushing.stuffedPlayRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.stuffedPlayRate") * 100, 2, 1)}%` },
+        { title: 'Line Yards', key: "rushing.lineYards", percentile: generatePercentile(breakdown[key]?.rushing.lineYardsRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.lineYards"), 2, 2) },
+        { title: 'Opportunity %', key: "rushing.opportunityRate", percentile: generatePercentile(breakdown[key]?.rushing.opportunityRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.opportunityRate") * 100, 2, 1)}%` }, 
+        { title: 'Explosive %', key: "overall.explosiveRate", percentile: generatePercentile(breakdown[key]?.overall.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.explosiveRate") * 100, 2, 1)}%` }, 
+        { title: 'Pass Expl %', key: "passing.explosiveRate", percentile: generatePercentile(breakdown[key]?.passing.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "passing.explosiveRate") * 100, 2, 1)}%` }, 
+        { title: 'Rush Expl %', key: "rushing.explosiveRate", percentile: generatePercentile(breakdown[key]?.rushing.explosiveRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "rushing.explosiveRate") * 100, 2, 1)}%` }, 
+        { title: 'Non-Expl EPA/Play', key: "overall.nonExplosiveEpaPerPlay", percentile: generatePercentile(breakdown[key]?.overall.nonExplosiveEpaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.nonExplosiveEpaPerPlay"), 2, 2) },
+        { title: 'Pass EPA/Play', key: "passing.epaPerPlay", percentile: generatePercentile(breakdown[key]?.passing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.epaPerPlay"), 2, 2) }, 
+        { title: 'Yds/DB', key: "passing.yardsPerPlay", percentile: generatePercentile(breakdown[key]?.passing.yardsPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.yardsPerPlay"), 2, 2) }, 
+        { title: 'Pass SR%', key: "passing.successRate", percentile: generatePercentile(breakdown[key]?.passing.successRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "passing.successRate") * 100, 2, 1)}%` }, 
+        { title: 'Havoc %', key: "overall.havocRate", percentile: generatePercentile(breakdown[key]?.overall.havocRateRank, 134), value: `${roundNumber(retrieveValue(breakdown[key], "overall.havocRate") * 100, 2, 1)}%` }, 
     ]
 }
 
-function generateDataset(titleKey) {
-    const teamPercentilesDataset = generateRadarPercentiles(titleKey)
+function generateDataset(breakdowns, titleKey, opponentKey) {
+    const sample = generateRadarPercentiles({}, titleKey);
+    
+
+    const teamColors = breakdowns.map(b => {
+        return { alternateColor: b.alternateColor, color: b.color }
+    })
+    const adjTeamColors = (teamColors.length > 1) ? adjustTeamColors(teamColors[0], teamColors[1]) : [adjustColor(hexToRgb(teamColors[0].color), hexToRgb(teamColors[0].alternateColor))]
+
     return {
-        labels: teamPercentilesDataset.map(p => p.title),
-        datasets: [{
-            label: teamPercentilesDataset.map(p => `Raw: ${p.value}`),
-            data: teamPercentilesDataset.map(p => p.percentile),
-            fill: true,
-            backgroundColor: `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, 0.2)`,
-            borderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
-            pointBackgroundColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`
-        }]
+        labels: sample.map(p => p.title),
+        datasets: breakdowns.map((b, i) => {
+            const teamPercentilesDataset = generateRadarPercentiles(b, (i % 2) == 0 ? titleKey : opponentKey)
+            const teamColor = adjTeamColors[i];
+            return {
+                label: teamPercentilesDataset.map(p => `${b.teamName} - Raw: ${p.value}`),
+                data: teamPercentilesDataset.map(p => p.percentile),
+                fill: true,
+                backgroundColor: `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, 0.2)`,
+                borderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
+                pointBackgroundColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`,
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`
+            }
+        })
     };
 }
 

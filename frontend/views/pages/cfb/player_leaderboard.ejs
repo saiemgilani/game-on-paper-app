@@ -88,6 +88,7 @@ if (type == "passing") {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/dashboard.css" rel="stylesheet">
         <link href="/assets/css/blog.css" rel="stylesheet">
@@ -137,6 +138,9 @@ if (type == "passing") {
                 content: url('/assets/img/ennui-uga.png');
                 /* Sourced from the Moon Crew Discord server */
             }
+            /* img.team-logo-2390 {
+                content: url('/assets/img/upside-down-u.png');
+            } */
         </style>
     </head>
     <body>
@@ -169,7 +173,7 @@ if (type == "passing") {
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
                                 let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
-                                let yrRange = range(2014, 2024); // data only goes back to 2014
+                                let yrRange = range(2014, 2025); // data only goes back to 2014
                                 %>
                                 <select class="form-select form-select-md mb-3" id="yearSelect">
                                     <option value="-1">Choose Season...</option>

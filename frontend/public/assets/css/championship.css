@@ -1,0 +1,30 @@
+:root {
+    --bs-primary: #b3a369; /* #eeb211*/
+    --bs-primary-hover: #b3a369AA; /* #eeb211*/
+}
+
+a {
+    color: var(--bs-primary);
+}
+
+a:hover {
+   color: var(--bs-primary-hover)
+}
+
+.championship-text {
+    color: var(--bs-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+    a {
+        color: var(--bs-primary) !important;
+    }
+
+    a:hover {
+        color: var(--bs-primary-hover) !important;
+    }
+
+    .championship-text {
+        color: var(--bs-primary) !important;
+    }
+}

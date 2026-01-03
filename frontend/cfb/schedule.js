@@ -38,7 +38,7 @@ exports.getWeeksMap = function () {
     Object.entries(schedule).forEach(([year, weeks]) => {
         results[year] = weeks.map(wk => {
             return {
-                label: wk.label,
+                label: `${wk.label} (${wk.detail})`,
                 value: wk.value,
                 type: wk.label.includes("Bowls") ? "3" : "2"
             }
@@ -72,8 +72,13 @@ exports.getGames = async function (year, week, type, group) {
 }
 
 async function _getRemoteGames (year, week, type, group) {
+    var espnGroup = group; 
+    if (espnGroup && espnGroup < 0) {
+        espnGroup = 80; // All FBS which we will filter
+    }
+
     if (year == null || week == null) {
-        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${group || 80}&limit=1000&${new Date().getTime()}`, {
+        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`, {
             protocol: "https"
         })
         debuglog(res.request.res.responseUrl)
@@ -88,26 +93,45 @@ async function _getRemoteGames (year, week, type, group) {
         // } catch (e) {
         //     console.log(`failed to write game data for key cfb-scoreboard to redis game cache, error: ${e}`);
         // }
+
+        if (group == -1) { // top 25
+            result = result.filter(g => {
+                const home = g.competitions[0].competitors[0];
+                const away = g.competitions[0].competitors[1];
+
+                return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
+            })
+        }
+
         return result;
     } else {
         // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
-        const baseUrl = 'https://cdn.espn.com/core/college-football/schedule';
+        const baseUrl = 'https://cdn.espn.com/core/college-football/schedule?';
 
-        const params = {
+        const query = {
             year: year,
             week: week,
-            group: group || 80,
+            group: espnGroup || 80,
             seasontype: type || 2,
             xhr: 1,
             render: 'false',
-            userab: 18
+            userab: 18,
         }
 
-        const res = await axios.get(baseUrl, {
-            params
-        });
-        debuglog(JSON.stringify(params))
-        debuglog(res.request.res.responseUrl)
+        for (let param in query) { /* You can get copy by spreading {...query} */
+            if (query[param] === undefined /* In case of undefined assignment */
+                || query[param] === null 
+                || query[param] === ""
+            ) {    
+                delete query[param];
+            }
+        }
+
+        const url = baseUrl + (new URLSearchParams(query)).toString() + `&${new Date().getTime()}`;
+        console.log(url)
+        const res = await axios.get(url);
+        // debuglog(JSON.stringify(params))
+        // debuglog(res.request.res.responseUrl)
         let espnContent = res.data;
         if (espnContent == null) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
@@ -124,6 +148,16 @@ async function _getRemoteGames (year, week, type, group) {
                 result = result.concat(schedule.games)
             }
         })
+
+        if (group == -1) { // top 25
+            result = result.filter(g => {
+                const home = g.competitions[0].competitors[0];
+                const away = g.competitions[0].competitors[1];
+
+                return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
+            })
+        }
+
         return result;
     }
 }
