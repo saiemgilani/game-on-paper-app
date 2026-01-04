@@ -1,34 +1,30 @@
 // schedule.js
 const fs = require('fs');
-const util = require('util');
-const debuglog = util.debuglog('[frontend]');
+const logger = require("../../utils/logger");
 const axios = require('axios')
 const path = require("path");
-const Games = require('./games');
 
-let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start); 
-
-debuglog("Compiling schedule vars");
+logger.info("Compiling schedule vars");
 let schedule = {}
-fs.readFile(path.resolve(__dirname, "schedule.json"), function (err, data) {
+fs.readFile(path.resolve(__dirname, "..", "..", "static", "schedule.json"), function (err, data) {
     if (err) {
-        debuglog(err)
+        logger.error(err)
         throw err;
     }
-    debuglog(`Loading schedules...`)
+    logger.info(`Loading schedules...`)
     schedule = JSON.parse(data);
-    debuglog(`Loaded schedules for ${Object.keys(schedule)}`)
+    logger.info(`Loaded schedules for ${Object.keys(schedule)}`)
 });
 
 let groupMap = [];
-fs.readFile(path.resolve(__dirname, "groups.json"), function (err, data) {
+fs.readFile(path.resolve(__dirname, "..", "..", "static", "groups.json"), function (err, data) {
     if (err) {
-        debuglog(err)
+        logger.error(err)
         throw err;
     }
-    debuglog(`Loading groups...`)
+    logger.info(`Loading groups...`)
     groupMap = JSON.parse(data);
-    debuglog(`Loaded groups for ${Object.keys(groupMap)}`)
+    logger.info(`Loaded groups: ${groupMap.map(p => p.id)}`)
 });
 
 exports.scheduleList = schedule;
@@ -53,23 +49,7 @@ exports.getGroups = function() {
 }
 
 exports.getGames = async function (year, week, type, group) {
-    if (year == null || week == null) {
-        try {
-            console.log(`Looking for scoreboard for sport 'cfb' in game cache`)
-            const rawScoreboard = await Games.getGameCacheValue(`cfb-scoreboard`);
-            if (!rawScoreboard) {
-                throw new Error(`Failed to find scoreboard for sport 'cfb' in game cache, forcing retrieval from remote`)
-            }
-            console.log(`Found content for scoreboard for sport 'cfb' in game cache, returning to caller`)
-            // console.log(`content: ${rawPBP}`)
-            return JSON.parse(rawScoreboard);
-        } catch (e) {
-            console.log(`ERROR on redis scoreboard game cache retrieval: ${e}`)
-            return await _getRemoteGames(year, week, type, group);
-        }
-    } else {
-        return await _getRemoteGames(year, week, type, group); 
-    }
+    return await _getRemoteGames(year, week, type, group); 
 }
 
 async function _getRemoteGames (year, week, type, group) {
@@ -82,18 +62,13 @@ async function _getRemoteGames (year, week, type, group) {
         const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`, {
             protocol: "https"
         })
-        debuglog(res.request.res.responseUrl)
+        logger.info(res.request.res.responseUrl)
         let espnContent = res.data;
         if (espnContent == null) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
         }
 
         let result = (espnContent != null) ? espnContent.events : [];
-        try {
-            await Games.setGameCacheValue(`cfb-scoreboard`, JSON.stringify(result), 60 * 1); // 1 min TTL
-        } catch (e) {
-            console.log(`failed to write game data for key cfb-scoreboard to redis game cache, error: ${e}`);
-        }
 
         if (group == -1) { // top 25
             result = result.filter(g => {
@@ -129,10 +104,9 @@ async function _getRemoteGames (year, week, type, group) {
         }
 
         const url = baseUrl + (new URLSearchParams(query)).toString() + `&${new Date().getTime()}`;
-        console.log(url)
+        logger.info(url)
         const res = await axios.get(url);
-        // debuglog(JSON.stringify(params))
-        // debuglog(res.request.res.responseUrl)
+
         let espnContent = res.data;
         if (espnContent == null) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
@@ -143,8 +117,11 @@ async function _getRemoteGames (year, week, type, group) {
         }
 
         var result = []
-        // console.log(espnContent)
-        Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+        const actualContent = espnContent.content?.schedule;
+        if (!actualContent) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
+        }
+        Object.entries(actualContent).forEach(([date, schedule]) => {
             if (schedule != null && schedule.games != null) {
                 result = result.concat(schedule.games)
             }
