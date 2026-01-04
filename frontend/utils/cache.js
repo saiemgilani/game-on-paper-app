@@ -4,6 +4,8 @@ const redisClient = redis.createClient({
     url: 'redis://cache:6380'
 });
 
+const cacheIgnore = process.env.CACHE_IGNORE || 'false'
+
 redisClient.on('error', (err) => logger.error('Redis Client Error', err));
 
 redisClient.connect().then(() => {
@@ -37,7 +39,7 @@ const cachePage = (duration) => {
         lockAndTransact(key, async () => {
             // if not locked, lock --> update --> unlock
             const content = await redisClient.get(key)
-            if (!content) {
+            if (!content || cacheIgnore == 'true') {
                 logger.info(`cache miss: ${key}`)
                 res.sendResponse = res.send
                 res.send = (body) => {
