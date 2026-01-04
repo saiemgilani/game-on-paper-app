@@ -1,13 +1,13 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "pandas",
 #     "requests",
+#     "tqdm",
 # ]
 # ///
 import requests
-import pandas as pd
 import json
+from tqdm import tqdm
 
 base_url = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
 
@@ -23,12 +23,16 @@ def get_calendar(year: int):
 
         for e in t['entries']:
             e['year'] = f"{year}"
+            e["type"] = t["value"]
             weeks.append(e)
-    result = {
-        f"{year}" : weeks
-    }
 
-    print(json.dumps(result))
+    return weeks
 
 # update this to any arbitrary year and add it to frontend/cfb/schedule.json to update the weeks available in the switcher.
-get_calendar(2025)
+result = {}
+for yr in tqdm(range(2002, 2026)):
+    result[yr] = get_calendar(yr)
+
+with open("./frontend/static/schedule.json", "w") as f:
+    f.write(json.dumps(result))
+
