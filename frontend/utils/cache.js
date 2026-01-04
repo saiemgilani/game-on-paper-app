@@ -6,11 +6,12 @@ const redisClient = redis.createClient({
 
 const cacheIgnore = process.env.CACHE_IGNORE || 'false'
 
-redisClient.on('error', (err) => logger.error('Redis Client Error', err));
+redisClient.on('error', (err) => logger.error('Redis Client Error ', err));
 
 redisClient.connect().then(() => {
-    logger.info('connected to redis game cache on port 6380');
-});
+    logger.info('connected to redis page cache on port 6380');
+})
+
 
 const setCache = async (key, value, duration) => {
     try {
@@ -50,7 +51,7 @@ const cachePage = (duration) => {
                 }
                 next()
             } else {
-                logger.error(`cache hit: ${key}`)
+                logger.info(`cache hit: ${key}`)
                 res.send(content)
             }
         })
