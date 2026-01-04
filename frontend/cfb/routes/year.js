@@ -1,11 +1,12 @@
 const express = require('express');
 const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
+const Schedule = require("../resources/schedule")
 const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
 const logger = require("../../utils/logger");
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
 router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
@@ -18,26 +19,73 @@ function retrieveValue(dictionary, key) {
     return sub;
 }
 
+async function retrieveGameListWrapper(req, res, next, payload) {
+    try {
+        let gameList = await GamesModel.retrieveGameList(req.originalUrl, payload);
+        let weekList = Schedule.getWeeksMap();
+        let groupList = Schedule.getGroups();
 
-router.get('/year/:year', async (req, res, next) => {
-        try {
-            let gameList = await GamesModel.retrieveGameList(req.originalUrl, { year: req.params.year, week: 1, type: 2, group: req.query.group });
-            let weekList = Schedule.getWeeksMap();
-            let groupList = Schedule.getGroups();
-            return res.render('pages/cfb/index', {
-                scoreboard: gameList,
-                weekList: weekList,
-                groups: groupList,
-                year: req.params.year,
-                week: 1,
-                seasontype: 2,
-                group: req.query.group || 80
-            });
-        } catch(err) {
-            return next(err)
+
+        let title = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
+        title = title ?? `Week ${payload["week"]}`;
+
+        return res.render('pages/cfb/index', {
+            scoreboard: gameList,
+            weekList: weekList,
+            groups: groupList,
+            year: payload["year"],
+            week: payload["week"],
+            seasontype: payload["type"],
+            group: payload["group"] || 80,
+            title
+        });
+    } catch(err) {
+        return next(err)
+    }
+}
+
+
+router.get('/', async (req, res, next) => {
+    return retrieveGameListWrapper(
+        req, 
+        res,
+        next,
+        {
+            year: req.params.year, 
+            week: 1, 
+            type: 2, 
+            group: req.query.group || 80
         }
-    });
+    )
+});
 
+router.get('/type/:type', async (req, res, next) => {
+    return retrieveGameListWrapper(
+        req, 
+        res,
+        next,
+        {
+            year: req.params.year, 
+            week: 1, 
+            type: req.params.week, 
+            group: req.query.group || 80
+        }
+    )
+})
+
+router.get('/type/:type/week/:week', async (req, res, next) => {
+    return retrieveGameListWrapper(
+        req, 
+        res,
+        next,
+        {
+            year: req.params.year, 
+            week: req.params.week, 
+            type: req.params.type, 
+            group: req.query.group || 80
+        }
+    )
+})
 
 router.get('/charts/team/epa', async (req, res, next) => {
         try {
@@ -57,7 +105,7 @@ router.get('/charts/team/epa', async (req, res, next) => {
             return res.render("pages/cfb/epa_chart", {
                 teams: content,
                 season: req.params.year,
-                last_updated: await retrieveLastUpdated()
+                last_updated: await SummaryModel.retrieveLastUpdated()
             })
         } catch(err) {
             return next(err)

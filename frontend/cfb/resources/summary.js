@@ -41,7 +41,7 @@ async function retrieveRemoteLeagueData(year, type) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        if (!year || (year - 1) < 2014) {
             return [];
         } else {
             return await retrieveRemoteLeagueData(year - 1, type);

@@ -34,9 +34,10 @@ exports.getWeeksMap = function () {
     Object.entries(schedule).forEach(([year, weeks]) => {
         results[year] = weeks.map(wk => {
             return {
+                title: wk.label,
                 label: `${wk.label} (${wk.detail})`,
                 value: wk.value,
-                type: wk.label.includes("Bowls") ? "3" : "2"
+                type: wk.type
             }
         })
     });
@@ -87,7 +88,7 @@ async function _getRemoteGames (year, week, type, group) {
             year: year,
             week: week,
             group: espnGroup || 80,
-            seasontype: type || 2,
+            type: type || 2,
             xhr: 1,
             render: 'false',
             userab: 18,
@@ -116,7 +117,11 @@ async function _getRemoteGames (year, week, type, group) {
         }
 
         var result = []
-        Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+        const actualContent = espnContent.content?.schedule;
+        if (!actualContent) {
+            throw Error(`Data not available for ESPN's schedule endpoint.`)
+        }
+        Object.entries(actualContent).forEach(([date, schedule]) => {
             if (schedule != null && schedule.games != null) {
                 result = result.concat(schedule.games)
             }

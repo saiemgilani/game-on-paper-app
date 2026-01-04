@@ -4,7 +4,20 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
-        <title>College Football | Game on Paper</title>
+        <% 
+        var titleParts = [];
+        if (year) {
+            titleParts.push(`${year}`)
+        }
+        if (title) {
+            titleParts.push(title)
+        }
+
+        titleParts = titleParts.concat(["College Football", "Game on Paper"])
+
+        const titleText = titleParts.join(" | ")
+        %>
+        <title><%= titleText %></title>
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/index.css" rel="stylesheet">
         <link href="/assets/css/dark-index.css" rel="stylesheet">
