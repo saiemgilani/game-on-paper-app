@@ -257,6 +257,7 @@ router.get('/', async function(req, res, next) {
         let gameList = await retrieveGameList(req.originalUrl, { group: req.query.group });
         let weekList = await Schedule.getWeeksMap();
         let groupList = await Schedule.getGroups();
+
         return res.render('pages/cfb/index', {
             scoreboard: gameList,
             weekList: weekList,
@@ -264,7 +265,8 @@ router.get('/', async function(req, res, next) {
             year: req.params.year,
             week: req.params.week,
             seasontype: 2,
-            group: req.query.group || 80
+            group: req.query.group || 80,
+            title: null
         });
     } catch(err) {
         return next(err)
@@ -277,6 +279,9 @@ router.route('/year/:year/type/:type/week/:week')
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week:req.params.week, type: req.params.type, group: req.query.group });
             let weekList = await Schedule.getWeeksMap();
             let groupList = await Schedule.getGroups();
+
+            const weekTitle = weekList[req.params.year]?.find(w => parseInt(w.type) == parseInt(req.params.type) && parseInt(w.value) == parseInt(req.params.week))?.title;
+
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
                 weekList: weekList,
@@ -284,7 +289,8 @@ router.route('/year/:year/type/:type/week/:week')
                 year: req.params.year,
                 week: req.params.week,
                 seasontype: req.params.type,
-                group: req.query.group || 80
+                group: req.query.group || 80,
+                title: weekTitle
             });
         } catch(err) {
             return next(err)
@@ -305,6 +311,8 @@ router.route('/year/:year')
             let gameList = await retrieveGameList(req.originalUrl, { year: req.params.year, week: 1, type: 2, group: req.query.group });
             let weekList = await Schedule.getWeeksMap();
             let groupList = await Schedule.getGroups();
+            const weekTitle = weekList[req.params.year]?.find(w => parseInt(w.type) == 2 && parseInt(w.value) == 1)?.title;
+
             return res.render('pages/cfb/index', {
                 scoreboard: gameList,
                 weekList: weekList,
@@ -312,7 +320,8 @@ router.route('/year/:year')
                 year: req.params.year,
                 week: 1,
                 seasontype: 2,
-                group: req.query.group || 80
+                group: req.query.group || 80,
+                title: weekTitle
             });
         } catch(err) {
             return next(err)
