@@ -193,25 +193,15 @@
                     var selIndex = -1;
                     selWeeks.forEach((wk, idx) => {
                         console.log("adding week" + wk.label);
-                        if (!wk.label.includes("Bowls")) {
-                            var option = document.createElement("option");
-                            option.text = wk.label;
-                            option.value = `${wk.type};${wk.value}`
-                            if (parseInt(selSeasonType) == parseInt("2") && parseInt(selWeek) == parseInt(wk.value)) {
-                                selIndex = idx + 1;
-                            }
-
-                            weekSelect.add(option);
+                        var option = document.createElement("option");
+                        option.text = wk.label;
+                        option.value = `${wk.type};${wk.value}`
+                        if (parseInt(selSeasonType) == parseInt(wk.type) && parseInt(selWeek) == parseInt(wk.value)) {
+                            selIndex = idx + 1;
                         }
-                    })
 
-                    var option = document.createElement("option");
-                    option.text = "Bowls";
-                    option.value = `3;1`
-                    if (parseInt(selSeasonType) == parseInt("3")) {
-                        selIndex = (selWeeks.length - 1) + 1;
-                    }
-                    weekSelect.add(option);
+                        weekSelect.add(option);
+                    })
 
                     weekSelect.selectedIndex = selIndex;
                 }

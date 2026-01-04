@@ -1,7 +1,6 @@
 const express = require('express');
 const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
-const Schedule = require("../resources/schedule")
 const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
 const logger = require("../../utils/logger");
@@ -19,34 +18,9 @@ function retrieveValue(dictionary, key) {
     return sub;
 }
 
-async function retrieveGameListWrapper(req, res, next, payload) {
-    try {
-        let gameList = await GamesModel.retrieveGameList(req.originalUrl, payload);
-        let weekList = Schedule.getWeeksMap();
-        let groupList = Schedule.getGroups();
-
-
-        let title = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
-        title = title ?? `Week ${payload["week"]}`;
-
-        return res.render('pages/cfb/index', {
-            scoreboard: gameList,
-            weekList: weekList,
-            groups: groupList,
-            year: payload["year"],
-            week: payload["week"],
-            seasontype: payload["type"],
-            group: payload["group"] || 80,
-            title
-        });
-    } catch(err) {
-        return next(err)
-    }
-}
-
 
 router.get('/', async (req, res, next) => {
-    return retrieveGameListWrapper(
+    return GamesModel.routeGameList(
         req, 
         res,
         next,
@@ -60,7 +34,7 @@ router.get('/', async (req, res, next) => {
 });
 
 router.get('/type/:type', async (req, res, next) => {
-    return retrieveGameListWrapper(
+    return GamesModel.routeGameList(
         req, 
         res,
         next,
@@ -74,7 +48,7 @@ router.get('/type/:type', async (req, res, next) => {
 })
 
 router.get('/type/:type/week/:week', async (req, res, next) => {
-    return retrieveGameListWrapper(
+    return GamesModel.routeGameList(
         req, 
         res,
         next,

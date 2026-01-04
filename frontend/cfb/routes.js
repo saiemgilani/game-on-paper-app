@@ -1,8 +1,6 @@
 const express = require('express');
 const axios = require('axios');
-
-const GamesModel = require('./resources/game');
-const ScheduleModel = require('./resources/schedule');
+const GamesModel = require("./resources/game")
 const GlossaryModel = require('./resources/glossary');
 const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
@@ -32,22 +30,14 @@ router.get('/healthcheck', async (req, res) => {
 
 // cache this every minute
 router.get('/', async function(req, res, next) {
-    try {
-        const gameList = await GamesModel.retrieveGameList(req.originalUrl, { group: req.query.group });
-        const weekList = ScheduleModel.getWeeksMap();
-        const groupList = ScheduleModel.getGroups();
-        return res.render('pages/cfb/index', {
-            scoreboard: gameList,
-            weekList: weekList,
-            groups: groupList,
-            year: req.params.year,
-            week: req.params.week,
-            seasontype: 2,
+    return GamesModel.routeGameList(
+        req, 
+        res,
+        next,
+        {
             group: req.query.group || 80
-        });
-    } catch(err) {
-        return next(err)
-    }
+        }
+    )
 });
 
 
