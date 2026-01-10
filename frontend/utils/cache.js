@@ -12,8 +12,25 @@ redisClient.connect().then(() => {
     logger.info('connected to redis page cache on port 6380');
 })
 
+class CacheError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'CacheError';
+  }
+}
 
-const setCache = async (key, value, duration) => {
+
+/*
+    This solves the problem of get/set contention in Redis but somewhat fails as a page cache. 
+    If the lock can not be acquired, the system still hits Python to parse the game data. 
+   
+    - If the lock is not able to be acquired, then we should return the old data, no?
+        - This could create a race condition where the lock is engaged but the underlying key expires, so there's no data to return to the caller...
+            - To avoid this, we set the expiration of the key to be longer. If there's another request when the lock is still engaged, we identify the lock contention error and the old content is still returned
+            - If the key still expires before the lock is disengaged, we hit Python to parse the game data.
+*/
+
+const setCachedValue = async (key, value, duration) => {
     try {
         await redisClient.set(key, value)
         await redisClient.expire(key, duration)
@@ -24,8 +41,12 @@ const setCache = async (key, value, duration) => {
 
 const lockAndTransact = async (key, promiseFunc) => {
     logger.info(`locking for ${key}`)
-    await redisClient.setNX(`${key}-lock`, "locked")
-    await redisClient.expire(key, 60 * 60) // one hour lock
+    const lockResult = await redisClient.setNX(`${key}-lock`, "locked");
+    if (!lockResult) {
+        throw new CacheError(`Lock still on for ${key}`)
+    }
+    await redisClient.expire(`${key}-lock`, 60 * 60) // one hour expiration on the lock
+    await redisClient.expire(key, 60 * 5) // extend to five minute expiration on the key just in case anything goes wrong with this update
     await promiseFunc()
     logger.info(`unlocking for ${key}`)
     await redisClient.del(`${key}-lock`)
@@ -44,7 +65,7 @@ const cachePage = (duration) => {
                 logger.info(`cache miss: ${key}`)
                 res.sendResponse = res.send
                 res.send = (body) => {
-                    setCache(key, body, duration)
+                    setCachedValue(key, body, duration)
                         .then(() => {
                             res.sendResponse(body)
                         })
@@ -55,10 +76,16 @@ const cachePage = (duration) => {
                 res.send(content)
             }
         })
-        .catch((e) => {
-            // If locked, pass through
-            logger.error(`Error while trying to lock and transact on redis ${key}: ${e}`)
-            next()
+        .catch(async (e) => {
+            // If locked, pass through IF we have content saved
+            const content = await redisClient.get(key)
+            if ((e instanceof CacheError) && content) {
+                logger.error(`Lock still ON for ${key}, so returning old content: ${e}`)
+                res.send(content)
+            } else {
+                logger.error(`Error while trying to lock and transact on redis ${key}: ${e}`)
+                next()
+            }
         })
     }
 }
