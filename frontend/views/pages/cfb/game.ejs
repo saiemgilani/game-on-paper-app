@@ -1398,9 +1398,10 @@ function geiGenerateColorRampValue(input) {
             <main class="col-lg-6 ms-sm-auto px-md-4">
                 <%
                 
-                    var curDrive = gameData.drives.current
-                    var currentDrives = (curDrive != null) ? [curDrive] : [];
-                    var gameDrives = [...gameData.drives.previous, ...currentDrives]
+                    const curDrive = gameData.drives.current
+                    const prevDrives = gameData.drives?.previous ?? [];
+                    const validCurrentDrives = (curDrive != null && (prevDrives.find(d => d.id == curDrive?.id) == undefined)) ? [curDrive] : [];
+                    var gameDrives = [...prevDrives, ...validCurrentDrives]
                     if (gameDrives.length > 0) {
                         var validDriveIds = unique(gameData.plays.map(p => p['drive.id']))
                         gameDrives = gameDrives.filter(d => validDriveIds.includes(d.id))
