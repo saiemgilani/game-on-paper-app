@@ -1204,6 +1204,9 @@ function geiGenerateColorRampValue(input) {
                                 <%- include('../../partials/pass_chart', {
                                     plays: gameData.plays.filter(p => p.pos_team == awayTeam.id)
                                 }) %>
+                                <%- include('../../partials/rush_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == awayTeam.id)
+                                }) %>
                             </div>
                           </div>
                         </div>
@@ -1294,6 +1297,9 @@ function geiGenerateColorRampValue(input) {
                                     </table>
                                 </div>
                                 <%- include('../../partials/pass_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == homeTeam.id)
+                                }) %>
+                                <%- include('../../partials/rush_chart', {
                                     plays: gameData.plays.filter(p => p.pos_team == homeTeam.id)
                                 }) %>
                             </div>
