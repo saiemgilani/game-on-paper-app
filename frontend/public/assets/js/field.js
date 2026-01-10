@@ -35,6 +35,7 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.save()
         this.ctx.fillStyle = this.fieldColor
         this.ctx.fillRect(0, 0, this.fieldWidth, this.fieldHeight);
+        // this.drawMidfieldLogo("/assets/img/favicon.svg");
         this.fillEndZones();
         this.drawFieldLines();
         this.ctx.restore()
@@ -78,9 +79,10 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         logo = new Image();
         logo.src = url;
         logo.onload = function() {
-            var imgSize = (75 / 300) * fieldHeight;                                 // get the context
+            var imgSize = (50 / 300) * fieldHeight;                                 // get the context
             // ctx.save();
             ctx.save()
+            ctx.globalAlpha = 0.5;
             ctx.drawImage(logo, (fieldWidth / 2) - (imgSize / 2), (fieldHeight / 2) - (imgSize / 2), imgSize, imgSize);   
             ctx.restore();
         }
@@ -179,13 +181,19 @@ function Field(elementId, fieldColor = "rgb(0, 153, 41)", team1 = {color: "#B3A3
         this.ctx.restore()
     }
 
-    this.drawLine = function(minX = 0, minY = 0, maxX = this.fieldWidth, maxY = this.fieldHeight, lineWidth = null, color = null) {
+    this.drawLine = function(minX = 0, minY = 0, maxX = this.fieldWidth, maxY = this.fieldHeight, lineWidth = null, color = null, shadow = null) {
         if (color) {
             this.ctx.strokeStyle = color;
         }
 
         if (lineWidth) {
             this.ctx.lineWidth = lineWidth;
+        }
+
+        if (shadow) {
+            this.ctx.shadowColor = shadow;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 1.25;
         }
 
         this.ctx.beginPath();

@@ -5,12 +5,12 @@
 <script>
     function render<%= id %>() {
         <%
-        var fieldColor = "rgb(0, 153, 41)"
-        if (!isNeutralSite && homeTeam.id == 68) {
-            fieldColor = "#12329A"; // Boise State
-        } else if (!isNeutralSite && homeTeam.id == 324) {
-            fieldColor = "#307077"; // Coastal Carolina
-        }
+        const fieldColor = "rgba(0, 153, 41, 0)" // transparent to avoid issues with team colors
+        // if (!isNeutralSite && homeTeam.id == 68) {
+        //     fieldColor = "#12329A"; // Boise State
+        // } else if (!isNeutralSite && homeTeam.id == 324) {
+        //     fieldColor = "#307077"; // Coastal Carolina
+        // }
 
         %>
         let field = new Field('football-field-<%= id %>', '<%- fieldColor %>', <%- JSON.stringify(offense) %>, <%- JSON.stringify(defense) %>, baseLineWidth = 10, subtitle = '<%= subtitle %>');
