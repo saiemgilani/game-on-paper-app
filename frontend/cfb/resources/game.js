@@ -1,19 +1,9 @@
 const axios = require('axios');
-const util = require('util');
 const Schedule = require('./schedule');
-const redis = require('redis');
+const logger = require("../../utils/logger");
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
-const redisClient = redis.createClient({
-    url: 'redis://cache:6380'
-});
 
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-
-redisClient.connect().then(() => {
-    console.log('connected to redis game cache on port 6380');
-});
-
-console.log("RDATA BASE URL: " + RDATA_BASE_URL)
+logger.info("RDATA BASE URL: " + RDATA_BASE_URL)
 
 PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
 
@@ -110,11 +100,8 @@ async function getSchedule(input) {
 async function _remoteRetrievePBP(gameId) {
     const processedGame = await processPlays(gameId);
     
-    // console.log(processedGame)
-    // console.log(typeof processedGame)
     pbp = processedGame;
     pbp.plays = processedGame["plays"];
-    // console.log(plays)
     pbp.advBoxScore = processedGame["box_score"];
     pbp.boxScore = processedGame['boxScore'];
     pbp.gameInfo = pbp.header.competitions[0];
@@ -137,30 +124,12 @@ async function _remoteRetrievePBP(gameId) {
         pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
     }
 
-    try {
-        await redisClient.set(`cfb-${gameId}`, JSON.stringify(pbp));
-        await redisClient.expire(`cfb-${gameId}`, 60 * 1); // 1 min TTL
-    } catch (e) {
-        console.log(`failed to write game data for key cfb-${gameId} to redis game cache, error: ${e}`);
-    }
-
     return pbp;
 }
 
 async function retrievePBP(gameId) {
-    try {
-        console.log(`Looking for ${gameId} for sport 'cfb' in game cache`)
-        const rawPBP = await redisClient.get(`cfb-${gameId}`);
-        if (!rawPBP) {
-            throw new Error(`Failed to find gameID ${gameId} for sport 'cfb' in game cache, forcing retrieval from remote`)
-        }
-        console.log(`Found content for ${gameId} for sport 'cfb' in game cache, returning to caller`)
-        // console.log(`content: ${rawPBP}`)
-        return JSON.parse(rawPBP);
-    } catch (e) {
-        console.log(`ERROR on redis game cache retrieval: ${e}`)
         return await _remoteRetrievePBP(gameId);
-    }
+    // }
 }
 
 function calculateGEI(plays, homeTeamId) {
@@ -215,33 +184,82 @@ async function processPlays(gameId) {
     return response.data;
 }
 
-async function getServiceHealth(req, res) {
-    const rdataCheck = await axios.get(RDATA_BASE_URL + '/healthcheck');
-    const cfbDataCheck = await axios.get('https://collegefootballdata.com');
 
-    var cfbdCheck = {
-        status: (cfbDataCheck.status == 200) ? "ok" : "bad"
+async function getGames(url, params) {
+    var gameList = await getSchedule(params);
+    if (gameList == null) {
+        throw Error(`Data not available for ${url} because of a service error.`)
     }
+    gameList = gameList.filter(g => {
+        const gameComp = g.competitions[0];
+        const homeComp = gameComp.competitors[0];
+        const awayComp = gameComp.competitors[1];
 
-    const selfCheck = {
-        "status" : "ok"
-    }
-    
-    return res.json({
-        "python" : rdataCheck.data,
-        "node" : selfCheck,
-        "cfbData" : cfbdCheck
+        return (parseFloat(homeComp.id) >= 0 && parseFloat(awayComp.id) >= 0);
     })
+    gameList.sort((a, b) => {
+        if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
+            return -1;
+        } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
+            return 1;
+        } else if ((a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD")) && !(b.status.type.name.includes("END_OF") || b.status.type.name.includes("END_PERIOD"))) {
+            return -1;
+        } else if ((b.status.type.name.includes("END_PERIOD") || b.status.type.name.includes("END_OF")) && !(a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD"))) {
+            return 1;
+        } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
+            return -1;
+        } else if (b.status.type.name.includes("STATUS_HALFTIME") && !a.status.type.name.includes("STATUS_HALFTIME")) {
+            return 1;
+        } else {
+            var aDate = Date.parse(a.date)
+            var bDate = Date.parse(b.date)
+            if (aDate < bDate) {
+                return -1
+            } else if (bDate < aDate) {
+                return 1
+            } else {
+                var aVal = parseInt(a.status.type.id)
+                var bVal = parseInt(b.status.type.id)
+                if (aVal < bVal) {
+                    return -1
+                } else if (bVal < aVal) {
+                    return 1
+                } else {
+                    return 0
+                }
+            }
+        }
+    })
+    return gameList;
 }
 
-exports.getGameList = getSchedule
-exports.getPBP = retrievePBP
-exports.getServiceHealth = getServiceHealth
-exports.setGameCacheValue = async (key, value, expiry) => {
-    await redisClient.set(key, value);
-    await redisClient.expire(key, expiry);
+async function routeGameList(req, res, next, payload) {
+    try {
+        let gameList = await getGames(req.originalUrl, payload);
+        let weekList = Schedule.getWeeksMap();
+        let groupList = Schedule.getGroups();
+
+        var weekTitle = null;
+        if (payload["year"]) {
+            weekTitle = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
+        }
+
+        return res.render('pages/cfb/index', {
+            scoreboard: gameList,
+            weekList: weekList,
+            groups: groupList,
+            year: payload["year"],
+            week: payload["week"],
+            seasontype: payload["type"],
+            group: payload["group"] || 80,
+            title: weekTitle
+        });
+    } catch(err) {
+        return next(err)
+    }
 }
 
-exports.getGameCacheValue = async (key) => {
-    return await redisClient.get(key);
+module.exports = {
+    routeGameList,
+    retrievePBP
 }

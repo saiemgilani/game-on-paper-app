@@ -1,13 +1,12 @@
 const axios = require('axios');
-const util = require('util');
-const debuglog = util.debuglog('[frontend]');
+const logger = require("../../utils/logger");
 
 async function populate(endpoint, season, teamId, type = null) {
     let seasonType = type != null ? `/types/${type}` : ""
     const res =  await axios.get(`https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${season}${seasonType}/teams/${teamId}/${endpoint}?lang=en&region=us`, {
         protocol: "https"
     })
-    debuglog(res.request.res.responseUrl)
+    logger.info(res.request.res.responseUrl)
     let espnContent = res.data;
     if (espnContent == null) {
         throw Error(`Data not available for ESPN endpoint ${endpoint} with year ${season} and team ${teamId}.`)
@@ -32,7 +31,7 @@ exports.getTeamInformation = async function (season, teamId) {
         result[item] = populatingValues[idx].items;
     });
 
-    // debuglog(result);
+    // logger.info(result);
     var schedulePromises = []
     let types = [2, 3];
     types.forEach(type => {

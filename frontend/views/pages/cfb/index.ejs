@@ -5,15 +5,17 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
         <% 
-            var titleParts = [];
-            if (year) {
-                titleParts.push(`${year}`)
-            }
-            if (title) {
-                titleParts.push(title)
-            }
-            titleParts = titleParts.concat(["College Football", "Game on Paper"])
-            const titleText = titleParts.join(" | ")
+        var titleParts = [];
+        if (year) {
+            titleParts.push(`${year}`)
+        }
+        if (title) {
+            titleParts.push(title)
+        }
+
+        titleParts = titleParts.concat(["College Football", "Game on Paper"])
+
+        const titleText = titleParts.join(" | ")
         %>
         <title><%= titleText %></title>
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
@@ -190,15 +192,15 @@
 
                     var selIndex = -1;
                     selWeeks.forEach((wk, idx) => {
-                        console.log("adding week " + wk.label);
+                        console.log("adding week" + wk.label);
                         var option = document.createElement("option");
-                            option.text = wk.label;
-                            option.value = `${wk.type};${wk.value}`
-                            if (parseInt(selSeasonType) == parseInt(wk.type) && parseInt(selWeek) == parseInt(wk.value)) {
-                                selIndex = idx + 1;
-                            }
+                        option.text = wk.label;
+                        option.value = `${wk.type};${wk.value}`
+                        if (parseInt(selSeasonType) == parseInt(wk.type) && parseInt(selWeek) == parseInt(wk.value)) {
+                            selIndex = idx + 1;
+                        }
 
-                            weekSelect.add(option);
+                        weekSelect.add(option);
                     })
 
                     weekSelect.selectedIndex = selIndex;

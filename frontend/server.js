@@ -1,12 +1,9 @@
 const express = require('express');
 const morgan = require("morgan");
-const { spawn } = require('child_process');
-const cfb = require('./cfb/routes.js');
+const cfb = require('./cfb/routes');
+const logger = require("./utils/logger");
 var path = require('path');
 const port = process.env.PORT || 8000;
-
-const util = require('util');
-const debuglog = util.debuglog('[frontend]');
 
 const app = express();
 app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
@@ -50,11 +47,11 @@ app.get('/', function(req, res) {
 
 // Start the frontend service
 app.listen(port, () => {
-    debuglog(`listening on port ${port}`)
+    logger.info(`listening on port ${port}`)
 })
 
 app.use(function (err, req, res, next) {
-    debuglog(err.stack)
+    logger.error(err.stack)
     if (req.method == "POST" || req.query.json == true || req.query.json == "true" || req.query.json == "1") {
         return res.status(500).json({
             status: 500,
