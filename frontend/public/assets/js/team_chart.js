@@ -421,7 +421,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E599"
     const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E533"
 
-    const shouldFlipYAxis = (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
+    const shouldFlipYAxis = (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) || (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
 
     return {
         type: 'boxplot',
