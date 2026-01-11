@@ -92,16 +92,17 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
-async function retrieveRemotePercentiles(year) {
+async function retrieveRemotePercentiles(year = null, pctile = null) {
     try {
+        const query = cleanUpParams({ year, pctile });
         const response = await axios({
             method: 'GET',
-            url: `http://summary:3000/percentiles/${year}`
+            url: `http://summary:3000/percentiles?` + (new URLSearchParams(query)).toString(),
         });
         
         // update redis cache
         const content = response.data.results;
-        const key = `${year}-percentiles`;
+        const key = generateKey([year, "percentiles", pctile]);
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
@@ -118,8 +119,8 @@ async function retrieveRemotePercentiles(year) {
     }
 }
 
-async function retrievePercentiles(year) {
-    const key = `${year}-percentiles`;
+async function retrievePercentiles(year = null, pctile = null) {
+    const key = generateKey([year, "percentiles", pctile])
     try {
         const content = await redisClient.get(key);
         if (!content) {
@@ -130,11 +131,11 @@ async function retrievePercentiles(year) {
     } catch (err) {
         console.log(err)
         console.log(`receieved some error from redis for key: ${key}, repulling league data`)
-        return await retrieveRemotePercentiles(year);
+        return await retrieveRemotePercentiles(year, pctile);
     }
 }
 
-async function retrieveRemoteData(payload) {
+function cleanUpParams(payload) {
     let query = payload;
     for (let param in query) { /* You can get copy by spreading {...query} */
         if (query[param] === undefined /* In case of undefined assignment */
@@ -144,6 +145,11 @@ async function retrieveRemoteData(payload) {
             delete query[param];
         }
     }
+    return query;
+}
+
+async function retrieveRemoteData(payload) {
+    const query = cleanUpParams(payload);
     console.log(`loading from summary: ${JSON.stringify(query)}`)
     const response = await axios({
         method: 'POST',
@@ -203,7 +209,7 @@ async function retrieveRemoteTeamData(year, team_id, type) {
             team: team_id,
             type: type
         });
-        const key = `${year}-${team_id}-${type}`;
+        const key = generateKey([year, team_id, type]);
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
@@ -222,6 +228,14 @@ async function retrieveRemoteTeamData(year, team_id, type) {
     }
 }
 
+function generateKey(parts, sep = "-") {
+    const valid = parts.filter(p => p != null)
+    if (parts.length == 0) {
+        throw new Error("invalid key")
+    }
+    return valid.join(sep)
+}
+
 async function retrieveTeamData(year, team_id, type) {
     try {
         let keyParts = []
@@ -237,7 +251,7 @@ async function retrieveTeamData(year, team_id, type) {
         if (type) {
             keyParts.push(type)
         }
-        const key = keyParts.join("-");
+        const key = generateKey(keyParts);
         const content = await redisClient.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
@@ -507,18 +521,21 @@ router.route('/team/:teamId')
             } else {
                 const brkd = await retrieveTeamData(null, req.params.teamId, null)
                 const type = req.query.type ?? "differential";
-                let chartKey = req.query.sort ?? `overall.adjEpaPerPlay`
+                let chartKey = req.query.metric ?? `overall.adjEpaPerPlay`
                 // can't do passing/rushing/havoc differentials
                 if (type == "differential" && (!chartKey.includes("overall") || chartKey.includes("havocRate"))) {
                     chartKey = `overall.adjEpaPerPlay`
                 }
+
+                const percentiles = await retrievePercentiles(null, 0.5);
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
                     breakdowns: brkd,
                     seasons: brkd.map(b => b.season).sort(),
+                    percentiles,
                     type: type,
-                    chartMetric: chartKey,
+                    metric: chartKey,
                     last_updated: await retrieveLastUpdated()
                 });
             }

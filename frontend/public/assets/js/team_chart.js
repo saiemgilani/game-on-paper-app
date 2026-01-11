@@ -176,7 +176,7 @@ function getAxisTitleSizeForViewport(viewport = getCurrentViewport()) {
     }
 }
 
-function buildData(teams, type, metric) {
+function buildData(teams, percentiles, type, metric) {
     const imageSize = getImageSizeForViewport();
 
     const data = teams.map(t => {
@@ -196,7 +196,6 @@ function buildData(teams, type, metric) {
         return img;
     })
     const names = teams.map(p => p.team)
-    // const labels = teams.map(p => `Off: ${roundNumber(p.adjOffEpa, 2, 2)}, Def: ${roundNumber(p.adjDefEpa, 2, 2)}`)
 
     // const averageX = (data.map(t => parseFloat(t.x)).reduce((a, b) => a + b)) / data.length
     // const minX = Math.min(...data.map(t => t.x))
@@ -213,7 +212,7 @@ function buildData(teams, type, metric) {
 
     const datasets = [
         {
-            // label: labels,
+            labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
             type: "line",
             data,
             borderColor: "black",
@@ -246,7 +245,26 @@ function buildData(teams, type, metric) {
         // },
         {
             type: "line",
-            label: 'LOESS trend',
+            labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
+            // label: 'National Avg',
+            data: percentiles.map(p => {
+                return {
+                    x: p["season"],
+                    y: p["value"]
+                }
+            }),
+            borderDash: [5, 15],
+            borderColor: "red",
+            pointBorderColor: "red",//"rgba(0,0,0,0)",
+            pointBackgroundColor: "red",//"rgba(0,0,0,0)",
+            showLine: true,
+            fill: false,
+            clip: true
+        },
+        {
+            type: "line",
+            labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+            // label: 'LOESS trend',
             data: trend.map(d =>  {
                 return {
                     x: d[0],
@@ -264,26 +282,26 @@ function buildData(teams, type, metric) {
     ]
 
     return {
-        labels: names,
+        // labels: names,
         datasets
     };
 }
 
-function generateConfig(title, teams, type, metric) {
-    const chartData = buildData(teams, type, metric);
+function generateConfig(title, teams, percentiles, type, metric) {
+    const chartData = buildData(teams, percentiles, type, metric);
     const seasons = teams.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
-    // const suggestedRange = {
-    //     min: {
-    //         // x: chartData.datasets[2].data[0].x,
-    //         y: chartData.datasets[1].data[0].y,
-    //     },
-    //     max: {
-    //         // x: chartData.datasets[2].data[1].x,
-    //         y: chartData.datasets[1].data[1].y
-    //     }
-    // }
+    const suggestedRange = {
+        min: {
+            x: seasons[0],
+            // y: chartData.datasets[1].data[0].y,
+        },
+        max: {
+            x: seasons[seasons.length - 1],
+            // y: chartData.datasets[1].data[1].y
+        }
+    }
 
     // const margin = 0.075
     // const baseMultiplier = 0.475
@@ -362,12 +380,17 @@ function generateConfig(title, teams, type, metric) {
             tooltips: {
                 callbacks: {
                     title: function(tooltipItem, data) {
-                        return data.labels[tooltipItem[0].index]
+                        return data.labels ? data.labels[tooltipItem[0].index] : null;
                     },
                     label: function(tooltipItem, data) {
+                        const labels = data.datasets[tooltipItem.datasetIndex].labels
+                        if (labels) {
+                            return data.datasets[tooltipItem.datasetIndex].labels[tooltipItem.index]
+                        }
+                        return null;
                         // console.log(tooltipItem)
                         // console.log(data)
-                        return data.datasets[tooltipItem.datasetIndex].label[tooltipItem.index]
+                        
                     }
                 }
             },
@@ -387,6 +410,11 @@ function generateConfig(title, teams, type, metric) {
                     },
                     type: 'linear',
                     position: 'bottom',
+                    ticks: {
+                        // reverse: true,
+                        min: suggestedRange.min.x,
+                        max: suggestedRange.max.x
+                    }
                 }],
                 yAxes: [{
                     scaleLabel: {

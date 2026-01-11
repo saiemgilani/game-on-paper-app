@@ -108,27 +108,27 @@ function hexToRgb(hex) {
                                 </select>
                             </div>
                             <div class="col-auto mb-xs-3 mb-sm-0">
-                                <select class="form-select form-select-md" id="chartMetricSelect">
+                                <select class="form-select form-select-md" id="metricSelect">
                                     <option value="-1">Choose Metric...</option>
                                     <optgroup label="Overall">
-                                        <option value="overall.adjEpaPerPlay" <%= (chartMetric == "overall.adjEpaPerPlay") ? "selected": "" %>>Adj EPA/Play</option>
-                                        <option value="overall.epaPerPlay" <%= (chartMetric == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
-                                        <option value="overall.yardsPerPlay" <%= (chartMetric == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
-                                        <option value="overall.successRate" <%= (chartMetric == "overall.successRate") ? "selected": "" %>>SR%</option>
+                                        <option value="overall.adjEpaPerPlay" <%= (metric == "overall.adjEpaPerPlay") ? "selected": "" %>>Adj EPA/Play</option>
+                                        <option value="overall.epaPerPlay" <%= (metric == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
+                                        <option value="overall.yardsPerPlay" <%= (metric == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
+                                        <option value="overall.successRate" <%= (metric == "overall.successRate") ? "selected": "" %>>SR%</option>
                                     </optgroup>
                                     <% if (["offensive", "defensive"].includes(type)) { %>
                                         <optgroup label="Passing">
-                                            <option value="passing.epaPerPlay" <%= (chartMetric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
-                                            <option value="passing.yardsPerPlay" <%= (chartMetric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
-                                            <option value="passing.successRate" <%= (chartMetric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
+                                            <option value="passing.epaPerPlay" <%= (metric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
+                                            <option value="passing.yardsPerPlay" <%= (metric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
+                                            <option value="passing.successRate" <%= (metric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
                                         </optgroup>
                                         <optgroup label="Rushing">
-                                            <option value="rushing.epaPerPlay" <%= (chartMetric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
-                                            <option value="rushing.yardsPerPlay" <%= (chartMetric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
-                                            <option value="rushing.successRate" <%= (chartMetric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
+                                            <option value="rushing.epaPerPlay" <%= (metric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
+                                            <option value="rushing.yardsPerPlay" <%= (metric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
+                                            <option value="rushing.successRate" <%= (metric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
                                         </optgroup>
                                         <optgroup label="Other">
-                                            <option value="overall.havocRate" <%= (chartMetric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
+                                            <option value="overall.havocRate" <%= (metric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
                                         </optgroup>
                                     <% } %>
                                 </select>
@@ -150,13 +150,13 @@ function hexToRgb(hex) {
         <%- include('../../partials/scripts') %>
         <script src="/assets/js/date-replace.js"></script>
         <script>
-            document.getElementById("chartMetricSelect").addEventListener("change", function(e) {
+            document.getElementById("metricSelect").addEventListener("change", function(e) {
                 e.preventDefault()
 
-                var sortKey = document.getElementById("chartMetricSelect").value;
+                var sortKey = document.getElementById("metricSelect").value;
                 if (sortKey != "-1" && sortKey != -1) {
                     const cleanWindowLocation = window.location.href.split("?")[0]
-                    window.location = cleanWindowLocation + `?sort=${sortKey}`;
+                    window.location = cleanWindowLocation + `?metric=${sortKey}&type=<%= type %>`;
                 }
             });
 
@@ -165,11 +165,8 @@ function hexToRgb(hex) {
 
                 var typeKey = document.getElementById("typeSelect").value;
                 if (typeKey != "-1" && typeKey != -1) {
-                    let cleanWindowLocation = window.location.href.replace("<%= type %>", typeKey)
-                    if (typeKey == "differential" && (!cleanWindowLocation.includes("overall") || cleanWindowLocation.includes("havocRate"))) {
-                        cleanWindowLocation = cleanWindowLocation.split("?")[0]
-                    }
-                    window.location = cleanWindowLocation;
+                    const cleanWindowLocation = window.location.href.split("?")[0]
+                    window.location = cleanWindowLocation + `?metric=<%= metric %>&type=${typeKey}`;
                 }
             });
         </script>
@@ -178,13 +175,29 @@ function hexToRgb(hex) {
         <script src="/assets/js/d3-regression.min.js" crossorigin="anonymous"></script>
         <script src="/assets/js/team_chart.js" crossorigin="anonymous"></script>
         <script>
+            <%
+                const metricPieces = metric.split(".");
+                const targetPiece = metricPieces.length > 1 ? metricPieces[1] : metricPieces[0];
+                const selectedPercentiles = percentiles.map(p => {
+                    var result = {
+                        season: p["season"],
+                        pctile: p["pctile"],
+                    }
+                    result["value"] = p[targetPiece];
+                    return result
+                })
+                console.log(targetPiece)
+                console.log(selectedPercentiles)
+            %>
+
             const breakdowns = <%- JSON.stringify(breakdowns) %>;
+            const percentiles = <%- JSON.stringify(selectedPercentiles) %>;
             (function() {
                 'use strict'
                 feather.replace()
                 new Chart(
                     document.getElementById('metric_chart_canvas'),
-                    generateConfig("<%= cleanLocation() %>", breakdowns, "<%= type %>", "<%= chartMetric %>")
+                    generateConfig("<%= cleanLocation() %>", breakdowns, percentiles, "<%= type %>", "<%= metric %>")
                 )
             })()
         </script>
