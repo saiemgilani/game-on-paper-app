@@ -437,7 +437,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                     type: 'linear',
                     position: 'left',
                     ticks: {
-                        reverse: (type == "defensive" && metric != "overall.havocRate"),
+                        reverse: (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric)),
                         min: suggestedRange.min.y,
                         max: suggestedRange.max.y
                     }
