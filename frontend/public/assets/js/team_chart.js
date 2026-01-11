@@ -271,7 +271,7 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         {
             type: "line",
             labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-            label: 'Team trend',
+            label: 'Team Trend',
             data: trend.map(d =>  {
                 return {
                     x: d[0],
