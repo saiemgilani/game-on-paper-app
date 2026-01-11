@@ -176,7 +176,7 @@ function getAxisTitleSizeForViewport(viewport = getCurrentViewport()) {
     }
 }
 
-function buildData(teams, percentiles, type, metric) {
+function buildData(teams, color, percentiles, type, metric) {
     const imageSize = getImageSizeForViewport();
 
     const data = teams.map(t => {
@@ -213,10 +213,11 @@ function buildData(teams, percentiles, type, metric) {
     const datasets = [
         {
             labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
+            label: teams.map(p => p.team)[0],
             type: "line",
             data,
-            borderColor: "black",
-            pointBackgroundColor: "black",
+            borderColor: color,
+            pointBackgroundColor: color,
             showLine: false,
             fill: false,
             pointStyle: images,
@@ -246,7 +247,7 @@ function buildData(teams, percentiles, type, metric) {
         {
             type: "line",
             labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
-            // label: 'National Avg',
+            label: 'National Avg',
             data: percentiles.map(p => {
                 return {
                     x: p["season"],
@@ -264,7 +265,7 @@ function buildData(teams, percentiles, type, metric) {
         {
             type: "line",
             labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-            // label: 'LOESS trend',
+            label: 'Team trend',
             data: trend.map(d =>  {
                 return {
                     x: d[0],
@@ -272,7 +273,7 @@ function buildData(teams, percentiles, type, metric) {
                 }
             }),
             borderDash: [5, 15],
-            borderColor: "rgb(35, 148, 253)",
+            borderColor: "rgb(35, 148, 253)", // color,
             pointBorderColor: "rgba(0,0,0,0)",
             pointBackgroundColor: "rgba(0,0,0,0)",
             showLine: true,
@@ -287,8 +288,8 @@ function buildData(teams, percentiles, type, metric) {
     };
 }
 
-function generateConfig(title, teams, percentiles, type, metric) {
-    const chartData = buildData(teams, percentiles, type, metric);
+function generateConfig(title, color, teams, percentiles, type, metric) {
+    const chartData = buildData(teams, color, percentiles, type, metric);
     const seasons = teams.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
@@ -368,7 +369,9 @@ function generateConfig(title, teams, percentiles, type, metric) {
         //     }
         // }],
         options: {
-            legend: false,
+            legend: {
+                display: true,
+            },
             responsive: true,
             title: {
                 display: true,
@@ -431,11 +434,11 @@ function generateConfig(title, teams, percentiles, type, metric) {
                     },
                     type: 'linear',
                     position: 'left',
-                    // ticks: {
-                    //     reverse: true,
-                    //     min: suggestedRange.min.y,
-                    //     max: suggestedRange.max.y
-                    // }
+                    ticks: {
+                        reverse: (type == "defensive" && metric != "overall.havocRate"),
+                        min: suggestedRange.min.y,
+                        max: suggestedRange.max.y
+                    }
                 }]
             }
         }

@@ -186,18 +186,18 @@ function hexToRgb(hex) {
                     result["value"] = p[targetPiece];
                     return result
                 })
-                console.log(targetPiece)
-                console.log(selectedPercentiles)
+
             %>
 
             const breakdowns = <%- JSON.stringify(breakdowns) %>;
             const percentiles = <%- JSON.stringify(selectedPercentiles) %>;
+            const color = '#<%= teamData.color %>';
             (function() {
                 'use strict'
                 feather.replace()
                 new Chart(
                     document.getElementById('metric_chart_canvas'),
-                    generateConfig("<%= cleanLocation() %>", breakdowns, percentiles, "<%= type %>", "<%= metric %>")
+                    generateConfig("<%= cleanLocation() %>", color, breakdowns, percentiles, "<%= type %>", "<%= metric %>")
                 )
             })()
         </script>
