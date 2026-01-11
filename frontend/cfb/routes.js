@@ -230,7 +230,7 @@ async function retrieveRemoteTeamData(year, team_id, type) {
 
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => p != null)
-    if (parts.length == 0) {
+    if (valid.length == 0) {
         throw new Error("invalid key")
     }
     return valid.join(sep)
