@@ -445,7 +445,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const lineMultiplier = 0.125
     const xAdjust = 0.06
 
-    const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E5"
+    const xGridLineColor = (isDarkMode) ? (percentiles.length == 0 ? "#8D8D8D33" : "#8D8D8D44") : "#E5E5E5"
     const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E599"
     const yZeroLineColor = (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
 
