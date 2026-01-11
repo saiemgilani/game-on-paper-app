@@ -316,49 +316,51 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     }
 
 
-    const seasons = teams.map(t => t["season"]).sort((a,b) => (a - b))
+    const seasons = Object.keys(distributions).map(p => parseInt(p)).sort((a,b) => (a - b))
     const metricTitle = getAxisTitleForMetric(type, metric)
     const isRateMetric = metricTitle.includes("Rate")
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
-    const data = teams.map(t => {
-        return {
-            x: t["season"],
-            y: retrieveValue(t[type], metric)
-        }
-    }).sort((a, b) => (a.x - b.x))
     
-    const images = teams.map(t => {
-        let img = new Image(imageSize, imageSize)
-        if (Object.keys(specialImages).includes(t.teamId)) {
-            img.src = specialImages[t.teamId];
-        } else {
-            img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${t.teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.teamId}.png`
-        }
-        return img;
-    })
-    
-    const teamName = teams.map(p => p.team)[0]
+    let datasets = []
 
+    if (teams.length > 0) {
+        const data = teams.map(t => {
+            return {
+                x: t["season"],
+                y: retrieveValue(t[type], metric)
+            }
+        }).sort((a, b) => (a.x - b.x))
 
-    let datasets = [
-        {
-            labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
-            label: teamName,
-            type: "line",
-            data: data.map(p => {
-                return {
-                    x: p.x,
-                    y: p.y * (isRateMetric ? 100.0 : 1.0)
-                }
-            }),
-            borderColor: color,
-            pointBackgroundColor: color,
-            showLine: false,
-            fill: false,
-            pointStyle: images,
-            pointSize: imageSize,
-        },
-    ]
+        const images = teams.map(t => {
+            let img = new Image(imageSize, imageSize)
+            if (Object.keys(specialImages).includes(t.teamId)) {
+                img.src = specialImages[t.teamId];
+            } else {
+                img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${t.teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.teamId}.png`
+            }
+            return img;
+        })
+        const teamName = teams.map(p => p.team)[0]
+        datasets.push(
+            {
+                labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
+                label: teamName,
+                type: "line",
+                data: data.map(p => {
+                    return {
+                        x: p.x,
+                        y: p.y * (isRateMetric ? 100.0 : 1.0)
+                    }
+                }),
+                borderColor: color,
+                pointBackgroundColor: color,
+                showLine: false,
+                fill: false,
+                pointStyle: images,
+                pointSize: imageSize,
+            }
+        )
+    }
 
     if (hasAvailableDistributions) {
         datasets.push(
@@ -402,7 +404,7 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
 
 function generateTeamChartConfig(title, color, teams, percentiles, type, metric) {
     const chartData = buildTeamChartData(teams, color, percentiles, type, metric);
-    const seasons = teams.map(d => parseInt(d.season)).sort()
+    const seasons = percentiles.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
     const margin = 0.075
@@ -461,7 +463,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
         }],
         options: {
             legend: {
-                display: true,
+                display: (chartData.datasets.length > 1),
                 position: "top"
             },
             responsive: true,

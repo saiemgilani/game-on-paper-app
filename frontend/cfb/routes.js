@@ -638,6 +638,50 @@ router.route('/charts/team/epa')
         return res.redirect(`/cfb/year/2025/charts/team/epa`)
     })
 
+router.route('/charts/trends')
+    .get(async function(req, res, next) { // change after week 4
+        try {
+            const type = req.query.type ?? "differential";
+            let metric = req.query.metric ?? `overall.epaPerPlay`
+            // can't do passing/rushing/havoc differentials
+            if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+                metric = `overall.epaPerPlay`
+            }
+
+            let allPctls = []
+            for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+                const percentiles = await retrievePercentiles(null, p);
+                allPctls = allPctls.concat(percentiles);
+            }
+
+            const pctlKey = getPercentileKey(metric)
+            const selectedPercentiles = allPctls.map(p => {
+                var result = {
+                    season: p["season"],
+                    pctile: p["pctile"],
+                }
+                result["value"] = p[pctlKey];
+                return result
+            }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+
+
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(data); 
+            } else {
+                return res.render('pages/cfb/trends', {
+                    seasons: selectedPercentiles.map(b => b.season).sort(),
+                    percentiles: selectedPercentiles,
+                    type,
+                    metric,
+                    last_updated: await retrieveLastUpdated()
+                });
+            }
+        } catch(err) {
+            console.error(err)
+            return next(err)
+        }
+    })
+
 router.route('/year/:year/charts/team/epa')
     .get(async function(req, res, next) {
         try {

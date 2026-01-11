@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<%
+function getNumberWithOrdinal(n) {
+    var s = ["th", "st", "nd", "rd"];
+    v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function injectDetmerSpan() {
+    return `<abbr title="Stands for 'Downfield Eventful Throwing Metric Encouraging Ripping it'. Built to find the most sicko QB performances. Developed by the Moon Crew Discord & @SickosCommittee on Twitter.">DETMER</abbr>`;
+}
+
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
+%>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/dashboard.css" rel="stylesheet">
+        <link href="/assets/css/blog.css" rel="stylesheet">
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
+        <%
+            let yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
+            let title = `National Trends | ${yearRange} | Game on Paper`
+            let subtitle = `National level metric history`;
+        %>
+
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="referrer" content="origin-when-cross-origin">
+        <link rel="canonical" href="https://gameonpaper.com/cfb/charts/trends">
+        <title><%= title %></title>
+        <meta name="description" content="Advanced stats for <%= subtitle %> (<%= yearRange %>)">
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:url" content="https://gameonpaper.com/cfb/charts/trends">
+        <meta property="og:title" content="<%= title %>">
+        <meta property="og:image" content="/assets/img/android-chrome-512x512.png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:type" content="website">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:url" content="https://gameonpaper.com/cfb/charts/trends">
+        <meta name="twitter:title" content="<%= title %>">
+        <meta name="twitter:card" content="summary">
+        <meta name="title" content="<%= title %>">
+        <meta name="medium" content="website">
+        <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+    </head>
+    <body>
+        <%- include('../../partials/nav-header') %>
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item" aria-current="page">Charts</li>
+                  <li class="breadcrumb-item active" aria-current="page"><a href="/cfb/charts/trends">National Trends</a></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-6 col-xs-12 mb-xs-3">
+                    <h1>National Trends <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper.com on Bluesky!">(Beta)</abbr></small></span></h1>
+                    <p class="m-0 text-muted"><strong>Available Seasons:</strong> <%= yearRange %> - Data shown is from FBS vs FBS games only.</p>
+                    <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+                    <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
+                    <p class="m-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
+                </div>
+                <div class="ms-auto col-lg-6 col-xs-12">
+                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                        <div class="row">
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="typeSelect">
+                                    <option value="-1">Choose Type...</option>
+                                    <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
+                                    <option value="offensive" <%= (type == "offensive") ? "selected": "" %>>Offensive</option>
+                                    <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
+                                </select>
+                            </div>
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="metricSelect">
+                                    <option value="-1">Choose Metric...</option>
+                                    <optgroup label="Overall">
+                                        <option value="overall.epaPerPlay" <%= (metric == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
+                                        <option value="overall.yardsPerPlay" <%= (metric == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
+                                        <option value="overall.successRate" <%= (metric == "overall.successRate") ? "selected": "" %>>SR%</option>
+                                    </optgroup>
+                                    <% if (["offensive", "defensive"].includes(type)) { %>
+                                        <optgroup label="Passing">
+                                            <option value="passing.epaPerPlay" <%= (metric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
+                                            <option value="passing.yardsPerPlay" <%= (metric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
+                                            <option value="passing.successRate" <%= (metric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
+                                            <option value="passing.explosiveRate" <%= (metric == "passing.explosiveRate") ? "selected": "" %>>Pass Expl %</option>
+                                        </optgroup>
+                                        <optgroup label="Rushing">
+                                            <option value="rushing.epaPerPlay" <%= (metric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
+                                            <option value="rushing.yardsPerPlay" <%= (metric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
+                                            <option value="rushing.successRate" <%= (metric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
+                                            <option value="rushing.explosiveRate" <%= (metric == "rushing.explosiveRate") ? "selected": "" %>>Rush Expl %</option>
+                                            <option value="rushing.opportunityRate" <%= (metric == "rushing.opportunityRate") ? "selected": "" %>>Opportunity %</option>
+                                            <option value="rushing.lineYards" <%= (metric == "rushing.lineYards") ? "selected": "" %>>Line Yards</option>
+                                            <option value="rushing.stuffedPlayRate" <%= (metric == "rushing.stuffedPlayRate") ? "selected": "" %>>Stuffed %</option>
+                                        </optgroup>
+                                        <optgroup label="Other">
+                                            <option value="overall.havocRate" <%= (metric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
+                                            <option value="overall.explosiveRate" <%= (metric == "overall.explosiveRate") ? "selected": "" %>>Explosive %</option>
+                                            <option value="overall.nonExplosiveEpaPerPlay" <%= (metric == "overall.nonExplosiveEpaPerPlay") ? "selected": "" %>>Non-Expl EPA/Play</option>
+                                            <option value="overall.earlyDownEPAPerPlay" <%= (metric == "overall.earlyDownEPAPerPlay") ? "selected": "" %>>Early Downs EPA/Play</option>
+                                            <option value="overall.lateDownSuccessRate" <%= (metric == "overall.lateDownSuccessRate") ? "selected": "" %>>Late Downs SR%</option>
+                                            <option value="overall.thirdDownDistance" <%= (metric == "overall.thirdDownDistance") ? "selected": "" %>>Avg Distance (3rd)</option>
+                                        </optgroup>
+                                    <% } %>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
+        </div>
+
+        <%- include('../../partials/footer') %>
+        <%- include('../../partials/scripts') %>
+        <script src="/assets/js/date-replace.js"></script>
+        <script>
+            document.getElementById("metricSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var sortKey = document.getElementById("metricSelect").value;
+                if (sortKey != "-1" && sortKey != -1) {
+                    const cleanWindowLocation = window.location.href.split("?")[0]
+                    window.location = cleanWindowLocation + `?metric=${sortKey}&type=<%= type %>`;
+                }
+            });
+
+            document.getElementById("typeSelect").addEventListener("change", function(e) {
+                e.preventDefault()
+
+                var typeKey = document.getElementById("typeSelect").value;
+                if (typeKey != "-1" && typeKey != -1) {
+                    const cleanWindowLocation = window.location.href.split("?")[0]
+                    window.location = cleanWindowLocation + `?metric=<%= metric %>&type=${typeKey}`;
+                }
+            });
+        </script>
+        <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/d3-regression.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/common.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/Chart.BoxPlot.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/team_chart.js" crossorigin="anonymous"></script>
+        <script>
+            const percentiles = <%- JSON.stringify(percentiles) %>;
+            (function() {
+                'use strict'
+                feather.replace()
+                const teamChart = new Chart(
+                    document.getElementById('metric_chart_canvas'),
+                    generateTeamChartConfig("National Trends", null, [], percentiles, "<%= type %>", "<%= metric %>")
+                )
+            })()
+        </script>
+    </body>
+</html>
