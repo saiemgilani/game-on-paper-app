@@ -54,13 +54,17 @@ function adjustColor(primaryColor, altColor) {
     } else if (dEBGTeam <= 49 && dEBGAlt > 49) {
         teamColor = altColor
         console.log(`set team color to alt ${JSON.stringify(altColor)} because of similarity to background`)
-    } else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
-        teamColor = hexToRgb("#CCCCCC")
-        console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
     } else {
         teamColor = primaryColor
         console.log(`set team color to primary ${JSON.stringify(primaryColor)} because backup`)
     }
+    
+    // else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
+    //     teamColor = hexToRgb("#CCCCCC")
+    //     console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
+    // } 
+    
+    
     return teamColor
 }
 
