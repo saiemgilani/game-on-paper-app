@@ -1,9 +1,3 @@
-const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-const specialImages = {
-    "61": "/assets/img/ennui-uga.png",
-    // "2390": "/assets/img/upside-down-u.png",
-};
-
 function capitalizeFirstLetter(val) {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
 }
@@ -176,7 +170,7 @@ function getAxisTitleSizeForViewport(viewport = getCurrentViewport()) {
     }
 }
 
-function buildData(teams, color, percentiles, type, metric) {
+function buildTeamChartData(teams, color, percentiles, type, metric) {
     const imageSize = getImageSizeForViewport();
 
     const data = teams.map(t => {
@@ -266,8 +260,8 @@ function buildData(teams, color, percentiles, type, metric) {
     };
 }
 
-function generateConfig(title, color, teams, percentiles, type, metric) {
-    const chartData = buildData(teams, color, percentiles, type, metric);
+function generateTeamChartConfig(title, color, teams, percentiles, type, metric) {
+    const chartData = buildTeamChartData(teams, color, percentiles, type, metric);
     const seasons = teams.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 

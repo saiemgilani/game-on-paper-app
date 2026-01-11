@@ -1,5 +1,3 @@
-const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
 function deltaE(rgbA, rgbB) {
     let labA = rgb2lab(rgbA);
     let labB = rgb2lab(rgbB);
