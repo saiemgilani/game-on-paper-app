@@ -135,12 +135,21 @@ async function retrievePercentiles(year) {
 }
 
 async function retrieveRemoteData(payload) {
-    console.log(`loading from summary: ${JSON.stringify(payload)}`)
+    let query = payload;
+    for (let param in query) { /* You can get copy by spreading {...query} */
+        if (query[param] === undefined /* In case of undefined assignment */
+            || query[param] === null 
+            || query[param] === ""
+        ) {    
+            delete query[param];
+        }
+    }
+    console.log(`loading from summary: ${JSON.stringify(query)}`)
     const response = await axios({
         method: 'POST',
         url: `http://summary:3000/`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data: new URLSearchParams(payload)
+        data: new URLSearchParams(query)
     });
     const content = response.data.results;
     return content;
@@ -215,7 +224,20 @@ async function retrieveRemoteTeamData(year, team_id, type) {
 
 async function retrieveTeamData(year, team_id, type) {
     try {
-        const key = `${year}-${team_id}-${type}`;
+        let keyParts = []
+        if (year) {
+            keyParts.push(year)
+        }
+        if (team_id) {
+            keyParts.push(team_id)
+        }
+        if (keyParts.length == 0) {
+            throw new Error("invalid team data request, must include year AND/OR team")
+        }
+        if (type) {
+            keyParts.push(type)
+        }
+        const key = keyParts.join("-");
         const content = await redisClient.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
@@ -223,6 +245,9 @@ async function retrieveTeamData(year, team_id, type) {
         return JSON.parse(content);
     } catch (err) {
         console.log(err)
+        if (err.message == "invalid team data request, must include year AND/OR team") {
+            return [];
+        }
         return await retrieveRemoteTeamData(year, team_id, type);
     }
 }
@@ -443,7 +468,7 @@ router.route('/game/:gameId')
 router.route('/year/:year/team/:teamId')
     .get(async function(req, res, next) {
         try {
-            let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
+            let data = await Teams.getTeamSeasonInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
             }
@@ -453,7 +478,7 @@ router.route('/year/:year/team/:teamId')
             } else {
                 const brkd = await retrieveTeamData(req.params.year, req.params.teamId, 'overall')
                 // console.log(brkd[0])
-                return res.render('pages/cfb/team', {
+                return res.render('pages/cfb/team_season', {
                     teamData: data,
                     breakdown: brkd,
                     players: {
@@ -470,9 +495,38 @@ router.route('/year/:year/team/:teamId')
     })
 
 router.route('/team/:teamId')
-.get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2025/team/${req.params.teamId}`);
-})
+    .get(async function(req, res, next) {
+        try {
+            let data = await Teams.getTeamInformation(req.params.teamId)
+            if (data == null) {
+                throw Error(`Data not available for team ${req.params.teamId}. An internal service may be down.`)
+            }
+
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(data);
+            } else {
+                const brkd = await retrieveTeamData(null, req.params.teamId, null)
+                const type = req.query.type ?? "differential";
+                let chartKey = req.query.sort ?? `overall.adjEpaPerPlay`
+                // can't do passing/rushing/havoc differentials
+                if (type == "differential" && (!chartKey.includes("overall") || chartKey.includes("havocRate"))) {
+                    chartKey = `overall.adjEpaPerPlay`
+                }
+                // console.log(brkd[0])
+                return res.render('pages/cfb/team', {
+                    teamData: data,
+                    breakdowns: brkd,
+                    seasons: brkd.map(b => b.season).sort(),
+                    type: type,
+                    chartMetric: chartKey,
+                    last_updated: await retrieveLastUpdated()
+                });
+            }
+        } catch(err) {
+            console.error(err)
+            return next(err)
+        }
+    })
 
 router.route('/teams')
     .get(async function(req, res, next) {
