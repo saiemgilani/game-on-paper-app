@@ -316,7 +316,10 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     }
 
 
-    const seasons = Object.keys(distributions).map(p => parseInt(p)).sort((a,b) => (a - b))
+    var seasons = Object.keys(distributions).map(p => parseInt(p)).sort((a,b) => (a - b))
+    if (seasons.length == 0 && teams.length > 0) {
+        seasons = teams.map(t => t["season"]).sort((a, b) => (a - b))
+    }
     const metricTitle = getAxisTitleForMetric(type, metric)
     const isRateMetric = metricTitle.includes("Rate")
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
@@ -354,7 +357,7 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 }),
                 borderColor: color,
                 pointBackgroundColor: color,
-                showLine: false,
+                showLine: (percentiles.length == 0),
                 fill: false,
                 pointStyle: images,
                 pointSize: imageSize,
@@ -404,7 +407,10 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
 
 function generateTeamChartConfig(title, color, teams, percentiles, type, metric) {
     const chartData = buildTeamChartData(teams, color, percentiles, type, metric);
-    const seasons = percentiles.map(d => parseInt(d.season)).sort()
+    let seasons = percentiles.map(d => parseInt(d.season)).sort((a, b) => (a - b))
+    if (seasons.length == 0 && teams.length > 0) {
+        seasons = teams.map(t => t["season"]).sort((a, b) => (a - b))
+    }
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
     const margin = 0.075
@@ -435,8 +441,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                         chart.ctx.font = "8px Helvetica";
                         chart.ctx.globalAlpha = 0.75;
                         chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                        chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-                        chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                        chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                         chart.ctx.restore();
                     }
                     chart.ctx.save()

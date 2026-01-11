@@ -93,6 +93,10 @@ async function retrieveGameList(url, params) {
 }
 
 async function retrieveRemotePercentiles(year = null, pctile = null) {
+    if (!year && !pctile) {
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        return [];
+    }
     try {
         const query = cleanUpParams({ year, pctile });
         const response = await axios({
@@ -107,7 +111,7 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find percentiles for league in ${year}, checking ${year - 1}`)
+        console.log(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
         if (err) {
             console.log(`also err: ${err}`);
         }
@@ -120,6 +124,10 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
 }
 
 async function retrievePercentiles(year = null, pctile = null) {
+    if (!year && !pctile) {
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        return [];
+    }
     const key = generateKey([year, "percentiles", pctile])
     try {
         const content = await redisClient.get(key);
@@ -162,6 +170,10 @@ async function retrieveRemoteData(payload) {
 }
 
 async function retrieveRemoteLeagueData(year, type) {
+    if (!year && !type) {
+        console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
+        return [];
+    }
     try {        
         // update redis cache
         const content = await retrieveRemoteData({
@@ -186,6 +198,10 @@ async function retrieveRemoteLeagueData(year, type) {
 }
 
 async function retrieveLeagueData(year, type) {
+    if (!year && !type) {
+        console.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
+        return [];
+    }
     const key = `${year}-${type}`;
     try {
         const content = await redisClient.get(key);
@@ -202,6 +218,10 @@ async function retrieveLeagueData(year, type) {
 }
 
 async function retrieveRemoteTeamData(year, team_id, type) {
+    if (!year && !team_id) {
+        console.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
+        return [];
+    }
     try {
         // update redis cache
         const content = await retrieveRemoteData({
@@ -590,8 +610,9 @@ router.route('/team/:teamId')
                     result["value"] = p[pctlKey];
                     return result
                 }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
-                console.log(pctlKey)
-                console.log(selectedPercentiles)
+
+                // console.log(pctlKey)
+                // console.log(selectedPercentiles)
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,

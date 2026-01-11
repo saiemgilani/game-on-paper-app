@@ -82,9 +82,9 @@ function hexToRgb(hex) {
         <div class="container">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                  <li class="breadcrumb-item" aria-current="page">Seasons</li>
-                  <li class="breadcrumb-item" aria-current="page"><a href="/cfb/year/<%= season %>/teams"><%= season %></a></li>
-                  <li class="breadcrumb-item active" aria-current="page"><%= cleanLocation() %></li>
+                    <li class="breadcrumb-item" aria-current="page">Teams</li>
+                    <li class="breadcrumb-item" aria-current="page"><a href="/cfb/team/<%= teamData.id %>"><%= cleanLocation() %></a></li>
+                    <li class="breadcrumb-item active" aria-current="page"><%= season %></a></li>
                 </ol>
             </nav>
         </div>
