@@ -447,6 +447,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
 
     const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E5"
     const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E599"
+    const yZeroLineColor = (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
 
     const shouldFlipYAxis = (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) || (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
 
@@ -548,7 +549,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                     },
                     gridLines: {
                         color: yGridLineColor,
-                        zeroLineColor: yGridLineColor,
+                        zeroLineColor: (metric.includes("adjEpaPerPlay")) ? yZeroLineColor : yGridLineColor,
                     },
                     position: 'left',
                     ticks: {
