@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<%
+function getNumberWithOrdinal(n) {
+    let s = ["th", "st", "nd", "rd"];
+    let v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function injectDetmerSpan() {
+    return `<abbr title="Stands for 'Downfield Eventful Throwing Metric Encouraging Ripping it'. Built to find the most sicko QB performances. Developed by the Moon Crew Discord & @SickosCommittee on Twitter.">DETMER</abbr>`;
+}
+
+function roundNumber(value, power10, fixed) {
+    return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+const CLEAN_LIST = [61]
+function cleanLocation() {
+    if (CLEAN_LIST.includes(parseInt(teamData.id))) {
+        return teamData.location.toLocaleLowerCase()
+    }
+    return teamData.location
+}
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
+%>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/dashboard.css" rel="stylesheet">
+        <link href="/assets/css/blog.css" rel="stylesheet">
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
+        <%
+            let title = `${cleanLocation()} | ${season} | Game on Paper`
+            let subtitle = `${cleanLocation()} during the ${season} season`;
+        %>
+
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="referrer" content="origin-when-cross-origin">
+        <link rel="canonical" href="https://gameonpaper.com/cfb/year/<%= season %>/team/<%= teamData.id %>">
+        <title><%= title %></title>
+        <meta name="description" content="Advanced stats for <%= subtitle %>">
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:url" content="https://gameonpaper.com/cfb/year/<%= season %>/team/<%= teamData.id %>">
+        <meta property="og:title" content="<%= title %>">
+        <meta property="og:description" content="Advanced stats for <%= subtitle %>">
+        <meta property="og:image" content="https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= teamData.id %>.png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:type" content="website">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:url" content="https://gameonpaper.com/cfb/year/<%= season %>/team/<%= teamData.id %>">
+        <meta name="twitter:title" content="<%= title %>">
+        <meta name="twitter:description" content="<%= subtitle %>">
+        <meta name="twitter:card" content="summary">
+        <meta name="title" content="<%= title %>">
+        <meta name="medium" content="website">
+        <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <%- include('../../partials/logos', {
+            team: teamData,
+            homeTeam: null,
+            awayTeam: null
+        }) %>
+    </head>
+    <body>
+        <%- include('../../partials/nav-header') %>
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item" aria-current="page">Teams</li>
+                    <li class="breadcrumb-item" aria-current="page"><a href="/cfb/team/<%= teamData.id %>"><%= cleanLocation() %></a></li>
+                    <li class="breadcrumb-item active" aria-current="page"><%= season %></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="container">
+            <div class="row my-3">
+                <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
+                    <%- include('../../partials/team_card', {
+                        teamData,
+                        breakdown,
+                        season,
+                        week: null,
+                        hideNavigation: true
+                    }) %>
+                </div>
+                <div class="col-lg-8 col-md-12">
+                    <%- include('../../partials/team_player_cards', {
+                        teamData,
+                        breakdown,
+                        week: null,
+                        season
+                    }) %>
+                </div>
+            </div>
+        </div>
+        <% if ((breakdown?.length ?? 0)> 0) { %>
+            <div class="container">
+                <!-- team radar -->
+                 <div id="profile" class="row mb-3">
+                    <div class="col-md-12 col-lg-12 px-md-4">
+                        <h2 id="profile" class="d-inline">Profile <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#profileContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                        <p class="text-muted text-small m-0">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+                        <div class="panel-group">
+                            <div class="panel panel-default">
+                                <div id="profileContent" class="panel-collapse show">
+                                    <div class="panel-body">
+                                        <div class="row mb-3">
+                                            <% const radarWidth = 400; %>
+                                            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                                                <canvas id="offensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
+                                            </div>
+                                            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                                                <canvas id="defensive-canvas" style="display: block; box-sizing: border-box; height: <%= radarWidth / 2 %>px; width: <%= radarWidth / 2 %>px;" width="<%= radarWidth %>" height="<%= radarWidth %>"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        <% } %>
+        <div class="container">
+            <div id="breakdown" class="row mb-3">
+                <div class="col-md-12 col-lg-12 px-md-4">
+                    <h2 id="breakdown" class="d-inline">Breakdown <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#breakdownContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                    <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
+                    <div class="panel-group">
+                        <div class="panel panel-default">
+                            <div id="breakdownContent" class="panel-collapse show">
+                                <div class="panel-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Offensive',
+                                                target: 'offensive',
+                                                situation: 'overall',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'When Passing',
+                                                target: 'offensive',
+                                                situation: 'passing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'When Rushing',
+                                                target: 'offensive',
+                                                situation: 'rushing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Defensive',
+                                                target: 'defensive',
+                                                situation: 'overall',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Against the Pass',
+                                                target: 'defensive',
+                                                situation: 'passing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                        <div class="col-md-4 ms-sm-auto col-lg-4">
+                                            <%- include('../../partials/team_slice', {
+                                                breakdown,
+                                                title: 'Against the Run',
+                                                target: 'defensive',
+                                                situation: 'rushing',
+                                                showTeamLogos: false
+                                            }) %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container" id="player-breakdown">
+            <div class="row mb-3">
+                <div class="col-lg-12 col-md-12 mb-md-3 mb-lg-0 margin-override">
+                    <%-
+                    include('./player_box', {
+                        title: 'Passing',
+                        id: 'passing',
+                        players: players.passing.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Comp/Att</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">INT</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Sacks</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">${injectDetmerSpan()}</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yds/dropback</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Dropback">EPA/dropback</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
+                        playerRowCallback: (p) => {
+                            let compPct = parseInt(p.statistics.attempts) == 0 ? 0 : (parseFloat(p.statistics.completions) / parseFloat(p.statistics.attempts))
+                            return `
+                            <td style="text-align: left;">${ p.name }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.completions }/${ p.statistics.attempts } (${roundNumber(compPct * 100, 2, 0)}% Comp)</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.interceptions }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.sacks }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.detmer || 0), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerDropback || 0), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.successRate) * 100, 2, 0) }%</td>
+                            `;
+                        }
+                    })
+                    %>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-12 col-md-12 mb-md-3 mb-lg-0 margin-override">
+                    <%-
+                    include('./player_box', {
+                        title: 'Rushing',
+                        id: 'rushing',
+                        players: players.rushing.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Carries</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fum</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/rush</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Rush">EPA/rush</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
+                        playerRowCallback: (p) => {
+                           return `
+                            <td style="text-align: left;">${ p.name }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.plays }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.fumbles }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerPlay || 0), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.successRate) * 100, 2, 0) }%</td>
+                            `;
+                        }
+                    })
+                    %>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-12 col-md-12 mb-md-3 mb-lg-0 margin-override">
+                    <%-
+                    include('./player_box', {
+                        title: 'Receiving',
+                        id: 'receiving',
+                        players: players.receiving.sort((a, b) => parseFloat(b.statistics.plays) - parseFloat(a.statistics.plays)),
+                        playerHeaderCallback: () => {
+                            return `
+                            <th rowspan="1" colspan="1"></th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catches</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Targets</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Catch Rate</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fum</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/play</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+                            <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+                            `;
+                        },
+                        playerRowCallback: (p) => {
+                           return `
+                            <td style="text-align: left;">${ p.name }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.catches }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.targets }</td>
+                            <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(p.statistics.catchPct || 0) * 100, 2, 0)}%</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
+                            <td class="numeral" style="text-align: center;">${ p.statistics.fumbles }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.statistics.yardsPerPlay || 0), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
+                            <td class="numeral" style="text-align: center;">${ roundNumber(parseFloat(p.advanced.successRate) * 100, 2, 0) }%</td>
+                            `;
+                        }
+                    })
+                    %>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div id="schedule" class="row mb-3">
+                <h2 class="ms-2">Schedule <span class="d-inline text-small h6"><a data-bs-toggle="collapse" href="#scheduleContent" style="text-decoration: none;" role="button" aria-expanded="true">[show/hide]</a></span></h2>
+                <div class="panel-group">
+                    <div class="panel panel-default">
+                        <div id="scheduleContent" class="panel-collapse show">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <% if (teamData.events.length > 0) { %>
+                                        <% teamData.events.forEach(game => { %>
+                                            <div class="col-xl-3 col-lg-6">
+                                                <%- include('./game_thumb', {
+                                                    game
+                                                })
+                                                %>
+                                            </div>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <p class="text-center text-muted">No games scheduled for this team.</p>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- <div id="testcontent">
+
+        </div> -->
+
+        <%- include('../../partials/footer') %>
+        <%- include('../../partials/scripts') %>
+        <script>
+            var teamData = <%- JSON.stringify(teamData) %>;
+            // document.body.querySelector("#testcontent").innerHTML = "<pre>" + JSON.stringify(teamData, null, 2) +  "</pre>";
+
+            const DateTime = luxon.DateTime;
+            function formatDateTime(inputDate) {
+                return DateTime.fromISO(inputDate).toLocaleString(DateTime.DATETIME_SHORT)
+            }
+            var gameDates = document.getElementsByClassName("game-date");
+            if (gameDates.length > 0) {
+                console.log(gameDates)
+                for (var i = 0; i < gameDates.length; i++) {
+                    var dateElem = gameDates[i];
+                    // console.log(dateElem)
+                    dateElem.innerText = formatDateTime(dateElem.innerText)
+                }
+            } else {
+                console.log("no game dates found")
+            }
+        </script>
+        <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/common.js" crossorigin="anonymous"></script>
+        <script src="/assets/js/radar.js"></script>
+        <% if ((breakdown?.length ?? 0) > 0) { %>
+        <script>
+            (function() {
+                'use strict'
+                feather.replace()
+                const prim = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
+                const alt = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
+                let breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+                breakdown = {
+                    ...breakdown,
+                    teamName: '<%- cleanLocation() %>',
+                    alternateColor: '<%- teamData.alternateColor ?? '#000000' %>',
+                    color: '<%- teamData.color %>'
+                }
+                const offRadarCtx = document.getElementById('offensive-canvas')
+                const offRadarChart = new Chart(
+                    offRadarCtx,
+                    generateConfig(
+                        generateDataset([breakdown], "Offensive"),
+                        '<%- cleanLocation() %> <%= season %> Offensive Profile'
+                    )
+                );
+
+                const defRadarCtx = document.getElementById('defensive-canvas')
+                const defRadarChart = new Chart(
+                    defRadarCtx,
+                    generateConfig(
+                        generateDataset([breakdown], "Defensive"),
+                        '<%- cleanLocation() %> <%= season %> Defensive Profile'
+                    )
+                );
+            })()
+        </script>
+        <% } %>
+    </body>
+</html>

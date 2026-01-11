@@ -1,10 +1,12 @@
 const axios = require('axios');
+const { URLSearchParams } = require('url');
 const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 
 async function populate(endpoint, season, teamId, type = null) {
     let seasonType = type != null ? `/types/${type}` : ""
-    const res =  await axios.get(`https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${season}${seasonType}/teams/${teamId}/${endpoint}?lang=en&region=us`, {
+    let seasonStr = season != null ? `/seasons/${season}` : ""
+    const res =  await axios.get(`https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${teamId}/${endpoint}?lang=en&region=us`, {
         protocol: "https"
     })
     debuglog(res.request.res.responseUrl)
@@ -17,7 +19,11 @@ async function populate(endpoint, season, teamId, type = null) {
     return result;
 }
 
-exports.getTeamInformation = async function (season, teamId) {
+exports.getTeamInformation = async function (teamId) {
+    return await populate("", null, teamId)
+}
+
+exports.getTeamSeasonInformation = async function (season, teamId) {
     var result =  await populate("", season, teamId);
 
     let populatableKeys = ["record", "athletes", "ranks", "leaders"]
@@ -36,7 +42,11 @@ exports.getTeamInformation = async function (season, teamId) {
     var schedulePromises = []
     let types = [2, 3];
     types.forEach(type => {
-        schedulePromises.push(axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=${season}&seasontype=${type}`, {
+        let params = new URLSearchParams({ seasontype: type })
+        if (season) {
+            params.append("season", season)
+        }
+        schedulePromises.push(axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?` + params.toString(), {
             protocol: "https"
         }))
     })

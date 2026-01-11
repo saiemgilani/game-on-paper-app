@@ -92,34 +92,43 @@ async function retrieveGameList(url, params) {
     return gameList;
 }
 
-async function retrieveRemotePercentiles(year) {
+async function retrieveRemotePercentiles(year = null, pctile = null) {
+    if (!year && !pctile) {
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        return [];
+    }
     try {
+        const query = cleanUpParams({ year, pctile });
         const response = await axios({
             method: 'GET',
-            url: `http://summary:3000/percentiles/${year}`
+            url: `http://summary:3000/percentiles?` + (new URLSearchParams(query)).toString(),
         });
         
         // update redis cache
         const content = response.data.results;
-        const key = `${year}-percentiles`;
+        const key = generateKey([year, "percentiles", pctile]);
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
     } catch (err) {
-        console.log(`could not find percentiles for league in ${year}, checking ${year - 1}`)
+        console.log(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
         if (err) {
             console.log(`also err: ${err}`);
         }
         if ((year - 1) < 2014) {
             return [];
         } else {
-            return await retrieveRemotePercentiles(year - 1);
+            return await retrieveRemotePercentiles(year - 1, pctile);
         }
     }
 }
 
-async function retrievePercentiles(year) {
-    const key = `${year}-percentiles`;
+async function retrievePercentiles(year = null, pctile = null) {
+    if (!year && !pctile) {
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        return [];
+    }
+    const key = generateKey([year, "percentiles", pctile])
     try {
         const content = await redisClient.get(key);
         if (!content) {
@@ -130,23 +139,41 @@ async function retrievePercentiles(year) {
     } catch (err) {
         console.log(err)
         console.log(`receieved some error from redis for key: ${key}, repulling league data`)
-        return await retrieveRemotePercentiles(year);
+        return await retrieveRemotePercentiles(year, pctile);
     }
 }
 
+function cleanUpParams(payload) {
+    let query = payload;
+    for (let param in query) { /* You can get copy by spreading {...query} */
+        if (query[param] === undefined /* In case of undefined assignment */
+            || query[param] === null 
+            || query[param] === ""
+        ) {    
+            delete query[param];
+        }
+    }
+    return query;
+}
+
 async function retrieveRemoteData(payload) {
-    console.log(`loading from summary: ${JSON.stringify(payload)}`)
+    const query = cleanUpParams(payload);
+    console.log(`loading from summary: ${JSON.stringify(query)}`)
     const response = await axios({
         method: 'POST',
         url: `http://summary:3000/`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data: new URLSearchParams(payload)
+        data: new URLSearchParams(query)
     });
     const content = response.data.results;
     return content;
 }
 
 async function retrieveRemoteLeagueData(year, type) {
+    if (!year && !type) {
+        console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
+        return [];
+    }
     try {        
         // update redis cache
         const content = await retrieveRemoteData({
@@ -171,6 +198,10 @@ async function retrieveRemoteLeagueData(year, type) {
 }
 
 async function retrieveLeagueData(year, type) {
+    if (!year && !type) {
+        console.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
+        return [];
+    }
     const key = `${year}-${type}`;
     try {
         const content = await redisClient.get(key);
@@ -187,6 +218,10 @@ async function retrieveLeagueData(year, type) {
 }
 
 async function retrieveRemoteTeamData(year, team_id, type) {
+    if (!year && !team_id) {
+        console.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
+        return [];
+    }
     try {
         // update redis cache
         const content = await retrieveRemoteData({
@@ -194,7 +229,7 @@ async function retrieveRemoteTeamData(year, team_id, type) {
             team: team_id,
             type: type
         });
-        const key = `${year}-${team_id}-${type}`;
+        const key = generateKey([year, team_id, type]);
         await redisClient.set(key, JSON.stringify(content))
         await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
         return content;
@@ -213,9 +248,30 @@ async function retrieveRemoteTeamData(year, team_id, type) {
     }
 }
 
+function generateKey(parts, sep = "-") {
+    const valid = parts.filter(p => p != null)
+    if (valid.length == 0) {
+        throw new Error("invalid key")
+    }
+    return valid.join(sep)
+}
+
 async function retrieveTeamData(year, team_id, type) {
     try {
-        const key = `${year}-${team_id}-${type}`;
+        let keyParts = []
+        if (year) {
+            keyParts.push(year)
+        }
+        if (team_id) {
+            keyParts.push(team_id)
+        }
+        if (keyParts.length == 0) {
+            throw new Error("invalid team data request, must include year AND/OR team")
+        }
+        if (type) {
+            keyParts.push(type)
+        }
+        const key = generateKey(keyParts);
         const content = await redisClient.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
@@ -223,6 +279,9 @@ async function retrieveTeamData(year, team_id, type) {
         return JSON.parse(content);
     } catch (err) {
         console.log(err)
+        if (err.message == "invalid team data request, must include year AND/OR team") {
+            return [];
+        }
         return await retrieveRemoteTeamData(year, team_id, type);
     }
 }
@@ -443,7 +502,7 @@ router.route('/game/:gameId')
 router.route('/year/:year/team/:teamId')
     .get(async function(req, res, next) {
         try {
-            let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
+            let data = await Teams.getTeamSeasonInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
             }
@@ -453,7 +512,7 @@ router.route('/year/:year/team/:teamId')
             } else {
                 const brkd = await retrieveTeamData(req.params.year, req.params.teamId, 'overall')
                 // console.log(brkd[0])
-                return res.render('pages/cfb/team', {
+                return res.render('pages/cfb/team_season', {
                     teamData: data,
                     breakdown: brkd,
                     players: {
@@ -469,10 +528,107 @@ router.route('/year/:year/team/:teamId')
         }
     })
 
+
+function getPercentileKey(metric) {
+    switch (metric) {
+        case "overall.epaPerPlay": 
+            return "epaPerPlay";
+        case "overall.yardsPerPlay": 
+            return "yardsPerPlay";
+        case "overall.successRate": 
+            return "successRate";
+        case "passing.epaPerPlay": 
+            return "epaPerDropback";
+        case "passing.yardsPerPlay": 
+            return "yardsPerDropback";
+        case "passing.successRate": 
+            return "passingSuccessRate";
+        case "rushing.epaPerPlay": 
+            return "epaPerRush";
+        case "rushing.yardsPerPlay": 
+            return "yardsPerRush";
+        case "rushing.successRate": 
+            return "rushingSuccessRate";
+        case "overall.havocRate": 
+            return "havocRate";
+        case "passing.explosiveRate":
+            return "passingExplosivePlayRate";
+        case "rushing.explosiveRate":
+            return "rushingExplosivePlayRate";
+        case "rushing.opportunityRate":
+            return "rushOpportunityRate";
+        case "rushing.lineYards":
+            return "lineYards";
+        case "rushing.stuffedPlayRate":
+            return "playStuffedRate";
+        case "overall.explosiveRate":
+            return "explosivePlayRate";
+        case "overall.nonExplosiveEpaPerPlay":
+            return "nonExplosiveEpaPerPlay";
+        case "overall.earlyDownEPAPerPlay":
+            return "earlyDownEpaPerPlay";
+        case "overall.lateDownSuccessRate":
+            return "lateDownSuccessRate";
+        case "overall.thirdDownDistance":
+            return "thirdDownDistance";
+        default:
+            return metric;
+    }
+}
+
 router.route('/team/:teamId')
-.get(async function(req, res, next) {
-    return res.redirect(`/cfb/year/2025/team/${req.params.teamId}`);
-})
+    .get(async function(req, res, next) {
+        try {
+            let data = await Teams.getTeamInformation(req.params.teamId)
+            if (data == null) {
+                throw Error(`Data not available for team ${req.params.teamId}. An internal service may be down.`)
+            }
+
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(data);
+            } else {
+                const brkd = await retrieveTeamData(null, req.params.teamId, null)
+                const type = req.query.type ?? "differential";
+                let metric = req.query.metric ?? `overall.adjEpaPerPlay`
+                // can't do passing/rushing/havoc differentials
+                if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+                    metric = `overall.adjEpaPerPlay`
+                }
+
+                let allPctls = []
+                for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+                    const percentiles = await retrievePercentiles(null, p);
+                    allPctls = allPctls.concat(percentiles);
+                }
+
+                const pctlKey = getPercentileKey(metric)
+                const selectedPercentiles = allPctls.map(p => {
+                    var result = {
+                        season: p["season"],
+                        pctile: p["pctile"],
+                    }
+                    result["value"] = p[pctlKey];
+                    return result
+                }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+
+                // console.log(pctlKey)
+                // console.log(selectedPercentiles)
+                // console.log(brkd[0])
+                return res.render('pages/cfb/team', {
+                    teamData: data,
+                    breakdowns: brkd,
+                    seasons: brkd.map(b => b.season).sort(),
+                    percentiles: selectedPercentiles,
+                    type,
+                    metric,
+                    last_updated: await retrieveLastUpdated()
+                });
+            }
+        } catch(err) {
+            console.error(err)
+            return next(err)
+        }
+    })
 
 router.route('/teams')
     .get(async function(req, res, next) {
@@ -501,6 +657,50 @@ function retrieveValue(dictionary, key) {
 router.route('/charts/team/epa')
     .get(async function(req, res, next) { // change after week 4
         return res.redirect(`/cfb/year/2025/charts/team/epa`)
+    })
+
+router.route('/charts/trends')
+    .get(async function(req, res, next) { // change after week 4
+        try {
+            const type = req.query.type ?? "differential";
+            let metric = req.query.metric ?? `overall.epaPerPlay`
+            // can't do passing/rushing/havoc differentials
+            if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+                metric = `overall.epaPerPlay`
+            }
+
+            let allPctls = []
+            for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+                const percentiles = await retrievePercentiles(null, p);
+                allPctls = allPctls.concat(percentiles);
+            }
+
+            const pctlKey = getPercentileKey(metric)
+            const selectedPercentiles = allPctls.map(p => {
+                var result = {
+                    season: p["season"],
+                    pctile: p["pctile"],
+                }
+                result["value"] = p[pctlKey];
+                return result
+            }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+
+
+            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+                return res.json(selectedPercentiles); 
+            } else {
+                return res.render('pages/cfb/trends', {
+                    seasons: selectedPercentiles.map(b => b.season).sort(),
+                    percentiles: selectedPercentiles,
+                    type,
+                    metric,
+                    last_updated: await retrieveLastUpdated()
+                });
+            }
+        } catch(err) {
+            console.error(err)
+            return next(err)
+        }
     })
 
 router.route('/year/:year/charts/team/epa')
