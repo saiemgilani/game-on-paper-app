@@ -666,7 +666,7 @@ router.route('/charts/trends')
 
 
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-                return res.json(data); 
+                return res.json(selectedPercentiles); 
             } else {
                 return res.render('pages/cfb/trends', {
                     seasons: selectedPercentiles.map(b => b.season).sort(),
