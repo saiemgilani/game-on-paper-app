@@ -38,6 +38,36 @@ function getAxisTitleForMetric(type, metric) {
         case "overall.havocRate": 
             metricTitle = "Havoc %";
             break;
+        case "passing.explosiveRate":
+            metricTitle = "Pass Expl %";
+            break;
+        case "rushing.explosiveRate":
+            metricTitle = "Rush Expl %";
+            break;
+        case "rushing.opportunityRate":
+            metricTitle = "Opportunity %";
+            break;
+        case "rushing.lineYards":
+            metricTitle = "Line Yards";
+            break;
+        case "rushing.stuffedPlayRate":
+            metricTitle = "Stuffed %";
+            break;
+        case "overall.explosiveRate":
+            metricTitle = "Explosive %";
+            break;
+        case "overall.nonExplosiveEpaPerPlay":
+            metricTitle =  "Non-Expl EPA/Play";
+            break;
+        case "overall.earlyDownEPAPerPlay":
+            metricTitle =  "Early Downs EPA/Play";
+            break;
+        case "overall.lateDownSuccessRate":
+            metricTitle =  "Late Downs SR%";
+            break;
+        case "overall.thirdDownDistance":
+            metricTitle =  "Avg Distance (3rd)";
+            break;
         default:
             metricTitle = metric;
             break;
@@ -86,6 +116,36 @@ function getTitleForMetric(type, metric) {
             break;
         case "overall.havocRate": 
             metricTitle = "Havoc Rate";
+            break;
+        case "passing.explosiveRate":
+            metricTitle = "Pass Explosive Play Rate";
+            break;
+        case "rushing.explosiveRate":
+            metricTitle = "Rush Explosive Play Rate";
+            break;
+        case "rushing.opportunityRate":
+            metricTitle = "Opportunity Rate";
+            break;
+        case "rushing.lineYards":
+            metricTitle = "Line Yards/Rush";
+            break;
+        case "rushing.stuffedPlayRate":
+            metricTitle = "Stuffed Run Rate";
+            break;
+        case "overall.explosiveRate":
+            metricTitle = "Explosive Play Rate";
+            break;
+        case "overall.nonExplosiveEpaPerPlay":
+            metricTitle =  "Non-Explosive EPA/Play";
+            break;
+        case "overall.earlyDownEPAPerPlay":
+            metricTitle =  "Early Downs EPA/Play";
+            break;
+        case "overall.lateDownSuccessRate":
+            metricTitle =  "Late Downs Success Rate";
+            break;
+        case "overall.thirdDownDistance":
+            metricTitle =  "Avg Distance on 3rd Down";
             break;
         default:
             metricTitle = metric;

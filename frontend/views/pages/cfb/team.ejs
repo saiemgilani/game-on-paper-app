@@ -131,14 +131,24 @@ function hexToRgb(hex) {
                                             <option value="passing.epaPerPlay" <%= (metric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
                                             <option value="passing.yardsPerPlay" <%= (metric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
                                             <option value="passing.successRate" <%= (metric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
+                                            <option value="passing.explosiveRate" <%= (metric == "passing.explosiveRate") ? "selected": "" %>>Pass Expl %</option>
                                         </optgroup>
                                         <optgroup label="Rushing">
                                             <option value="rushing.epaPerPlay" <%= (metric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
                                             <option value="rushing.yardsPerPlay" <%= (metric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
                                             <option value="rushing.successRate" <%= (metric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
+                                            <option value="rushing.explosiveRate" <%= (metric == "rushing.explosiveRate") ? "selected": "" %>>Rush Expl %</option>
+                                            <option value="rushing.opportunityRate" <%= (metric == "rushing.opportunityRate") ? "selected": "" %>>Opportunity %</option>
+                                            <option value="rushing.lineYards" <%= (metric == "rushing.lineYards") ? "selected": "" %>>Line Yards</option>
+                                            <option value="rushing.stuffedPlayRate" <%= (metric == "rushing.stuffedPlayRate") ? "selected": "" %>>Stuffed %</option>
                                         </optgroup>
                                         <optgroup label="Other">
                                             <option value="overall.havocRate" <%= (metric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
+                                            <option value="overall.explosiveRate" <%= (metric == "overall.explosiveRate") ? "selected": "" %>>Explosive %</option>
+                                            <option value="overall.nonExplosiveEpaPerPlay" <%= (metric == "overall.nonExplosiveEpaPerPlay") ? "selected": "" %>>Non-Expl EPA/Play</option>
+                                            <option value="overall.earlyDownEPAPerPlay" <%= (metric == "overall.earlyDownEPAPerPlay") ? "selected": "" %>>Early Downs EPA/Play</option>
+                                            <option value="overall.lateDownSuccessRate" <%= (metric == "overall.lateDownSuccessRate") ? "selected": "" %>>Late Downs SR%</option>
+                                            <option value="overall.thirdDownDistance" <%= (metric == "overall.thirdDownDistance") ? "selected": "" %>>Avg Distance (3rd)</option>
                                         </optgroup>
                                     <% } %>
                                 </select>
