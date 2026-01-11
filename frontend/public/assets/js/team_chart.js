@@ -319,6 +319,7 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     const seasons = teams.map(t => t["season"]).sort((a,b) => (a - b))
     const metricTitle = getAxisTitleForMetric(type, metric)
     const isRateMetric = metricTitle.includes("Rate")
+    const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
     const data = teams.map(t => {
         return {
             x: t["season"],
@@ -338,44 +339,29 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     
     const teamName = teams.map(p => p.team)[0]
 
-    return {
-        labels: seasons,
-        datasets: [
-            {
-                labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
-                label: teamName,
-                type: "line",
-                data: data.map(p => {
-                    return {
-                        x: p.x,
-                        y: p.y * (isRateMetric ? 100.0 : 1.0)
-                    }
-                }),
-                borderColor: color,
-                pointBackgroundColor: color,
-                showLine: false,
-                fill: false,
-                pointStyle: images,
-                pointSize: imageSize,
-            },
-            // {
-            //     type: "line",
-            //     labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-            //     label: 'Team Trend',
-            //     data: trend.map(d => {
-            //         return {
-            //             x: d[0],
-            //             y: d[1]
-            //         }
-            //     }),
-            //     borderDash: [5, 15],
-            //     borderColor: color,
-            //     pointBorderColor: "rgba(0,0,0,0)",
-            //     pointBackgroundColor: "rgba(0,0,0,0)",
-            //     showLine: true,
-            //     fill: false,
-            //     clip: true
-            // },
+
+    let datasets = [
+        {
+            labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
+            label: teamName,
+            type: "line",
+            data: data.map(p => {
+                return {
+                    x: p.x,
+                    y: p.y * (isRateMetric ? 100.0 : 1.0)
+                }
+            }),
+            borderColor: color,
+            pointBackgroundColor: color,
+            showLine: false,
+            fill: false,
+            pointStyle: images,
+            pointSize: imageSize,
+        },
+    ]
+
+    if (hasAvailableDistributions) {
+        datasets.push(
             {
                 label: 'National Distribution',
                 type: 'boxplot',
@@ -389,7 +375,6 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 backgroundColor: "rgb(35, 148, 253, 0.25)",
                 hoverBorderColor: "rgba(35, 148, 253, 0.5)",
                 borderColor: "rgb(35, 148, 253)",
-                // borderWidth: 1,
                 data: seasons.map(s => {
                     const dist = distributions[s];
                     if (!dist) {
@@ -404,9 +389,13 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                         outliers: [],
                     }
                 }),
-                outlierColor: '#999999',
-            },
-        ],
+            }
+        )
+    }
+
+    return {
+        labels: seasons,
+        datasets
       }
 
 }
