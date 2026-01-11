@@ -357,12 +357,39 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 }),
                 borderColor: color,
                 pointBackgroundColor: color,
-                showLine: (percentiles.length == 0),
+                showLine: false,
                 fill: false,
                 pointStyle: images,
                 pointSize: imageSize,
             }
         )
+
+        if (percentiles.length == 0) {
+            const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
+            const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
+
+            datasets.push(
+                {
+                    type: "line",
+                    labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+                    label: 'Team Trend',
+                    data: trend.map(d =>  {
+                        return {
+                            x: d[0],
+                            y: d[1]
+                        }
+                    }),
+                    borderDash: [5, 15],
+                    borderColor: color,
+                    pointBorderColor: "rgba(0,0,0,0)",
+                    pointBackgroundColor: "rgba(0,0,0,0)",
+                    showLine: true,
+                    fill: false,
+                    clip: true
+                }
+            )
+        
+        }
     }
 
     if (hasAvailableDistributions) {
@@ -441,7 +468,8 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                         chart.ctx.font = "8px Helvetica";
                         chart.ctx.globalAlpha = 0.75;
                         chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                        chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                        chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                        chart.ctx.fillText("LOESS regression used for team trend line.", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                         chart.ctx.restore();
                     }
                     chart.ctx.save()
