@@ -233,12 +233,12 @@ function getAxisTitleSizeForViewport(viewport = getCurrentViewport()) {
 function buildTeamChartData(teams, color, percentiles, type, metric) {
     const imageSize = getImageSizeForViewport();
 
-    const data = teams.map(t => {
-        return {
-            x: t["season"],
-            y: retrieveValue(t[type], metric)
-        }
-    })
+    // const data = teams.map(t => {
+    //     return {
+    //         x: t["season"],
+    //         y: retrieveValue(t[type], metric)
+    //     }
+    // })
     
     const images = teams.map(t => {
         let img = new Image(imageSize, imageSize)
@@ -250,70 +250,124 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         return img;
     })
 
+    
 
-    const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
-    const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
-    // console.log(trend)
 
-    let datasets = [
-        {
-            labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
-            label: teams.map(p => p.team)[0],
-            type: "line",
-            data,
-            borderColor: color,
-            pointBackgroundColor: color,
-            showLine: false,
-            fill: false,
-            pointStyle: images,
-            pointSize: imageSize,
-        },
-        {
-            type: "line",
-            labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-            label: 'Team Trend',
-            data: trend.map(d =>  {
-                return {
-                    x: d[0],
-                    y: d[1]
-                }
-            }),
-            borderDash: [5, 15],
-            borderColor: "rgb(35, 148, 253)", // color,
-            pointBorderColor: "rgba(0,0,0,0)",
-            pointBackgroundColor: "rgba(0,0,0,0)",
-            showLine: true,
-            fill: false,
-            clip: true
-        }
-    ]
+    // const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
+    // const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
 
-    if (percentiles.length > 0) {
-        datasets.push(
+    // let datasets = [
+    //     {
+    //         labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
+    //         label: teams.map(p => p.team)[0],
+    //         type: "line",
+    //         data,
+    //         borderColor: color,
+    //         pointBackgroundColor: color,
+    //         showLine: false,
+    //         fill: false,
+    //         pointStyle: images,
+    //         pointSize: imageSize,
+    //     },
+    //     {
+    //         type: "line",
+    //         labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+    //         label: 'Team Trend',
+    //         data: trend.map(d =>  {
+    //             return {
+    //                 x: d[0],
+    //                 y: d[1]
+    //             }
+    //         }),
+    //         borderDash: [5, 15],
+    //         borderColor: "rgb(35, 148, 253)", // color,
+    //         pointBorderColor: "rgba(0,0,0,0)",
+    //         pointBackgroundColor: "rgba(0,0,0,0)",
+    //         showLine: true,
+    //         fill: false,
+    //         clip: true
+    //     }
+    // ]
+
+    // if (percentiles.length > 0) {
+    //     datasets.push(
+    //         {
+    //             type: "line",
+    //             labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
+    //             label: 'National Avg',
+    //             data: percentiles.map(p => {
+    //                 return {
+    //                     x: p["season"],
+    //                     y: p["value"]
+    //                 }
+    //             }),
+    //             borderDash: [5, 15],
+    //             borderColor: "red",
+    //             pointBorderColor: "red",//"rgba(0,0,0,0)",
+    //             pointBackgroundColor: "red",//"rgba(0,0,0,0)",
+    //             showLine: true,
+    //             fill: false,
+    //             clip: true
+    //         }
+    //     )
+    // }
+
+    // return {
+    //     datasets
+    // };
+
+
+    return {
+        labels: [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+        datasets: [
+            {
+                // labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
+                label: teams.map(p => p.team)[0],
+                type: "line",
+                data: Array(12).fill(0.25),
+                borderColor: color,
+                pointBackgroundColor: color,
+                showLine: false,
+                fill: false,
+                pointStyle: images,
+                pointSize: imageSize,
+            },
             {
                 type: "line",
-                labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
-                label: 'National Avg',
-                data: percentiles.map(p => {
-                    return {
-                        x: p["season"],
-                        y: p["value"]
-                    }
-                }),
+                // labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+                label: 'Team Trend',
+                data: Array(12).fill(0.5),
                 borderDash: [5, 15],
-                borderColor: "red",
-                pointBorderColor: "red",//"rgba(0,0,0,0)",
-                pointBackgroundColor: "red",//"rgba(0,0,0,0)",
+                borderColor: color,
+                pointBorderColor: "rgba(0,0,0,0)",
+                pointBackgroundColor: "rgba(0,0,0,0)",
                 showLine: true,
                 fill: false,
                 clip: true
-            }
-        )
-    }
+            },
+            {
+                
+                label: 'National Distribution',
+                type: 'boxplot',
+                backgroundColor: "rgb(35, 148, 253, 0.25)",
+                hoverBorderColor: "rgba(35, 148, 253, 0.5)",
+                borderColor: "rgb(35, 148, 253)",
+                // borderWidth: 1,
+                data: Array(12).fill(
+                    {
+                        min: 0,
+                        q1: 0.25,
+                        median: 0.5,
+                        q3: 0.75,
+                        max: 1.0,
+                        outliers: [1.25, -0.25],
+                    },
+                ),
+                outlierColor: '#999999',
+            },
+        ],
+      }
 
-    return {
-        datasets
-    };
 }
 
 function generateTeamChartConfig(title, color, teams, percentiles, type, metric) {
@@ -321,23 +375,26 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const seasons = teams.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
-    const suggestedRange = {
-        min: {
-            x: seasons[0],
-            // y: chartData.datasets[1].data[0].y,
-        },
-        max: {
-            x: seasons[seasons.length - 1],
-            // y: chartData.datasets[1].data[1].y
-        }
-    }
+    // const suggestedRange = {
+    //     min: {
+    //         x: seasons[0],
+    //         // y: chartData.datasets[1].data[0].y,
+    //     },
+    //     max: {
+    //         x: seasons[seasons.length - 1],
+    //         // y: chartData.datasets[1].data[1].y
+    //     }
+    // }
     const margin = 0.075
     const baseMultiplier = 0.475
     const lineMultiplier = 0.125
     const xAdjust = 0.06
 
+    const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E599"
+    const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E533"
+
     return {
-        type: 'scatter',
+        type: 'boxplot',
         data: chartData,
         plugins: [{
             id: "captions-plugin",
@@ -407,15 +464,10 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                         fontFamily: '"Chivo", "Fira Mono", serif'
                     },
                     gridLines: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
-                        zeroLineColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                        color: xGridLineColor,
+                        zeroLineColor: xGridLineColor,
                     },
-                    type: 'linear',
                     position: 'bottom',
-                    ticks: {
-                        min: suggestedRange.min.x,
-                        max: suggestedRange.max.x
-                    }
                 }],
                 yAxes: [{
                     scaleLabel: {
@@ -427,15 +479,15 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                         fontFamily: '"Chivo", "Fira Mono", serif'
                     },
                     gridLines: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
-                        zeroLineColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                        color: yGridLineColor,
+                        zeroLineColor: yGridLineColor,
                     },
-                    type: 'linear',
+                    // type: 'linear',
                     position: 'left',
                     ticks: {
                         reverse: (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric)),
-                        min: suggestedRange.min.y,
-                        max: suggestedRange.max.y
+                        // min: suggestedRange.min.y,
+                        // max: suggestedRange.max.y
                     }
                 }]
             }
