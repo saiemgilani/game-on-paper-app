@@ -114,7 +114,7 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
         if ((year - 1) < 2014) {
             return [];
         } else {
-            return await retrieveRemotePercentiles(year - 1);
+            return await retrieveRemotePercentiles(year - 1, pctile);
         }
     }
 }
