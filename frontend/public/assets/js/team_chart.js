@@ -445,8 +445,8 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const lineMultiplier = 0.125
     const xAdjust = 0.06
 
-    const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E599"
-    const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E533"
+    const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E5"
+    const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E599"
 
     const shouldFlipYAxis = (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) || (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
 
