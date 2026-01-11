@@ -229,7 +229,7 @@ function generateConfig(data, title) {
                         chart.ctx.save()
                         chart.ctx.textAlign = "right"
                         chart.ctx.font = "8px Helvetica";
-                        chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillStyle = isDarkMode ? '#e8e6e3' : '#525252';
                         chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
                         chart.ctx.restore();
                     }

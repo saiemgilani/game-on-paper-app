@@ -109,7 +109,7 @@ function hexToRgb(hex) {
                 </div>
             </div>
         </div>
-        <% if (breakdown.length > 0) { %>
+        <% if ((breakdown?.length ?? 0)> 0) { %>
             <div class="container">
                 <!-- team radar -->
                  <div id="profile" class="row mb-3">
@@ -318,7 +318,7 @@ function hexToRgb(hex) {
                             <td style="text-align: left;">${ p.name }</td>
                             <td class="numeral" style="text-align: center;">${ p.statistics.catches }</td>
                             <td class="numeral" style="text-align: center;">${ p.statistics.targets }</td>
-                            <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(p.statistics.catchPct) * 100, 2, 0)}%</td>
+                            <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(p.statistics.catchPct || 0) * 100, 2, 0)}%</td>
                             <td class="numeral" style="text-align: center;">${ p.statistics.yards }</td>
                             <td class="numeral" style="text-align: center;">${ p.statistics.touchdowns }</td>
                             <td class="numeral" style="text-align: center;">${ p.statistics.fumbles }</td>
@@ -388,23 +388,22 @@ function hexToRgb(hex) {
         </script>
         <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
         <script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
-        <script>
-            const prim = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
-            const alt = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
-            let breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
-            breakdown = {
-                ...breakdown,
-                teamName: '<%- cleanLocation() %>',
-                alternateColor: '<%- teamData.alternateColor ?? '#000000' %>',
-                color: '<%- teamData.color %>'
-            }
-        </script>
         <script src="/assets/js/common.js" crossorigin="anonymous"></script>
         <script src="/assets/js/radar.js"></script>
+        <% if ((breakdown?.length ?? 0) > 0) { %>
         <script>
             (function() {
                 'use strict'
                 feather.replace()
+                const prim = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.color)) %>')
+                const alt = JSON.parse('<%- JSON.stringify(hexToRgb(teamData.alternateColor ?? '#000000')) %>')
+                let breakdown = JSON.parse('<%- JSON.stringify(breakdown[0]) %>')
+                breakdown = {
+                    ...breakdown,
+                    teamName: '<%- cleanLocation() %>',
+                    alternateColor: '<%- teamData.alternateColor ?? '#000000' %>',
+                    color: '<%- teamData.color %>'
+                }
                 const offRadarCtx = document.getElementById('offensive-canvas')
                 const offRadarChart = new Chart(
                     offRadarCtx,
@@ -424,5 +423,6 @@ function hexToRgb(hex) {
                 );
             })()
         </script>
+        <% } %>
     </body>
 </html>

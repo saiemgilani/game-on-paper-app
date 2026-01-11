@@ -253,7 +253,7 @@ function hexToRgb(hex) {
                 if (selectedBreakdown) {
                     console.log(`redrawing radars for season ${season}`);
 
-                    if ("offRadarChart" in window) {
+                    if (offRadarChart) {
                         offRadarChart?.destroy()
                     }
 
@@ -265,7 +265,7 @@ function hexToRgb(hex) {
                         )
                     );
 
-                    if ("defRadarChart" in window) {
+                    if (defRadarChart) {
                         defRadarChart?.destroy()
                     }
 
