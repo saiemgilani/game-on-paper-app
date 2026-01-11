@@ -223,27 +223,6 @@ function buildData(teams, color, percentiles, type, metric) {
             pointStyle: images,
             pointSize: imageSize,
         },
-        // {
-        //     type: "line",
-        //     label: 'Avg Y',
-        //     data: [
-        //         {
-        //             x: seasons[0],
-        //             y: averageY,
-        //         },
-        //         {
-        //             x: seasons[seasons.length-1] + 1,
-        //             y: averageY,
-        //         }
-        //     ],
-        //     borderDash: [5, 15],
-        //     borderColor: "red",
-        //     pointBorderColor: "rgba(0,0,0,0)",
-        //     pointBackgroundColor: "rgba(0,0,0,0)",
-        //     showLine: true,
-        //     fill: false,
-        //     clip: true
-        // },
         {
             type: "line",
             labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
@@ -283,7 +262,6 @@ function buildData(teams, color, percentiles, type, metric) {
     ]
 
     return {
-        // labels: names,
         datasets
     };
 }
@@ -303,74 +281,48 @@ function generateConfig(title, color, teams, percentiles, type, metric) {
             // y: chartData.datasets[1].data[1].y
         }
     }
-
-    // const margin = 0.075
-    // const baseMultiplier = 0.475
-    // const lineMultiplier = 0.125
-    // const xAdjust = 0.06
+    const margin = 0.075
+    const baseMultiplier = 0.475
+    const lineMultiplier = 0.125
+    const xAdjust = 0.06
 
     return {
         type: 'scatter',
         data: chartData,
-        // plugins: [{
-        //     id: "captions-plugin",
-        //     afterDraw: (chart) => {
-        //         let viewport = getCurrentViewport()
-        //         if (viewport == "xl" || viewport == "lg") {
-        //             let sizeWidth = chart.ctx.canvas.clientWidth;
-        //             let sizeHeight = chart.ctx.canvas.clientHeight;
-        //             let imgSize = 25.0;
+        plugins: [{
+            id: "captions-plugin",
+            afterDraw: (chart) => {
+                let viewport = getCurrentViewport()
+                if (viewport == "xl" || viewport == "lg") {
+                    let sizeWidth = chart.ctx.canvas.clientWidth;
+                    let sizeHeight = chart.ctx.canvas.clientHeight;
 
-        //             /* credit */
-        //             chart.ctx.save()
-        //             chart.ctx.textAlign = "right"
-        //             chart.ctx.font = "8px Helvetica";
-        //             chart.ctx.globalAlpha = 0.75;
-        //             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-        //             chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-        //             chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
-        //             chart.ctx.restore();
-        //             chart.ctx.save()
-        //             chart.ctx.textAlign = "left"
-        //             chart.ctx.font = "8px Helvetica";
-        //             chart.ctx.globalAlpha = 0.75;
-        //             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-        //             chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * (margin - 0.02), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-        //             chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
-        //             chart.ctx.restore();
-        //         }
-        //     },
-        //     // move to corners
-        //     beforeDatasetsDraw: (chart) => {
-        //         let viewport = getCurrentViewport()
-        //         if (viewport == "xl" || viewport == "lg") {
-        //             const sizeWidth = chart.ctx.canvas.clientWidth;
-        //             const sizeHeight = chart.ctx.canvas.clientHeight;
-
-        //             /* good/bad labels*/
-        //             chart.ctx.save()
-        //             chart.ctx.textAlign = "right"
-        //             chart.ctx.font = "italic 12px Helvetica";
-        //             chart.ctx.globalAlpha = 0.5;
-        //             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-        //             chart.ctx.fillText("Good Offense, Good Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * margin)
-        //             chart.ctx.fillText("Good Offense, Bad Defense", sizeWidth * (1 - margin + xAdjust), sizeHeight * (1 - margin - 0.005))
-        //             chart.ctx.restore();
-
-        //             chart.ctx.save()
-        //             chart.ctx.textAlign = "left"
-        //             chart.ctx.font = "italic 12px Helvetica";
-        //             chart.ctx.globalAlpha = 0.5;
-        //             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-        //             chart.ctx.fillText("Bad Offense, Good Defense", sizeWidth * (margin - 0.02), sizeHeight * margin)
-        //             chart.ctx.fillText("Bad Offense, Bad Defense", sizeWidth * (margin - 0.02), sizeHeight * (1 - margin - 0.005))
-        //             chart.ctx.restore();
-        //         }
-        //     }
-        // }],
+                    /* credit */
+                    if (metric.includes("adjEpaPerPlay")) {
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.globalAlpha = 0.75;
+                        chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                        chart.ctx.fillText("Chart idea adapted from Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                        chart.ctx.restore();
+                    }
+                    chart.ctx.save()
+                    chart.ctx.textAlign = "left"
+                    chart.ctx.font = "8px Helvetica";
+                    chart.ctx.globalAlpha = 0.75;
+                    chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                    chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * (margin - 0.02), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
+                    chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                    chart.ctx.restore();
+                }
+            },
+        }],
         options: {
             legend: {
                 display: true,
+                position: "top"
             },
             responsive: true,
             title: {
@@ -390,10 +342,7 @@ function generateConfig(title, color, teams, percentiles, type, metric) {
                         if (labels) {
                             return data.datasets[tooltipItem.datasetIndex].labels[tooltipItem.index]
                         }
-                        return null;
-                        // console.log(tooltipItem)
-                        // console.log(data)
-                        
+                        return null;                        
                     }
                 }
             },
@@ -414,7 +363,6 @@ function generateConfig(title, color, teams, percentiles, type, metric) {
                     type: 'linear',
                     position: 'bottom',
                     ticks: {
-                        // reverse: true,
                         min: suggestedRange.min.x,
                         max: suggestedRange.max.x
                     }
