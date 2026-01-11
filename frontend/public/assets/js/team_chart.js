@@ -381,11 +381,11 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                         return null;
                     }
                     return {
-                        min: dist.min * (isRateMetric ? 1.0 : 100.0),
-                        q1: dist.q1 * (isRateMetric ? 1.0 : 100.0),
-                        median: dist.median * (isRateMetric ? 1.0 : 100.0),
-                        q3: dist.q3 * (isRateMetric ? 1.0 : 100.0),
-                        max: dist.max * (isRateMetric ? 1.0 : 100.0),
+                        min: dist.min * (isRateMetric ? 100.0 : 1.0),
+                        q1: dist.q1 * (isRateMetric ? 100.0 : 1.0),
+                        median: dist.median * (isRateMetric ? 100.0 : 1.0),
+                        q3: dist.q3 * (isRateMetric ? 100.0 : 1.0),
+                        max: dist.max * (isRateMetric ? 100.0 : 1.0),
                         outliers: [],
                     }
                 }),

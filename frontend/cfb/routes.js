@@ -548,9 +548,9 @@ function getPercentileKey(metric) {
         case "overall.earlyDownEPAPerPlay":
             return "earlyDownEpaPerPlay";
         case "overall.lateDownSuccessRate":
-            return  "lateDownSuccessRate";
+            return "lateDownSuccessRate";
         case "overall.thirdDownDistance":
-            return  "thirdDownDistance";
+            return "thirdDownDistance";
         default:
             return metric;
     }
