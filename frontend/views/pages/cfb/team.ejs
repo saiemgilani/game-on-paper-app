@@ -3,7 +3,7 @@
 <%
 function getNumberWithOrdinal(n) {
     var s = ["th", "st", "nd", "rd"];
-    v = n % 100;
+    let v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
@@ -245,13 +245,19 @@ function hexToRgb(hex) {
             const offRadarCtx = document.getElementById('offensive-canvas');
             const defRadarCtx = document.getElementById('defensive-canvas');
 
-            function redrawRadars(season) {
-                feather.replace()
+            let offRadarChart;
+            let defRadarChart;
 
+            function redrawRadars(season) {
                 const selectedBreakdown = breakdowns.find(b => parseInt(b.season) == parseInt(season));
                 if (selectedBreakdown) {
                     console.log(`redrawing radars for season ${season}`);
-                    const offRadarChart = new Chart(
+
+                    if ("offRadarChart" in window) {
+                        offRadarChart?.destroy()
+                    }
+
+                    offRadarChart = new Chart(
                         offRadarCtx,
                         generateConfig(
                             generateDataset([selectedBreakdown], "Offensive"),
@@ -259,8 +265,11 @@ function hexToRgb(hex) {
                         )
                     );
 
-                    
-                    const defRadarChart = new Chart(
+                    if ("defRadarChart" in window) {
+                        defRadarChart?.destroy()
+                    }
+
+                    defRadarChart = new Chart(
                         defRadarCtx,
                         generateConfig(
                             generateDataset([selectedBreakdown], "Defensive"),
