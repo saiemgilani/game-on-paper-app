@@ -238,7 +238,7 @@ function hexToRgb(hex) {
                     }
                     result["value"] = p[targetPiece];
                     return result
-                })
+                }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
 
             %>
 

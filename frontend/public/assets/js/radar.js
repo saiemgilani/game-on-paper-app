@@ -189,38 +189,18 @@ function generateDataset(breakdowns, titleKey, opponentKey) {
     };
 }
 
-    function getCurrentViewport() {
-    // https://stackoverflow.com/a/8876069
-        const width = Math.max(
-            document.documentElement.clientWidth,
-            window.innerWidth || 0
-        )
-        if (width <= 576) return 'xs'
-        if (width <= 768) return 'sm'
-        if (width <= 992) return 'md'
-        if (width <= 1200) return 'lg'
-        return 'xl'
-    }
-
-    Chart.plugins.register([
-    {
-        afterDraw: (chart) => {
-            let viewport = getCurrentViewport()
-            if (viewport == "xl" || viewport == "lg") {
-                let sizeWidth = chart.ctx.canvas.clientWidth;
-                let sizeHeight = chart.ctx.canvas.clientHeight;
-                let imgSize = 25.0;
-    
-                chart.ctx.save()
-                chart.ctx.textAlign = "right"
-                chart.ctx.font = "8px Helvetica";
-                chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
-                chart.ctx.restore();
-            }
-        }
-    }
-]);
+function getCurrentViewport() {
+// https://stackoverflow.com/a/8876069
+    const width = Math.max(
+        document.documentElement.clientWidth,
+        window.innerWidth || 0
+    )
+    if (width <= 576) return 'xs'
+    if (width <= 768) return 'sm'
+    if (width <= 992) return 'md'
+    if (width <= 1200) return 'lg'
+    return 'xl'
+}
 
 function getNumberWithOrdinal(n) {
     var s = ["th", "st", "nd", "rd"];
@@ -237,6 +217,25 @@ function generateConfig(data, title) {
         type: 'radar',
         data: data,
         fill: true,
+        plugins: [
+            {
+                afterDraw: (chart) => {
+                    let viewport = getCurrentViewport()
+                    if (viewport == "xl" || viewport == "lg") {
+                        let sizeWidth = chart.ctx.canvas.clientWidth;
+                        let sizeHeight = chart.ctx.canvas.clientHeight;
+                        let imgSize = 25.0;
+            
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
+                        chart.ctx.restore();
+                    }
+                }
+            }
+        ],
         options: {
             title: {
                 display: true,

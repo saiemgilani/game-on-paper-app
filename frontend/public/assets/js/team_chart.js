@@ -249,22 +249,13 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         }
         return img;
     })
-    const names = teams.map(p => p.team)
 
-    // const averageX = (data.map(t => parseFloat(t.x)).reduce((a, b) => a + b)) / data.length
-    // const minX = Math.min(...data.map(t => t.x))
-    // const maxX = Math.max(...data.map(t => t.x))
-    const averageY = (data.map(t => parseFloat(t.y)).reduce((a, b) => a + b)) / data.length
-    const minY = Math.min(...data.map(t => t.y))
-    const maxY = Math.max(...data.map(t => t.y))
-    // console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
-    console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
     const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
     const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
     // console.log(trend)
 
-    const datasets = [
+    let datasets = [
         {
             labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
             label: teams.map(p => p.team)[0],
@@ -276,24 +267,6 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
             fill: false,
             pointStyle: images,
             pointSize: imageSize,
-        },
-        {
-            type: "line",
-            labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
-            label: 'National Avg',
-            data: percentiles.map(p => {
-                return {
-                    x: p["season"],
-                    y: p["value"]
-                }
-            }),
-            borderDash: [5, 15],
-            borderColor: "red",
-            pointBorderColor: "red",//"rgba(0,0,0,0)",
-            pointBackgroundColor: "red",//"rgba(0,0,0,0)",
-            showLine: true,
-            fill: false,
-            clip: true
         },
         {
             type: "line",
@@ -314,6 +287,29 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
             clip: true
         }
     ]
+
+    if (percentiles.length > 0) {
+        datasets.push(
+            {
+                type: "line",
+                labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
+                label: 'National Avg',
+                data: percentiles.map(p => {
+                    return {
+                        x: p["season"],
+                        y: p["value"]
+                    }
+                }),
+                borderDash: [5, 15],
+                borderColor: "red",
+                pointBorderColor: "red",//"rgba(0,0,0,0)",
+                pointBackgroundColor: "red",//"rgba(0,0,0,0)",
+                showLine: true,
+                fill: false,
+                clip: true
+            }
+        )
+    }
 
     return {
         datasets
