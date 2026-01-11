@@ -232,13 +232,49 @@ function getAxisTitleSizeForViewport(viewport = getCurrentViewport()) {
 
 function buildTeamChartData(teams, color, percentiles, type, metric) {
     const imageSize = getImageSizeForViewport();
+    // console.log(percentiles)
+    let distributions = {};
+    for (const p of percentiles) {
+        if (!Object.keys(distributions).includes(`${p["season"]}`)) {
+            distributions[p["season"]] = {
+                min: null,
+                q1: null,
+                median: null,
+                q3: null,
+                max: null,
+                outliers: [],
+            }
+        }
 
-    // const data = teams.map(t => {
-    //     return {
-    //         x: t["season"],
-    //         y: retrieveValue(t[type], metric)
-    //     }
-    // })
+        const pctl = parseFloat(p["pctile"])
+
+        if (pctl <= 0.01) {
+            console.log(`adding min to ${p["season"]}`)
+            distributions[p["season"]]["min"] = p["value"]
+        } else if (pctl == 0.25) {
+            console.log(`adding q1 to ${p["season"]}`)
+            distributions[p["season"]]["q1"] = p["value"]
+        } else if (pctl == 0.5) {
+            console.log(`adding mdn to ${p["season"]}`)
+            distributions[p["season"]]["median"] = p["value"]
+        } else if (pctl == 0.75) {
+            console.log(`adding q3 to ${p["season"]}`)
+            distributions[p["season"]]["q3"] = p["value"]
+        } else if (pctl >= 0.99) {
+            console.log(`adding max to ${p["season"]}`)
+            distributions[p["season"]]["max"] = p["value"]
+        }
+    }
+    // console.log(distributions)
+
+
+    const seasons = teams.map(t => t["season"]).sort((a,b) => (a - b))
+    const data = teams.map(t => {
+        return {
+            x: t["season"],
+            y: retrieveValue(t[type], metric)
+        }
+    })
     
     const images = teams.map(t => {
         let img = new Image(imageSize, imageSize)
@@ -250,81 +286,14 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         return img;
     })
 
-    
-
-
-    // const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
-    // const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
-
-    // let datasets = [
-    //     {
-    //         labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
-    //         label: teams.map(p => p.team)[0],
-    //         type: "line",
-    //         data,
-    //         borderColor: color,
-    //         pointBackgroundColor: color,
-    //         showLine: false,
-    //         fill: false,
-    //         pointStyle: images,
-    //         pointSize: imageSize,
-    //     },
-    //     {
-    //         type: "line",
-    //         labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-    //         label: 'Team Trend',
-    //         data: trend.map(d =>  {
-    //             return {
-    //                 x: d[0],
-    //                 y: d[1]
-    //             }
-    //         }),
-    //         borderDash: [5, 15],
-    //         borderColor: "rgb(35, 148, 253)", // color,
-    //         pointBorderColor: "rgba(0,0,0,0)",
-    //         pointBackgroundColor: "rgba(0,0,0,0)",
-    //         showLine: true,
-    //         fill: false,
-    //         clip: true
-    //     }
-    // ]
-
-    // if (percentiles.length > 0) {
-    //     datasets.push(
-    //         {
-    //             type: "line",
-    //             labels: percentiles.map(p => `Season: ${p["season"]}, National Avg: ${roundNumber(p["value"], 2, 2)}`),
-    //             label: 'National Avg',
-    //             data: percentiles.map(p => {
-    //                 return {
-    //                     x: p["season"],
-    //                     y: p["value"]
-    //                 }
-    //             }),
-    //             borderDash: [5, 15],
-    //             borderColor: "red",
-    //             pointBorderColor: "red",//"rgba(0,0,0,0)",
-    //             pointBackgroundColor: "red",//"rgba(0,0,0,0)",
-    //             showLine: true,
-    //             fill: false,
-    //             clip: true
-    //         }
-    //     )
-    // }
-
-    // return {
-    //     datasets
-    // };
-
-
     return {
-        labels: [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+        labels: seasons,
         datasets: [
             {
-                // labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
+                labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
                 label: teams.map(p => p.team)[0],
                 type: "line",
-                data: Array(12).fill(0.25),
+                data,
                 borderColor: color,
                 pointBackgroundColor: color,
                 showLine: false,
@@ -332,37 +301,36 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 pointStyle: images,
                 pointSize: imageSize,
             },
+            // {
+            //     type: "line",
+            //     labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+            //     label: 'Team Trend',
+            //     data: trend.map(d => {
+            //         return {
+            //             x: d[0],
+            //             y: d[1]
+            //         }
+            //     }),
+            //     borderDash: [5, 15],
+            //     borderColor: color,
+            //     pointBorderColor: "rgba(0,0,0,0)",
+            //     pointBackgroundColor: "rgba(0,0,0,0)",
+            //     showLine: true,
+            //     fill: false,
+            //     clip: true
+            // },
             {
-                type: "line",
-                // labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-                label: 'Team Trend',
-                data: Array(12).fill(0.5),
-                borderDash: [5, 15],
-                borderColor: color,
-                pointBorderColor: "rgba(0,0,0,0)",
-                pointBackgroundColor: "rgba(0,0,0,0)",
-                showLine: true,
-                fill: false,
-                clip: true
-            },
-            {
-                
                 label: 'National Distribution',
                 type: 'boxplot',
+                labels: seasons.map(p => {
+                    const dist = distributions[p];
+                    return `Season: ${p} - Min: ${roundNumber(dist.min, 2, 2)}, Q1: ${roundNumber(dist.q1, 2, 2)}, Median: ${roundNumber(dist.median, 2, 2)}, Q3:  ${roundNumber(dist.q3, 2, 2)}, Max: ${roundNumber(dist.max, 2, 2)}`
+                }),
                 backgroundColor: "rgb(35, 148, 253, 0.25)",
                 hoverBorderColor: "rgba(35, 148, 253, 0.5)",
                 borderColor: "rgb(35, 148, 253)",
                 // borderWidth: 1,
-                data: Array(12).fill(
-                    {
-                        min: 0,
-                        q1: 0.25,
-                        median: 0.5,
-                        q3: 0.75,
-                        max: 1.0,
-                        outliers: [1.25, -0.25],
-                    },
-                ),
+                data: seasons.map(s => distributions[s]),
                 outlierColor: '#999999',
             },
         ],
@@ -375,16 +343,6 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const seasons = teams.map(d => parseInt(d.season)).sort()
     const yearRange = seasons.length > 1 ? `${seasons[0]} to ${seasons[seasons.length - 1]}` : `${seasons[0]}`
 
-    // const suggestedRange = {
-    //     min: {
-    //         x: seasons[0],
-    //         // y: chartData.datasets[1].data[0].y,
-    //     },
-    //     max: {
-    //         x: seasons[seasons.length - 1],
-    //         // y: chartData.datasets[1].data[1].y
-    //     }
-    // }
     const margin = 0.075
     const baseMultiplier = 0.475
     const lineMultiplier = 0.125
@@ -482,7 +440,6 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                         color: yGridLineColor,
                         zeroLineColor: yGridLineColor,
                     },
-                    // type: 'linear',
                     position: 'left',
                     ticks: {
                         reverse: (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric)),

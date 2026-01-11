@@ -508,6 +508,54 @@ router.route('/year/:year/team/:teamId')
         }
     })
 
+
+function getPercentileKey(metric) {
+    switch (metric) {
+        case "overall.epaPerPlay": 
+            return "epaPerPlay";
+        case "overall.yardsPerPlay": 
+            return "yardsPerPlay";
+        case "overall.successRate": 
+            return "successRate";
+        case "passing.epaPerPlay": 
+            return "epaPerDropback";
+        case "passing.yardsPerPlay": 
+            return "yardsPerDropback";
+        case "passing.successRate": 
+            return "passingSuccessRate";
+        case "rushing.epaPerPlay": 
+            return "epaPerRush";
+        case "rushing.yardsPerPlay": 
+            return "yardsPerRush";
+        case "rushing.successRate": 
+            return "rushingSuccessRate";
+        case "overall.havocRate": 
+            return "Havoc %";
+        case "passing.explosiveRate":
+            return "passingExplosivePlayRate";
+        case "rushing.explosiveRate":
+            return "rushingExplosivePlayRate";
+        case "rushing.opportunityRate":
+            return "rushOpportunityRate";
+        case "rushing.lineYards":
+            return "lineYards";
+        case "rushing.stuffedPlayRate":
+            return "playStuffedRate";
+        case "overall.explosiveRate":
+            return "explosivePlayRate";
+        case "overall.nonExplosiveEpaPerPlay":
+            return  "nonExplosiveEpaPerPlay";
+        case "overall.earlyDownEPAPerPlay":
+            return  "earlyDownEpaPerPlay";
+        case "overall.lateDownSuccessRate":
+            return  "lateDownSuccessRate";
+        case "overall.thirdDownDistance":
+            return  "thirdDownDistance";
+        default:
+            return metric;
+    }
+}
+
 router.route('/team/:teamId')
     .get(async function(req, res, next) {
         try {
@@ -521,21 +569,35 @@ router.route('/team/:teamId')
             } else {
                 const brkd = await retrieveTeamData(null, req.params.teamId, null)
                 const type = req.query.type ?? "differential";
-                let chartKey = req.query.metric ?? `overall.adjEpaPerPlay`
+                let metric = req.query.metric ?? `overall.adjEpaPerPlay`
                 // can't do passing/rushing/havoc differentials
-                if (type == "differential" && (!chartKey.includes("overall") || chartKey.includes("havocRate"))) {
-                    chartKey = `overall.adjEpaPerPlay`
+                if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+                    metric = `overall.adjEpaPerPlay`
                 }
 
-                const percentiles = await retrievePercentiles(null, 0.5);
+                let allPctls = []
+                for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+                    const percentiles = await retrievePercentiles(null, p);
+                    allPctls = allPctls.concat(percentiles);
+                }
+
+                const pctlKey = getPercentileKey(metric)
+                const selectedPercentiles = allPctls.map(p => {
+                    var result = {
+                        season: p["season"],
+                        pctile: p["pctile"],
+                    }
+                    result["value"] = p[pctlKey];
+                    return result
+                }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
                     breakdowns: brkd,
                     seasons: brkd.map(b => b.season).sort(),
-                    percentiles,
-                    type: type,
-                    metric: chartKey,
+                    percentiles: selectedPercentiles,
+                    type,
+                    metric,
                     last_updated: await retrieveLastUpdated()
                 });
             }
