@@ -84,7 +84,7 @@ function hexToRgb(hex) {
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                   <li class="breadcrumb-item" aria-current="page"><a href="/cfb/teams">Teams</a></li>
-                  <li class="breadcrumb-item active" aria-current="page"><%= cleanLocation() %> (<%= yearRange %>)</li>
+                  <li class="breadcrumb-item active" aria-current="page"><%= cleanLocation() %></li>
                 </ol>
             </nav>
         </div>
@@ -92,6 +92,7 @@ function hexToRgb(hex) {
             <div class="row mb-3">
                 <div class="col-lg-6 col-xs-12 mb-xs-3">
                     <h1><%= cleanLocation() %> <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper.com on Bluesky!">(Beta)</abbr></small></span></h1>
+                    <p class="m-0 text-muted"><strong>Available Seasons:</strong> <%= yearRange %></p>
                     <p class="m-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
                 </div>
                 <div class="col-lg-6 col-xs-12 mb-xs-3">
