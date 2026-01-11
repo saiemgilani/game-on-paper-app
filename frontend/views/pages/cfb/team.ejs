@@ -91,7 +91,7 @@ function hexToRgb(hex) {
         <div class="container">
             <div class="row mb-3">
                 <div class="col-lg-6 col-xs-12 mb-xs-3">
-                    <h2><%= cleanLocation() %></h2>
+                    <h1><%= cleanLocation() %></h1>
                     <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
                     <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
                     <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
@@ -100,58 +100,61 @@ function hexToRgb(hex) {
         </div>
         <div class="container">
             <div class="row mb-3">
-                <div class="col-md-12 col-lg-12">
-                    <div class="panel-group">
-                        <div class="row mb-3">
-                            <div class="col-lg-6 col-xs-12">
-                                <h2 id="metricHistory" class="d-inline">Metric History</h2>
-                                <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
+                <div class="col-lg-6 col-xs-12">
+                    <h2 id="metricHistory" class="d-inline">Metric History</h2>
+                    <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
+                </div>
+                <div class="ms-auto col-lg-6 col-xs-12">
+                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                        <div class="row">
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="typeSelect">
+                                    <option value="-1">Choose Type...</option>
+                                    <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
+                                    <option value="offensive" <%= (type == "offensive") ? "selected": "" %>>Offensive</option>
+                                    <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
+                                </select>
                             </div>
-                            <div class="ms-auto col-lg-6 col-xs-12">
-                                <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
-                                    <div class="row">
-                                        <div class="col-auto mb-xs-3 mb-sm-0">
-                                            <select class="form-select form-select-md" id="typeSelect">
-                                                <option value="-1">Choose Type...</option>
-                                                <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
-                                                <option value="offensive" <%= (type == "offensive") ? "selected": "" %>>Offensive</option>
-                                                <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-auto mb-xs-3 mb-sm-0">
-                                            <select class="form-select form-select-md" id="metricSelect">
-                                                <option value="-1">Choose Metric...</option>
-                                                <optgroup label="Overall">
-                                                    <option value="overall.adjEpaPerPlay" <%= (metric == "overall.adjEpaPerPlay") ? "selected": "" %>>Adj EPA/Play</option>
-                                                    <option value="overall.epaPerPlay" <%= (metric == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
-                                                    <option value="overall.yardsPerPlay" <%= (metric == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
-                                                    <option value="overall.successRate" <%= (metric == "overall.successRate") ? "selected": "" %>>SR%</option>
-                                                </optgroup>
-                                                <% if (["offensive", "defensive"].includes(type)) { %>
-                                                    <optgroup label="Passing">
-                                                        <option value="passing.epaPerPlay" <%= (metric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
-                                                        <option value="passing.yardsPerPlay" <%= (metric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
-                                                        <option value="passing.successRate" <%= (metric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
-                                                    </optgroup>
-                                                    <optgroup label="Rushing">
-                                                        <option value="rushing.epaPerPlay" <%= (metric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
-                                                        <option value="rushing.yardsPerPlay" <%= (metric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
-                                                        <option value="rushing.successRate" <%= (metric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
-                                                    </optgroup>
-                                                    <optgroup label="Other">
-                                                        <option value="overall.havocRate" <%= (metric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
-                                                    </optgroup>
-                                                <% } %>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </form>
+                            <div class="col-auto mb-xs-3 mb-sm-0">
+                                <select class="form-select form-select-md" id="metricSelect">
+                                    <option value="-1">Choose Metric...</option>
+                                    <optgroup label="Overall">
+                                        <option value="overall.adjEpaPerPlay" <%= (metric == "overall.adjEpaPerPlay") ? "selected": "" %>>Adj EPA/Play</option>
+                                        <option value="overall.epaPerPlay" <%= (metric == "overall.epaPerPlay") ? "selected": "" %>>EPA/Play</option>
+                                        <option value="overall.yardsPerPlay" <%= (metric == "overall.yardsPerPlay") ? "selected": "" %>>Yards/Play</option>
+                                        <option value="overall.successRate" <%= (metric == "overall.successRate") ? "selected": "" %>>SR%</option>
+                                    </optgroup>
+                                    <% if (["offensive", "defensive"].includes(type)) { %>
+                                        <optgroup label="Passing">
+                                            <option value="passing.epaPerPlay" <%= (metric == "passing.epaPerPlay") ? "selected": "" %>>EPA/DB</option>
+                                            <option value="passing.yardsPerPlay" <%= (metric == "passing.yardsPerPlay") ? "selected": "" %>>Yards/DB</option>
+                                            <option value="passing.successRate" <%= (metric == "passing.successRate") ? "selected": "" %>>Pass SR%</option>
+                                        </optgroup>
+                                        <optgroup label="Rushing">
+                                            <option value="rushing.epaPerPlay" <%= (metric == "rushing.epaPerPlay") ? "selected": "" %>>EPA/Rush</option>
+                                            <option value="rushing.yardsPerPlay" <%= (metric == "rushing.yardsPerPlay") ? "selected": "" %>>Yards/Rush</option>
+                                            <option value="rushing.successRate" <%= (metric == "rushing.successRate") ? "selected": "" %>>Rush SR%</option>
+                                        </optgroup>
+                                        <optgroup label="Other">
+                                            <option value="overall.havocRate" <%= (metric == "overall.havocRate") ? "selected": "" %>>Havoc %</option>
+                                        </optgroup>
+                                    <% } %>
+                                </select>
                             </div>
                         </div>
-                        <canvas id="metric_chart_canvas" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
-                    </div>
+                    </form>
                 </div>
             </div>
+            <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
+        </div>
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-6 col-xs-12">
+                    <h2 id="radarHistory" class="d-inline">Radar History</h2>
+                    <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
+                </div>
+            </div>
+
         </div>
 
         <%- include('../../partials/footer') %>
