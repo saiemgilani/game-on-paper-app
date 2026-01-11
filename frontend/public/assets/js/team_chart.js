@@ -164,6 +164,55 @@ function roundNumber(value, power10, fixed) {
     return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
+function formatNumberForMetric(metric, value) {
+    switch (metric) {
+        case "overall.adjEpaPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "overall.epaPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "overall.yardsPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "overall.successRate": 
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "passing.epaPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "passing.yardsPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "passing.successRate": 
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "rushing.epaPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "rushing.yardsPerPlay": 
+            return `${roundNumber(value, 2, 2)}`;
+        case "rushing.successRate": 
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "overall.havocRate": 
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "passing.explosiveRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "rushing.explosiveRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "rushing.opportunityRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "rushing.lineYards":
+            return `${roundNumber(value, 2, 2)}`;
+        case "rushing.stuffedPlayRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "overall.explosiveRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "overall.nonExplosiveEpaPerPlay":
+            return `${roundNumber(value, 2, 2)}`;
+        case "overall.earlyDownEPAPerPlay":
+            return `${roundNumber(value, 2, 2)}`;
+        case "overall.lateDownSuccessRate":
+            return `${roundNumber(parseFloat(100.0 * value), 2, 0)}%`
+        case "overall.thirdDownDistance":
+            return `${roundNumber(value, 2, 2)}`;
+        default:
+            return `${roundNumber(value, 2, 2)}`;
+    }
+}
+
 function translateValue(input, inMin, inMax, outMin, outMax) {
     const leftRange = inMax - inMin;
     const rightRange = outMax - outMin;
@@ -249,32 +298,33 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         const pctl = parseFloat(p["pctile"])
 
         if (pctl <= 0.01) {
-            console.log(`adding min to ${p["season"]}`)
+            // console.log(`adding min to ${p["season"]}`)
             distributions[p["season"]]["min"] = p["value"]
         } else if (pctl == 0.25) {
-            console.log(`adding q1 to ${p["season"]}`)
+            // console.log(`adding q1 to ${p["season"]}`)
             distributions[p["season"]]["q1"] = p["value"]
         } else if (pctl == 0.5) {
-            console.log(`adding mdn to ${p["season"]}`)
+            // console.log(`adding mdn to ${p["season"]}`)
             distributions[p["season"]]["median"] = p["value"]
         } else if (pctl == 0.75) {
-            console.log(`adding q3 to ${p["season"]}`)
+            // console.log(`adding q3 to ${p["season"]}`)
             distributions[p["season"]]["q3"] = p["value"]
         } else if (pctl >= 0.99) {
-            console.log(`adding max to ${p["season"]}`)
+            // console.log(`adding max to ${p["season"]}`)
             distributions[p["season"]]["max"] = p["value"]
         }
     }
-    // console.log(distributions)
 
 
     const seasons = teams.map(t => t["season"]).sort((a,b) => (a - b))
+    const metricTitle = getAxisTitleForMetric(type, metric)
+    const isRateMetric = metricTitle.includes("Rate")
     const data = teams.map(t => {
         return {
             x: t["season"],
             y: retrieveValue(t[type], metric)
         }
-    })
+    }).sort((a, b) => (a.x - b.x))
     
     const images = teams.map(t => {
         let img = new Image(imageSize, imageSize)
@@ -285,15 +335,22 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
         }
         return img;
     })
+    
+    const teamName = teams.map(p => p.team)[0]
 
     return {
         labels: seasons,
         datasets: [
             {
-                labels: data.map(p => `Season: ${p.x}, Value: ${roundNumber(p.y, 2, 2)}`),
-                label: teams.map(p => p.team)[0],
+                labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
+                label: teamName,
                 type: "line",
-                data,
+                data: data.map(p => {
+                    return {
+                        x: p.x,
+                        y: p.y * (isRateMetric ? 100.0 : 1.0)
+                    }
+                }),
                 borderColor: color,
                 pointBackgroundColor: color,
                 showLine: false,
@@ -324,13 +381,29 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 type: 'boxplot',
                 labels: seasons.map(p => {
                     const dist = distributions[p];
-                    return `Season: ${p} - Min: ${roundNumber(dist.min, 2, 2)}, Q1: ${roundNumber(dist.q1, 2, 2)}, Median: ${roundNumber(dist.median, 2, 2)}, Q3:  ${roundNumber(dist.q3, 2, 2)}, Max: ${roundNumber(dist.max, 2, 2)}`
+                    if (!dist) {
+                        return null;
+                    }
+                    return `National Distribution - Min: ${formatNumberForMetric(metric, dist.min)}, Q1: ${formatNumberForMetric(metric, dist.q1)}, Median: ${formatNumberForMetric(metric, dist.median)}, Q3: ${formatNumberForMetric(metric, dist.q3)}, Max: ${formatNumberForMetric(metric, dist.max)}`
                 }),
                 backgroundColor: "rgb(35, 148, 253, 0.25)",
                 hoverBorderColor: "rgba(35, 148, 253, 0.5)",
                 borderColor: "rgb(35, 148, 253)",
                 // borderWidth: 1,
-                data: seasons.map(s => distributions[s]),
+                data: seasons.map(s => {
+                    const dist = distributions[s];
+                    if (!dist) {
+                        return null;
+                    }
+                    return {
+                        min: dist.min * (isRateMetric ? 1.0 : 100.0),
+                        q1: dist.q1 * (isRateMetric ? 1.0 : 100.0),
+                        median: dist.median * (isRateMetric ? 1.0 : 100.0),
+                        q3: dist.q3 * (isRateMetric ? 1.0 : 100.0),
+                        max: dist.max * (isRateMetric ? 1.0 : 100.0),
+                        outliers: [],
+                    }
+                }),
                 outlierColor: '#999999',
             },
         ],
@@ -351,12 +424,14 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
     const xGridLineColor = (isDarkMode) ? "#8D8D8D99" : "#E5E5E599"
     const yGridLineColor = (isDarkMode) ? "#8D8D8D33" : "#E5E5E533"
 
+    const shouldFlipYAxis = (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
+
     return {
         type: 'boxplot',
         data: chartData,
         plugins: [{
             id: "captions-plugin",
-            afterDraw: (chart) => {
+            beforeDatasetsDraw: (chart) => {
                 let viewport = getCurrentViewport()
                 if (viewport == "xl" || viewport == "lg") {
                     let sizeWidth = chart.ctx.canvas.clientWidth;
@@ -381,6 +456,17 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                     chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * (margin - 0.02), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                     chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                     chart.ctx.restore();
+
+                    if (shouldFlipYAxis) {
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "italic 8px Helvetica";
+                        chart.ctx.globalAlpha = 0.5;
+                        chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
+                        chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                        chart.ctx.restore();
+                    }
                 }
             },
         }],
@@ -442,9 +528,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                     },
                     position: 'left',
                     ticks: {
-                        reverse: (type == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) | (type == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric)),
-                        // min: suggestedRange.min.y,
-                        // max: suggestedRange.max.y
+                        reverse: shouldFlipYAxis,
                     }
                 }]
             }

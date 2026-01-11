@@ -169,8 +169,8 @@ function hexToRgb(hex) {
                 <div class="ms-auto col-lg-2 col-xs-12">
                     <select class="form-select form-select-md mb-3" id="radarSeasonSelect">
                         <option value="-1">Choose Season...</option>
-                        <% seasons.reverse().forEach(yr => { %>
-                            <option value="<%= yr %>"><%= yr %></option>
+                        <% seasons.reverse().forEach((yr, i) => { %>
+                            <option value="<%= yr %>" <%= (i == 0) ? "selected": "" %>><%= yr %></option>
                         <% }); %>
                     </select>
                 </div>

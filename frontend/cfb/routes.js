@@ -530,7 +530,7 @@ function getPercentileKey(metric) {
         case "rushing.successRate": 
             return "rushingSuccessRate";
         case "overall.havocRate": 
-            return "Havoc %";
+            return "havocRate";
         case "passing.explosiveRate":
             return "passingExplosivePlayRate";
         case "rushing.explosiveRate":
@@ -544,9 +544,9 @@ function getPercentileKey(metric) {
         case "overall.explosiveRate":
             return "explosivePlayRate";
         case "overall.nonExplosiveEpaPerPlay":
-            return  "nonExplosiveEpaPerPlay";
+            return "nonExplosiveEpaPerPlay";
         case "overall.earlyDownEPAPerPlay":
-            return  "earlyDownEpaPerPlay";
+            return "earlyDownEpaPerPlay";
         case "overall.lateDownSuccessRate":
             return  "lateDownSuccessRate";
         case "overall.thirdDownDistance":
@@ -590,6 +590,8 @@ router.route('/team/:teamId')
                     result["value"] = p[pctlKey];
                     return result
                 }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+                console.log(pctlKey)
+                console.log(selectedPercentiles)
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team', {
                     teamData: data,
