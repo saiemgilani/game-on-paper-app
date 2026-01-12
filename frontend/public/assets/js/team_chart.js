@@ -549,7 +549,7 @@ function generateTeamChartConfig(title, color, teams, percentiles, type, metric)
                     },
                     gridLines: {
                         color: yGridLineColor,
-                        zeroLineColor: (metric.includes("adjEpaPerPlay")) ? yZeroLineColor : yGridLineColor,
+                        zeroLineColor: (type == "differential") ? yZeroLineColor : yGridLineColor,
                     },
                     position: 'left',
                     ticks: {
