@@ -52,8 +52,8 @@ function hexToRgb(hex) {
         <meta property="og:url" content="https://gameonpaper.com/cfb/charts/trends">
         <meta property="og:title" content="<%= title %>">
         <meta property="og:image" content="/assets/img/android-chrome-512x512.png">
-        <meta property="og:image:width" content="1200">
-        <meta property="og:image:height" content="630">
+        <meta property="og:image:width" content="512">
+        <meta property="og:image:height" content="512">
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="Game on Paper">
         <meta name="twitter:url" content="https://gameonpaper.com/cfb/charts/trends">
@@ -88,7 +88,6 @@ function hexToRgb(hex) {
                             <div class="col-auto mb-xs-3 mb-sm-0">
                                 <select class="form-select form-select-md" id="typeSelect">
                                     <option value="-1">Choose Type...</option>
-                                    <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
                                     <option value="offensive" <%= (type == "offensive") ? "selected": "" %>>Offensive</option>
                                     <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
                                 </select>
