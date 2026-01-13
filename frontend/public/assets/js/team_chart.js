@@ -221,8 +221,16 @@ function translateValue(input, inMin, inMax, outMin, outMax) {
 }
 
 function retrieveValue(dictionary, key) {
+    console.log(dictionary)
+    console.log(key)
+    if (!dictionary) {
+        return null
+    }
     const subKeys = key.split('.')
     let sub = dictionary;
+    if (!sub) {
+        return null
+    }
     for (const k of subKeys) {
         sub = sub[k];
     }
@@ -320,6 +328,26 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     if (seasons.length == 0 && teams.length > 0) {
         seasons = teams.map(t => t["season"]).sort((a, b) => (a - b))
     }
+
+    let composite = {};
+    for (const s of seasons) {
+        const data = teams.find(t => t["season"] == s)
+
+        composite[s] = {
+            "season": s,
+            "distribution": distributions[s]
+        }
+
+        if (data) {
+            composite[s]["data"] = {
+                x: data?.season || s,
+                y: retrieveValue(data[type], metric) || null
+            }
+        } else {
+            composite[s]["data"] = null
+        }
+    }
+
     const metricTitle = getAxisTitleForMetric(type, metric)
     const isRateMetric = metricTitle.includes("Rate")
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
@@ -327,39 +355,43 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
     let datasets = []
 
     if (teams.length > 0) {
-        const data = teams.map(t => {
-            return {
-                x: t["season"],
-                y: retrieveValue(t[type], metric)
-            }
-        }).sort((a, b) => (a.x - b.x))
-
-        const images = teams.map(t => {
-            let img = new Image(imageSize, imageSize)
-            if (Object.keys(specialImages).includes(t.teamId)) {
-                img.src = specialImages[t.teamId];
-            } else {
-                img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${t.teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.teamId}.png`
-            }
-            return img;
-        })
         const teamName = teams.map(p => p.team)[0]
+        const teamId = teams.map(p => p.teamId)[0]
+        let img = new Image(imageSize, imageSize)
+        if (Object.keys(specialImages).includes(teamId)) {
+            img.src = specialImages[teamId];
+        } else {
+            img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png`
+        }
+
+        const publishedData = seasons.map(p => {
+            const element = composite[p]
+            if (!element) {
+                return null
+            }
+            if (!element.data) {
+                return null
+            }
+
+            
+
+            return {
+                label: `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, element.data.y)}`,
+                data: element.data,
+                pointStyle: img,
+            }
+        })
         datasets.push(
             {
-                labels: data.map(p => `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, p.y)}`),
+                labels: publishedData.map(d => d?.label),
                 label: teamName,
                 type: "line",
-                data: data.map(p => {
-                    return {
-                        x: p.x,
-                        y: p.y * (isRateMetric ? 100.0 : 1.0)
-                    }
-                }),
+                data: publishedData.map(d => d?.data),
                 borderColor: color,
                 pointBackgroundColor: color,
                 showLine: false,
                 fill: false,
-                pointStyle: images,
+                pointStyle: publishedData.map(d => d?.pointStyle),
                 pointSize: imageSize,
             }
         )
@@ -373,10 +405,14 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                     type: "line",
                     labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
                     label: 'Team Trend',
-                    data: trend.map(d =>  {
+                    data: seasons.map(p => {
+                        const element = trend.find(d => d[0] == p)
+                        if (!element) {
+                            return null;
+                        }
                         return {
-                            x: d[0],
-                            y: d[1]
+                            x: element[0],
+                            y: element[1]
                         }
                     }),
                     borderDash: [5, 15],
@@ -398,7 +434,8 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 label: 'National Distribution',
                 type: 'boxplot',
                 labels: seasons.map(p => {
-                    const dist = distributions[p];
+                    const element = composite[p]
+                    const dist = element?.distribution;
                     if (!dist) {
                         return null;
                     }
@@ -408,7 +445,8 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 hoverBorderColor: "rgba(35, 148, 253, 0.5)",
                 borderColor: "rgb(35, 148, 253)",
                 data: seasons.map(s => {
-                    const dist = distributions[s];
+                    const element = composite[s];
+                    const dist = element?.distribution;
                     if (!dist) {
                         return null;
                     }
