@@ -221,8 +221,8 @@ function translateValue(input, inMin, inMax, outMin, outMax) {
 }
 
 function retrieveValue(dictionary, key) {
-    console.log(dictionary)
-    console.log(key)
+    // console.log(dictionary)
+    // console.log(key)
     if (!dictionary) {
         return null
     }
@@ -373,8 +373,6 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
                 return null
             }
 
-            
-
             return {
                 label: `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, element.data.y)}`,
                 data: element.data,
@@ -398,7 +396,7 @@ function buildTeamChartData(teams, color, percentiles, type, metric) {
 
         if (percentiles.length == 0) {
             const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
-            const trend = TREND_FUNCTION(data.map(d => [d.x, d.y]))
+            const trend = TREND_FUNCTION(publishedData.filter(p => p.data != null).map(d => [d.data.x, d.data.y]))
 
             datasets.push(
                 {
