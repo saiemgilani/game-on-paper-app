@@ -247,5 +247,22 @@
                 setTimeout("location.reload(true);", 60 * 1000);
             }
         </script>
+        <script>
+            document.getElementById("game-id-form").addEventListener("submit", (e) => {
+                e.preventDefault();
+            
+                const rawGameId = document.getElementById("inputGameId").value;
+                if (!rawGameId) {
+                    return;
+                }
+
+                const gameId = parseInt(rawGameId);
+                if (!gameId) {
+                    return;
+                }
+
+                window.location.href = `/cfb/game/${gameId}`;
+            })
+        </script>
     </body>
 </html>
