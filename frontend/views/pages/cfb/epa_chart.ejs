@@ -82,13 +82,13 @@
                 <div class="ms-auto col-lg-6 col-xs-12">
                     <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
                         <div class="row">
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto">
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
                                 let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
                                 let yrRange = range(2014, 2025); // data only goes back to 2014
                                 %>
-                                <select class="form-select form-select-md mb-3" id="yearSelect">
+                                <select class="form-select form-select-md" id="yearSelect">
                                     <option value="-1">Choose Season...</option>
                                     <% yrRange.reverse().forEach(yr => { %>
                                         <option value="<%= yr %>" <%= (yr == season) ? "selected": ""%>><%= yr %></option>

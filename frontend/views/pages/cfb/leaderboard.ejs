@@ -159,22 +159,22 @@ if (type == "differential") {
                     <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p>
                 </div>
                 <div class="ms-auto col-lg-6 col-xs-12">
-                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                    <form class="d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
                         <div class="row">
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto mb-3">
                                 <%
                                 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
                                 let range = (start, end) => Array.from(Array(end + 1).keys()).slice(start);
                                 let yrRange = range(2014, 2025); // data only goes back to 2014
                                 %>
-                                <select class="form-select form-select-md mb-3" id="yearSelect">
+                                <select class="form-select form-select-md" id="yearSelect">
                                     <option value="-1">Choose Season...</option>
                                     <% yrRange.reverse().forEach(yr => { %>
                                         <option value="<%= yr %>" <%= (yr == season) ? "selected": ""%>><%= yr %></option>
                                     <% }); %>
                                 </select>
                             </div>
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto mb-3">
                                 <select class="form-select form-select-md" id="typeSelect">
                                     <option value="-1">Choose Type...</option>
                                     <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
@@ -182,7 +182,7 @@ if (type == "differential") {
                                     <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
                                 </select>
                             </div>
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto mb-3">
                                 <select class="form-select form-select-md" id="sortSelect">
                                     <option value="-1">Choose Sort...</option>
                                     <optgroup label="Overall">

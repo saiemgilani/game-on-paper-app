@@ -71,11 +71,11 @@
             <div class="row mb-1">
                 <h3 class="text-center"> -- OR -- </h3>
             </div>
-            <div class="row justify-content-center mb-3">
-                <div class="col-lg-3 col-xs-12 mb-xs-3 mb-sm-0">
+            <div class="row justify-content-center">
+                <div class="col-lg-3 col-xs-12 mb-3">
                     <a href="/cfb/teams" class="w-100 btn btn-lg btn-primary">Team Leaderboards</a>
                 </div>
-                <div class="col-lg-3 col-xs-12 mb-xs-3 mb-sm-0">
+                <div class="col-lg-3 col-xs-12 mb-3">
                     <a href="/cfb/players" class="w-100 btn btn-lg btn-primary">Player Leaderboards</a>
                 </div>
             </div>
@@ -84,7 +84,7 @@
             </div>
             <form class="form-picker mb-3" id="dropdown-form">
                 <div class="row">
-                    <div class="col-auto mb-xs-3 mb-sm-0">
+                    <div class="col-lg-auto mb-3">
                         <select class="form-select form-select-lg" id="yearSelect" onchange="populateWeekSelect();">
                             <option value="-1">Choose Season...</option>
                             <% yrRange.reverse().forEach(yr => { %>
@@ -92,19 +92,19 @@
                             <% }); %>
                         </select>
                     </div>
-                    <div class="col-auto mb-xs-3 mb-sm-0">
+                    <div class="col-lg-auto mb-3">
                         <select class="form-select form-select-lg" id="weekSelect">
                             <option value="-1"<%= (week == null || seasontype == null) ? " selected" : "" %>>Choose Week...</option>
                         </select>
                     </div>
-                    <div class="col-auto mb-xs-3 mb-sm-0">
+                    <div class="col-lg-auto mb-3">
                         <select class="form-select form-select-lg" id="groupSelect">
                             <% groups.forEach(g => { %>
                                 <option value="<%= g.id %>" <%= (group == g.id || (group == null && g.id == 80)) ? " selected" : "" %>><%= g.name %></option>
                             <% }); %>
                         </select>
                     </div>
-                    <div class="col-auto mb-xs-3 mb-sm-0">
+                    <div class="col-lg-auto mb-3">
                         <button type="submit" class="btn btn-lg btn-primary">View</button>
                     </div>
                 </div>

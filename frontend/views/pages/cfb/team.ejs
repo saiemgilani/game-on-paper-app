@@ -108,9 +108,9 @@ function hexToRgb(hex) {
                     <p class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
                 </div>
                 <div class="ms-auto col-lg-6 col-xs-12">
-                    <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
+                    <form class="d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
                         <div class="row">
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto mb-3">
                                 <select class="form-select form-select-md" id="typeSelect">
                                     <option value="-1">Choose Type...</option>
                                     <option value="differential" <%= (type == "differential") ? "selected": "" %>>Net Statistics</option>
@@ -118,7 +118,7 @@ function hexToRgb(hex) {
                                     <option value="defensive" <%= (type == "defensive") ? "selected": "" %>>Defensive</option>
                                 </select>
                             </div>
-                            <div class="col-auto mb-xs-3 mb-sm-0">
+                            <div class="col-lg-auto mb-3">
                                 <select class="form-select form-select-md" id="metricSelect">
                                     <option value="-1">Choose Metric...</option>
                                     <optgroup label="Overall">
@@ -167,7 +167,7 @@ function hexToRgb(hex) {
                     <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
                 </div>
                 <div class="ms-auto col-lg-2 col-xs-12">
-                    <select class="form-select form-select-md mb-3" id="radarSeasonSelect">
+                    <select class="form-select form-select-md" id="radarSeasonSelect">
                         <option value="-1">Choose Season...</option>
                         <% seasons.reverse().forEach((yr, i) => { %>
                             <option value="<%= yr %>" <%= (i == 0) ? "selected": "" %>><%= yr %></option>
