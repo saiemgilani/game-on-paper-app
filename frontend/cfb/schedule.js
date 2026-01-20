@@ -114,6 +114,7 @@ async function _getRemoteGames (year, week, type, group) {
             week: week,
             group: espnGroup || 80,
             type: type || 2,
+            seasontype: type || 2,
             xhr: 1,
             render: 'false',
             userab: 18,
@@ -144,7 +145,7 @@ async function _getRemoteGames (year, week, type, group) {
 
         var result = []
         // console.log(espnContent)
-        Object.entries(espnContent.content.schedule).forEach(([date, schedule]) => {
+        Object.entries(espnContent.content?.schedule).forEach(([date, schedule]) => {
             if (schedule != null && schedule.games != null) {
                 result = result.concat(schedule.games)
             }
