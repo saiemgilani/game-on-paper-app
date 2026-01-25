@@ -15,7 +15,7 @@ jobs:
   build-node:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Node container to GitHub
@@ -31,7 +31,7 @@ jobs:
   build-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
@@ -47,7 +47,7 @@ jobs:
   build-redis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Redis container to GitHub
@@ -77,7 +77,7 @@ jobs:
       - build-python
       - build-redis
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Push updated docker-compose override file
@@ -90,7 +90,7 @@ jobs:
           localPath: "./docker-compose.do.yml"
           remotePath: "./docker-compose.yml"
       - name: Deploy package to DigitalOcean
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1
         env:
           GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
