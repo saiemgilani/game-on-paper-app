@@ -89,6 +89,7 @@ async function _getRemoteGames (year, week, type, group) {
             week: week,
             group: espnGroup || 80,
             type: type || 2,
+            seasontype: type || 2,
             xhr: 1,
             render: 'false',
             userab: 18,

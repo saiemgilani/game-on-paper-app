@@ -1,0 +1,95 @@
+<%
+    function safeDivide(value, denom) {
+        if (!denom) {
+            return 0
+        }
+        return value / denom
+    }
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+
+    let countableAttempts = 0;
+    let rushMatrix = {
+        "left": {
+            "attempts": 0,
+            "yards": 0,
+            "EPA": 0,
+            "TD": 0
+        },
+        "middle": {
+            "attempts": 0,
+            "yards": 0,
+            "EPA": 0,
+            "TD": 0
+        },
+        "right": {
+            "attempts": 0,
+            "yards": 0,
+            "EPA": 0,
+            "TD": 0
+        }
+    };
+
+    const directionRegex = /\s(left|middle|right)\s/g;
+
+    for (const p of plays) {
+        if (p["rush"] != 1) {
+            continue
+        }
+        //console.log(`${p['text']}: ${p['yds_passing']}`)
+
+       const directionMatches = p["text"].match(directionRegex)
+        if (directionMatches && directionMatches.length > 0) {
+            const direction = directionMatches[0].trim()
+            countableAttempts += 1;
+    
+            if (!Object.keys(rushMatrix).includes(direction)) {
+                rushMatrix[direction] = {
+                    "attempts": 0,
+                    "yards": 0,
+                    "EPA": 0,
+                    "TD": 0
+                }
+            }
+
+            //console.log(depth)
+            //console.log(direction)
+            rushMatrix[direction]["attempts"] += 1
+            rushMatrix[direction]["EPA"] += parseFloat(p["EPA"] || 0)
+            rushMatrix[direction]["TD"] += parseInt(p["rush_td"] || 0)
+            rushMatrix[direction]["yards"] += parseFloat(p["yds_rushed"] || 0)
+        }
+    }
+
+%>
+
+<% if (countableAttempts > 0) { %>
+<h3 class="mt-3 mb-2">Rush Matrix  <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper.com on Bluesky!">(Beta)</abbr></small></span></h3>
+<div class="table table-responsive">
+    <table class="table table-sm table-responsive text-center target-matrix">
+        <tbody>
+            <tr class="tm-row">
+                <td class="align-middle tm-segment" style="padding-bottom: 3em !important; padding-top: 3em !important;">
+                    <p class="m-0"><strong><%= roundNumber((rushMatrix["left"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
+                    <p class="m-0"><small><%= rushMatrix["left"]["attempts"] || 0 %> <%= (rushMatrix["left"]["attempts"] || 0) == 1 ? "carry" : "carries" %>, <%= rushMatrix["left"]["yards"] || 0 %> yds</small></p>
+                </td>
+                <td class="align-middle tm-segment" style="padding-bottom: 3em !important; padding-top: 3em !important;">
+                    <p class="m-0"><strong><%= roundNumber((rushMatrix["middle"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
+                    <p class="m-0"><small><%= rushMatrix["middle"]["attempts"] || 0 %> <%= (rushMatrix["middle"]["attempts"] || 0) == 1 ? "carry" : "carries" %>, <%= rushMatrix["middle"]["yards"] || 0 %> yds</small></p>
+                </td>
+                <td class="align-middle tm-segment" style="padding-bottom: 3em !important; padding-top: 3em !important;">
+                    <p class="m-0"><strong><%= roundNumber((rushMatrix["right"]["EPA"] || 0), 2, 2) %> total EPA</strong></p>
+                    <p class="m-0"><small><%= rushMatrix["right"]["attempts"] || 0 %> <%= (rushMatrix["right"]["attempts"] || 0) == 1 ? "carry" : "carries" %>, <%= rushMatrix["right"]["yards"] || 0 %> yds</small></p>
+                </td>
+            </tr>
+            <tr>
+                <th class="align-middle">Left</th>
+                <th class="align-middle">Middle</th>
+                <th class="align-middle">Right</th>
+            </tr>
+        </tfoot>
+        <caption>Built off play-by-play data that started appearing in 2025. Rush attempts that lack direction information are not included.</caption>
+    </table>
+</div>
+<% } %>

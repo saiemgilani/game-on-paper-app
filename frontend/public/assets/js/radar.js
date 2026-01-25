@@ -1,5 +1,3 @@
-const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
 function deltaE(rgbA, rgbB) {
     let labA = rgb2lab(rgbA);
     let labB = rgb2lab(rgbB);
@@ -56,13 +54,17 @@ function adjustColor(primaryColor, altColor) {
     } else if (dEBGTeam <= 49 && dEBGAlt > 49) {
         teamColor = altColor
         console.log(`set team color to alt ${JSON.stringify(altColor)} because of similarity to background`)
-    } else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
-        teamColor = hexToRgb("#CCCCCC")
-        console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
     } else {
         teamColor = primaryColor
         console.log(`set team color to primary ${JSON.stringify(primaryColor)} because backup`)
     }
+    
+    // else if (dEBGTeam <= 49 && dEBGAlt <= 49) {
+    //     teamColor = hexToRgb("#CCCCCC")
+    //     console.log(`set team color to emergency ${JSON.stringify(teamColor)} because of both colors' similarity to background`)
+    // } 
+    
+    
     return teamColor
 }
 
@@ -191,42 +193,22 @@ function generateDataset(breakdowns, titleKey, opponentKey) {
     };
 }
 
-    function getCurrentViewport() {
-    // https://stackoverflow.com/a/8876069
-        const width = Math.max(
-            document.documentElement.clientWidth,
-            window.innerWidth || 0
-        )
-        if (width <= 576) return 'xs'
-        if (width <= 768) return 'sm'
-        if (width <= 992) return 'md'
-        if (width <= 1200) return 'lg'
-        return 'xl'
-    }
-
-    Chart.plugins.register([
-    {
-        afterDraw: (chart) => {
-            let viewport = getCurrentViewport()
-            if (viewport == "xl" || viewport == "lg") {
-                let sizeWidth = chart.ctx.canvas.clientWidth;
-                let sizeHeight = chart.ctx.canvas.clientHeight;
-                let imgSize = 25.0;
-    
-                chart.ctx.save()
-                chart.ctx.textAlign = "right"
-                chart.ctx.font = "8px Helvetica";
-                chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
-                chart.ctx.restore();
-            }
-        }
-    }
-]);
+function getCurrentViewport() {
+// https://stackoverflow.com/a/8876069
+    const width = Math.max(
+        document.documentElement.clientWidth,
+        window.innerWidth || 0
+    )
+    if (width <= 576) return 'xs'
+    if (width <= 768) return 'sm'
+    if (width <= 992) return 'md'
+    if (width <= 1200) return 'lg'
+    return 'xl'
+}
 
 function getNumberWithOrdinal(n) {
-    var s = ["th", "st", "nd", "rd"];
-    v = n % 100;
+    let s = ["th", "st", "nd", "rd"];
+    let v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
@@ -239,6 +221,25 @@ function generateConfig(data, title) {
         type: 'radar',
         data: data,
         fill: true,
+        plugins: [
+            {
+                afterDraw: (chart) => {
+                    let viewport = getCurrentViewport()
+                    if (viewport == "xl" || viewport == "lg") {
+                        let sizeWidth = chart.ctx.canvas.clientWidth;
+                        let sizeHeight = chart.ctx.canvas.clientHeight;
+                        let imgSize = 25.0;
+            
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.fillStyle = isDarkMode ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.75 * (sizeHeight / 8))
+                        chart.ctx.restore();
+                    }
+                }
+            }
+        ],
         options: {
             title: {
                 display: true,

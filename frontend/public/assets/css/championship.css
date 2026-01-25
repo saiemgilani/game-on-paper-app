@@ -15,6 +15,23 @@ a:hover {
     color: var(--bs-primary);
 }
 
+.btn-outline-primary {
+    border-color: var(--bs-primary);
+    color:  var(--bs-primary) !important;
+}
+
+.btn-outline-primary::selection {
+    background-color: var(--bs-primary) !important;
+    border-color:  var(--bs-primary) !important;
+    color: #e8e6e3 !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--bs-primary) !important;
+    border-color:  var(--bs-primary) !important;
+    color: #e8e6e3 !important;
+}
+
 @media (prefers-color-scheme: dark) {
     a {
         color: var(--bs-primary) !important;
@@ -26,5 +43,17 @@ a:hover {
 
     .championship-text {
         color: var(--bs-primary) !important;
+    }
+
+    .btn-outline-primary::selection {
+        background-color: var(--bs-primary) !important;
+        border-color:  var(--bs-primary) !important;
+        color: #e8e6e3 !important;
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--bs-primary) !important;
+        border-color:  var(--bs-primary) !important;
+        color: #e8e6e3 !important;
     }
 }

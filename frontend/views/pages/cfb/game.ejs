@@ -22,8 +22,8 @@ function unique(a) {
     });
 }
 function getNumberWithOrdinal(n) {
-    var s = ["th", "st", "nd", "rd"];
-    v = n % 100;
+    let s = ["th", "st", "nd", "rd"];
+    let v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 function formatDown(down, playType) {
@@ -1204,6 +1204,9 @@ function geiGenerateColorRampValue(input) {
                                 <%- include('../../partials/pass_chart', {
                                     plays: gameData.plays.filter(p => p.pos_team == awayTeam.id)
                                 }) %>
+                                <%- include('../../partials/rush_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == awayTeam.id)
+                                }) %>
                             </div>
                           </div>
                         </div>
@@ -1294,6 +1297,9 @@ function geiGenerateColorRampValue(input) {
                                     </table>
                                 </div>
                                 <%- include('../../partials/pass_chart', {
+                                    plays: gameData.plays.filter(p => p.pos_team == homeTeam.id)
+                                }) %>
+                                <%- include('../../partials/rush_chart', {
                                     plays: gameData.plays.filter(p => p.pos_team == homeTeam.id)
                                 }) %>
                             </div>
@@ -1392,9 +1398,10 @@ function geiGenerateColorRampValue(input) {
             <main class="col-lg-6 ms-sm-auto px-md-4">
                 <%
                 
-                    var curDrive = gameData.drives.current
-                    var currentDrives = (curDrive != null) ? [curDrive] : [];
-                    var gameDrives = [...gameData.drives.previous, ...currentDrives]
+                    const curDrive = gameData.drives.current
+                    const prevDrives = gameData.drives?.previous ?? [];
+                    const validCurrentDrives = (curDrive != null && (prevDrives.find(d => d.id == curDrive?.id) == undefined)) ? [curDrive] : [];
+                    var gameDrives = [...prevDrives, ...validCurrentDrives]
                     if (gameDrives.length > 0) {
                         var validDriveIds = unique(gameData.plays.map(p => p['drive.id']))
                         gameDrives = gameDrives.filter(d => validDriveIds.includes(d.id))

@@ -5,7 +5,7 @@
 <script>
     function render<%= id %>() {
         <%
-        var fieldColor = "rgb(0, 153, 41)"
+        const fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
         if (!isNeutralSite && homeTeam.id == 68) {
             fieldColor = "#12329A"; // Boise State
         } else if (!isNeutralSite && homeTeam.id == 324) {

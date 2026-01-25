@@ -25,7 +25,11 @@ class LogSetup(object):
                 app_log_file_name = app.config["APP_LOG_NAME"]
                 access_log_file_name = app.config["WWW_LOG_NAME"]
             except KeyError as e:
-                exit(code="{} is a required parameter for log_type '{}'".format(e, log_type))
+                exit(
+                    code="{} is a required parameter for log_type '{}'".format(
+                        e, log_type
+                    )
+                )
             app_log = "/".join([log_directory, app_log_file_name])
             www_log = "/".join([log_directory, access_log_file_name])
 
@@ -49,7 +53,11 @@ class LogSetup(object):
         }
         std_logger = {
             "loggers": {
-                "": {"level": logging_level, "handlers": ["default"], "propagate": True},
+                "": {
+                    "level": logging_level,
+                    "handlers": ["default"],
+                    "propagate": True,
+                },
                 "app.access": {
                     "level": logging_level,
                     "handlers": ["access_logs"],
