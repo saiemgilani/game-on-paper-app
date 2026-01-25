@@ -1,4 +1,4 @@
-FROM python:3.12 AS base
+FROM python:3.14 AS base
 
 WORKDIR /root/src
 
@@ -14,6 +14,5 @@ WORKDIR /code
 COPY --from=pybuilder /root/.local /root/.local
 
 COPY . ./
-
 
 CMD python app.py
