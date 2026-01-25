@@ -2,4 +2,4 @@ Flask==3.1.2
 Werkzeug==3.1.5
 xgboost<3
 numpy>=2.0.2
-sportsdataverse==0.0.36.2.46
+sportsdataverse==0.0.36.3.3
