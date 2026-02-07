@@ -34,7 +34,7 @@ function cleanLocation() {
             </div>
         </div>
         <%
-            const records = teamData["record"] || [];
+            const records = Array.isArray(teamData["record"]) ? teamData["record"] : [];
             const overallStuff = records.filter(item => item["type"] == "total")[0];
             const overall = overallStuff?.displayValue || "0-0";
             const finishes = overallStuff?.stats?.filter(item => item.name == "playoffSeed") || []

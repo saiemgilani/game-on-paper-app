@@ -180,7 +180,7 @@ router.get('/players', async (req, res, next) => {
 
 router.get('/team/:teamId', async (req, res, next) => {
         try {
-            let data = await Teams.getTeamInformation(req.params.year, req.params.teamId)
+            let data = await Teams.getTeamSeasonInformation(req.params.year, req.params.teamId)
             if (data == null) {
                 throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
             }
@@ -190,7 +190,7 @@ router.get('/team/:teamId', async (req, res, next) => {
             } else {
                 const brkd = await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'overall')
                 // logger.info(brkd[0])
-                return res.render('pages/cfb/team', {
+                return res.render('pages/cfb/team_season', {
                     teamData: data,
                     breakdown: brkd,
                     players: {

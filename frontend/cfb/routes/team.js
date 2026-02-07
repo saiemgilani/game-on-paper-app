@@ -1,0 +1,115 @@
+const express = require('express');
+const cachePage = require('../../utils/cache');
+const SummaryModel = require("../resources/summary")
+const TeamModel = require("../resources/team")
+const logger = require("../../utils/logger");
+
+const router = express.Router();
+logger.info("activating teams route page cache")
+router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+
+function getPercentileKey(metric) {
+    switch (metric) {
+        case "overall.epaPerPlay": 
+            return "epaPerPlay";
+        case "overall.yardsPerPlay": 
+            return "yardsPerPlay";
+        case "overall.successRate": 
+            return "successRate";
+        case "passing.epaPerPlay": 
+            return "epaPerDropback";
+        case "passing.yardsPerPlay": 
+            return "yardsPerDropback";
+        case "passing.successRate": 
+            return "passingSuccessRate";
+        case "rushing.epaPerPlay": 
+            return "epaPerRush";
+        case "rushing.yardsPerPlay": 
+            return "yardsPerRush";
+        case "rushing.successRate": 
+            return "rushingSuccessRate";
+        case "overall.havocRate": 
+            return "havocRate";
+        case "passing.explosiveRate":
+            return "passingExplosivePlayRate";
+        case "rushing.explosiveRate":
+            return "rushingExplosivePlayRate";
+        case "rushing.opportunityRate":
+            return "rushOpportunityRate";
+        case "rushing.lineYards":
+            return "lineYards";
+        case "rushing.stuffedPlayRate":
+            return "playStuffedRate";
+        case "overall.explosiveRate":
+            return "explosivePlayRate";
+        case "overall.nonExplosiveEpaPerPlay":
+            return "nonExplosiveEpaPerPlay";
+        case "overall.earlyDownEPAPerPlay":
+            return "earlyDownEpaPerPlay";
+        case "overall.lateDownSuccessRate":
+            return "lateDownSuccessRate";
+        case "overall.thirdDownDistance":
+            return "thirdDownDistance";
+        default:
+            return metric;
+    }
+}
+
+router.get('/:teamId', async function(req, res, next) {
+    try {
+        let data = await TeamModel.getTeamInformation(req.params.teamId)
+        if (data == null) {
+            throw Error(`Data not available for team ${req.params.teamId}. An internal service may be down.`)
+        }
+
+        if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
+            return res.json(data);
+        } else {
+            logger.error("test")
+            const brkd = await SummaryModel.retrieveTeamData(null, req.params.teamId, null)
+            const type = req.query.type ?? "differential";
+            let metric = req.query.metric ?? `overall.adjEpaPerPlay`
+            // can't do passing/rushing/havoc differentials
+            if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+                metric = `overall.adjEpaPerPlay`
+            }
+
+            let selectedPercentiles = []
+            if (type != "differential") {
+                let allPctls = []
+                for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+                    const percentiles = await SummaryModel.retrievePercentiles(null, p);
+                    allPctls = allPctls.concat(percentiles);
+                }
+
+                const pctlKey = getPercentileKey(metric)
+                selectedPercentiles = allPctls.map(p => {
+                    var result = {
+                        season: p["season"],
+                        pctile: p["pctile"],
+                    }
+                    result["value"] = p[pctlKey];
+                    return result
+                }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+            }
+
+            // console.log(pctlKey)
+            // console.log(selectedPercentiles)
+            // console.log(brkd[0])
+            return res.render('pages/cfb/team', {
+                teamData: data,
+                breakdowns: brkd,
+                seasons: brkd.map(b => b.season).sort(),
+                percentiles: selectedPercentiles,
+                type,
+                metric,
+                last_updated: await SummaryModel.retrieveLastUpdated()
+            });
+        }
+    } catch(err) {
+        console.error(err)
+        return next(err)
+    }
+})
+
+module.exports = router

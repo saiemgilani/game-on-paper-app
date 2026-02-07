@@ -34,7 +34,7 @@ services:
           cpus: 0.5
           memory: 1gb
   summary:
-    image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
+    image: cfb-team-summaries:latest
     platform: linux/amd64
     expose:
       - 3000

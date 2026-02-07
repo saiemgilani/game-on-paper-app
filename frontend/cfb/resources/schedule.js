@@ -88,7 +88,7 @@ async function _getRemoteGames (year, week, type, group) {
             year: year,
             week: week,
             group: espnGroup || 80,
-            type: type || 2,
+            // type: type || 2,
             seasontype: type || 2,
             xhr: 1,
             render: 'false',
@@ -104,7 +104,7 @@ async function _getRemoteGames (year, week, type, group) {
             }
         }
 
-        const url = baseUrl + (new URLSearchParams(query)).toString() + `&${new Date().getTime()}`;
+        const url = baseUrl + (new URLSearchParams(query)).toString(); // + `&${new Date().getTime()}`;
         logger.info(url)
         const res = await axios.get(url);
 
