@@ -144,7 +144,7 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
 
 async function retrievePercentiles(year = null, pctile = null) {
     if (!year && !pctile) {
-        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
     }
     const key = generateKey(["percentiles", year, pctile])

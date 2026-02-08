@@ -85,7 +85,7 @@ router.route('/:gameId')
                     season
                 });
             } catch (e) {
-                console.error(`Error while loading PBP data: ${e}`);
+                logger.error(`Error while loading PBP data: ${e}`);
                 return res.render('pages/cfb/game_error', {
                     gameData: {
                         gameInfo: game

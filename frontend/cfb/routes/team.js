@@ -56,7 +56,7 @@ router.get('/:teamId', async function(req, res, next) {
             last_updated: await SummaryModel.retrieveLastUpdated()
         });
     } catch(err) {
-        console.error(err)
+        logger.error(err)
         return next(err)
     }
 })
