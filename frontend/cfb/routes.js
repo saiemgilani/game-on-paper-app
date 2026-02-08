@@ -1,13 +1,12 @@
 const express = require('express');
-const GamesModel = require("./resources/game")
-const GlossaryModel = require('./resources/glossary');
+const { routeGameList } = require("./resources/game")
+const { generateGlossaryItems } = require('./resources/glossary');
 const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
 const TeamsRoute = require("./routes/team");
 const ChartsRoute = require("./routes/chart");
-const logger = require("../utils/logger");
-const ping = require("../utils/misc").ping;
-const CURRENT_YEAR = require("../utils/misc").CURRENT_YEAR;
+const { ping, range, CURRENT_YEAR } = require("../utils/misc");
+const { retrieveLastUpdated, retrieveAllTeams } = require('./resources/summary');
 
 const router = express.Router();
 
@@ -31,7 +30,7 @@ router.get('/healthcheck', async (req, res) => {
 
 // cache this every minute
 router.get('/', async function(req, res, next) {
-    return GamesModel.routeGameList(
+    return routeGameList(
         req, 
         res,
         next,
@@ -44,7 +43,7 @@ router.get('/', async function(req, res, next) {
 
 router.get('/glossary', async (req, res, next) => {
     try {
-        const glossary = await GlossaryModel.generateGlossaryItems()
+        const glossary = await generateGlossaryItems()
         return res.render('pages/cfb/glossary', {
             glossary 
         });

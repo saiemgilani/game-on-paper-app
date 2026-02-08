@@ -1,21 +1,6 @@
 const axios = require("axios");
 const logger = require("../utils/logger");
-const alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-
-function alphabetize(array) {
-    let result = {}
-    alphabet.forEach(letter => {
-        let records = tmpGloss[letter];
-        if (records) {
-            let copyRec = [...records];
-            copyRec.sort((a, b) => {
-                return a.term.localeCompare(b.term)
-            });
-            result[letter] = copyRec;
-        }
-    });
-    return result;
-}
+const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => p != null)
@@ -102,6 +87,7 @@ module.exports = {
     getPercentileKey,
     cleanUpParams,
     ping,
-    alphabetize,
+    ALPHABET,
+    range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
     CURRENT_YEAR: 2025
 }
