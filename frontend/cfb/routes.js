@@ -53,11 +53,15 @@ router.get('/glossary', async (req, res, next) => {
 })
 
 router.get('/teams', async (req, res, next) => {
-    return res.render("pages/cfb/team_index", {
-        teams: await retrieveAllTeams(),
-        seasons: range(2014, CURRENT_YEAR),
-        last_updated: await retrieveLastUpdated()
-    })
+    try {
+        return res.render("pages/cfb/team_index", {
+            teams: await retrieveAllTeams(),
+            seasons: range(2014, CURRENT_YEAR),
+            last_updated: await retrieveLastUpdated()
+        })
+    } catch (err) {
+        return next(err)
+    }
 })
 
 router.use("/game", GamesRoute)

@@ -17,7 +17,7 @@ async function generateGlossaryItems() {
                 copyRec.sort((a, b) => {
                     return a.term.localeCompare(b.term)
                 });
-                result[letter] = copyRec;
+                glossary[letter] = copyRec;
             }
         });
 
