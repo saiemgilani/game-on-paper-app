@@ -7,6 +7,7 @@ const TeamsRoute = require("./routes/team");
 const ChartsRoute = require("./routes/chart");
 const logger = require("../utils/logger");
 const ping = require("../utils/misc").ping;
+const CURRENT_YEAR = require("../utils/misc").CURRENT_YEAR;
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.use("/team", TeamsRoute)
 router.use("/charts", ChartsRoute)
 
 // short hand
-const CURRENT_YEAR = 2025; // update at week 4
+ // update at week 4
 router.get('/teams', async (req, res, next) => {
     return res.redirect(`/cfb/year/${CURRENT_YEAR}/teams/differential`);
 })

@@ -1,5 +1,8 @@
 const axios = require("axios");
 
+
+const CURRENT_YEAR = 2025;
+
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => p != null)
     if (valid.length == 0) {
@@ -84,5 +87,6 @@ module.exports = {
     generateKey,
     getPercentileKey,
     cleanUpParams,
-    ping
+    ping,
+    CURRENT_YEAR
 }
