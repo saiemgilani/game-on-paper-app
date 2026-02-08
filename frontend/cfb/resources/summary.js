@@ -14,6 +14,16 @@ redisClient.connect().then(() => {
     logger.info('connected to redis LRU cache on port 6379');
 });
 
+async function retrieveAllTeams() {
+    logger.info(`loading from summary at url: /teams`)
+    const response = await axios({
+        method: 'GET',
+        url: `http://summary:3000/teams`
+    });
+    const content = response.data.teams;
+    return content;
+}
+
 async function retrieveRemoteData(payload) {
     const query = cleanUpParams(payload);
     logger.info(`loading from summary: ${JSON.stringify(query)}`)
@@ -214,5 +224,6 @@ module.exports = {
     retrieveLastUpdated,
     retrieveLeagueData,
     retrievePercentiles,
-    retrieveTeamData
+    retrieveTeamData,
+    retrieveAllTeams
 }

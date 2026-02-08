@@ -52,6 +52,13 @@ router.get('/glossary', async (req, res, next) => {
     }
 })
 
+router.get('/teams', async (req, res, next) => {
+    return res.render("pages/cfb/team_index", {
+        teams: await retrieveAllTeams(),
+        seasons: range(2014, CURRENT_YEAR),
+        last_updated: await retrieveLastUpdated()
+    })
+})
 
 router.use("/game", GamesRoute)
 router.use("/year/:year", YearsRoute)
@@ -59,11 +66,6 @@ router.use("/team", TeamsRoute)
 router.use("/charts", ChartsRoute)
 
 // short hand
- // update at week 4
-router.get('/teams', async (req, res, next) => {
-    return res.redirect(`/cfb/year/${CURRENT_YEAR}/teams/differential`);
-})
-
 router.get('/teams/:type', async (req, res, next) => {
     return res.redirect(`/cfb/year/${CURRENT_YEAR}/teams/${req.params.type}`);
 })
