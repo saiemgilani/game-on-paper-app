@@ -37,8 +37,11 @@ router.get('/trends', async function(req, res, next) {
             return result
         }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
 
+        let availableSeasons = selectedPercentiles.map(b => b.season)
+        availableSeasons = [...new Set(availableSeasons)].sort();
+
         return res.render('pages/cfb/trends', {
-            seasons: selectedPercentiles.map(b => b.season).sort(),
+            seasons: availableSeasons,
             percentiles: selectedPercentiles,
             type,
             metric,
