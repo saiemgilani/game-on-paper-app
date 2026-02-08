@@ -41,7 +41,7 @@ router.get('/type/:type', async (req, res, next) => {
         {
             year: req.params.year, 
             week: 1, 
-            type: req.params.week, 
+            type: req.params.type, 
             group: req.query.group || 80
         }
     )
