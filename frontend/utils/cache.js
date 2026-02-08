@@ -6,11 +6,15 @@ const redisClient = redis.createClient({
 
 const cacheIgnore = process.env.CACHE_IGNORE || 'false'
 
-redisClient.on('error', (err) => logger.error('Redis Client Error ', err));
+redisClient.on('error', (err) => logger.error(`Error in Redis client: ${err}`));
 
-redisClient.connect().then(() => {
-    logger.info('connected to redis page cache on port 6380');
-})
+redisClient.connect()
+    .then(() => {
+        logger.info('connected to redis page cache on port 6380');
+    })
+    .catch((e) => {
+        logger.error(`Error while connecting to redis page cache: ${e}`)
+    })
 
 class CacheError extends Error {
   constructor(message) {
