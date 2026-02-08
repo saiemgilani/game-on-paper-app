@@ -32,8 +32,7 @@ class CacheError extends Error {
 
 const setCachedValue = async (key, value, duration) => {
     try {
-        await redisClient.set(key, value)
-        await redisClient.expire(key, duration)
+        await redisClient.set(key, value, { EX: duration })
     } catch (e) {
         logger.error(`Error while writing ${key} to redis: ${e}`)
     }

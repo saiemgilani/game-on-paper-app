@@ -49,8 +49,8 @@ async function retrieveRemoteLeagueData(year, type) {
             type: type
         });
         const key = generateKey(["league", year, type]);
-        await redisClient.set(key, JSON.stringify(content))
-        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+        // expire every three days so that we get fresh data
+        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content;
     } catch (err) {
         logger.error(`could not find data for league in ${year}, checking ${year - 1}`)
@@ -92,8 +92,8 @@ async function retrieveRemoteLastUpdated() {
         url: `http://summary:3000/updated`
     });
     const content = response.data;
-    await redisClient.set(`summary-last-updated`, JSON.stringify(content))
-    await redisClient.expire(`summary-last-updated`, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+     // expire every three days so that we get fresh data
+    await redisClient.set(`summary-last-updated`, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
     return content.last_updated;
 }
 
@@ -126,8 +126,8 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
         // update redis cache
         const content = response.data.results;
         const key = generateKey(["percentiles", year, pctile]);
-        await redisClient.set(key, JSON.stringify(content))
-        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+        // expire every three days so that we get fresh data
+        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
         return content;
     } catch (err) {
         logger.error(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
@@ -175,8 +175,8 @@ async function retrieveRemoteTeamData(year, team_id, type) {
             type: type
         });
         const key = generateKey([year, team_id, type]);
-        await redisClient.set(key, JSON.stringify(content))
-        await redisClient.expire(key, 60 * 60 * 24 * 3); // expire every three days so that we get fresh data
+        // expire every three days so that we get fresh data
+        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content;
     } catch (err) {
         logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
