@@ -1,7 +1,5 @@
 const axios = require("axios");
-
-
-const CURRENT_YEAR = 2025;
+const logger = require("../utils/logger");
 
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => p != null)
@@ -88,5 +86,5 @@ module.exports = {
     getPercentileKey,
     cleanUpParams,
     ping,
-    CURRENT_YEAR
+    CURRENT_YEAR: 2025
 }

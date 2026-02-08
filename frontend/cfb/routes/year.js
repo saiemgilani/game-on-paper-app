@@ -71,8 +71,8 @@ router.get('/charts/team/epa', async (req, res, next) => {
                     teamId: t.teamId,
                     team: t.team,
                     fbsClass: t.fbsClass,
-                    adjOffEpa: t["offensive"]["overall"]["adjEpaPerPlay"],
-                    adjDefEpa: t["defensive"]["overall"]["adjEpaPerPlay"],
+                    adjOffEpa: t.offensive?.overall?.adjEpaPerPlay,
+                    adjDefEpa: t.defensive?.overall?.adjEpaPerPlay
                 }
             })
 

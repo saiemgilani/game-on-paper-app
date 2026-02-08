@@ -43,11 +43,14 @@ router.get('/', async function(req, res, next) {
 
 
 router.get('/glossary', async (req, res, next) => {
-    const glossary = await GlossaryModel.generateGlossaryItems()
-    logger.info(glossary)
-    return res.render('pages/cfb/glossary', {
-        glossary 
-    });
+    try {
+        const glossary = await GlossaryModel.generateGlossaryItems()
+        return res.render('pages/cfb/glossary', {
+            glossary 
+        });
+    } catch (err) {
+        return next(err)
+    }
 })
 
 

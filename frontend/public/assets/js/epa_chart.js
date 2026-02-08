@@ -25,7 +25,7 @@ function getCurrentViewport() {
 }
 
 function buildData(base) {
-    const data = base.map(t => {
+    const data = base.filter(t => t.adjOffEpa != null && t.adjDefEpa != null).map(t => {
         return {
             x: t.adjOffEpa,
             y: t.adjDefEpa
