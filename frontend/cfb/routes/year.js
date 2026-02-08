@@ -179,32 +179,28 @@ router.get('/players', async (req, res, next) => {
 })
 
 router.get('/team/:teamId', async (req, res, next) => {
-        try {
-            let data = await Teams.getTeamSeasonInformation(req.params.year, req.params.teamId)
-            if (data == null) {
-                throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
-            }
-    
-            if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-                return res.json(data);
-            } else {
-                const brkd = await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'overall')
-                // logger.info(brkd[0])
-                return res.render('pages/cfb/team_season', {
-                    teamData: data,
-                    breakdown: brkd,
-                    players: {
-                        passing: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'passing'),
-                        rushing: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'rushing'),
-                        receiving: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'receiving')
-                    },
-                    season: req.params.year
-                });
-            }
-        } catch(err) {
-            return next(err)
+    try {
+        let data = await Teams.getTeamSeasonInformation(req.params.year, req.params.teamId)
+        if (data == null) {
+            throw Error(`Data not available for team ${req.params.teamId} and season ${req.params.year}. An internal service may be down.`)
         }
-    })
+
+        const brkd = await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'overall')
+            // logger.info(brkd[0])
+            return res.render('pages/cfb/team_season', {
+                teamData: data,
+                breakdown: brkd,
+                players: {
+                    passing: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'passing'),
+                    rushing: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'rushing'),
+                    receiving: await SummaryModel.retrieveTeamData(req.params.year, req.params.teamId, 'receiving')
+                },
+                season: req.params.year
+            });
+    } catch(err) {
+        return next(err)
+    }
+})
 
 
 router.get('/teams', async (req, res, next) => {

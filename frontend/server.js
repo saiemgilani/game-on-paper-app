@@ -52,14 +52,7 @@ app.listen(port, () => {
 
 app.use(function (err, req, res, next) {
     logger.error(err.stack)
-    if (req.method == "POST" || req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-        return res.status(500).json({
-            status: 500,
-            message: err.message
-        });
-    } else {
-        return res.status(500).render('error', {
-            error: err
-        });
-    }
+    return res.status(500).render('error', {
+        error: err
+    });
 })

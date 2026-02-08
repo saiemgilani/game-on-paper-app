@@ -37,17 +37,13 @@ router.get('/trends', async function(req, res, next) {
             return result
         }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
 
-        if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-            return res.json(selectedPercentiles); 
-        } else {
-            return res.render('pages/cfb/trends', {
-                seasons: selectedPercentiles.map(b => b.season).sort(),
-                percentiles: selectedPercentiles,
-                type,
-                metric,
-                last_updated: await SummaryModel.retrieveLastUpdated()
-            });
-        }
+        return res.render('pages/cfb/trends', {
+            seasons: selectedPercentiles.map(b => b.season).sort(),
+            percentiles: selectedPercentiles,
+            type,
+            metric,
+            last_updated: await SummaryModel.retrieveLastUpdated()
+        });
     } catch(err) {
         console.error(err)
         return next(err)

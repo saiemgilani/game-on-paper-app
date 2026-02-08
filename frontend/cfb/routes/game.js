@@ -69,25 +69,21 @@ router.route('/:gameId')
                     throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
                 }
         
-                if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
-                    return res.json(data);
-                } else {
-                    let percentiles = [];
-                    try {
-                        const inputSeason = data["header"]["season"]["year"];
-                        const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
-                        logger.info(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
-                        percentiles = await SummaryModel.retrievePercentiles(season);
-                    } catch (e) {
-                        logger.error(`error while retrieving league percentiles: ${e}`)
-                    }
-
-                    return res.render('pages/cfb/game', {
-                        gameData: data,
-                        percentiles,
-                        season
-                    });
+                let percentiles = [];
+                try {
+                    const inputSeason = data["header"]["season"]["year"];
+                    const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
+                    logger.info(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
+                    percentiles = await SummaryModel.retrievePercentiles(season);
+                } catch (e) {
+                    logger.error(`error while retrieving league percentiles: ${e}`)
                 }
+
+                return res.render('pages/cfb/game', {
+                    gameData: data,
+                    percentiles,
+                    season
+                });
             } catch (e) {
                 console.error(`Error while loading PBP data: ${e}`);
                 return res.render('pages/cfb/game_error', {
