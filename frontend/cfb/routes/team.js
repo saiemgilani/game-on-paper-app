@@ -3,7 +3,7 @@ const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const TeamModel = require("../resources/team")
 const logger = require("../../utils/logger");
-const getPercentileKey = require("../../utils/keys").getPercentileKey;
+const getPercentileKey = require("../../utils/misc").getPercentileKey;
 
 const router = express.Router();
 logger.info("activating teams route page cache")

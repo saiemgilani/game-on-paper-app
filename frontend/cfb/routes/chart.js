@@ -2,7 +2,7 @@ const express = require('express');
 const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const logger = require("../../utils/logger");
-const getPercentileKey = require("../../utils/keys").getPercentileKey;
+const getPercentileKey = require("../../utils/misc").getPercentileKey;
 
 const router = express.Router();
 logger.info("activating charts route page cache")

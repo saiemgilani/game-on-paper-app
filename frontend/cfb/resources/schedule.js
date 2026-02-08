@@ -3,6 +3,7 @@ const fs = require('fs');
 const logger = require("../../utils/logger");
 const axios = require('axios')
 const path = require("path");
+const cleanUpParams = require("../../utils/misc").cleanUpParams;
 
 logger.info("Compiling schedule vars");
 let schedule = {}
@@ -84,7 +85,7 @@ async function _getRemoteGames (year, week, type, group) {
         // https://github.com/BlueSCar/cfb-data/blob/master/app/services/schedule.service.js
         const baseUrl = 'https://cdn.espn.com/core/college-football/schedule?';
 
-        const query = {
+        let query = {
             year: year,
             week: week,
             group: espnGroup || 80,
@@ -94,16 +95,8 @@ async function _getRemoteGames (year, week, type, group) {
             render: 'false',
             userab: 18,
         }
-
-        for (let param in query) { /* You can get copy by spreading {...query} */
-            if (query[param] === undefined /* In case of undefined assignment */
-                || query[param] === null 
-                || query[param] === ""
-            ) {    
-                delete query[param];
-            }
-        }
-
+        query = cleanUpParams(query)
+        
         const url = baseUrl + (new URLSearchParams(query)).toString(); // + `&${new Date().getTime()}`;
         logger.info(url)
         const res = await axios.get(url);

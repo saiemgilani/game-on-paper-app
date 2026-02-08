@@ -1,7 +1,8 @@
 const axios = require('axios');
 const redis = require('redis');
 const logger = require("../../utils/logger");
-const generateKey = require("../../utils/keys").generateKey;
+const generateKey = require("../../utils/misc").generateKey;
+const cleanUpParams = require("../../utils/misc").cleanUpParams;
 
 const redisClient = redis.createClient({
     url: 'redis://redis:6379'
@@ -12,19 +13,6 @@ redisClient.on('error', (err) => logger.error('Redis Client Error', err));
 redisClient.connect().then(() => {
     logger.info('connected to redis LRU cache on port 6379');
 });
-
-function cleanUpParams(payload) {
-    let query = payload;
-    for (let param in query) { /* You can get copy by spreading {...query} */
-        if (query[param] === undefined /* In case of undefined assignment */
-            || query[param] === null 
-            || query[param] === ""
-        ) {    
-            delete query[param];
-        }
-    }
-    return query;
-}
 
 async function retrieveRemoteData(payload) {
     const query = cleanUpParams(payload);

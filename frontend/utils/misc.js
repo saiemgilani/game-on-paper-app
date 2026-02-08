@@ -1,3 +1,5 @@
+const axios = require("axios");
+
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => p != null)
     if (valid.length == 0) {
@@ -54,8 +56,33 @@ function getPercentileKey(metric) {
     }
 }
 
+function cleanUpParams(payload) {
+    let query = {...payload};
+    for (let param in query) { 
+        if (query[param] === undefined /* In case of undefined assignment */
+            || query[param] === null 
+            || query[param] === ""
+        ) {    
+            delete query[param];
+        }
+    }
+    return query;
+}
+
+async function ping(url) {
+    let check = { "status": 404 };
+    try {
+        check = await axios.get(url)
+        return { "status": check.status } 
+    } catch (err) {
+        logger.error(`Error while checking status of ${url}: ${err}`)
+        return { "status": 500 };
+    }
+}
 
 module.exports = {
     generateKey,
-    getPercentileKey
+    getPercentileKey,
+    cleanUpParams,
+    ping
 }
