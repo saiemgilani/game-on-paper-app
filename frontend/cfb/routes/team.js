@@ -3,57 +3,11 @@ const cachePage = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const TeamModel = require("../resources/team")
 const logger = require("../../utils/logger");
+const getPercentileKey = require("../../utils/keys").getPercentileKey;
 
 const router = express.Router();
 logger.info("activating teams route page cache")
 router.use(cachePage(60)) // 1 minute TTL for stuff that does change
-
-function getPercentileKey(metric) {
-    switch (metric) {
-        case "overall.epaPerPlay": 
-            return "epaPerPlay";
-        case "overall.yardsPerPlay": 
-            return "yardsPerPlay";
-        case "overall.successRate": 
-            return "successRate";
-        case "passing.epaPerPlay": 
-            return "epaPerDropback";
-        case "passing.yardsPerPlay": 
-            return "yardsPerDropback";
-        case "passing.successRate": 
-            return "passingSuccessRate";
-        case "rushing.epaPerPlay": 
-            return "epaPerRush";
-        case "rushing.yardsPerPlay": 
-            return "yardsPerRush";
-        case "rushing.successRate": 
-            return "rushingSuccessRate";
-        case "overall.havocRate": 
-            return "havocRate";
-        case "passing.explosiveRate":
-            return "passingExplosivePlayRate";
-        case "rushing.explosiveRate":
-            return "rushingExplosivePlayRate";
-        case "rushing.opportunityRate":
-            return "rushOpportunityRate";
-        case "rushing.lineYards":
-            return "lineYards";
-        case "rushing.stuffedPlayRate":
-            return "playStuffedRate";
-        case "overall.explosiveRate":
-            return "explosivePlayRate";
-        case "overall.nonExplosiveEpaPerPlay":
-            return "nonExplosiveEpaPerPlay";
-        case "overall.earlyDownEPAPerPlay":
-            return "earlyDownEpaPerPlay";
-        case "overall.lateDownSuccessRate":
-            return "lateDownSuccessRate";
-        case "overall.thirdDownDistance":
-            return "thirdDownDistance";
-        default:
-            return metric;
-    }
-}
 
 router.get('/:teamId', async function(req, res, next) {
     try {
