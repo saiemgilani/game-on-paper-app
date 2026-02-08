@@ -6,6 +6,7 @@ const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
 const TeamsRoute = require("./routes/team");
 const ChartsRoute = require("./routes/chart");
+const logger = require("../utils/logger");
 
 const router = express.Router();
 
@@ -43,9 +44,11 @@ router.get('/', async function(req, res, next) {
 });
 
 
-router.get('/glossary', (req, res, next) => {
+router.get('/glossary', async (req, res, next) => {
+    const glossary = await GlossaryModel.generateGlossaryItems()
+    logger.info(glossary)
     return res.render('pages/cfb/glossary', {
-        glossary: GlossaryModel.generateGlossaryItems()
+        glossary 
     });
 })
 

@@ -19,7 +19,6 @@ router.get('/:teamId', async function(req, res, next) {
         if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
             return res.json(data);
         } else {
-            logger.error("test")
             const brkd = await SummaryModel.retrieveTeamData(null, req.params.teamId, null)
             const type = req.query.type ?? "differential";
             let metric = req.query.metric ?? `overall.adjEpaPerPlay`
