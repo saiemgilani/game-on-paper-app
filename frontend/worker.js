@@ -169,7 +169,9 @@ async function startWorker() {
                 logger.info("not a real job, skipping...")
             }
             // job.id, job.payload
+            logger.info(`Worker received valid job to process: ${JSON.stringify(job)}`)
             await handleJob(client, job);
+            logger.info(`Worker processed job: ${JSON.stringify(job)}, waiting for next job in queue...`)
 
             if (!IS_ACTIVE_BEANSTALK_WORKER) {
                 logger.info(`Queue processing stopping gracefully...`)
