@@ -1,9 +1,7 @@
 const logger = require("./utils/logger");
-const ejs = require("ejs");
 const axios = require("axios");
 const {sleep} = require("./utils/misc");
 const GamesModel = require("./cfb/resources/game")
-const SummaryModel = require("./cfb/resources/summary")
 const { setCachedValue } = require("./utils/cache")
 
 const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
@@ -12,86 +10,11 @@ const REDIS_GAME_TTL = process.env.REDIS_GAME_TTL ?? 120;
 let IS_ACTIVE_BEANSTALK_WORKER = (process.env.IS_ACTIVE_BEANSTALK_WORKER == "true") ?? false;
 
 
-async function generateGameHtml(gameId, header) {
-    try {
-        if (GamesModel.QUARANTINE_LIST.includes(gameId)) {
-            throw new Error(`Game ${gameId} has been quarantined`);
-        }
-        // if it's past/live, send to normal template
-        const data = await GamesModel.retrievePBP(gameId);
-        if (data == null || data.gameInfo == null) {
-            throw Error(`Data not available for game ${gameId}. An internal service may be down.`)
-        }
-
-        let percentiles = [];
-        try {
-            const inputSeason = data["header"]["season"]["year"];
-            const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
-            logger.info(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
-            percentiles = await SummaryModel.retrievePercentiles(season);
-        } catch (e) {
-            logger.error(`error while retrieving league percentiles: ${e}`)
-        }
-
-        return ejs.renderFile('./views/pages/cfb/game.ejs', {
-            gameData: data,
-            percentiles,
-            season
-        });
-    } catch (e) {
-        logger.error(`Error while loading PBP data: ${e}`);
-        return ejs.renderFile('./views/pages/cfb/game_error.ejs', {
-            gameData: {
-                gameInfo: header["competitions"][0]
-            },
-            errorType: (e.message.includes('quarantine')) ? 'quarantine' : 'pbp'
-        });
-    }
-}
-
-async function generatePreviewHtml(gameId, header) {
-    const game = header["competitions"][0];
-    const season = header["season"]["year"];
-    const week = header["week"];
-    const homeComp = game.competitors[0];
-    const awayComp = game.competitors[1];
-    const homeTeam = homeComp.team;
-    const awayTeam = awayComp.team;
-
-    const homeBreakdown = await SummaryModel.retrieveTeamData(season, homeTeam.id, 'overall', parseInt(season) - 1);
-    const awayBreakdown = await SummaryModel.retrieveTeamData(season, awayTeam.id, 'overall', parseInt(season) - 1);
-    return ejs.renderFile('./views/pages/cfb/pregame.ejs', {
-        season,
-        week,
-        view_full: false,
-        gameData: {
-            gameInfo: game,
-            header,
-            matchup: {
-                team: [
-                    ...awayBreakdown, ...homeBreakdown
-                ]
-            }
-        }
-    });
-}
-
 async function handleJob(client, job) {
     try {
         logger.info(`Starting job ${job.id} processing with payload: ${JSON.stringify(job.payload)}`);
         // send to python and retrieve rendered HTML response
-        const page = await GamesModel.retrieveGamePage(job.payload.gameId);
-        const gameHeader = page["gamepackageJSON"]["header"];
-        const game = gameHeader["competitions"][0];
-
-        let htmlResponse = null;
-        if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
-            // if it's in the future, send to pregame template
-            htmlResponse = await generatePreviewHtml(job.payload.gameId, gameHeader)
-        } else {
-            // if it's old or current, send to current template
-            htmlResponse = await generateGameHtml(job.payload.gameId, gameHeader)
-        }
+        const htmlResponse = await GamesModel.generateGameHtml(job.payload.gameId);
 
         if (htmlResponse) {
             // store in redis
@@ -167,6 +90,7 @@ async function startWorker() {
             const job = await client.reserve(); //WithTimeout(parseInt(BEANSTALK_RESERVE_TIMEOUT));
             if (!job || !job.payload) {
                 logger.info("Worker: received something that's not a real job, skipping...")
+                continue;
             }
             // job.id, job.payload
             logger.info(`Worker: received valid job to process: ${JSON.stringify(job)}`)
@@ -182,6 +106,11 @@ async function startWorker() {
         client.releaseClient();
     } catch (err) {
         logger.error(`Worker: Uncaught error in queue worker: ${err}`)
+        if (!IS_ACTIVE_BEANSTALK_WORKER) {
+            logger.info(`Worker: Queue processing stopping gracefully...`)
+            logger.info(`Worker: Releasing client to beanstalkd pool...`)
+            client.releaseClient();
+        }
     } finally {
         logger.info(`Worker: Disconnecting from beanstalkd...`)
         BEANSTALK_CLIENT_POOL.disconnect();

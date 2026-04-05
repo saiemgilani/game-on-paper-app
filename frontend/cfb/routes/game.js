@@ -9,22 +9,17 @@ const { REDIS_CLIENT } = require("../../utils/cache")
 
 router.route('/:gameId')
     .get(async function(req, res, next) {
-        try {
-            const game = await GamesModel.retrieveGamePage(req.params.gameId);
-            // if in quarantine, return quarantine error
-            if (GamesModel.QUARANTINE_LIST.includes(req.params.gameId)) {
-                return res.render('pages/cfb/game_error', {
-                    gameData: {
-                        gameInfo: game
-                    },
-                    errorType: (e.message.includes('quarantine')) ? 'quarantine' : 'pbp'
-                });
-            }
-            
-            const pbpHtml = await REDIS_CLIENT.get(req.params.gameId)
+        try {            
+            let pbpHtml = await REDIS_CLIENT.get(req.params.gameId)
             if (!pbpHtml) {
                 // if not found in redis, 404? or pull stored file?
-                throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
+                logger.warn(`Cache miss: ${req.params.gameId}`)
+                pbpHtml = await GamesModel.generateGameHtml(req.params.gameId)
+                if (!pbpHtml) {
+                    throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
+                }
+            } else {
+                logger.info(`Cache hit: ${req.params.gameId}`)
             }
             // if found in redis, return response
             // logger.debug(pbpHtml.substring(0, 100))

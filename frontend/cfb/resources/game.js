@@ -1,7 +1,7 @@
 const axios = require('axios');
-const fs = require("fs")
-const path = require("path");
 const Schedule = require('./schedule');
+const ejs = require("ejs");
+const SummaryModel = require("./summary")
 const logger = require("../../utils/logger");
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 
@@ -76,17 +76,14 @@ kickoff = [
     "Kickoff Touchdown"
 ]
 
-logger.info("Compiling quarantine list");
-let quarantine = []
-fs.readFile(path.resolve(__dirname, "..", "..", "static", "quarantine.json"), function (err, data) {
-    if (err) {
-        logger.error(err)
-        throw err;
-    }
-    logger.info(`Loading quarantine list...`)
-    quarantine = JSON.parse(data);
-    logger.info(`Loaded quarantine list (${quarantine.length} games)`)
-});
+QUARANTINE_LIST = [
+    "401411157",
+    "401403861",
+    "401628329",
+    "401634301",
+    "401634212",
+    "401628398"
+]
 
 // Filters out end of half and period plays, as well as any coin-toss plays
 function checkValidPlay(p) {
@@ -281,9 +278,100 @@ async function routeGameList(req, res, next, payload) {
     }
 }
 
+async function generatePostGameHtml(gameId, header) {
+    try {
+        if (QUARANTINE_LIST.includes(gameId)) {
+            throw new Error(`Game ${gameId} has been quarantined`);
+        }
+        // if it's past/live, send to normal template
+        const data = await retrievePBP(gameId);
+        if (data == null || data.gameInfo == null) {
+            throw Error(`Data not available for game ${gameId}. An internal service may be down.`)
+        }
+
+        const inputSeason = data["header"]["season"]["year"];
+
+        let percentiles = [];
+        try {
+            const pctlSeason = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
+            logger.info(`retreiving percentiles for season ${pctlSeason}, input was ${inputSeason} clamped to 2014 to 2025`)
+            percentiles = await SummaryModel.retrievePercentiles(pctlSeason);
+        } catch (e) {
+            logger.error(`error while retrieving league percentiles: ${e}`)
+        }
+
+        return ejs.renderFile('./views/pages/cfb/game.ejs', {
+            gameData: data,
+            percentiles,
+            season: inputSeason
+        });
+    } catch (e) {
+        logger.error(`Error while loading PBP data: ${e}`);
+        return ejs.renderFile('./views/pages/cfb/game_error.ejs', {
+            gameData: {
+                gameInfo: header["competitions"][0]
+            },
+            errorType: (e.message.includes('quarantine')) ? 'quarantine' : 'pbp'
+        });
+    }
+}
+
+async function generatePreviewHtml(gameId, header) {
+    const game = header["competitions"][0];
+    const season = header["season"]["year"];
+    const week = header["week"];
+    const homeComp = game.competitors[0];
+    const awayComp = game.competitors[1];
+    const homeTeam = homeComp.team;
+    const awayTeam = awayComp.team;
+
+    const homeBreakdown = await SummaryModel.retrieveTeamData(season, homeTeam.id, 'overall', parseInt(season) - 1);
+    const awayBreakdown = await SummaryModel.retrieveTeamData(season, awayTeam.id, 'overall', parseInt(season) - 1);
+    return ejs.renderFile('./views/pages/cfb/pregame.ejs', {
+        season,
+        week,
+        view_full: false,
+        gameData: {
+            gameInfo: game,
+            header,
+            matchup: {
+                team: [
+                    ...awayBreakdown, ...homeBreakdown
+                ]
+            }
+        }
+    });
+}
+
+async function generateGameHtml(gameId) {
+    // if in quarantine, return quarantine error    
+    const page = await retrieveGamePage(gameId);
+
+    if (QUARANTINE_LIST.includes(gameId)) {
+        return ejs.renderFile('../views/pages/cfb/game_error.ejs', {
+            gameData: {
+                gameInfo: game
+            },
+            errorType: (e.message.includes('quarantine')) ? 'quarantine' : 'pbp'
+        });
+    }
+
+    const gameHeader = page["gamepackageJSON"]["header"];
+    const game = gameHeader["competitions"][0];
+    let htmlResponse = null;
+    if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
+        // if it's in the future, send to pregame template
+        htmlResponse = await generatePreviewHtml(gameId, gameHeader)
+    } else {
+        // if it's old or current, send to current template
+        htmlResponse = await generatePostGameHtml(gameId, gameHeader)
+    }
+    return htmlResponse
+}
+
 module.exports = {
     routeGameList,
     retrievePBP,
-    retrieveGamePage,
-    QUARANTINE_LIST: quarantine
+    generateGameHtml,
+    QUARANTINE_LIST
 }
