@@ -110,7 +110,7 @@ async function _getRemoteGames(year, week, type, group) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
         }
 
-        if (typeof espnContent == 'str' && espnContent.toLocaleLowerCase().includes("<html>")) {
+        if (typeof espnContent == 'string' && espnContent.toLocaleLowerCase().includes("<html>")) {
             throw Error("Data returned from ESPN was HTML file, not valid JSON.")
         }
 
