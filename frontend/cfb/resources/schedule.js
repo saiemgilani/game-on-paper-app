@@ -95,6 +95,10 @@ async function _getRemoteGames(year, week, type, group) {
             render: 'false',
             userab: 18,
         }
+        if (week === "999") {
+            query["week"] = null;
+        }
+
         query = cleanUpParams(query)
         
         const url = baseUrl + (new URLSearchParams(query)).toString(); // + `&${new Date().getTime()}`;
