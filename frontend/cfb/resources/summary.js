@@ -57,7 +57,7 @@ async function retrieveRemoteLeagueData(year, type, maxLookback = 2014) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < maxLookback) {
+        if ((year >= 2014) && ((year - 1) < maxLookback)) {
             return [];
         } else {
             return await retrieveRemoteLeagueData(year - 1, type, maxLookback);
@@ -134,7 +134,7 @@ async function retrieveRemotePercentiles(year = null, pctile = null, maxLookback
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < maxLookback) {
+        if ((year >= 2014) && ((year - 1) < maxLookback)) {
             return [];
         } else {
             return await retrieveRemotePercentiles(year - 1, pctile, maxLookback);
@@ -183,7 +183,7 @@ async function retrieveRemoteTeamData(year, team_id, type, maxLookback = 2014) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < maxLookback) {
+        if ((year >= 2014) && ((year - 1) < maxLookback)) {
             return [{
                 pos_team: team_id
             }];
