@@ -58,8 +58,8 @@ async function generatePreviewHtml(gameId, header) {
     const homeTeam = homeComp.team;
     const awayTeam = awayComp.team;
 
-    const homeBreakdown = await SummaryModel.retrieveTeamData(2025, homeTeam.id, 'overall');
-    const awayBreakdown = await SummaryModel.retrieveTeamData(2025, awayTeam.id, 'overall');
+    const homeBreakdown = await SummaryModel.retrieveTeamData(season, homeTeam.id, 'overall', parseInt(season) - 1);
+    const awayBreakdown = await SummaryModel.retrieveTeamData(season, awayTeam.id, 'overall', parseInt(season) - 1);
     return ejs.renderFile('./views/pages/cfb/pregame.ejs', {
         season,
         week,

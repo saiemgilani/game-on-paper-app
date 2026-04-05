@@ -37,7 +37,7 @@ async function retrieveRemoteData(payload) {
     return content;
 }
 
-async function retrieveRemoteLeagueData(year, type) {
+async function retrieveRemoteLeagueData(year, type, maxLookback = 2014) {
     if (!year && !type) {
         logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
@@ -57,15 +57,15 @@ async function retrieveRemoteLeagueData(year, type) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        if ((year - 1) < maxLookback) {
             return [];
         } else {
-            return await retrieveRemoteLeagueData(year - 1, type);
+            return await retrieveRemoteLeagueData(year - 1, type, maxLookback);
         }
     }
 }
 
-async function retrieveLeagueData(year, type) {
+async function retrieveLeagueData(year, type, maxLookback = 2014) {
     if (!year && !type) {
         logger.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
         return [];
@@ -81,7 +81,7 @@ async function retrieveLeagueData(year, type) {
     } catch (err) {
         logger.error(err)
         logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
-        return await retrieveRemoteLeagueData(year, type);
+        return await retrieveRemoteLeagueData(year, type, maxLookback);
     }
 }
 
@@ -111,7 +111,7 @@ async function retrieveLastUpdated() {
     }
 }
 
-async function retrieveRemotePercentiles(year = null, pctile = null) {
+async function retrieveRemotePercentiles(year = null, pctile = null, maxLookback = 2014) {
     if (!year && !pctile) {
         logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
@@ -134,15 +134,15 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        if ((year - 1) < maxLookback) {
             return [];
         } else {
-            return await retrieveRemotePercentiles(year - 1, pctile);
+            return await retrieveRemotePercentiles(year - 1, pctile, maxLookback);
         }
     }
 }
 
-async function retrievePercentiles(year = null, pctile = null) {
+async function retrievePercentiles(year = null, pctile = null, maxLookback = 2014) {
     if (!year && !pctile) {
         logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
@@ -158,11 +158,11 @@ async function retrievePercentiles(year = null, pctile = null) {
     } catch (err) {
         logger.error(err)
         logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
-        return await retrieveRemotePercentiles(year, pctile);
+        return await retrieveRemotePercentiles(year, pctile, maxLookback);
     }
 }
 
-async function retrieveRemoteTeamData(year, team_id, type) {
+async function retrieveRemoteTeamData(year, team_id, type, maxLookback = 2014) {
     if (!year && !team_id) {
         logger.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
         return [];
@@ -183,17 +183,17 @@ async function retrieveRemoteTeamData(year, team_id, type) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        if ((year - 1) < maxLookback) {
             return [{
                 pos_team: team_id
             }];
         } else {
-            return await retrieveRemoteTeamData(year - 1, team_id, type);
+            return await retrieveRemoteTeamData(year - 1, team_id, type, maxLookback);
         }
     }
 }
 
-async function retrieveTeamData(year, team_id, type) {
+async function retrieveTeamData(year, team_id, type, maxLookback = 2014) {
     try {
         let keyParts = []
         if (year) {
@@ -216,7 +216,7 @@ async function retrieveTeamData(year, team_id, type) {
         return JSON.parse(content)
     } catch (err) {
         logger.error(err)
-        return await retrieveRemoteTeamData(year, team_id, type);
+        return await retrieveRemoteTeamData(year, team_id, type, maxLookback);
     }
 }
 
