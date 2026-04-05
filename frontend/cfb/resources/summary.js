@@ -15,13 +15,18 @@ redisClient.connect().then(() => {
 });
 
 async function retrieveAllTeams() {
-    logger.info(`loading from summary at url: /teams`)
-    const response = await axios({
-        method: 'GET',
-        url: `http://summary:3000/teams`
-    });
-    const content = response.data.teams;
-    return content;
+    try {
+        logger.info(`loading from summary at url: /teams`)
+        const response = await axios({
+            method: 'GET',
+            url: `http://summary:3000/teams`
+        });
+        const content = response.data.teams;
+        return content;
+    } catch (err) {
+        logger.info(`error when loading from summary at url: /teams: ${err}`)
+        return [];
+    }
 }
 
 async function retrieveRemoteData(payload) {
