@@ -30,7 +30,7 @@ def get_calendar(year: int):
 
 # update this to any arbitrary year and add it to frontend/cfb/schedule.json to update the weeks available in the switcher.
 result = {}
-for yr in tqdm(range(2002, 2026)):
+for yr in tqdm(range(2002, 2027)):
     result[yr] = get_calendar(yr)
 
 with open("./frontend/static/schedule.json", "w") as f:

@@ -1,14 +1,14 @@
 const redis = require('redis');
 const logger = require("./logger");
-const redisClient = redis.createClient({
+const REDIS_CLIENT = redis.createClient({
     url: 'redis://cache:6380'
 });
 
 const cacheIgnore = process.env.CACHE_IGNORE || 'false'
 
-redisClient.on('error', (err) => logger.error(`Error in Redis client: ${err}`));
+REDIS_CLIENT.on('error', (err) => logger.error(`Error in Redis client: ${err}`));
 
-redisClient.connect()
+REDIS_CLIENT.connect()
     .then(() => {
         logger.info('connected to redis page cache on port 6380');
     })
@@ -36,7 +36,7 @@ class CacheError extends Error {
 
 const setCachedValue = async (key, value, duration) => {
     try {
-        await redisClient.set(key, value, { EX: duration })
+        await REDIS_CLIENT.set(key, value, { EX: duration })
     } catch (e) {
         logger.error(`Error while writing ${key} to redis: ${e}`)
     }
@@ -44,15 +44,15 @@ const setCachedValue = async (key, value, duration) => {
 
 const lockAndTransact = async (key, promiseFunc) => {
     logger.info(`locking for ${key}`)
-    const lockResult = await redisClient.setNX(`${key}-lock`, "locked");
+    const lockResult = await REDIS_CLIENT.setNX(`${key}-lock`, "locked");
     if (!lockResult) {
         throw new CacheError(`Lock still on for ${key}`)
     }
-    await redisClient.expire(`${key}-lock`, 60 * 60) // one hour expiration on the lock
-    await redisClient.expire(key, 60 * 5) // extend to five minute expiration on the key just in case anything goes wrong with this update
+    await REDIS_CLIENT.expire(`${key}-lock`, 60 * 60) // one hour expiration on the lock
+    await REDIS_CLIENT.expire(key, 60 * 5) // extend to five minute expiration on the key just in case anything goes wrong with this update
     await promiseFunc()
     logger.info(`unlocking for ${key}`)
-    await redisClient.del(`${key}-lock`)
+    await REDIS_CLIENT.del(`${key}-lock`)
 }
 
 // https://medium.com/the-node-js-collection/simple-server-side-cache-for-express-js-with-node-js-45ff296ca0f0
@@ -63,7 +63,7 @@ const cachePage = (duration) => {
         // attempt to acquire lock before read.         
         lockAndTransact(key, async () => {
             // if not locked, lock --> update --> unlock
-            const content = await redisClient.get(key)
+            const content = await REDIS_CLIENT.get(key)
             if (!content || cacheIgnore == 'true') {
                 logger.info(`cache miss: ${key}`)
                 res.sendResponse = res.send
@@ -81,7 +81,7 @@ const cachePage = (duration) => {
         })
         .catch(async (e) => {
             // If locked, pass through IF we have content saved
-            const content = await redisClient.get(key)
+            const content = await REDIS_CLIENT.get(key)
             if ((e instanceof CacheError) && content) {
                 logger.error(`Lock still ON for ${key}, so returning old content: ${e}`)
                 res.send(content)
@@ -93,4 +93,8 @@ const cachePage = (duration) => {
     }
 }
 
-module.exports = cachePage
+module.exports = {
+    cachePage,
+    setCachedValue,
+    REDIS_CLIENT
+}

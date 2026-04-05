@@ -16,3 +16,4 @@ cfb-api
 __pycache__
 */__pycache__
 *.bak
+.pytest_cache

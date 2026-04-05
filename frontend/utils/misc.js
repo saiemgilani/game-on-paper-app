@@ -82,12 +82,19 @@ async function ping(url) {
     }
 }
 
+async function sleep(sec) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, sec * 1000);
+  });
+}
+
 module.exports = {
     generateKey,
     getPercentileKey,
     cleanUpParams,
     ping,
     ALPHABET,
+    sleep,
     range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
     CURRENT_YEAR: 2025
 }

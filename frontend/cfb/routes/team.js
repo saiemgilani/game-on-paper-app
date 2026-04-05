@@ -1,5 +1,5 @@
 const express = require('express');
-const cachePage = require('../../utils/cache');
+const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const TeamModel = require("../resources/team")
 const logger = require("../../utils/logger");

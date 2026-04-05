@@ -57,11 +57,11 @@ async function retrieveRemoteLeagueData(year, type) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        // if ((year - 1) < 2014) {
             return [];
-        } else {
-            return await retrieveRemoteLeagueData(year - 1, type);
-        }
+        // } else {
+            // return await retrieveRemoteLeagueData(year - 1, type);
+        // }
     }
 }
 
@@ -134,11 +134,11 @@ async function retrieveRemotePercentiles(year = null, pctile = null) {
         if (err) {
             logger.error(`also err: ${err}`);
         }
-        if ((year - 1) < 2014) {
+        // if ((year - 1) < 2014) {
             return [];
-        } else {
-            return await retrieveRemotePercentiles(year - 1, pctile);
-        }
+        // } else {
+            // return await retrieveRemotePercentiles(year - 1, pctile);
+        // }
     }
 }
 

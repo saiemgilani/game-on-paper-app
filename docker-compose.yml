@@ -34,7 +34,7 @@ services:
           cpus: 0.5
           memory: 1gb
   summary:
-    image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
+    image: cfb-team-summaries:latest
     platform: linux/amd64
     expose:
       - 3000
@@ -55,6 +55,7 @@ services:
     environment:
       RDATA_BASE_URL: "http://python:7000"
       CACHE_IGNORE: false
+      SERVICE_NAME: frontend
     ports:
       - 8000:8000
     depends_on:
@@ -78,6 +79,61 @@ services:
         limits:
           cpus: 0.5
           memory: 1gb
+  
+  beanstalkd:
+    image: maateen/docker-beanstalkd
+    expose:
+      - 11300
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+    
+  # emitter:
+  #   build: ./frontend
+  #   command: ["node", "emitter.js"]
+  #   environment:
+  #     SERVICE_NAME: emitter
+  #     IS_ACTIVE_BEANSTALK_EMITTER: true
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: 0.5
+  #         memory: 1gb
+  #   depends_on:
+  #     - beanstalkd
+  #   links:
+  #     - beanstalkd
+  worker:
+    build: ./frontend
+    command: ["node", "worker.js"]
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 0.5gb
+    environment:
+      RDATA_BASE_URL: "http://python:7000"
+      SERVICE_NAME: worker
+      IS_ACTIVE_BEANSTALK_WORKER: true
+      BEANSTALK_RESERVE_TIMEOUT: 60
+      REDIS_GAME_TTL: 120
+    depends_on:
+      - beanstalkd
+      - python
+      - redis
+      - summary
+      - cache
+    links:
+      - beanstalkd
+      - python
+      - redis
+      - summary
+      - cache
+
   python:
     build: ./python
     expose:

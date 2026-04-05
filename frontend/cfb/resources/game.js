@@ -1,4 +1,6 @@
 const axios = require('axios');
+const fs = require("fs")
+const path = require("path");
 const Schedule = require('./schedule');
 const logger = require("../../utils/logger");
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
@@ -73,6 +75,19 @@ kickoff = [
     "Kickoff Return Touchdown",
     "Kickoff Touchdown"
 ]
+
+logger.info("Compiling quarantine list");
+let quarantine = []
+fs.readFile(path.resolve(__dirname, "..", "..", "static", "quarantine.json"), function (err, data) {
+    if (err) {
+        logger.error(err)
+        throw err;
+    }
+    logger.info(`Loading quarantine list...`)
+    quarantine = JSON.parse(data);
+    logger.info(`Loaded quarantine list (${quarantine.length} games)`)
+});
+
 // Filters out end of half and period plays, as well as any coin-toss plays
 function checkValidPlay(p) {
     if (p.type == null) {
@@ -97,10 +112,18 @@ async function getSchedule(input) {
     return games || [];
 }
 
+async function retrieveGamePage(gameId) {
+    const cacheBuster = ((new Date()).getTime() * 1000);
+    // check if the game is active or in the future
+    pbp_url = `http://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`;
+    const response = await axios.get(pbp_url);
+    return response.data;
+}
+
 async function _remoteRetrievePBP(gameId) {
     const processedGame = await processPlays(gameId);
     
-    pbp = processedGame;
+    var pbp = processedGame;
     pbp.plays = processedGame["plays"];
     pbp.advBoxScore = processedGame["box_score"];
     pbp.boxScore = processedGame['boxScore'];
@@ -128,8 +151,7 @@ async function _remoteRetrievePBP(gameId) {
 }
 
 async function retrievePBP(gameId) {
-        return await _remoteRetrievePBP(gameId);
-    // }
+    return await _remoteRetrievePBP(gameId);
 }
 
 function calculateGEI(plays, homeTeamId) {
@@ -261,5 +283,7 @@ async function routeGameList(req, res, next, payload) {
 
 module.exports = {
     routeGameList,
-    retrievePBP
+    retrievePBP,
+    retrieveGamePage,
+    QUARANTINE_LIST: quarantine
 }

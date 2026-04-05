@@ -1,5 +1,5 @@
 const express = require('express');
-const cachePage = require('../../utils/cache');
+const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const logger = require("../../utils/logger");
 const { CURRENT_YEAR, getPercentileKey } = require('../../utils/misc');

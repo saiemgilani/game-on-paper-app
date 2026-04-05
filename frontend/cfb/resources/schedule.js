@@ -53,7 +53,7 @@ exports.getGames = async function (year, week, type, group) {
     return await _getRemoteGames(year, week, type, group); 
 }
 
-async function _getRemoteGames (year, week, type, group) {
+async function _getRemoteGames(year, week, type, group) {
     var espnGroup = group; 
     if (espnGroup && espnGroup < 0) {
         espnGroup = 80; // All FBS which we will filter
