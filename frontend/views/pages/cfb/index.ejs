@@ -161,7 +161,7 @@
             const weekData = <%- JSON.stringify(weekList) %>;
             const selYear = <%- year == null ? "null" : year %>;
             const selWeek = <%- week == null ? "null" : week %>;
-            const selSeasonType = <%- seasontype %>;
+            const selSeasonType = <%- seasontype == null ? "null" : seasontype %>;
             const availYearKeys = Object.keys(weekData).reverse(); // as displayed
 
             function clearSelect(id) {
@@ -182,7 +182,6 @@
                 if (parseInt(yr) != -1) {
                     console.log("is valid yr");
                     if (yr == null) {
-
                         yr = keys[keys.length - 1];
                         console.log("edited yr bc null: " + yr);
                     }
@@ -218,6 +217,13 @@
             }
 
             populateWeekSelect(selYear || -1);
+
+            document.getElementById("yearSelect").addEventListener('change', () => {
+                const newYear = parseInt(document.getElementById("yearSelect").value)
+                console.log(`Updating year to be : ${newYear}`)
+                populateWeekSelect(newYear || -1);
+                weekSelect.selectedIndex = 0;
+            })
         </script>
         <script>
             document.getElementById("dropdown-form").addEventListener("submit", function(e) {
