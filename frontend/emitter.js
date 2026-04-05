@@ -35,10 +35,10 @@ async function startEmitter() {
             const currentTrackedGames = await ScheduleModel.getGames();
             logger.info(`Emitter found trackable games: ${currentTrackedGames.length}`);
             for (const i in currentTrackedGames) {
-                if (i >= 1) {
-                    // for testing
-                    continue;
-                }
+                // if (i >= 1) {
+                //     // for testing
+                //     continue;
+                // }
 
                 const g = currentTrackedGames[i];
                 logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}`)

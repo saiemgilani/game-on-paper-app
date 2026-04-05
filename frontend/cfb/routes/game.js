@@ -21,15 +21,17 @@ router.route('/:gameId')
                 });
             }
             
-            const pbpHtml = REDIS_CLIENT.get(req.params.gameId)
+            const pbpHtml = await REDIS_CLIENT.get(req.params.gameId)
             if (!pbpHtml) {
                 // if not found in redis, 404? or pull stored file?
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
             // if found in redis, return response
+            // logger.debug(pbpHtml.substring(0, 100))
             return res.type("html").send(pbpHtml);
         } catch (e) {
             logger.error(`Error while loading PBP data: ${e}`);
+            return next(e)
         }
     })
 

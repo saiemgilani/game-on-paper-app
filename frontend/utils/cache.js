@@ -35,10 +35,13 @@ class CacheError extends Error {
 */
 
 const setCachedValue = async (key, value, duration) => {
+    if (typeof key !== "string") {
+        key = `${key}`;
+    }
     try {
         await REDIS_CLIENT.set(key, value, { EX: duration })
     } catch (e) {
-        logger.error(`Error while writing ${key} to redis: ${e}`)
+        logger.error(`Error while writing ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
     }
 }
 

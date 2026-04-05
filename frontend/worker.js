@@ -33,14 +33,14 @@ async function generateGameHtml(gameId, header) {
             logger.error(`error while retrieving league percentiles: ${e}`)
         }
 
-        return ejs.renderFile('./views/pages/cfb/game', {
+        return ejs.renderFile('./views/pages/cfb/game.ejs', {
             gameData: data,
             percentiles,
             season
         });
     } catch (e) {
         logger.error(`Error while loading PBP data: ${e}`);
-        return ejs.renderFile('./views/pages/cfb/game_error', {
+        return ejs.renderFile('./views/pages/cfb/game_error.ejs', {
             gameData: {
                 gameInfo: header["competitions"][0]
             },
@@ -58,9 +58,9 @@ async function generatePreviewHtml(gameId, header) {
     const homeTeam = homeComp.team;
     const awayTeam = awayComp.team;
 
-    const homeBreakdown = await SummaryModel.retrieveTeamData(season, homeTeam.id, 'overall');
-    const awayBreakdown = await SummaryModel.retrieveTeamData(season, awayTeam.id, 'overall');
-    return ejs.render('./views/pages/cfb/pregame', {
+    const homeBreakdown = await SummaryModel.retrieveTeamData(2025, homeTeam.id, 'overall');
+    const awayBreakdown = await SummaryModel.retrieveTeamData(2025, awayTeam.id, 'overall');
+    return ejs.renderFile('./views/pages/cfb/pregame.ejs', {
         season,
         week,
         view_full: false,
@@ -76,8 +76,9 @@ async function generatePreviewHtml(gameId, header) {
     });
 }
 
-async function handleJob(job) {
+async function handleJob(client, job) {
     try {
+        logger.info(`Starting job ${job.id} processing with payload: ${JSON.stringify(job.payload)}`);
         // send to python and retrieve rendered HTML response
         const page = await GamesModel.retrieveGamePage(job.payload.gameId);
         const gameHeader = page["gamepackageJSON"]["header"];
@@ -86,18 +87,22 @@ async function handleJob(job) {
         let htmlResponse = null;
         if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED') {
             // if it's in the future, send to pregame template
-            htmlResponse = generatePreviewHtml(job.payload.gameId, gameHeader)
+            htmlResponse = await generatePreviewHtml(job.payload.gameId, gameHeader)
         } else {
             // if it's old or current, send to current template
-            htmlResponse = generateGameHtml(job.payload.gameId, gameHeader)
+            htmlResponse = await generateGameHtml(job.payload.gameId, gameHeader)
         }
 
         if (htmlResponse) {
             // store in redis
-            await setCachedValue(job.payload.gameId, htmlResponse, REDIS_GAME_TTL)
+            await setCachedValue(job.payload.gameId, htmlResponse, parseInt(REDIS_GAME_TTL))
         }
+        logger.info(`Payload processing for ${JSON.stringify(job.payload)} was successful.`);
     } catch (err) {
-        logger.error(`Error while handling payload ${JSON.stringify(job.payload)}: ${err}`)
+        logger.error(`Error while handling payload ${JSON.stringify(job.payload)}: ${err}`);
+    } finally {
+        logger.info(`Removing job ${job.id} from queue after processing`);
+        client.delete(job.id);
     }
 }
 
@@ -116,7 +121,7 @@ function setupSignalHandlers() {
     process.on('SIGTERM', sigHandle);
 }
 
-async function waitForSummaryEndpoint(maxTime) {
+async function waitForSummaryEndpoint(maxTime = 30, delay = 5) {
     let summaryUp = false;
     let totalTime = 0;
 
@@ -134,9 +139,9 @@ async function waitForSummaryEndpoint(maxTime) {
             if (totalTime >= maxTime) {
                 throw new Error(`summary service not up after ${maxTime} seconds, bailing out.`)
             } else {
-                logger.info("sleeping 5 seconds until summary service up")
-                totalTime += 5;
-                await sleep(5)
+                logger.info(`sleeping ${delay} seconds until summary service up`)
+                totalTime += delay;
+                await sleep(delay)
             }
         }
     }
@@ -151,7 +156,7 @@ async function startWorker() {
         setupSignalHandlers();
 
         logger.info(`Waiting for summary service to be fully up...`);
-        await waitForSummaryEndpoint(30);
+        await waitForSummaryEndpoint(30, 5);
 
         logger.info(`Creating beanstalkd pool and connecting client...`)
         let client = await BEANSTALK_CLIENT_POOL.connect();
@@ -164,9 +169,7 @@ async function startWorker() {
                 logger.info("not a real job, skipping...")
             }
             // job.id, job.payload
-            await handleJob(job);
-
-            client.delete(job.id);
+            await handleJob(client, job);
 
             if (!IS_ACTIVE_BEANSTALK_WORKER) {
                 logger.info(`Queue processing stopping gracefully...`)

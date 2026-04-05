@@ -90,21 +90,21 @@ services:
           cpus: 0.5
           memory: 1gb
     
-  # emitter:
-  #   build: ./frontend
-  #   command: ["node", "emitter.js"]
-  #   environment:
-  #     SERVICE_NAME: emitter
-  #     IS_ACTIVE_BEANSTALK_EMITTER: true
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: 0.5
-  #         memory: 1gb
-  #   depends_on:
-  #     - beanstalkd
-  #   links:
-  #     - beanstalkd
+  emitter:
+    build: ./frontend
+    command: ["node", "emitter.js"]
+    environment:
+      SERVICE_NAME: emitter
+      IS_ACTIVE_BEANSTALK_EMITTER: true
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+    depends_on:
+      - beanstalkd
+    links:
+      - beanstalkd
   worker:
     build: ./frontend
     command: ["node", "worker.js"]
