@@ -69,6 +69,11 @@ async function startEmitter() {
         client.releaseClient();
     } catch (err) {
         logger.error(`Emitter: Uncaught error in queue emitter: ${err}`)
+        if (!IS_ACTIVE_BEANSTALK_EMITTER) {
+            logger.info(`Emitter: Queue emitter stopping gracefully...`)
+            logger.info(`Emitter: Releasing client to beanstalkd pool...`)
+            client.releaseClient();
+        }
     } finally {
         logger.info(`Emitter: Disconnecting from beanstalkd...`)
         BEANSTALK_CLIENT_POOL.disconnect();
