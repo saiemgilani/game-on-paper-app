@@ -24,13 +24,13 @@ function setupSignalHandlers() {
 
 async function startEmitter() {
     try {
-        logger.info(`Starting up queue emitter...`)
+        logger.info(`Emitter: Starting up queue emitter...`)
         setupSignalHandlers();
 
-        logger.info(`Creating beanstalkd pool and connecting client...`)
+        logger.info(`Emitter: Creating beanstalkd pool and connecting client...`)
         let client = await BEANSTALK_CLIENT_POOL.connect();
 
-        logger.info(`Starting queue emitter loop...`)
+        logger.info(`Emitter: Starting queue emitter loop...`)
         // poll every two minutes for new game status
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
             const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
@@ -58,23 +58,23 @@ async function startEmitter() {
             }
 
             if (!IS_ACTIVE_BEANSTALK_EMITTER) {
-                logger.info(`Queue emitter stopping gracefully...`)
+                logger.info(`Emitter: Queue emitter stopping gracefully...`)
                 break;
             }
 
-            logger.info(`Queue emitter sleeping until next update...`)
+            logger.info(`Emitter: Queue emitter sleeping until next update (in ${EMITTER_UPDATE_DELAY} sec)...`)
             await sleep(parseInt(EMITTER_UPDATE_DELAY))
         }
-        logger.info(`Releasing client to beanstalkd pool...`)
+        logger.info(`Emitter: Releasing client to beanstalkd pool...`)
         client.releaseClient();
     } catch (err) {
-        logger.error(`Uncaught error in queue emitter: ${err}`)
+        logger.error(`Emitter: Uncaught error in queue emitter: ${err}`)
     } finally {
-        logger.info(`Disconnecting from beanstalkd...`)
+        logger.info(`Emitter: Disconnecting from beanstalkd...`)
         BEANSTALK_CLIENT_POOL.disconnect();
     }
 
-    logger.info(`Queue emitter exiting.`)
+    logger.info(`Emitter: Queue emitter exiting.`)
 }
 
 startEmitter();

@@ -152,42 +152,42 @@ async function waitForSummaryEndpoint(maxTime = 30, delay = 5) {
 
 async function startWorker() {
     try {
-        logger.info(`Starting up queue worker...`)
+        logger.info(`Worker: Starting up queue worker...`)
         setupSignalHandlers();
 
-        logger.info(`Waiting for summary service to be fully up...`);
+        logger.info(`Worker: Waiting for summary service to be fully up...`);
         await waitForSummaryEndpoint(30, 5);
 
-        logger.info(`Creating beanstalkd pool and connecting client...`)
+        logger.info(`Worker: Creating beanstalkd pool and connecting client...`)
         let client = await BEANSTALK_CLIENT_POOL.connect();
 
-        logger.info(`Starting queue worker loop...`)
+        logger.info(`Worker: Starting queue worker loop...`)
         while (IS_ACTIVE_BEANSTALK_WORKER) {
             // read next match ID from queue - reserveWithTimeout blocks for BEANSTALK_RESERVE_TIMEOUT value (Default 60 sec)
             const job = await client.reserve(); //WithTimeout(parseInt(BEANSTALK_RESERVE_TIMEOUT));
             if (!job || !job.payload) {
-                logger.info("not a real job, skipping...")
+                logger.info("Worker: received something that's not a real job, skipping...")
             }
             // job.id, job.payload
-            logger.info(`Worker received valid job to process: ${JSON.stringify(job)}`)
+            logger.info(`Worker: received valid job to process: ${JSON.stringify(job)}`)
             await handleJob(client, job);
-            logger.info(`Worker processed job: ${JSON.stringify(job)}, waiting for next job in queue...`)
+            logger.info(`Worker: processed job: ${JSON.stringify(job)}, waiting for next job in queue...`)
 
             if (!IS_ACTIVE_BEANSTALK_WORKER) {
-                logger.info(`Queue processing stopping gracefully...`)
+                logger.info(`Worker: Queue processing stopping gracefully...`)
                 break;
             }
         }
-        logger.info(`Releasing client to beanstalkd pool...`)
+        logger.info(`Worker: Releasing client to beanstalkd pool...`)
         client.releaseClient();
     } catch (err) {
-        logger.error(`Uncaught error in queue worker: ${err}`)
+        logger.error(`Worker: Uncaught error in queue worker: ${err}`)
     } finally {
-        logger.info(`Disconnecting from beanstalkd...`)
+        logger.info(`Worker: Disconnecting from beanstalkd...`)
         BEANSTALK_CLIENT_POOL.disconnect();
     }
 
-    logger.info(`Queue worker exiting.`)
+    logger.info(`Worker: Queue worker exiting.`)
 }
 
 
