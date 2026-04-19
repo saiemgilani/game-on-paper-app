@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/saiemgilani/cfb-data-api#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1032.0",
     "axios": "^1.14.0",
     "ejs": "^3.1.5",
     "express": "^4.17.1",

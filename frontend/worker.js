@@ -1,8 +1,10 @@
 const logger = require("./utils/logger");
 const axios = require("axios");
-const {sleep} = require("./utils/misc");
+const { DateTime } = require("luxon");
+const {sleep, generateChecksum} = require("./utils/misc");
 const GamesModel = require("./cfb/resources/game")
 const { setCachedValue } = require("./utils/cache")
+const { putCdnFile } = require("./utils/cdn")
 
 const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
 const BEANSTALK_RESERVE_TIMEOUT = process.env.BEANSTALK_RESERVE_TIMEOUT ?? 60;
@@ -13,12 +15,15 @@ let IS_ACTIVE_BEANSTALK_WORKER = (process.env.IS_ACTIVE_BEANSTALK_WORKER == "tru
 async function handleJob(client, job) {
     try {
         logger.info(`Starting job ${job.id} processing with payload: ${JSON.stringify(job.payload)}`);
-        // send to python and retrieve rendered HTML response
-        const htmlResponse = await GamesModel.generateGameHtml(job.payload.gameId);
+        // send to python and generate rendered HTML response
+        const htmlResponse = await GamesModel.generateGameHtml(job.payload.id);
 
         if (htmlResponse) {
-            // store in redis
-            await setCachedValue(job.payload.gameId, htmlResponse, parseInt(REDIS_GAME_TTL))
+            // store in CDN
+            await putCdnFile(`games/${job.payload.id}.html`, htmlResponse)
+            // update checksum
+            const checksum = generateChecksum(job.payload)
+            await setCachedValue(job.payload.id, checksum, 0) // no TTL, manual updates only
         }
         logger.info(`Payload processing for ${JSON.stringify(job.payload)} was successful.`);
     } catch (err) {

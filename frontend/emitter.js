@@ -1,7 +1,8 @@
 const logger = require("./utils/logger");
 const { DateTime } = require("luxon");
 const ScheduleModel = require("./cfb/resources/schedule")
-const {sleep} = require("./utils/misc");
+const {sleep, generateChecksum} = require("./utils/misc");
+const { setCachedValue, REDIS_CLIENT } = require("./utils/cache")
 const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
 let IS_ACTIVE_BEANSTALK_EMITTER = (process.env.IS_ACTIVE_BEANSTALK_EMITTER == "true") ?? false;
 const BEANSTALK_JOB_TTR = process.env.BEANSTALK_JOB_TTR ?? 60;
@@ -45,16 +46,30 @@ async function startEmitter() {
 
                 const g = currentScoreboard[i];
                 const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
+                const oldChecksum = await REDIS_CLIENT.get(`${g.id}`);
                 if (gameDate != today) {
                     logger.info(`Emitter: skipping game ${g.id} because game date (PT) of ${gameDate} does not match current PT date of ${today}`)
                     continue
                 }
 
-                logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}`)
-                await client.put(
-                    { gameId: g.id }, 
-                    parseInt(BEANSTALK_JOB_TTR)
-                );
+                if (!oldChecksum) {
+                    logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
+                    await client.put(
+                        g, 
+                        parseInt(BEANSTALK_JOB_TTR)
+                    );
+                    continue
+                }
+                
+                const currentChecksum = generateChecksum(g)
+                if (currentChecksum != oldChecksum) {
+                    logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: out of date`)
+                    await client.put(
+                        g, 
+                        parseInt(BEANSTALK_JOB_TTR)
+                    );
+                    continue;
+                }
             }
 
             if (!IS_ACTIVE_BEANSTALK_EMITTER) {

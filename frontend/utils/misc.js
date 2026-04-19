@@ -1,6 +1,7 @@
 const axios = require("axios");
 const logger = require("../utils/logger");
 const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+const crypto = require('crypto');
 
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => (p))
@@ -88,6 +89,10 @@ async function sleep(sec) {
   });
 }
 
+function generateChecksum(game) {
+    return crypto.createHash('sha256').update(JSON.stringify(game)).digest('hex');
+}
+
 module.exports = {
     generateKey,
     getPercentileKey,
@@ -95,6 +100,7 @@ module.exports = {
     ping,
     ALPHABET,
     sleep,
+    generateChecksum,
     range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
     CURRENT_YEAR: 2025
 }

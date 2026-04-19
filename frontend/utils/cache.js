@@ -38,8 +38,16 @@ const setCachedValue = async (key, value, duration) => {
     if (typeof key !== "string") {
         key = `${key}`;
     }
+    if (typeof value !== "string") {
+        value = `${value}`;
+    }
+    let params = {}
+    if (duration) {
+        params["EX"] = duration
+    }
+
     try {
-        await REDIS_CLIENT.set(key, value, { EX: duration })
+        await REDIS_CLIENT.set(key, value, params)
     } catch (e) {
         logger.error(`Error while writing ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
     }
