@@ -19,7 +19,10 @@ async function putCdnFile(key, content, bucket = DIGITAL_OCEAN_SPACES_BUCKET_NAM
             Body: content,
             Metadata: {
                 "UploadedBy": "node-worker"
-            }
+            },
+            ACL: "public-read",
+            ContentDisposition: "inline",
+            ContentType: "text/html",
         }
         const command = new PutObjectCommand(input);
         await DIGITAL_OCEAN_SPACES_CLIENT.send(command);
