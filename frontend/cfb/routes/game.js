@@ -15,7 +15,7 @@ router.get('/:gameId/live', async function(req, res, next) {
     try {            
         let pbpHtml = await REDIS_CLIENT.get(`game-${req.params.gameId}`)
         if (!pbpHtml) {
-            // if not found in redis, 404? or pull stored file?
+            // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: ${req.params.gameId}`)
             return res.redirect(`/cfb/game/${req.params.gameId}/archive`)
         } else {
