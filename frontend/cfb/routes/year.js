@@ -1,5 +1,5 @@
 const express = require('express');
-const {cachePage} = require('../../utils/cache');
+// const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
@@ -7,7 +7,7 @@ const logger = require("../../utils/logger");
 
 const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
-router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
+// router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 function retrieveValue(dictionary, key) {
     const subKeys = key.split('.')

@@ -34,25 +34,25 @@ async function startEmitter() {
         logger.info(`Emitter: Starting queue emitter loop...`)
         // poll every two minutes for new game status
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
-            const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
+            const today = '2026-01-01'//DateTime.now().setZone("America/Los_Angeles").toISODate();
             
             const currentScoreboard = await ScheduleModel.getGames();
             logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
             for (const i in currentScoreboard) {
-                // if (i >= 1) {
-                //     // for testing
-                //     continue;
-                // }
+                if (i >= 1) {
+                    // for testing
+                    continue;
+                }
 
                 const g = currentScoreboard[i];
                 const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
-                const oldChecksum = await REDIS_CLIENT.get(`${g.id}`);
+                const existingContent = await REDIS_CLIENT.get(`${g.id}`);
                 if (gameDate != today) {
                     logger.info(`Emitter: skipping game ${g.id} because game date (PT) of ${gameDate} does not match current PT date of ${today}`)
                     continue
                 }
 
-                if (!oldChecksum) {
+                if (!existingContent) {
                     logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
                     await client.put(
                         g, 
@@ -61,15 +61,15 @@ async function startEmitter() {
                     continue
                 }
                 
-                const currentChecksum = generateChecksum(g)
-                if (currentChecksum != oldChecksum) {
-                    logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: out of date`)
-                    await client.put(
-                        g, 
-                        parseInt(BEANSTALK_JOB_TTR)
-                    );
-                    continue;
-                }
+                // const currentChecksum = generateChecksum(g)
+                // if (currentChecksum != oldChecksum) {
+                //     logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: out of date`)
+                //     await client.put(
+                //         g, 
+                //         parseInt(BEANSTALK_JOB_TTR)
+                //     );
+                //     continue;
+                // }
             }
 
             if (!IS_ACTIVE_BEANSTALK_EMITTER) {

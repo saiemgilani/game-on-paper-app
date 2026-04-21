@@ -1,12 +1,12 @@
 const express = require('express');
-const {cachePage} = require('../../utils/cache');
+// const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const logger = require("../../utils/logger");
 const { CURRENT_YEAR, getPercentileKey } = require('../../utils/misc');
 
 const router = express.Router();
 logger.info("activating charts route page cache")
-router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+// router.use(cachePage(60)) // 1 minute TTL for stuff that does change
 
 router.get('/team/epa', async (req, res, next) => {
     return res.redirect(`/cfb/year/${CURRENT_YEAR}/charts/team/epa`)

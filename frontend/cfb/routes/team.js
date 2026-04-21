@@ -1,5 +1,5 @@
 const express = require('express');
-const {cachePage} = require('../../utils/cache');
+// const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const TeamModel = require("../resources/team")
 const logger = require("../../utils/logger");
@@ -7,7 +7,7 @@ const getPercentileKey = require("../../utils/misc").getPercentileKey;
 
 const router = express.Router();
 logger.info("activating teams route page cache")
-router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+// router.use(cachePage(60)) // 1 minute TTL for stuff that does change
 
 router.get('/:teamId', async function(req, res, next) {
     try {

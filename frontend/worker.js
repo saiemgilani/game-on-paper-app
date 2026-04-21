@@ -4,7 +4,7 @@ const { DateTime } = require("luxon");
 const {sleep, generateChecksum} = require("./utils/misc");
 const GamesModel = require("./cfb/resources/game")
 const { setCachedValue } = require("./utils/cache")
-const { putCdnFile } = require("./utils/cdn")
+// const { putCdnFile } = require("./utils/cdn")
 
 const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
 const BEANSTALK_RESERVE_TIMEOUT = process.env.BEANSTALK_RESERVE_TIMEOUT ?? 60;
@@ -21,14 +21,15 @@ async function handleJob(client, tube, job) {
 
             if (htmlResponse) {
                 // store in CDN
-                await putCdnFile(`${tube}/${job.payload.id}.html`, htmlResponse)
+                // await putCdnFile(`${tube}/${job.payload.id}.html`, htmlResponse)
                 // update checksum
-                const checksum = generateChecksum(job.payload)
-                await setCachedValue(job.payload.id, checksum, 0) // no TTL, manual updates only
+                // const checksum = generateChecksum(job.payload)
+                await setCachedValue(`game-${job.payload.id}`, htmlResponse, 0) // no TTL, manual updates only
             }
         } else if (tube == "team") {
 
         }
+
         logger.info(`Payload processing for ${tube} job ${job.id} was successful.`);
     } catch (err) {
         logger.error(`Error while handling ${tube} job ${job.id}: ${err}`);
