@@ -34,11 +34,14 @@ async function startEmitter() {
         logger.info(`Emitter: Starting queue emitter loop...`)
         // poll every two minutes for new game status
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
-            const today = '2026-01-01'//DateTime.now().setZone("America/Los_Angeles").toISODate();
+            const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
             
             const currentScoreboard = await ScheduleModel.getGames();
             logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
             for (const i in currentScoreboard) {
+                // if (i >= 1) {
+                //     continue;
+                // }
                 const g = currentScoreboard[i];
                 const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
                 const existingContent = await REDIS_CLIENT.get(`game-${g.id}`);
@@ -47,14 +50,12 @@ async function startEmitter() {
                     continue
                 }
 
-                if (!existingContent) {
-                    logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
-                    await client.put(
-                        g, 
-                        parseInt(BEANSTALK_JOB_TTR)
-                    );
-                    continue
-                }
+                logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
+                await client.put(
+                    g, 
+                    parseInt(BEANSTALK_JOB_TTR)
+                );
+                continue
             }
 
             if (!IS_ACTIVE_BEANSTALK_EMITTER) {

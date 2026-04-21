@@ -1,6 +1,8 @@
 services:
   nginx:
-    build: ./nginx
+    build: 
+      context: ./nginx
+      dockerfile: ./Dockerfile.dev
     restart: unless-stopped
     ports:
       - 8080:8080
