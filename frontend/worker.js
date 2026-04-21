@@ -10,24 +10,28 @@ const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL
 const BEANSTALK_RESERVE_TIMEOUT = process.env.BEANSTALK_RESERVE_TIMEOUT ?? 60;
 const REDIS_GAME_TTL = process.env.REDIS_GAME_TTL ?? 120;
 let IS_ACTIVE_BEANSTALK_WORKER = (process.env.IS_ACTIVE_BEANSTALK_WORKER == "true") ?? false;
+const BEANSTALK_WORKER_TUBE_NAME = process.env.BEANSTALK_WORKER_TUBE_NAME ?? "game";
 
-
-async function handleJob(client, job) {
+async function handleJob(client, tube, job) {
     try {
-        logger.info(`Starting job ${job.id} processing with payload: ${JSON.stringify(job.payload)}`);
-        // send to python and generate rendered HTML response
-        const htmlResponse = await GamesModel.generateGameHtml(job.payload.id);
+        logger.info(`Starting ${tube} job ${job.id} processing with payload: ${JSON.stringify(job.payload)}`);
+        if (tube == "game") {
+            // send to python and generate rendered HTML response
+            const htmlResponse = await GamesModel.generateGameHtml(job.payload.id);
 
-        if (htmlResponse) {
-            // store in CDN
-            await putCdnFile(`games/${job.payload.id}.html`, htmlResponse)
-            // update checksum
-            const checksum = generateChecksum(job.payload)
-            await setCachedValue(job.payload.id, checksum, 0) // no TTL, manual updates only
+            if (htmlResponse) {
+                // store in CDN
+                await putCdnFile(`${tube}/${job.payload.id}.html`, htmlResponse)
+                // update checksum
+                const checksum = generateChecksum(job.payload)
+                await setCachedValue(job.payload.id, checksum, 0) // no TTL, manual updates only
+            }
+        } else if (tube == "team") {
+
         }
-        logger.info(`Payload processing for ${JSON.stringify(job.payload)} was successful.`);
+        logger.info(`Payload processing for ${tube} job ${job.id} was successful.`);
     } catch (err) {
-        logger.error(`Error while handling payload ${JSON.stringify(job.payload)}: ${err}`);
+        logger.error(`Error while handling ${tube} job ${job.id}: ${err}`);
     } finally {
         logger.info(`Removing job ${job.id} from queue after processing`);
         client.delete(job.id);
@@ -88,19 +92,22 @@ async function startWorker() {
 
         logger.info(`Worker: Creating beanstalkd pool and connecting client...`)
         let client = await BEANSTALK_CLIENT_POOL.connect();
+        logger.info(`Worker: Watching tube ${BEANSTALK_WORKER_TUBE_NAME}...`)
+        await client.watch(BEANSTALK_WORKER_TUBE_NAME);
 
         logger.info(`Worker: Starting queue worker loop...`)
         while (IS_ACTIVE_BEANSTALK_WORKER) {
             // read next match ID from queue - reserveWithTimeout blocks for BEANSTALK_RESERVE_TIMEOUT value (Default 60 sec)
-            const job = await client.reserve(); //WithTimeout(parseInt(BEANSTALK_RESERVE_TIMEOUT));
+            const job = await client.reserve();
             if (!job || !job.payload) {
                 logger.info("Worker: received something that's not a real job, skipping...")
                 continue;
             }
+
             // job.id, job.payload
-            logger.info(`Worker: received valid job to process: ${JSON.stringify(job)}`)
-            await handleJob(client, job);
-            logger.info(`Worker: processed job: ${JSON.stringify(job)}, waiting for next job in queue...`)
+            logger.info(`Worker: received valid ${BEANSTALK_WORKER_TUBE_NAME} job to process: ${JSON.stringify(job)}`)
+            await handleJob(client, BEANSTALK_WORKER_TUBE_NAME, job);
+            logger.info(`Worker: processed ${BEANSTALK_WORKER_TUBE_NAME} job: ${JSON.stringify(job)}, waiting for next job in queue...`)
 
             if (!IS_ACTIVE_BEANSTALK_WORKER) {
                 logger.info(`Worker: Queue processing stopping gracefully...`)
