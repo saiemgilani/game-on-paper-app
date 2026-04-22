@@ -1,7 +1,7 @@
 const express = require('express');
 const morgan = require("morgan");
-const cfb = require('./cfb/routes');
-const logger = require("./utils/logger");
+const cfb = require('../cfb/routes');
+const logger = require("../utils/logger");
 var path = require('path');
 const port = process.env.PORT || 8000;
 

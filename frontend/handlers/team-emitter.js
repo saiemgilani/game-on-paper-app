@@ -1,9 +1,9 @@
-const logger = require("./utils/logger");
+const logger = require("../utils/logger");
 const { DateTime } = require("luxon");
-const ScheduleModel = require("./cfb/resources/schedule")
-const {sleep, generateChecksum} = require("./utils/misc");
-const { setCachedValue, REDIS_CLIENT } = require("./utils/cache")
-const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
+const ScheduleModel = require("../cfb/resources/schedule")
+const {sleep, generateChecksum} = require("../utils/misc");
+const { setCachedValue, REDIS_CLIENT } = require("../utils/cache")
+const BEANSTALK_CLIENT_POOL = require("../utils/beanstalk").BEANSTALK_CLIENT_POOL;
 let IS_ACTIVE_BEANSTALK_EMITTER = (process.env.IS_ACTIVE_BEANSTALK_EMITTER == "true") ?? false;
 const BEANSTALK_JOB_TTR = process.env.BEANSTALK_JOB_TTR ?? 60;
 const EMITTER_UPDATE_DELAY = process.env.EMITTER_UPDATE_DELAY ?? 120;
@@ -34,29 +34,29 @@ async function startEmitter() {
         logger.info(`Emitter: Starting queue emitter loop...`)
         // poll every two minutes for new game status
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
-            const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
+            // const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
             
-            // also store scoreboard HTML in cache for live page
-            const currentScoreboard = await ScheduleModel.getGames();
-            await setCachedValue("scoreboard", JSON.stringify(currentScoreboard), 0);
+            // // also store scoreboard HTML in cache for live page
+            // const currentScoreboard = await ScheduleModel.getGames();
+            // await setCachedValue("scoreboard", JSON.stringify(currentScoreboard), 0);
 
-            logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
-            for (const i in currentScoreboard) {
-                const g = currentScoreboard[i];
-                const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
-                const existingContent = await REDIS_CLIENT.get(`game-${g.id}`);
-                if (gameDate != today) {
-                    logger.info(`Emitter: skipping game ${g.id} because game date (PT) of ${gameDate} does not match current PT date of ${today}`)
-                    continue
-                }
+            // logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
+            // for (const i in currentScoreboard) {
+            //     const g = currentScoreboard[i];
+            //     const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
+            //     const existingContent = await REDIS_CLIENT.get(`game-${g.id}`);
+            //     if (gameDate != today) {
+            //         logger.info(`Emitter: skipping game ${g.id} because game date (PT) of ${gameDate} does not match current PT date of ${today}`)
+            //         continue
+            //     }
 
-                logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
-                await client.put(
-                    g, 
-                    parseInt(BEANSTALK_JOB_TTR)
-                );
-                continue
-            }
+            //     logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
+            //     await client.put(
+            //         g, 
+            //         parseInt(BEANSTALK_JOB_TTR)
+            //     );
+            //     continue
+            // }
 
             // trigger team/chart/etc CDN updates from admin panel?
 

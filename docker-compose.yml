@@ -10,7 +10,7 @@ services:
       - node
   node:
     build: ./frontend
-    command: ["node", "server.js"]
+    command: ["node", "handlers/server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
       CACHE_IGNORE: false
@@ -101,9 +101,9 @@ services:
     
   emitter:
     build: ./frontend
-    command: ["node", "emitter.js"]
+    command: ["node", "handlers/live-emitter.js"]
     environment:
-      SERVICE_NAME: emitter
+      SERVICE_NAME: live-emitter
       IS_ACTIVE_BEANSTALK_EMITTER: true
     deploy:
       resources:
@@ -116,7 +116,7 @@ services:
       - beanstalkd
   worker:
     build: ./frontend
-    command: ["node", "worker.js"]
+    command: ["node", "handlers/worker.js"]
     deploy:
       mode: replicated
       replicas: 1

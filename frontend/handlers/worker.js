@@ -1,13 +1,13 @@
-const logger = require("./utils/logger");
+const logger = require("../utils/logger");
 const axios = require("axios");
 const { DateTime } = require("luxon");
-const {sleep, generateChecksum} = require("./utils/misc");
-const GamesModel = require("./cfb/resources/game")
-const TeamsModel = require("./cfb/resources/team")
-const { setCachedValue } = require("./utils/cache")
+const {sleep, generateChecksum} = require("../utils/misc");
+const GamesModel = require("../cfb/resources/game")
+const TeamsModel = require("../cfb/resources/team")
+const { setCachedValue } = require("../utils/cache")
 // const { putCdnFile } = require("./utils/cdn")
 
-const BEANSTALK_CLIENT_POOL = require("./utils/beanstalk").BEANSTALK_CLIENT_POOL;
+const BEANSTALK_CLIENT_POOL = require("../utils/beanstalk").BEANSTALK_CLIENT_POOL;
 const BEANSTALK_RESERVE_TIMEOUT = process.env.BEANSTALK_RESERVE_TIMEOUT ?? 60;
 const REDIS_GAME_TTL = process.env.REDIS_GAME_TTL ?? 120;
 let IS_ACTIVE_BEANSTALK_WORKER = (process.env.IS_ACTIVE_BEANSTALK_WORKER == "true") ?? false;

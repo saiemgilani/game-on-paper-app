@@ -15,5 +15,3 @@ WORKDIR /code
 COPY --from=nodebuilder /root/src/node_modules ./node_modules
 
 COPY . ./
-
-CMD node ./server.js
