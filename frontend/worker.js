@@ -3,6 +3,7 @@ const axios = require("axios");
 const { DateTime } = require("luxon");
 const {sleep, generateChecksum} = require("./utils/misc");
 const GamesModel = require("./cfb/resources/game")
+const TeamsModel = require("./cfb/resources/team")
 const { setCachedValue } = require("./utils/cache")
 // const { putCdnFile } = require("./utils/cdn")
 
@@ -27,7 +28,21 @@ async function handleJob(client, tube, job) {
                 await setCachedValue(`game-${job.payload.id}`, htmlResponse, 0) // no TTL, manual updates only
             }
         } else if (tube == "team") {
+            // send to python and generate rendered HTML response
+            const htmlResponse = await TeamsModel.generateTeamHtml(job.payload.id);
 
+            if (htmlResponse) {
+                // store in CDN
+                await putCdnFile(`teams/${job.payload.id}.html`, htmlResponse)
+            }
+        } else if (tube == "team-season") {
+            // send to python and generate rendered HTML response
+            const htmlResponse = await TeamsModel.generateTeamSeasonHtml(job.payload.year, job.payload.id);
+
+            if (htmlResponse) {
+                // store in CDN
+                await putCdnFile(`seasons/${job.payload.year}/${job.payload.id}.html`, htmlResponse)
+            }
         }
 
         logger.info(`Payload processing for ${tube} job ${job.id} was successful.`);

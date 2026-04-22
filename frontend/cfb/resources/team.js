@@ -1,6 +1,9 @@
 const axios = require('axios');
+const ejs = require("ejs");
 const logger = require("../../utils/logger");
 const { URLSearchParams } = require('url');
+const SummaryModel = require("../resources/summary")
+const getPercentileKey = require("../../utils/misc").getPercentileKey;
 
 async function populate(endpoint, season, teamId, type = null) {
     let seasonType = type != null ? `/types/${type}` : ""
@@ -18,11 +21,11 @@ async function populate(endpoint, season, teamId, type = null) {
     return result;
 }
 
-exports.getTeamInformation = async function (teamId) {
+async function getTeamInformation(teamId) {
     return await populate("", null, teamId)
 }
 
-exports.getTeamSeasonInformation = async function (season, teamId) {
+async function getTeamSeasonInformation(season, teamId) {
     var result =  await populate("", season, teamId);
 
     let populatableKeys = ["record", "athletes", "ranks", "leaders"]
@@ -62,4 +65,76 @@ exports.getTeamSeasonInformation = async function (season, teamId) {
     })
 
     return result;
+}
+
+async function generateTeamHtml(teamId) {
+    let data = await getTeamInformation(teamId)
+    if (data == null) {
+        throw Error(`Data not available for team ${teamId}. An internal service may be down.`)
+    }
+
+    const brkd = await SummaryModel.retrieveTeamData(null, teamId, null)
+    const type = req.query.type ?? "differential";
+    let metric = req.query.metric ?? `overall.adjEpaPerPlay`
+    // can't do passing/rushing/havoc differentials
+    if (type == "differential" && (!metric.includes("overall") || metric.includes("havocRate"))) {
+        metric = `overall.adjEpaPerPlay`
+    }
+
+    let selectedPercentiles = []
+    if (type != "differential") {
+        let allPctls = []
+        for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+            const percentiles = await SummaryModel.retrievePercentiles(null, p);
+            allPctls = allPctls.concat(percentiles);
+        }
+
+        const pctlKey = getPercentileKey(metric)
+        selectedPercentiles = allPctls.map(p => {
+            var result = {
+                season: p["season"],
+                pctile: p["pctile"],
+            }
+            result["value"] = p[pctlKey];
+            return result
+        }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+    }
+
+
+    return ejs.renderFile('../views/pages/cfb/team.ejs', {
+        teamData: data,
+        breakdowns: brkd,
+        seasons: brkd.map(b => b.season).sort(),
+        percentiles: selectedPercentiles,
+        type,
+        metric,
+        last_updated: await SummaryModel.retrieveLastUpdated()
+    });
+}
+
+async function generateTeamSeasonHtml(year, teamId) {
+    let data = await getTeamSeasonInformation(year, teamId)
+    if (data == null) {
+        throw Error(`Data not available for team ${teamId} and season ${year}. An internal service may be down.`)
+    }
+
+    const brkd = await SummaryModel.retrieveTeamData(year, teamId, 'overall')
+    // logger.info(brkd[0])
+    return ejs.renderFile('../views/pages/cfb/team_season.ejs', {
+        teamData: data,
+        breakdown: brkd,
+        players: {
+            passing: await SummaryModel.retrieveTeamData(year, teamId, 'passing'),
+            rushing: await SummaryModel.retrieveTeamData(year, teamId, 'rushing'),
+            receiving: await SummaryModel.retrieveTeamData(year, teamId, 'receiving')
+        },
+        season: year
+    });
+}
+
+module.exports = {
+    generateTeamHtml,
+    generateTeamSeasonHtml,
+    getTeamSeasonInformation,
+    getTeamInformation
 }

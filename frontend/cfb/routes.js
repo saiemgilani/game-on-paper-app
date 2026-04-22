@@ -3,7 +3,7 @@ const { renderGameList } = require("./resources/game")
 const { generateGlossaryItems } = require('./resources/glossary');
 const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
-const TeamsRoute = require("./routes/team");
+// const TeamsRoute = require("./routes/team");
 const ChartsRoute = require("./routes/chart");
 const { ping, range, CURRENT_YEAR } = require("../utils/misc");
 const { retrieveLastUpdated, retrieveAllTeams } = require('./resources/summary');
@@ -79,7 +79,7 @@ router.get('/teams', async (req, res, next) => {
 
 router.use("/game", GamesRoute)
 router.use("/year/:year", YearsRoute)
-router.use("/team", TeamsRoute)
+// router.use("/team", TeamsRoute)
 router.use("/charts", ChartsRoute)
 
 // short hand
