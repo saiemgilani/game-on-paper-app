@@ -2,7 +2,7 @@ const axios = require('axios');
 const ejs = require("ejs");
 const logger = require("../../utils/logger");
 const { URLSearchParams } = require('url');
-const SummaryModel = require("../resources/summary")
+const SummaryModel = require("./summary")
 const getPercentileKey = require("../../utils/misc").getPercentileKey;
 
 async function populate(endpoint, season, teamId, type = null) {

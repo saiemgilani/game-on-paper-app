@@ -40,8 +40,8 @@ services:
           memory: 1gb
   redis:
     build: 
-      context: ./redis
-      dockerfile: Dockerfile.lru
+      context: ./lru
+      dockerfile: Dockerfile
     expose:
       - 6379
     healthcheck:
@@ -57,8 +57,8 @@ services:
           memory: 1gb
   cache:
     build: 
-      context: ./redis
-      dockerfile: Dockerfile.cache
+      context: ./cache
+      dockerfile: Dockerfile
     expose:
       - 6380
     healthcheck:
