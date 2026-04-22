@@ -33,6 +33,6 @@ result = {}
 for yr in tqdm(range(2002, 2027)):
     result[yr] = get_calendar(yr)
 
-with open("./frontend/static/schedule.json", "w") as f:
+with open("./node/static/schedule.json", "w") as f:
     f.write(json.dumps(result))
 
