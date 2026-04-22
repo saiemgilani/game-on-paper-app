@@ -62,29 +62,29 @@ router.get('/type/:type/week/:week', async (req, res, next) => {
 })
 
 router.get('/charts/team/epa', async (req, res, next) => {
-        try {
-            const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
+    try {
+        const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
 
-            let content = baseData.map(t => {
-                // let target = t[type]
-                return {
-                    teamId: t.teamId,
-                    team: t.team,
-                    fbsClass: t.fbsClass,
-                    adjOffEpa: t.offensive?.overall?.adjEpaPerPlay,
-                    adjDefEpa: t.defensive?.overall?.adjEpaPerPlay
-                }
-            })
+        let content = baseData.map(t => {
+            // let target = t[type]
+            return {
+                teamId: t.teamId,
+                team: t.team,
+                fbsClass: t.fbsClass,
+                adjOffEpa: t.offensive?.overall?.adjEpaPerPlay,
+                adjDefEpa: t.defensive?.overall?.adjEpaPerPlay
+            }
+        })
 
-            return res.render("pages/cfb/epa_chart", {
-                teams: content,
-                season: req.params.year,
-                last_updated: await SummaryModel.retrieveLastUpdated()
-            })
-        } catch(err) {
-            return next(err)
-        }
-    })
+        return res.render("pages/cfb/epa_chart", {
+            teams: content,
+            season: req.params.year,
+            last_updated: await SummaryModel.retrieveLastUpdated()
+        })
+    } catch(err) {
+        return next(err)
+    }
+})
 
 router.get('/teams/:type', async (req, res, next) => {
     try {
