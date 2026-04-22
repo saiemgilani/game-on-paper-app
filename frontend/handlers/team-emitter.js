@@ -1,12 +1,10 @@
 const logger = require("../utils/logger");
 const { DateTime } = require("luxon");
 const ScheduleModel = require("../cfb/resources/schedule")
+const SummaryModel = require("../cfb/resources/summary")
 const {sleep, generateChecksum} = require("../utils/misc");
-const { setCachedValue, REDIS_CLIENT } = require("../utils/cache")
 const BEANSTALK_CLIENT_POOL = require("../utils/beanstalk").BEANSTALK_CLIENT_POOL;
-let IS_ACTIVE_BEANSTALK_EMITTER = (process.env.IS_ACTIVE_BEANSTALK_EMITTER == "true") ?? false;
-const BEANSTALK_JOB_TTR = process.env.BEANSTALK_JOB_TTR ?? 60;
-const EMITTER_UPDATE_DELAY = process.env.EMITTER_UPDATE_DELAY ?? 120;
+const EMITTER_SELECTED_SEASONS = (process.env.EMITTER_SELECTED_SEASONS) ? JSON.parse(process.env.EMITTER_SELECTED_SEASONS) : [2025]
 
 function setupSignalHandlers() {
     logger.info(`Setting up process signal handlers...`)
@@ -28,54 +26,53 @@ async function startEmitter() {
         logger.info(`Emitter: Starting up queue emitter...`)
         setupSignalHandlers();
 
-        logger.info(`Emitter: Creating beanstalkd pool and connecting client...`)
-        let client = await BEANSTALK_CLIENT_POOL.connect();
+        logger.info(`Emitter: Creating beanstalkd pool and connecting clients...`)
+        let teamClient = await BEANSTALK_CLIENT_POOL.connect();
+        teamClient.use("team");
+
+        let teamSeasonClient = await BEANSTALK_CLIENT_POOL.connect();
+        teamSeasonClient.use("team-season");
 
         logger.info(`Emitter: Starting queue emitter loop...`)
-        // poll every two minutes for new game status
+        const allTeams = await SummaryModel.retrieveAllTeams()
+
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
-            // const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
-            
-            // // also store scoreboard HTML in cache for live page
-            // const currentScoreboard = await ScheduleModel.getGames();
-            // await setCachedValue("scoreboard", JSON.stringify(currentScoreboard), 0);
+            for (const t of allTeams) {
+                logger.info(`Emitter: pushing team ${t.team_id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: updating`)
+                await teamClient.put(
+                    { id: t.team_id }, 
+                    parseInt(BEANSTALK_JOB_TTR)
+                );
 
-            // logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
-            // for (const i in currentScoreboard) {
-            //     const g = currentScoreboard[i];
-            //     const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
-            //     const existingContent = await REDIS_CLIENT.get(`game-${g.id}`);
-            //     if (gameDate != today) {
-            //         logger.info(`Emitter: skipping game ${g.id} because game date (PT) of ${gameDate} does not match current PT date of ${today}`)
-            //         continue
-            //     }
+                for (const s of t.seasons) {
+                    if (EMITTER_SELECTED_SEASONS.includes(s)) {
+                        logger.info(`Emitter: pushing team season ${t.team_id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: updating`)
+                        await teamSeasonClient.put(
+                            { id: t.team_id, year: s }, 
+                            parseInt(BEANSTALK_JOB_TTR)
+                        );
+                    }
+                }
 
-            //     logger.info(`Emitter: pushing game ${g.id} to beanstalkd with TTR: ${BEANSTALK_JOB_TTR}, condition: not in cache`)
-            //     await client.put(
-            //         g, 
-            //         parseInt(BEANSTALK_JOB_TTR)
-            //     );
-            //     continue
-            // }
-
-            // trigger team/chart/etc CDN updates from admin panel?
-
-            if (!IS_ACTIVE_BEANSTALK_EMITTER) {
-                logger.info(`Emitter: Queue emitter stopping gracefully...`)
-                break;
+                if (!IS_ACTIVE_BEANSTALK_EMITTER) {
+                    logger.info(`Emitter: Queue emitter stopping gracefully...`)
+                    break;
+                }
             }
 
-            logger.info(`Emitter: Queue emitter sleeping until next update (in ${EMITTER_UPDATE_DELAY} sec)...`)
-            await sleep(parseInt(EMITTER_UPDATE_DELAY))
+            // processing is over, end the job
+            IS_ACTIVE_BEANSTALK_EMITTER = false;
         }
         logger.info(`Emitter: Releasing client to beanstalkd pool...`)
-        client.releaseClient();
+        teamClient.releaseClient();
+        teamSeasonClient.releaseClient();
     } catch (err) {
         logger.error(`Emitter: Uncaught error in queue emitter: ${err}`)
         if (!IS_ACTIVE_BEANSTALK_EMITTER) {
             logger.info(`Emitter: Queue emitter stopping gracefully...`)
-            logger.info(`Emitter: Releasing client to beanstalkd pool...`)
-            client.releaseClient();
+            logger.info(`Emitter: Releasing clients to beanstalkd pool...`)
+            teamClient.releaseClient();
+            teamSeasonClient.releaseClient();
         }
     } finally {
         logger.info(`Emitter: Disconnecting from beanstalkd...`)
