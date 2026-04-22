@@ -36,12 +36,12 @@ async function startEmitter() {
         while (IS_ACTIVE_BEANSTALK_EMITTER) {
             const today = DateTime.now().setZone("America/Los_Angeles").toISODate();
             
+            // also store scoreboard HTML in cache for live page
             const currentScoreboard = await ScheduleModel.getGames();
+            await setCachedValue("scoreboard", JSON.stringify(currentScoreboard), 0);
+
             logger.info(`Emitter: found scoreboard games: ${currentScoreboard.length}`);
             for (const i in currentScoreboard) {
-                // if (i >= 1) {
-                //     continue;
-                // }
                 const g = currentScoreboard[i];
                 const gameDate = DateTime.fromISO(g["date"]).setZone("America/Los_Angeles").toISODate();
                 const existingContent = await REDIS_CLIENT.get(`game-${g.id}`);
@@ -57,6 +57,8 @@ async function startEmitter() {
                 );
                 continue
             }
+
+            // trigger team/chart/etc CDN updates from admin panel?
 
             if (!IS_ACTIVE_BEANSTALK_EMITTER) {
                 logger.info(`Emitter: Queue emitter stopping gracefully...`)

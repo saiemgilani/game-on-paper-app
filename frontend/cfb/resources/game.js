@@ -204,10 +204,10 @@ async function processPlays(gameId) {
 }
 
 
-async function getGames(url, params) {
+async function getGames(params, url = null) {
     var gameList = await getSchedule(params);
     if (gameList == null) {
-        throw Error(`Data not available for ${url} because of a service error.`)
+        throw Error(`Data not available for ${url || JSON.stringify(params)} because of a service error.`)
     }
     gameList = gameList.filter(g => {
         const gameComp = g.competitions[0];
@@ -252,29 +252,36 @@ async function getGames(url, params) {
     return gameList;
 }
 
+async function renderGameList(payload, url = null) {
+    let gameList = await getGames(payload, url);
+    let weekList = Schedule.getWeeksMap();
+    let groupList = Schedule.getGroups();
+
+    var weekTitle = null;
+    if (payload["year"]) {
+        weekTitle = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
+    }
+
+    return ejs.renderFile('pages/cfb/index', {
+        scoreboard: gameList,
+        weekList: weekList,
+        groups: groupList,
+        year: payload["year"],
+        week: payload["week"],
+        seasontype: payload["type"],
+        group: payload["group"] || 80,
+        title: weekTitle
+    });
+}
+
 async function routeGameList(req, res, next, payload) {
     try {
-        let gameList = await getGames(req.originalUrl, payload);
-        let weekList = Schedule.getWeeksMap();
-        let groupList = Schedule.getGroups();
-
-        var weekTitle = null;
-        if (payload["year"]) {
-            weekTitle = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
-        }
-
-        return res.render('pages/cfb/index', {
-            scoreboard: gameList,
-            weekList: weekList,
-            groups: groupList,
-            year: payload["year"],
-            week: payload["week"],
-            seasontype: payload["type"],
-            group: payload["group"] || 80,
-            title: weekTitle
+        return await renderGameList(payload, req.originalUrl)
+    } catch (e) {
+        logger.error(`Error while loading scoreboard data: ${e}`);
+        return ejs.renderFile('./views/pages/error.ejs', {
+            error: e
         });
-    } catch(err) {
-        return next(err)
     }
 }
 

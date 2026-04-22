@@ -1,5 +1,5 @@
 const express = require('express');
-const { routeGameList } = require("./resources/game")
+const { renderGameList } = require("./resources/game")
 const { generateGlossaryItems } = require('./resources/glossary');
 const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
@@ -30,14 +30,27 @@ router.get('/healthcheck', async (req, res) => {
 
 // cache this every minute
 router.get('/', async function(req, res, next) {
-    return routeGameList(
-        req, 
-        res,
-        next,
-        {
-            group: req.query.group || 80
+    try {  
+        let pbpHtml = null;  
+        if (!req.query.group) {
+            // if scoreboard found in redis, return response
+            pbpHtml = await REDIS_CLIENT.get(`scoreboard`)
         }
-    )
+        
+        if (!pbpHtml) {
+            pbpHtml = await routeGameList(
+                {
+                    group: req.query.group || 80
+                }, 
+                req.originalUrl
+            )
+        }
+        
+        return res.type("html").send(pbpHtml);
+    } catch (e) {
+        logger.error(`Error while loading PBP data: ${e}`);
+        return next(e)
+    }
 });
 
 
