@@ -45,9 +45,10 @@ jobs:
         run: uv python install
       - name: Upload CDN assets
         run: |
-          uv run scripts/purge_cdn.py assets
           uv run scripts/update_assets.py
+          uv run scripts/purge_cdn.py "assets/*"
         env:
+          DIGITAL_OCEAN_CDN_ENDPOINT_ID: ${{ secrets.DIGITAL_OCEAN_CDN_ENDPOINT_ID }}
           DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
           DIGITAL_OCEAN_SPACES_BUCKET_NAME: ${{ secrets.DIGITAL_OCEAN_SPACES_BUCKET_NAME }}
           DIGITAL_OCEAN_SPACES_KEY: ${{ secrets.DIGITAL_OCEAN_SPACES_KEY }}

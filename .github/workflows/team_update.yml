@@ -48,3 +48,13 @@ jobs:
                     docker stop team-emitter
                     docker run --name team-emitter ghcr.io/saiemgilani/game-on-paper-node:latest \
                         node handlers/team-emitter.js
+            - name: Install uv with all available options
+              uses: astral-sh/setup-uv@v8.1.0
+            - name: Set up Python
+              run: uv python install
+            - name: Upload CDN assets
+              run: |
+                uv run scripts/purge_cdn.py "teams/*"
+              env:
+                DIGITAL_OCEAN_CDN_ENDPOINT_ID: ${{ secrets.DIGITAL_OCEAN_CDN_ENDPOINT_ID }}
+                DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}

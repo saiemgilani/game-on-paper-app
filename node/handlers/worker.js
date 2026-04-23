@@ -29,7 +29,7 @@ async function handleJob(client, tube, job) {
 
             if (htmlResponse) {
                 // store in CDN
-                await putCdnFile(`teams/${job.payload.id}.html`, htmlResponse)
+                await putCdnFile(`teams/${job.payload.id}.html`, htmlResponse, 60 * 60 * 24 * 7) // 1 week CDN TTL
             }
         } else if (tube == "team-season") {
             // send to python and generate rendered HTML response
@@ -37,7 +37,7 @@ async function handleJob(client, tube, job) {
 
             if (htmlResponse) {
                 // store in CDN
-                await putCdnFile(`seasons/${job.payload.year}/${job.payload.id}.html`, htmlResponse)
+                await putCdnFile(`seasons/${job.payload.year}/${job.payload.id}.html`, htmlResponse, 60 * 60 * 24 * 7) // 1 week CDN TTL
             }
         }
 
