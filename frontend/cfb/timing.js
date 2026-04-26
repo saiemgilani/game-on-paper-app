@@ -31,8 +31,13 @@ function timingMiddleware() {
     return function (req, res, next) {
         const requestStart = process.hrtime.bigint();
         res.locals.timings = {};
+        let finalized = false;
 
+        // Express's res.json calls res.send internally, so wrapping both means
+        // finalize() would run twice without this guard.
         const finalize = () => {
+            if (finalized) return;
+            finalized = true;
             res.locals.timings.total =
                 Number(process.hrtime.bigint() - requestStart) / 1e6;
             const value = header(res.locals.timings);

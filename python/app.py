@@ -31,15 +31,20 @@ def after_request(response):
 
 
 def _emit_metrics(timings, gameId, status, error=None):
-    line = {
-        "event": "process",
-        "gameId": gameId,
-        "status": status,
-        **{f"{k}_ms": int(v * 1000) for k, v in timings.items()},
-    }
-    if error is not None:
-        line["error"] = error
-    logging.getLogger("app.metrics").info(json.dumps(line))
+    # Logging must never break a response — swallow any failure (formatter,
+    # handler, disk full, etc.) so we don't turn a successful 200 into a 500.
+    try:
+        line = {
+            "event": "process",
+            "gameId": gameId,
+            "status": status,
+            **{f"{k}_ms": int(v * 1000) for k, v in timings.items()},
+        }
+        if error is not None:
+            line["error"] = error
+        logging.getLogger("app.metrics").info(json.dumps(line))
+    except Exception:
+        pass
 
 
 def _server_timing_header(timings):
@@ -287,7 +292,9 @@ def process():
             "season": np.array(pbp["season"]).tolist(),
         }
         response = jsonify(result)
-        timings["serialize"] = time.perf_counter() - t0
+        # The bulk of this stage is the per-record reshape loop; the result
+        # dict assembly and jsonify are sub-millisecond.
+        timings["reshape"] = time.perf_counter() - t0
         timings["total"] = time.perf_counter() - request_start
         response.headers["Server-Timing"] = _server_timing_header(timings)
         _emit_metrics(timings, gameId, 200)

@@ -488,7 +488,7 @@ router.route('/game/:gameId')
     })
     .post(async function(req, res, next) {
         try {
-            let data = await Games.getPBP(req, res);
+            let data = await Games.getPBP(req.params.gameId, res);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }

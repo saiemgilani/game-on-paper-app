@@ -78,21 +78,25 @@ class LogSetup(object):
                         "level": logging_level,
                         "formatter": "default",
                         "class": logging_policy,
+                        "stream": "ext://sys.stdout",
                     },
                     "access_logs": {
                         "level": logging_level,
                         "class": logging_policy,
                         "formatter": "access",
+                        "stream": "ext://sys.stdout",
                     },
                     "metrics": {
                         "level": logging_level,
                         "class": logging_policy,
                         "formatter": "access",
+                        "stream": "ext://sys.stdout",
                     },
                 }
             }
         elif log_type == "watched":
-            metrics_log = "/".join([log_directory, "metrics.log"])
+            metrics_log_file_name = app.config.get("METRICS_LOG_NAME", "metrics.log")
+            metrics_log = "/".join([log_directory, metrics_log_file_name])
             logging_handler = {
                 "handlers": {
                     "default": {
@@ -119,7 +123,8 @@ class LogSetup(object):
                 }
             }
         else:
-            metrics_log = "/".join([log_directory, "metrics.log"])
+            metrics_log_file_name = app.config.get("METRICS_LOG_NAME", "metrics.log")
+            metrics_log = "/".join([log_directory, metrics_log_file_name])
             logging_handler = {
                 "handlers": {
                     "default": {
