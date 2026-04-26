@@ -63,6 +63,11 @@ class LogSetup(object):
                     "handlers": ["access_logs"],
                     "propagate": False,
                 },
+                "app.metrics": {
+                    "level": logging_level,
+                    "handlers": ["metrics"],
+                    "propagate": False,
+                },
                 "root": {"level": logging_level, "handlers": ["default"]},
             }
         }
@@ -79,9 +84,15 @@ class LogSetup(object):
                         "class": logging_policy,
                         "formatter": "access",
                     },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "formatter": "access",
+                    },
                 }
             }
         elif log_type == "watched":
+            metrics_log = "/".join([log_directory, "metrics.log"])
             logging_handler = {
                 "handlers": {
                     "default": {
@@ -98,9 +109,17 @@ class LogSetup(object):
                         "formatter": "access",
                         "delay": True,
                     },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "filename": metrics_log,
+                        "formatter": "access",
+                        "delay": True,
+                    },
                 }
             }
         else:
+            metrics_log = "/".join([log_directory, "metrics.log"])
             logging_handler = {
                 "handlers": {
                     "default": {
@@ -116,6 +135,15 @@ class LogSetup(object):
                         "level": logging_level,
                         "class": logging_policy,
                         "filename": www_log,
+                        "backupCount": log_copies,
+                        "maxBytes": log_max_bytes,
+                        "formatter": "access",
+                        "delay": True,
+                    },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "filename": metrics_log,
                         "backupCount": log_copies,
                         "maxBytes": log_max_bytes,
                         "formatter": "access",

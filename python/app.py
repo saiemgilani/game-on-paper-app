@@ -6,6 +6,7 @@ from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
 import os
 import logging
 import json
+import time
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -29,17 +30,47 @@ def after_request(response):
     return response
 
 
+def _emit_metrics(timings, gameId, status, error=None):
+    line = {
+        "event": "process",
+        "gameId": gameId,
+        "status": status,
+        **{f"{k}_ms": int(v * 1000) for k, v in timings.items()},
+    }
+    if error is not None:
+        line["error"] = error
+    logging.getLogger("app.metrics").info(json.dumps(line))
+
+
+def _server_timing_header(timings):
+    return ", ".join(f"{k};dur={int(v * 1000)}" for k, v in timings.items())
+
+
 @app.route("/cfb/process", methods=["POST"])
 def process():
+    request_start = time.perf_counter()
+    timings = {}
+    gameId = None
     try:
         gameId = request.get_json(force=True)["gameId"]
+
+        t0 = time.perf_counter()
         processed_data = CFBPlayProcess(gameId=gameId)
         pbp = processed_data.espn_cfb_pbp()
+        timings["espn_fetch"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         processed_data.run_processing_pipeline()
+        timings["pipeline"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         tmp_json = processed_data.plays_json.to_json(orient="records")
         jsonified_df = json.loads(tmp_json)
 
         box = processed_data.create_box_score()
+        timings["box_score"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         bad_cols = [
             "start.distance",
             "start.yardLine",
@@ -255,28 +286,40 @@ def process():
             "gameInfo": np.array(pbp["gameInfo"]).tolist(),
             "season": np.array(pbp["season"]).tolist(),
         }
-        # logging.getLogger("root").info(result)
-        return jsonify(result), 200
+        response = jsonify(result)
+        timings["serialize"] = time.perf_counter() - t0
+        timings["total"] = time.perf_counter() - request_start
+        response.headers["Server-Timing"] = _server_timing_header(timings)
+        _emit_metrics(timings, gameId, 200)
+        return response, 200
     except KeyError as e:
+        timings["total"] = time.perf_counter() - request_start
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
         )
-        return jsonify(
+        _emit_metrics(timings, gameId, 404, error=repr(e))
+        response = jsonify(
             {
                 "status": "bad",
                 "message": "ESPN payload is malformed. Data not available.",
             }
-        ), 404
+        )
+        response.headers["Server-Timing"] = _server_timing_header(timings)
+        return response, 404
     except Exception as e:
+        timings["total"] = time.perf_counter() - request_start
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 500: %r (%s)" % (e, e)
         )
         import traceback
 
         traceback.print_tb(e.__traceback__)
-        return jsonify(
+        _emit_metrics(timings, gameId, 500, error=repr(e))
+        response = jsonify(
             {"status": "bad", "message": "Unknown error occurred, check logs."}
-        ), 500
+        )
+        response.headers["Server-Timing"] = _server_timing_header(timings)
+        return response, 500
 
 
 @app.route("/healthcheck", methods=["GET"])

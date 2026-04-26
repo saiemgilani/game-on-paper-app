@@ -2,6 +2,7 @@ const express = require('express');
 const morgan = require("morgan");
 const { spawn } = require('child_process');
 const cfb = require('./cfb/routes.js');
+const { timingMiddleware } = require('./cfb/timing.js');
 var path = require('path');
 const port = process.env.PORT || 8000;
 
@@ -9,7 +10,21 @@ const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 
 const app = express();
-app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
+app.use(morgan(function (tokens, req, res) {
+    return JSON.stringify({
+        event: 'access',
+        method: tokens.method(req, res),
+        url: tokens.url(req, res),
+        status: Number(tokens.status(req, res)),
+        contentLength: Number(tokens.res(req, res, 'content-length')) || 0,
+        responseTimeMs: Number(tokens['response-time'](req, res)),
+        remoteAddr: tokens['remote-addr'](req, res),
+        userAgent: tokens['user-agent'](req, res),
+        referrer: tokens.referrer(req, res),
+        date: tokens.date(req, res, 'iso'),
+    });
+}));
+app.use(timingMiddleware());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
