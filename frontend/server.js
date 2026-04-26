@@ -9,20 +9,29 @@ const port = process.env.PORT || 8000;
 const util = require('util');
 const debuglog = util.debuglog('[frontend]');
 
+// Per-request fields that may be considered PII under GDPR/CCPA when retained
+// in logs. Default-on preserves existing behavior (the original morgan format
+// included :remote-addr); set LOG_INCLUDE_PII=false to drop these fields if
+// your retention/aggregation policy requires it.
+const LOG_INCLUDE_PII = process.env.LOG_INCLUDE_PII !== 'false';
+
 const app = express();
 app.use(morgan(function (tokens, req, res) {
-    return JSON.stringify({
+    const line = {
         event: 'access',
         method: tokens.method(req, res),
         url: tokens.url(req, res),
         status: Number(tokens.status(req, res)) || 0,
         contentLength: Number(tokens.res(req, res, 'content-length')) || 0,
         responseTimeMs: Number(tokens['response-time'](req, res)) || 0,
-        remoteAddr: tokens['remote-addr'](req, res),
-        userAgent: tokens['user-agent'](req, res),
-        referrer: tokens.referrer(req, res),
         date: tokens.date(req, res, 'iso'),
-    });
+    };
+    if (LOG_INCLUDE_PII) {
+        line.remoteAddr = tokens['remote-addr'](req, res);
+        line.userAgent = tokens['user-agent'](req, res);
+        line.referrer = tokens.referrer(req, res);
+    }
+    return JSON.stringify(line);
 }));
 app.use(timingMiddleware());
 app.set('views', path.join(__dirname, 'views'));
