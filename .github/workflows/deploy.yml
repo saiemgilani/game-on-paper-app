@@ -4,78 +4,63 @@ on:
   push:
     branches:
       - main
-  schedule:
-    - cron: "0 12 * * 1"
   repository_dispatch:
-    types: [deploy]
+    types: [ deploy ]
   workflow_dispatch:
   workflow_call:
 
 jobs:
-  build-node:
+  # # - build all container images in parallel
+  # # - upload all container images in parallel
+  build-app:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image_name: [ node, python, lru, cache, nginx ]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: saiemgilani/game-on-paper-app
+      - name: Publish ${{ matrix.image_name }} container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v6
+        with:
+          image: saiemgilani/game-on-paper-${{ matrix.image_name }}
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./${{ matrix.image_name }}
+          dockerfile: ./${{ matrix.image_name }}/Dockerfile
+          tags: latest
+
+  # # - update cached assets in CDN and purge cache of old assets
+  upload-cdn:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           repository: saiemgilani/game-on-paper-app
-      - name: Publish Node container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-node
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./frontend
-          dockerfile: ./frontend/Dockerfile
-          tags: latest
-  build-python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          repository: saiemgilani/game-on-paper-app
-      - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-python
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./python
-          dockerfile: ./python/Dockerfile
-          tags: latest
-  build-redis:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          repository: saiemgilani/game-on-paper-app
-      - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-redis
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./redis
-          dockerfile: ./redis/Dockerfile.lru
-          tags: latest
-      - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-cache
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./redis
-          dockerfile: ./redis/Dockerfile.cache
-          tags: latest
+      - name: Install uv with all available options
+        uses: astral-sh/setup-uv@v8.1.0
+      - name: Set up Python
+        run: uv python install
+      - name: Upload CDN assets
+        run: |
+          uv run scripts/update_assets.py
+          uv run scripts/purge_cdn.py "assets/*"
+        env:
+          DIGITAL_OCEAN_CDN_ENDPOINT_ID: ${{ secrets.DIGITAL_OCEAN_CDN_ENDPOINT_ID }}
+          DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
+          DIGITAL_OCEAN_SPACES_BUCKET_NAME: ${{ secrets.DIGITAL_OCEAN_SPACES_BUCKET_NAME }}
+          DIGITAL_OCEAN_SPACES_KEY: ${{ secrets.DIGITAL_OCEAN_SPACES_KEY }}
+          DIGITAL_OCEAN_SPACES_SECRET: ${{ secrets.DIGITAL_OCEAN_SPACES_SECRET }}
+          DIGITAL_OCEAN_SPACES_ENDPOINT_URL: ${{ secrets.DIGITAL_OCEAN_SPACES_ENDPOINT_URL }}
+
+  # # - restart docker via SSH
   deploy:
     runs-on: ubuntu-latest
     needs:
-      - build-node
-      - build-python
-      - build-redis
+      - build-app
+      - upload-cdn
     steps:
       - uses: actions/checkout@v6
         with:
@@ -90,18 +75,25 @@ jobs:
           localPath: "./docker-compose.do.yml"
           remotePath: "./docker-compose.yml"
       - name: Deploy package to DigitalOcean
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@v1.2.5
         env:
           GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
           DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+          DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
+          DIGITAL_OCEAN_SPACES_BUCKET_NAME: ${{ secrets.DIGITAL_OCEAN_SPACES_BUCKET_NAME }}
+          DIGITAL_OCEAN_SPACES_KEY: ${{ secrets.DIGITAL_OCEAN_SPACES_KEY }}
+          DIGITAL_OCEAN_SPACES_SECRET: ${{ secrets.DIGITAL_OCEAN_SPACES_SECRET }}
+          DIGITAL_OCEAN_SPACES_ENDPOINT_URL: ${{ secrets.DIGITAL_OCEAN_SPACES_ENDPOINT_URL }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE,
+            DOCKER_COMPOSE_OVERRIDE_FILE, DIGITAL_OCEAN_TOKEN, DIGITAL_OCEAN_SPACES_BUCKET_NAME, DIGITAL_OCEAN_SPACES_KEY
+            DIGITAL_OCEAN_SPACES_SECRET, DIGITAL_OCEAN_SPACES_ENDPOINT_URL
           script: |
             docker stop $(docker ps -a -q)
             docker system prune --force

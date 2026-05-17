@@ -1,0 +1,60 @@
+name: team_update
+
+on:
+    schedule:
+        - cron: "0 12 * * 1"
+    repository_dispatch:
+        types: [ deploy ]
+    workflow_dispatch:
+        inputs:
+            selected_seasons:
+                type: string
+                required: true
+                default: '[2025]'
+    workflow_call:
+        inputs:
+            selected_seasons:
+                type: string
+                required: true
+                default: '[2025]'
+
+
+jobs:
+    update_teams:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy package to DigitalOcean
+              uses: appleboy/ssh-action@v1.2.5
+              env:
+                GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
+                DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+                DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
+                DIGITAL_OCEAN_SPACES_BUCKET_NAME: ${{ secrets.DIGITAL_OCEAN_SPACES_BUCKET_NAME }}
+                DIGITAL_OCEAN_SPACES_KEY: ${{ secrets.DIGITAL_OCEAN_SPACES_KEY }}
+                DIGITAL_OCEAN_SPACES_SECRET: ${{ secrets.DIGITAL_OCEAN_SPACES_SECRET }}
+                DIGITAL_OCEAN_SPACES_ENDPOINT_URL: ${{ secrets.DIGITAL_OCEAN_SPACES_ENDPOINT_URL }}
+                EMITTER_SELECTED_SEASONS: ${{ inputs.selected_seasons }}
+              with:
+                host: ${{ secrets.HOST }}
+                username: ${{ secrets.USERNAME }}
+                password: ${{ secrets.PASSWORD }}
+                port: ${{ secrets.PORT }}
+                envs: DIGITAL_OCEAN_TOKEN, DIGITAL_OCEAN_SPACES_BUCKET_NAME,
+                    DIGITAL_OCEAN_SPACES_KEY DIGITAL_OCEAN_SPACES_SECRET,
+                    DIGITAL_OCEAN_SPACES_ENDPOINT_URL, EMITTER_SELECTED_SEASONS
+                script: |
+                    docker stop team-emitter
+                    docker run --name team-emitter ghcr.io/saiemgilani/game-on-paper-node:latest \
+                        node handlers/team-emitter.js
+            - name: Install uv with all available options
+              uses: astral-sh/setup-uv@v8.1.0
+            - name: Set up Python
+              run: uv python install
+            - name: Upload CDN assets
+              run: |
+                uv run scripts/purge_cdn.py "teams/*"
+              env:
+                DIGITAL_OCEAN_CDN_ENDPOINT_ID: ${{ secrets.DIGITAL_OCEAN_CDN_ENDPOINT_ID }}
+                DIGITAL_OCEAN_TOKEN: ${{ secrets.DIGITAL_OCEAN_TOKEN }}

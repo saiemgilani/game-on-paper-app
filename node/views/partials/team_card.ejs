@@ -1,0 +1,118 @@
+<%
+    function roundNumber(value, power10, fixed) {
+        return (Math.round(parseFloat(value || 0) * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    }
+    function getNumberWithOrdinal(n) {
+    let s = ["th", "st", "nd", "rd"];
+    let v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+let maxTeams = 134;
+if (season == 2022) {
+    maxTeams = 131
+} else if (season < 2022) {
+    maxTeams = 130
+}
+
+const isBreakdownAvailable = (breakdown[0].differential != null);    
+const team = Object.keys(teamData).includes('team') ? teamData.team : teamData;
+const CLEAN_LIST = [61];
+function cleanLocation() {
+    if (CLEAN_LIST.includes(parseInt(team.id))) {
+        return team.location.toLocaleLowerCase()
+    }
+    return team.location
+}     
+%>
+
+<div class="card border rounded">
+    <div class="card-body">
+        <div class="card-title mb-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2><%= cleanLocation() %></h2>
+                <img class="h2 img img-fluid me-1 team-logo-<%= team.id %>" width="50px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/<%= team.id %>.png" /> 
+            </div>
+        </div>
+        <%
+            const records = Array.isArray(teamData["record"]) ? teamData["record"] : [];
+            const overallStuff = records.filter(item => item["type"] == "total")[0];
+            const overall = overallStuff?.displayValue || "0-0";
+            const finishes = overallStuff?.stats?.filter(item => item.name == "playoffSeed") || []
+            const finish = (finishes.length > 0) ? getNumberWithOrdinal(parseInt(finishes[0].displayValue)) : 'N/A';
+
+            var conf = ""
+            let confRecs = records.filter(item => item.type == "vsconf")
+            if (confRecs.length > 0) {
+                conf = ` (Conf: ${confRecs[0].displayValue})`;
+            } else {
+                conf = ""
+            }
+
+            function generateColorRampValue(input, max, midColor) {
+                if (!input) {
+                    return null;
+                }
+                let value = (parseFloat(max) - parseFloat(input)) / parseFloat(max)
+                let step = Math.round(value / 0.1)
+                let clampedStep = Math.min(Math.max(step, 0), 9)
+
+                let hex = null
+                if (clampedStep == 4 || clampedStep == 5) {
+                    return null
+                } else {
+                    return ` hulk-bg-level-${clampedStep}`
+                }
+            }
+
+            function generateMarginalString(input, power10, fixed) {
+                if (input >= 0) {
+                    return `+${roundNumber(input, power10, fixed)}`;
+                } else {
+                    return roundNumber(input, power10, fixed);
+                }
+            }
+        %>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <th class="text-center" style="width: 33%"><%= season %> Record</th>
+                    <th class="text-center" style="width: 33%"><%= season %> Conf Finish</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>EPA/Play</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="numeral text-center" style="width: 33%"><%= overall %><%= conf %></td>
+                        <td class="numeral text-center" style="width: 33%"><%= finish %></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.epaPerPlayRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.epaPerPlay), 2, 2) %> <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.epaPerPlayRank %></small></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-responsive pe-0">
+            <table class="table table-sm table-responsive">
+                <caption class="text-small text-muted"">
+                    <small>
+                        <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
+                    </small>
+                </caption>
+                <thead>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Yards/Play</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>AY%</th>
+                    <th class="text-center" style="width: 33%"><%= (breakdown[0].season && season != breakdown[0].season ? `${breakdown[0].season} ` : "") %>Success %</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.yardsPerPlayRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(parseFloat(breakdown[0].differential?.overall?.yardsPerPlay), 2, 2) %> <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.yardsPerPlayRank %></small></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.availableYardsPctRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.availableYardsPct), 2, 1) %>% <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.availableYardsPctRank %></small></td>
+                        <td class="numeral text-center <%= generateColorRampValue(breakdown[0].differential?.overall?.successRateRank, maxTeams, null) %>" style="width: 33%"><%= generateMarginalString(100 * parseFloat(breakdown[0].differential?.overall?.successRate), 2, 1) %>% <small class="align-self-center" style="opacity: 50%"> #<%= breakdown[0].differential?.overall?.successRateRank %></small></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <% if (isBreakdownAvailable && !hideNavigation) { %>
+            <a class="text-left" href="/cfb/year/<%= season %>/team/<%= team.id %>">View full profile</a>
+        <% } %>
+    </div>
+</div>

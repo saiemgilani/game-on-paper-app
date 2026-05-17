@@ -1,61 +1,22 @@
 services:
-  redis:
+  nginx:
     build: 
-      context: ./redis
-      dockerfile: Dockerfile.lru
-    expose:
-      - 6379
-    healthcheck:
-      test: redis-cli ping || exit 1
-      interval: 60s
-      retries: 5
-      start_period: 20s
-      timeout: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 1gb
-  cache:
-    build: 
-      context: ./redis
-      dockerfile: Dockerfile.cache
-    expose:
-      - 6380
-    healthcheck:
-      test: redis-cli ping || exit 1
-      interval: 60s
-      retries: 5
-      start_period: 20s
-      timeout: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 1gb
-  summary:
-    image: ghcr.io/akeaswaran/akeaswaran/cfb-team-summaries:latest
-    platform: linux/amd64
-    expose:
-      - 3000
-    healthcheck:
-      test: curl --fail http://summary:3000/health || exit 1
-      interval: 60s
-      retries: 5
-      start_period: 20s
-      timeout: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 1gb
+      context: ./nginx
+      dockerfile: ./Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    depends_on:
+      - node
   node:
     build: ./frontend
-    command: ["node", "server.js"]
+    command: ["node", "handlers/server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
-    ports:
-      - 8000:8000
+      CACHE_IGNORE: false
+      SERVICE_NAME: frontend
+    expose:
+      - 8000
     depends_on:
       - python
       - summary
@@ -77,6 +38,111 @@ services:
         limits:
           cpus: 0.5
           memory: 1gb
+  redis:
+    build: 
+      context: ./lru
+      dockerfile: Dockerfile
+    expose:
+      - 6379
+    healthcheck:
+      test: redis-cli ping || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+  cache:
+    build: 
+      context: ./cache
+      dockerfile: Dockerfile
+    expose:
+      - 6380
+    healthcheck:
+      test: redis-cli ping || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+  summary:
+    image: cfb-team-summaries:latest
+    platform: linux/amd64
+    expose:
+      - 3000
+    healthcheck:
+      test: curl --fail http://summary:3000/health || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+
+  beanstalkd:
+    image: maateen/docker-beanstalkd
+    expose:
+      - 11300
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+    
+  emitter:
+    build: ./frontend
+    command: ["node", "handlers/live-emitter.js"]
+    environment:
+      SERVICE_NAME: live-emitter
+      IS_ACTIVE_BEANSTALK_EMITTER: true
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1gb
+    depends_on:
+      - beanstalkd
+    links:
+      - beanstalkd
+  worker:
+    build: ./frontend
+    command: ["node", "handlers/worker.js"]
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 0.5gb
+    environment:
+      RDATA_BASE_URL: "http://python:7000"
+      SERVICE_NAME: worker
+      IS_ACTIVE_BEANSTALK_WORKER: true
+      BEANSTALK_RESERVE_TIMEOUT: 60
+      REDIS_GAME_TTL: 120
+    depends_on:
+      - beanstalkd
+      - python
+      - redis
+      - summary
+      - cache
+    links:
+      - beanstalkd
+      - python
+      - redis
+      - summary
+      - cache
+
   python:
     build: ./python
     expose:
