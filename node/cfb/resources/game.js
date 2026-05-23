@@ -1,9 +1,9 @@
 const axios = require('axios');
 const Schedule = require('./schedule');
-const ejs = require("ejs");
 const SummaryModel = require("./summary")
 const logger = require("../../utils/logger");
 const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
+const {renderFile} = require("../../utils/misc")
 
 logger.info("RDATA BASE URL: " + RDATA_BASE_URL)
 
@@ -252,7 +252,7 @@ async function getGames(params, url = null) {
     return gameList;
 }
 
-async function renderGameList(payload, url = null) {
+async function renderGameList(payload = {}, url = null) {
     let gameList = await getGames(payload, url);
     let weekList = Schedule.getWeeksMap();
     let groupList = Schedule.getGroups();
@@ -262,7 +262,7 @@ async function renderGameList(payload, url = null) {
         weekTitle = weekList[payload["year"]]?.find(w => parseInt(w.type) == parseInt(payload["type"]) && parseInt(w.value) == parseInt(payload["week"]))?.title;
     }
 
-    return ejs.renderFile('pages/cfb/index', {
+    return renderFile('pages/cfb/index', {
         scoreboard: gameList,
         weekList: weekList,
         groups: groupList,
@@ -279,7 +279,7 @@ async function routeGameList(req, res, next, payload) {
         return await renderGameList(payload, req.originalUrl)
     } catch (e) {
         logger.error(`Error while loading scoreboard data: ${e}`);
-        return ejs.renderFile('./views/pages/error.ejs', {
+        return renderFile('error', {
             error: e
         });
     }
@@ -307,14 +307,14 @@ async function generatePostGameHtml(gameId, header) {
             logger.error(`error while retrieving league percentiles: ${e}`)
         }
 
-        return ejs.renderFile('./views/pages/cfb/game.ejs', {
+        return renderFile('pages/cfb/game', {
             gameData: data,
             percentiles,
             season: inputSeason
         });
     } catch (e) {
         logger.error(`Error while loading PBP data: ${e}`);
-        return ejs.renderFile('./views/pages/cfb/game_error.ejs', {
+        return renderFile('pages/cfb/game_error', {
             gameData: {
                 gameInfo: header["competitions"][0]
             },
@@ -334,7 +334,7 @@ async function generatePreviewHtml(gameId, header) {
 
     const homeBreakdown = await SummaryModel.retrieveTeamData(season, homeTeam.id, 'overall', parseInt(season) - 1);
     const awayBreakdown = await SummaryModel.retrieveTeamData(season, awayTeam.id, 'overall', parseInt(season) - 1);
-    return ejs.renderFile('./views/pages/cfb/pregame.ejs', {
+    return renderFile('pages/cfb/pregame', {
         season,
         week,
         view_full: false,
@@ -355,7 +355,7 @@ async function generateGameHtml(gameId) {
     const page = await retrieveGamePage(gameId);
 
     if (QUARANTINE_LIST.includes(gameId)) {
-        return ejs.renderFile('../views/pages/cfb/game_error.ejs', {
+        return renderFile('pages/cfb/game_error', {
             gameData: {
                 gameInfo: game
             },

@@ -2,6 +2,8 @@ const axios = require("axios");
 const logger = require("./logger");
 const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 const crypto = require('crypto');
+const path = require('path');
+const ejs = require("ejs")
 
 function retrieveValue(dictionary, key) {
     const subKeys = key.split('.')
@@ -102,6 +104,13 @@ function generateChecksum(game) {
     return crypto.createHash('sha256').update(JSON.stringify(game)).digest('hex');
 }
 
+function renderFile(templatePath, data) {
+    if (!templatePath.endsWith(".ejs")) {
+        templatePath += ".ejs"
+    }
+    return ejs.renderFile(path.join(__dirname, "../", "views", templatePath), data);
+}
+
 module.exports = {
     generateKey,
     getPercentileKey,
@@ -112,5 +121,6 @@ module.exports = {
     generateChecksum,
     range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
     CURRENT_YEAR: 2025,
-    retrieveValue
+    retrieveValue,
+    renderFile
 }

@@ -14,7 +14,7 @@ router.get('/:teamId', async function(req, res, next) {
             // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: ${req.params.teamId}`)
             // return res.redirect(`/cfb/team/${req.params.teamId}/archive`)
-            teamHtml = TeamsModel.generateTeamHtml(req.params.teamId);
+            teamHtml = await TeamsModel.generateTeamHtml(req.params.teamId);
         } else {
             logger.info(`Cache hit: ${req.params.teamId}`)
         }

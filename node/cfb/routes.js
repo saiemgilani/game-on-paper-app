@@ -1,5 +1,5 @@
 const express = require('express');
-const { renderGameList } = require("./resources/game")
+const { routeGameList } = require("./resources/game")
 const { generateGlossaryItems } = require('./resources/glossary');
 const GamesRoute = require("./routes/game");
 const YearsRoute = require("./routes/year");
@@ -7,7 +7,8 @@ const YearsRoute = require("./routes/year");
 const ChartsRoute = require("./routes/chart");
 const { ping, range, CURRENT_YEAR } = require("../utils/misc");
 const { retrieveLastUpdated, retrieveAllTeams } = require('./resources/summary');
-
+const logger = require("../utils/logger");
+const { REDIS_CLIENT } = require("../utils/cache")
 const router = express.Router();
 
 router.get('/healthcheck', async (req, res) => {

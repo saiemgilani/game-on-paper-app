@@ -52,7 +52,7 @@ app.listen(port, () => {
 
 app.use(function (err, req, res, next) {
     logger.error(err.stack)
-    return res.status(500).render('error', {
+    return res.status(500).render(path.join(__dirname, "..", 'views', 'error'), {
         error: err
     });
 })

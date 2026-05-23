@@ -1,6 +1,5 @@
-const ejs = require("ejs");
 const SummaryModel = require("./summary")
-const {retrieveValue} = require("../../utils/misc");
+const {retrieveValue, renderFile} = require("../../utils/misc");
 
 async function getPlayerLeaderboard(type, sortKey) {
     const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
@@ -15,7 +14,7 @@ async function getPlayerLeaderboard(type, sortKey) {
         return asc ? compVal : (-1 * compVal)
     })
     // return res.json(content);
-    return ejs.render("pages/cfb/player_leaderboard", {
+    return renderFile("pages/cfb/player_leaderboard", {
         players: content,
         type,
         season: req.params.year,
@@ -63,7 +62,7 @@ async function getTeamLeaderboard(type, sortKey) {
     })
     // logger.info(content[0])
     // return res.json(content);
-    return ejs.render("pages/cfb/leaderboard", {
+    return renderFile("pages/cfb/leaderboard", {
         teams: content,
         type,
         season: req.params.year,

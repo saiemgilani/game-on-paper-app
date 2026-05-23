@@ -5,7 +5,7 @@ const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
 const Leaderboards = require("../resources/leaderboard")
 const logger = require("../../utils/logger");
-
+const { REDIS_CLIENT } = require("../../utils/cache")
 const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
@@ -59,7 +59,7 @@ router.get('/team/:teamId', async function(req, res, next) {
             // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: team-${req.params.teamId}-${req.params.year}`)
             // return res.redirect(`/cfb/team/${req.params.teamId}/archive`)
-            teamHtml = Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId);
+            teamHtml = await Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId);
         } else {
             logger.info(`Cache hit: team-${req.params.teamId}-${req.params.year}`)
         }

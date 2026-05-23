@@ -13,7 +13,7 @@ router.get('/:gameId', async function(req, res, next) {
         if (!pbpHtml) {
             // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: ${req.params.gameId}`)
-            pbpHtml = GamesModel.generateGameHtml(req.params.gameId);
+            pbpHtml = await GamesModel.generateGameHtml(req.params.gameId);
             // return res.redirect(`/cfb/game/${req.params.gameId}/archive`)
         } else {
             logger.info(`Cache hit: ${req.params.gameId}`)

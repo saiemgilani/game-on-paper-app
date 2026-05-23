@@ -1,9 +1,8 @@
 const axios = require('axios');
-const ejs = require("ejs");
 const logger = require("../../utils/logger");
 const { URLSearchParams } = require('url');
 const SummaryModel = require("./summary")
-const getPercentileKey = require("../../utils/misc").getPercentileKey;
+const {getPercentileKey, renderFile} = require("../../utils/misc");
 
 async function populate(endpoint, season, teamId, type = null) {
     let seasonType = type != null ? `/types/${type}` : ""
@@ -101,7 +100,7 @@ async function generateTeamHtml(teamId) {
     }
 
 
-    return ejs.renderFile('../views/pages/cfb/team.ejs', {
+    return renderFile('pages/cfb/team', {
         teamData: data,
         breakdowns: brkd,
         seasons: brkd.map(b => b.season).sort(),
@@ -120,7 +119,7 @@ async function generateTeamSeasonHtml(year, teamId) {
 
     const brkd = await SummaryModel.retrieveTeamData(year, teamId, 'overall')
     // logger.info(brkd[0])
-    return ejs.renderFile('../views/pages/cfb/team_season.ejs', {
+    return renderFile('pages/cfb/team_season', {
         teamData: data,
         breakdown: brkd,
         players: {
