@@ -53,13 +53,13 @@ const setCachedValue = async (key, value, duration) => {
     }
 }
 
-const getCachedValue = async (key, value) => {
+const getCachedValue = async (key) => {
     if (typeof key !== "string") {
         key = `${key}`;
     }
 
     try {
-        return await REDIS_CLIENT.set(key)
+        return await REDIS_CLIENT.get(key)
     } catch (e) {
         logger.error(`Error while reading ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
         return null;
