@@ -34,5 +34,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY app.py ./
-CMD ["python", "app.py"]
+COPY app.py gunicorn.conf.py ./
+CMD ["gunicorn", "app:app"]

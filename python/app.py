@@ -280,5 +280,5 @@ def healthcheck():
     return jsonify({"status": "ok"})
 
 
-if __name__ == "__main__":
-    app.run(port=os.environ.get("PORT", 7000), debug=False, host="0.0.0.0")
+# if __name__ == "__main__":
+#     app.run(port=7000, debug=False, host="0.0.0.0")
