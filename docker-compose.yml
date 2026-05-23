@@ -20,12 +20,12 @@ services:
     depends_on:
       - python
       - summary
-      - redis
+      - lru
       - cache
     links:
       - python
       - summary
-      - redis
+      - lru
       - cache
     healthcheck:
       test: curl --fail http://localhost:8000/cfb/healthcheck || exit 1
