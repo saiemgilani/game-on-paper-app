@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saiemgilani/cfb-data-api.git"
+    "url": "git+https://github.com/saiemgilani/game-on-paper-app.git"
   },
   "keywords": [
     "cfb",
@@ -20,11 +20,10 @@
   "author": "Akshay Easwaran <akeaswaran@me.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/saiemgilani/cfb-data-api/issues"
+    "url": "https://github.com/saiemgilani/game-on-paper-app/issues"
   },
-  "homepage": "https://github.com/saiemgilani/cfb-data-api#readme",
+  "homepage": "https://github.com/saiemgilani/game-on-paper-app#readme",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1032.0",
     "axios": "^1.14.0",
     "ejs": "^3.1.5",
     "express": "^4.17.1",
