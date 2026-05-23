@@ -3,6 +3,15 @@ const logger = require("./logger");
 const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 const crypto = require('crypto');
 
+function retrieveValue(dictionary, key) {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}
+
 function generateKey(parts, sep = "-") {
     const valid = parts.filter(p => (p))
     if (valid.length == 0) {
@@ -102,5 +111,6 @@ module.exports = {
     sleep,
     generateChecksum,
     range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
-    CURRENT_YEAR: 2025
+    CURRENT_YEAR: 2025,
+    retrieveValue
 }

@@ -3,21 +3,12 @@ const express = require('express');
 const SummaryModel = require("../resources/summary")
 const GamesModel = require("../resources/game")
 const Teams = require("../resources/team")
+const Leaderboards = require("../resources/leaderboard")
 const logger = require("../../utils/logger");
 
 const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
-
-function retrieveValue(dictionary, key) {
-    const subKeys = key.split('.')
-    let sub = dictionary;
-    for (const k of subKeys) {
-        sub = sub[k];
-    }
-    return sub;
-}
-
 
 router.get('/', async (req, res, next) => {
     return GamesModel.routeGameList(
@@ -61,6 +52,25 @@ router.get('/type/:type/week/:week', async (req, res, next) => {
     )
 })
 
+router.get('/team/:teamId', async function(req, res, next) {
+    try {            
+        let teamHtml = await REDIS_CLIENT.get(`team-${req.params.teamId}-${req.params.year}`) // TODO: santitize URL inputs
+        if (!teamHtml) {
+            // if not found in redis, redirect to archived file
+            logger.warn(`Cache miss: team-${req.params.teamId}-${req.params.year}`)
+            // return res.redirect(`/cfb/team/${req.params.teamId}/archive`)
+            teamHtml = Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId);
+        } else {
+            logger.info(`Cache hit: team-${req.params.teamId}-${req.params.year}`)
+        }
+        // if found in redis, return response
+        return res.type("html").send(teamHtml);
+    } catch (e) {
+        logger.error(`Error while loading team season data: ${e}`);
+        return next(e)
+    }
+})
+
 router.get('/charts/team/epa', async (req, res, next) => {
     try {
         const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
@@ -90,53 +100,10 @@ router.get('/teams/:type', async (req, res, next) => {
     try {
         const type = req.params.type ?? "differential";
         let sortKey = req.query.sort ?? `overall.adjEpaPerPlay`
-        // can't do passing/rushing/havoc differentials
         if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
             sortKey = `overall.adjEpaPerPlay`
         }
-        const asc = (type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
-        const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
-
-        let content = baseData.map(t => {
-            let target = t[type]
-            return {
-                teamId: t.teamId,
-                team: t.team,
-                ...target
-            }
-        })
-        // logger.info(content[0])
-        content = content.filter(p => {
-            const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
-            const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
-            if (sortKey.includes("adjEpaPerPlay")) {
-                return true
-            }
-            return nonNullRank && nonNullValue
-        }).sort((a, b) => {
-            const aVal = retrieveValue(a, sortKey)
-            const bVal = retrieveValue(b, sortKey)
-            
-            if (aVal == null & bVal != null) {
-                return 1
-            } else if (aVal != null & bVal == null) {
-                return -1
-            } else if (aVal == null & bVal == null) {
-                return 0
-            } else {
-                const compVal = parseFloat(aVal) - parseFloat(bVal)
-                return asc ? compVal : (-1 * compVal)
-            }
-        })
-        // logger.info(content[0])
-        // return res.json(content);
-        return res.render("pages/cfb/leaderboard", {
-            teams: content,
-            type,
-            season: req.params.year,
-            sort: sortKey,
-            last_updated: await SummaryModel.retrieveLastUpdated()
-        })
+        return Leaderboards.getTeamLeaderboard(type, sortKey)
     } catch(err) {
         return next(err)
     }
@@ -146,29 +113,7 @@ router.get('/players/:type', async (req, res, next) => {
     try {
         const type = req.params.type ?? "passing";
         let sortKey = req.query.sort ?? `advanced.epaPerPlay`
-        // // can't do passing/rushing/havoc differentials
-        // if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
-        //     sortKey = `overall.epaPerPlay`
-        // }
-        const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
-        let content = await SummaryModel.retrieveLeagueData(req.params.year, type) 
-
-        content = content.filter(p => {
-            const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
-            const nonNullRank = retrieveValue(p, `${sortKey}Rank`) != null && retrieveValue(p, `${sortKey}Rank`) != "NA"
-            return nonNullRank && nonNullValue
-        }).sort((a, b) => {
-            const compVal = parseFloat(retrieveValue(a, sortKey)) - parseFloat(retrieveValue(b, sortKey))
-            return asc ? compVal : (-1 * compVal)
-        })
-        // return res.json(content);
-        return res.render("pages/cfb/player_leaderboard", {
-            players: content,
-            type,
-            season: req.params.year,
-            sort: sortKey,
-            last_updated: await SummaryModel.retrieveLastUpdated()
-        })
+        return Leaderboards.getPlayerLeaderboard(type, sortKey)
     } catch(err) {
         return next(err)
     }
