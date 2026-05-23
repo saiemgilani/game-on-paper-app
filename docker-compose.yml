@@ -9,7 +9,7 @@ services:
     depends_on:
       - node
   node:
-    build: ./frontend
+    build: ./node
     command: ["node", "handlers/server.js"]
     environment:
       RDATA_BASE_URL: "http://python:7000"
@@ -88,60 +88,6 @@ services:
         limits:
           cpus: 0.5
           memory: 1gb
-
-  beanstalkd:
-    image: maateen/docker-beanstalkd
-    expose:
-      - 11300
-    deploy:
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 1gb
-    
-  emitter:
-    build: ./frontend
-    command: ["node", "handlers/live-emitter.js"]
-    environment:
-      SERVICE_NAME: live-emitter
-      IS_ACTIVE_BEANSTALK_EMITTER: true
-    deploy:
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 1gb
-    depends_on:
-      - beanstalkd
-    links:
-      - beanstalkd
-  worker:
-    build: ./frontend
-    command: ["node", "handlers/worker.js"]
-    deploy:
-      mode: replicated
-      replicas: 1
-      resources:
-        limits:
-          cpus: 0.5
-          memory: 0.5gb
-    environment:
-      RDATA_BASE_URL: "http://python:7000"
-      SERVICE_NAME: worker
-      IS_ACTIVE_BEANSTALK_WORKER: true
-      BEANSTALK_RESERVE_TIMEOUT: 60
-      REDIS_GAME_TTL: 120
-    depends_on:
-      - beanstalkd
-      - python
-      - redis
-      - summary
-      - cache
-    links:
-      - beanstalkd
-      - python
-      - redis
-      - summary
-      - cache
 
   python:
     build: ./python
