@@ -34,6 +34,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY app.py schemas.py flask_logs.py ./
-
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "--threads", "8", "--timeout", "120", "--preload", "-b", "0.0.0.0:7000", "app:app"]
+COPY app.py ./
+CMD ["python", "app.py"]

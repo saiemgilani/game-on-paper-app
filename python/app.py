@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 import numpy as np
 from datetime import datetime as dt, timezone as tz
-from flask_logs import LogSetup
 from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
 import os
 import logging
@@ -10,9 +9,6 @@ import json
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
 app.config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", "INFO")
-
-logs = LogSetup()
-logs.init_app(app)
 
 
 @app.after_request
@@ -285,4 +281,4 @@ def healthcheck():
 
 
 if __name__ == "__main__":
-    app.run(port=7000, debug=False, host="0.0.0.0")
+    app.run(port=os.environ.get("PORT", 7000), debug=False, host="0.0.0.0")
