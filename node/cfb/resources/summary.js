@@ -4,13 +4,13 @@ const logger = require("../../utils/logger");
 const generateKey = require("../../utils/misc").generateKey;
 const cleanUpParams = require("../../utils/misc").cleanUpParams;
 
-const redisClient = redis.createClient({
+const lruCache = redis.createClient({
     url: 'redis://lru:6379'
 });
 
-redisClient.on('error', (err) => logger.error('Redis Client Error', err));
+lruCache.on('error', (err) => logger.error('Redis Client Error', err));
 
-redisClient.connect().then(() => {
+lruCache.connect().then(() => {
     logger.info('connected to redis LRU cache on port 6379');
 });
 
@@ -55,7 +55,7 @@ async function retrieveRemoteLeagueData(year, type, maxLookback = 2014) {
         });
         const key = generateKey(["league", year, type]);
         // expire every three days so that we get fresh data
-        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
+        await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content;
     } catch (err) {
         logger.error(`could not find data for league in ${year}, checking ${year - 1}`)
@@ -77,7 +77,7 @@ async function retrieveLeagueData(year, type, maxLookback = 2014) {
     }
     const key = generateKey(["league", year, type]);
     try {
-        const content = await redisClient.get(key);
+        const content = await lruCache.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         }
@@ -98,14 +98,14 @@ async function retrieveRemoteLastUpdated() {
     });
     const content = response.data;
      // expire every three days so that we get fresh data
-    await redisClient.set(`summary-last-updated`, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
+    await lruCache.set(`summary-last-updated`, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
     return content.last_updated;
 }
 
 async function retrieveLastUpdated() {
     try {
         const key = `summary-last-updated`;
-        const content = await redisClient.get(key);
+        const content = await lruCache.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
         }
@@ -132,7 +132,7 @@ async function retrieveRemotePercentiles(year = null, pctile = null, maxLookback
         const content = response.data.results;
         const key = generateKey(["percentiles", year, pctile]);
         // expire every three days so that we get fresh data
-        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
+        await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
         return content;
     } catch (err) {
         logger.error(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
@@ -154,7 +154,7 @@ async function retrievePercentiles(year = null, pctile = null, maxLookback = 201
     }
     const key = generateKey(["percentiles", year, pctile])
     try {
-        const content = await redisClient.get(key);
+        const content = await lruCache.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         }
@@ -181,7 +181,7 @@ async function retrieveRemoteTeamData(year, team_id, type, maxLookback = 2014) {
         });
         const key = generateKey([year, team_id, type]);
         // expire every three days so that we get fresh data
-        await redisClient.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
+        await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content;
     } catch (err) {
         logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
@@ -214,7 +214,7 @@ async function retrieveTeamData(year, team_id, type, maxLookback = 2014) {
             keyParts.push(type)
         }
         const key = generateKey(keyParts);
-        const content = await redisClient.get(key);
+        const content = await lruCache.get(key);
         if (!content) {
             throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
         }
