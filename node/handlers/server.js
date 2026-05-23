@@ -23,12 +23,12 @@ const BANNED_USER_AGENT_LIST = [
 const BANNED_USER_AGENT_LIST_REGEX = new RegExp(BANNED_USER_AGENT_LIST.join("|"))
 
 app.use((req, res, next) => {
-    if (req.get('User-Agent').toLocaleLowerCase().match(BANNED_USER_AGENT_LIST_REGEX)) {
+    if ((req.get('User-Agent')?.toLocaleLowerCase().match(BANNED_USER_AGENT_LIST_REGEX) ?? false)) {
         return res.status(429).json({
             status: 429,
             message: "Too many requests."
         });
-    } else if (!["GET", "POST"].includes(req.method)) {
+    } else if (!["GET", "HEAD"].includes(req.method)) {
         return res.status(405).json({
             status: 405,
             message: "Method not allowed."
