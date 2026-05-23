@@ -53,6 +53,19 @@ const setCachedValue = async (key, value, duration) => {
     }
 }
 
+const getCachedValue = async (key, value) => {
+    if (typeof key !== "string") {
+        key = `${key}`;
+    }
+
+    try {
+        return await REDIS_CLIENT.set(key)
+    } catch (e) {
+        logger.error(`Error while reading ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
+        return null;
+    }
+}
+
 const lockAndTransact = async (key, promiseFunc) => {
     logger.info(`locking for ${key}`)
     const lockResult = await REDIS_CLIENT.setNX(`${key}-lock`, "locked");
@@ -107,5 +120,6 @@ const cachePage = (duration) => {
 module.exports = {
     cachePage,
     setCachedValue,
-    REDIS_CLIENT
+    getCachedValue,
+    // REDIS_CLIENT
 }

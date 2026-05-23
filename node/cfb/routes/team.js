@@ -4,17 +4,18 @@ const logger = require("../../utils/logger");
 
 const router = express.Router();
 logger.info("activating teams route page cache")
-const { REDIS_CLIENT } = require("../../utils/cache")
+const { getCachedValue, setCachedValue } = require("../../utils/cache")
 // router.use(cachePage(60)) // 1 minute TTL for stuff that does change
 
 router.get('/:teamId', async function(req, res, next) {
     try {            
-        let teamHtml = await REDIS_CLIENT.get(`team-${req.params.teamId}`) // TODO: santitize URL inputs
+        let teamHtml = await getCachedValue(`team-${req.params.teamId}`) // TODO: santitize URL inputs
         if (!teamHtml) {
             // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: ${req.params.teamId}`)
             // return res.redirect(`/cfb/team/${req.params.teamId}/archive`)
             teamHtml = await TeamsModel.generateTeamHtml(req.params.teamId);
+            await setCachedValue(`team-${req.params.teamId}`, teamHtml, 60 * 60 * 24)
         } else {
             logger.info(`Cache hit: ${req.params.teamId}`)
         }

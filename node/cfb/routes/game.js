@@ -4,16 +4,17 @@ const logger = require("../../utils/logger");
 
 const router = express.Router();
 logger.info("activating games route page cache")
-const { REDIS_CLIENT } = require("../../utils/cache")
+const { setCachedValue, getCachedValue } = require("../../utils/cache")
 // router.use(cachePage(60)) // 1 minute TTL for stuff that does change
 
 router.get('/:gameId', async function(req, res, next) {
     try {            
-        let pbpHtml = await REDIS_CLIENT.get(`game-${req.params.gameId}`)
+        let pbpHtml = await getCachedValue(`game-${req.params.gameId}`)
         if (!pbpHtml) {
             // if not found in redis, redirect to archived file
             logger.warn(`Cache miss: ${req.params.gameId}`)
             pbpHtml = await GamesModel.generateGameHtml(req.params.gameId);
+            await setCachedValue(`game-${req.params.gameId}`, pbpHtml, 60)
             // return res.redirect(`/cfb/game/${req.params.gameId}/archive`)
         } else {
             logger.info(`Cache hit: ${req.params.gameId}`)

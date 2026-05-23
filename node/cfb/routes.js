@@ -8,7 +8,7 @@ const ChartsRoute = require("./routes/chart");
 const { ping, range, CURRENT_YEAR } = require("../utils/misc");
 const { retrieveLastUpdated, retrieveAllTeams } = require('./resources/summary');
 const logger = require("../utils/logger");
-const { REDIS_CLIENT } = require("../utils/cache")
+const { getCachedValue, setCachedValue } = require("../utils/cache")
 const router = express.Router();
 
 router.get('/healthcheck', async (req, res) => {
@@ -35,7 +35,7 @@ router.get('/', async function(req, res, next) {
         let pbpHtml = null;  
         if (!req.query.group) {
             // if scoreboard found in redis, return response
-            pbpHtml = await REDIS_CLIENT.get(`scoreboard`)
+            pbpHtml = await getCachedValue(`scoreboard`)
         }
         
         if (!pbpHtml) {
@@ -45,6 +45,9 @@ router.get('/', async function(req, res, next) {
                 }, 
                 req.originalUrl
             )
+            if (!req.query.group) {
+                await setCachedValue("scoreboard", pbpHtml, 60)
+            }
         }
         
         return res.type("html").send(pbpHtml);
