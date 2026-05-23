@@ -1,5 +1,4 @@
 const express = require('express');
-// const {cachePage} = require('../../utils/cache');
 const SummaryModel = require("../resources/summary")
 const logger = require("../../utils/logger");
 const { CURRENT_YEAR, getPercentileKey } = require('../../utils/misc');
@@ -7,6 +6,7 @@ const { CURRENT_YEAR, getPercentileKey } = require('../../utils/misc');
 const router = express.Router();
 logger.info("activating charts route page cache")
 // router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+// router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/team/epa', async (req, res, next) => {
     return res.redirect(`/cfb/year/${CURRENT_YEAR}/charts/team/epa`)
@@ -48,7 +48,7 @@ router.get('/trends', async function(req, res, next) {
             last_updated: await SummaryModel.retrieveLastUpdated()
         });
     } catch(err) {
-        logger.error(err)
+        logger.error(`ERROR while loading chart info: ${err}`)
         return next(err)
     }
 })

@@ -5,7 +5,7 @@ const logger = require("../../utils/logger");
 const router = express.Router();
 logger.info("activating teams route page cache")
 const { getCachedValue, setCachedValue } = require("../../utils/cache")
-// router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+// router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/:teamId', async function(req, res, next) {
     try {            

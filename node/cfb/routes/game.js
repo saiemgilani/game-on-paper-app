@@ -5,7 +5,7 @@ const logger = require("../../utils/logger");
 const router = express.Router();
 logger.info("activating games route page cache")
 const { setCachedValue, getCachedValue } = require("../../utils/cache")
-// router.use(cachePage(60)) // 1 minute TTL for stuff that does change
+// router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/:gameId', async function(req, res, next) {
     try {            

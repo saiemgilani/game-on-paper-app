@@ -66,59 +66,59 @@ const getCachedValue = async (key) => {
     }
 }
 
-const lockAndTransact = async (key, promiseFunc) => {
-    logger.info(`locking for ${key}`)
-    const lockResult = await REDIS_CLIENT.setNX(`${key}-lock`, "locked");
-    if (!lockResult) {
-        throw new CacheError(`Lock still on for ${key}`)
-    }
-    await REDIS_CLIENT.expire(`${key}-lock`, 60 * 60) // one hour expiration on the lock
-    await REDIS_CLIENT.expire(key, 60 * 5) // extend to five minute expiration on the key just in case anything goes wrong with this update
-    await promiseFunc()
-    logger.info(`unlocking for ${key}`)
-    await REDIS_CLIENT.del(`${key}-lock`)
-}
+// const lockAndTransact = async (key, promiseFunc) => {
+//     logger.info(`locking for ${key}`)
+//     const lockResult = await REDIS_CLIENT.setNX(`${key}-lock`, "locked");
+//     if (!lockResult) {
+//         throw new CacheError(`Lock still on for ${key}`)
+//     }
+//     await REDIS_CLIENT.expire(`${key}-lock`, 60 * 60) // one hour expiration on the lock
+//     await REDIS_CLIENT.expire(key, 60 * 5) // extend to five minute expiration on the key just in case anything goes wrong with this update
+//     await promiseFunc()
+//     logger.info(`unlocking for ${key}`)
+//     await REDIS_CLIENT.del(`${key}-lock`)
+// }
 
-// https://medium.com/the-node-js-collection/simple-server-side-cache-for-express-js-with-node-js-45ff296ca0f0
-const cachePage = (duration) => {
-    return (req, res, next) => {
-        const key = `__express__-${req.originalUrl || req.url}`
-        logger.info(`cache logic: ${key}`)
-        // attempt to acquire lock before read.         
-        lockAndTransact(key, async () => {
-            // if not locked, lock --> update --> unlock
-            const content = await REDIS_CLIENT.get(key)
-            if (!content || cacheIgnore == 'true') {
-                logger.info(`cache miss: ${key}`)
-                res.sendResponse = res.send
-                res.send = (body) => {
-                    setCachedValue(key, body, duration)
-                        .then(() => {
-                            res.sendResponse(body)
-                        })
-                }
-                next()
-            } else {
-                logger.info(`cache hit: ${key}`)
-                res.send(content)
-            }
-        })
-        .catch(async (e) => {
-            // If locked, pass through IF we have content saved
-            const content = await REDIS_CLIENT.get(key)
-            if ((e instanceof CacheError) && content) {
-                logger.error(`Lock still ON for ${key}, so returning old content: ${e}`)
-                res.send(content)
-            } else {
-                logger.error(`Error while trying to lock and transact on redis ${key}: ${e}`)
-                next()
-            }
-        })
-    }
-}
+// // https://medium.com/the-node-js-collection/simple-server-side-cache-for-express-js-with-node-js-45ff296ca0f0
+// const cachePage = (duration) => {
+//     return (req, res, next) => {
+//         const key = `__express__-${req.originalUrl || req.url}`
+//         logger.info(`cache logic: ${key}`)
+//         // attempt to acquire lock before read.         
+//         lockAndTransact(key, async () => {
+//             // if not locked, lock --> update --> unlock
+//             const content = await REDIS_CLIENT.get(key)
+//             if (!content || cacheIgnore == 'true') {
+//                 logger.info(`cache miss: ${key}`)
+//                 res.sendResponse = res.send
+//                 res.send = (body) => {
+//                     setCachedValue(key, body, duration)
+//                         .then(() => {
+//                             res.sendResponse(body)
+//                         })
+//                 }
+//                 next()
+//             } else {
+//                 logger.info(`cache hit: ${key}`)
+//                 res.send(content)
+//             }
+//         })
+//         .catch(async (e) => {
+//             // If locked, pass through IF we have content saved
+//             const content = await REDIS_CLIENT.get(key)
+//             if ((e instanceof CacheError) && content) {
+//                 logger.error(`Lock still ON for ${key}, so returning old content: ${e}`)
+//                 res.send(content)
+//             } else {
+//                 logger.error(`Error while trying to lock and transact on redis ${key}: ${e}`)
+//                 next()
+//             }
+//         })
+//     }
+// }
 
 module.exports = {
-    cachePage,
+    // cachePage,
     setCachedValue,
     getCachedValue,
     // REDIS_CLIENT
