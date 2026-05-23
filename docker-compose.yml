@@ -38,7 +38,7 @@ services:
         limits:
           cpus: 0.5
           memory: 1gb
-  redis:
+  lru:
     build: 
       context: ./lru
       dockerfile: Dockerfile

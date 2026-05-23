@@ -5,7 +5,7 @@ const generateKey = require("../../utils/misc").generateKey;
 const cleanUpParams = require("../../utils/misc").cleanUpParams;
 
 const redisClient = redis.createClient({
-    url: 'redis://redis:6379'
+    url: 'redis://lru:6379'
 });
 
 redisClient.on('error', (err) => logger.error('Redis Client Error', err));
