@@ -61,7 +61,7 @@ router.get('/type/:type/week/:week', async (req, res, next) => {
 })
 
 router.get('/team/:teamId', async (req, res, next) => {
-    return await sendCachedResponse(req, res, next, `team-${req.params.teamId}-${req.params.year}`, 60 * 60 * 24, Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId));
+    return await sendCachedResponse(req, res, next, `team-${req.params.teamId}-${req.params.year}`, 60 * 60 * 24, TeamsModel.generateTeamSeasonHtml(req.params.year, req.params.teamId));
 })
 
 
