@@ -1,5 +1,5 @@
-const SummaryModel = require("./summary")
-const {retrieveValue, renderFile} = require("../../utils/misc");
+import * as SummaryModel from './summary.js';
+import {retrieveValue, renderFile} from '../../utils/misc.js';
 
 async function getPlayerLeaderboard(type, sortKey) {
     const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
@@ -71,7 +71,7 @@ async function getTeamLeaderboard(type, sortKey) {
     })
 }
 
-module.exports = {
+export {
     getTeamLeaderboard,
     getPlayerLeaderboard
 }

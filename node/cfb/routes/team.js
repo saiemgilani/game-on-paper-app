@@ -1,10 +1,10 @@
-const express = require('express');
-const TeamsModel = require('../resources/team');
-const logger = require("../../utils/logger");
+import express from 'express';
+import * as TeamsModel from '../resources/team.js';
+import logger from '../../utils/logger.js';
+import { getCachedValue, setCachedValue } from '../../utils/cache.js';
 
 const router = express.Router();
 logger.info("activating teams route page cache")
-const { getCachedValue, setCachedValue } = require("../../utils/cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/:teamId', async function(req, res, next) {
@@ -31,4 +31,4 @@ router.get('/:teamId/year/:year', async function(req, res, next) {
     return res.redirect(`/cfb/year/${req.params.year}/team/${req.params.teamId}`) // TODO: santitize URL inputs
 })
 
-module.exports = router
+export default router;

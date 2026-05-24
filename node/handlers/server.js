@@ -1,15 +1,16 @@
-const express = require('express');
-const morgan = require("morgan");
-const cfb = require('../cfb/routes');
-const logger = require("../utils/logger");
-var path = require('path');
+import express from 'express';
+import morgan from 'morgan';
+import cfb from '../cfb/routes.js';
+import logger from '../utils/logger.js';
+// var path = require('path');
+import path from "path";
 const port = process.env.PORT || 8000;
 
 const app = express();
 app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(import.meta.dirname, 'views'));
 app.set('view engine', 'ejs');
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(import.meta.dirname, 'public')));
 
 const BANNED_USER_AGENT_LIST = [
     'my-tiny-bot',
@@ -52,7 +53,7 @@ app.listen(port, () => {
 
 app.use(function (err, req, res, next) {
     logger.error(err.stack)
-    return res.status(500).render(path.join(__dirname, "..", 'views', 'error'), {
+    return res.status(500).render(path.join(import.meta.dirname, "..", 'views', 'error'), {
         error: err
     });
 })

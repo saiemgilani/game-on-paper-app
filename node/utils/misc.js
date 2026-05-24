@@ -1,9 +1,9 @@
-const axios = require("axios");
-const logger = require("./logger");
+import axios from 'axios';
+import logger from './logger.js';
 const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-const crypto = require('crypto');
-const path = require('path');
-const ejs = require("ejs")
+import crypto from 'crypto';
+import path from 'path';
+import ejs from 'ejs';
 
 function retrieveValue(dictionary, key) {
     const subKeys = key.split('.')
@@ -108,10 +108,16 @@ function renderFile(templatePath, data) {
     if (!templatePath.endsWith(".ejs")) {
         templatePath += ".ejs"
     }
-    return ejs.renderFile(path.join(__dirname, "../", "views", templatePath), data);
+    return ejs.renderFile(path.join(import.meta.dirname, "../", "views", templatePath), data);
 }
 
-module.exports = {
+function range(start, end) {
+    return Array.from(Array(end + 1).keys()).slice(start);
+}
+
+const CURRENT_YEAR = 2025;
+
+export {
     generateKey,
     getPercentileKey,
     cleanUpParams,
@@ -119,8 +125,8 @@ module.exports = {
     ALPHABET,
     sleep,
     generateChecksum,
-    range: (start, end) => Array.from(Array(end + 1).keys()).slice(start),
-    CURRENT_YEAR: 2025,
+    range,
+    CURRENT_YEAR,
     retrieveValue,
     renderFile
 }

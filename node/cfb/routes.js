@@ -1,14 +1,14 @@
-const express = require('express');
-const { routeGameList } = require("./resources/game")
-const { generateGlossaryItems } = require('./resources/glossary');
-const GamesRoute = require("./routes/game");
-const YearsRoute = require("./routes/year");
-// const TeamsRoute = require("./routes/team");
-const ChartsRoute = require("./routes/chart");
-const { ping, range, CURRENT_YEAR } = require("../utils/misc");
-const { retrieveLastUpdated, retrieveAllTeams } = require('./resources/summary');
-const logger = require("../utils/logger");
-const { getCachedValue, setCachedValue } = require("../utils/cache")
+import express from "express";
+import { routeGameList } from './resources/game.js';
+import { generateGlossaryItems } from './resources/glossary.js';
+import GamesRoute from './routes/game.js';
+import YearsRoute from './routes/year.js';
+// import TeamsRoute from './routes/team';
+import ChartsRoute from './routes/chart.js';
+import { ping, range, CURRENT_YEAR } from '../utils/misc.js';
+import { retrieveLastUpdated, retrieveAllTeams } from './resources/summary.js';
+import logger from '../utils/logger.js';
+import { getCachedValue, setCachedValue } from '../utils/cache.js';
 const router = express.Router();
 
 router.get('/healthcheck', async (req, res) => {
@@ -99,4 +99,4 @@ router.get('/players/:type', async (req, res, next) => {
     return res.redirect(`/cfb/year/${CURRENT_YEAR}/players/${req.params.type}`);
 })
 
-module.exports = router
+export default router;

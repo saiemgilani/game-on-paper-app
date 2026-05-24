@@ -1,5 +1,5 @@
-const redis = require('redis');
-const logger = require("./logger");
+import redis from 'redis';
+import logger from './logger.js';
 const REDIS_CLIENT = redis.createClient({
     url: 'redis://cache:6380'
 });
@@ -117,7 +117,7 @@ const getCachedValue = async (key) => {
 //     }
 // }
 
-module.exports = {
+export {
     // cachePage,
     setCachedValue,
     getCachedValue,

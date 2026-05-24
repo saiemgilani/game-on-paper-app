@@ -1,10 +1,10 @@
-const express = require('express');
-const GamesModel = require('../resources/game');
-const logger = require("../../utils/logger");
+import express from 'express';
+import * as GamesModel from '../resources/game.js';
+import logger from '../../utils/logger.js';
+import { setCachedValue, getCachedValue } from '../../utils/cache.js';
 
 const router = express.Router();
 logger.info("activating games route page cache")
-const { setCachedValue, getCachedValue } = require("../../utils/cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/:gameId', async function(req, res, next) {
@@ -27,4 +27,4 @@ router.get('/:gameId', async function(req, res, next) {
     }
 })
 
-module.exports = router
+export default router;

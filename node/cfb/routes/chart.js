@@ -1,7 +1,7 @@
-const express = require('express');
-const SummaryModel = require("../resources/summary")
-const logger = require("../../utils/logger");
-const { CURRENT_YEAR, getPercentileKey } = require('../../utils/misc');
+import express from 'express';
+import * as SummaryModel from '../resources/summary.js';
+import logger from '../../utils/logger.js';
+import { CURRENT_YEAR, getPercentileKey } from '../../utils/misc.js';
 
 const router = express.Router();
 logger.info("activating charts route page cache")
@@ -53,4 +53,4 @@ router.get('/trends', async function(req, res, next) {
     }
 })
 
-module.exports = router;
+export default router;

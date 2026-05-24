@@ -1,8 +1,8 @@
-const axios = require('axios');
-const logger = require("../../utils/logger");
-const { URLSearchParams } = require('url');
-const SummaryModel = require("./summary")
-const {getPercentileKey, renderFile} = require("../../utils/misc");
+import axios from 'axios';
+import logger from '../../utils/logger.js';
+import { URLSearchParams } from 'url';
+import * as SummaryModel from './summary.js';
+import {getPercentileKey, renderFile} from '../../utils/misc.js';
 
 async function populate(endpoint, season, teamId, type = null) {
     let seasonType = type != null ? `/types/${type}` : ""
@@ -131,7 +131,7 @@ async function generateTeamSeasonHtml(year, teamId) {
     });
 }
 
-module.exports = {
+export {
     generateTeamHtml,
     generateTeamSeasonHtml,
     getTeamSeasonInformation,

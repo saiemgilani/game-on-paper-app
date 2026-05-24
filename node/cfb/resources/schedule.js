@@ -1,38 +1,19 @@
 // schedule.js
-const fs = require('fs');
-const logger = require("../../utils/logger");
-const axios = require('axios')
-const path = require("path");
-const cleanUpParams = require("../../utils/misc").cleanUpParams;
+import fs from 'fs';
+import logger from '../../utils/logger.js';
+import axios from 'axios';
+import path from 'path';
+import {cleanUpParams} from '../../utils/misc.js';
 
 logger.info("Compiling schedule vars");
-let schedule = {}
-fs.readFile(path.resolve(__dirname, "..", "..", "static", "schedule.json"), function (err, data) {
-    if (err) {
-        logger.error(err)
-        throw err;
-    }
-    logger.info(`Loading schedules...`)
-    schedule = JSON.parse(data);
-    logger.info(`Loaded schedules for ${Object.keys(schedule)}`)
-});
+import scheduleList from '../../static/schedule.json' with { type: "json" };
+logger.info(`Loaded schedules for ${Object.keys(scheduleList)}`)
+import groupMap from '../../static/groups.json' with { type: "json" };
+logger.info(`Loaded groups: ${groupMap.map(p => p.id)}`)
 
-let groupMap = [];
-fs.readFile(path.resolve(__dirname, "..", "..", "static", "groups.json"), function (err, data) {
-    if (err) {
-        logger.error(err)
-        throw err;
-    }
-    logger.info(`Loading groups...`)
-    groupMap = JSON.parse(data);
-    logger.info(`Loaded groups: ${groupMap.map(p => p.id)}`)
-});
-
-exports.scheduleList = schedule;
-
-exports.getWeeksMap = function () {
+function getWeeksMap() {
     var results = {};
-    Object.entries(schedule).forEach(([year, weeks]) => {
+    Object.entries(scheduleList).forEach(([year, weeks]) => {
         results[year] = weeks.map(wk => {
             return {
                 title: wk.label,
@@ -45,11 +26,11 @@ exports.getWeeksMap = function () {
     return results;
 }
 
-exports.getGroups = function() {
+function getGroups() {
     return groupMap;
 }
 
-exports.getGames = async function (year, week, type, group) {
+async function getGames(year, week, type, group) {
     return await _getRemoteGames(year, week, type, group); 
 }
 
@@ -138,9 +119,9 @@ async function _getRemoteGames(year, week, type, group) {
     }
 }
 
-exports.getWeeks = async function (year) {
-    let years = Object.keys(schedule);
-    let season = (year == null) ? schedule[years[years.length - 1]] : schedule[year];
+async function getWeeks(year) {
+    let years = Object.keys(scheduleList);
+    let season = (year == null) ? scheduleList[years[years.length - 1]] : scheduleList[year];
     return season.map(wk => {
         return {
             label: wk.label,
@@ -148,4 +129,13 @@ exports.getWeeks = async function (year) {
             type: wk.label.includes("Bowls") ? "3" : "2"
         }
     });
+}
+
+
+export {
+    scheduleList,
+    getWeeks,
+    getWeeksMap,
+    getGroups,
+    getGames
 }

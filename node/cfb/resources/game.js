@@ -1,82 +1,13 @@
-const axios = require('axios');
-const Schedule = require('./schedule');
-const SummaryModel = require("./summary")
-const logger = require("../../utils/logger");
-const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
-const {renderFile} = require("../../utils/misc")
+import axios from 'axios';
+import * as Schedule from './schedule.js';
+import * as SummaryModel from './summary.js';
+import logger from '../../utils/logger.js';
+import {renderFile} from '../../utils/misc.js';
 
+const RDATA_BASE_URL = process.env.RDATA_BASE_URL;
 logger.info("RDATA BASE URL: " + RDATA_BASE_URL)
 
-PAT_miss_type = [ 'PAT MISSED','PAT failed', 'PAT blocked', 'PAT BLOCKED']
-
-turnover_plays = [
-    "Blocked Field Goal",
-    "Blocked Field Goal Touchdown",    
-    "Blocked Punt",
-    "Blocked Punt Touchdown",
-    "Field Goal Missed",
-    "Missed Field Goal Return",
-    "Missed Field Goal Return Touchdown",    
-    "Fumble Recovery (Opponent)",
-    "Fumble Recovery (Opponent) Touchdown",
-    "Fumble Return Touchdown",
-    "Fumble Return Touchdown Touchdown",
-    "Defensive 2pt Conversion",
-    "Pass Interception",
-    "Interception",
-    "Interception Return Touchdown",
-    "Pass Interception Return",
-    "Pass Interception Return Touchdown",
-    "Punt",
-    "Punt Return Touchdown",
-    "Sack Touchdown",
-    "Uncategorized Touchdown"
-]
-
-defense_score_vec = [
-    "Blocked Punt Touchdown",
-    "Blocked Field Goal Touchdown",
-    "Missed Field Goal Return Touchdown",
-    "Punt Return Touchdown",
-    "Fumble Recovery (Opponent) Touchdown",    
-    "Fumble Return Touchdown",
-    "Fumble Return Touchdown Touchdown",
-    "Defensive 2pt Conversion",
-    "Safety",
-    "Sack Touchdown",    
-    "Interception Return Touchdown",
-    "Pass Interception Return Touchdown",
-    "Uncategorized Touchdown"
-]
-
-normal_play = [
-    "Rush",
-    "Pass",
-    "Pass Completion",
-    "Pass Reception",
-    "Pass Incompletion",
-    "Sack",
-    "Fumble Recovery (Own)"
-]
-
-score = [
-    "Passing Touchdown", 
-    "Rushing Touchdown", 
-    "Field Goal Good",
-    "Pass Reception Touchdown",
-    "Fumble Recovery (Own) Touchdown",
-    "Punt Touchdown",
-    "Rushing Touchdown Touchdown"         
-]
-
-kickoff = [
-    "Kickoff",
-    "Kickoff Return (Offense)",
-    "Kickoff Return Touchdown",
-    "Kickoff Touchdown"
-]
-
-QUARANTINE_LIST = [
+const QUARANTINE_LIST = [
     "401411157",
     "401403861",
     "401628329",
@@ -112,7 +43,7 @@ async function getSchedule(input) {
 async function retrieveGamePage(gameId) {
     const cacheBuster = ((new Date()).getTime() * 1000);
     // check if the game is active or in the future
-    pbp_url = `http://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`;
+    const pbp_url = `http://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`;
     const response = await axios.get(pbp_url);
     return response.data;
 }
@@ -376,7 +307,7 @@ async function generateGameHtml(gameId) {
     return htmlResponse
 }
 
-module.exports = {
+export {
     routeGameList,
     retrievePBP,
     generateGameHtml,

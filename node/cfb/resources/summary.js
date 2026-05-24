@@ -1,8 +1,8 @@
-const axios = require('axios');
-const redis = require('redis');
-const logger = require("../../utils/logger");
-const generateKey = require("../../utils/misc").generateKey;
-const cleanUpParams = require("../../utils/misc").cleanUpParams;
+import axios from 'axios';
+import redis from 'redis';
+import logger from '../../utils/logger.js';
+import {generateKey} from '../../utils/misc.js';
+import {cleanUpParams} from '../../utils/misc.js';
 
 const lruCache = redis.createClient({
     url: 'redis://lru:6379'
@@ -225,7 +225,7 @@ async function retrieveTeamData(year, team_id, type, maxLookback = 2014) {
     }
 }
 
-module.exports = {
+export {
     retrieveLastUpdated,
     retrieveLeagueData,
     retrievePercentiles,

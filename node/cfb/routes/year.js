@@ -1,10 +1,10 @@
-const express = require('express');
-const SummaryModel = require("../resources/summary")
-const GamesModel = require("../resources/game")
-const Teams = require("../resources/team")
-const Leaderboards = require("../resources/leaderboard")
-const logger = require("../../utils/logger");
-const { setCachedValue, getCachedValue } = require("../../utils/cache")
+import express from 'express';
+import * as SummaryModel from '../resources/summary.js';
+import * as GamesModel from '../resources/game.js';
+import * as TeamsModel from '../resources/team.js';
+import * as Leaderboards from '../resources/leaderboard.js';
+import logger from '../../utils/logger.js';
+import { setCachedValue, getCachedValue } from '../../utils/cache.js';
 const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
@@ -127,4 +127,4 @@ router.get('/teams', async (req, res, next) => {
     return res.redirect(`/cfb/year/${req.params.year}/teams/differential`);
 })
 
-module.exports = router;
+export default router;
