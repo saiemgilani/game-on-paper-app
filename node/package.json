@@ -25,9 +25,10 @@
   },
   "homepage": "https://github.com/saiemgilani/game-on-paper-app#readme",
   "dependencies": {
+    "@types/express": "^5.0.6",
     "axios": "^1.14.0",
     "ejs": "^3.1.5",
-    "express": "^4.17.1",
+    "express": "^4.22.2",
     "luxon": "^3.7.2",
     "morgan": "^1.10.0",
     "redis": "^4.7.1",
