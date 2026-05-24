@@ -1,27 +1,21 @@
-// import redis from 'redis';
+import redis from 'redis';
 import logger from './logger.js';
-// const REDIS_CLIENT = redis.createClient({
-//     url: 'redis://cache:6380'
-// });
+const REDIS_CLIENT = redis.createClient({
+    url: 'redis://cache:6380'
+});
 
 // const cacheIgnore = process.env.CACHE_IGNORE || 'false'
 
-// REDIS_CLIENT.on('error', (err) => logger.error(`Error in Redis client: ${err}`));
+REDIS_CLIENT.on('error', (err) => logger.error(`Error in Redis client: ${err}`));
 
-// REDIS_CLIENT.connect()
-//     .then(() => {
-//         logger.info('connected to redis page cache on port 6380');
-//     })
-//     .catch((e) => {
-//         logger.error(`Error while connecting to redis page cache: ${e}`)
-//     })
+REDIS_CLIENT.connect()
+    .then(() => {
+        logger.info('connected to redis page cache on port 6380');
+    })
+    .catch((e) => {
+        logger.error(`Error while connecting to redis page cache: ${e}`)
+    })
 
-// class CacheError extends Error {
-//   constructor(message) {
-//     super(message);
-//     this.name = 'CacheError';
-//   }
-// }
 
 
 const setCachedValue = async (key, value, duration) => {
@@ -36,11 +30,11 @@ const setCachedValue = async (key, value, duration) => {
         params["EX"] = duration
     }
 
-    // try {
-    //     await REDIS_CLIENT.set(key, value, params)
-    // } catch (e) {
-    //     logger.error(`Error while writing ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
-    // }
+    try {
+        await REDIS_CLIENT.set(key, value, params)
+    } catch (e) {
+        logger.error(`Error while writing ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
+    }
 }
 
 const getCachedValue = async (key) => {
@@ -48,12 +42,12 @@ const getCachedValue = async (key) => {
         key = `${key}`;
     }
 
-    // try {
-    //     return await REDIS_CLIENT.get(key)
-    // } catch (e) {
-    //     logger.error(`Error while reading ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
-    //     return null;
-    // }
+    try {
+        return await REDIS_CLIENT.get(key)
+    } catch (e) {
+        logger.error(`Error while reading ${key} (with value: ${value}) to redis: ${e} -- ${e.stack}`)
+        return null;
+    }
 }
 
 async function cacheResponse(key, duration, valuePromise) {
@@ -85,10 +79,8 @@ async function sendCachedResponse(req, res, next, key, duration, valuePromise) {
 }
 
 export {
-    // cachePage,
     setCachedValue,
     getCachedValue,
     cacheResponse,
     sendCachedResponse
-    // REDIS_CLIENT
 }

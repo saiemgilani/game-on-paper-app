@@ -3,8 +3,6 @@ import morgan from 'morgan';
 import cfb from '../cfb/routes.js';
 import logger from '../utils/logger.js';
 import path from "node:path";
-import { env } from "cloudflare:workers";
-import { httpServerHandler } from "cloudflare:node";
 
 const port = parseInt(process.env.PORT) || 8000;
 const app = express();
@@ -89,5 +87,3 @@ app.use(function (err, req, res, next) {
         error: err
     });
 })
-
-export default httpServerHandler({ port });
