@@ -18,7 +18,7 @@
                     <tbody>
                     <% if (players.length > 0) { %>
                         <% players.forEach(p => { %>
-                            <% if (p.name.length > 0) { %>
+                            <% if (p.name.length > 0 && p.name != "NA") { %>
                                 <tr>
                                     <%- playerRowCallback(p) %>
                                 </tr>
