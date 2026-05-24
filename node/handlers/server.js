@@ -68,7 +68,7 @@ app.use((req, res, next) => {
             message: "Method not allowed."
         });
     } else {
-        next()
+        return next()
     }
 })
 
@@ -76,13 +76,11 @@ app.use('/cfb', cfb);
 
 // index page
 app.get('/', function(req, res) {
-    res.redirect('/cfb/');
+    return res.redirect('/cfb/');
 });
 
 // Start the frontend service
-app.listen(port, () => {
-    logger.info(`listening on port ${port}`)
-})
+app.listen(port, () => logger.info(`listening on port ${port}`))
 
 app.use(function (err, req, res, next) {
     logger.error(err.stack)
