@@ -1,8 +1,6 @@
 // schedule.js
-import fs from 'fs';
 import logger from '../../utils/logger.js';
 import axios from 'axios';
-import path from 'path';
 import {cleanUpParams} from '../../utils/misc.js';
 
 logger.info("Compiling schedule vars");

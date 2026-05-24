@@ -1,6 +1,6 @@
 import axios from 'axios';
 import logger from '../../utils/logger.js';
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 import * as SummaryModel from './summary.js';
 import {getPercentileKey, renderFile} from '../../utils/misc.js';
 

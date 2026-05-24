@@ -1,6 +1,5 @@
 import express from 'express';
-import * as SummaryModel from '../resources/summary.js';
-import * as Leaderboards from '../resources/summary.js';
+import * as Leaderboards from '../resources/leaderboard.js';
 import logger from '../../utils/logger.js';
 import { CURRENT_YEAR, getPercentileKey } from '../../utils/misc.js';
 import { sendCachedResponse } from '../../utils/cache.js';

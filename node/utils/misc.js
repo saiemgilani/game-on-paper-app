@@ -1,8 +1,8 @@
 import axios from 'axios';
 import logger from './logger.js';
 const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-import crypto from 'crypto';
-import path from 'path';
+import crypto from 'node:crypto';
+import path from 'node:path';
 import ejs from 'ejs';
 
 function retrieveValue(dictionary, key) {

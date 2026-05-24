@@ -1,6 +1,4 @@
 import logger from '../../utils/logger.js';
-import fs from 'fs/promises';
-import path from 'path';
 import { ALPHABET } from '../../utils/misc.js';
 import glossaryRaw from '../../static/glossary.json' with { type: 'json' };
 

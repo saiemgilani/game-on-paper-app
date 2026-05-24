@@ -2,10 +2,11 @@ import express from 'express';
 import morgan from 'morgan';
 import cfb from '../cfb/routes.js';
 import logger from '../utils/logger.js';
-// var path = require('path');
-import path from "path";
-const port = process.env.PORT || 8000;
+import path from "node:path";
+import { env } from "cloudflare:workers";
+import { httpServerHandler } from "cloudflare:node";
 
+const port = parseInt(process.env.PORT) || 8000;
 const app = express();
 app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
 app.set('views', path.join(import.meta.dirname, "../", 'views'));
@@ -88,3 +89,5 @@ app.use(function (err, req, res, next) {
         error: err
     });
 })
+
+export default httpServerHandler({ port });
