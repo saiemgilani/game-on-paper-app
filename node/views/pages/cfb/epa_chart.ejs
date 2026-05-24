@@ -38,25 +38,7 @@
         <meta name="title" content="<%= title %>">
         <meta name="medium" content="website">
         <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
-        <style>
-            @media (prefers-color-scheme: dark) {
-            <% teams.forEach(t => {  %>
-                img.team-logo-<%= t.teamId %> {
-                    content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= t.teamId %>.png')
-                }
-            <% }); %>
-            }
-            /* img.team-logo-153 {
-                content: url('/assets/img/crying-jordan.png');
-            }   */
-            img.team-logo-61 {
-                content: url('/assets/img/ennui-uga.png');
-                /* Sourced from the Moon Crew Discord server */
-            }
-            /* img.team-logo-2390 {
-                content: url('/assets/img/upside-down-u.png');
-            } */
-        </style>
+        <%- include('../../partials/team_dark_images', { teamIds: teams.map(t => t.teamId )}) %>
     </head>
     <body>
         <%- include('../../partials/nav-header') %>

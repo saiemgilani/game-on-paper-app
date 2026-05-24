@@ -22,36 +22,18 @@
         <link href="/assets/css/index.css" rel="stylesheet">
         <link href="/assets/css/dark-index.css" rel="stylesheet">
         <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
-        <style>
-            @media (prefers-color-scheme: dark) {
-        <% scoreboard.forEach(game => {  %>
-            <% let gameComp = game.competitions[0];%>
-            <%let homeComp = gameComp.competitors[0];%>
-            <%let awayComp = gameComp.competitors[1];%>
-            <%let homeTeam = homeComp.team;%>
-            <%let awayTeam = awayComp.team;%>
+        <% 
+        const teamIds = scoreboard.map(game => {  
+            let gameComp = game.competitions[0];
+            let homeComp = gameComp.competitors[0];
+            let awayComp = gameComp.competitors[1];
+            let homeTeam = homeComp.team;
+            let awayTeam = awayComp.team;
 
-            img.team-logo-<%= homeTeam.id %> {
-                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= homeTeam.id %>.png')
-            }
-            img.team-logo-<%= awayTeam.id %> {
-                content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/<%= awayTeam.id %>.png')
-            }
-        <% }); %>
-        }
-
-        /* img.team-logo-153 {
-            content: url('/assets/img/crying-jordan.png');
-        } */
-
-        img.team-logo-61 {
-            content: url('/assets/img/ennui-uga.png');
-            /* Sourced from the Moon Crew Discord server */
-        }
-        /* img.team-logo-2390 {
-            content: url('/assets/img/upside-down-u.png');
-        } */
-        </style>
+            return [homeTeam.id, awayTeam.id]
+        }).reduce((a, b) => a.concat(b), []); 
+        %>
+        <%- include('../../partials/team_dark_images', { teamIds: teamIds }) %>
     </head>
     <body>
         <%

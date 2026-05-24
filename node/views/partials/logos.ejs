@@ -1,32 +1,13 @@
 <%
-
-function formatTeamDarkLogo(team) {
-    if (!team) {
-        return "";
-    }
-    return `
-    img.team-logo-${team.id} \{
-        content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${team.id}.png')
-    \}
-    `
+let teamIds = []
+if (team) {
+    teamIds.push(team.id)
+}
+if (homeTeam) {
+    teamIds.push(homeTeam.id)
+}
+if (awayTeam) {
+    teamIds.push(awayTeam.id)
 }
 %>
-
-
-<style>
-    @media (prefers-color-scheme: dark) {
-        <%- formatTeamDarkLogo(team) %>
-        <%- formatTeamDarkLogo(homeTeam) %>
-        <%- formatTeamDarkLogo(awayTeam) %>
-    }
-    /* img.team-logo-153 {
-        content: url('/assets/img/crying-jordan.png');
-    }   */
-    img.team-logo-61 {
-        content: url('/assets/img/ennui-uga.png');
-        /* Sourced from the Moon Crew Discord server */
-    }
-    /* img.team-logo-2390 {
-        content: url('/assets/img/upside-down-u.png');
-    } */
-</style>
+<%- include('../../partials/nav-header', { teamIds: teamIds }) %>
