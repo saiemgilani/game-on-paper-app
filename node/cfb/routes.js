@@ -1,14 +1,14 @@
 import express from "express";
-import { routeGameList } from './resources/game.js';
+import { renderGameList } from './resources/game.js';
 import { generateGlossaryItems } from './resources/glossary.js';
 import GamesRoute from './routes/game.js';
 import YearsRoute from './routes/year.js';
 // import TeamsRoute from './routes/team';
 import ChartsRoute from './routes/chart.js';
-import { ping, range, CURRENT_YEAR } from '../utils/misc.js';
+import { ping, range, CURRENT_YEAR, renderFile } from '../utils/misc.js';
 import { retrieveLastUpdated, retrieveAllTeams } from './resources/summary.js';
 import logger from '../utils/logger.js';
-import { getCachedValue, setCachedValue } from '../utils/cache.js';
+import { sendCachedResponse } from '../utils/cache.js';
 const router = express.Router();
 
 router.get('/healthcheck', async (req, res) => {
@@ -32,25 +32,12 @@ router.get('/healthcheck', async (req, res) => {
 // cache this every minute
 router.get('/', async function(req, res, next) {
     try {  
-        let pbpHtml = null;  
         if (!req.query.group) {
-            // if scoreboard found in redis, return response
-            pbpHtml = await getCachedValue(`scoreboard`)
+            return await sendCachedResponse(req, res, next, "scoreboard", 60, async () => renderGameList({ group: 80 }))
         }
-        
-        if (!pbpHtml) {
-            pbpHtml = await routeGameList(
-                {
-                    group: req.query.group || 80
-                }, 
-                req.originalUrl
-            )
-            if (!req.query.group) {
-                await setCachedValue("scoreboard", pbpHtml, 60)
-            }
-        }
-        
-        return res.type("html").send(pbpHtml);
+
+        const htmlValue = await renderGameList({ group: req.query.group }, req.originalUrl)
+        return res.type("html").send(htmlValue)
     } catch (e) {
         logger.error(`Error while loading PBP data: ${e}`);
         return next(e)
@@ -59,26 +46,17 @@ router.get('/', async function(req, res, next) {
 
 
 router.get('/glossary', async (req, res, next) => {
-    try {
-        const glossary = await generateGlossaryItems()
-        return res.render('pages/cfb/glossary', {
-            glossary 
-        });
-    } catch (err) {
-        return next(err)
-    }
+    return await sendCachedResponse(req, res, next, "glossary", 60 * 60 * 24, async () => renderFile("pages/cfb/glossary", { glossary: generateGlossaryItems() }))
 })
 
 router.get('/teams', async (req, res, next) => {
-    try {
-        return res.render("pages/cfb/team_index", {
+    return await sendCachedResponse(req, res, next, "teams", 60 * 60 * 24, async () => {
+        return renderFile("pages/cfb/team_index", {
             teams: await retrieveAllTeams(),
             seasons: range(2014, CURRENT_YEAR),
             last_updated: await retrieveLastUpdated()
         })
-    } catch (err) {
-        return next(err)
-    }
+    })
 })
 
 router.use("/game", GamesRoute)

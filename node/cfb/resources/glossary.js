@@ -4,7 +4,7 @@ import path from 'path';
 import { ALPHABET } from '../../utils/misc.js';
 import glossaryRaw from '../../static/glossary.json' with { type: 'json' };
 
-async function generateGlossaryItems() {
+function generateGlossaryItems() {
     try {
         logger.info(`Loading glossary...`)
         let glossary = {};

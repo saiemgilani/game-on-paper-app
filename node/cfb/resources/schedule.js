@@ -83,7 +83,7 @@ async function _getRemoteGames(year, week, type, group) {
         query = cleanUpParams(query)
         
         const url = baseUrl + (new URLSearchParams(query)).toString(); // + `&${new Date().getTime()}`;
-        logger.info(url)
+        // logger.info(url)
         const res = await axios.get(url);
 
         let espnContent = res.data;

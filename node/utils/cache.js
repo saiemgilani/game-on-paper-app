@@ -117,9 +117,39 @@ const getCachedValue = async (key) => {
 //     }
 // }
 
+async function cacheResponse(key, duration, valuePromise) {
+    let htmlValue = await getCachedValue(key) // TODO: santitize URL inputs
+    if (!htmlValue) {
+        // if not found in redis, generate file
+        logger.warn(`Cache miss: ${key}`)
+        if (typeof valuePromise == 'function') {
+            htmlValue = await valuePromise();
+        } else {
+            htmlValue = await valuePromise;
+        }
+        await setCachedValue(key, htmlValue, duration)
+    } else {
+        logger.info(`Cache hit: ${key}`)
+    }
+    // if found in redis, return response
+    return htmlValue;
+}
+
+async function sendCachedResponse(req, res, next, key, duration, valuePromise) {
+    try {
+        const htmlValue = await cacheResponse(key, duration, valuePromise);
+        return res.type("html").send(htmlValue);
+    } catch (e) {
+        logger.error(`Error while sending cached response for key ${key}: ${e}`);
+        return next(e)
+    }
+}
+
 export {
     // cachePage,
     setCachedValue,
     getCachedValue,
+    cacheResponse,
+    sendCachedResponse
     // REDIS_CLIENT
 }

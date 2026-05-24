@@ -135,10 +135,10 @@ async function processPlays(gameId) {
 }
 
 
-async function getGames(params, url = null) {
+async function getGames(params) {
     var gameList = await getSchedule(params);
     if (gameList == null) {
-        throw Error(`Data not available for ${url || JSON.stringify(params)} because of a service error.`)
+        throw Error(`Data not available for ${JSON.stringify(params)} because of a service error.`)
     }
     gameList = gameList.filter(g => {
         const gameComp = g.competitions[0];
@@ -183,8 +183,8 @@ async function getGames(params, url = null) {
     return gameList;
 }
 
-async function renderGameList(payload = {}, url = null) {
-    let gameList = await getGames(payload, url);
+async function renderGameList(payload = {}) {
+    let gameList = await getGames(payload);
     let weekList = Schedule.getWeeksMap();
     let groupList = Schedule.getGroups();
 
@@ -203,17 +203,6 @@ async function renderGameList(payload = {}, url = null) {
         group: payload["group"] || 80,
         title: weekTitle
     });
-}
-
-async function routeGameList(req, res, next, payload) {
-    try {
-        return await renderGameList(payload, req.originalUrl)
-    } catch (e) {
-        logger.error(`Error while loading scoreboard data: ${e}`);
-        return renderFile('error', {
-            error: e
-        });
-    }
 }
 
 async function generatePostGameHtml(gameId, header) {
@@ -308,7 +297,7 @@ async function generateGameHtml(gameId) {
 }
 
 export {
-    routeGameList,
+    renderGameList,
     retrievePBP,
     generateGameHtml,
     QUARANTINE_LIST

@@ -71,7 +71,59 @@ async function getTeamLeaderboard(type, sortKey) {
     })
 }
 
+async function getTrends(type, metric) {
+    let allPctls = []
+    for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+        const percentiles = await SummaryModel.retrievePercentiles(null, p);
+        allPctls = allPctls.concat(percentiles);
+    }
+
+    const pctlKey = getPercentileKey(metric)
+    const selectedPercentiles = allPctls.map(p => {
+        var result = {
+            season: p["season"],
+            pctile: p["pctile"],
+        }
+        result["value"] = p[pctlKey];
+        return result
+    }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+
+    let availableSeasons = selectedPercentiles.map(b => b.season)
+    availableSeasons = [...new Set(availableSeasons)].sort();
+
+    return renderFile('pages/cfb/trends', {
+        seasons: availableSeasons,
+        percentiles: selectedPercentiles,
+        type,
+        metric,
+        last_updated: await SummaryModel.retrieveLastUpdated()
+    });
+}
+
+async function getEpaChart() {
+    const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
+
+    let content = baseData.map(t => {
+        // let target = t[type]
+        return {
+            teamId: t.teamId,
+            team: t.team,
+            fbsClass: t.fbsClass,
+            adjOffEpa: t.offensive?.overall?.adjEpaPerPlay,
+            adjDefEpa: t.defensive?.overall?.adjEpaPerPlay
+        }
+    })
+
+    return renderFile("pages/cfb/epa_chart", {
+        teams: content,
+        season: req.params.year,
+        last_updated: await SummaryModel.retrieveLastUpdated()
+    })
+}
+
 export {
     getTeamLeaderboard,
-    getPlayerLeaderboard
+    getPlayerLeaderboard,
+    getTrends,
+    getEpaChart
 }

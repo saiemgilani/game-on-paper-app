@@ -4,96 +4,69 @@ import * as GamesModel from '../resources/game.js';
 import * as TeamsModel from '../resources/team.js';
 import * as Leaderboards from '../resources/leaderboard.js';
 import logger from '../../utils/logger.js';
-import { setCachedValue, getCachedValue } from '../../utils/cache.js';
+import { sendCachedResponse, cacheResponse } from '../../utils/cache.js';
 const router = express.Router({ mergeParams: true });
 logger.info("activating years page cache")
 // router.use(cachePage(60 * 60 * 24)) // 1 day TTL for stuff that doesn't change
 
 router.get('/', async (req, res, next) => {
-    return GamesModel.routeGameList(
-        req, 
-        res,
-        next,
-        {
-            year: req.params.year, 
-            week: 1, 
-            type: 2, 
-            group: req.query.group || 80
-        }
-    )
+    try {
+        const htmlValue = await GamesModel.renderGameList(
+            {
+                year: req.params.year, 
+                week: 1, 
+                type: 2, 
+                group: req.query.group || 80
+            },
+        )
+        return res.type("html").send(htmlValue)
+    } catch (e) {
+        logger.error(`ERROR while loading path: ${req.originalUrl}: ${e}`)
+        return next(e)
+    }
 });
 
 router.get('/type/:type', async (req, res, next) => {
-    return GamesModel.routeGameList(
-        req, 
-        res,
-        next,
-        {
-            year: req.params.year, 
-            week: 1, 
-            type: req.params.type, 
-            group: req.query.group || 80
-        }
-    )
-})
-
-router.get('/type/:type/week/:week', async (req, res, next) => {
-    return GamesModel.routeGameList(
-        req, 
-        res,
-        next,
-        {
-            year: req.params.year, 
-            week: req.params.week, 
-            type: req.params.type, 
-            group: req.query.group || 80
-        }
-    )
-})
-
-router.get('/team/:teamId', async function(req, res, next) {
-    try {            
-        let teamHtml = await getCachedValue(`team-${req.params.teamId}-${req.params.year}`) // TODO: santitize URL inputs
-        if (!teamHtml) {
-            // if not found in redis, redirect to archived file
-            logger.warn(`Cache miss: team-${req.params.teamId}-${req.params.year}`)
-            // return res.redirect(`/cfb/team/${req.params.teamId}/archive`)
-            teamHtml = await Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId);
-            await setCachedValue(`team-${req.params.teamId}-${req.params.year}`, teamHtml, 60 * 60 * 24)
-        } else {
-            logger.info(`Cache hit: team-${req.params.teamId}-${req.params.year}`)
-        }
-        // if found in redis, return response
-        return res.type("html").send(teamHtml);
+    try {
+        const htmlValue = await GamesModel.renderGameList(
+            {
+                year: req.params.year, 
+                week: 1, 
+                type: req.params.type, 
+                group: req.query.group || 80
+            },
+        )
+        return res.type("html").send(htmlValue)
     } catch (e) {
-        logger.error(`Error while loading team season data: ${e}`);
+        logger.error(`ERROR while loading path: ${req.originalUrl}: ${e}`)
         return next(e)
     }
 })
 
-router.get('/charts/team/epa', async (req, res, next) => {
+router.get('/type/:type/week/:week', async (req, res, next) => {
     try {
-        const baseData = await SummaryModel.retrieveLeagueData(req.params.year, "overall") 
-
-        let content = baseData.map(t => {
-            // let target = t[type]
-            return {
-                teamId: t.teamId,
-                team: t.team,
-                fbsClass: t.fbsClass,
-                adjOffEpa: t.offensive?.overall?.adjEpaPerPlay,
-                adjDefEpa: t.defensive?.overall?.adjEpaPerPlay
-            }
-        })
-
-        return res.render("pages/cfb/epa_chart", {
-            teams: content,
-            season: req.params.year,
-            last_updated: await SummaryModel.retrieveLastUpdated()
-        })
-    } catch(err) {
-        return next(err)
+        const htmlValue = await GamesModel.renderGameList(
+            {
+                year: req.params.year, 
+                week: req.params.week, 
+                type: req.params.type, 
+                group: req.query.group || 80
+            },
+        )
+        return res.type("html").send(htmlValue)
+    } catch (e) {
+        logger.error(`ERROR while loading path: ${req.originalUrl}: ${e}`)
+        return next(e)
     }
+})
+
+router.get('/team/:teamId', async (req, res, next) => {
+    return await sendCachedResponse(req, res, next, `team-${req.params.teamId}-${req.params.year}`, 60 * 60 * 24, Teams.generateTeamSeasonHtml(req.params.year, req.params.teamId));
+})
+
+
+router.get('/charts/team/epa', async (req, res, next) => {
+    return await sendCachedResponse(req, res, next, `epa-${req.params.year}`, 60 * 60 * 24, Leaderboards.getEpaChart())
 })
 
 router.get('/teams/:type', async (req, res, next) => {
@@ -103,7 +76,8 @@ router.get('/teams/:type', async (req, res, next) => {
         if (type == "differential" && (!sortKey.includes("overall") || sortKey.includes("havocRate"))) {
             sortKey = `overall.adjEpaPerPlay`
         }
-        return Leaderboards.getTeamLeaderboard(type, sortKey)
+        const htmlValue = cacheResponse(`team-sort-${type}-${sortKey}`, 60 * 60 * 24, Leaderboards.getTeamLeaderboard(type, sortKey))
+        return res.type("html").send(htmlValue);
     } catch(err) {
         return next(err)
     }
@@ -113,7 +87,8 @@ router.get('/players/:type', async (req, res, next) => {
     try {
         const type = req.params.type ?? "passing";
         let sortKey = req.query.sort ?? `advanced.epaPerPlay`
-        return Leaderboards.getPlayerLeaderboard(type, sortKey)
+        const htmlValue = cacheResponse(`player-sort-${type}-${sortKey}`, 60 * 60 * 24, Leaderboards.getPlayerLeaderboard(type, sortKey))
+        return res.type("html").send(htmlValue); 
     } catch(err) {
         return next(err)
     }
