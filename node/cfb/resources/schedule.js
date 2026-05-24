@@ -41,7 +41,7 @@ async function _getRemoteGames(year, week, type, group) {
     }
 
     if (year == null || week == null) {
-        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20260101&groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`, {
+        const res =  await axios.get(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`, {
             protocol: "https"
         })
         // logger.info(res.request.res.responseUrl)
