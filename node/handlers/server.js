@@ -8,9 +8,9 @@ const port = process.env.PORT || 8000;
 
 const app = express();
 app.use(morgan('[frontend] :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]'));
-app.set('views', path.join(import.meta.dirname, 'views'));
+app.set('views', path.join(import.meta.dirname, "../", 'views'));
 app.set('view engine', 'ejs');
-app.use(express.static(path.join(import.meta.dirname, 'public')));
+app.use(express.static(path.join(import.meta.dirname, "../", 'public')));
 
 const BANNED_USER_AGENT_LIST = [
     'my-tiny-bot',
