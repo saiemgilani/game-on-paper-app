@@ -1,0 +1,70 @@
+---
+import { AVAILABLE_SEASONS } from "../utils/constants";
+
+
+---
+
+<header class="p-3 mb-3 border-bottom">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+            <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
+                <span class="fs-4 blog-header-logo">Game on Paper</span>
+            </div>
+
+            <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+                <li><a href="/" class="nav-link px-2 link-secondary">Scoreboard</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Leaderboards
+                    </a>
+                    <ul class="dropdown-menu">
+                        <h6 class="dropdown-header">Team Level</h6>
+                        <li><a class="dropdown-item" href="/cfb/teams/differential">Net Statistics</a></li>
+                        <li><a class="dropdown-item" href="/cfb/teams/offensive">Offensive</a></li>
+                        <li><a class="dropdown-item" href="/cfb/teams/defensive">Defensive</a></li>
+                        <h6 class="dropdown-header">Player Level</h6>
+                        <li><a class="dropdown-item" href="/cfb/players/passing">Passing</a></li>
+                        <li><a class="dropdown-item" href="/cfb/players/rushing">Rushing</a></li>
+                        <li><a class="dropdown-item" href="/cfb/players/receiving">Receiving</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Charts
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/cfb/charts/trends">Trends</a></li>
+                        <h6 class="dropdown-header">Team Level</h6>
+                        <li><a class="dropdown-item" href="/cfb/charts/team/epa">Adj EPA/Play</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Seasons
+                    </a>
+                    <ul class="dropdown-menu">
+                    {
+                        AVAILABLE_SEASONS.map((yr) => (
+                            <li><a class="dropdown-item" href={`/cfb/year/${yr}/teams`}>{yr}</a></li>
+                        ))
+                    }
+                    </ul>
+                </li>
+                <li><a href="/cfb/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
+            </ul>
+
+            <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search" id="game-id-form">
+                <input id="inputGameId" type="search" class="form-control" placeholder="Search for an ESPN game ID..." aria-label="Search">
+            </form>
+        </div>
+    </div>
+</header>
+<script>
+    document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
+        e.preventDefault()
+        const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
+        if (gameId) {
+            window.location.assign("/cfb/game/" + gameId);
+        }
+    });
+</script>

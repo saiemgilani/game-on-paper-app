@@ -1,0 +1,147 @@
+
+@font-face {
+  font-family: 'Chivo';
+  src: url('../fonts/chivo/Chivo-Regular.ttf')  format('truetype'); /* Safari, Android, iOS */
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Chivo";
+  src: url('../fonts/chivo/Chivo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url('../fonts/fira-mono/FiraMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+}
+
+body {
+  /* display: flex; */
+  /* align-items: center; */
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.form-picker {
+  width: 100%;
+  max-width: 900px;
+  padding: 15px;
+  margin: auto;
+}
+
+.blog-header {
+  line-height: 1;
+  border-bottom: 1px solid #e5e5e5;
+  color: #727272;
+  text-align: center;
+  background-color: #f9f9f9;
+}
+
+.blog-header-logo {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-size: 2.25rem;
+}
+
+.blog-header-logo:hover {
+  text-decoration: none;
+}
+.row {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
+
+.rounded, .btn, .badge, .form-select, .form-control {
+  border-radius: 0.5em !important;
+}
+
+.form-signin {
+  width: 100%;
+  max-width: 330px;
+  padding: 15px;
+  margin: auto;
+}
+
+.form-signin .form-control {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+}
+.form-signin .form-control:focus {
+  z-index: 2;
+}
+
+.spice-level-testing {
+  border-color: blue !important;
+}
+
+.spice-level-none {
+  border-color: #dee2e6 !important;
+}
+
+.spice-level-close-late {
+  border-color: #2ED017 !important;
+}
+
+.spice-level-ranked-upset {
+  border-color: #FFE700 !important;
+}
+
+.spice-level-ranked-close-late {
+  border-color: #FF9700 !important;
+}
+
+.spice-level-fcs-upset {
+  border-color: #FF0000 !important;
+}
+
+.rotate {
+  animation: rotation 1s infinite linear;
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+/*
+ * Footer
+ */
+ .blog-footer {
+  padding: 2.5rem 0;
+  color: #727272;
+  text-align: center;
+  /* background-color: #f9f9f9; */
+  border-top: .05rem solid #e5e5e5;
+}
+.blog-footer p:last-child {
+  margin-bottom: 0;
+}
+
+.btn-championship {
+    color: white !important; 
+    background-color: #b3a369 !important;/* #eeb211*/
+
+}
+
+.btn-outline-championship {
+    border-color: #b3a369 !important; /* #eeb211*/
+    color: #b3a369 !important; /* #eeb211*/
+}
+
+.outline-championship {
+    border-color: #b3a369 !important; /* #eeb211*/
+}
+
+.text-championship {
+  color: #b3a369 !important; /* #eeb211*/
+}

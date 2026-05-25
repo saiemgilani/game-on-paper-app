@@ -1,0 +1,186 @@
+/* stylelint-disable selector-list-comma-newline-after */
+@font-face {
+  font-family: 'Chivo';
+  src: url('../fonts/chivo/Chivo-Regular.ttf')  format('truetype'); /* Safari, Android, iOS */
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Chivo";
+  src: url('../fonts/chivo/Chivo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url('../fonts/fira-mono/FiraMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+}
+
+.blog-header {
+  line-height: 1;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.blog-header-logo {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+  font-size: 2.25rem;
+}
+
+.blog-header-logo:hover {
+  text-decoration: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
+table {
+  font-family: "Chivo", "Fira Mono", serif/*rtl:Amiri, Georgia, "Times New Roman", serif*/;
+}
+.display-4 {
+  font-size: 2.5rem;
+}
+@media (min-width: 768px) {
+  .display-4 {
+    font-size: 3rem;
+  }
+}
+
+.nav-scroller {
+  position: relative;
+  z-index: 2;
+  height: 2.75rem;
+  overflow-y: hidden;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.nav-scroller .nav {
+  display: flex;
+  flex-wrap: nowrap;
+  padding-bottom: 1rem;
+  margin-top: -1px;
+  overflow-x: auto;
+  text-align: center;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-scroller .nav-link {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  font-size: .875rem;
+}
+
+.card-img-right {
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+}
+
+.flex-auto {
+  flex: 0 0 auto;
+}
+
+.h-250 { height: 250px; }
+@media (min-width: 768px) {
+  .h-md-250 { height: 250px; }
+}
+
+.gt_group_heading {
+  box-sizing: border-box;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #dee2e6;
+}
+
+.numeral {
+  font-family: "Chivo"; /* here to change font for just numerals in tables */
+}
+
+.hiddenRow {
+  padding: 0 !important;
+}
+
+.rounded, .btn, .badge, .form-select, .form-control {
+  border-radius: 0.5em !important;
+}
+
+.hulk-text-level-9, .hulk-text-green {
+  color: rgb(52, 199, 89);
+}
+
+.hulk-text-level-0, .hulk-text-purple {
+  color: rgb(175, 82, 222);
+}
+
+.hulk-text-level-1 {
+  color: #833DA6;
+}
+
+.hulk-text-level-2 {
+  color: #57296F;
+}
+
+.hulk-text-level-3 {
+  color: #2B1437;
+}
+
+.hulk-text-level-4, .hulk-text-level-5 {
+  color: black;
+}
+
+.hulk-text-level-6 {
+  color: #0D3116;
+}
+
+.hulk-text-level-7 {
+  color: #1A632C;
+}
+
+.hulk-text-level-8 {
+  color: #279542;
+}
+
+.hulk-bg-level-9, .hulk-bg-green {
+  background: #34C759 !important;
+  color: black;
+}
+
+.hulk-bg-level-0, .hulk-bg-purple {
+  background: #AF52DE !important;
+  color: black;
+}
+
+.hulk-bg-level-1 {
+  background: #C37DE6 !important;
+  color: black;
+}
+
+.hulk-bg-level-2 {
+  background: #D7A8EE !important;
+  color: black;
+}
+
+.hulk-bg-level-3 {
+  background: #EBD3F6 !important;
+  color: black;
+}
+
+.hulk-bg-level-4, .hulk-bg-level-5 {
+  background: white !important;
+  color: black;
+}
+
+.hulk-bg-level-6 {
+  background: #CCF1D5 !important;
+  color: black;
+}
+
+.hulk-bg-level-7 {
+  background: #99E3AC !important;
+  color: black;
+}
+
+.hulk-bg-level-8 {
+  background: #66D582 !important;
+  color: black;
+}

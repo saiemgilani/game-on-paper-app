@@ -1,0 +1,57 @@
+---
+import Footer from "../components/Footer.astro";
+import ScheduleDropdown from "../components/schedule/ScheduleDropdown.astro";
+import { CURRENT_YEAR } from "../utils/constants";
+
+
+let titleParts: string[] = [];
+
+titleParts = titleParts.concat(["College Football", "Game on Paper"])
+
+const titleText = titleParts.join(" | ")
+
+---
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <title>{titleText}</title>
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">
+        <link href="/assets/css/dark-index.css" rel="stylesheet">
+        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row text-center mb-3">
+                <div class="form-signin col-12">
+                    <h1 class="mb-3 fw-normal">Game on Paper</h1>
+                    <form id="game-id-form">
+                        <label for="inputGameId" class="visually-hidden">Game ID</label>
+                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
+                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
+                    </form>
+                </div>
+            </div>
+            <div class="row mb-1">
+                <h3 class="text-center"> -- OR -- </h3>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-lg-3 col-xs-12 mb-3">
+                    <a href={`/cfb/year/${CURRENT_YEAR}/teams`} class="w-100 btn btn-lg btn-primary">Team Leaderboards</a>
+                </div>
+                <div class="col-lg-3 col-xs-12 mb-3">
+                    <a href="/cfb/players" class="w-100 btn btn-lg btn-primary">Player Leaderboards</a>
+                </div>
+            </div>
+            <div class="row mb-1">
+                <h3 class="text-center"> -- OR -- </h3>
+            </div>
+            <ScheduleDropdown year={CURRENT_YEAR} />
+            <Footer />
+        </div>
+    </body>
+</html>

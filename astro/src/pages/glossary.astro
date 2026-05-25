@@ -1,0 +1,62 @@
+---
+import { generateGlossaryItems } from '../resources/glossary';
+import GlossaryHeader from '../components/glossary/GlossaryHeader.astro';
+import GlossarySection from '../components/glossary/GlossarySection.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const glossary = generateGlossaryItems();
+const title = `Glossary | College Football | Game on Paper`;
+const subtitle = 'Advanced stats glossary for college football';
+---
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/base.css" rel="stylesheet">
+        <link href="/assets/css/nav-header.css" rel="stylesheet">
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
+
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="referrer" content="origin-when-cross-origin">
+        <link rel="canonical" href="https://gameonpaper.com/cfb/glossary">
+        <title>{title}</title>
+        <meta name="description" content={ subtitle }>
+
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:url" content="https://gameonpaper.com/cfb/glossary">
+        <meta property="og:title" content={ title }>
+        <meta property="og:description" content={ subtitle }>
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:type" content="website">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:url" content="https://gameonpaper.com/cfb/glossary">
+        <meta name="twitter:title" content={ title }>
+        <meta name="twitter:description" content={ subtitle }>
+        <meta name="twitter:card" content="summary">
+        <meta name="title" content={ title }>
+        <meta name="medium" content="website">
+        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+    </head>
+    <body>
+        <Header />
+        <GlossaryHeader keys={glossary.keys().toArray()} />
+        <div class="container">
+			{
+				glossary.keys().map((k) => (
+					<GlossarySection letter={k} entries={glossary.get(k)} />
+				)) 
+			}
+        </div>
+        <Footer />
+    </body>
+</html>

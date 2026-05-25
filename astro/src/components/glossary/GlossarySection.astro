@@ -1,0 +1,18 @@
+---
+import type { GlossaryEntry } from '../../resources/glossary';
+import GlossaryItem from './GlossaryItem.astro';
+
+interface Props {
+    letter: string
+	entries?: GlossaryEntry[];
+}
+
+const { letter, entries } = Astro.props;
+---
+
+<h2 id={`glossary-section-${letter}`}>{letter.toLocaleUpperCase()}</h2>
+{
+    entries?.map((e) => (
+        <GlossaryItem entry={e} />
+    ))
+}
