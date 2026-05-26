@@ -5,6 +5,8 @@
 // import path from 'node:path';
 // import ejs from 'ejs';
 
+import { MEME_LIST } from "./constants";
+
 // function retrieveValue(dictionary, key) {
 //     const subKeys = key.split('.')
 //     let sub = dictionary;
@@ -104,16 +106,22 @@
 //     return crypto.createHash('sha256').update(JSON.stringify(game)).digest('hex');
 // }
 
-// function renderFile(templatePath, data) {
-//     if (!templatePath.endsWith(".ejs")) {
-//         templatePath += ".ejs"
-//     }
-//     return ejs.renderFile(path.join(import.meta.dirname, "../", "views", templatePath), data);
-// }
-
-
 
 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
 export function range(start: number, end: number): number[] {
     return Array.from(Array(end + 1).keys()).slice(start);
+}
+
+export function roundNumber(value: string | number | null, power10: number, fixed: number): string {
+    if (typeof value == "number") {
+        value = `${value}`;
+    }
+    return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+}
+
+export function cleanAbbreviation(team: { id: string | number, abbreviation: string, name: string, location: string }, field: "abbreviation" | "name" | "location"): string {
+    if (MEME_LIST.includes(Number(team.id))) {
+        return team[field].toLocaleLowerCase()
+    }
+    return team[field]
 }

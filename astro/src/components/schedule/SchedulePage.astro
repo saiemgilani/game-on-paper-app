@@ -1,6 +1,7 @@
 ---
-import { GLOBAL_SCHEDULE_MAP } from "../../resources/schedule";
+import { getRemoteGames, GLOBAL_SCHEDULE_MAP } from "../../resources/schedule";
 import Footer from "../Footer.astro";
+import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 
 
@@ -14,7 +15,8 @@ if (season) {
 titleParts = titleParts.concat(["College Football", "Game on Paper"])
 
 const titleText = titleParts.join(" | ")
-
+const games = await getRemoteGames(season, seasontype, week, group);
+const hasActiveGames = games.find((item: any) => !(item.status.type.completed == true || item.status.type.name.includes("SCHEDULED") || item.status.type.name.includes("CANCEL") || item.status.type.name.includes("POSTPONE") || item.status.type.name.includes("DELAY")))
 ---
 
 <!DOCTYPE html>
@@ -56,6 +58,29 @@ const titleText = titleParts.join(" | ")
                 <h3 class="text-center"> -- OR -- </h3>
             </div>
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
+            <div class="row mb-3">
+                {
+                    (games.length > 0) ? (games.map((g => <GameThumb game={g} />))) : <p class="text-center text-muted">No games scheduled.</p>
+                }
+            </div>
+            <div class="row mb-3" hidden={!hasActiveGames}>
+                <div class="col-12">
+                    <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                </div>
+            </div>
+            <div class="row text-muted">
+                <div class="col-12">
+                    <caption>Game border color guide:
+                        <ul>
+                            <li><strong>Gray</strong> - normal</li>
+                            <li><strong>Green</strong> - Close game late</li>
+                            <li><strong>Yellow</strong> - Ranked Upset</li>
+                            <li><strong>Orange</strong> - Ranked Opponents + close game late</li>
+                            <li><strong>Red</strong> - FCS Upset</li>
+                        </ul>
+                    </caption>
+                </div>
+            </div>
             <Footer />
         </div>
     </body>
