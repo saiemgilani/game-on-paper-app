@@ -1,0 +1,8 @@
+---
+import SchedulePage from "../../../../../../components/schedule/SchedulePage.astro";
+
+const { year, type, week } = Astro.params;
+const group = Astro.url.searchParams.get("group") || "80";
+---
+
+<SchedulePage season={year} seasontype={type} week={week} group={group} />
