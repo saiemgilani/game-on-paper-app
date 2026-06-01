@@ -1,13 +1,8 @@
 import scheduleMap from '../static/schedule.json' with { type: "json" };
 import groupMap from '../static/groups.json' with { type: "json" };  
+import type { ESPNScheduleEntry, ESPNScheduleEvent, ESPNScheduleResponse, ESPNScoreboardResponse } from './game';
 
-export interface ScheduleWeek {
-    label: string;
-    alternateLabel: string;
-    detail: string;
-    value: string;
-    startDate: string;
-    endDate: string;
+export type ScheduleWeek = ESPNScheduleEntry & {
     year: string;
     type: string;
 }
@@ -20,11 +15,7 @@ export interface ScheduleGroup {
 }
 export const GLOBAL_GROUP_LIST: ScheduleGroup[] = (groupMap as ScheduleGroup[]);
 
-export interface ESPNScheduleDate {
-    games: any[]
-}
-
-export async function getRemoteGames(year?: number, seasontype?: number, week?: number, group?: number): Promise<any[]> {
+export async function getRemoteGames(year?: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
     let espnGroup = group;
     if (espnGroup && espnGroup < 0) {
         espnGroup = 80; // All FBS which we will filter
@@ -64,7 +55,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
             throw Error("Data returned from ESPN was HTML file, not valid JSON.")
         }
 
-        const espnContent = JSON.parse(espnRaw);
+        const espnContent: ESPNScheduleResponse = JSON.parse(espnRaw) as ESPNScheduleResponse;
         var result: any[] = [];
         const actualContent = espnContent?.content?.schedule || {};
         if (!actualContent) {
@@ -72,13 +63,13 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         }
 
         for (const [_, schedule] of Object.entries(actualContent)) {
-            if (schedule && Object.keys(schedule).includes("games") && (schedule as ESPNScheduleDate).games) {
-                result = result.concat((schedule as ESPNScheduleDate).games)
+            if (schedule && Object.keys(schedule).includes("games") && schedule.games) {
+                result = result.concat(schedule)
             }
         }
 
         if (group == -1) { // top 25
-            result = result.filter(g => {
+            result = result.filter((g: ESPNScheduleEvent) => {
                 const home = g.competitions[0].competitors[0];
                 const away = g.competitions[0].competitors[1];
 
@@ -88,14 +79,14 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         return result;
     } else {
         const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`)
-        let espnContent = await resp.json();
+        let espnContent: ESPNScoreboardResponse = await resp.json();
         if (espnContent == null) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
         }
         let result = espnContent?.events || [];
 
         if (group == -1) { // top 25
-            result = result.filter((g: any) => {
+            result = result.filter((g: ESPNScheduleEvent) => {
                 const home = g.competitions[0].competitors[0];
                 const away = g.competitions[0].competitors[1];
 

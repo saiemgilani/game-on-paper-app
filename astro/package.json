@@ -19,11 +19,15 @@
     "@astrojs/node": "^10.1.1",
     "@astrojs/svelte": "^8.1.1",
     "astro": "^6.3.7",
+    "luxon": "^3.7.2",
     "svelte": "^5.55.9",
     "typescript": "^6.0.3",
     "wrangler": "^4.94.0"
   },
   "overrides": {
     "vite": "^7"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1"
   }
 }

@@ -1,0 +1,76 @@
+---
+import type { ESPNGameSituation, ESPNScheduleEntry, ESPNScheduleEvent } from "../../resources/game";
+
+const { hidden, game } = Astro.props;
+
+const espnGame = (game as ESPNScheduleEvent);
+const espnGameComp = espnGame.competitions[0];
+const homeComp = espnGameComp.competitors[0];
+const awayComp = espnGameComp.competitors[1];
+const homeTeam = homeComp.team;
+const awayTeam = awayComp.team;
+
+
+function setLastPlayHtml(situation?: ESPNGameSituation): string {
+    if (!situation) {
+        return ``;
+    }
+    const isScoringPlay = (situation.lastPlay?.text != null && (situation.lastPlay?.text.toLocaleLowerCase().includes("two-point conversion") || situation.lastPlay?.text.includes("KICK")));
+    const isKickoff = (situation.lastPlay?.text != null && situation.lastPlay?.text.toLocaleLowerCase().includes("kickoff"));
+    const isEmpty = (situation.downDistanceText == null || (situation.downDistanceText != null && situation.downDistanceText.length == 0));
+    
+    if (isScoringPlay) {
+        return `
+            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
+            <p class="mb-0 text-muted"><strong>Next:</strong> PAT</p>
+        `
+    } else if (isKickoff) {
+        return `
+            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
+            <p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>
+        `
+    } else if (isEmpty) {
+        return `
+            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
+        `
+    } else {
+        return `
+            <p class="mb-0 text-muted"><strong>Last Play:</strong>${situation.lastPlay?.text}</p>
+            <p class="mb-0 text-muted"><strong>Next:</strong> ${situation.downDistanceText}</p>
+        `
+    }
+}
+
+function setLastPlayWP(situation?: ESPNGameSituation): string {
+    if (!situation) {
+        return ``;
+    }
+    if (!situation.lastPlay) {
+        return ``;
+    }
+    if (!situation.lastPlay.probability) {
+        return ``;
+    }
+
+    
+    if (situation.lastPlay.probability.homeWinPercentage > situation.lastPlay.probability.awayWinPercentage) {
+        return `
+            <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> ${cleanAbbreviation(homeTeam)} ${roundNumber(situation.lastPlay.probability.homeWinPercentage * 100, 2, 1)}%</p>
+        `
+    } else if (situation.lastPlay.probability.homeWinPercentage < situation.lastPlay.probability.awayWinPercentage) {
+        return `
+            <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> ${cleanAbbreviation(awayTeam)} ${roundNumber(situation.lastPlay.probability.awayWinPercentage * 100, 2, 1)}%</p>
+        `
+    } else {
+        return `
+            <p class="mb-0 text-muted"><strong>ESPN WP%:</strong> 50%</p>
+        `
+    }
+}
+---
+
+
+<div class="card-text mb-2" hidden={hidden}>
+<Fragment set:html={setLastPlayHtml(espnGameComp.situation)} />
+<Fragment set:html={setLastPlayWP(espnGameComp.situation)} />
+</div>

@@ -118,10 +118,3 @@ export function roundNumber(value: string | number | null, power10: number, fixe
     }
     return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
-
-export function cleanAbbreviation(team: { id: string | number, abbreviation: string, name: string, location: string }, field: "abbreviation" | "name" | "location"): string {
-    if (MEME_LIST.includes(Number(team.id))) {
-        return team[field].toLocaleLowerCase()
-    }
-    return team[field]
-}

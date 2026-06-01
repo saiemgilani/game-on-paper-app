@@ -6,7 +6,6 @@ import ScheduleDropdown from "./ScheduleDropdown.svelte";
 
 
 const { title, season, seasontype, week, group } = Astro.props;
-
 let titleParts: string[] = [];
 if (season) {
     titleParts.push(`${season}`)
@@ -60,7 +59,10 @@ const hasActiveGames = games.find((item: any) => !(item.status.type.completed ==
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
             <div class="row mb-3">
                 {
-                    (games.length > 0) ? (games.map((g => <GameThumb game={g} />))) : <p class="text-center text-muted">No games scheduled.</p>
+                    (games.length > 0) && (games.map((g => <GameThumb game={g} />)))
+                }
+                {
+                    (games.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
                 }
             </div>
             <div class="row mb-3" hidden={!hasActiveGames}>
