@@ -2,6 +2,17 @@
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/game";
 import { formatScore, getRecordString, cleanAbbreviation } from "../../utils/common";
 
+
+interface Props {
+    espnComp: ESPNCompetitor
+    espnStatus: ESPNStatus
+    isRedZone?: boolean
+    hasBall: boolean
+    winner: boolean
+    completed: boolean
+    spacer: string
+}
+
 const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer } = Astro.props;
 const comp = (espnComp as ESPNCompetitor);
 const status = (espnStatus as ESPNStatus);

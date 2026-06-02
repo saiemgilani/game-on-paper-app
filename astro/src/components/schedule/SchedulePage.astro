@@ -4,6 +4,13 @@ import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 
+interface Props {
+  title: string;
+  season?: number;
+  seasontype?: number;
+  week?: number;
+  group?: number
+}
 
 const { title, season, seasontype, week, group } = Astro.props;
 let titleParts: string[] = [];

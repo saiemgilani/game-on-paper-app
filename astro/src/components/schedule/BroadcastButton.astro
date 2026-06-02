@@ -2,6 +2,9 @@
 import type { ESPNGeoBroadcast, ESPNScheduleEvent } from "../../resources/game";
 import { NETWORK_MAPPINGS } from "../../utils/constants";
 
+interface Props {
+  game: ESPNScheduleEvent
+}
 
 const { game } = Astro.props;
 

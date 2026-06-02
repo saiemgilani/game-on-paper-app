@@ -1,6 +1,10 @@
 ---
 import type { ESPNGameSituation, ESPNScheduleEntry, ESPNScheduleEvent } from "../../resources/game";
 
+interface Props {
+    hidden: boolean
+    game: ESPNScheduleEvent
+}
 const { hidden, game } = Astro.props;
 
 const espnGame = (game as ESPNScheduleEvent);

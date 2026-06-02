@@ -6,6 +6,10 @@ import GameSituation from "./GameSituation.astro";
 import TeamRow from "./TeamRow.astro";
 import {DateTime} from "luxon";
 
+interface Props {
+  game: ESPNScheduleEvent
+}
+
 const { game } = Astro.props;
 
 const espnGame = (game as ESPNScheduleEvent);
