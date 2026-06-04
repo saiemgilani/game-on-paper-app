@@ -1,0 +1,69 @@
+---
+import ChartMetricDropdown from "../../components/charts/ChartMetricDropdown.svelte";
+// import PercentileBoxPlot from "../../components/charts/PercentileBoxPlot.astro";
+import GenericPage from "../../layouts/GenericPage.astro";
+import type { SeasonPercentile } from "../../resources/summary";
+import { range } from "../../utils/misc";
+
+
+
+const query = Astro.url.searchParams;
+
+// let allPctls = []
+// for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+//     const percentiles = await SummaryModel.retrievePercentiles(null, p);
+//     allPctls = allPctls.concat(percentiles);
+// }
+
+// const pctlKey = getPercentileKey(metric)
+// const selectedPercentiles = allPctls.map(p => {
+//     var result = {
+//         season: p["season"],
+//         pctile: p["pctile"],
+//     }
+//     result["value"] = p[pctlKey];
+//     return result
+// }).filter(p => (p["value"] !== undefined) && (p["value"] != null))
+
+
+let selectedPercentiles: SeasonPercentile[] = []
+for (const x of range(2014, 2026)) {
+    for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+        selectedPercentiles.push(
+            {
+                season: x, 
+                pctile: p, 
+                value: 50
+            }
+        )
+    }
+}
+
+let availableSeasons = selectedPercentiles.map(b => b.season)
+availableSeasons = [...new Set(availableSeasons)].sort();
+
+const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
+const title = `National Trends | ${yearRange} | Game on Paper`
+const subtitle = `National level metric history`;
+
+
+---
+
+<GenericPage title={title} subtitle={subtitle} slug="/trends">
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <h1>National Trends <span class="d-inline text-muted h6"><small> <abbr title="Please report any issues/feedback to @gameonpaper.com on Bluesky!">(Beta)</abbr></small></span></h1>
+                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
+                <!-- <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p> -->
+                <!-- <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p> -->
+                <!-- <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date"><%= last_updated %></span></abbr></p> -->
+            </div>
+            <div class="ms-auto col-lg-6 col-xs-12">
+                <ChartMetricDropdown client:idle category={query.get("category") || "-1" } metric={query.get("category") || "-1" } />
+            </div>
+        </div>
+    </div>
+    <!-- <PercentileBoxPlot client:only title={title} teams={[]} category={query.get("category") || "-1" } metric={query.get("category") || "-1" } percentiles={selectedPercentiles} /> -->
+</GenericPage>
+
