@@ -113,33 +113,99 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     return `<span class="small text-muted h6">${base}</span>`;
 }
 
-export function cleanField(team: { id: string | number, abbreviation: string, name: string, location: string }, field: "abbreviation" | "name" | "location"): string {
-    if (MEME_LIST.includes(Number(team.id))) {
-        return team[field].toLocaleLowerCase()
+export function cleanField(team: { id: string | number, teamId?: string | number, abbreviation: string, name: string, location: string, team?: string }, field: "abbreviation" | "name" | "location" | "team"): string {
+    if (team.teamId && MEME_LIST.includes(Number(team.teamId))) {
+        return team[field]?.toLocaleLowerCase() || ""
     }
-    return team[field]
+
+    if (MEME_LIST.includes(Number(team.id))) {
+        return team[field]?.toLocaleLowerCase() || ""
+    }
+    return team[field] || ""
 }
 
 export function cleanAbbreviation(team: { id: string | number, abbreviation: string, name: string, location: string }): string {
     return cleanField(team, "abbreviation")
 }
 
+export function generateMarginalString(input: number, power10: number, fixed: number): string {
+    if (input >= 0) {
+        return `+${roundNumber(input, power10, fixed)}`;
+    } else {
+        return roundNumber(input, power10, fixed);
+    }
+}
+
+export function generateColorRampValue(input: number, max: number): string | null {
+    if (!input) {
+        return null;
+    }
 
 
-// const DateTime = ;
-// var gameContexts = document.getElementsByClassName("game-context");
-// if (gameContexts.length > 0) {
-//     console.log(gameContexts)
-//     for (var i = 0; i < gameContexts.length; i++) {
-//         let contextElem = gameContexts[i];
-//         let dateSpan = contextElem.querySelector('.game-date')
-//         let statusSpan = contextElem.querySelector('.game-status')
-//         if (statusSpan && (statusSpan.innerText.includes('FINAL') || statusSpan.innerText.startsWith('F'))) {
-//             dateSpan.innerText = formatDateTime(dateSpan.innerText, DateTime.DATE_SHORT)
-//         } else if (dateSpan) {
-//             dateSpan.innerText = formatDateTime(dateSpan.innerText, DateTime.DATETIME_SHORT)
-//         }
-//     }
-// } else {
-//     console.log("no game dates found")
-// }
+    let value = (max - input) / max
+    let step = Math.round(value / 0.1)
+    let clampedStep = Math.min(Math.max(step, 0), 9)
+
+    let hex = null
+    if (clampedStep == 4 || clampedStep == 5) {
+        return null
+    } else {
+        return `hulk-bg-level-${clampedStep}`
+    }
+}
+
+export function retrieveValue(dictionary: any, key: string): string {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}
+
+export function getPercentileKey(metric: string): string {
+    switch (metric) {
+        case "overall.epaPerPlay": 
+            return "epaPerPlay";
+        case "overall.yardsPerPlay": 
+            return "yardsPerPlay";
+        case "overall.successRate": 
+            return "successRate";
+        case "passing.epaPerPlay": 
+            return "epaPerDropback";
+        case "passing.yardsPerPlay": 
+            return "yardsPerDropback";
+        case "passing.successRate": 
+            return "passingSuccessRate";
+        case "rushing.epaPerPlay": 
+            return "epaPerRush";
+        case "rushing.yardsPerPlay": 
+            return "yardsPerRush";
+        case "rushing.successRate": 
+            return "rushingSuccessRate";
+        case "overall.havocRate": 
+            return "havocRate";
+        case "passing.explosiveRate":
+            return "passingExplosivePlayRate";
+        case "rushing.explosiveRate":
+            return "rushingExplosivePlayRate";
+        case "rushing.opportunityRate":
+            return "rushOpportunityRate";
+        case "rushing.lineYards":
+            return "lineYards";
+        case "rushing.stuffedPlayRate":
+            return "playStuffedRate";
+        case "overall.explosiveRate":
+            return "explosivePlayRate";
+        case "overall.nonExplosiveEpaPerPlay":
+            return "nonExplosiveEpaPerPlay";
+        case "overall.earlyDownEPAPerPlay":
+            return "earlyDownEpaPerPlay";
+        case "overall.lateDownSuccessRate":
+            return "lateDownSuccessRate";
+        case "overall.thirdDownDistance":
+            return "thirdDownDistance";
+        default:
+            return metric;
+    }
+}

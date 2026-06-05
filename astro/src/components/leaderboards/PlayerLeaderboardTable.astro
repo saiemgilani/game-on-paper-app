@@ -1,0 +1,75 @@
+---
+import { cleanField, generateColorRampValue, generateMarginalString } from '../../utils/common';
+import { PLAYER_METRIC_CATEGORIES, PLAYER_METRIC_FORMATTING_VALUES } from '../../utils/constants';
+
+interface Props {
+    season: number
+    category: string
+    metric: string
+}
+
+const { season, category, metric } = Astro.props;
+const players: any[] = []
+const columns = PLAYER_METRIC_CATEGORIES[category];
+
+function cleanRank(rank: string) {
+    if (rank == null || (!rank && rank != "0")) {
+        return "N/A"
+    }
+
+    let tied = String(rank)?.includes(".5")
+    let rankString = ""
+    if (rank && tied) {
+        rankString = `T-${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;
+    } else if (rank) {
+        rankString = `${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`
+    } else {
+        rankString = "N/A"
+    }
+    return rankString
+}
+
+function generateMetricCell(player: any, category: string, metric: string): string {
+    const [power10, fixed] = PLAYER_METRIC_FORMATTING_VALUES[category][metric] || [2, 2];
+    return `
+    <td class="text-center ${generateColorRampValue(retrieveValue(player, metric + 'Rank'), players.length)}" colspan="1">${generateMarginalString(retrieveValue(player, metric), power10, fixed)}</td>
+    `
+}
+
+function generateMetricRow(player: any): string {
+    return Object.entries(columns).map(([k, _]) => generateMetricCell(player, category, k)).join("")
+}
+
+---
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <th class="text-right" colspan="1">Rk</th>
+                        <th class="text-left" colspan="1">Player</th>
+                        <th class="text-center" colspan="1">Games</th>
+                        {
+                            Object.entries(columns).map(([k, v]) => (
+                                <th class="text-center" colspan="1">{v} <i class="bi bi-arrow-down" hidden={metric != k}></i></th>
+                            ))
+                        }
+                    </thead>
+                    <tbody>
+                        {
+                            players.map((p) => (
+                                <tr>
+                                    <td class="text-right" colspan="1">{cleanRank(retrieveValue(p, `${metric}Rank`))}</td>
+                                    <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.teamId}`}><img class={`img-fluid team-logo-${p.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.teamId}.png`} alt={`ESPN team id ${p.teamId} ${cleanField(p, "name")}`} title={p.team}/><span class="visually-hidden">{cleanField(p, "team")}</span></a> <strong>{cleanField(p, "name")}</strong></td>
+                                    <Fragment set:html={generateMetricRow(p)} />
+                                </tr>
+                            ))
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

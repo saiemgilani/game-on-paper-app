@@ -43,3 +43,61 @@ export const SPECIAL_IMAGES: { [teamId: string]: string} = {
     "61": "/assets/img/ennui-uga.png",
     // "2390": "/assets/img/upside-down-u.png",
 };
+
+export const PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
+    "passing": {
+        "statistics.dropbacks": "Dropbacks",
+        "statistics.sackAdjustedYards": "Sack-Adj Yds",
+        "advanced.totalEPA": "EPA",
+        "statistics.yardsPerDropback": "Yards/DB",
+        "advanced.epaPerPlay": "EPA/DB",
+        "advanced.successRate": "Pass SR%",
+    }, 
+    "rushing": {
+        "statistics.carries": "Carries",
+        "statistics.yards": "Yards",
+        "advanced.totalEPA": "EPA",
+        "statistics.yardsPerPlay": "Yards/Rush",
+        "advanced.epaPerPlay": "EPA/Rush",
+        "advanced.successRate": "Rush SR%",
+    }, 
+    "receiving": {
+        "statistics.catches": "Catches",
+        "statistics.targets": "Targets",
+        "statistics.catchPct": "Catch %",
+        "statistics.yards": "Yards",
+        "advanced.totalEPA": "EPA",
+        "statistics.yardsPerPlay": "Yards/Tgt",
+        "advanced.epaPerPlay": "EPA/Tgt",
+        "advanced.successRate": "Rec SR%",
+    }
+};
+
+export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
+    "passing": {
+        "statistics.dropbacks": [2,0],
+        "statistics.sackAdjustedYards": [2,1],
+        "advanced.totalEPA": [2,2],
+        "statistics.yardsPerDropback": [2,2],
+        "advanced.epaPerPlay": [2,2],
+        "advanced.successRate": [2,1],
+    }, 
+    "rushing": {
+        "statistics.carries": [2,0],
+        "statistics.yards": [2,1],
+        "advanced.totalEPA": [2,2],
+        "statistics.yardsPerPlay": [2,2],
+        "advanced.epaPerPlay": [2,2],
+        "advanced.successRate": [2,1],
+    }, 
+    "receiving": {
+        "statistics.catches": [2,0],
+        "statistics.targets": [2,0],
+        "statistics.catchPct": [2,1],
+        "statistics.yards": [2,1],
+        "advanced.totalEPA": [2,2],
+        "statistics.yardsPerPlay": [2,2],
+        "advanced.epaPerPlay": [2,2],
+        "advanced.successRate": [2,1],
+    }
+};

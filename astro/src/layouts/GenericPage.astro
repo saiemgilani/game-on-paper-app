@@ -3,7 +3,40 @@ import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import Scripts from "../components/Scripts.astro";
 
-const { title, subtitle, slug } = Astro.props;
+export interface PageBreadcrumb { title: string, url?: string, active: boolean }
+
+interface Props {
+    title: string
+    subtitle: string
+    slug: string
+    breadcrumbs: PageBreadcrumb[]
+}
+
+const { title, subtitle, slug, breadcrumbs } = Astro.props;
+
+function generateBreadcrumbHtml(b: PageBreadcrumb): string {
+    const anchorContent = b.url ? `<a href="${b.url}">${b.title}</a>` : b.title;
+    return `<li class="breadcrumb-item ${b.active ? 'active' : ''}" aria-current="page">${anchorContent}</li>`;
+}
+
+function generateBreadcrumbsListHtml(): string {
+    if (breadcrumbs.length > 0) {
+        return ""
+    }
+
+    const breadcrumbsComposite = breadcrumbs.map(generateBreadcrumbHtml).join("")
+    return `
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+            ${breadcrumbsComposite}
+            </ol>
+        </nav>
+    </div>
+    `;
+}
+
+
 ---
 <!DOCTYPE html>
 <html>
@@ -40,14 +73,7 @@ const { title, subtitle, slug } = Astro.props;
     </head>
     <body>
         <Header />
-        <div class="container">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                  <li class="breadcrumb-item" aria-current="page">Charts</li>
-                  <li class="breadcrumb-item active" aria-current="page"><a href="/cfb/charts/trends">National Trends</a></li>
-                </ol>
-            </nav>
-        </div>
+        <Fragment set:html={generateBreadcrumbsListHtml()} />
         <slot />
         <Footer />
         <Scripts />

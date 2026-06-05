@@ -7,14 +7,7 @@
 
 import { MEME_LIST } from "./constants";
 
-// function retrieveValue(dictionary, key) {
-//     const subKeys = key.split('.')
-//     let sub = dictionary;
-//     for (const k of subKeys) {
-//         sub = sub[k];
-//     }
-//     return sub;
-// }
+
 
 // function generateKey(parts, sep = "-") {
 //     const valid = parts.filter(p => (p))
@@ -25,52 +18,7 @@ import { MEME_LIST } from "./constants";
 // }
 
 
-// function getPercentileKey(metric) {
-//     switch (metric) {
-//         case "overall.epaPerPlay": 
-//             return "epaPerPlay";
-//         case "overall.yardsPerPlay": 
-//             return "yardsPerPlay";
-//         case "overall.successRate": 
-//             return "successRate";
-//         case "passing.epaPerPlay": 
-//             return "epaPerDropback";
-//         case "passing.yardsPerPlay": 
-//             return "yardsPerDropback";
-//         case "passing.successRate": 
-//             return "passingSuccessRate";
-//         case "rushing.epaPerPlay": 
-//             return "epaPerRush";
-//         case "rushing.yardsPerPlay": 
-//             return "yardsPerRush";
-//         case "rushing.successRate": 
-//             return "rushingSuccessRate";
-//         case "overall.havocRate": 
-//             return "havocRate";
-//         case "passing.explosiveRate":
-//             return "passingExplosivePlayRate";
-//         case "rushing.explosiveRate":
-//             return "rushingExplosivePlayRate";
-//         case "rushing.opportunityRate":
-//             return "rushOpportunityRate";
-//         case "rushing.lineYards":
-//             return "lineYards";
-//         case "rushing.stuffedPlayRate":
-//             return "playStuffedRate";
-//         case "overall.explosiveRate":
-//             return "explosivePlayRate";
-//         case "overall.nonExplosiveEpaPerPlay":
-//             return "nonExplosiveEpaPerPlay";
-//         case "overall.earlyDownEPAPerPlay":
-//             return "earlyDownEpaPerPlay";
-//         case "overall.lateDownSuccessRate":
-//             return "lateDownSuccessRate";
-//         case "overall.thirdDownDistance":
-//             return "thirdDownDistance";
-//         default:
-//             return metric;
-//     }
-// }
+
 
 // function cleanUpParams(payload) {
 //     let query = {...payload};
@@ -133,3 +81,11 @@ export function getNumberWithOrdinal(n: number): string {
     let v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
+export function toTitleCase(str: string) {
+  return str.replace(
+    /\w\S*/g,
+    text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+  );
+}
+
