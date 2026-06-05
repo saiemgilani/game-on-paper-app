@@ -200,3 +200,5 @@ export const TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
         "passing.yardsPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
     }
 };
+
+export const SUMMARY_LAST_UPDATED = '2026-01-01';

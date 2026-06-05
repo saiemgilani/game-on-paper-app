@@ -1,6 +1,6 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import { AVAILABLE_SEASONS, TEAM_METRIC_CATEGORIES } from "../../utils/constants";
+import { AVAILABLE_SEASONS, SUMMARY_LAST_UPDATED } from "../../utils/constants";
 import { toTitleCase } from "../../utils/misc";
 import TeamLeaderboardTable from "./TeamLeaderboardTable.astro";
 import TeamMetricDropdown from "../charts/TeamMetricDropdown.svelte";
@@ -23,8 +23,6 @@ const breadcrumbs: PageBreadcrumb[] = [
     { title: `${season}`, url: `/cfb/year/${season}`, active: false },
     { title: `${categoryTitle}`, url: `/cfb/year/${season}/teams/${category}`, active: true },
 ];
-
-const SUMMARY_LAST_UPDATED = '2026-01-01';
 
 ---
 

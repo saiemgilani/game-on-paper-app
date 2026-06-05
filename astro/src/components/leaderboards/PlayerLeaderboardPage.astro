@@ -1,7 +1,7 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import PlayerMetricDropdown from "../../components/charts/PlayerMetricDropdown.svelte";
-import { AVAILABLE_SEASONS, PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
+import { AVAILABLE_SEASONS, SUMMARY_LAST_UPDATED } from "../../utils/constants";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 
@@ -23,8 +23,6 @@ const breadcrumbs: PageBreadcrumb[] = [
     { title: `${season}`, url: `/cfb/year/${season}`, active: false },
     { title: `${categoryTitle}`, url: `/cfb/year/${season}/players/${category}`, active: true },
 ];
-
-const SUMMARY_LAST_UPDATED = '2026-01-01';
 
 
 let statMinimum = " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."

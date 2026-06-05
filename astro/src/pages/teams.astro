@@ -1,0 +1,59 @@
+---
+import GenericPage from "../layouts/GenericPage.astro";
+import { cleanField } from "../utils/common";
+import { AVAILABLE_SEASONS, SUMMARY_LAST_UPDATED } from "../utils/constants";
+import { range } from "../utils/misc";
+
+const title = `Team Index | College Football | Game on Paper`;
+const subtitle = 'Full team list for college football';
+const teams: any[] = [
+]
+
+function generateTeamRow(team: any): string {
+    const seasonCells = AVAILABLE_SEASONS.map((p) => {
+        if (team.seasons.includes(p)) {
+            return `<td class="text-center" colspan="1"><a href="/cfb/year/${p}/team/${team.team_id}">${p}</a></td>`
+        } else {
+            return `<td class="text-center" colspan="1"><p class="m-0 text-muted">${p}</p></td>`
+        }
+    }).join("")
+    return `
+    <tr>
+        <td class="text-left" colspan="1"><a href="/cfb/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
+        ${seasonCells}
+    </tr>
+    `
+}
+
+---
+
+<GenericPage title={title} subtitle={subtitle} slug="/cfb/teams" breadcrumbs={[]}>
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2>All Teams</h2>
+                <p class="m-0 mb-2 text-muted text-small">A convenient list of all teams available in our database along with links to their season pages. A grayed out season indicates that season is not available.</p>
+                <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SUMMARY_LAST_UPDATED}</span></abbr></p>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-responsive">
+                        <thead>
+                            <th class="text-left" colspan="1">Team</th>
+                            {
+                                AVAILABLE_SEASONS.map((p) => (<th class="text-center" colspan="1">{p}</th>))
+                            }
+                        </thead>
+                        <tbody>
+                            {
+                                teams.map(t => (<Fragment set:html={generateTeamRow(t)} />))
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</GenericPage>

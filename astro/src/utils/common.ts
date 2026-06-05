@@ -113,7 +113,11 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     return `<span class="small text-muted h6">${base}</span>`;
 }
 
-export function cleanField(team: { id: string | number, teamId?: string | number, abbreviation: string, name: string, location: string, team?: string }, field: "abbreviation" | "name" | "location" | "team"): string {
+export function cleanField(team: { id: string | number, teamId?: string | number, team_id?: string | number, abbreviation: string, name: string, location: string, team?: string }, field: "abbreviation" | "name" | "location" | "team"): string {
+    if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
+        return team[field]?.toLocaleLowerCase() || ""
+    }
+
     if (team.teamId && MEME_LIST.includes(Number(team.teamId))) {
         return team[field]?.toLocaleLowerCase() || ""
     }
