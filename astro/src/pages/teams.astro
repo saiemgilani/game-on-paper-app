@@ -1,13 +1,16 @@
 ---
+export const prerender = true;
+
 import GenericPage from "../layouts/GenericPage.astro";
+import type { TeamIndex } from "../resources/summary";
+import SummaryModel from "../resources/summary";
 import { cleanField } from "../utils/common";
-import { AVAILABLE_SEASONS, SUMMARY_LAST_UPDATED } from "../utils/constants";
-import { range } from "../utils/misc";
+import { AVAILABLE_SEASONS } from "../utils/constants";
 
 const title = `Team Index | College Football | Game on Paper`;
 const subtitle = 'Full team list for college football';
-const teams: any[] = [
-]
+const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
+console.log(teams)
 
 function generateTeamRow(team: any): string {
     const seasonCells = AVAILABLE_SEASONS.map((p) => {
@@ -33,7 +36,7 @@ function generateTeamRow(team: any): string {
             <div class="col-12">
                 <h2>All Teams</h2>
                 <p class="m-0 mb-2 text-muted text-small">A convenient list of all teams available in our database along with links to their season pages. A grayed out season indicates that season is not available.</p>
-                <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SUMMARY_LAST_UPDATED}</span></abbr></p>
+                <p class="mt-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p>
             </div>
         </div>
         <div class="row mb-3">

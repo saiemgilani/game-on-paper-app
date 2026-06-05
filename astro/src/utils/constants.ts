@@ -1,7 +1,8 @@
 import { range } from "./misc";
 
 export const CURRENT_YEAR = 2026;
-export const AVAILABLE_SEASONS = range(2002, CURRENT_YEAR);
+export const SCHEDULE_AVAILABLE_SEASONS = range(2002, CURRENT_YEAR);
+export const AVAILABLE_SEASONS = range(2014, CURRENT_YEAR);
 export const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 export const FBS_CONFERENCES = ['1','4','5','8','9','12','15','17','37','151','80', '18'];
@@ -54,7 +55,7 @@ export const PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = 
         "advanced.successRate": "Pass SR%",
     }, 
     "rushing": {
-        "statistics.carries": "Carries",
+        "statistics.plays": "Carries",
         "statistics.yards": "Yards",
         "advanced.totalEPA": "EPA",
         "statistics.yardsPerPlay": "Yards/Rush",
@@ -75,7 +76,8 @@ export const PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = 
 
 export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
     "passing": {
-        "statistics.dropbacks": [1,2,0],
+        "statistics.games": [1,2,0],
+        "statistics.dropbacks": [1,2,0], // multiplier, power10, fixed
         "statistics.sackAdjustedYards": [1,2,1],
         "advanced.totalEPA": [1,2,2],
         "statistics.yardsPerDropback": [1,2,2],
@@ -83,7 +85,8 @@ export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, numb
         "advanced.successRate": [100,2,1],
     }, 
     "rushing": {
-        "statistics.carries": [1,2,0],
+        "statistics.games": [1,2,0],
+        "statistics.plays": [1,2,0],
         "statistics.yards": [1,2,1],
         "advanced.totalEPA": [1,2,2],
         "statistics.yardsPerPlay": [1,2,2],
@@ -91,6 +94,7 @@ export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, numb
         "advanced.successRate": [100,2,1],
     }, 
     "receiving": {
+        "statistics.games": [1,2,0],
         "statistics.catches": [1,2,0],
         "statistics.targets": [1,2,0],
         "statistics.catchPct": [100,2,1],
@@ -200,5 +204,3 @@ export const TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
         "passing.yardsPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
     }
 };
-
-export const SUMMARY_LAST_UPDATED = '2026-01-01';

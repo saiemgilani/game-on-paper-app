@@ -1,7 +1,8 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import PlayerMetricDropdown from "../../components/charts/PlayerMetricDropdown.svelte";
-import { AVAILABLE_SEASONS, SUMMARY_LAST_UPDATED } from "../../utils/constants";
+import { AVAILABLE_SEASONS } from "../../utils/constants";
+import SummaryModel from "../../resources/summary";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 
@@ -47,7 +48,7 @@ if (category == "passing") {
                     (category == "receiving") && (<p class="m-0 mb-2 text-muted text-small"><strong>Note: </strong> ESPN does not consistently mark targeted receivers for incomplete passes, which affects Catch %, EPA/target and Yards/Target averages.</p>)
                 }
                 <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
-                <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SUMMARY_LAST_UPDATED}</span></abbr></p>
+                <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p>
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
                 <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} />

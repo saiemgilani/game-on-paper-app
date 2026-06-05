@@ -1,5 +1,9 @@
 ---
-import { cleanField, formatRank, generateColorRampValue, generateMarginalString } from '../../utils/common';
+import type { TeamSummary } from '../../resources/summary';
+import SummaryModel from '../../resources/summary';
+import { SummaryType } from '../../resources/summary';
+import { cleanField, formatRank, generateColorRampValue, retrieveValue, generateMarginalString } from '../../utils/common';
+import { roundNumber } from '../../utils/misc';
 import { TEAM_METRIC_FORMATTING_VALUES, TEAM_METRIC_CATEGORIES, TEAM_METRIC_HOVER_TEXT } from '../../utils/constants';
 
 interface Props {
@@ -9,9 +13,43 @@ interface Props {
 }
 
 const { season, category, metric } = Astro.props;
-const teams: any[] = []
 const columns = TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = ((category == "defensive" && metric != "overall.havocRate") || (category == "offensive" && metric == "overall.havocRate")) ? "up" : "down"
+
+const teams: TeamSummary[] = await SummaryModel.retrieveLeagueData({ year: season, type: SummaryType.Overall })
+// console.log(teams)
+let content = teams.map((t: any) => {
+        let target = t[category]
+        return {
+            teamId: t.teamId,
+            team: t.team,
+            ...target
+        }
+    })
+content = content.filter(p => {
+    const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
+    const nonNullRank = retrieveValue(p, `${metric}Rank`) != null && retrieveValue(p, `${metric}Rank`) != "NA"
+    if (metric.includes("adjEpaPerPlay")) {
+        return true
+    }
+    return nonNullRank && nonNullValue
+})
+
+content = content.toSorted((a, b) => {
+    const aVal = retrieveValue(a, metric)
+    const bVal = retrieveValue(b, metric)
+    
+    if (aVal == null && bVal != null) {
+        return 1
+    } else if (aVal != null && bVal == null) {
+        return -1
+    } else if (aVal == null && bVal == null) {
+        return 0
+    } else {
+        const compVal = parseFloat(aVal) - parseFloat(bVal)
+        return (arrowDirection == "up") ? compVal : (-1 * compVal)
+    }
+})
 
 function generateMetricHead(key: string, title: string): string {
     const abbr = TEAM_METRIC_HOVER_TEXT[category][key];
@@ -23,29 +61,31 @@ function generateMetricHead(key: string, title: string): string {
     `
 }
 
-function generateMetricCell(team: any, category: string, metric: string): string {
-    const [multiplier, power10, fixed] = TEAM_METRIC_FORMATTING_VALUES[category][metric] || [2, 2];
+function generateMetricCell(team: any, category: string, m: string): string {
+    const [multiplier, power10, fixed] = TEAM_METRIC_FORMATTING_VALUES[category][m] || [1, 2, 2];
+    const rank = retrieveValue(team, m + 'Rank');
+    const value = parseFloat(retrieveValue(team, m)) * multiplier;
+    let valString = category == "differential" ? generateMarginalString(value, power10, fixed) : roundNumber(value, power10, fixed);
+    valString += ((m.endsWith("Rate") || m.endsWith("Pct")) ? "%" : "")
     return `
-    <td class="text-center ${generateColorRampValue(retrieveValue(team, metric + 'Rank'), teams.length)}" colspan="1">${generateMarginalString(retrieveValue(team, metric) * multiplier, power10, fixed)}</td>
+    <td class="text-center ${generateColorRampValue(parseFloat(rank), teams.length)}" colspan="1">${valString}</td>
     `
 }
 
 function generateMetricRow(team: any): string {
-
-    return Object.entries(columns).map(([k, _]) => {
-        const colContent = generateMetricCell(team, category, k);
-        let rankStr = formatRank(retrieveValue(team, metric + 'Rank'))
-        if ((rankStr == "N/A" && metric == 'overall.adjEpaPerPlay') || (metric == "overall.adjEpaPerPlay" && retrieveValue(team, metric) == "N/A")) {
-            rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
-        }
-        return `
-        <tr>
-            <td class="text-right" colspan="1">${rankStr}</td>
-            <td class="text-left" colspan="1"><a href="/cfb/year/${season}/team/${team.teamId}"><img class="img-fluid team-logo-${team.teamId} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.teamId}.png" alt="ESPN team id ${team.teamId} ${cleanField(team, "name")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "team")}</span></a> <strong>${cleanField(team, "team")}</strong></td>
-            ${colContent}
-        </tr>
-        `
-    }).join("")
+    const colContent = Object.entries(columns).map(([k, _]) => generateMetricCell(team, category, k)).join("")
+    let rankStr = formatRank(parseFloat(retrieveValue(team, metric + 'Rank')))
+    if ((rankStr == "N/A" && metric == 'overall.adjEpaPerPlay') || (metric == "overall.adjEpaPerPlay" && retrieveValue(team, metric) == "N/A")) {
+        rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
+    }
+    return `
+    <tr>
+        <td class="text-right" colspan="1">${rankStr}</td>
+        <td class="text-left" colspan="1">
+            <a href="/cfb/year/${season}/team/${team.teamId}"><img class="img-fluid team-logo-${team.teamId} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.teamId}.png" alt="ESPN team id ${team.teamId} ${cleanField(team, "name")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "team")}</span></a> <strong>${cleanField(team, "team")}</strong>
+        </td>
+        ${colContent}
+    </tr>`;
 }
 
 
@@ -64,7 +104,7 @@ function generateMetricRow(team: any): string {
                     </thead>
                     <tbody>
                         {
-                            teams.map((t) => <Fragment set:html={generateMetricRow(t)} />)
+                            content.map((t) => <Fragment set:html={generateMetricRow(t)} />)
                         }
                     </tbody>
                 </table>

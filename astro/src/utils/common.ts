@@ -1,6 +1,7 @@
 import { SpiceLevel, type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/game"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
+import { roundNumber } from "./misc"
 
 export function formatScore(score: string, winner: boolean, complete: boolean): string {
     if (winner && complete) {
@@ -113,7 +114,7 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     return `<span class="small text-muted h6">${base}</span>`;
 }
 
-export function cleanField(team: { id: string | number, teamId?: string | number, team_id?: string | number, abbreviation: string, name: string, location: string, team?: string }, field: "abbreviation" | "name" | "location" | "team"): string {
+export function cleanField(team: any, field: "abbreviation" | "name" | "location" | "team"): string {
     if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
         return team[field]?.toLocaleLowerCase() || ""
     }
@@ -128,7 +129,7 @@ export function cleanField(team: { id: string | number, teamId?: string | number
     return team[field] || ""
 }
 
-export function cleanAbbreviation(team: { id: string | number, abbreviation: string, name: string, location: string }): string {
+export function cleanAbbreviation(team: any): string {
     return cleanField(team, "abbreviation")
 }
 
@@ -140,17 +141,17 @@ export function generateMarginalString(input: number, power10: number, fixed: nu
     }
 }
 
-export function formatRank(rank: string) {
-    if (rank == null || (!rank && rank != "0")) {
+export function formatRank(rank: number) {
+    if (rank == null || (!rank && rank != 0)) {
         return "N/A"
     }
 
-    let tied = String(rank)?.includes(".5")
+    let tied = String(rank)?.includes(".5") || false
     let rankString = ""
     if (rank && tied) {
-        rankString = `T-${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;
+        rankString = `T-${roundNumber(Math.floor(rank), 2, 0)}`;
     } else if (rank) {
-        rankString = `${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`
+        rankString = `${roundNumber(Math.floor(rank), 2, 0)}`
     } else {
         rankString = "N/A"
     }
@@ -158,7 +159,7 @@ export function formatRank(rank: string) {
 }
 
 
-export function generateColorRampValue(input: number, max: number): string | null {
+export function generateColorRampValue(input: number | null, max: number): string | null {
     if (!input) {
         return null;
     }

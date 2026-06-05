@@ -1,5 +1,5 @@
 <script>
-	import { AVAILABLE_SEASONS } from '../../utils/constants';
+	import { SCHEDULE_AVAILABLE_SEASONS } from '../../utils/constants';
     import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
 
 	const { season, week, seasontype, group } = $props()
@@ -42,7 +42,7 @@
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-lg" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
-				{#each AVAILABLE_SEASONS as s}
+				{#each SCHEDULE_AVAILABLE_SEASONS as s}
 					<option value={s} selected={(selectedSeason.value == s)}>{s}</option>
 				{/each}
             </select>

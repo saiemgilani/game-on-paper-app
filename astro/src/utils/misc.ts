@@ -20,18 +20,18 @@ import { MEME_LIST } from "./constants";
 
 
 
-// function cleanUpParams(payload) {
-//     let query = {...payload};
-//     for (let param in query) { 
-//         if (query[param] === undefined /* In case of undefined assignment */
-//             || query[param] === null 
-//             || query[param] === ""
-//         ) {    
-//             delete query[param];
-//         }
-//     }
-//     return query;
-// }
+export function cleanUpParams(payload: any): any {
+    let query = {...payload};
+    for (let param in query) { 
+        if (query[param] === undefined /* In case of undefined assignment */
+            || query[param] === null 
+            || query[param] === ""
+        ) {    
+            delete query[param];
+        }
+    }
+    return query;
+}
 
 // async function ping(url) {
 //     let check = { "status": 404 };
