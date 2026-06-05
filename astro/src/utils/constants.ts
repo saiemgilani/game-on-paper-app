@@ -75,29 +75,128 @@ export const PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = 
 
 export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
     "passing": {
-        "statistics.dropbacks": [2,0],
-        "statistics.sackAdjustedYards": [2,1],
-        "advanced.totalEPA": [2,2],
-        "statistics.yardsPerDropback": [2,2],
-        "advanced.epaPerPlay": [2,2],
-        "advanced.successRate": [2,1],
+        "statistics.dropbacks": [1,2,0],
+        "statistics.sackAdjustedYards": [1,2,1],
+        "advanced.totalEPA": [1,2,2],
+        "statistics.yardsPerDropback": [1,2,2],
+        "advanced.epaPerPlay": [1,2,2],
+        "advanced.successRate": [100,2,1],
     }, 
     "rushing": {
-        "statistics.carries": [2,0],
-        "statistics.yards": [2,1],
-        "advanced.totalEPA": [2,2],
-        "statistics.yardsPerPlay": [2,2],
-        "advanced.epaPerPlay": [2,2],
-        "advanced.successRate": [2,1],
+        "statistics.carries": [1,2,0],
+        "statistics.yards": [1,2,1],
+        "advanced.totalEPA": [1,2,2],
+        "statistics.yardsPerPlay": [1,2,2],
+        "advanced.epaPerPlay": [1,2,2],
+        "advanced.successRate": [100,2,1],
     }, 
     "receiving": {
-        "statistics.catches": [2,0],
-        "statistics.targets": [2,0],
-        "statistics.catchPct": [2,1],
-        "statistics.yards": [2,1],
-        "advanced.totalEPA": [2,2],
-        "statistics.yardsPerPlay": [2,2],
-        "advanced.epaPerPlay": [2,2],
-        "advanced.successRate": [2,1],
+        "statistics.catches": [1,2,0],
+        "statistics.targets": [1,2,0],
+        "statistics.catchPct": [100,2,1],
+        "statistics.yards": [1,2,1],
+        "advanced.totalEPA": [1,2,2],
+        "statistics.yardsPerPlay": [1,2,2],
+        "advanced.epaPerPlay": [1,2,2],
+        "advanced.successRate": [100,2,1],
+    }
+};
+
+
+export const TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
+    "differential": {
+        "overall.adjEpaPerPlay": "Adj EPA/Play",
+        "overall.epaPerPlay": "EPA/Play",
+        "overall.yardsPerPlay": "Yards/Play",
+        "overall.successRate": "SR%",
+    }, 
+    "offensive": {
+        "overall.adjEpaPerPlay": "Adj EPA/Play",
+        "overall.epaPerPlay": "EPA/Play",
+        "overall.yardsPerPlay": "Yards/Play",
+        "overall.successRate": "SR%",
+
+        "passing.epaPerPlay": "EPA/DB",
+        "passing.yardsPerPlay": "Yards/DB",
+        "passing.successRate": "Pass SR%",
+
+        "rushing.epaPerPlay": "EPA/Rush",
+        "rushing.yardsPerPlay": "Yards/Rush",
+        "rushing.successRate": "Rush SR%",
+
+        "overall.havocRate": "Havoc %"
+    }, 
+    "defensive": {
+        "overall.adjEpaPerPlay": "Adj EPA/Play",
+        "overall.epaPerPlay": "EPA/Play",
+        "overall.yardsPerPlay": "Yards/Play",
+        "overall.successRate": "SR%",
+
+        "passing.epaPerPlay": "EPA/DB",
+        "passing.yardsPerPlay": "Yards/DB",
+        "passing.successRate": "Pass SR%",
+
+        "rushing.epaPerPlay": "EPA/Rush",
+        "rushing.yardsPerPlay": "Yards/Rush",
+        "rushing.successRate": "Rush SR%",
+
+        "overall.havocRate": "Havoc %"
+    }
+};
+
+export const TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
+    "differential": {
+        "overall.adjEpaPerPlay": [1,2,2],
+        "overall.epaPerPlay": [1,2,2],
+        "overall.yardsPerPlay": [1,2,2],
+        "overall.successRate": [100,2,1],
+    }, 
+    "offensive": {
+        "overall.adjEpaPerPlay": [1,2,2],
+        "overall.epaPerPlay": [1,2,2],
+        "overall.yardsPerPlay": [1,2,2],
+        "overall.successRate": [100,2,1],  
+
+        "passing.epaPerPlay": [1,2,2],
+        "passing.yardsPerPlay": [1,2,2],
+        "passing.successRate": [100,2,1], 
+
+        "rushing.epaPerPlay": [1,2,2],
+        "rushing.yardsPerPlay": [1,2,2],
+        "rushing.successRate": [100,2,1], 
+
+        "overall.havocRate": [100,2,1], 
+    }, 
+    "defensive": {
+        "overall.adjEpaPerPlay": [1,2,2],
+        "overall.epaPerPlay": [1,2,2],
+        "overall.yardsPerPlay": [1,2,2],
+        "overall.successRate": [100,2,1],  
+
+        "passing.epaPerPlay": [1,2,2],
+        "passing.yardsPerPlay": [1,2,2],
+        "passing.successRate": [100,2,1], 
+
+        "rushing.epaPerPlay": [1,2,2],
+        "rushing.yardsPerPlay": [1,2,2],
+        "rushing.successRate": [100,2,1], 
+
+        "overall.havocRate": [100,2,1], 
+    }
+};
+
+export const TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
+    "differential": {
+        "overall.adjEpaPerPlay": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+    }, 
+    "offensive": {
+        "overall.adjEpaPerPlay": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+        "passing.epaPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
+        "passing.yardsPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
+    }, 
+    "defensive": {
+        "overall.adjEpaPerPlay": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+        "passing.epaPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
+        "passing.yardsPerPlay": "DB: Dropbacks, includes pass attempts and sacks.",
     }
 };

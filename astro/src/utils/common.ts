@@ -136,6 +136,24 @@ export function generateMarginalString(input: number, power10: number, fixed: nu
     }
 }
 
+export function formatRank(rank: string) {
+    if (rank == null || (!rank && rank != "0")) {
+        return "N/A"
+    }
+
+    let tied = String(rank)?.includes(".5")
+    let rankString = ""
+    if (rank && tied) {
+        rankString = `T-${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`;
+    } else if (rank) {
+        rankString = `${roundNumber(Math.floor(parseFloat(rank)), 2, 0)}`
+    } else {
+        rankString = "N/A"
+    }
+    return rankString
+}
+
+
 export function generateColorRampValue(input: number, max: number): string | null {
     if (!input) {
         return null;

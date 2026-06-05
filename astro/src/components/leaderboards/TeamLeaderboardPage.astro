@@ -1,9 +1,9 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import PlayerMetricDropdown from "../../components/charts/PlayerMetricDropdown.svelte";
-import { AVAILABLE_SEASONS, PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
-import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
+import { AVAILABLE_SEASONS, TEAM_METRIC_CATEGORIES } from "../../utils/constants";
 import { toTitleCase } from "../../utils/misc";
+import TeamLeaderboardTable from "./TeamLeaderboardTable.astro";
+import TeamMetricDropdown from "../charts/TeamMetricDropdown.svelte";
 
 interface Props {
     season: number
@@ -12,29 +12,19 @@ interface Props {
 }
 
 let { season, category, metric } = Astro.props;
-category = category || "passing";
-metric = metric || "advanced.epaPerPlay";
+category = category || "differential";
+metric = metric || "overall.adjEpaPerPlay";
 
-const categoryTitle = toTitleCase(category);
+const categoryTitle = category == "differential" ? "Net" : toTitleCase(category);
 const pageTitle = `${categoryTitle} | ${season} | Game on Paper`;
 
 const breadcrumbs: PageBreadcrumb[] = [
     { title: "Seasons", active: false },
     { title: `${season}`, url: `/cfb/year/${season}`, active: false },
-    { title: `${categoryTitle}`, url: `/cfb/year/${season}/players/${category}`, active: true },
+    { title: `${categoryTitle}`, url: `/cfb/year/${season}/teams/${category}`, active: true },
 ];
 
 const SUMMARY_LAST_UPDATED = '2026-01-01';
-
-
-let statMinimum = " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."
-if (category == "passing") {
-    statMinimum = "min. 14 dropbacks per team-game" + statMinimum
-} else if (category == "rushing") {
-    statMinimum = "min. 6.25 carries per team-game" + statMinimum
-} else if (category == "receiving") {
-    statMinimum = "min. 1.875 targets per team-game" + statMinimum
-}
 
 ---
 
@@ -44,17 +34,14 @@ if (category == "passing") {
             <div class="col-lg-6 col-xs-12 mb-xs-3">
                 <h1>{categoryTitle} Statistics</h1>
                 <p class="m-0 text-muted"><strong>Available Seasons:</strong> {AVAILABLE_SEASONS[0]} to {AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]} - Data shown is from FBS vs FBS games only.</p>
-                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time. To qualify, <Fragment set:html={statMinimum} /></p>
-                {
-                    (category == "receiving") && (<p class="m-0 mb-2 text-muted text-small"><strong>Note: </strong> ESPN does not consistently mark targeted receivers for incomplete passes, which affects Catch %, EPA/target and Yards/Target averages.</p>)
-                }
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
                 <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
                 <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SUMMARY_LAST_UPDATED}</span></abbr></p>
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
-                <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} />
+                <TeamMetricDropdown client:idle season={season} category={category} metric={metric} onChangeValue={null} />
             </div>
         </div>
     </div>
-    <PlayerLeaderboardTable season={season} category={category} metric={metric} />
+    <TeamLeaderboardTable season={season} category={category} metric={metric} />
 </GenericPage>

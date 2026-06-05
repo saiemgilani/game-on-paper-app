@@ -1,75 +1,78 @@
 <script>
-    const { category, metric } = $props()
+    import { TEAM_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
+    import { toTitleCase } from "../../utils/misc";
 
-	let selectedCategory = $state({ value: category || "-1" });
-	let selectedMetric = $state({ value: metric || "-1" });
+    const { season, category, metric, onChangeValue } = $props()
+
+    function onChangeSeason(e) {
+        onChangeValueWrapper(e.target.value, category, metric)
+    }
+
+    function onChangeCategory(e) {
+        onChangeValueWrapper(season, e.target.value, metric)
+    }
 
     function onChangeMetric(e) {
-        selectedMetric.value = e.target.value;
+        onChangeValueWrapper(season, category, e.target.value)
+    }
 
-        window.location = `/cfb/trends` + (new URLSearchParams({ category: selectedCategory.value, metric: selectedMetric.value })).toString();
+    function onChangeValueWrapper(s, c, m) {
+		if (onChangeValue) {
+            onChangeValue(s, c, m)
+        } else {
+            window.location = `/year/${s}/teams/${c}?sort=${m}`;
+        }
+    }
+
+    let optGroupMap = {};
+    for (const [c, metrics] of Object.entries(TEAM_METRIC_CATEGORIES)) {
+        if (category != c) {
+            continue;
+        }
+        for (const [key, title] of Object.entries(metrics)) {
+            let splits = key.split(".")
+            let subcat = splits[0]
+            if (key == "overall.havocRate") {
+                subcat = "other"
+            }
+            
+            if (!Object.keys(optGroupMap).includes(subcat)) {
+                optGroupMap[subcat] = []
+            }
+            optGroupMap[subcat].push([key, title])
+        }
     }
 
 </script>
 <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
     <div class="row">
+        <div class="col-lg-auto mb-3">
+            <select class="form-select form-select-md" onchange={onChangeSeason}>
+				<option value="-1" disabled>Choose Season...</option>
+				{#each AVAILABLE_SEASONS as s}
+					<option value={s} selected={(season == s)}>{s}</option>
+				{/each}
+            </select>
+        </div>
         <div class="col-auto mb-xs-3 mb-sm-0">
-            <select class="form-select form-select-md" onchange={(e) => selectedCategory.value = e.target.value}>
-                <option value="-1" disabled>Choose Type...</option>
-                <option value="offensive" selected={(selectedCategory.value == 'offensive')}>Offensive</option>
-                <option value="defensive" selected={(selectedCategory.value == 'defensive')}>Defensive</option>
+            <select class="form-select form-select-md" onchange={onChangeCategory}>
+                <option value="-1" disabled>Choose Category...</option>
+                <option value="differential" selected={(category == 'differential')}>Net</option>
+                <option value="offensive" selected={(category == 'offensive')}>Offensive</option>
+                <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
             </select>
         </div>
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
-                <optgroup label="Overall">
-                    <option value="overall.epaPerPlay" selected={(selectedMetric.value == 'overall.epaPerPlay')}>EPA/Play</option>
-                    <option value="overall.yardsPerPlay" selected={(selectedMetric.value == 'overall.yardsPerPlay')}>Yards/Play</option>
-                    <option value="overall.successRate" selected={(selectedMetric.value == 'overall.successRate')}>SR%</option>
-                </optgroup>
-                    <optgroup label="Passing" hidden={selectedCategory.value == "-1"}>
-                        <option value="passing.epaPerPlay" selected={(selectedMetric.value == 'passing.epaPerPlay')}>EPA/DB</option>
-                        <option value="passing.yardsPerPlay" selected={(selectedMetric.value == 'passing.yardsPerPlay')}>Yards/DB</option>
-                        <option value="passing.successRate" selected={(selectedMetric.value == 'passing.successRate')}>Pass SR%</option>
-                        <option value="passing.explosiveRate" selected={(selectedMetric.value == 'passing.explosiveRate')}>Pass Expl %</option>
+                {#each Object.entries(optGroupMap) as [subcat, metrics]}
+                    <optgroup label={toTitleCase(subcat)}>
+                        {#each metrics as m}
+                            <option value={m[0]} selected={(metric == m[0])}>{m[1]}</option>
+                        {/each}
                     </optgroup>
-                    <optgroup label="Rushing" hidden={selectedCategory.value == "-1"}>
-                        <option value="rushing.epaPerPlay" selected={(selectedMetric.value == 'rushing.epaPerPlay')}>EPA/Rush</option>
-                        <option value="rushing.yardsPerPlay" selected={(selectedMetric.value == 'rushing.yardsPerPlay')}>Yards/Rush</option>
-                        <option value="rushing.successRate" selected={(selectedMetric.value == 'rushing.successRate')}>Rush SR%</option>
-                        <option value="rushing.explosiveRate" selected={(selectedMetric.value == 'rushing.explosiveRate')}>Rush Expl %</option>
-                        <option value="rushing.opportunityRate" selected={(selectedMetric.value == 'rushing.opportunityRate')}>Opportunity %</option>
-                        <option value="rushing.lineYards" selected={(selectedMetric.value == 'rushing.lineYards')}>Line Yards</option>
-                        <option value="rushing.stuffedPlayRate" selected={(selectedMetric.value == 'rushing.stuffedPlayRate')}>Stuffed %</option>
-                    </optgroup>
-                    <optgroup label="Other" hidden={selectedCategory.value == "-1"}>
-                        <option value="overall.havocRate" selected={(selectedMetric.value == 'overall.havocRate')}>Havoc %</option>
-                        <option value="overall.explosiveRate" selected={(selectedMetric.value == 'overall.explosiveRate')}>Explosive %</option>
-                        <option value="overall.nonExplosiveEpaPerPlay" selected={(selectedMetric.value == 'overall.nonExplosiveEpaPerPlay')}>Non-Expl EPA/Play</option>
-                        <option value="overall.earlyDownEPAPerPlay" selected={(selectedMetric.value == 'overall.earlyDownEPAPerPlay')}>Early Downs EPA/Play</option>
-                        <option value="overall.lateDownSuccessRate" selected={(selectedMetric.value == 'overall.lateDownSuccessRate')}>Late Downs SR%</option>
-                        <option value="overall.thirdDownDistance" selected={(selectedMetric.value == 'overall.thirdDownDistance')}>Avg Distance (3rd)</option>
-                    </optgroup>
+				{/each}
             </select>
         </div>
     </div>
 </form>
-
-<!-- <script src="/assets/js/feather.min.js" crossorigin="anonymous"></script>
-<script src="/assets/js/Chart.min.js" crossorigin="anonymous"></script>
-<script src="/assets/js/d3-regression.min.js" crossorigin="anonymous"></script>
-<script src="/assets/js/common.js" crossorigin="anonymous"></script>
-<script src="/assets/js/Chart.BoxPlot.min.js" crossorigin="anonymous"></script>
-<script src="/assets/js/team_chart.js" crossorigin="anonymous"></script>
-<script>
-    const percentiles = <%- JSON.stringify(percentiles) %>;
-    (function() {
-        'use strict'
-        feather.replace()
-        const teamChart = new Chart(
-            document.getElementById('metric_chart_canvas'),
-            generateTeamChartConfig("National Trends", null, [], percentiles, "<%= type %>", "<%= metric %>")
-        )
-    })()
-</script> -->

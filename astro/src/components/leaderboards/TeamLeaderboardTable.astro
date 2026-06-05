@@ -1,0 +1,74 @@
+---
+import { cleanField, formatRank, generateColorRampValue, generateMarginalString } from '../../utils/common';
+import { TEAM_METRIC_FORMATTING_VALUES, TEAM_METRIC_CATEGORIES, TEAM_METRIC_HOVER_TEXT } from '../../utils/constants';
+
+interface Props {
+    season: number
+    category: string
+    metric: string
+}
+
+const { season, category, metric } = Astro.props;
+const teams: any[] = []
+const columns = TEAM_METRIC_CATEGORIES[category];
+const arrowDirection = ((category == "defensive" && metric != "overall.havocRate") || (category == "offensive" && metric == "overall.havocRate")) ? "up" : "down"
+
+function generateMetricHead(key: string, title: string): string {
+    const abbr = TEAM_METRIC_HOVER_TEXT[category][key];
+    if (abbr) {
+        title = `<abbr title="${abbr}">${title}</abbr>`
+    }
+    return `
+        <th class="text-center" colspan="1">${title} <i class="bi bi-arrow-${arrowDirection}" ${(key != metric ? 'hidden' : '')}></i></th>
+    `
+}
+
+function generateMetricCell(team: any, category: string, metric: string): string {
+    const [multiplier, power10, fixed] = TEAM_METRIC_FORMATTING_VALUES[category][metric] || [2, 2];
+    return `
+    <td class="text-center ${generateColorRampValue(retrieveValue(team, metric + 'Rank'), teams.length)}" colspan="1">${generateMarginalString(retrieveValue(team, metric) * multiplier, power10, fixed)}</td>
+    `
+}
+
+function generateMetricRow(team: any): string {
+
+    return Object.entries(columns).map(([k, _]) => {
+        const colContent = generateMetricCell(team, category, k);
+        let rankStr = formatRank(retrieveValue(team, metric + 'Rank'))
+        if ((rankStr == "N/A" && metric == 'overall.adjEpaPerPlay') || (metric == "overall.adjEpaPerPlay" && retrieveValue(team, metric) == "N/A")) {
+            rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
+        }
+        return `
+        <tr>
+            <td class="text-right" colspan="1">${rankStr}</td>
+            <td class="text-left" colspan="1"><a href="/cfb/year/${season}/team/${team.teamId}"><img class="img-fluid team-logo-${team.teamId} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.teamId}.png" alt="ESPN team id ${team.teamId} ${cleanField(team, "name")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "team")}</span></a> <strong>${cleanField(team, "team")}</strong></td>
+            ${colContent}
+        </tr>
+        `
+    }).join("")
+}
+
+
+
+---
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <th class="text-right" colspan="1">Rk</th>
+                        <th class="text-left" colspan="1">Team</th>
+                        <Fragment set:html={Object.entries(columns).map(([k, v]) => generateMetricHead(k, v)).join("")} />
+                    </thead>
+                    <tbody>
+                        {
+                            teams.map((t) => <Fragment set:html={generateMetricRow(t)} />)
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
