@@ -106,12 +106,26 @@ export interface ESPNCompetition {
     geoBroadcasts: ESPNGeoBroadcast[]
     situation?: ESPNGameSituation
     notes: { type: string, headline: string }[]
+
+    boxscoreAvailable?: boolean
+    commentaryAvailable?: boolean
+    liveAvailable?: boolean
+    onWatchESPN?: boolean
+    wallclockAvailable?: boolean
+    boxscoreSource?: string
+    playByPlaySource?: string
 }
 
 export interface ESPNGameSituation {
     downDistanceText?: string
     isRedZone?: boolean
-    lastPlay?: ESPNPlay
+    lastPlay?: {
+        text?: string
+        probability?: { awayWinPercentage: number, homeWinPercentage: number }
+        end?: {
+            team: { id: string }
+        }
+    }
 }
 export interface ESPNCompetitor {
     id: string
@@ -125,6 +139,9 @@ export interface ESPNCompetitor {
     statistics: any[]
     curatedRank?: { current?: number }
     records: ESPNRecord[]
+
+    possession?: boolean
+    rank?: number
 }
 
 export interface ESPNTeam {
@@ -180,12 +197,99 @@ export interface ESPNGeoBroadcast {
     region: string
 }
 
+export interface ESPNPlayState {
+    down: number
+    distance: number
+    yardLine: number
+    yardsToEndzone: number
+    team: { id: number }
+    downDistanceText?: string
+    shortDownDistanceText?: string
+    possessionText?: string
+}
+
+export interface ESPNPlayTeamParticipant {
+    team: { "$ref": string }
+    id: string
+    order: number
+    type: string
+    timeout?: boolean
+}
+
+export interface ESPNPlayScoringType {
+  name: string
+  displayName: string
+  abbreviation: string
+}
+
+export interface ESPNPlayPointAfterAttempt {
+  id: number
+  text: string
+  abbreviation: string
+  value: number
+}
+
 export interface ESPNPlay {
+    id: string
+    type: ESPNPlayType
+    clock: ESPNGameClock
     text?: string
+    sequenceNumber: string
+    awayScore: number
+    homeScore: number
+    period: { number: number }
+    scoringPlay: boolean
+    priority: boolean
+    modified: string
+    wallclock: string
+    teamParticipants: ESPNPlayTeamParticipant[]
+    isPenalty: boolean
+    statYardage: number
+    start: ESPNPlayState
+    end?: ESPNPlayState
+    isTurnover: boolean
+    scoringType?: ESPNPlayScoringType
+    pointAfterAttempt?: ESPNPlayPointAfterAttempt
+
     probability?: { awayWinPercentage: number, homeWinPercentage: number }
-    end?: {
-        team: { id: string }
-    }
+}
+
+export interface ESPNPlayTeam {
+    id: string
+    name: string
+    abbreviation: string
+    displayName: string
+    shortDisplayName: string
+}
+
+export interface ESPNWinProbability {
+    homeWinPercentage: number
+    tiePercentage: number
+    playId: string
+}
+
+export interface ESPNGameHeader {
+  id: string
+  uid: string
+  season: ESPNSeason
+  timeValid: boolean
+  competitions: ESPNCompetition[]
+//   links: Link10[]
+  week: number
+  league: ESPNLeague
+  gameNote: string
+}
+
+export interface ESPNGameClock {
+    displayValue: string
+    minutes?: number
+    seconds?: number
+}
+
+export interface ESPNPlayType {
+    id: number
+    text: string
+    abbreviation: string
 }
 
 export async function getRemoteGames(year?: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {

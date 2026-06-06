@@ -1,4 +1,5 @@
-import { SpiceLevel, type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/espn"
+import { type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/espn"
+import { SpiceLevel } from "../resources/internal"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
 import { roundNumber } from "./misc"

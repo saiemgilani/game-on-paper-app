@@ -28,14 +28,14 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "USA Net": "https://www.usanetwork.com/sports"
 };
 
-export const SPICE_LEVELS = {
-    WATER: "testing",
-    BELL: "none",
-    SERRANO: "close-late",
-    CAYENNE: "ranked-upset",
-    GHOST: "ranked-close-late",
-    REAPER: "fcs-upset"
-};
+export const GAME_QUARANTINE_LIST = [
+    "401411157",
+    "401403861",
+    "401628329",
+    "401634301",
+    "401634212",
+    "401628398"
+]
 
 const SICKOS_GOTW = [];
 
