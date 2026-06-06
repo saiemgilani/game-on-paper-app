@@ -232,3 +232,7 @@ export function getPercentileKey(metric: string): string {
             return metric;
     }
 }
+
+export function prepareTeamLogo(season: number, value: number): string {
+    return `<th style="text-align: center;"><a href="/cfb/year/${season}/team/${value}"><img class="img-fluid team-logo-${value}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png" alt="ESPN team id ${value}"/></a></th>`
+}

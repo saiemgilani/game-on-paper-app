@@ -1,0 +1,74 @@
+function createPlayRow(play, canCollapse, collapsePrefix, expandingRowCallback) {
+    var classText = "";
+    if (turnover_vec.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_poss == 1) || (play.start.down == 4 && parseFloat(play.statYardage) < parseFloat(play.start.distance) && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
+        classText = " table-danger"
+    } else if (play.scoringPlay == true || play.scoring_play == true) {
+        classText = " table-success"
+    } else if (play.text.toLocaleLowerCase().includes("penalty")) {
+        classText = " table-warning"
+    }
+    var period = `Q${play.period}`;
+    if (play.period > 5) {
+        period = `${play.period - 4}OT`
+    } else if (play.period == 5) {
+        period = "OT"
+    } else {
+        period = `Q${play.period} ${play.clock.displayValue}`;
+    }
+    var offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
+    var defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
+
+    var scoreText = (play.scoringPlay == true) ? ` - <strong>${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}</strong>` : ` - ${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}`
+    var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#play-${collapsePrefix}-${play.game_play_number}"` : ''
+
+    let fourthDownLink = `https://kazink.shinyapps.io/cfb_fourth_down/?team=${offense.location}&pos_score=${play.start.pos_team_score}&def_pos_score=${play.start.def_pos_team_score}&pos_timeouts=${play.start.posTeamTimeouts}&def_timeouts=${play.start.defTeamTimeouts}&distance=${play.start.distance}&yards_to_goal=${play.start.yardsToEndzone}&qtr=${play.period}&minutes=${play.clock.minutes}&seconds=${play.clock.seconds}&posteam_spread=${-1 * parseFloat(play.start.posTeamSpread)}&vegas_ou=${play.overUnder}&season=${play.season}&pos_team_receives_2H_kickoff=${play.modelInputs.start.pos_team_receives_2H_kickoff}&is_home=${play.modelInputs.start.is_home}`;
+    var fourthDownEval = ""
+    if (play.start.down == 4) {
+        fourthDownEval = `<p style="text-align: center;"><strong>Fouth Down Decision Evaluation:</strong> <a href="${fourthDownLink}" target="__blank">link</a></p>`;
+    }
+    var downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }`;
+    var baseRow = `
+    <tr ${collapsibleText} class="accordion-toggle${classText}">
+        <td style="text-align: left;">${period}</td>
+        <td style="text-align: center;"><a href="/cfb/year/${play.season}/team/${play.pos_team}"><img class="img-fluid team-logo-${play.pos_team}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png" alt="ESPN team id ${play.pos_team}"/></a></td>
+        <td style="text-align: left;">(${downText}) ${play.text}${scoreText}</td>
+        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</td>
+        <td class="numeral" style="text-align: center;">${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</td>
+        <td class="numeral" style="text-align: right;">${roundNumber(parseFloat(play.winProbability.added) * 100, 3, 1)}%</td>
+    </tr>`;
+    if (canCollapse) {
+        baseRow += `<tr>
+            <td colspan="6" class="hiddenRow">
+                <div class="accordian-body collapse" id="play-${collapsePrefix}-${play.game_play_number}">
+                    <div class="row p-1">`;
+        if (expandingRowCallback != null) {
+            baseRow += expandingRowCallback(play);
+        } else {
+            baseRow += `
+            <div class="ms-sm-auto col-lg-6">
+                <p style="text-align: center;"><strong>Play Type:</strong> ${play.type.text}</p>
+                <p style="text-align: center;"><strong>Yards to End Zone (Before -> After):</strong> ${play.start.yardsToEndzone} -> ${play.end.yardsToEndzone}</p>
+                <p style="text-align: center;"><strong>Started Drive at:</strong> ${formatYardline(play.drive_start, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text)}</p>
+                <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> ${roundNumber(parseFloat(play.expectedPoints.after), 2, 2)} - ${roundNumber(parseFloat(play.expectedPoints.before), 2, 2)} = ${roundNumber(parseFloat(play.expectedPoints.added), 2, 2)}</p>
+                <p style="text-align: center;"><strong>Score Difference (Before):</strong> ${play.start.pos_score_diff} (${roundNumber(parseFloat(play.start.ExpScoreDiff), 2, 2)})</p>
+                <p style="text-align: center;"><strong>Score Difference (End):</strong> ${play.end.pos_score_diff} (${roundNumber(parseFloat(play.end.ExpScoreDiff), 2, 2)})</p>
+                <p style="text-align: center;"><strong>Change of Possession:</strong> ${play.change_of_poss}</p>
+            </div>
+            <div class="ms-sm-auto col-lg-6">
+                <p style="text-align: center;"><strong>Score:</strong> ${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}</p>
+                <p style="text-align: center;"><strong>Drive Summary:</strong> ${play.drive_play_index} play${(parseInt(play.drive_play_index) == 1) ? "" : "s"}, ${play.drive_total_yards} yards</p>
+                <p style="text-align: center;"><strong>Win Probability (Before):</strong> ${roundNumber(parseFloat(play.winProbability.before) * 100, 3, 1)}%</p>
+                <p style="text-align: center;"><strong>Win Probability (After):</strong> ${roundNumber(parseFloat(play.winProbability.after) * 100, 3, 1)}%</p>
+                <p style="text-align: center;"><strong>Away Score:</strong> ${play.start.awayScore} (${play.awayScore}) <strong>Home Score:</strong> ${play.start.homeScore} (${play.homeScore})</p>
+                <p style="text-align: center;"><strong>Pos Team Timeouts:</strong> ${play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> ${play.end.defPosTeamTimeouts}</p>
+                ${fourthDownEval}
+            </div>
+            `;
+        }
+        baseRow += `</div>
+                </div>
+            </td>
+        </tr>`
+    }
+    return baseRow;
+}

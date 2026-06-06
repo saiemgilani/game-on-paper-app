@@ -1,0 +1,68 @@
+function buildDrivesTable(drives, prefix, expandable, errorMsg, showGuide, expandingRowCallback) {
+    if (drives == null || drives.length == 0) {
+        return `<p class="text-center text-muted">${errorMsg}</p>`;
+    }
+
+    let guideText = (showGuide) ? `<caption>Drive shading guide:
+        <ul>
+            <li><strong>Red</strong> - turnover</li>
+            <li><strong>Green</strong> - scoring drive</li>
+        </ul>
+    </caption>` : ""
+
+    var baseTable = `
+    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
+        ${guideText}
+        <thead>
+            <tr>
+                <th style="text-align: left;vertical-align:center;">Start</th>
+                <th style="text-align: center;vertical-align:center;">Offense</th>
+                <th style="text-align: left;vertical-align:center;">Result</th>
+                <th style="text-align: left;vertical-align:center;">Description</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">EPA</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">Start WP%</th>
+                <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">End WP%</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    drives = drives.map(d => {
+        let drivePlays = gameData.plays.filter(p => p['drive.id'] == d.id)
+        let firstPlay = drivePlays[0]
+        if (!Object.keys(d).includes("start")) {
+            d["start"] = {
+                "period": {},
+                "clock": {}
+            }
+        } else if (!Object.keys(d.start).includes("clock")) {
+            d["start"]["clock"] = {}
+        }
+        d["start"]["clock"]["game_play_number"] = firstPlay["game_play_number"]
+        d["start"]["period"]["number"] = firstPlay.period
+        return d
+    })
+
+    // console.log(drives.map(p => JSON.stringify(p.start?.period, null, 2)))
+    drives = drives.sort((a, b) => {
+        // console.log((a.start?.period?.number ?? 0))
+        // console.log((b.start?.period?.number ?? 0))
+        if ((a.start?.period?.number ?? 0) == (b.start?.period?.number ?? 0)) {
+            if ((a.start?.clock?.game_play_number ?? "") == (b.start?.clock?.game_play_number ?? "")) {
+                return a.id < b.id ? -1 : 1
+            } else {    
+                return (a.start?.clock?.game_play_number ?? 0) < (b.start?.clock?.game_play_number ?? 0) ? -1 : 1
+            }
+        } else {
+            return (a.start?.period?.number ?? 0) < (b.start?.period?.number ?? 0) ? -1 : 1
+        }
+    })
+    // console.log(drives.map(p => JSON.stringify(p.start?.period, null, 2)))
+
+    drives.forEach(drives => {
+        baseTable += createDriveRow(drives, expandable, prefix, expandingRowCallback);
+    });
+    baseTable += `</tbody>
+    </table>`;
+    return baseTable;
+
+}

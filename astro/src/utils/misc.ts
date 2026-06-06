@@ -89,3 +89,43 @@ export function toTitleCase(str: string) {
   );
 }
 
+
+export function toUnique<T>(a: T[]): T[] {
+    return a.sort().filter(function(item, pos, ary) {
+        return !pos || item != ary[pos - 1];
+    });
+}
+
+export function formatDown(down: number, playType: string): string {
+    if (playType.includes("Kickoff")) {
+        return "Kickoff"
+    } else if (playType.includes("Extra Point") || playType.includes("Conversion")) {
+        return "PAT"
+    } else if (down > -1) {
+        return getNumberWithOrdinal(down)
+    } else {
+        return `${down}`;
+    }
+}
+
+export function formatYardline(yardsToEndzone: number, offenseAbbreviation: string, defenseAbbreviation: string, playType: string): string {
+    if (yardsToEndzone == 50) {
+        return "50";
+    } else if (yardsToEndzone < 50) {
+        return `${defenseAbbreviation} ${yardsToEndzone}`
+    } else if (playType?.includes("Kickoff") ?? false) {
+        return `${defenseAbbreviation} ${100 - yardsToEndzone}`
+    } else {
+        return `${offenseAbbreviation} ${100 - yardsToEndzone}`
+    }
+}
+
+export function formatDistance(down: number, type: string, distance: number, yardline: number): string {
+    var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
+    var downForm = formatDown(down, type)
+    if (downForm.includes("Kickoff") || downForm.includes("PAT")) {
+        return downForm
+    } else {
+        return downForm + " & " + dist
+    }
+}
