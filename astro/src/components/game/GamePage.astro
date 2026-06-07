@@ -12,6 +12,8 @@ import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
+import PassingChart from './metrics/PassingChart.astro';
+import RushingChart from './metrics/RushingChart.astro';
 
 interface Props {
    id: string | number
@@ -186,6 +188,8 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
                             />
+                            <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
+                            <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                         </div>
                     </Panel>
                 </div>
@@ -197,6 +201,8 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
                             />
+                            <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
+                            <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                         </div>
                     </Panel>
                 </div>

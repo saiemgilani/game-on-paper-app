@@ -129,3 +129,10 @@ export function formatDistance(down: number, type: string, distance: number, yar
         return downForm + " & " + dist
     }
 }
+
+export function tryDivide(value: number, denom: number): number {
+    if (!denom) {
+        return 0
+    }
+    return value / denom
+}
