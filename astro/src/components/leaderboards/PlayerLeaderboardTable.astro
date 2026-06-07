@@ -11,7 +11,7 @@ interface Props {
 }
 
 const { season, category, metric } = Astro.props;
-let content: PlayerSummary[] = await SummaryModel.retrieveLeagueData({ year: season, type: category as SummaryType })
+let content = await SummaryModel.retrieveLeagueData({ year: season, type: category as SummaryType })
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}Rank`) != null && retrieveValue(p, `${metric}Rank`) != "NA"

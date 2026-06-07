@@ -1,5 +1,5 @@
-import { type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/espn"
-import { SpiceLevel } from "../resources/internal"
+import { type ESPNCompetition, type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/espn"
+import { SpiceLevel, type ProcessedGameInfo } from "../resources/internal"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
 import { roundNumber } from "./misc"
@@ -74,8 +74,7 @@ export function calculateSpiceLevel(g: ESPNScheduleEvent): SpiceLevel {
     return SpiceLevel.BELL;
 }
 
-export function isChampionshipEvent(g: ESPNScheduleEvent): boolean {
-    const gameNote = (g.competitions[0].notes.length > 0) ? g.competitions[0].notes[0].headline : "";
+export function isChampionshipEvent(gameNote: string): boolean {
     return (
         gameNote.includes("CFP")
         || gameNote.includes("College Football Playoff")
@@ -132,6 +131,10 @@ export function cleanField(team: any, field: "abbreviation" | "name" | "location
 
 export function cleanAbbreviation(team: any): string {
     return cleanField(team, "abbreviation")
+}
+
+export function cleanName(team: any): string {
+    return cleanField(team, "name")
 }
 
 export function generateMarginalString(input: number, power10: number, fixed: number): string {

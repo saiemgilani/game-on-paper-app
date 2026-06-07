@@ -1,6 +1,7 @@
 ---
 import type { ESPNCompetitor, ESPNScheduleEvent } from "../../resources/espn";
 import { calculateSpiceLevel, formatScore, getRecordString, isChampionshipEvent } from "../../utils/common";
+import LocalDate from "../LocalDate.svelte";
 import BroadcastButton from "./BroadcastButton.astro";
 import GameSituation from "./GameSituation.astro";
 import TeamRow from "./TeamRow.astro";
@@ -20,24 +21,14 @@ const homeScore = homeComp.score;
 const awayScore = awayComp.score;
 
 const spiceLevel = calculateSpiceLevel(espnGame) || 'none';
-const isChamp = isChampionshipEvent(espnGame);
+const gameNote = espnGame.competitions[0].notes.length > 0 ? espnGame.competitions[0].notes[0].headline : ""
+const isChamp = isChampionshipEvent(gameNote);
 
 const btnTheme = isChamp ? "btn-outline-championship" : "btn-outline-primary";
 
 const borderClass = (spiceLevel == 'none' && isChamp) ? "" : `spice-level-${spiceLevel}`;
 const outlineClass = (isChamp) ? "outline-championship" : "";
 const textClass = (isChamp) ? "text-championship" : "text-primary";
-
-let espnGameDateHtml = espnGameComp.status.type.detail;
-if (espnGame.status.type.name.includes("STATUS_SCHEDULED")) {
-    const dateString = DateTime.fromISO(espnGame.date).toLocaleString(DateTime.DATETIME_SHORT);
-    espnGameDateHtml = `<span class="game-date">${dateString}</span>`;
-} else if (espnGame.status.type.completed == true) {
-    const dateString = DateTime.fromISO(espnGame.date).toLocaleString(DateTime.DATE_SHORT);
-    espnGameDateHtml = `<span class="game-status">${espnGame.status.type.detail} -</span> <span class="game-date">${dateString}</span>`  
-} else {
-    espnGameDateHtml = espnGameComp.status.type.detail
-}
 
 const hasLastPlay = (espnGameComp.situation && espnGameComp.situation?.lastPlay);
 const canShowSituation = (
@@ -57,7 +48,17 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
     <div class={`row border rounded m-2 mb-4 ${outlineClass} ${borderClass}`}>
         <div class="col p-3">
             <div class="d-flex justify-content-between">
-                <strong class={`d-inline-block mb-2 ${textClass} game-context small`} set:html={espnGameDateHtml}></strong>
+                <strong class={`d-inline-block mb-2 ${textClass} small`}>
+                    {
+                        (espnGame.status.type.completed == true) && <LocalDate client:idle divClass={""} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                    }
+                    {
+                        (espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={""} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATE_SHORT} />
+                    }
+                    {
+                        (espnGame.status.type.completed != true) && (!espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{espnGame.status.type.detail}</Fragment>
+                    }
+                </strong>
             </div>
             <TeamRow espnComp={awayComp} espnStatus={espnGame.status} winner={parseInt(awayScore) > parseInt(homeScore)} completed={espnGame.status.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
             <TeamRow espnComp={homeComp} espnStatus={espnGame.status} winner={parseInt(awayScore) < parseInt(homeScore)} completed={espnGame.status.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />

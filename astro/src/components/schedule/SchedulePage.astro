@@ -22,39 +22,39 @@ titleParts = titleParts.concat(["College Football", "Game on Paper"])
 
 const titleText = titleParts.join(" | ")
 const games = await getRemoteGames(season, seasontype, week, group);
-games.sort((a, b) => {
-    if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
-        return -1;
-    } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
-        return 1;
-    } else if ((a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD")) && !(b.status.type.name.includes("END_OF") || b.status.type.name.includes("END_PERIOD"))) {
-        return -1;
-    } else if ((b.status.type.name.includes("END_PERIOD") || b.status.type.name.includes("END_OF")) && !(a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD"))) {
-        return 1;
-    } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
-        return -1;
-    } else if (b.status.type.name.includes("STATUS_HALFTIME") && !a.status.type.name.includes("STATUS_HALFTIME")) {
-        return 1;
-    } else {
-        var aDate = Date.parse(a.date)
-        var bDate = Date.parse(b.date)
-        if (aDate < bDate) {
-            return -1
-        } else if (bDate < aDate) {
-            return 1
-        } else {
-            var aVal = parseInt(a.status.type.id)
-            var bVal = parseInt(b.status.type.id)
-            if (aVal < bVal) {
-                return -1
-            } else if (bVal < aVal) {
-                return 1
-            } else {
-                return 0
-            }
-        }
-    }
-})
+// games.sort((a, b) => {
+//     if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
+//         return -1;
+//     } else if (b.status.type.name.includes("IN_PROGRESS") && !a.status.type.name.includes("IN_PROGRESS")) {
+//         return 1;
+//     } else if ((a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD")) && !(b.status.type.name.includes("END_OF") || b.status.type.name.includes("END_PERIOD"))) {
+//         return -1;
+//     } else if ((b.status.type.name.includes("END_PERIOD") || b.status.type.name.includes("END_OF")) && !(a.status.type.name.includes("END_OF") || a.status.type.name.includes("END_PERIOD"))) {
+//         return 1;
+//     } else if (a.status.type.name.includes("STATUS_HALFTIME") && !b.status.type.name.includes("STATUS_HALFTIME")) {
+//         return -1;
+//     } else if (b.status.type.name.includes("STATUS_HALFTIME") && !a.status.type.name.includes("STATUS_HALFTIME")) {
+//         return 1;
+//     } else {
+//         var aDate = Date.parse(a.date)
+//         var bDate = Date.parse(b.date)
+//         if (aDate < bDate) {
+//             return -1
+//         } else if (bDate < aDate) {
+//             return 1
+//         } else {
+//             var aVal = parseInt(a.status.type.id)
+//             var bVal = parseInt(b.status.type.id)
+//             if (aVal < bVal) {
+//                 return -1
+//             } else if (bVal < aVal) {
+//                 return 1
+//             } else {
+//                 return 0
+//             }
+//         }
+//     }
+// })
 
 const hasActiveGames = games.find((item: any) => !(item.status.type.completed == true || item.status.type.name.includes("SCHEDULED") || item.status.type.name.includes("CANCEL") || item.status.type.name.includes("POSTPONE") || item.status.type.name.includes("DELAY")))
 ---

@@ -89,17 +89,17 @@ services:
           cpus: 0.5
           memory: 1gb
 
-  # python:
-  #   build: ./python
-  #   expose:
-  #     - 7000
-  #   healthcheck:
-  #     test: curl --fail http://python:7000/healthcheck || exit 1
-  #     interval: 60s
-  #     retries: 5
-  #     start_period: 20s
-  #     timeout: 10s
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 4gb
+  python:
+    build: ./python
+    ports:
+      - 4000:4000
+    healthcheck:
+      test: curl --fail http://python:7000/healthcheck || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 4gb

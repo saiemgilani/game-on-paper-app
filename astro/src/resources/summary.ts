@@ -1,3 +1,4 @@
+import { getSecret } from "astro:env/server";
 import { cleanUpParams } from "../utils/misc"
 import {DateTime} from "luxon";
 
@@ -236,7 +237,8 @@ export interface SummaryResponse {
     results: any[]
 }
 
-const SUMMARY_HTTP_URL = import.meta.env.SUMMARY_HTTP_URL || 'http://summary:3000';
+const SUMMARY_HTTP_URL = getSecret("SUMMARY_HTTP_URL") || 'http://summary:3000';
+console.log(SUMMARY_HTTP_URL)
 
 async function retrieveAllTeams(): Promise<TeamIndex[]> {
     try {
@@ -290,7 +292,7 @@ async function retrieveRemoteLeagueData(payload: SummaryRequest, maxLookback = 2
     }
 }
 
-async function retrieveLeagueData(payload: SummaryRequest, maxLookback = 2014) {
+async function retrieveLeagueData(payload: SummaryRequest, maxLookback = 2014): Promise<TeamSummary[]> {
     if (!payload.year && !payload.type) {
         // logger.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
         return [];

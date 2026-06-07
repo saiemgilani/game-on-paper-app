@@ -1,3 +1,15 @@
 ---
-const { game } = Astro.props;
+import GamePage from '../../components/game/GamePage.astro';
+// import MatchupPage from '../../components/game/MatchupPage.astro';
+import { retrieveGamePage } from '../../resources/espn';
+
+const { id } = Astro.params;
+if (!id) {
+    return Astro.redirect("/"); 
+}
+const espnGame = await retrieveGamePage(id);
+
 ---
+{
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED") && <GamePage id={id} />
+}

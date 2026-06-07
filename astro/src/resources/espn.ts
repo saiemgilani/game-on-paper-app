@@ -99,11 +99,11 @@ export interface ESPNCompetition {
     recent: boolean
     competitors: ESPNCompetitor[]
     status: ESPNStatus
-    broadcasts: ESPNBroadcast[]
+    broadcasts?: ESPNBroadcast[]
     format: { regulation: { periods: number } }
     startDate: string
     broadcast: string
-    geoBroadcasts: ESPNGeoBroadcast[]
+    geoBroadcasts?: ESPNGeoBroadcast[]
     situation?: ESPNGameSituation
     notes: { type: string, headline: string }[]
 
@@ -185,7 +185,7 @@ export interface ESPNStatusType {
 
 export interface ESPNBroadcast {
     market: string
-    media?: { shortName: string, logo?: string, darkLogo?: string }
+    media?: { shortName: string, logo?: string, darkLogo?: string}
     names: string[]
 }
 
@@ -292,6 +292,13 @@ export interface ESPNPlayType {
     abbreviation: string
 }
 
+export interface ESPNPlayByPlayResponse {
+    gameId: number
+    gamepackageJSON: {
+        header: ESPNGameHeader
+    }
+}
+
 export async function getRemoteGames(year?: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
     let espnGroup = group;
     if (espnGroup && espnGroup < 0) {
@@ -375,3 +382,10 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
     }
 }
 
+export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
+    const cacheBuster = ((new Date()).getTime() * 1000);
+    // check if the game is active or in the future
+    const req = await fetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const res: ESPNPlayByPlayResponse = await req.json()
+    return res
+}

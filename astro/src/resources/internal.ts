@@ -1,4 +1,5 @@
-import type { ESPNBroadcast, ESPNCompetition, ESPNCompetitor, ESPNGameClock, ESPNGameHeader, ESPNPlay, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
+import { getSecret } from "astro:env/server"
+import type { ESPNBroadcast, ESPNCompetition, ESPNCompetitor, ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlay, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 
 export enum SpiceLevel {
     BELL = 0,
@@ -755,7 +756,7 @@ export interface ProcessedRawGame {
     homeTeamSpread: number
     overUnder: number
     header: ESPNGameHeader
-    broadcasts: ESPNBroadcast[]
+    broadcasts: ESPNGeoBroadcast[]
     // gameInfo: ProcessedGameInfo
     season: number
 }
@@ -767,9 +768,9 @@ export interface ProcessedGame extends Omit<ProcessedRawGame, 'box_score'> {
     gameInfo: ProcessedGameInfo
 }
 
-const PYTHON_HTTP_URL = import.meta.env.PYTHON_HTTP_URL || 'http://python:7000';
+const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:7000';
 
-async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
+export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
     const processedGame = await processPlays(gameId);
     
     const pbp: ProcessedGame = {
@@ -780,8 +781,8 @@ async function retrieveProcessedGame(gameId: string | number): Promise<Processed
         // boxScore: processedGame['boxScore'],
         gameInfo: {
             ...(processedGame.header.competitions[0]),
-            away: processedGame.header.competitions[0].competitors[0].team,
-            home: processedGame.header.competitions[0].competitors[1].team,
+            away: processedGame.header.competitions[0].competitors[1].team,
+            home: processedGame.header.competitions[0].competitors[0].team,
         }
     };
 
@@ -851,6 +852,9 @@ async function processPlays(gameId: string | number): Promise<ProcessedRawGame> 
         method: "POST",
         body: JSON.stringify({ gameId })
     })
-    const resp: ProcessedRawGame = await req.json()
+    const content = await req.text();
+    // console.log(content)
+    // console.log(req.status)
+    const resp: ProcessedRawGame = JSON.parse(content);
     return resp;
 }

@@ -1,4 +1,4 @@
-bind = "0.0.0.0:7000"
+bind = "0.0.0.0:4000"
 workers = 2
 accesslog = "-"
 timeout = 120
