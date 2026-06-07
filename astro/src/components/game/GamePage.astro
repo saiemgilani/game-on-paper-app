@@ -7,9 +7,11 @@ import { cleanName, cleanLocation } from '../../utils/common';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';
-import Panel from '../../layouts/panel/Panel.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
+import TeamPanel from '../../layouts/panel/TeamPanel.astro';
+import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 
 interface Props {
    id: string | number
@@ -64,7 +66,7 @@ const scrollerItems: ScrollerItem[] = [
     { href: `https://www.espn.com/college-football/game/_/gameId/${game.id}`, title: "Gamecast" },
 ];
 
-const bigPlays = game.plays.sort((a, b) => {
+const bigPlays = game.plays.toSorted((a, b) => {
     const diff = Math.abs(a.expectedPoints.added) - Math.abs(b.expectedPoints.added)
     if (diff < 0) {
         return 1
@@ -75,7 +77,7 @@ const bigPlays = game.plays.sort((a, b) => {
     }
 }).slice(0, 10)
 
-const mostImpPlays = game.plays.sort((a, b) => {
+const mostImpPlays = game.plays.toSorted((a, b) => {
     const diff = Math.abs(a.winProbability.added) - Math.abs(b.winProbability.added)
     if (diff < 0) {
         return 1
@@ -177,16 +179,24 @@ const mostImpPlays = game.plays.sort((a, b) => {
             </div>
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="away-stats-panel" title="Away Stats">
+                    <TeamPanel id="away-stats-panel" season={game.season} team={awayTeam}>
                         <div class="row" slot="panel-body">
-                            <p>Away Stats</p>
+                            <PlayerBoxScore 
+                                pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                            />
                         </div>
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="home-stats-panel" title="Home Stats">
+                    <TeamPanel id="home-stats-panel" season={game.season} team={homeTeam}>
                         <div class="row" slot="panel-body">
-                            <p>Home Stats</p>
+                            <PlayerBoxScore 
+                                pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                            />
                         </div>
                     </Panel>
                 </div>
@@ -194,6 +204,7 @@ const mostImpPlays = game.plays.sort((a, b) => {
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="big-plays" title="Big Plays">
+                        <p class="text-small" slot="panel-subtitle">As determined by absolute EPA.</p>
                         <div class="row" slot="panel-body">
                             {
                                 (bigPlays.length == 0) && (<p class="text-center text-muted">No big plays in this game.</p>)
@@ -206,6 +217,7 @@ const mostImpPlays = game.plays.sort((a, b) => {
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="most-important-plays" title="Most Important Plays">
+                        <p class="text-small" slot="panel-subtitle">As determined by absolute WPA.</p>
                         <div class="row" slot="panel-body">
                             {
                                 (mostImpPlays.length == 0) && (<p class="text-center text-muted">No important plays in this game.</p>)
@@ -241,12 +253,20 @@ const mostImpPlays = game.plays.sort((a, b) => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="all-plays" title="All Plays">
+                        {
+                            (game.gameInfo.status.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
+                        }
                         <div class="row" slot="panel-body">
                             {
                                 (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
                             }
                             {
-                                (game.plays.length > 0) && (
+                                (game.plays.length > 0) && (game.gameInfo.status.type.completed != true) && (
+                                    <PlaysTable plays={game.plays.toReversed()} prefix="all" expandable={true} showGuide={false} />
+                                )
+                            }
+                            {
+                                (game.plays.length > 0) && (game.gameInfo.status.type.completed == true) && (
                                     <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={false} />
                                 )
                             }

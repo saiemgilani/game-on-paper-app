@@ -1,0 +1,33 @@
+---
+interface Props {
+    id: string;
+    title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<div class="panel-group">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <div class="panel-title">
+                <h2 class="d-inline">
+                    {title}
+                    <span class="d-inline text-small h6">
+                        <a data-bs-toggle="collapse"
+                            href={`#${id}`}
+                            style="text-decoration: none;"
+                            role="button"
+                            aria-expanded="true">[show/hide]</a>
+                    </span>
+                </h2>
+                <slot name="panel-subtitle" />
+            </div>
+        </div>
+        <div id={id} class="panel-collapse show">
+            <div class="panel-body">
+                <slot name="panel-body" />
+            </div>
+        </div>
+    </div>
+</div>

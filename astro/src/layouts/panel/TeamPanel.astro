@@ -1,10 +1,14 @@
 ---
+import type { ESPNTeam } from '../../resources/espn';
+import { cleanLocation } from '../../utils/common';
+
 interface Props {
-    id: string;
-    title: string;
+    id: string,
+    season: number,
+    team: ESPNTeam
 }
 
-const { id, title } = Astro.props;
+const { id, season, team } = Astro.props;
 ---
 
 <div class="panel-group">
@@ -13,7 +17,7 @@ const { id, title } = Astro.props;
             <div class="panel-title">
                 <div class="d-flex justify-content-between">
                     <h2 class="d-inline">
-                        {title}
+                        {cleanLocation(team)}
                         <span class="d-inline text-small h6">
                             <a data-bs-toggle="collapse"
                                 href={`#${id}`}
@@ -22,7 +26,7 @@ const { id, title } = Astro.props;
                                 aria-expanded="true">[show/hide]</a>
                         </span>
                     </h2>
-                    <slot name="title-image" />
+                    <th style="text-align: center;"><a href=`/cfb/year/${season}/team/${team.id}`><img class={`img-fluid team-logo-${team.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/></a></th>
                 </div>
             </div>
         </div>
