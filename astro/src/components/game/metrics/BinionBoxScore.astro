@@ -165,27 +165,6 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
     return result;
 }
 
-
-// Object.keys(gameData.advBoxScore).forEach(key => {
-//     baseData = gameData.advBoxScore[key]
-
-//     statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
-//     var teamKey = "pos_team"
-//     if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
-//         teamKey = "def_pos_team"
-//     }
-    
-//     baseData.sort((a,b) => {
-//         if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
-//             return -1;
-//         } else if (b[teamKey] == awayTeam.id && a[teamKey] == homeTeam.id) {
-//             return 1;
-//         } else {
-//             return 0;
-//         }
-//     });
-// });
-
 const columns = [
     "EPA_per_play",
     "situational.EPA_success", 

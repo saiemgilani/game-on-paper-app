@@ -788,6 +788,24 @@ export async function retrieveProcessedGame(gameId: string | number): Promise<Pr
         }
     };
 
+    for (let [key, baseData] of Object.entries(pbp.advBoxScore)) {
+        const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
+        let teamKey = "pos_team"
+        if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
+            teamKey = "def_pos_team"
+        }
+
+        baseData.sort((a: any, b: any) => {
+            if (a[teamKey] == pbp.gameInfo.away.id && b[teamKey] == pbp.gameInfo.home.id) {
+                return -1;
+            } else if (b[teamKey] == pbp.gameInfo.away.id && a[teamKey] == pbp.gameInfo.home.id) {
+                return 1;
+            } else {
+                return 0;
+            }
+        });
+    }
+
     const homeTeamId = processedGame.homeTeamId;
     const awayTeamId = processedGame.awayTeamId;
     if (processedGame != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
