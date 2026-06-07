@@ -137,6 +137,10 @@ export function cleanName(team: any): string {
     return cleanField(team, "name")
 }
 
+export function cleanLocation(team: any): string {
+    return cleanField(team, "location")
+}
+
 export function generateMarginalString(input: number, power10: number, fixed: number): string {
     if (input >= 0) {
         return `+${roundNumber(input, power10, fixed)}`;

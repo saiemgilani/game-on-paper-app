@@ -46,7 +46,7 @@ export interface ProcessedPlayState {
     def_pos_team_score: number
     pos_score_diff: number
     posTeamTimeouts: number
-    defTeamTimeouts: number
+    defPosTeamTimeouts: number
     ExpScoreDiff: number
     ExpScoreDiff_Time_Ratio: number
     shortDownDistanceText: string

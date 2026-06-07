@@ -2,13 +2,14 @@
 import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/internal';
-import type { SeasonPercentile } from '../../resources/summary';
 import { isChampionshipEvent } from '../../utils/common';
-import { cleanName } from '../../utils/common';
+import { cleanName, cleanLocation } from '../../utils/common';
 import { DateTime } from 'luxon';
-import SummaryModel, { SummaryType, type PlayerSummary } from '../../resources/summary';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';
+import Panel from '../../layouts/panel/Panel.astro';
+import Scripts from '../Scripts.astro';
+import PlaysTable from './plays/PlaysTable.astro';
 
 interface Props {
    id: string | number
@@ -33,11 +34,11 @@ const isChampEvent = isChampionshipEvent(gameNote);
 let title = "";
 let subtitle = "";
 if (game.gameInfo.status.type.completed == true || game.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (game.gameInfo.status.type.name.includes("STATUS_DELAYED") && game.plays.length > 0)) {
-    title = `Game: ${cleanName(awayComp.team)} ${awayComp.score}, ${cleanName(homeComp.team)} ${homeComp.score} | Game on Paper`
+    title = `Game: ${cleanLocation(awayComp.team)} ${awayComp.score}, ${cleanLocation(homeComp.team)} ${homeComp.score} | Game on Paper`
 } else {
-    title = `Game: ${cleanName(awayComp.team)} vs ${cleanName(homeComp.team)} | Game on Paper`
+    title = `Game: ${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)} | Game on Paper`
 }
-subtitle = `${cleanName(awayComp.team)} vs ${cleanName(homeComp.team)}`;
+subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)}`;
 
 const statusDetail = game.gameInfo.status.type.detail;
 const statusDescription = game.gameInfo.status.type.description ?? "Scheduled";
@@ -112,7 +113,7 @@ const scrollerItems: ScrollerItem[] = [
                     </div>
                     <div class="col-8 text-center">
                         <div>
-                            <h2 class="mb-0">{`${cleanName(awayTeam)} ${awayComp.score} @ ${cleanName(homeTeam)} ${homeComp.score}`}</h2>
+                            <h2 class="mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h2>
                             {
                                 (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                             }
@@ -132,5 +133,93 @@ const scrollerItems: ScrollerItem[] = [
 
             <NavScroller items={scrollerItems} />
         </div>
+        <div class="container-fluid">
+            <div class="row mb-3">
+                <div id="wpChart" class="col-lg-6 ms-sm-auto px-md-4">
+                    <div class="row">
+                        <h2>Win Probability</h2>
+                    </div>
+                </div>
+                <div id="epChart" class="col-lg-6 ms-sm-auto px-md-4">
+                    <div class="row">
+                        <h2>Expected Points</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <Panel id="team-stats" title="Team Stats">
+                        <div class="row" slot="panel-body">
+                            <p>Team Stats</p>
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div id="player-stats" class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="away-stats-panel" title="Away Stats">
+                        <div class="row" slot="panel-body">
+                            <p>Away Stats</p>
+                        </div>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="home-stats-panel" title="Home Stats">
+                        <div class="row" slot="panel-body">
+                            <p>Home Stats</p>
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="big-plays" title="Big Plays">
+                        <div class="row" slot="panel-body">
+                            <p>Big Plays</p>
+                        </div>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="most-important-plays" title="Most Important Plays">
+                        <div class="row" slot="panel-body">
+                            <p>Most Important Plays</p>
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="scoring-plays" title="Scoring Plays">
+                        <div class="row" slot="panel-body">
+                            <p>Scoring Plays</p>
+                        </div>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="drives" title="Drives">
+                        <div class="row" slot="panel-body">
+                            <p>Drives</p>
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <Panel id="all-plays" title="All Plays">
+                        <div class="row" slot="panel-body">
+                            {
+                                (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
+                            }
+                            {
+                                (game.plays.length > 0) && (
+                                    <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={false} />
+                                )
+                            }
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+        </div>
+        <Scripts />
     </body>
 </html>

@@ -1,0 +1,41 @@
+---
+import type { ProcessedPlay } from '../../../resources/internal';
+import { formatYardline, roundNumber } from '../../../utils/misc';
+import { cleanAbbreviation } from "../../../utils/common";
+
+interface Props {
+    play: ProcessedPlay
+}
+
+const { play } = Astro.props;
+const homeTeam = { id: play.homeTeamId, location: play.homeTeamName, abbreviation: play.homeTeamAbbrev }
+const awayTeam = { id: play.awayTeamId, location: play.awayTeamName, abbreviation: play.awayTeamAbbrev }
+const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
+const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
+
+const fourthDownLink = `https://kazink.shinyapps.io/cfb_fourth_down/?team=${offense.location}&pos_score=${play.start.pos_team_score}&def_pos_score=${play.start.def_pos_team_score}&pos_timeouts=${play.start.posTeamTimeouts}&def_timeouts=${play.start.defPosTeamTimeouts}&distance=${play.start.distance}&yards_to_goal=${play.start.yardsToEndzone}&qtr=${play.period}&minutes=${play.clock.minutes}&seconds=${play.clock.seconds}&posteam_spread=${-1 * (play.start.posTeamSpread ?? 2.5)}&vegas_ou=${play.overUnder}&season=${play.season}&pos_team_receives_2H_kickoff=${play.modelInputs.start.pos_team_receives_2H_kickoff}&is_home=${play.modelInputs.start.is_home}`;
+
+---
+<div class="row p-1">
+<div class="ms-sm-auto col-lg-6">
+<p style="text-align: center;"><strong>Play Type:</strong> {play.type.text}</p>
+<p style="text-align: center;"><strong>Yards to End Zone (Before to After):</strong> {play.start.yardsToEndzone} to {play.end.yardsToEndzone}</p>
+<p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation({offense}), cleanAbbreviation(defense), play.type.text)}</p>
+<p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> {roundNumber(play.expectedPoints.after, 2, 2)} - {roundNumber(play.expectedPoints.before, 2, 2)} = {roundNumber(play.expectedPoints.added, 2, 2)}</p>
+<p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
+<p style="text-align: center;"><strong>Score Difference (End):</strong> {play.end.pos_score_diff} ({roundNumber(play.end.ExpScoreDiff, 2, 2)})</p>
+<p style="text-align: center;"><strong>Change of Possession:</strong> {play.change_of_poss}</p>
+</div>
+<div class="ms-sm-auto col-lg-6">
+<p style="text-align: center;"><strong>Score:</strong> {cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</p>
+<p style="text-align: center;"><strong>Drive Summary:</strong> {play.drive_play_index} play{(play.drive_play_index) == 1 ? "" : "s"}, {play.drive_total_yards} yards</p>
+<p style="text-align: center;"><strong>Win Probability (Before):</strong> {roundNumber(play.winProbability.before * 100, 3, 1)}%</p>
+<p style="text-align: center;"><strong>Win Probability (After):</strong> {roundNumber(play.winProbability.after * 100, 3, 1)}%</p>
+<p style="text-align: center;"><strong>Away Score:</strong> {play.start.awayScore} ({play.awayScore}) <strong>Home Score:</strong> {play.start.homeScore} ({play.homeScore})</p>
+<p style="text-align: center;"><strong>Pos Team Timeouts:</strong> {play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> {play.end.defPosTeamTimeouts}</p>
+{
+    (play.start.down == 4) && (<p style="text-align: center;"><strong>Fouth Down Decision Evaluation:</strong> <a href={fourthDownLink} target="__blank">link</a></p>)
+}
+</div>
+</div>
+
