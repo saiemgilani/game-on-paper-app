@@ -8,10 +8,10 @@ interface Props {
 
 const { game } = Astro.props;
 let networkName: string | null = null;
-if (game.competitions[0].geoBroadcasts.length > 0 && game.competitions[0].geoBroadcasts[0].media?.shortName) {
-    networkName = game.competitions[0].geoBroadcasts[0].media.shortName;
-} else if (game.competitions[0].broadcasts.length > 0 && game.competitions[0].broadcasts[0].media?.shortName) {
-    networkName = game.competitions[0].broadcasts[0].media.shortName;
+if ((game.competitions[0].geoBroadcasts?.length ?? 0) > 0) {
+    networkName = game.competitions[0].geoBroadcasts![0].media.shortName;
+} else if ((game.competitions[0].broadcasts?.length ?? 0) > 0) {
+    networkName = game.competitions[0].broadcasts![0].media?.shortName || null;
 }
 
 const networkMapping = networkName ? NETWORK_MAPPINGS[networkName] : null;
