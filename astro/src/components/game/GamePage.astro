@@ -64,7 +64,27 @@ const scrollerItems: ScrollerItem[] = [
     { href: `https://www.espn.com/college-football/game/_/gameId/${game.id}`, title: "Gamecast" },
 ];
 
- 
+const bigPlays = game.plays.sort((a, b) => {
+    const diff = Math.abs(a.expectedPoints.added) - Math.abs(b.expectedPoints.added)
+    if (diff < 0) {
+        return 1
+    } else if (diff > 0) {
+        return -1
+    } else {
+        return 0
+    }
+}).slice(0, 10)
+
+const mostImpPlays = game.plays.sort((a, b) => {
+    const diff = Math.abs(a.winProbability.added) - Math.abs(b.winProbability.added)
+    if (diff < 0) {
+        return 1
+    } else if (diff > 0) {
+        return -1
+    } else {
+        return 0
+    }
+}).slice(0, 10)
 ---
 <!DOCTYPE html>
 <html>
@@ -175,14 +195,24 @@ const scrollerItems: ScrollerItem[] = [
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="big-plays" title="Big Plays">
                         <div class="row" slot="panel-body">
-                            <p>Big Plays</p>
+                            {
+                                (bigPlays.length == 0) && (<p class="text-center text-muted">No big plays in this game.</p>)
+                            }
+                            {
+                                (bigPlays.length > 0) && (<PlaysTable plays={bigPlays} prefix='big-play' expandable={true} showGuide={false} />)
+                            }
                         </div>
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="most-important-plays" title="Most Important Plays">
                         <div class="row" slot="panel-body">
-                            <p>Most Important Plays</p>
+                            {
+                                (mostImpPlays.length == 0) && (<p class="text-center text-muted">No important plays in this game.</p>)
+                            }
+                            {
+                                (mostImpPlays.length > 0) && (<PlaysTable plays={mostImpPlays} prefix='most-important-play' expandable={true} showGuide={false} />)
+                            }
                         </div>
                     </Panel>
                 </div>
@@ -191,7 +221,12 @@ const scrollerItems: ScrollerItem[] = [
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="scoring-plays" title="Scoring Plays">
                         <div class="row" slot="panel-body">
-                            <p>Scoring Plays</p>
+                            {
+                                (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
+                            }
+                            {
+                                (game.scoringPlays.length > 0) && (<PlaysTable plays={game.scoringPlays} prefix='scoring-play' expandable={true} showGuide={false} />)
+                            }
                         </div>
                     </Panel>
                 </div>

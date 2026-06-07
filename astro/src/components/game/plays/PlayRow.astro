@@ -37,13 +37,12 @@ const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
 const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
 const downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }`;
-const scoreText = (play.scoringPlay == true) ? ` - <strong>${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}</strong>` : ` - ${cleanAbbreviation(awayTeam)} ${play.awayScore}, ${cleanAbbreviation(homeTeam)} ${play.homeScore}`;
 ---
 
 <tr data-bs-toggle={expandable ? "collapse" : ""} href={expandable ? `#play-${prefix}-${play.game_play_number}` : ''} class=`accordion-toggle ${classText}`>
     <td style="text-align: left;">{gameClock}</td>
     <td style="text-align: center;"><a href={`/cfb/year/${play.season}/team/${play.start.pos_team.id}`}><img class={`img-fluid team-logo-${play.start.pos_team.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png`} alt={`ESPN team id ${play.start.pos_team.id}`}/></a></td>
-    <td style="text-align: left;">({downText}) {play.text}{scoreText}</td>
+    <td style="text-align: left;">({downText}) {play.text} - {play.scoringPlay ? (<strong>{cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</strong>) : (<span>{cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</span>)}</td>
     <td class="numeral" style="text-align: center;">{roundNumber(play.expectedPoints.added, 2, 2)}</td>
     <td class="numeral" style="text-align: center;">{roundNumber(play.winProbability.before * 100, 3, 1)}%</td>
     <td class="numeral" style="text-align: right;">{roundNumber(play.winProbability.added * 100, 3, 1)}%</td>
