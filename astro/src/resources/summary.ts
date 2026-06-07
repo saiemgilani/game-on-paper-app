@@ -366,7 +366,8 @@ async function retrieveRemotePercentiles(payload: PercentileRequest, maxLookback
 }
 
 async function retrievePercentiles(payload: PercentileRequest, maxLookback = 2014): Promise<SeasonPercentile[]> {
-    if (!payload.year && !payload.year) {
+    console.log(JSON.stringify(payload))
+    if (!payload.year && !payload.pctile) {
         // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
     }

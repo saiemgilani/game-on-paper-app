@@ -736,6 +736,8 @@ export interface ProcessedTurnoverBoxScore {
   turnovers: number
 }
 
+export type ProcessedTeamMetricBoxScore = ProcessedTurnoverBoxScore | ProcessedTeamBoxScore | ProcessedDefensiveBoxScore | ProcessedDriveBoxScore | ProcessedSituationalBoxScore;
+
 export type ProcessedGameInfo = ESPNCompetition & {
     away: ESPNTeam
     home: ESPNTeam
@@ -758,7 +760,7 @@ export interface ProcessedRawGame {
     header: ESPNGameHeader
     broadcasts: ESPNGeoBroadcast[]
     // gameInfo: ProcessedGameInfo
-    season: number
+    season: ESPNSeason
 }
 
 export interface ProcessedGame extends Omit<ProcessedRawGame, 'box_score'> {

@@ -167,13 +167,13 @@ export function formatRank(rank: number) {
 }
 
 
-export function generateColorRampValue(input: number | null, max: number): string | null {
+export function generateColorRampValue(input: number | null, max: number, inverted: boolean = false): string | null {
     if (!input) {
         return null;
     }
 
 
-    let value = (max - input) / max
+    let value = inverted ? (max - input) / max : (input) / max
     let step = Math.round(value / 0.1)
     let clampedStep = Math.min(Math.max(step, 0), 9)
 
@@ -241,6 +241,3 @@ export function getPercentileKey(metric: string): string {
     }
 }
 
-export function prepareTeamLogo(season: number, value: number): string {
-    return `<th style="text-align: center;"><a href="/cfb/year/${season}/team/${value}"><img class="img-fluid team-logo-${value}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png" alt="ESPN team id ${value}"/></a></th>`
-}

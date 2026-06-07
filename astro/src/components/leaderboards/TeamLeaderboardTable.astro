@@ -68,7 +68,7 @@ function generateMetricCell(team: any, category: string, m: string): string {
     let valString = category == "differential" ? generateMarginalString(value, power10, fixed) : roundNumber(value, power10, fixed);
     valString += ((m.endsWith("Rate") || m.endsWith("Pct")) ? "%" : "")
     return `
-    <td class="text-center ${generateColorRampValue(parseFloat(rank), teams.length)}" colspan="1">${valString}</td>
+    <td class="text-center ${generateColorRampValue(parseFloat(rank), teams.length, true)}" colspan="1">${valString}</td>
     `
 }
 

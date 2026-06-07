@@ -1,0 +1,104 @@
+---
+import type { ProcessedTeamMetricBoxScore } from '../../../resources/internal';
+import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
+import { roundNumber } from '../../../utils/misc';
+
+interface Props {
+    title: string
+    teamKey: string
+    season: number
+    columns: string[]
+    teamBoxScores: ProcessedTeamMetricBoxScore[]
+    useSuffix: boolean
+    decimalPoints: number
+}
+const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints } = Astro.props;
+
+function handleMetricRows(item: string): string {
+    const finalDecimalPoints = decimalPoints || 1;
+    var result = ""
+    if (item == "EPA_misc") {
+        teamBoxScores.forEach((teamData: any) => {
+            let overall = parseFloat(teamData['EPA_overall_total'] || 0);
+            let off = parseFloat(teamData['EPA_overall_offense'] || 0);
+            let sp_epa = parseFloat(teamData['EPA_special_teams'] || 0);
+            let pen_epa = parseFloat(teamData['EPA_penalty'] || 0);
+            let val = (overall - off - sp_epa - pen_epa)
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+        });
+    } else if (item == "avg_field_position") {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            let prefix = (val >= 50) ? "Own" : "Opp"
+            let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
+            result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
+        });
+    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
+        });
+    } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
+        });
+    } else if (BOX_SCORE_NON_RATE_COLUMNS.includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${val}</td>`;
+        });
+    } else {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            var rate = 0.0;
+            if (useSuffix) {
+                rate = 100.0 * teamData[`${item}_rate`]
+            } else {
+                rate = 100.0 * (parseFloat(val) / parseFloat(teamData["scrimmage_plays"]))
+            }
+            result += `<td class="numeral" style="text-align: center;">${val} (${roundNumber(rate, 2, 0)}%)</td>`;
+        });
+    }
+    return result;
+}
+
+// Object.keys(teamBoxScores).forEach(key => {
+//     let baseData = (teamBoxScores as any)[key]
+//     teamBoxScores[key] = baseData.toSorted((a: any, b: any) => {
+//         if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
+//             return -1;
+//         } else if (b[teamKey] == awayTeam.id && a[teamKey] == homeTeam.id) {
+//             return 1;
+//         } else {
+//             return 0;
+//         }
+//     });
+// });
+
+---
+
+<div class="table-responsive">
+    <table class="table table-sm table-responsive">
+        <thead>
+            <tr>
+                <th class="box-heading">{title}</th>
+                {
+                    (teamBoxScores.map((group: any) => group[teamKey]).map(value => (
+                        <th style="text-align: center;"><a href={`/cfb/year/${season}/team/${value}`}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                    )))
+                }
+            </tr>
+        </thead>
+        <tbody>
+            {
+                columns.map(item => (
+                    <tr>
+                        <td style="text-align: left;"><Fragment set:html={METRIC_KEY_TITLE_MAPPING[item] || item} /></td>
+                        <Fragment set:html={handleMetricRows(item)} />
+                    </tr>
+                ))
+            }
+        </tbody>
+    </table>
+</div>

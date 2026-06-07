@@ -31,7 +31,7 @@ function generateMetricCell(player: any, c: string, m: string): string {
     const value = parseFloat(retrieveValue(player, m)) * multiplier;
     const valString = roundNumber(value, power10, fixed) + ((m.endsWith("Rate") || m.endsWith("Pct")) ? "%" : "")
     return `
-    <td class="text-center ${generateColorRampValue(rank == "NA" ? null : parseFloat(rank), content.length)}" colspan="1">${valString}</td>
+    <td class="text-center ${generateColorRampValue(rank == "NA" ? null : parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
     `
 }
 
