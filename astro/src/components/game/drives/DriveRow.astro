@@ -1,90 +1,84 @@
+---
+import type { ESPNTeam } from "../../../resources/espn"
+import type { ProcessedDrive, ProcessedPlay } from "../../../resources/internal"
+import { formatDistance, formatYardline, roundNumber } from "../../../utils/misc"
+import DriveChart from "./DriveChart.svelte"
 
-function createDriveRow(drive, canCollapse, collapsePrefix, expandingRowCallback) {
-    var collapsibleText = (canCollapse) ? `data-bs-toggle="collapse" href="#drive-${collapsePrefix}-${drive.id}" onclick="render${drive.id}()"` : ''
+interface Props {
+    drive: ProcessedDrive
+    drivePlays: ProcessedPlay[]
+    prefix: string
+    expandable: boolean
+    isNeutralSite: boolean
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+}
 
-    let drivePlays = gameData.plays.filter(p => p['drive.id'] == drive.id)
-    let firstPlay = drivePlays[0]
+const { drive, prefix, expandable, drivePlays, isNeutralSite, homeTeam, awayTeam } = Astro.props;
 
-    let offense = (firstPlay.pos_team == homeTeam.id) ? homeTeam : awayTeam;
-    let defense = (firstPlay.pos_team == homeTeam.id) ? awayTeam : homeTeam;
+// let drivePlays = gameData.plays.filter((p) => (p['drive.id'] == drive.id))
+const firstPlay = drivePlays[0]
 
-    var period = `Q${firstPlay.period}`;
-    if (firstPlay.period > 5) {
-        period = `${firstPlay.period - 4}OT`
-    } else if (firstPlay.period == 5) {
-        period = "OT"
-    } else if (firstPlay.clock) {
-        period = `Q${firstPlay.period} ${firstPlay.clock.displayValue}`;
-    } else {
-        period = `Q${firstPlay.period}`;
-    }
+const offense = (firstPlay.pos_team == parseInt(homeTeam.id)) ? homeTeam : awayTeam;
+const defense = (firstPlay.pos_team == parseInt(homeTeam.id)) ? awayTeam : homeTeam;
 
-    var classText = "";
-    if (["TURNOVER", "DOWNS", "MISSED FG", "FUMBLE", "SAFETY", "INT"].includes(drive.result)) {
-        classText = " table-danger"
-    } else if (["TD", "FG"].includes(drive.result)) {
-        classText = " table-success"
-    }
+var period = `Q${firstPlay.period}`;
+if (firstPlay.period > 5) {
+    period = `${firstPlay.period - 4}OT`
+} else if (firstPlay.period == 5) {
+    period = "OT"
+} else if (firstPlay.clock) {
+    period = `Q${firstPlay.period} ${firstPlay.clock.displayValue}`;
+} else {
+    period = `Q${firstPlay.period}`;
+}
 
-    let maxEPA = drivePlays.reduce((prev, current) => (prev && prev.EPA > current.EPA) ? prev : current, Number.NEGATIVE_INFINITY)
-    let epaDownText = (maxEPA.penalty_assessed_on_kickoff && maxEPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }`;
-    let maxWPA = drivePlays.reduce((prev, current) => (prev && prev.WPA > current.WPA) ? prev : current, Number.NEGATIVE_INFINITY)
-    let wpaDownText = (maxWPA.penalty_assessed_on_kickoff && maxWPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxWPA.type.text) }`;
+var classText = "";
+if (["TURNOVER", "DOWNS", "MISSED FG", "FUMBLE", "SAFETY", "INT"].includes(drive.result)) {
+    classText = " table-danger"
+} else if (["TD", "FG"].includes(drive.result)) {
+    classText = " table-success"
+}
 
-    let totalEPA = drivePlays.map(p => p.EPA).reduce((acc, val) => acc + (val || 0))
-    let avgEPA = drivePlays.length == 0 ? 0 : (totalEPA / drivePlays.length)
+let maxEPA = drivePlays.reduce((prev: ProcessedPlay, current: ProcessedPlay) => (prev && prev.EPA > current.EPA) ? prev : current, { EPA: Number.NEGATIVE_INFINITY } as ProcessedPlay)
+let epaDownText = (maxEPA.penalty_assessed_on_kickoff && maxEPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }`;
+let maxWPA = drivePlays.reduce((prev: ProcessedPlay, current: ProcessedPlay) => (prev && prev.wpa > current.wpa) ? prev : current, { wpa: Number.NEGATIVE_INFINITY } as ProcessedPlay)
+let wpaDownText = (maxWPA.penalty_assessed_on_kickoff && maxWPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxWPA.type.text) }`;
 
-    let totalSuccess = drivePlays.map(p => p.EPA_success).reduce((acc, val) => acc + (val || 0))
-    let avgSR = drivePlays.length == 0 ? 0 : (totalSuccess / drivePlays.length)
+let totalEPA = drivePlays.map((p: ProcessedPlay) => p.EPA).reduce((acc: number, val: number) => acc + (val || 0))
+let avgEPA = drivePlays.length == 0 ? 0 : (totalEPA / drivePlays.length)
 
-    let startWP = drivePlays.map(p => p.winProbability.before)[0]
-    var endWP = drivePlays.map(p => p.winProbability.after)
-    endWP = endWP[endWP.length - 1]
+let totalSuccess = drivePlays.map((p: ProcessedPlay) => Number(p.EPA_success)).reduce((acc: number, val: number) => acc + (val || 0))
+let avgSR = drivePlays.length == 0 ? 0 : (totalSuccess / drivePlays.length)
 
-    var baseRow = `
-    <tr ${collapsibleText} class="accordion-toggle${classText}">
-        <td style="text-align: left;vertical-align:center;">${period}</td>
-        <td style="text-align: center;vertical-align:center;"><img class="img-fluid team-logo-${offense.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png" alt="ESPN team id ${offense.id}"/></td>
-        <td style="text-align: left;vertical-align:center;">${drive.displayResult || 'In Progress'}</td>
-        <td style="text-align: left;vertical-align:center;">${drive.description}</td>
-        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(totalEPA), 2, 2)}</td>
-        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(startWP) * 100, 3, 1)}%</td>
-        <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">${roundNumber(parseFloat(endWP) * 100, 3, 1)}%</td>
-    </tr>`;
-    if (canCollapse) {
-        baseRow += `<tr>
-            <td colspan="7" class="hiddenRow">
-                <div class="accordian-body collapse" id="drive-${collapsePrefix}-${drive.id}">
-                    <div class="row p-1">`;
-        if (expandingRowCallback != null) {
-            baseRow += expandingRowCallback(play);
-        } else {
-            driveChart = include('./field', {
-                id: drive.id,
-                plays: drivePlays,
-                offense,
-                defense,
-                homeTeam,
-                result: drive.result,
-                isNeutralSite: gameData.gameInfo.neutralSite,
-                subtitle: `${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`
-            })
-            baseRow += `
-            <div class="ms-sm-auto col-12 mb-3">
+let startWP = drivePlays.map((p: ProcessedPlay) => p.winProbability.before)[0]
+let endWPPlays = drivePlays.map((p: ProcessedPlay) => p.winProbability.after)
+const endWP = endWPPlays[endWPPlays.length - 1];
+---
+
+<tr data-bs-toggle={expandable ? "collapse" : ""} href={`#drive-${prefix}-${drive.id}`} class=`accordion-toggle${classText}`>
+    <td style="text-align: left;vertical-align:center;">{period}</td>
+    <td style="text-align: center;vertical-align:center;"><img class={`img-fluid team-logo-${offense.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png`} alt={`ESPN team id ${offense.id}`}/></td>
+    <td style="text-align: left;vertical-align:center;">{drive.displayResult || 'In Progress'}</td>
+    <td style="text-align: left;vertical-align:center;">{drive.description}</td>
+    <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(totalEPA, 2, 2)}</td>
+    <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(startWP * 100, 3, 1)}%</td>
+    <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(endWP * 100, 3, 1)}%</td>
+</tr>
+<tr>
+    <td colspan="7" class="hiddenRow">
+        <div class="accordion-body collapse" id={`drive-${prefix}-${drive.id}`}>
+            <div class="row p-1">
+                <div class="ms-sm-auto col-12 mb-3">
                 <p class="m-0 mb-1"><strong>Drive Chart</strong> <span>(Direction of play - left to right)</span>:</p>
-                ${driveChart}
+                <DriveChart id={drive.id} subtitle={`${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`} plays={drivePlays} offense={offense} isNeutralSite={isNeutralSite} />
                 <p class="m-0 text-muted"><small>Note: vertical position of plays on chart does not indicate actual vertical position on field.</small></p>
             </div>
-            <p class="m-0"><strong>EPA/Play:</strong> <span>${roundNumber(parseFloat(avgEPA), 2, 2)}</span></p>
-            <p class="m-0"><strong>Success Rate:</strong> <span>${roundNumber(parseFloat(avgSR) * 100, 3, 1)}%</span></p>
-            <p class="m-0"><strong>Biggest Play:</strong> <span>(${epaDownText}) ${maxEPA.text} - EPA: ${roundNumber(parseFloat(maxEPA.EPA), 2, 2)}</span></p>
-            <p class="m-0"><strong>Most Important Play:</strong> <span>(${wpaDownText}) ${maxWPA.text} - WPA: ${roundNumber(parseFloat(maxWPA.winProbability.added) * 100, 3, 1)}%</span></p>
-            `;
-        }
-        baseRow += `</div>
-                </div>
-            </td>
-        </tr>`
-    }
-    return baseRow;
-}
+            <p class="m-0"><strong>EPA/Play:</strong> <span>{roundNumber(avgEPA, 2, 2)}</span></p>
+            <p class="m-0"><strong>Success Rate:</strong> <span>{roundNumber(avgSR * 100, 3, 1)}%</span></p>
+            <p class="m-0"><strong>Biggest Play:</strong> <span>({epaDownText}) {maxEPA.text} - EPA: {roundNumber(maxEPA.EPA, 2, 2)}</span></p>
+            <p class="m-0"><strong>Most Important Play:</strong> <span>({wpaDownText}) {maxWPA.text} - WPA: {roundNumber(maxWPA.winProbability.added * 100, 3, 1)}%</span></p>
+            </div>
+        </div>
+    </td>
+</tr>

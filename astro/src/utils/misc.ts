@@ -136,3 +136,11 @@ export function tryDivide(value: number, denom: number): number {
     }
     return value / denom
 }
+
+export function determineLuminance(color: string): number | null {
+    const rgb = hexToRgb(color)
+    if (rgb) {
+        return ((0.2126*rgb.r) + (0.7152*rgb.g) + (0.0722*rgb.b)) / 255
+    }
+    return null;
+}
