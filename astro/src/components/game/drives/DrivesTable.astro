@@ -17,7 +17,6 @@ interface Props {
 let { drives, gamePlays, prefix, expandable, showGuide, homeTeam, awayTeam, isNeutralSite } = Astro.props;
 
 
-// console.log(drives.map(p => JSON.stringify(p.start?.period, null, 2)))
 const adjDrives = drives.toSorted((a, b) => {
     let aPlays = gamePlays.filter(p => p['drive.id'] == a.id)
     let aFirstPlay = aPlays[0]

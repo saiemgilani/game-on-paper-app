@@ -49,13 +49,8 @@ subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)}`;
 
 const statusDetail = game.gameInfo.status.type.detail;
 const statusDescription = game.gameInfo.status.type.description ?? "Scheduled";
-// let gameStatus = ""
 const isGameInactive = (game.gameInfo.status.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
-// if  {
-//     gameStatus = statusDescription + " - " + DateTime.fromISO(game.gameInfo.date).toLocaleString(DateTime.DATETIME_FULL);
-// } else {
-//     gameStatus = "LIVE - " + statusDetail
-// }
+
 
 const scrollerItems: ScrollerItem[] = [
     { href: "#wpChart", title: "WP Chart" },
@@ -148,7 +143,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                                 (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                             }
                             {
-                                (isGameInactive) && <LocalDate client:idle divClass="text-small m-0" client:idle date={game.gameInfo.date} format={DateTime.DATETIME_FULL} />
+                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.gameInfo.date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
                             }
                             {
                                 (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
