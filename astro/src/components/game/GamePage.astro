@@ -16,6 +16,7 @@ import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import DrivesTable from './drives/DrivesTable.astro';
 
 interface Props {
    id: string | number
@@ -91,6 +92,9 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
         return 0
     }
 }).slice(0, 10)
+
+
+const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
 ---
 <!DOCTYPE html>
 <html>
@@ -382,7 +386,12 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="drives" title="Drives">
                         <div class="row" slot="panel-body">
-                            <p>Drives</p>
+                            {
+                                (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
+                            }
+                            {
+                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} showGuide={true} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.home} isNeutralSite={game.gameInfo.neutralSite} />
+                            }
                         </div>
                     </Panel>
                 </div>
