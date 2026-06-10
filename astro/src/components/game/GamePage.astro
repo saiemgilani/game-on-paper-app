@@ -3,7 +3,7 @@ import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/internal';
 import { isChampionshipEvent } from '../../utils/common';
-import { cleanName, cleanLocation } from '../../utils/common';
+import { cleanLocation } from '../../utils/misc';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';
@@ -17,6 +17,7 @@ import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
+import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 
 interface Props {
    id: string | number
@@ -165,9 +166,9 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                         <h2>Win Probability</h2>
                     </div>
                 </div>
-                <div id="epChart" class="col-lg-6 ms-sm-auto px-md-4">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
                     <div class="row">
-                        <h2>Expected Points</h2>
+                        <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.away} />
                     </div>
                 </div>
             </div>

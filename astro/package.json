@@ -19,6 +19,7 @@
     "@astrojs/node": "^10.1.1",
     "@astrojs/svelte": "^8.1.1",
     "astro": "^6.3.7",
+    "chart.js": "^4.5.1",
     "feather": "^0.0.6",
     "luxon": "^3.7.2",
     "svelte": "^5.55.9",

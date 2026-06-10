@@ -1,8 +1,8 @@
-import { type ESPNCompetition, type ESPNCompetitor, type ESPNScheduleEvent } from "../resources/espn"
+import { type ESPNCompetition, type ESPNCompetitor, type ESPNScheduleEvent, type ESPNTeam } from "../resources/espn"
 import { SpiceLevel, type ProcessedGameInfo } from "../resources/internal"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
-import { roundNumber } from "./misc"
+import { roundNumber, hexToRgb } from "./misc"
 
 export function formatScore(score: string, winner: boolean, complete: boolean): string {
     if (winner && complete) {
@@ -114,33 +114,6 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     return `<span class="small text-muted h6">${base}</span>`;
 }
 
-export function cleanField(team: any, field: "abbreviation" | "name" | "location" | "team"): string {
-    if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (team.teamId && MEME_LIST.includes(Number(team.teamId))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (MEME_LIST.includes(Number(team.id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-    return team[field] || ""
-}
-
-export function cleanAbbreviation(team: any): string {
-    return cleanField(team, "abbreviation")
-}
-
-export function cleanName(team: any): string {
-    return cleanField(team, "name")
-}
-
-export function cleanLocation(team: any): string {
-    return cleanField(team, "location")
-}
-
 export function generateMarginalString(input: number, power10: number, fixed: number): string {
     if (input >= 0) {
         return `+${roundNumber(input, power10, fixed)}`;
@@ -240,4 +213,3 @@ export function getPercentileKey(metric: string): string {
             return metric;
     }
 }
-

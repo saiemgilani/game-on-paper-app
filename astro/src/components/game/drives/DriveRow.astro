@@ -1,7 +1,7 @@
 ---
 import type { ESPNTeam } from "../../../resources/espn"
 import type { ProcessedDrive, ProcessedPlay } from "../../../resources/internal"
-import { formatDistance, formatYardline, roundNumber } from "../../../utils/misc"
+import { formatDistance, formatYardline, roundNumber, cleanAbbreviation } from "../../../utils/misc"
 import DriveChart from "./DriveChart.svelte"
 
 interface Props {
