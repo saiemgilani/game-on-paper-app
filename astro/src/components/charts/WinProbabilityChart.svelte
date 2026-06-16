@@ -1,7 +1,7 @@
 <script>
 import Chart from 'chart.js/auto';
 import {LineController} from "chart.js";
-import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustColorsForContrast } from '../../utils/misc';
 import { GradientFillLineController } from '../../resources/chart'
 
 const { game, percentiles } = $props()
@@ -146,6 +146,9 @@ async function generateChart() {
     // Stores the controller so that the chart initialization routine can look it up
     Chart.register(GradientFillLineController);
 
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const [awayTeamColor, homeTeamColor] = adjustColorsForContrast(awayTeam, homeTeam)
+
     const plays = [...game.plays];
     // console.log(game.plays[0])
     var timestamps = [...Array(plays.length).keys()];
@@ -168,7 +171,7 @@ async function generateChart() {
                     `period-${curPlay.period}`,
                     title,
                     i,
-                    window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252',
+                    isDarkMode ? '#e8e6e3' : '#525252',
                     2.5,
                     'x-axis-0',
                     'y-axis-0',
@@ -179,8 +182,7 @@ async function generateChart() {
             periodTracks[title] = i;
         }
     }
-    // const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    // const [awayTeamColor, homeTeamColor] = adjustColorsForContrast(awayTeam, homeTeam)
+
     var homeTeamWP = game.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
     // handle end of game
@@ -201,6 +203,8 @@ async function generateChart() {
         borderWidth: 3,
         label: null,
         data: homeTeamWP,
+        hoverBackgroundColor: JSON.stringify(awayTeamColor),
+        hoverBorderColor: JSON.stringify(homeTeamColor)
     };
 
 
