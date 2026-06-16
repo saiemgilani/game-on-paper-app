@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', generateChart);
         <p class="m-0 text-muted text-small" hidden={lastPlay.gameSpreadAvailable}>ESPN does not list betting odds for this game, so we've used default values: {cleanAbbreviation(homeTeam)} -2.5, O/U 55.5.</p>
         <p class="text-small">
             {#if !gameInProgress}
-            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={geiPctl.ramp_class} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
+            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={`${geiPctl.ramp_class} px-1`} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
             {/if}
             Odds: {printSpread()}, O/U {roundNumber(parseFloat(game.overUnder), 2, 1)}
             {#if gameInProgress}

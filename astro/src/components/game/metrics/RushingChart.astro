@@ -72,7 +72,7 @@ for (const p of plays) {
                     </td>
                     <td class="align-middle tm-segment" style="padding-bottom: 3em !important; padding-top: 3em !important;">
                         <p class="m-0"><strong>{roundNumber((rushMatrix["middle"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{rushMatrix["middle"]["attempts"] || 0} {(rushMatrix["middle"]["attempts"] || 0) == 1 ? " carry" : " carries"} {rushMatrix["middle"]["yards"] || 0} yds</small></p>
+                        <p class="m-0"><small>{rushMatrix["middle"]["attempts"] || 0} {(rushMatrix["middle"]["attempts"] || 0) == 1 ? " carry" : " carries"}, {rushMatrix["middle"]["yards"] || 0} yds</small></p>
                     </td>
                     <td class="align-middle tm-segment" style="padding-bottom: 3em !important; padding-top: 3em !important;">
                         <p class="m-0"><strong>{roundNumber((rushMatrix["right"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
