@@ -247,3 +247,10 @@ export function cleanName(team: any): string {
 export function cleanLocation(team: any): string {
     return cleanField(team, "location")
 }
+
+export function translateValue(input: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  var leftRange = inMax - inMin;
+  var rightRange = outMax - outMin;
+  var scaledValue = (input - inMin) / leftRange;
+  return outMin + (scaledValue * rightRange);
+}
