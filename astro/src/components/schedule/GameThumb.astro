@@ -50,10 +50,10 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
             <div class="d-flex justify-content-between">
                 <strong class={`d-inline-block mb-2 ${textClass} small`}>
                     {
-                        (espnGame.status.type.completed == true) && <LocalDate client:idle divClass={""} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                        (espnGame.status.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }
                     {
-                        (espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={""} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATE_SHORT} />
+                        (espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }
                     {
                         (espnGame.status.type.completed != true) && (!espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{espnGame.status.type.detail}</Fragment>
