@@ -1,10 +1,10 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import PlayerMetricDropdown from "../charts/PlayerMetricDropdown.svelte";
 import { AVAILABLE_SEASONS } from "../../utils/constants";
 import SummaryModel from "../../resources/summary";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
+import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
 
 interface Props {
     season: number

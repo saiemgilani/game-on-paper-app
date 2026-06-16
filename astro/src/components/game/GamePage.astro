@@ -20,6 +20,7 @@ import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import SummaryModel from '../../resources/summary';
+import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
    id: string | number
@@ -132,6 +133,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <DarkModeLogos teamIds={[game.homeTeamId, game.awayTeamId]} />
     </head>
     <body>
         <div class="container-fluid">

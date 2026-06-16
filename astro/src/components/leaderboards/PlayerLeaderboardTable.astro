@@ -1,8 +1,9 @@
 ---
-import { cleanField, formatRank, generateColorRampValue, retrieveValue } from '../../utils/common';
-import { roundNumber } from '../../utils/misc';
+import { formatRank, generateColorRampValue, retrieveValue } from '../../utils/common';
+import { roundNumber, cleanField } from '../../utils/misc';
 import { PLAYER_METRIC_CATEGORIES, PLAYER_METRIC_FORMATTING_VALUES } from '../../utils/constants';
 import SummaryModel, { SummaryType, type PlayerSummary } from '../../resources/summary';
+import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
     season: number
@@ -39,8 +40,10 @@ function generateMetricRow(player: any): string {
     return Object.entries(columns).map(([k, _]) => generateMetricCell(player, category, k)).join("")
 }
 
----
+const allTeamIds = content.map(p => p.teamId);
 
+---
+<DarkModeLogos teamIds={allTeamIds} />
 <div class="container">
     <div class="row mb-3">
         <div class="col-12">

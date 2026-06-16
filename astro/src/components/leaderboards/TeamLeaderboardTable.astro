@@ -2,9 +2,10 @@
 import type { TeamSummary } from '../../resources/summary';
 import SummaryModel from '../../resources/summary';
 import { SummaryType } from '../../resources/summary';
-import { cleanField, formatRank, generateColorRampValue, retrieveValue, generateMarginalString } from '../../utils/common';
-import { roundNumber } from '../../utils/misc';
+import { formatRank, generateColorRampValue, retrieveValue, generateMarginalString } from '../../utils/common';
+import { roundNumber, cleanField } from '../../utils/misc';
 import { TEAM_METRIC_FORMATTING_VALUES, TEAM_METRIC_CATEGORIES, TEAM_METRIC_HOVER_TEXT } from '../../utils/constants';
+import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
     season: number
@@ -19,13 +20,13 @@ const arrowDirection = ((category == "defensive" && metric != "overall.havocRate
 const teams: TeamSummary[] = await SummaryModel.retrieveLeagueData({ year: season, type: SummaryType.Overall })
 // console.log(teams)
 let content = teams.map((t: any) => {
-        let target = t[category]
-        return {
-            teamId: t.teamId,
-            team: t.team,
-            ...target
-        }
-    })
+    let target = t[category]
+    return {
+        teamId: t.teamId,
+        team: t.team,
+        ...target
+    }
+})
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}Rank`) != null && retrieveValue(p, `${metric}Rank`) != "NA"
@@ -82,16 +83,16 @@ function generateMetricRow(team: any): string {
     <tr>
         <td class="text-right" colspan="1">${rankStr}</td>
         <td class="text-left" colspan="1">
-            <a href="/cfb/year/${season}/team/${team.teamId}"><img class="img-fluid team-logo-${team.teamId} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.teamId}.png" alt="ESPN team id ${team.teamId} ${cleanField(team, "name")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "team")}</span></a> <strong>${cleanField(team, "team")}</strong>
+            <a href="/cfb/year/${season}/team/${team.teamId}"><img class="img-fluid team-logo-${team.teamId} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.teamId}.png" alt="ESPN team id ${team.teamId} ${cleanField(team, "name")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "team")}</span><strong>${cleanField(team, "team")}</strong></a>
         </td>
         ${colContent}
     </tr>`;
 }
 
-
+const allTeamIds = content.map((c) => c.teamId);
 
 ---
-
+<DarkModeLogos teamIds={allTeamIds} />
 <div class="container">
     <div class="row mb-3">
         <div class="col-12">

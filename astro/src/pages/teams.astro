@@ -4,13 +4,14 @@ export const prerender = true;
 import GenericPage from "../layouts/GenericPage.astro";
 import type { TeamIndex } from "../resources/summary";
 import SummaryModel from "../resources/summary";
-import { cleanField } from "../utils/common";
+import { cleanField } from "../utils/misc";
 import { AVAILABLE_SEASONS } from "../utils/constants";
+import DarkModeLogos from "../components/DarkModeLogos.astro";
 
 const title = `Team Index | College Football | Game on Paper`;
 const subtitle = 'Full team list for college football';
 const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
-console.log(teams)
+// console.log(teams)
 
 function generateTeamRow(team: any): string {
     const seasonCells = AVAILABLE_SEASONS.map((p) => {
@@ -31,6 +32,7 @@ function generateTeamRow(team: any): string {
 ---
 
 <GenericPage title={title} subtitle={subtitle} slug="/cfb/teams" breadcrumbs={[]}>
+    <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
     <div class="container">
         <div class="row mb-3">
             <div class="col-12">

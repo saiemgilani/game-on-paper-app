@@ -1,0 +1,22 @@
+---
+interface Props {
+    teamIds: (string | number)[]
+}
+const { teamIds } = Astro.props;
+
+let teamIdCSS = teamIds.map(p => {
+    return `
+    img.team-logo-${p} {
+        content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${p}.png')
+    }
+    `
+})
+
+teamIdCSS = teamIdCSS.concat(`
+img.team-logo-61 {
+    content: url('/assets/img/ennui-uga.png');
+}`)
+
+---
+
+<style set:html={teamIdCSS.join("")}></style>
