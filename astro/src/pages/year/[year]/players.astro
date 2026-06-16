@@ -1,8 +1,11 @@
 ---
 import PlayerLeaderboardPage from "../../../components/leaderboards/PlayerLeaderboardPage.astro";
-import { CURRENT_YEAR } from "../../../utils/constants";
+import { CURRENT_YEAR, LAST_YEAR } from "../../../utils/constants";
 
 const { year } = Astro.params;
+if (year == `${CURRENT_YEAR}`) {
+    return Astro.redirect(`/year/${LAST_YEAR}/players`)
+}
 ---
 
 <PlayerLeaderboardPage season={parseInt(year || `${CURRENT_YEAR}`)} category={"passing"} metric={"advanced.epaPerPlay"} />

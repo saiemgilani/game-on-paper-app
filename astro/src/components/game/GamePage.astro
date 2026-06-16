@@ -21,6 +21,7 @@ import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import SummaryModel from '../../resources/summary';
 import DarkModeLogos from '../DarkModeLogos.astro';
+import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 
 interface Props {
    id: string | number
@@ -35,7 +36,7 @@ try {
     return Astro.redirect("/404")
 }
 
-const percentiles = await SummaryModel.retrievePercentiles({ year: game.season.year });
+const percentiles = await SummaryModel.retrievePercentiles({ year: (CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year });
 const homeComp = game.gameInfo.competitors[0];
 const awayComp = game.gameInfo.competitors[1];
 const homeTeam = homeComp.team;

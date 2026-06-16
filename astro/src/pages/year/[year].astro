@@ -1,8 +1,9 @@
 ---
 import SchedulePage from "../../components/schedule/SchedulePage.astro";
+import { CURRENT_YEAR } from "../../utils/constants";
 
 const { year } = Astro.params;
 const group = Astro.url.searchParams.get("group") || "80";
 ---
 
-<SchedulePage season={year} seasontype={2} week={1} group={group} />
+<SchedulePage season={parseInt(year || `${CURRENT_YEAR}`)} seasontype={2} week={1} group={parseInt(group || "80")} />
