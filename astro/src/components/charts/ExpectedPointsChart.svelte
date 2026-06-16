@@ -164,8 +164,10 @@ document.addEventListener('DOMContentLoaded', generateChart);
 
 </script>
 
-<div>
-    <h2 class="mb-0">Expected Points</h2>
-    <p class="text-small"><a id="ep-download" download={`game-ep-${id}.jpg`} href="">Download Chart</a></p>
+<div class="row">
+    <div>
+        <h2 class="mb-0">Expected Points</h2>
+        <p class="text-small"><a id="ep-download" download={`game-ep-${id}.jpg`} href="#">Download Chart</a></p>
+    </div>
+    <div class="w-100"  width="900" height="380"><canvas id="epChart"></canvas></div>
 </div>
-<div class="w-100"  width="900" height="380"><canvas id="epChart"></canvas></div>

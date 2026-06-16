@@ -18,6 +18,8 @@ import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
+import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
+import SummaryModel from '../../resources/summary';
 
 interface Props {
    id: string | number
@@ -32,6 +34,7 @@ try {
     return Astro.redirect("/404")
 }
 
+const percentiles = await SummaryModel.retrievePercentiles({ year: game.season.year });
 const homeComp = game.gameInfo.competitors[0];
 const awayComp = game.gameInfo.competitors[1];
 const homeTeam = homeComp.team;
@@ -161,15 +164,11 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
-                <div id="wpChart" class="col-lg-6 ms-sm-auto px-md-4">
-                    <div class="row">
-                        <h2>Win Probability</h2>
-                    </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <WinProbabilityChart client:only game={game} percentiles={percentiles} />
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <div class="row">
-                        <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.away} />
-                    </div>
+                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.away} />
                 </div>
             </div>
             <div class="row mb-3">
@@ -177,7 +176,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                     <Panel id="team-stats" title="Team Stats">
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
-                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} />
+                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'

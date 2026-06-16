@@ -1,6 +1,6 @@
 ---
 import type { ProcessedBoxScore } from '../../../resources/internal';
-import SummaryModel from '../../../resources/summary';
+import { type SeasonPercentile } from '../../../resources/summary';
 import { generateColorRampValue, retrieveValue } from '../../../utils/common';
 import { roundNumber, getNumberWithOrdinal } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
@@ -8,11 +8,12 @@ import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCO
 interface Props {
     season: number
     advancedBoxScore: ProcessedBoxScore
+    percentiles: SeasonPercentile[]
 }
 
-const {season, advancedBoxScore} = Astro.props;
+const {season, advancedBoxScore, percentiles} = Astro.props;
 
-const percentiles = await SummaryModel.retrievePercentiles({ year: season });
+
 
 const percentile_title_key_mapping: Record<string, string> = {
     "EPA_per_play" : "epaPerPlay",
