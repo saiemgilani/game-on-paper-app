@@ -1,5 +1,19 @@
 import {LineController, type UpdateMode, Chart, type Plugin} from "chart.js";
 
+export interface ValuePercentile {
+    season: number
+    pctile: number
+    value: number
+}
+
+export interface ValueDistribution {
+    min: number | null,
+    q1: number | null
+    median: number | null
+    q3: number | null
+    max: number | null
+}
+
 export class GradientFillLineController extends LineController {
     update(mode: UpdateMode): void {
         for (const dataset of this.chart.data.datasets) {
@@ -73,3 +87,4 @@ export class GradientFillLineController extends LineController {
         return super.update(mode)
     }
 }
+

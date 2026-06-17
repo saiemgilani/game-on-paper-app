@@ -241,7 +241,10 @@ async function generateChart() {
                     title: {
                         display: true,
                         text: "Win Probability",
-                        color: (isDarkMode) ?  '#e8e6e3' : '#525252'
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252',
+                        font: {
+                            family: '"Chivo", "Fira Mono", serif'
+                        },
                     },
                     grid: {
                         color: (line) => {
@@ -260,7 +263,10 @@ async function generateChart() {
                     title: {
                         display: true,
                         text: "Play Number",
-                        color: (isDarkMode) ?  '#e8e6e3' : '#525252'
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252',
+                        font: {
+                            family: '"Chivo", "Fira Mono", serif'
+                        },
                     },
                     grid: {
                         color: (line) => {

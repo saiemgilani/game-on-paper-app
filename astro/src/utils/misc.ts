@@ -254,3 +254,12 @@ export function translateValue(input: number, inMin: number, inMax: number, outM
   var scaledValue = (input - inMin) / leftRange;
   return outMin + (scaledValue * rightRange);
 }
+
+export function retrieveValue(dictionary: any, key: string): string {
+    const subKeys = key.split('.')
+    let sub = dictionary;
+    for (const k of subKeys) {
+        sub = sub[k];
+    }
+    return sub;
+}

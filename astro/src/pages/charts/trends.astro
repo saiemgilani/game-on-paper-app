@@ -1,0 +1,67 @@
+---
+import TrendsChart from '../../components/charts/TrendsChart.svelte';
+import TrendsMetricDropdown from '../../components/dropdowns/TrendsMetricDropdown.svelte';
+import GenericPage from '../../layouts/GenericPage.astro';
+import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import type { ValuePercentile } from '../../resources/chart';
+import SummaryModel, { type SeasonPercentile } from '../../resources/summary';
+import { getPercentileKey } from '../../utils/common';
+
+const query = Astro.url.searchParams;
+let category = query.get("type") || "offensive";
+if (category == "differential") {
+    category = "offensive"
+}
+const metric = query.get("sort") || "overall.epaPerPlay";
+
+let allPctls: SeasonPercentile[] = []
+for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+    const percentiles = await SummaryModel.retrievePercentiles({ pctile: p });
+    allPctls = allPctls.concat(percentiles);
+}
+// console.log(allPctls)
+const pctlKey = getPercentileKey(metric)
+const selectedPercentiles = allPctls.map((p: any) => {
+    return {
+        season: p["season"],
+        pctile: p["pctile"],
+        value: p[pctlKey]
+    }
+})
+// console.log(selectedPercentiles)
+let availableSeasons = selectedPercentiles.map(b => b.season)
+availableSeasons = [...new Set(availableSeasons)].sort();
+
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: 'Charts',
+        active: false
+    },
+    {
+        title: 'National Trends',
+        active: true,
+    }
+]
+
+const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
+const title = `National Trends | ${yearRange} | Game on Paper`
+
+---
+
+<GenericPage title={title} subtitle={`National level metric history`} slug="/charts/trends" breadcrumbs={breadcrumbs}>
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <h1>National Trends</h1>
+                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+                <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
+                <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p>
+            </div>
+            <div class="ms-auto col-lg-6 col-xs-12">
+                <TrendsMetricDropdown client:idle category={category} metric={metric} />
+            </div>
+        </div>
+    </div>
+    <TrendsChart client:only category={category} metric={metric} percentiles={selectedPercentiles} />
+</GenericPage>

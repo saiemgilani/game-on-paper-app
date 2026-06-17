@@ -371,15 +371,18 @@ async function retrievePercentiles(payload: PercentileRequest, maxLookback = 201
         // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
     }
+   
     // const key = generateKey(["percentiles", year, pctile])
-    // try {
-    //     // const content = await lruCache.get(key);
-    //     if (!content) {
-    //         throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
-    //     }
-    //     // logger.error(`found content for key ${key}: ${content}`)
-    //     return JSON.parse(content);
-    // } catch (err) {
+    try {
+        // const content = await lruCache.get(key);
+        // if (!content) {
+        //     throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
+        // }
+        // logger.error(`found content for key ${key}: ${content}`)
+        // return JSON.parse(content);
+         const content = await retrieveRemotePercentiles(payload);
+         return content;
+    } catch (err) {
         // logger.error(err)
         // logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
         if (!payload.year) {
@@ -389,7 +392,7 @@ async function retrievePercentiles(payload: PercentileRequest, maxLookback = 201
         } else {
             return await retrieveRemotePercentiles({year: payload.year - 1, pctile: payload.pctile }, maxLookback);
         }
-    // }
+    }
 }
 
 async function retrieveRemoteTeamData(payload: TeamDataRequest, maxLookback = 2014): Promise<TeamSummary[]> {

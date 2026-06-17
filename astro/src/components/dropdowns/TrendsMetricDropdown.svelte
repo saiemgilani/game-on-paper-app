@@ -1,20 +1,16 @@
 <script>
-    const { category, metric, isFixedSeason, onChangeValue } = $props()
+    const { category, metric } = $props()
 
     function onChangeCategory(e) {
-        onChangeValueWrapper(season, e.target.value, metric)
+        onChangeValue(e.target.value, metric)
     }
 
     function onChangeMetric(e) {
-        onChangeValueWrapper(season, category, e.target.value)
+        onChangeValue(category, e.target.value)
     }
 
-    function onChangeValueWrapper(s, c, m) {
-		if (onChangeValue) {
-            onChangeValue(s, c, m)
-        } else {
-            window.location = `/trends?category=${category}&metric=${metric}`;
-        }
+    function onChangeValue(c, m) {
+		window.location = `/charts/trends?type=${c}&sort=${m}`;
     }
 </script>
 <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">

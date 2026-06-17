@@ -158,15 +158,6 @@ export function generateColorRampValue(input: number | null, max: number, invert
     }
 }
 
-export function retrieveValue(dictionary: any, key: string): string {
-    const subKeys = key.split('.')
-    let sub = dictionary;
-    for (const k of subKeys) {
-        sub = sub[k];
-    }
-    return sub;
-}
-
 export function getPercentileKey(metric: string): string {
     switch (metric) {
         case "overall.epaPerPlay": 
