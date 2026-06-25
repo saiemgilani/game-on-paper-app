@@ -43,15 +43,6 @@ function cleanName(team) {
 
 %>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
-    <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-    <link href="/assets/css/dashboard.css" rel="stylesheet">
-    <link href="/assets/css/blog.css" rel="stylesheet">
-    <link href="/assets/css/dark-game.css" rel="stylesheet">
-    <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-
     <%
     var title = ""
     var subtitle = ""
@@ -62,15 +53,14 @@ function cleanName(team) {
     }
     subtitle = `${cleanName(gameData.gameInfo.competitors[1].team)} vs ${cleanName(gameData.gameInfo.competitors[0].team)}`;
     %>
-
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
-    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="referrer" content="origin-when-cross-origin">
+    <%- include('../../partials/head', { title }) %>
+    <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/assets/css/dashboard.css" rel="stylesheet">
+    <link href="/assets/css/blog.css" rel="stylesheet">
+    <link href="/assets/css/dark-game.css" rel="stylesheet">
+    <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
     <link rel="canonical" href="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
-    <title><%= title %></title>
     <meta name="description" content="Advanced stats for <%= subtitle %>">
-
     <meta property="og:site_name" content="GameOnPaper.com">
     <meta property="og:url" content="http://gameonpaper.com/cfb/game/<%= gameData.id %>">
     <meta property="og:title" content="<%= title %>">
@@ -84,9 +74,7 @@ function cleanName(team) {
     <meta name="twitter:title" content="<%= title %>">
     <meta name="twitter:description" content="<%= subtitle %>">
     <meta name="twitter:card" content="summary">
-    <meta name="title" content="<%= title %>">
     <meta name="medium" content="website">
-    <script defer data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
 </head>
 <body>
     <div class="container-fluid">

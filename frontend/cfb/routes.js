@@ -2,6 +2,7 @@ const express = require('express');
 const Games = require('./games');
 const Teams = require('./teams');
 const Schedule = require('./schedule');
+const { time } = require('./timing.js');
 const router = express.Router();
 const axios = require('axios');
 const redis = require('redis');
@@ -412,7 +413,7 @@ router.route('/game/:gameId')
             const cacheBuster = ((new Date()).getTime() * 1000);
             // check if the game is active or in the future
             pbp_url = `http://cdn.espn.com/core/college-football/playbyplay?gameId=${req.params.gameId}&xhr=1&render=false&userab=18&${cacheBuster}`;
-            const response = await axios.get(pbp_url);
+            const response = await time(res, 'espn_pbp', () => axios.get(pbp_url));
             const game = response.data["gamepackageJSON"]["header"]["competitions"][0];
             const season = response.data["gamepackageJSON"]["header"]["season"]["year"];
             const week = response.data["gamepackageJSON"]["header"]["week"];
@@ -425,8 +426,8 @@ router.route('/game/:gameId')
 
             // if it's in the future, send to pregame template
             if (game["status"]["type"]["name"] === 'STATUS_SCHEDULED' || (req.query.preview_mode && (req.query.preview_mode == "old" || req.query.preview_mode == "new"))) {
-                const homeBreakdown = await retrieveTeamData(season, homeTeam.id, 'overall');
-                const awayBreakdown = await retrieveTeamData(season, awayTeam.id, 'overall');
+                const homeBreakdown = await time(res, 'summary', () => retrieveTeamData(season, homeTeam.id, 'overall'));
+                const awayBreakdown = await time(res, 'summary', () => retrieveTeamData(season, awayTeam.id, 'overall'));
                 return res.render('pages/cfb/pregame', {
                     season,
                     week,
@@ -448,7 +449,7 @@ router.route('/game/:gameId')
                     throw new Error(`Game ${req.params.gameId} has been quarantined`);
                 }
                 // if it's past/live, send to normal template
-                const data = await Games.getPBP(req.params.gameId);
+                const data = await Games.getPBP(req.params.gameId, res);
                 if (data == null || data.gameInfo == null) {
                     throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
                 }
@@ -461,7 +462,7 @@ router.route('/game/:gameId')
                         const inputSeason = data["header"]["season"]["year"];
                         const season = Math.min(Math.max(inputSeason, 2014), 2025); // always clamped a season behind until week 4
                         console.log(`retreiving percentiles for season ${season}, input was ${inputSeason} clamped to 2014 to 2025`)
-                        percentiles = await retrievePercentiles(season);
+                        percentiles = await time(res, 'summary', () => retrievePercentiles(season));
                     } catch (e) {
                         console.log(`error while retrieving league percentiles: ${e}`)
                     }
@@ -487,7 +488,7 @@ router.route('/game/:gameId')
     })
     .post(async function(req, res, next) {
         try {
-            let data = await Games.getPBP(req, res);
+            let data = await Games.getPBP(req.params.gameId, res);
             if (data == null || data.gameInfo == null) {
                 throw Error(`Data not available for game ${req.params.gameId}. An internal service may be down.`)
             }
@@ -510,15 +511,15 @@ router.route('/year/:year/team/:teamId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
-                const brkd = await retrieveTeamData(req.params.year, req.params.teamId, 'overall')
+                const brkd = await time(res, 'summary', () => retrieveTeamData(req.params.year, req.params.teamId, 'overall'))
                 // console.log(brkd[0])
                 return res.render('pages/cfb/team_season', {
                     teamData: data,
                     breakdown: brkd,
                     players: {
-                        passing: await retrieveTeamData(req.params.year, req.params.teamId, 'passing'),
-                        rushing: await retrieveTeamData(req.params.year, req.params.teamId, 'rushing'),
-                        receiving: await retrieveTeamData(req.params.year, req.params.teamId, 'receiving')
+                        passing: await time(res, 'summary', () => retrieveTeamData(req.params.year, req.params.teamId, 'passing')),
+                        rushing: await time(res, 'summary', () => retrieveTeamData(req.params.year, req.params.teamId, 'rushing')),
+                        receiving: await time(res, 'summary', () => retrieveTeamData(req.params.year, req.params.teamId, 'receiving'))
                     },
                     season: req.params.year
                 });
@@ -587,7 +588,7 @@ router.route('/team/:teamId')
             if (req.query.json == true || req.query.json == "true" || req.query.json == "1") {
                 return res.json(data);
             } else {
-                const brkd = await retrieveTeamData(null, req.params.teamId, null)
+                const brkd = await time(res, 'summary', () => retrieveTeamData(null, req.params.teamId, null))
                 const type = req.query.type ?? "differential";
                 let metric = req.query.metric ?? `overall.adjEpaPerPlay`
                 // can't do passing/rushing/havoc differentials
@@ -599,7 +600,7 @@ router.route('/team/:teamId')
                 if (type != "differential") {
                     let allPctls = []
                     for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-                        const percentiles = await retrievePercentiles(null, p);
+                        const percentiles = await time(res, 'summary', () => retrievePercentiles(null, p));
                         allPctls = allPctls.concat(percentiles);
                     }
 
@@ -624,7 +625,7 @@ router.route('/team/:teamId')
                     percentiles: selectedPercentiles,
                     type,
                     metric,
-                    last_updated: await retrieveLastUpdated()
+                    last_updated: await time(res, 'summary', () => retrieveLastUpdated())
                 });
             }
         } catch(err) {
@@ -674,7 +675,7 @@ router.route('/charts/trends')
 
             let allPctls = []
             for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-                const percentiles = await retrievePercentiles(null, p);
+                const percentiles = await time(res, 'summary', () => retrievePercentiles(null, p));
                 allPctls = allPctls.concat(percentiles);
             }
 
@@ -696,7 +697,7 @@ router.route('/charts/trends')
                     percentiles: selectedPercentiles,
                     type,
                     metric,
-                    last_updated: await retrieveLastUpdated()
+                    last_updated: await time(res, 'summary', () => retrieveLastUpdated())
                 });
             }
         } catch(err) {
@@ -708,7 +709,7 @@ router.route('/charts/trends')
 router.route('/year/:year/charts/team/epa')
     .get(async function(req, res, next) {
         try {
-            const baseData = await retrieveLeagueData(req.params.year, "overall") 
+            const baseData = await time(res, 'summary', () => retrieveLeagueData(req.params.year, "overall"))
 
             let content = baseData.map(t => {
                 // let target = t[type]
@@ -724,7 +725,7 @@ router.route('/year/:year/charts/team/epa')
             return res.render("pages/cfb/epa_chart", {
                 teams: content,
                 season: req.params.year,
-                last_updated: await retrieveLastUpdated()
+                last_updated: await time(res, 'summary', () => retrieveLastUpdated())
             })
         } catch(err) {
             return next(err)
@@ -741,7 +742,7 @@ router.route('/year/:year/teams/:type')
                 sortKey = `overall.adjEpaPerPlay`
             }
             const asc = (type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
-            const baseData = await retrieveLeagueData(req.params.year, "overall") 
+            const baseData = await time(res, 'summary', () => retrieveLeagueData(req.params.year, "overall"))
 
             let content = baseData.map(t => {
                 let target = t[type]
@@ -781,7 +782,7 @@ router.route('/year/:year/teams/:type')
                 type,
                 season: req.params.year,
                 sort: sortKey,
-                last_updated: await retrieveLastUpdated()
+                last_updated: await time(res, 'summary', () => retrieveLastUpdated())
             })
         } catch(err) {
             return next(err)
@@ -798,7 +799,7 @@ router.route('/year/:year/players/:type')
             //     sortKey = `overall.epaPerPlay`
             // }
             const asc = false;//(type == "defensive" && sortKey != "overall.havocRate") || (type == "offensive" && sortKey == "overall.havocRate") // adjust for defensive stats where it makes sense
-            let content = await retrieveLeagueData(req.params.year, type) 
+            let content = await time(res, 'summary', () => retrieveLeagueData(req.params.year, type))
 
             content = content.filter(p => {
                 const nonNullValue = retrieveValue(p, sortKey) != null && retrieveValue(p, sortKey) != "NA"
@@ -814,7 +815,7 @@ router.route('/year/:year/players/:type')
                 type,
                 season: req.params.year,
                 sort: sortKey,
-                last_updated: await retrieveLastUpdated()
+                last_updated: await time(res, 'summary', () => retrieveLastUpdated())
             })
         } catch(err) {
             return next(err)

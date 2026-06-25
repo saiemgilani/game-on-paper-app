@@ -63,6 +63,11 @@ class LogSetup(object):
                     "handlers": ["access_logs"],
                     "propagate": False,
                 },
+                "app.metrics": {
+                    "level": logging_level,
+                    "handlers": ["metrics"],
+                    "propagate": False,
+                },
                 "root": {"level": logging_level, "handlers": ["default"]},
             }
         }
@@ -73,15 +78,25 @@ class LogSetup(object):
                         "level": logging_level,
                         "formatter": "default",
                         "class": logging_policy,
+                        "stream": "ext://sys.stdout",
                     },
                     "access_logs": {
                         "level": logging_level,
                         "class": logging_policy,
                         "formatter": "access",
+                        "stream": "ext://sys.stdout",
+                    },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "formatter": "access",
+                        "stream": "ext://sys.stdout",
                     },
                 }
             }
         elif log_type == "watched":
+            metrics_log_file_name = app.config.get("METRICS_LOG_NAME", "metrics.log")
+            metrics_log = "/".join([log_directory, metrics_log_file_name])
             logging_handler = {
                 "handlers": {
                     "default": {
@@ -98,9 +113,18 @@ class LogSetup(object):
                         "formatter": "access",
                         "delay": True,
                     },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "filename": metrics_log,
+                        "formatter": "access",
+                        "delay": True,
+                    },
                 }
             }
         else:
+            metrics_log_file_name = app.config.get("METRICS_LOG_NAME", "metrics.log")
+            metrics_log = "/".join([log_directory, metrics_log_file_name])
             logging_handler = {
                 "handlers": {
                     "default": {
@@ -116,6 +140,15 @@ class LogSetup(object):
                         "level": logging_level,
                         "class": logging_policy,
                         "filename": www_log,
+                        "backupCount": log_copies,
+                        "maxBytes": log_max_bytes,
+                        "formatter": "access",
+                        "delay": True,
+                    },
+                    "metrics": {
+                        "level": logging_level,
+                        "class": logging_policy,
+                        "filename": metrics_log,
                         "backupCount": log_copies,
                         "maxBytes": log_max_bytes,
                         "formatter": "access",
