@@ -2,7 +2,7 @@
 import Chart from 'chart.js/auto';
 import { SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, getNumberWithOrdinal } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, getNumberWithOrdinal, sleep, waitForElement } from "../../utils/misc";
 import type { TeamSummary } from "../../resources/summary";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
@@ -495,18 +495,40 @@ function generateTeamChartConfig(title: string, color: string | null, teams: Tea
     }
 }
 
-async function generateChart() {
+function generateChart(chartContext: HTMLElement | null) {
     Chart.register(BoxPlotController, BoxAndWiskers);
 
     // Stores the controller so that the chart initialization routine can look it up
     new Chart(
-        document.getElementById('metric_chart_canvas') as ChartItem,
+        chartContext as ChartItem,
         generateTeamChartConfig("National Trends", null, [], percentiles, category, metric)
     )
 }
-document.addEventListener('DOMContentLoaded', generateChart);
+
+async function waitToGenerateChart() {
+    try {
+        const context = await waitForElement(document, "metric_chart_canvas")
+        generateChart(context)
+    } catch (e) {
+        console.error(e);
+        const container = document.getElementById("chart_container");
+        if (container) {
+            container.innerHTML = `<p class='mb-0 text-muted text-small'>Unable to generate chart.</p>`
+        }
+    }
+}
+
+if (document.readyState !== 'loading') {
+    console.log(`DOM ready state`)
+    waitToGenerateChart()
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log(`DOM content loaded state`)
+        waitToGenerateChart()
+    })
+}
 
 </script>
-<div class="container">
+<div class="container" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
 </div>

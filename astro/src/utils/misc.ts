@@ -26,11 +26,31 @@ export function cleanUpParams(payload: any): any {
 //     }
 // }
 
-// async function sleep(sec) {
-//   return new Promise((resolve) => {
-//     setTimeout(resolve, sec * 1000);
-//   });
-// }
+export async function sleep(sec: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, sec * 1000);
+  });
+}
+
+export async function waitForElement(document: HTMLDocument, id: string, delay: number = 0.1, maxTimeout: number = 1.0): Promise<HTMLElement> {
+    let target = null;
+    let sumDelay = 0;
+    while (target == null) {
+        console.log(`Waiting for id ${id} to be available...`)
+        target = document.getElementById(id)
+        if (target) {
+            console.log(`id ${id} found, rendering chart`)
+            break;
+        } else if (sumDelay < maxTimeout) {
+            console.log(`id ${id} not available, sleeping for ${delay} sec...`)
+            await sleep(delay)
+            sumDelay += delay
+        } else {
+            throw Error(`waiting for id ${id} has taken longer than maxTimeout of ${maxTimeout} sec`)
+        }
+    }
+    return target
+}
 
 // function generateChecksum(game) {
 //     return crypto.createHash('sha256').update(JSON.stringify(game)).digest('hex');
@@ -262,4 +282,52 @@ export function retrieveValue(dictionary: any, key: string): string {
         sub = sub[k];
     }
     return sub;
+}
+
+
+export function getPercentileKey(metric: string): string {
+    switch (metric) {
+        case "overall.epaPerPlay": 
+            return "epaPerPlay";
+        case "overall.yardsPerPlay": 
+            return "yardsPerPlay";
+        case "overall.successRate": 
+            return "successRate";
+        case "passing.epaPerPlay": 
+            return "epaPerDropback";
+        case "passing.yardsPerPlay": 
+            return "yardsPerDropback";
+        case "passing.successRate": 
+            return "passingSuccessRate";
+        case "rushing.epaPerPlay": 
+            return "epaPerRush";
+        case "rushing.yardsPerPlay": 
+            return "yardsPerRush";
+        case "rushing.successRate": 
+            return "rushingSuccessRate";
+        case "overall.havocRate": 
+            return "havocRate";
+        case "passing.explosiveRate":
+            return "passingExplosivePlayRate";
+        case "rushing.explosiveRate":
+            return "rushingExplosivePlayRate";
+        case "rushing.opportunityRate":
+            return "rushOpportunityRate";
+        case "rushing.lineYards":
+            return "lineYards";
+        case "rushing.stuffedPlayRate":
+            return "playStuffedRate";
+        case "overall.explosiveRate":
+            return "explosivePlayRate";
+        case "overall.nonExplosiveEpaPerPlay":
+            return "nonExplosiveEpaPerPlay";
+        case "overall.earlyDownEPAPerPlay":
+            return "earlyDownEpaPerPlay";
+        case "overall.lateDownSuccessRate":
+            return "lateDownSuccessRate";
+        case "overall.thirdDownDistance":
+            return "thirdDownDistance";
+        default:
+            return metric;
+    }
 }
