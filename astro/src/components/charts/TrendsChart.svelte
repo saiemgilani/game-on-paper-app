@@ -344,10 +344,24 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
         const publishedData = seasons.map(p => {
             const element = composite[p]
             if (!element) {
-                return null
+                return {
+                    label: `${teamName} - ${metricTitle}: N/A`,
+                    data: {
+                        x: p,
+                        y: null
+                    },
+                    pointStyle: img
+                }
             }
             if (!element.data) {
-                return null
+                return {
+                    label: `${teamName} - ${metricTitle}: N/A`,
+                    data: {
+                        x: p,
+                        y: null
+                    },
+                    pointStyle: img
+                }
             }
 
             return {
