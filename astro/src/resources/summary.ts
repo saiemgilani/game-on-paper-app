@@ -345,11 +345,11 @@ async function retrieveRemotePercentiles(payload: PercentileRequest, maxLookback
         const req = await fetch(`${SUMMARY_HTTP_URL}/percentiles?` + (new URLSearchParams(query)).toString());
         
         // update redis cache
-        const content = await req.json();
+        const content: any = await req.json();
         // const key = generateKey(["percentiles", year, pctile]);
         // expire every three days so that we get fresh data
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
-        return content.results;
+        return content["results"];
     } catch (err) {
         // logger.error(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
         if (err) {

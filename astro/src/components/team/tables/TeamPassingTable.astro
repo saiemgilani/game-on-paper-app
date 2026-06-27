@@ -1,0 +1,49 @@
+---
+import { roundNumber } from '../../../utils/misc';
+import TeamPlayerTable from './TeamPlayerTable.astro';
+
+interface Props {
+    players: any[]
+}
+
+const { players } = Astro.props;
+---
+
+<TeamPlayerTable id="passing-players" title="Passing">
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Comp/Att</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">INT</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Sacks</th>
+        <!-- <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">{injectDetmerSpan()}</th> -->
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Includes sacks, sack yards, and all pass attempts.">Yds/dropback</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Dropback">EPA/dropback</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {
+            players.map((p: any) => {
+                let compPct = parseInt(p.statistics.attempts) == 0 ? 0 : (parseFloat(p.statistics.completions) / parseFloat(p.statistics.attempts))
+                return (
+                    <tr>
+                    <td style="text-align: left;">{ p.name }</td>
+                    <td class="numeral" style="text-align: center;">{ p.statistics.completions }/{ p.statistics.attempts } ({roundNumber(compPct * 100, 2, 0)}% Comp)</td>
+                    <td class="numeral" style="text-align: center;">{ p.statistics.yards }</td>
+                    <td class="numeral" style="text-align: center;">{ p.statistics.touchdowns }</td>
+                    <td class="numeral" style="text-align: center;">{ p.statistics.interceptions }</td>
+                    <td class="numeral" style="text-align: center;">{ p.statistics.sacks }</td>
+                    {/* <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.statistics.detmer || 0), 2, 2) }</td> */}
+                    <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.statistics.yardsPerDropback || 0), 2, 2) }</td>
+                    <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
+                    <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
+                    <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.successRate) * 100, 2, 0) }%</td>
+                    </tr>
+                )
+            })
+        }
+    </Fragment>
+</TeamPlayerTable>

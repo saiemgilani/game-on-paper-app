@@ -418,7 +418,6 @@ async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<an
     const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
     const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
-    // console.log(url)
     const req =  await fetch(url);
     const res: any = await req.json()
     return res
@@ -433,7 +432,6 @@ async function retrieveTeamSchedule(payload: ESPNTeamRequestPayload): Promise<ES
         params.append("seasontype", `${payload.seasonType}`)
     }
     const reqUrl = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${payload.teamId}/schedule?` + params.toString()
-    console.log(reqUrl);
     const req = await fetch(reqUrl);
     const res: ESPNTeamScheduleResponse = await req.json()
     return res
@@ -466,7 +464,6 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     const scheduleResults = await Promise.all(schedulePromises);
     for (const sched of scheduleResults) {
         seasonInfo.events = seasonInfo.events.concat(sched.events)
-        console.log(seasonInfo.events.length)
     }
 
     return seasonInfo;
