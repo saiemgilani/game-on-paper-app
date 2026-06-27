@@ -1,10 +1,10 @@
 <script lang="ts">
 import Chart from 'chart.js/auto'
 import type { ChartConfiguration, ChartData, ChartItem } from "chart.js";
-import type { TeamSummary } from "../../resources/summary";
-import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, waitForElement, STANDARD_THEME_COLOR } from "../../utils/misc";
+import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, waitForElement, STANDARD_THEME_COLOR, cleanLocation } from "../../utils/misc";
 
-const { id, title, breakdowns, colors, width, titleKey, opponentKey } = $props();
+const { team, teamData } = $props();
+let season = $state(teamData[0].season)
 
 function generatePercentile(input: number, max: number = 134): number {
     if (!input) {
@@ -14,7 +14,6 @@ function generatePercentile(input: number, max: number = 134): number {
     let step = Math.round(value * 100)
     return step
 }
-
 
 function generateRadarPercentiles(breakdown: any, titleKey: string) {
     const key = titleKey.toLocaleLowerCase()
@@ -38,7 +37,7 @@ function generateRadarPercentiles(breakdown: any, titleKey: string) {
     ]
 }
 
-function generateDataset(breakdowns: any[], titleKey: string, opponentKey: string): ChartData<'radar'> {
+function generateDataset(breakdowns: any[], titleKey: string, opponentKey?: string): ChartData<'radar'> {
     const sample = generateRadarPercentiles({}, titleKey);
     
 
@@ -156,27 +155,46 @@ function generateConfig(data: ChartData<'radar'>, title: string): ChartConfigura
     }
 }
 
-
-function generateChart(chartContext: HTMLElement | null) {
-    // Stores the controller so that the chart initialization routine can look it up
-    new Chart(
-        chartContext as ChartItem,
-        generateConfig(
-            generateDataset(breakdowns, titleKey, opponentKey),
-            title
-        )
-    )
-}
+let offRadarChart: Chart | null = null;
+let defRadarChart: Chart | null = null;
 
 async function waitToGenerateChart() {
     try {
-        const context = await waitForElement(document, id)
-        generateChart(context)
+        const selectedTeamData = teamData.filter((p: any) => parseInt(p.season) == parseInt(season))
+
+        const offRadarCtx = await waitForElement(document, "offensive-canvas");
+        const defRadarCtx = await waitForElement(document, "defensive-canvas");
+
+        if (offRadarChart) {
+            offRadarChart?.destroy()
+        }
+
+        offRadarChart = new Chart(
+            offRadarCtx as ChartItem,
+            generateConfig(
+                generateDataset(selectedTeamData, "Offensive"),
+                `${cleanLocation(team)} ${season} Offensive Profile`
+            )
+        );
+
+
+        if (defRadarChart) {
+            defRadarChart?.destroy()
+        }
+
+        defRadarChart = new Chart(
+            defRadarCtx as ChartItem,
+            generateConfig(
+                generateDataset(selectedTeamData, "Defensive"),
+                `${cleanLocation(team)} ${season} Defensive Profile`
+            )
+        );
+
     } catch (e) {
         console.error(e);
-        const container = document.getElementById(`${id}_container`);
+        const container = document.getElementById(`radar_container`);
         if (container) {
-            container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
+            container.innerHTML = `<div class="col-12"><p class='m-0 mb-3 text-muted text-small'>Unable to generate charts. Please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p></div>`
         }
     }
 }
@@ -191,30 +209,35 @@ if (document.readyState !== 'loading') {
     })
 }
 
+function onChangeValue(e: Event) {
+    season = parseInt(e.target.value)
+    waitToGenerateChart()
+}
 
-// function drawRadarCanvases() {
-//     'use strict'
-//     feather.replace()
-//     const offRadarCtx = document.getElementById('offensive-canvas')
-//     const offRadarChart = new Chart(
-//         offRadarCtx,
-//         generateConfig(
-//             generateDataset(breakdowns, "Offensive", "Defensive"),
-//             firstCanvasTitle
-//         )
-//     );
-
-//     const defRadarCtx = document.getElementById('defensive-canvas')
-//     const defRadarChart = new Chart(
-//         defRadarCtx,
-//         generateConfig(
-//             generateDataset(breakdowns, "Defensive", "Offensive"),
-//             secondCanvasTitle
-//         )
-//     );
-// }
-// drawRadarCanvases()
 </script>
-<div class="container" id={`${id}_container`}>
-<canvas id={id} style={`display: block; box-sizing: border-box; height: ${width / 2}px; width: ${width / 2}px;`} width={width} height={width}></canvas>
+
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-lg-6 col-xs-12">
+            <h2 class="d-inline">Profile History</h2>
+            <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+        </div>
+        <div class="ms-auto col-lg-2 col-xs-12">
+            <select class="form-select form-select-md" onchange={onChangeValue}>
+				<option value="-1" disabled>Choose Season...</option>
+				{#each teamData as t}
+					<option value={t.season} selected={(season == t.season)}>{t.season}</option>
+				{/each}
+            </select>
+        </div>
+    </div>
+    <div class="row mb-3" id="radar_container">
+        <div class="col-lg-6 col-xs-12 mb-xs-3">
+            <canvas id="offensive-canvas" style="display: block; box-sizing: border-box; height: 200px; width: 200px;" width="400px" height="400px"></canvas>
+        </div>
+        <div class="col-lg-6 col-xs-12 mb-xs-3">
+            <canvas id="defensive-canvas" style="display: block; box-sizing: border-box; height: 200px; width: 200px;" width="400px" height="400px"></canvas>
+        </div>
+    </div>
 </div>
