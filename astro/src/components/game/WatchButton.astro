@@ -11,10 +11,8 @@ let actionPrefix: string | null = 'Watch';
 
 if (game.status.type.completed == true) {
     actionPrefix = 'Replay';
-} else if (game.status.type.name.includes("STATUS_IN_PROGRESS") || game.status.type.name.includes("STATUS_END_PERIOD") || game.status.type.name.includes("STATUS_HALFTIME")) {
-    actionPrefix = 'Watch';
 } else {
-    actionPrefix = null;
+    actionPrefix = 'Watch';
 }
 
 let networkName: string | null = null;

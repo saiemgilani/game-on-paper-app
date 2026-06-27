@@ -1,6 +1,6 @@
 ---
 import GamePage from '../../components/game/GamePage.astro';
-// import MatchupPage from '../../components/game/MatchupPage.astro';
+import PreGamePage from '../../components/game/PreGamePage.astro';
 import { retrieveGamePage } from '../../resources/espn';
 
 const { id } = Astro.params;
@@ -10,6 +10,9 @@ if (!id) {
 const espnGame = await retrieveGamePage(id);
 
 ---
+{
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
+}
 {
     (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED") && <GamePage id={id} />
 }
