@@ -2,12 +2,17 @@
 import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import type { SeasonPercentile } from "../../resources/summary";
-import { cleanLocation } from "../../utils/misc";
+import { cleanLocation, retrieveValue, roundNumber } from "../../utils/misc";
 import SummaryModel from "../../resources/summary";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../components/DarkModeLogos.astro";
 
 const { id } = Astro.params;
+if (!id) {
+    return Astro.redirect("/404");
+}
 
+// TODO: replace this with a live call
 const team = {
     id,
     location: "Georgia Tech",
@@ -27,7 +32,6 @@ const breadcrumbs: PageBreadcrumb[] = [
     }
 ]
 
-// const teamData = await SummaryModel.retrieveTeamData({ team: 59 });
 let allPctls: SeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
     const percentiles = await SummaryModel.retrievePercentiles({ pctile: p });
@@ -49,10 +53,11 @@ const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${ava
 ---
 
 <GenericPage title={`${cleanLocation(team)} | ${yearRange} | Game on Paper`} subtitle={`Team level metric history`} slug={`/team/${team.id}`} breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={[team.id]} />
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">
-                <h1>{cleanLocation(team)}</h1>
+                <h1 class="d-flex"><img class={`img-fluid team-logo-${team.id} me-2`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/> <span class="ms-1">{cleanLocation(team)}</span></h1>
                 <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
                 <p class="m-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper on Twitter."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p>
             </div>
@@ -64,4 +69,37 @@ const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${ava
     </div>
     <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={"#B3A369"} teamData={teamData} percentiles={allPctls} />
     <TeamRadarChart client:only team={team} teamData={teamData} />
+    <div class="container mb-3">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2 class="d-inline">Seasons</h2>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-responsive">
+                        <thead>
+                            <th class="text-left" colspan="1">Season</th>
+                            <th class="text-center" colspan="1">Net EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Off EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Def EPA/Play (Rk)</th>
+                        </thead>
+                        <tbody>
+                            {
+                                teamData.map(t => (
+                                    <tr>
+                                        <td><a href={`/year/${t.season}/team/${team.id}`}>{t.season}</a></td>
+                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "differential.overall.epaPerPlay"), 2, 2)}</td>
+                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "offensive.overall.epaPerPlay"), 2, 2)}</td>
+                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "defensive.overall.epaPerPlay"), 2, 2)}</td>
+                                    </tr>
+                                ))
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </GenericPage>
