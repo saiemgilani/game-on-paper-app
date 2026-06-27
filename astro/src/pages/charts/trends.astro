@@ -62,5 +62,5 @@ const title = `National Trends | ${yearRange} | Game on Paper`
             </div>
         </div>
     </div>
-    <TrendsChart client:only category={category} metric={metric} percentiles={selectedPercentiles} />
+    <TrendsChart client:only title="National Trends" teamColor={null} teamData={[]} category={category} metric={metric} percentiles={selectedPercentiles} />
 </GenericPage>

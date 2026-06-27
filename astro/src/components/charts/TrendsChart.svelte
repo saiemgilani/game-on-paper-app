@@ -2,13 +2,16 @@
 import Chart from 'chart.js/auto';
 import { SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, getNumberWithOrdinal, sleep, waitForElement } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, waitForElement } from "../../utils/misc";
 import type { TeamSummary } from "../../resources/summary";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
+const { title, teamColor, teamData, category, metric, percentiles } = $props();
 
-const { category, metric, percentiles } = $props();
+const STANDARD_BOXPLOT_COLOR = "rgb(35, 148, 253)"
+const STANDARD_BOXPLOT_BACKGROUND_RGBA = "rgb(35, 148, 253, 0.25)"
+const STANDARD_BOXPLOT_HOVER_RGBA = "rgb(35, 148, 253, 0.5)"
 
 export function capitalizeFirstLetter(val: string): string {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -259,7 +262,7 @@ function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl')
     }
 }
 
-function buildTeamChartData(teams: TeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot'> {
+function buildTeamChartData(teams: TeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
     let distributions: Record<number, ValueDistribution> = {};
     for (const p of percentiles) {
         if (!Object.keys(distributions).includes(`${p["season"]}`)) {
@@ -326,16 +329,91 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
     const isRateMetric = metricTitle.includes("Rate")
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
     
-    let datasets: ChartDataset<'boxplot'>[] = []
+    let datasets: ChartDataset<'boxplot' | 'line'>[] = []
+
+    if (teams.length > 0) {
+        const teamName = teams.map(p => p.team)[0]
+        const teamId = teams.map(p => p.teamId)[0]
+        let img = new Image(imageSize, imageSize)
+        if (Object.keys(SPECIAL_IMAGES).includes(String(teamId))) {
+            img.src = SPECIAL_IMAGES[teamId];
+        } else {
+            img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png`
+        }
+
+        const publishedData = seasons.map(p => {
+            const element = composite[p]
+            if (!element) {
+                return null
+            }
+            if (!element.data) {
+                return null
+            }
+
+            return {
+                label: `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, element.data.y || 0)}`,
+                data: element.data,
+                pointStyle: img,
+            }
+        }).filter(d => !!d).sort((a, b) => a.data.x - b.data.x)
+
+        datasets.push(
+            {
+                label: teamName,
+                type: "line",
+                borderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
+                data: publishedData.map(d => d.data.y),
+                pointHoverBorderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
+                pointHoverBackgroundColor: color || STANDARD_BOXPLOT_BACKGROUND_RGBA,
+                pointBorderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
+                pointBackgroundColor: color || STANDARD_BOXPLOT_BACKGROUND_RGBA,
+                showLine: false,
+                fill: false,
+                pointStyle: publishedData.map(d => d.pointStyle),
+                pointRadius: imageSize / 2,
+            }
+        )
+
+        // if (percentiles.length == 0) {
+        //     const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
+        //     const trend = TREND_FUNCTION(publishedData.filter(p => p.data != null).map(d => [d.data.x, d.data.y]))
+
+        //     datasets.push(
+        //         {
+        //             type: "line",
+        //             labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+        //             label: 'Team Trend',
+        //             data: seasons.map(p => {
+        //                 const element = trend.find(d => d[0] == p)
+        //                 if (!element) {
+        //                     return null;
+        //                 }
+        //                 return {
+        //                     x: element[0],
+        //                     y: element[1]
+        //                 }
+        //             }),
+        //             borderDash: [5, 15],
+        //             borderColor: color,
+        //             pointBorderColor: "rgba(0,0,0,0)",
+        //             pointBackgroundColor: "rgba(0,0,0,0)",
+        //             showLine: true,
+        //             fill: false,
+        //             clip: true
+        //         }
+        //     )
+        
+        // }
+    }
 
     if (hasAvailableDistributions) {
         datasets.push(
             {
                 label: 'National Distribution',
                 type: 'boxplot',
-                backgroundColor: "rgb(35, 148, 253, 0.25)",
-                hoverBorderColor: "rgba(35, 148, 253, 0.5)",
-                borderColor: "rgb(35, 148, 253)",
+                backgroundColor: STANDARD_BOXPLOT_BACKGROUND_RGBA,
+                hoverBorderColor: STANDARD_BOXPLOT_HOVER_RGBA,
+                borderColor: STANDARD_BOXPLOT_COLOR,
                 data: seasons.map(s => {
                     const element = composite[s];
                     const dist = element?.distribution;
@@ -362,7 +440,7 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
 
 }
 
-function generateTeamChartConfig(title: string, color: string | null, teams: TeamSummary[], percentiles: ValuePercentile[], category: string, metric: string): ChartConfiguration<'boxplot'> {
+function generateTeamChartConfig(title: string, color: string | null, teams: TeamSummary[], percentiles: ValuePercentile[], category: string, metric: string): ChartConfiguration<'boxplot' | 'line'> {
     const chartData = buildTeamChartData(teams, color, percentiles, category, metric);
     let seasons = percentiles.map(d => d.season).sort((a, b) => (a - b))
     if (seasons.length == 0 && teams.length > 0) {
@@ -497,11 +575,10 @@ function generateTeamChartConfig(title: string, color: string | null, teams: Tea
 
 function generateChart(chartContext: HTMLElement | null) {
     Chart.register(BoxPlotController, BoxAndWiskers);
-
     // Stores the controller so that the chart initialization routine can look it up
     new Chart(
         chartContext as ChartItem,
-        generateTeamChartConfig("National Trends", null, [], percentiles, category, metric)
+        generateTeamChartConfig(title, teamColor, teamData, percentiles, category, metric)
     )
 }
 
@@ -513,7 +590,7 @@ async function waitToGenerateChart() {
         console.error(e);
         const container = document.getElementById("chart_container");
         if (container) {
-            container.innerHTML = `<p class='mb-0 text-muted text-small'>Unable to generate chart.</p>`
+            container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
         }
     }
 }
