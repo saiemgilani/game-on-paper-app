@@ -13,6 +13,7 @@ let defRadarChart: Chart | null = null;
 async function waitToGenerateChart() {
     try {
         const selectedTeamData = teamData.filter((p: any) => parseInt(p.season) == parseInt(season))
+        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
         const offRadarCtx = await waitForElement(document, "offensive-canvas");
         const defRadarCtx = await waitForElement(document, "defensive-canvas");
@@ -24,8 +25,10 @@ async function waitToGenerateChart() {
         offRadarChart = new Chart(
             offRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(selectedTeamData, "Offensive"),
-                `${cleanLocation(team)} ${season} Offensive Profile`
+                generateRadarDataset(selectedTeamData, "Offensive", null, isDarkMode),
+                `${cleanLocation(team)} ${season} Offensive Profile`,
+                isDarkMode,
+                false
             )
         );
 
@@ -37,8 +40,10 @@ async function waitToGenerateChart() {
         defRadarChart = new Chart(
             defRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(selectedTeamData, "Defensive"),
-                `${cleanLocation(team)} ${season} Defensive Profile`
+                generateRadarDataset(selectedTeamData, "Defensive", null, isDarkMode),
+                `${cleanLocation(team)} ${season} Defensive Profile`,
+                isDarkMode,
+                false
             )
         );
 

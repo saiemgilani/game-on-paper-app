@@ -33,14 +33,13 @@ export function generateRadarPercentiles(breakdown: any, titleKey: string) {
     ]
 }
 
-export function generateRadarDataset(breakdowns: any[], titleKey: string, opponentKey?: string): ChartData<'radar'> {
+export function generateRadarDataset(breakdowns: any[], titleKey: string, opponentKey: string | null = null, isDarkMode: boolean = false): ChartData<'radar'> {
     const sample = generateRadarPercentiles({}, titleKey);
     opponentKey = opponentKey || titleKey;
     
     const teamColors = breakdowns.map(b => {
         return { alternateColor: b.alternateColor, color: b.color }
     })
-    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     const compColor = (isDarkMode) ? hexToRgb("#000000")! : hexToRgb("#FFFFFF")!
 
@@ -68,9 +67,7 @@ export function generateRadarDataset(breakdowns: any[], titleKey: string, oppone
     };
 }
 
-export function generateRadarConfig(data: ChartData<'radar'>, title: string): ChartConfiguration<'radar'> {
-    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
+export function generateRadarConfig(data: ChartData<'radar'>, title: string, isDarkMode: boolean = true, showLegend: boolean = false): ChartConfiguration<'radar'> {
     return {
         type: 'radar',
         data: data,
@@ -106,6 +103,9 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string): Ch
                         family: '"Chivo", "Fira Mono", serif'
                     },
                 },
+                legend: {
+                    display: showLegend
+                }
             },
             responsive: true,
             elements: {
@@ -141,10 +141,11 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string): Ch
                     },
                     ticks: {
                         stepSize: 25,
-                        backdropColor: (isDarkMode) ? 'rgb(56, 61, 63)' : 'rgba(255, 255, 255, 0.75)'
+                        backdropColor: (isDarkMode) ? 'rgb(56, 61, 63)' : 'rgba(255, 255, 255, 0.75)',
+                        color: (isDarkMode) ? '#e8e6e3' : '#525252'
                     },
                     pointLabels: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        color: (isDarkMode) ? '#e8e6e3' : '#525252'
                     }
                 }
             }
