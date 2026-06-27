@@ -1,5 +1,5 @@
 import type { ChartConfiguration, ChartData } from "chart.js";
-import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR } from "./misc";
+import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal } from "./misc";
 
 
 function generatePercentile(input: number, max: number = 134): number {
@@ -105,6 +105,17 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string, isD
                 },
                 legend: {
                     display: showLegend
+                },
+                tooltip: {
+                    callbacks: {
+                        title: (contexts) => {
+                            const ctx = contexts[0];
+                            return ctx.label;
+                        },
+                        label: (context) => {
+                            return `${context.dataset.label}: ${getNumberWithOrdinal(context.parsed.r)} %tile`
+                        }
+                    }
                 }
             },
             responsive: true,
@@ -113,20 +124,6 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string, isD
                     borderWidth: 3
                 }
             },
-
-            // tooltips: {
-            //     callbacks: {
-            //         title: function(tooltipItem, data) {
-            //             // console.log(tooltipItem)
-            //             // console.log(data.labels)
-            //             const label = data.labels[tooltipItem[0].index]
-            //             return `${label}: ${getNumberWithOrdinal(tooltipItem[0].value)} %tile`
-            //         },
-            //         label: function(tooltipItem, data) {
-            //             return data.datasets[tooltipItem.datasetIndex].label[tooltipItem.index]
-            //         }
-            //     }
-            // },
             scales: {
                 r: {
                     min: 0,
