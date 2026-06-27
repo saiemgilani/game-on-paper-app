@@ -371,17 +371,15 @@ export function getPercentileKey(metric: string): string {
     }
 }
 
-export function generateColorRampValue(input: number | null, max: number, inverted: boolean = false): string | null {
+export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
     if (!input) {
         return null;
     }
-
-
+    
     let value = inverted ? (max - input) / max : (input) / max
     let step = Math.round(value / 0.1)
     let clampedStep = Math.min(Math.max(step, 0), 9)
 
-    let hex = null
     if (clampedStep == 4 || clampedStep == 5) {
         return null
     } else {

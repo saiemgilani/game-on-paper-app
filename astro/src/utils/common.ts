@@ -119,7 +119,11 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     return `<span class="small text-muted h6">${base}</span>`;
 }
 
-export function generateMarginalString(input: number, power10: number, fixed: number): string {
+export function generateMarginalString(input: number | undefined | null, power10: number, fixed: number): string {
+    if (!input && input != 0) {
+        return "N/A";
+    }
+
     if (input >= 0) {
         return `+${roundNumber(input, power10, fixed)}`;
     } else {
@@ -127,8 +131,8 @@ export function generateMarginalString(input: number, power10: number, fixed: nu
     }
 }
 
-export function formatRank(rank: number) {
-    if (rank == null || (!rank && rank != 0)) {
+export function formatRank(rank: number | undefined | null) {
+    if (!rank && rank != 0) {
         return "N/A"
     }
 
