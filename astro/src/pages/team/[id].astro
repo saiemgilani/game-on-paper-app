@@ -1,8 +1,9 @@
 ---
 import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import type { SeasonPercentile } from "../../resources/summary";
-import { cleanLocation, retrieveValue, roundNumber } from "../../utils/misc";
+import type { SeasonPercentile, TeamSummary } from "../../resources/summary";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue } from "../../utils/misc";
+import { formatRank } from "../../utils/common";
 import SummaryModel from "../../resources/summary";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
@@ -50,6 +51,28 @@ teamData = teamData.map((t:any) => {
 let availableSeasons = teamData.map(b => b.season)
 availableSeasons = [...new Set(availableSeasons)].sort();
 const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
+
+function createSeasonColumn(summary: TeamSummary, key: string): string {
+    const val = roundNumber(retrieveValue(summary, key), 2, 2)
+    const rank = retrieveValue(summary, `${key}Rank`)
+
+    const colorRampClass = generateColorRampValue(134 - parseInt(rank), 134)
+    const rankStr = formatRank(parseInt(rank))
+    return `
+    <td class="numeral ${colorRampClass}" style="text-align: center;">${val} <small class="align-self-center" style="opacity: 50%">#${rankStr}</small></td>
+    `
+}
+
+function createSeasonRow(summary: TeamSummary): string {
+    const cols = ["differential.overall.epaPerPlay", "offensive.overall.epaPerPlay", "defensive.overall.epaPerPlay"].map(x => createSeasonColumn(summary, x)).join("")
+    return `
+    <tr>
+        <td><a href="/year/${summary.season}/team/${team.id}">${summary.season}</a></td>
+        ${cols}
+    </tr>
+    `
+}
+
 ---
 
 <GenericPage title={`${cleanLocation(team)} | ${yearRange} | Game on Paper`} subtitle={`Team level metric history`} slug={`/team/${team.id}`} breadcrumbs={breadcrumbs}>
@@ -87,14 +110,7 @@ const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${ava
                         </thead>
                         <tbody>
                             {
-                                teamData.map(t => (
-                                    <tr>
-                                        <td><a href={`/year/${t.season}/team/${team.id}`}>{t.season}</a></td>
-                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "differential.overall.epaPerPlay"), 2, 2)}</td>
-                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "offensive.overall.epaPerPlay"), 2, 2)}</td>
-                                        <td class="text-center" colspan="1">{roundNumber(retrieveValue(t, "defensive.overall.epaPerPlay"), 2, 2)}</td>
-                                    </tr>
-                                ))
+                                teamData.map(t => <Fragment set:html={createSeasonRow(t)} />)
                             }
                         </tbody>
                     </table>

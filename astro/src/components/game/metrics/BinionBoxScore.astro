@@ -1,8 +1,7 @@
 ---
 import type { ProcessedBoxScore } from '../../../resources/internal';
 import { type SeasonPercentile } from '../../../resources/summary';
-import { generateColorRampValue } from '../../../utils/common';
-import { roundNumber, getNumberWithOrdinal, retrieveValue } from '../../../utils/misc';
+import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 
 interface Props {
