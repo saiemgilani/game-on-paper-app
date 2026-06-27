@@ -6,6 +6,7 @@ import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 
 const { team, teamData } = $props();
 let season = $state(teamData[0].season)
+const availableTeamSeasons = [...new Set(teamData.map((t: any) => t.season))]
 
 let offRadarChart: Chart | null = null;
 let defRadarChart: Chart | null = null;
@@ -75,6 +76,7 @@ function onChangeValue(e: Event) {
 
 
 <div class="container">
+    {#if availableTeamSeasons.length > 1}
     <div class="row mb-3">
         <div class="col-lg-6 col-xs-12">
             <h2 class="d-inline">Profile History</h2>
@@ -89,6 +91,7 @@ function onChangeValue(e: Event) {
             </select>
         </div>
     </div>
+    {/if}
     <div class="row mb-3" id="radar_container">
         <div class="col-lg-6 col-xs-12 mb-xs-3">
             <canvas id="offensive-canvas" style="display: block; box-sizing: border-box; height: 200px; width: 200px;" width="400px" height="400px"></canvas>

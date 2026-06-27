@@ -4,13 +4,14 @@ import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
 import { roundNumber, hexToRgb } from "./misc"
 
-export function formatScore(score: string, winner: boolean, complete: boolean): string {
+export function formatScore(score: string | { displayValue: string }, winner: boolean, complete: boolean): string {
+    const cleanedScore = typeof(score) == 'object' ? cleanScore(score) : score;
     if (winner && complete) {
-        return `<strong>${score}</strong>`
+        return `<strong>${cleanedScore}</strong>`
     } else if (!winner && complete) {
-        return `<span style="opacity: 0.5;">${score}</span>`
+        return `<span style="opacity: 0.5;">${cleanedScore}</span>`
     } else {
-        return `<span>${score}</span>`
+        return `<span>${cleanedScore}</span>`
     }
 }
 
@@ -21,6 +22,10 @@ export function cleanScore(score: { displayValue: string } | string): number {
 export function calculateSpiceLevel(g: ESPNScheduleEvent): SpiceLevel {
     const homeScore = cleanScore(g.competitions[0].competitors[0].score);
     const awayScore = cleanScore(g.competitions[0].competitors[1].score);
+    if (!g.status) {
+        return SpiceLevel.BELL;
+    }
+
     const period = g.status.period;
     const clock = g.status.clock;
     const homeConferenceId = g.competitions[0].competitors[0].team.conferenceId;

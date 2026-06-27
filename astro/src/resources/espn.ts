@@ -5,6 +5,22 @@ export interface ESPNScoreboardResponse {
     week: { number: number }
 }
 
+export interface ESPNTeamScheduleResponse {
+  timestamp: string
+  status: string
+  season: ESPNSeason
+  team: ESPNTeam
+  events: ESPNScheduleEvent[]
+  requestedSeason: ESPNRequestedSeason
+}
+
+export interface ESPNRequestedSeason {
+    year: number
+    type: number
+    name: string
+    displayName: string
+}
+
 export interface ESPNScheduleResponse {
     content: ESPNScheduleContent
 }
@@ -82,7 +98,8 @@ export interface ESPNScheduleEvent {
     season: { year: number, type: number, slug: string }
     week: { number: number }
     competitions: ESPNCompetition[]
-    status: ESPNStatus
+    status?: ESPNStatus
+    timeValid?: boolean
 }
 
 export interface ESPNCompetition {
@@ -384,8 +401,73 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
 
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
     const cacheBuster = ((new Date()).getTime() * 1000);
-    // check if the game is active or in the future
     const req = await fetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
     const res: ESPNPlayByPlayResponse = await req.json()
     return res
+}
+
+export interface ESPNTeamRequestPayload {
+    endpoint?: string
+    teamId: string | number
+    season?: string | number
+    seasonType?: string | number | null
+}
+
+async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<any> {
+    const endpoint = payload.endpoint ? payload.endpoint : ""
+    const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
+    const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
+    const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
+    // console.log(url)
+    const req =  await fetch(url);
+    const res: any = await req.json()
+    return res
+}
+
+async function retrieveTeamSchedule(payload: ESPNTeamRequestPayload): Promise<ESPNTeamScheduleResponse> {
+    let params = new URLSearchParams({ })
+    if (payload.season) {
+        params.append("season", `${payload.season}`)
+    }
+    if (payload.seasonType) {
+        params.append("seasontype", `${payload.seasonType}`)
+    }
+    const reqUrl = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${payload.teamId}/schedule?` + params.toString()
+    console.log(reqUrl);
+    const req = await fetch(reqUrl);
+    const res: ESPNTeamScheduleResponse = await req.json()
+    return res
+}
+
+export async function retrieveTeamInformation(teamId: string | number): Promise<any> {
+    return await retrieveTeamEndpoint({ teamId })
+}
+
+export async function retrieveTeamSeasonInformation(season: string | number, teamId: string | number): Promise<any> {
+    const seasonInfo = await retrieveTeamEndpoint({ season, teamId })
+    const populatableKeys = ["record", "athletes", "ranks", "leaders"];
+    const typeKeys = ["record", "leaders"];
+    const valPromises: Promise<any>[] = [];
+    for (const k of populatableKeys) {
+        valPromises.push(retrieveTeamEndpoint({ endpoint: k, season, teamId, seasonType: typeKeys.includes(k) ? "2" : null }))
+    }
+
+    const valResults = await Promise.all(valPromises);
+    for (const [i, k] of populatableKeys.entries()) {
+        seasonInfo[k] = valResults[i]["items"];
+    }
+
+    seasonInfo.events = []
+    const schedulePromises: Promise<ESPNTeamScheduleResponse>[] = [];
+    for (const k of [2, 3]) {
+        schedulePromises.push(retrieveTeamSchedule({ season, teamId, seasonType: k }))
+    }
+    
+    const scheduleResults = await Promise.all(schedulePromises);
+    for (const sched of scheduleResults) {
+        seasonInfo.events = seasonInfo.events.concat(sched.events)
+        console.log(seasonInfo.events.length)
+    }
+
+    return seasonInfo;
 }

@@ -1,5 +1,6 @@
 ---
 import type { ESPNCompetitor, ESPNScheduleEvent } from "../../resources/espn";
+import { cleanScore } from "../../utils/common";
 import { calculateSpiceLevel, formatScore, getRecordString, isChampionshipEvent } from "../../utils/common";
 import LocalDate from "../LocalDate.svelte";
 import BroadcastButton from "./BroadcastButton.astro";
@@ -17,8 +18,9 @@ const espnGame = (game as ESPNScheduleEvent);
 const espnGameComp = espnGame.competitions[0];
 const homeComp = espnGameComp.competitors[0];
 const awayComp = espnGameComp.competitors[1];
-const homeScore = homeComp.score;
-const awayScore = awayComp.score;
+const homeScore = cleanScore(homeComp.score);
+const awayScore = cleanScore(awayComp.score);
+const gameStatus = espnGameComp.status;
 
 const spiceLevel = calculateSpiceLevel(espnGame) || 'none';
 const gameNote = espnGame.competitions[0].notes.length > 0 ? espnGame.competitions[0].notes[0].headline : ""
@@ -32,14 +34,14 @@ const textClass = (isChamp) ? "text-championship" : "text-primary";
 
 const hasLastPlay = (espnGameComp.situation && espnGameComp.situation?.lastPlay);
 const canShowSituation = (
-    (!(espnGame.status.type.completed == true || espnGame.status.type.detail.includes("Cancel") || espnGame.status.type.detail.includes("Postpone")))
+    (!(gameStatus.type.completed == true || gameStatus.type.detail.includes("Cancel") || gameStatus.type.detail.includes("Postpone")))
     && (espnGameComp.situation != null && espnGameComp.situation.lastPlay != null)
 )
-const canLoadStats = (
-    (espnGame.status.type.name.includes("STATUS_DELAYED") && !hasLastPlay) 
-    || espnGame.status.type.detail.includes("Cancel") 
-    || espnGame.status.type.detail.includes("Postpone") 
-    || (espnGame.status.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
+const canLoadStats = gameStatus && (
+    (gameStatus.type.name.includes("STATUS_DELAYED") && !hasLastPlay) 
+    || gameStatus.type.detail.includes("Cancel") 
+    || gameStatus.type.detail.includes("Postpone") 
+    || (gameStatus.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
 )
 const canLoadStatsTheme = canLoadStats ? `disabled` : ``
 ---
@@ -50,22 +52,22 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
             <div class="d-flex justify-content-between">
                 <strong class={`d-inline-block mb-2 ${textClass} small`}>
                     {
-                        (espnGame.status.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={espnGame.status.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                        (gameStatus.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={gameStatus.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }
                     {
-                        (espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                        (gameStatus.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }
                     {
-                        (espnGame.status.type.completed != true) && (!espnGame.status.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{espnGame.status.type.detail}</Fragment>
+                        (gameStatus.type.completed != true) && (!gameStatus.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{gameStatus.type.detail}</Fragment>
                     }
                 </strong>
             </div>
-            <TeamRow espnComp={awayComp} espnStatus={espnGame.status} winner={parseInt(awayScore) > parseInt(homeScore)} completed={espnGame.status.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
-            <TeamRow espnComp={homeComp} espnStatus={espnGame.status} winner={parseInt(awayScore) < parseInt(homeScore)} completed={espnGame.status.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
+            <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
+            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={homeScore < awayScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
             <GameSituation hidden={canShowSituation} game={espnGame} />
             <div class="d-flex justify-content-between">
                 <div class="text-left">
-                    <a class=`btn btn-sm ${btnTheme} ${canLoadStatsTheme}` role="button" href={`/cfb/game/${espnGame.id}`}>{ (espnGame.status.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
+                    <a class=`btn btn-sm ${btnTheme} ${canLoadStatsTheme}` role="button" href={`/cfb/game/${espnGame.id}`}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
                 </div>
                 <div class="text-right">
                     <BroadcastButton game={espnGame} />

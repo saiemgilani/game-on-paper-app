@@ -7,19 +7,14 @@ import { formatRank } from "../../utils/common";
 import SummaryModel from "../../resources/summary";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
+import { retrieveTeamInformation } from "../../resources/espn";
 
 const { id } = Astro.params;
 if (!id) {
     return Astro.redirect("/404");
 }
 
-// TODO: replace this with a live call
-const team = {
-    id,
-    location: "Georgia Tech",
-    color: "#B3A369",
-    alternateColor: "#eeb211"
-}
+const team = await retrieveTeamInformation(id)
 
 const breadcrumbs: PageBreadcrumb[] = [
     {

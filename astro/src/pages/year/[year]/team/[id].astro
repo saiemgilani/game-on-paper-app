@@ -1,0 +1,74 @@
+---
+import TeamRadarChart from "../../../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../../../components/DarkModeLogos.astro";
+import GameThumb from "../../../../components/schedule/GameThumb.astro";
+import SchedulePage from "../../../../components/schedule/SchedulePage.astro";
+import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
+import GenericPage from "../../../../layouts/GenericPage.astro";
+import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
+import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
+import SummaryModel, { type SeasonPercentile } from "../../../../resources/summary";
+import { cleanLocation } from "../../../../utils/misc";
+
+const { year, id } = Astro.params;
+if (!year) {
+    return Astro.redirect("/404");
+}
+if (!id) {
+    return Astro.redirect("/404");
+}
+
+const team = await retrieveTeamInformation(id)
+const teamSeason = await retrieveTeamSeasonInformation(year, id)
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: "Teams",
+        url: "/teams",
+        active: false
+    },
+    {
+        title: cleanLocation(team),
+        url: `/team/${id}`,
+        active: false
+    },
+    {
+        title: year,
+        url: `/year/${year}/team/${id}`,
+        active: true
+    }
+]
+
+// let allPctls: SeasonPercentile[] = []
+// for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+//     const percentiles = await SummaryModel.retrievePercentiles({ pctile: p });
+//     allPctls = allPctls.concat(percentiles);
+// }
+
+let teamData = await SummaryModel.retrieveTeamData({ team: Number(id), year: Number(year) })
+teamData = teamData.map((t:any) => {
+    t.color = team.color
+    t.alternateColor = team.alternateColor
+    t.teamName = cleanLocation(team)
+    return t
+})
+---
+
+<GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={[team.id]} />
+    <TeamRadarChart client:only team={team} teamData={teamData} />
+
+    
+    <div class="container mb-3">
+        <GenericPanel id="schedule" title="Schedule">
+        <div class="row mb-3" slot="panel-body">
+            {
+                (teamSeason.events.length > 0) && (teamSeason.events.map(((g: ESPNScheduleEvent) => <GameThumb game={g} />)))
+            }
+            {
+                (teamSeason.events.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
+            }
+        </div>
+        </GenericPanel>
+    </div>
+    
+</GenericPage>
