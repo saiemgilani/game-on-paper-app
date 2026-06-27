@@ -1,7 +1,7 @@
 <script>
 import Chart from 'chart.js/auto';
 import {LineController} from "chart.js";
-import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustColorsForContrast } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast } from '../../utils/misc';
 import { GradientFillLineController } from '../../resources/chart'
 
 const { game, percentiles } = $props()
@@ -147,7 +147,7 @@ async function generateChart() {
     Chart.register(GradientFillLineController);
 
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const [awayTeamColor, homeTeamColor] = adjustColorsForContrast(awayTeam, homeTeam)
+    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
 
     const plays = [...game.plays];
     // console.log(game.plays[0])

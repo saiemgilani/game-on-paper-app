@@ -1,6 +1,19 @@
 import type { ESPNTeam } from "../resources/espn";
 import { MEME_LIST } from "./constants";
 
+export type RGBColor = { r: number, g: number, b: number};
+export const STANDARD_THEME_COLOR = "#2394fd"
+export const STANDARD_THEME_BACKGROUND_RGBA = "rgba(35, 148, 253, 0.25)"
+export const STANDARD_THEME_HOVER_RGBA = "rgba(35, 148, 253, 0.5)"
+
+export const WHITE_THEME_COLOR = "#ffffff"
+export const WHITE_THEME_BACKGROUND_RGBA = "rgba(255, 255, 255, 0.25)"
+export const WHITE_THEME_HOVER_RGBA = "rgba(255, 255, 255, 0.5)"
+
+export const BLACK_THEME_COLOR = "#000000"
+export const BLACK_THEME_BACKGROUND_RGBA = "rgba(0, 0, 0, 0.25)"
+export const BLACK_THEME_HOVER_RGBA = "rgba(0, 0, 0, 0.5)"
+
 
 export function cleanUpParams(payload: any): any {
     let query = {...payload};
@@ -69,7 +82,7 @@ export function roundNumber(value: string | number | null, power10: number, fixe
     return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
-export function hexToRgb(hex: string): { r: number, g: number, b: number } | null {
+export function hexToRgb(hex: string): RGBColor | null {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
@@ -195,7 +208,7 @@ export function getCurrentViewport(document: HTMLDocument, window: Window): 'xs'
     return 'xl'
 }
 
-export function adjustColorsForContrast(awayTeam: ESPNTeam, homeTeam: ESPNTeam): { r: number, g: number, b: number}[] {
+export function adjustTeamColorsForContrast(awayTeam: { color: string, alternateColor: string }, homeTeam: { color: string, alternateColor: string }): RGBColor[] {
     let awayTeamColor = hexToRgb(awayTeam.color) || { r: 0, g: 0, b: 255 }
     let homeTeamColor = hexToRgb(homeTeam.color) || { r: 255, g: 0, b: 0 }
 
@@ -234,6 +247,26 @@ export function adjustColorsForContrast(awayTeam: ESPNTeam, homeTeam: ESPNTeam):
     }
 
     return [awayTeamColor, homeTeamColor]
+}
+
+export function adjustColorForContrast(primaryColor: RGBColor, altColor: RGBColor, comparisonColor: RGBColor): RGBColor {
+    // const compColor = (isDarkMode) ? hexToRgb("#000000") : hexToRgb("#FFFFFF")
+    let dEBGTeam = deltaE([primaryColor.r, primaryColor.g, primaryColor.b], [comparisonColor.r, comparisonColor.g, comparisonColor.b])
+    let dEBGAlt = deltaE([altColor.r, altColor.g, altColor.b], [comparisonColor.r, comparisonColor.g, comparisonColor.b])
+
+    var teamColor = primaryColor;
+    if (dEBGTeam > 49) {
+        teamColor = primaryColor
+        console.log(`set team color to primary ${JSON.stringify(primaryColor)} because no similarity to background`)
+    } else if (dEBGTeam <= 49 && dEBGAlt > 49) {
+        teamColor = altColor
+        console.log(`set team color to alt ${JSON.stringify(altColor)} because of similarity to background`)
+    } else {
+        teamColor = primaryColor
+        console.log(`set team color to primary ${JSON.stringify(primaryColor)} because backup`)
+    }
+    
+    return teamColor
 }
 
 export function calculateCumulativeSums(arr: number[]): number[] {
@@ -279,7 +312,9 @@ export function retrieveValue(dictionary: any, key: string): string {
     const subKeys = key.split('.')
     let sub = dictionary;
     for (const k of subKeys) {
-        sub = sub[k];
+        if (sub) {
+            sub = sub[k];
+        }
     }
     return sub;
 }

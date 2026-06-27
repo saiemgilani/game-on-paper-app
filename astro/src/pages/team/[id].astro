@@ -4,12 +4,15 @@ import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astr
 import type { SeasonPercentile } from "../../resources/summary";
 import { cleanLocation } from "../../utils/misc";
 import SummaryModel from "../../resources/summary";
+import RadarChart from "../../components/charts/RadarChart.svelte";
 
 const { id } = Astro.params;
 
 const team = {
     id,
-    location: "Georgia Tech"
+    location: "Georgia Tech",
+    color: "#B3A369",
+    alternateColor: "#eeb211"
 }
 
 const breadcrumbs: PageBreadcrumb[] = [
@@ -31,7 +34,14 @@ for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
     allPctls = allPctls.concat(percentiles);
 }
 
-const teamData = await SummaryModel.retrieveTeamData({ team: Number(id) })
+let teamData = await SummaryModel.retrieveTeamData({ team: Number(id) })
+teamData = teamData.map((t:any) => {
+    t.color = team.color
+    t.alternateColor = team.alternateColor
+    t.teamName = cleanLocation(team)
+    return t
+})
+
 // console.log(selectedPercentiles)
 let availableSeasons = teamData.map(b => b.season)
 availableSeasons = [...new Set(availableSeasons)].sort();
@@ -53,4 +63,21 @@ const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${ava
         </div>
     </div>
     <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={"#B3A369"} teamData={teamData} percentiles={allPctls} />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-xs-12">
+                <h2 id="radarHistory" class="d-inline">Profile History</h2>
+                <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            </div>
+
+        </div>
+        <div class="row mb-3">
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <RadarChart client:only id="offensive_canvas" title={`${cleanLocation(team)} 2025 Offensive Profile`} breakdowns={teamData.filter(p => p.season == 2025)} width={400} titleKey="Offensive" opponentKey={null} />
+            </div>
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <RadarChart client:only id="defensive_canvas" title={`${cleanLocation(team)} 2025 Defensive Profile`} breakdowns={teamData.filter(p => p.season == 2025)} width={400} titleKey="Defensive" opponentKey={null} />
+            </div>
+        </div>
+    </div>
 </GenericPage>

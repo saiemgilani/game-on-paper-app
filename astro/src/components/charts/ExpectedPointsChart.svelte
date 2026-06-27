@@ -1,7 +1,7 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import { cleanAbbreviation,  getCurrentViewport, adjustColorsForContrast, calculateCumulativeSums, roundNumber } from '../../utils/misc';
+import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, calculateCumulativeSums, roundNumber } from '../../utils/misc';
 const { id, plays, homeTeam, awayTeam } = $props();
 
 async function generateChart() {
@@ -20,7 +20,7 @@ async function generateChart() {
         y: 0
     });
 
-    const [awayTeamColor, homeTeamColor] = adjustColorsForContrast(awayTeam, homeTeam)
+    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
 
     const epChart = new Chart(document.getElementById("epChart"), {
         type: 'scatter',

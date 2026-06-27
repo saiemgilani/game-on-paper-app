@@ -2,16 +2,12 @@
 import Chart from 'chart.js/auto';
 import { SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, waitForElement } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR } from "../../utils/misc";
 import type { TeamSummary } from "../../resources/summary";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
 const { title, teamColor, teamData, category, metric, percentiles } = $props();
-
-const STANDARD_BOXPLOT_COLOR = "rgb(35, 148, 253)"
-const STANDARD_BOXPLOT_BACKGROUND_RGBA = "rgb(35, 148, 253, 0.25)"
-const STANDARD_BOXPLOT_HOVER_RGBA = "rgb(35, 148, 253, 0.5)"
 
 export function capitalizeFirstLetter(val: string): string {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -375,12 +371,12 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
             {
                 label: teamName,
                 type: "line",
-                borderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
+                borderColor: color || STANDARD_THEME_HOVER_RGBA,
                 data: publishedData.map(d => d.data.y),
-                pointHoverBorderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
-                pointHoverBackgroundColor: color || STANDARD_BOXPLOT_BACKGROUND_RGBA,
-                pointBorderColor: color || STANDARD_BOXPLOT_HOVER_RGBA,
-                pointBackgroundColor: color || STANDARD_BOXPLOT_BACKGROUND_RGBA,
+                pointHoverBorderColor: color || STANDARD_THEME_HOVER_RGBA,
+                pointHoverBackgroundColor: color || STANDARD_THEME_BACKGROUND_RGBA,
+                pointBorderColor: color || STANDARD_THEME_HOVER_RGBA,
+                pointBackgroundColor: color || STANDARD_THEME_BACKGROUND_RGBA,
                 showLine: false,
                 fill: false,
                 pointStyle: publishedData.map(d => d.pointStyle),
@@ -425,9 +421,9 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
             {
                 label: 'National Distribution',
                 type: 'boxplot',
-                backgroundColor: STANDARD_BOXPLOT_BACKGROUND_RGBA,
-                hoverBorderColor: STANDARD_BOXPLOT_HOVER_RGBA,
-                borderColor: STANDARD_BOXPLOT_COLOR,
+                backgroundColor: STANDARD_THEME_BACKGROUND_RGBA,
+                hoverBorderColor: STANDARD_THEME_HOVER_RGBA,
+                borderColor: STANDARD_THEME_COLOR,
                 data: seasons.map(s => {
                     const element = composite[s];
                     const dist = element?.distribution;
