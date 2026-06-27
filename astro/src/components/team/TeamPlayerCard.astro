@@ -1,0 +1,63 @@
+---
+import type { ESPNTeam } from '../../resources/espn';
+import { cleanLocation } from '../../utils/misc';
+
+
+interface Props {
+    team: ESPNTeam
+    season: string | number
+    players: { playerId?: string | number, name: string, title: string, subtitle: string }[]
+}
+
+const { team, season, players } = Astro.props;
+---
+
+<style>
+.img-circle-bg {
+    background: rgba(0, 0, 0, 0.1);
+    width: 150px;
+    -webkit-clip-path: circle(closest-side);
+    clip-path: circle(closest-side);
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-circle-bg {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+
+</style>
+<div class="card border rounded">
+    <div class="card-body">
+        <div class="card-title mb-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2>{season} {cleanLocation(team)} Leaders</h2>
+                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} /> 
+            </div>
+        </div>
+        <div class="d-flex justify-content-evenly">
+            {
+                players.length > 0 && players.map(p => {
+                    return (
+                        <div>
+                            <div class="text-center">
+                                <p class="box-heading">{p.title}</p>
+                                {
+                                    (p.playerId && p.playerId != "NA") && (<a href={`https://www.espn.com/college-football/player/_/id/${p.playerId}`}><img class="img img-fluid img-circle-bg mb-3" src={`https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/${p.playerId}.png&w=150`} /></a>)
+                                }
+                                {
+                                    (!p.playerId || p.playerId == "NA") && (<img class="img img-fluid img-circle-bg mb-3" src="https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=150&scale=crop" />)
+                                }
+                                <h5>{p.name}</h5>
+                                <p class="mx-2">{p.subtitle}</p>
+                            </div>
+                        </div>
+                    )
+                })
+            }
+            {
+                (players.length == 0) && (<p class="mb-0 text-muted text-small">No players to highlight.</p>)
+            }
+        </div>
+    </div>
+</div>

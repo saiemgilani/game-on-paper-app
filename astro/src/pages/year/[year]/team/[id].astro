@@ -9,9 +9,11 @@ import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
 import GenericPage from "../../../../layouts/GenericPage.astro";
 import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
 import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
-import SummaryModel, { type SeasonPercentile } from "../../../../resources/summary";
-import { cleanLocation } from "../../../../utils/misc";
+import SummaryModel, { type PlayerStatistics, type PlayerSummary, type ReceivingStats, type SeasonPercentile } from "../../../../resources/summary";
+import { cleanLocation, roundNumber } from "../../../../utils/misc";
 import TeamCard from "../../../../components/team/TeamCard.astro";
+import TeamPlayerCard from "../../../../components/team/TeamPlayerCard.astro";
+import type { PassingStats } from "../../../../resources/summary";
 
 const { year, id } = Astro.params;
 if (!year) {
@@ -50,9 +52,35 @@ const teamData = teamSummaries.map((t:any) => {
     return t
 })
 
-const passers = await SummaryModel.retrieveTeamData({team: Number(id), year: Number(year), type:'passing'});
-const rushers = await SummaryModel.retrieveTeamData({team: Number(id), year: Number(year), type:'rushing'});
-const receivers = await SummaryModel.retrieveTeamData({team: Number(id), year: Number(year), type:'receiving'});
+const passers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'passing'});
+const rushers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'rushing'});
+const receivers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'receiving'});
+
+const leadingPasser: PlayerSummary | null = (passers.length == 0) ? null : passers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
+const leadingRusher: PlayerSummary | null = (rushers.length == 0) ? null : rushers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
+const leadingReceiver: PlayerSummary | null = (receivers.length == 0) ? null :  receivers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
+
+const leaders = [
+    leadingPasser == null ? null : { 
+        playerId: leadingPasser.playerId, 
+        name: leadingPasser.name, 
+        title: "Passing", 
+        subtitle: `${roundNumber(leadingPasser.advanced.epaPerPlay, 2, 2)} EPA/Play, ${roundNumber(100 * ((leadingPasser.statistics as PassingStats).completionPct), 2, 1)}% Comp, ${leadingPasser.statistics.yards} yd${ (Math.abs(leadingPasser.statistics.yards) == 1) ? "" : "s"}, ${leadingPasser.statistics.touchdowns} TD`
+    },
+    leadingRusher == null ? null : { 
+        playerId: leadingRusher.playerId, 
+        name: leadingRusher.name, 
+        title: "Rushing", 
+        subtitle: `${roundNumber(leadingRusher.advanced.epaPerPlay, 2, 2)} EPA/Play, ${leadingRusher.statistics.plays} Car, ${leadingRusher.statistics.yards} yd${ (Math.abs(leadingRusher.statistics.yards) == 1) ? "" : "s"}, ${leadingRusher.statistics.touchdowns} TD`
+    },
+    leadingReceiver == null ? null : { 
+        playerId: leadingReceiver.playerId, 
+        name: leadingReceiver.name, 
+        title: "Receiving", 
+        subtitle: `${roundNumber(leadingReceiver.advanced.epaPerPlay, 2, 2)} EPA/Play, ${leadingReceiver.statistics.plays} Cat, ${leadingReceiver.statistics.yards} yd${ (Math.abs(leadingReceiver.statistics.yards) == 1) ? "" : "s"}, ${leadingReceiver.statistics.touchdowns} TD`
+    }
+].filter(d => !!d)
+
 ---
 
 <GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
@@ -62,9 +90,17 @@ const receivers = await SummaryModel.retrieveTeamData({team: Number(id), year: N
             <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
                 <TeamCard team={team} season={year} teamSeasonData={teamSeason} summary={teamSummaries[0]} hideNavigation={true} />
             </div>
+            <div class="col-lg-8 col-md-12">
+                <TeamPlayerCard team={team} season={year} players={leaders} />
+            </div>
         </div>
     </div>
-    <TeamRadarChart client:only team={team} teamData={teamData} />
+    <div class="container">
+        <GenericPanel id="radar" title="Profile">
+            <p slot="panel-subtitle" class="text-muted text-small m-0">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            <TeamRadarChart slot="panel-body" client:only team={team} teamData={teamData} />
+        </GenericPanel>
+    </div>
     <div class="container">
         <TeamPassingTable players={passers} />
         <TeamRushingTable players={rushers} />

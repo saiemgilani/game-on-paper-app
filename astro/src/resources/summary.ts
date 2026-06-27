@@ -449,11 +449,66 @@ async function retrieveTeamData(payload: TeamDataRequest, maxLookback = 2014): P
     // }
 }
 
+async function retrievePlayerData(payload: TeamDataRequest, maxLookback = 2014): Promise<PlayerSummary[]> {
+    // try {
+        // let keyParts = []
+        // if (payload.year) {
+        //     keyParts.push(payload.year)
+        // }
+        // if (payload.team_id) {
+        //     keyParts.push(payload.team_id)
+        // }
+        // if (keyParts.length == 0) {
+        //     throw new Error("invalid team data request, must include year AND/OR team")
+        // }
+        // if (payload.type) {
+        //     keyParts.push(payload.type)
+        // }
+        // const key = generateKey(keyParts);
+        // const content = await lruCache.get(key);
+        // if (!content) {
+        //     throw new Error(`receieved invalid/empty data from redis for key: ${key}, repulling`)
+        // }
+        // return JSON.parse(content)
+    // } catch (err) {
+        // logger.error(err)
+    return await retrieveRemotePlayerData(payload, maxLookback);
+    // }
+}
+
+async function retrieveRemotePlayerData(payload: TeamDataRequest, maxLookback = 2014): Promise<PlayerSummary[]> {
+    if (!payload.year && !payload.team) {
+        // logger.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
+        return [];
+    }
+    try {
+        // update redis cache
+        const content = await retrieveRemoteData(payload);
+        // const key = generateKey([year, team_id, type]);
+        // expire every three days so that we get fresh data
+        // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
+        return content;
+    } catch (err) {
+        // logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
+        if (err) {
+            // logger.error(`also err: ${err}`);
+        }
+        if (!payload.year) {
+            return []; 
+        } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
+            return [];
+        } else {
+            return await retrieveRemotePlayerData({year: payload.year - 1, team: payload.team, type: payload.type }, maxLookback);
+        }
+    }
+}
+
 export default {
     retrieveLastUpdated,
     retrieveLeagueData,
     retrievePercentiles,
     retrieveTeamData,
+    retrievePlayerData,
     retrieveAllTeams,
     last_updated: await (async () => {
         const d = await retrieveLastUpdated()
