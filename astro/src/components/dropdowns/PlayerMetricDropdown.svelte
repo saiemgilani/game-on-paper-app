@@ -17,7 +17,7 @@
     }
 
     function onChangeValue(s, c, m) {
-		window.location = `/year/${s}/players/${c}?sort=${m}`;
+		window.location = `/cfb/year/${s}/players/${c}?sort=${m}`;
     }
 
 </script>

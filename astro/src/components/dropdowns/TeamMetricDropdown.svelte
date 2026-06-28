@@ -20,7 +20,7 @@
 		if (onChangeValue) {
             onChangeValue(s, c, m)
         } else {
-            window.location = `/year/${s}/teams/${c}?sort=${m}`;
+            window.location = `/cfb/year/${s}/teams/${c}?sort=${m}`;
         }
     }
 
@@ -58,8 +58,8 @@
             <select class="form-select form-select-md" onchange={onChangeCategory}>
                 <option value="-1" disabled>Choose Category...</option>
                 <option value="differential" selected={(category == 'differential')}>Net Statistics</option>
-                <option value="offensive" selected={(category == 'offensive')}>Offensive Statistics</option>
-                <option value="defensive" selected={(category == 'defensive')}>Defensive Statistics</option>
+                <option value="offensive" selected={(category == 'offensive')}>Offensive</option>
+                <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
             </select>
         </div>
         <div class="col-auto mb-xs-3 mb-sm-0">

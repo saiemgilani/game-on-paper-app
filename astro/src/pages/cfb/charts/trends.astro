@@ -1,10 +1,10 @@
 ---
-import TrendsChart from '../../components/charts/TrendsChart.svelte';
-import TrendsMetricDropdown from '../../components/dropdowns/TrendsMetricDropdown.svelte';
-import GenericPage from '../../layouts/GenericPage.astro';
-import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
-import SummaryModel, { type SeasonPercentile } from '../../resources/summary';
-import { getPercentileKey } from '../../utils/misc';
+import TrendsChart from '../../../components/charts/TrendsChart.svelte';
+import TrendsMetricDropdown from '../../../components/dropdowns/TrendsMetricDropdown.svelte';
+import GenericPage from '../../../layouts/GenericPage.astro';
+import type { PageBreadcrumb } from '../../../layouts/GenericPage.astro';
+import SummaryModel, { type SeasonPercentile } from '../../../resources/summary';
+import { getPercentileKey } from '../../../utils/misc';
 
 const query = Astro.url.searchParams;
 let category = query.get("type") || "offensive";

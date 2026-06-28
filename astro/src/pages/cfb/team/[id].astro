@@ -1,17 +1,17 @@
 ---
-import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
-import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import type { SeasonPercentile, TeamSummary } from "../../resources/summary";
-import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue } from "../../utils/misc";
-import { formatRank } from "../../utils/common";
-import SummaryModel from "../../resources/summary";
-import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
-import DarkModeLogos from "../../components/DarkModeLogos.astro";
-import { retrieveTeamInformation } from "../../resources/espn";
+import TeamTrendsChart from "../../../components/charts/TeamTrendsChart.svelte";
+import GenericPage, { type PageBreadcrumb } from "../../../layouts/GenericPage.astro";
+import type { SeasonPercentile, TeamSummary } from "../../../resources/summary";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue } from "../../../utils/misc";
+import { formatRank } from "../../../utils/common";
+import SummaryModel from "../../../resources/summary";
+import TeamRadarChart from "../../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../../components/DarkModeLogos.astro";
+import { retrieveTeamInformation } from "../../../resources/espn";
 
 const { id } = Astro.params;
 if (!id) {
-    return Astro.redirect("/404");
+    return Astro.rewrite("/404");
 }
 
 const team = await retrieveTeamInformation(id)
@@ -19,7 +19,7 @@ const team = await retrieveTeamInformation(id)
 const breadcrumbs: PageBreadcrumb[] = [
     {
         title: "Teams",
-        url: "/teams",
+        url: "/cfb/teams",
         active: false
     },
     {
@@ -62,7 +62,7 @@ function createSeasonRow(summary: TeamSummary): string {
     const cols = ["differential.overall.epaPerPlay", "offensive.overall.epaPerPlay", "defensive.overall.epaPerPlay"].map(x => createSeasonColumn(summary, x)).join("")
     return `
     <tr>
-        <td><a href="/year/${summary.season}/team/${team.id}">${summary.season}</a></td>
+        <td><a href="/cfb/year/${summary.season}/team/${team.id}">${summary.season}</a></td>
         ${cols}
     </tr>
     `

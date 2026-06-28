@@ -1,11 +1,11 @@
 ---
-import GamePage from '../../components/game/GamePage.astro';
-import PreGamePage from '../../components/game/PreGamePage.astro';
-import { retrieveGamePage } from '../../resources/espn';
+import GamePage from '../../../components/game/GamePage.astro';
+import PreGamePage from '../../../components/game/PreGamePage.astro';
+import { retrieveGamePage } from '../../../resources/espn';
 
 const { id } = Astro.params;
 if (!id) {
-    return Astro.redirect("/"); 
+    return Astro.redirect("/cfb/"); 
 }
 const espnGame = await retrieveGamePage(id);
 

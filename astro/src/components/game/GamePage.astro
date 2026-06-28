@@ -33,7 +33,7 @@ try {
     game = await retrieveProcessedGame(id);
 } catch (e) {
     console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
-    return Astro.redirect("/404")
+    return Astro.rewrite("/404")
 }
 
 const percentiles = await SummaryModel.retrievePercentiles({ year: (CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year });

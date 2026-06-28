@@ -1,7 +1,7 @@
 ---
-import { AVAILABLE_SEASONS } from "../utils/constants";
+import { AVAILABLE_SEASONS, LAST_YEAR } from "../utils/constants";
 
-
+const METRIC_YEAR = LAST_YEAR;
 ---
 
 <header class="p-3 mb-3 border-bottom">
@@ -19,13 +19,13 @@ import { AVAILABLE_SEASONS } from "../utils/constants";
                     </a>
                     <ul class="dropdown-menu">
                         <h6 class="dropdown-header">Team Level</h6>
-                        <li><a class="dropdown-item" href="/cfb/teams/differential">Net Statistics</a></li>
-                        <li><a class="dropdown-item" href="/cfb/teams/offensive">Offensive</a></li>
-                        <li><a class="dropdown-item" href="/cfb/teams/defensive">Defensive</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/teams/differential`}>Net Statistics</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/teams/offensive`}>Offensive</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/teams/defensive`}>Defensive</a></li>
                         <h6 class="dropdown-header">Player Level</h6>
-                        <li><a class="dropdown-item" href="/cfb/players/passing">Passing</a></li>
-                        <li><a class="dropdown-item" href="/cfb/players/rushing">Rushing</a></li>
-                        <li><a class="dropdown-item" href="/cfb/players/receiving">Receiving</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/players/passing`}>Passing</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/players/rushing`}>Rushing</a></li>
+                        <li><a class="dropdown-item" href={`/cfb/year/${METRIC_YEAR}/players/receiving`}>Receiving</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -34,8 +34,8 @@ import { AVAILABLE_SEASONS } from "../utils/constants";
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/cfb/charts/trends">Trends</a></li>
-                        <h6 class="dropdown-header">Team Level</h6>
-                        <li><a class="dropdown-item" href="/cfb/charts/team/epa">Adj EPA/Play</a></li>
+                        <!-- <h6 class="dropdown-header">Team Level</h6>
+                        <li><a class="dropdown-item" href="/cfb/charts/team/epa">Adj EPA/Play</a></li> -->
                     </ul>
                 </li>
                 <li class="nav-item dropdown">

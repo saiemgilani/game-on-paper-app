@@ -1,12 +1,12 @@
 ---
-import PlayerLeaderboardPage from "../../../../components/leaderboards/PlayerLeaderboardPage.astro";
-import { CURRENT_YEAR } from "../../../../utils/constants";
+import PlayerLeaderboardPage from "../../../../../components/leaderboards/PlayerLeaderboardPage.astro";
+import { CURRENT_YEAR } from "../../../../../utils/constants";
 
 const { year, category } = Astro.params;
 const query = Astro.url.searchParams;
 const metric = query.get("sort") || "advanced.epaPerPlay";
 if (year == `${CURRENT_YEAR}`) {
-    return Astro.redirect(`/year/${LAST_YEAR}/players/${category}`)
+    return Astro.redirect(`/cfb/year/${LAST_YEAR}/players/${category}`)
 }
 ---
 

@@ -1,26 +1,26 @@
 ---
-import TeamRadarChart from "../../../../components/charts/TeamRadarChart.svelte";
-import DarkModeLogos from "../../../../components/DarkModeLogos.astro";
-import GameThumb from "../../../../components/schedule/GameThumb.astro";
-import TeamPassingTable from "../../../../components/team/tables/TeamPassingTable.astro";
-import TeamRushingTable from "../../../../components/team/tables/TeamRushingTable.astro";
-import TeamReceivingTable from "../../../../components/team/tables/TeamReceivingTable.astro";
-import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
-import GenericPage from "../../../../layouts/GenericPage.astro";
-import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
-import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
-import SummaryModel, { type PlayerStatistics, type PlayerSummary, type ReceivingStats, type SeasonPercentile } from "../../../../resources/summary";
-import { cleanLocation, roundNumber } from "../../../../utils/misc";
-import TeamCard from "../../../../components/team/TeamCard.astro";
-import TeamPlayerCard from "../../../../components/team/TeamPlayerCard.astro";
-import type { PassingStats } from "../../../../resources/summary";
+import TeamRadarChart from "../../../../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../../../../components/DarkModeLogos.astro";
+import GameThumb from "../../../../../components/schedule/GameThumb.astro";
+import TeamPassingTable from "../../../../../components/team/tables/TeamPassingTable.astro";
+import TeamRushingTable from "../../../../../components/team/tables/TeamRushingTable.astro";
+import TeamReceivingTable from "../../../../../components/team/tables/TeamReceivingTable.astro";
+import type { PageBreadcrumb } from "../../../../../layouts/GenericPage.astro";
+import GenericPage from "../../../../../layouts/GenericPage.astro";
+import GenericPanel from "../../../../../layouts/panel/GenericPanel.astro";
+import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../../resources/espn";
+import SummaryModel, { type PlayerStatistics, type PlayerSummary, type ReceivingStats, type SeasonPercentile } from "../../../../../resources/summary";
+import { cleanLocation, roundNumber } from "../../../../../utils/misc";
+import TeamCard from "../../../../../components/team/TeamCard.astro";
+import TeamPlayerCard from "../../../../../components/team/TeamPlayerCard.astro";
+import type { PassingStats } from "../../../../../resources/summary";
 
 const { year, id } = Astro.params;
 if (!year) {
-    return Astro.redirect("/404");
+    return Astro.rewrite("/404");
 }
 if (!id) {
-    return Astro.redirect("/404");
+    return Astro.rewrite("/404");
 }
 
 const team = await retrieveTeamInformation(id)
@@ -28,17 +28,17 @@ const teamSeason = await retrieveTeamSeasonInformation(year, id)
 const breadcrumbs: PageBreadcrumb[] = [
     {
         title: "Teams",
-        url: "/teams",
+        url: "/cfb/teams",
         active: false
     },
     {
         title: cleanLocation(team),
-        url: `/team/${id}`,
+        url: `/cfb/team/${id}`,
         active: false
     },
     {
         title: year,
-        url: `/year/${year}/team/${id}`,
+        url: `/cfb/year/${year}/team/${id}`,
         active: true
     }
 ]
@@ -46,7 +46,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 const teamSummaries = await SummaryModel.retrieveTeamData({ team: Number(id), year: Number(year) })
 if (!teamSummaries) {
-    return Astro.redirect('/404');
+    return Astro.rewrite('/404');
 }
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -86,7 +86,7 @@ const leaders = [
 
 ---
 
-<GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
+<GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/cfb/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={[team.id]} />
     <div class="container">
         <div class="row my-3">
