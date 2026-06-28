@@ -45,6 +45,9 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 
 const teamSummaries = await SummaryModel.retrieveTeamData({ team: Number(id), year: Number(year) })
+if (!teamSummaries) {
+    return Astro.redirect('/404');
+}
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor
@@ -102,9 +105,9 @@ const leaders = [
         </GenericPanel>
     </div>
     <div class="container">
-        <TeamPassingTable players={passers} />
-        <TeamRushingTable players={rushers} />
-        <TeamReceivingTable players={receivers} />
+        <TeamPassingTable players={passers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
+        <TeamRushingTable players={rushers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
+        <TeamReceivingTable players={receivers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
     </div>
     <div class="container mb-3">
         <GenericPanel id="schedule" title="Schedule">

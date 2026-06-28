@@ -51,7 +51,7 @@ function createSeasonColumn(summary: TeamSummary, key: string): string {
     const val = roundNumber(retrieveValue(summary, key), 2, 2)
     const rank = retrieveValue(summary, `${key}Rank`)
 
-    const colorRampClass = generateColorRampValue(134 - parseInt(rank), 134)
+    const colorRampClass = generateColorRampValue(parseInt(rank), 134, true)
     const rankStr = formatRank(parseInt(rank))
     return `
     <td class="numeral ${colorRampClass}" style="text-align: center;">${val} <small class="align-self-center" style="opacity: 50%">#${rankStr}</small></td>

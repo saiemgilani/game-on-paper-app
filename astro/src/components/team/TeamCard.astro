@@ -51,7 +51,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                     <tr>
                         <td class="numeral text-center" style="width: 33%">{overall}{conf}</td>
                         <td class="numeral text-center" style="width: 33%">{finish}</td>
-                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.epaPerPlayRank, 134)}`}>{generateMarginalString(summary?.differential?.overall?.epaPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.epaPerPlayRank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.epaPerPlayRank, 134, true)}`}>{generateMarginalString(summary?.differential?.overall?.epaPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.epaPerPlayRank)}</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -71,9 +71,9 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                 </thead>
                 <tbody>
                     <tr>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.yardsPerPlayRank, 134, false)}`} style="width: 33%">{generateMarginalString(summary?.differential?.overall?.yardsPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.yardsPerPlayRank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.availableYardsPctRank, 134, false)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.availableYardsPct || summary?.differential?.overall?.availableYardsPct == 0) ? (100 * summary?.differential?.overall?.availableYardsPct) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.availableYardsPctRank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.successRateRank, 134, false)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.successRate || summary?.differential?.overall?.successRate == 0) ? 100 * summary?.differential?.overall?.successRate : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.successRateRank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.yardsPerPlayRank, 134, true)}`} style="width: 33%">{generateMarginalString(summary?.differential?.overall?.yardsPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.yardsPerPlayRank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.availableYardsPctRank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.availableYardsPct || summary?.differential?.overall?.availableYardsPct == 0) ? (100 * summary?.differential?.overall?.availableYardsPct) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.availableYardsPctRank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.successRateRank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.successRate || summary?.differential?.overall?.successRate == 0) ? 100 * summary?.differential?.overall?.successRate : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.successRateRank)}</span></td>
                     </tr>
                 </tbody>
             </table>

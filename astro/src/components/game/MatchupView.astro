@@ -53,7 +53,7 @@ function produceRankHtml(rank: number, addClass: string = "", addStyle: string =
         rankString = "N/A"
     }
 
-    return `<td class="${generateColorRampValue(134 - rank, 134) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
+    return `<td class="${generateColorRampValue(rank, 134, true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
 }
 
 function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any, awaySideOfBall: string, category: string, statKey: string): string {

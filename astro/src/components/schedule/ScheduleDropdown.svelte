@@ -57,7 +57,7 @@
         </div>
 		
         <div class="col-lg-auto mb-3">
-            <select class="form-select form-select-lg">
+            <select class="form-select form-select-lg" onchange={(e) => selectedGroup.value = e.target.value}>
 				{#each GLOBAL_GROUP_LIST as g}
 					<option value={g.id} selected={selectedGroup.value == g.id}>{g.name}</option>
 				{/each}
