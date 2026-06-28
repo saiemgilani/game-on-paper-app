@@ -101,7 +101,7 @@ const leaders = [
     <div class="container">
         <GenericPanel id="radar" title="Profile">
             <p slot="panel-subtitle" class="text-muted text-small m-0">Data from <a href="https://github.com/sportsdataverse/cfbfastR">cfbfastR</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
-            <TeamRadarChart slot="panel-body" client:only team={team} teamData={teamData} />
+            <TeamRadarChart slot="panel-body" client:only team={team} teamData={teamData} showSeasonPicker={false} />
         </GenericPanel>
     </div>
     <div class="container">

@@ -4,7 +4,7 @@ import type { ChartItem } from "chart.js";
 import { waitForElement, cleanLocation } from "../../utils/misc";
 import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 
-const { team, teamData } = $props();
+const { team, teamData, showSeasonPicker } = $props();
 let season = $state(teamData[0].season)
 const availableTeamSeasons = [...new Set(teamData.map((t: any) => t.season))]
 
@@ -76,7 +76,7 @@ function onChangeValue(e: Event) {
 
 
 <div class="container">
-    {#if availableTeamSeasons.length > 1}
+    {#if showSeasonPicker}
     <div class="row mb-3">
         <div class="col-lg-6 col-xs-12">
             <h2 class="d-inline">Profile History</h2>
