@@ -8,7 +8,7 @@ interface Props {
     team: ESPNTeam
     season: string | number
     teamSeasonData: any
-    summary?: TeamSummary
+    summary?: TeamSummary | null
     hideNavigation: boolean
 }
 
@@ -51,7 +51,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                     <tr>
                         <td class="numeral text-center" style="width: 33%">{overall}{conf}</td>
                         <td class="numeral text-center" style="width: 33%">{finish}</td>
-                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.epaPerPlayRank || -1, 134)}`}>{generateMarginalString(summary?.differential?.overall?.epaPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.epaPerPlayRank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.epaPerPlayRank, 134)}`}>{generateMarginalString(summary?.differential?.overall?.epaPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.epaPerPlayRank)}</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -80,7 +80,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
         </div>
 
         {
-            (summary && !hideNavigation) && (<a class="text-left" href={`/cfb/year/${season}/team/${team.id}`}>View full profile</a>)
+            (summary && !hideNavigation) && (<a class="text-left" href={`/cfb/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>)
         }
     </div>
 </div>

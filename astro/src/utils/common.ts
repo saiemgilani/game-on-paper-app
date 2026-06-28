@@ -112,9 +112,9 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     // const conf = CONFERENCE_MAP[confId];
     const conf = GLOBAL_GROUP_LIST.find((p) => p.id == confId);
     if (confStuff && conf && !indyConfs.includes(confId)) {
-        base += `, ${confRec} ${conf}`
+        base += `, ${confRec} ${conf.name}`
     } else if (conf) {
-        base += ` ${conf}`
+        base += ` ${conf.name}`
     }
     return `<span class="small text-muted h6">${base}</span>`;
 }

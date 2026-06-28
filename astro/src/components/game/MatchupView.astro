@@ -8,14 +8,14 @@ import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
-    homeTeamSummary: TeamSummary
-    awayTeamSummary: TeamSummary
+    homeTeamSummary: TeamSummary | null
+    awayTeamSummary: TeamSummary | null
 }
 
 const { homeTeam, awayTeam, homeTeamSummary, awayTeamSummary } = Astro.props;
 
 
-function cleanBreakdown(breakdown: TeamSummary): any {
+function cleanBreakdown(breakdown: TeamSummary | null): any {
     if (!breakdown || !Object.keys(breakdown).includes("offensive")) {
         return {
             "offensive": {

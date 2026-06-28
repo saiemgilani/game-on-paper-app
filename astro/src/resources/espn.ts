@@ -341,8 +341,9 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         if (seasontype) {
             query.append("seasontype", `${seasontype || 2}`);
         }
-        
-        const resp = await fetch(`https://cdn.espn.com/core/college-football/schedule?${query}`);
+        const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
+        // console.log(reqURL)
+        const resp = await fetch(reqURL);
         if (!resp.ok) {
             throw new Error(`Response status: ${resp.status}`);
         }
@@ -365,7 +366,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
 
         for (const [_, schedule] of Object.entries(actualContent)) {
             if (schedule && Object.keys(schedule).includes("games") && schedule.games) {
-                result = result.concat(schedule)
+                result = result.concat(schedule.games)
             }
         }
 

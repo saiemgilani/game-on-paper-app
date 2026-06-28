@@ -29,7 +29,7 @@ const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226
                 <span class=`small text-muted ${(rank != 99) ? "me-1" : ""}`>{(rank != 99) ? ("#" + rank) : ""}</span>
                 <span class="align-self-center h4 mb-0"><Fragment set:html={formatScore(cleanAbbreviation(comp.team), winner, completed)} /> <Fragment set:html={possessionMarker} /></span>
             </div>
-            {getRecordString(comp)}
+            <Fragment set:html={getRecordString(comp)} />
         </div>
     </div>
     <span class="align-self-center h4"><strong hidden={(status.type.name.includes("STATUS_SCHEDULED") || status.type.detail.includes("Cancel") || status.type.detail.includes("Postpone"))}><Fragment set:html={formatScore(comp.score, winner, completed)} /></strong></span>

@@ -411,8 +411,9 @@ async function retrieveRemoteTeamData(payload: TeamDataRequest, maxLookback = 20
         // logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
         if (err) {
             // logger.error(`also err: ${err}`);
-        }
-        if (!payload.year) {
+            console.log(err)
+            return [];
+        } else if (!payload.year) {
             return []; 
         } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
             return [];

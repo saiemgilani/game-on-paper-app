@@ -1,5 +1,5 @@
 ---
-import { getRemoteGames } from "../../resources/espn";
+import { getRemoteGames, type ESPNScheduleEvent } from "../../resources/espn";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
@@ -22,7 +22,14 @@ if (season) {
 titleParts = titleParts.concat(["College Football", "Game on Paper"])
 
 const titleText = titleParts.join(" | ")
-const games = await getRemoteGames(season, seasontype, week, group);
+const games: ESPNScheduleEvent[] = await getRemoteGames(season, seasontype, week, group);
+console.log(JSON.stringify(games[0]))
+// try {
+//     games = await getRemoteGames(season, seasontype, week, group);
+// } catch (e) {
+//     console.error(e);
+//     games = [];
+// }
 // games.sort((a, b) => {
 //     if (a.status.type.name.includes("IN_PROGRESS") && !b.status.type.name.includes("IN_PROGRESS")) {
 //         return -1;
@@ -57,7 +64,8 @@ const games = await getRemoteGames(season, seasontype, week, group);
 //     }
 // })
 
-const hasActiveGames = games.find((item: any) => !(item.status.type.completed == true || item.status.type.name.includes("SCHEDULED") || item.status.type.name.includes("CANCEL") || item.status.type.name.includes("POSTPONE") || item.status.type.name.includes("DELAY")))
+const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(item.status?.type.completed == true || item.status?.type.name.includes("SCHEDULED") || item.status?.type.name.includes("CANCEL") || item.status?.type.name.includes("POSTPONE") || item.status?.type.name.includes("DELAY")))
+
 const allTeamIds = games.map(g => {
     return g.competitions[0].competitors.map(t => t.id)
 }).reduce((a,b) => a.concat(b), [])
