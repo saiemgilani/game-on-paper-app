@@ -15,12 +15,15 @@ interface Props {
 const { title, subtitle, slug, breadcrumbs } = Astro.props;
 
 function generateBreadcrumbHtml(b: PageBreadcrumb): string {
-    const anchorContent = b.url ? `<a href="${b.url}">${b.title}</a>` : b.title;
+    let anchorContent = b.url ? `<a href="${b.url}">${b.title}</a>` : b.title;
+    if (b.active) {
+        anchorContent = b.title;
+    }
     return `<li class="breadcrumb-item ${b.active ? 'active' : ''}" aria-current="page">${anchorContent}</li>`;
 }
 
 function generateBreadcrumbsListHtml(): string {
-    if (breadcrumbs.length > 0) {
+    if (breadcrumbs.length == 0) {
         return ""
     }
 
