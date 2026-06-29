@@ -1,0 +1,9 @@
+[project]
+name = "gameonpaper-python"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "Flask",
+    "sportsdataverse==0.0.71",
+    "gunicorn"
+]

@@ -91,7 +91,7 @@ export interface ProcessedPlay {
   EPA_success_passing_down: boolean
   EPA_success_passing_down_EPA?: number
   EPA_success_rush: boolean
-  EPA_success_rush_EPA: boolean
+  EPA_success_rush_EPA?: number
   EPA_success_standard_down: boolean
   EPA_success_standard_down_EPA?: number
   EP_between?: number
@@ -104,10 +104,8 @@ export interface ProcessedPlay {
   TFL_pass: boolean
   TFL_rush: boolean
   action_play: boolean
-  adj_rush_yardage?: number
-  assisted_by_player_id?: string
-  assisted_by_player_name: string
-  athlete_name: string
+  adj_rush_yardage: any
+  athlete_name?: string
   awayScore: number
   awayTeamAbbrev: string
   awayTeamId: number
@@ -116,23 +114,29 @@ export interface ProcessedPlay {
   awayTeamNameAlt: string
   awayTimeoutCalled: boolean
   away_wp_after: number
+  away_wp_after_naive: number
   away_wp_before: number
+  away_wp_before_naive: number
   change_of_pos_team: boolean
-  change_of_poss: number
-  cleaned_text: string
+  change_of_poss: boolean
   clock: ESPNGameClock
-  "clock.minutes": string
-  "clock.seconds": string
+  "clock.minutes": number
+  "clock.seconds": number
   completion: boolean
+  cp?: number
+  cpoe?: number
   def_EPA: number
+  def_fumble_lost: boolean
   def_pos_team: number
   def_pos_team_score: number
   def_pos_unit: string
   def_wp_after: number
+  def_wp_after_naive: number
   def_wp_before: number
+  def_wp_before_naive: number
   defense_score_play: boolean
-  distance?: number
-  down?: number
+  distance: number
+  down: number
   down_1: boolean
   down_1_end: boolean
   down_2: boolean
@@ -170,14 +174,12 @@ export interface ProcessedPlay {
   drive_start: number
   drive_stopped: boolean
   drive_total_yards: number
-  dropback: boolean
   early_down: boolean
   early_down_pass: boolean
   early_down_rush: boolean
   end: ProcessedPlayState
   "end.ExpScoreDiff": number
   "end.ExpScoreDiff_Time_Ratio": number
-  "end.ExpScoreDiff_case"?: number
   "end.TimeSecsRem": number
   "end.adj_TimeSecsRem": number
   "end.awayScore": number
@@ -186,7 +188,6 @@ export interface ProcessedPlay {
   "end.def_pos_team.id": number
   "end.def_pos_team.name": string
   "end.def_pos_team_score": number
-  "end.def_team.id": number
   "end.elapsed_share": number
   "end.homeScore": number
   "end.homeTeamTimeouts": number
@@ -198,30 +199,51 @@ export interface ProcessedPlay {
   "end.pos_team_score": number
   "end.pos_team_spread": number
   "end.spread_time": number
-  "end.team.id_missing": boolean
   "end.yard": number
-  end_of_half: boolean
-  end_state_missing: boolean
+  end_of_half?: boolean
+  era: number
   expectedPoints: ProcessedAdvancedMetric
+  extra_point_result?: string
   fg_attempt: boolean
+  fg_block_player_id: any
+  fg_block_player_name: any
+  fg_kicker_player_id?: number
+  fg_kicker_player_name?: string
   fg_made: boolean
+  fg_make_prob?: number
+  fg_return_player_id: any
+  fg_return_player_name: any
+  fg_team?: number
+  fg_wp?: number
+  fg_wp_diff?: number
+  field_goal_result?: string
   firstHalfKickoffTeamId: number
   first_down_created: boolean
-  forced_by_player_id?: string
-  forced_by_player_name: string
+  first_down_prob?: number
   forced_fumble: boolean
+  forced_fumble_team: number
+  fourth_down_recommendation?: string
+  fumble_forced_player_id?: number
+  fumble_forced_player_name?: string
   fumble_lost: boolean
+  fumble_or_muff: boolean
+  fumble_player_id: any
+  fumble_player_name: any
   fumble_recovered: boolean
+  fumble_recovered_player_id: any
+  fumble_recovered_player_name?: string
+  fumble_recovery_team?: number
   fumble_vec: boolean
-  fumbler_player_id?: string
-  fumbler_player_name: string
+  fumbling_team?: number
   gameSpread: number
   gameSpreadAvailable: boolean
-  game_complete: boolean
-  game_id_x: number
-  game_id_y?: number
+  game_id: number
   game_play_number: number
-  half: string
+  go_boost?: number
+  go_wp?: number
+  go_wp_diff?: number
+  goal_to_go: boolean
+  half: number
   havoc: boolean
   highlight_run: boolean
   highlight_yards?: number
@@ -235,29 +257,44 @@ export interface ProcessedPlay {
   homeTeamSpread: number
   homeTimeoutCalled: boolean
   home_wp_after: number
+  home_wp_after_naive: number
   home_wp_before: number
+  home_wp_before_naive: number
   id: number
   int: boolean
   int_td: boolean
+  int_turnover: boolean
+  interception_player_id: any
+  interception_player_name: any
+  interception_team: number
   isPenalty: boolean
   isTurnover: boolean
+  is_blocked_fg_turnover: boolean
+  is_blocked_punt_turnover: boolean
+  is_def_pos_team_turnover: boolean
   is_home: boolean
+  is_pos_team_turnover: boolean
+  is_st_turnover: boolean
+  is_turnover: boolean
   kick_play: boolean
-  kicker_player_id?: string
-  kicker_player_name: string
+  kick_return_team?: number
+  kicking_team?: number
   kickoff_downed: boolean
   kickoff_fair_catch: boolean
   kickoff_onside: boolean
   kickoff_oob: boolean
   kickoff_play: boolean
+  kickoff_player_id: any
+  kickoff_player_name?: string
+  kickoff_return_player_id: any
+  kickoff_return_player_name: any
   kickoff_safety: boolean
   kickoff_tb: boolean
-  kneel_down: boolean
   lag_EP_end?: number
   lag_HA_score_diff?: number
   lag_awayScore: number
   lag_change_of_pos_team: boolean
-  lag_half?: string
+  lag_half?: number
   lag_homeScore: number
   lag_pos_score_diff: number
   lag_pos_team: number
@@ -265,20 +302,24 @@ export interface ProcessedPlay {
   late_down: boolean
   late_down_pass: boolean
   late_down_rush: boolean
-  lead_half: string
+  lead_half: number
   lead_play_type?: string
   lead_pos_team?: number
   lead_pos_team2?: number
   lead_scoringPlay: boolean
   lead_start_distance: number
   lead_start_down: number
-  lead_start_team: number
+  lead_start_team: string
   lead_start_yardsToEndzone: number
   lead_text: string
   lead_wp_before?: number
   lead_wp_before2?: number
-  line_yards?: number
+  lead_wp_before2_naive?: number
+  lead_wp_before_naive?: number
+  line_yards: any
+  make_fg_wp?: number
   middle_8: boolean
+  miss_fg_wp?: number
   modelInputs: ProcessedModelInputs
   modified: string
   net_HA_score_pts?: number
@@ -289,26 +330,27 @@ export interface ProcessedPlay {
   open_field_yards?: number
   opp_highlight_yards?: number
   opportunity_run: boolean
+  orig_play_type: string
   overUnder: number
   pass: boolean
   pass_attempt: boolean
   pass_breakup: boolean
-  pass_defender_player_id?: string
-  pass_defender_player_name: string
+  pass_breakup_player_id?: number
+  pass_breakup_player_name?: string
+  pass_breakup_team: number
+  pass_depth?: string
+  pass_direction?: string
   pass_epa?: number
+  pass_oe?: number
   pass_td: boolean
   pass_weight?: number
-  passer_player_id?: string
-  passer_player_name: string
+  passer_player_id?: number
+  passer_player_name?: string
   passing_down: boolean
-  pat_scorer_player_id?: string
-  pat_scorer_player_name: string
   pen_epa?: number
   pen_weight?: number
-  penalized_player_id?: string
-  penalized_player_name: string
+  penalized_team?: number
   penalty_1st_conv: boolean
-  penalty_assessed_on_kickoff: boolean
   penalty_declined: boolean
   penalty_detail?: string
   penalty_flag: boolean
@@ -317,15 +359,15 @@ export interface ProcessedPlay {
   penalty_offset: boolean
   penalty_safety: boolean
   penalty_text?: string
+  penalty_yards_signed: number
   period: number
   "period.number": number
   play: boolean
-  playType: string
-  play_id: string
   "pointAfterAttempt.abbreviation"?: string
   "pointAfterAttempt.id"?: number
   "pointAfterAttempt.text"?: string
   "pointAfterAttempt.value"?: number
+  pos_fumble_lost: boolean
   pos_score_diff: number
   pos_score_diff_end: number
   pos_score_diff_start: number
@@ -333,44 +375,57 @@ export interface ProcessedPlay {
   pos_team: number
   pos_team_score: number
   pos_unit: string
-  power_rush_attempt: boolean
-  power_rush_success: boolean
+  power_rush_attempt?: boolean
+  power_rush_success?: boolean
   priority: boolean
+  prob_2pt?: number
   prog_drive_EPA?: number
   prog_drive_WPA: number
   punt: boolean
+  punt_block_player_id: any
+  punt_block_player_name?: string
+  punt_block_return_player_id: any
+  punt_block_return_player_name: any
   punt_blocked: boolean
   punt_downed: boolean
   punt_fair_catch: boolean
   punt_oob: boolean
   punt_play: boolean
+  punt_return_player_id: any
+  punt_return_player_name?: string
+  punt_return_team?: number
   punt_safety: boolean
   punt_tb: boolean
-  punter_player_id?: string
-  punter_player_name: string
+  punt_team?: number
+  punt_wp?: number
+  punt_wp_diff?: number
+  punter_player_id?: number
+  punter_player_name?: string
   qbr_epa: number
-  receiver_player_id?: string
-  receiver_player_name: string
-  recoverer_player_id?: string
-  recoverer_player_name: string
-  returner_player_id?: string
-  returner_player_name: string
+  receiver_player_id?: number
+  receiver_player_name?: string
+  recovery_team: any
+  recovery_team_2: any
+  return_team?: number
   rush: boolean
+  rush_direction?: string
   rush_epa?: number
   rush_td: boolean
   rush_weight?: number
-  rusher_player_id?: string
-  rusher_player_name: string
+  rusher_player_id?: number
+  rusher_player_name?: string
   rz_play: boolean
   sack: boolean
   sack_epa?: number
+  sack_player_id?: number
+  sack_player_id2: any
+  sack_player_name?: string
+  sack_player_name2: any
+  sack_players: any
+  sack_team: number
   sack_vec: boolean
   sack_weight?: number
-  sacked_by_player_id?: string
-  sacked_by_player_name: string
   safety: boolean
-  scorer_player_id?: string
-  scorer_player_name: string
   scoringPlay: boolean
   scoring_opp: boolean
   scoring_play: boolean
@@ -378,9 +433,9 @@ export interface ProcessedPlay {
   season: number
   seasonType: number
   second_level_yards?: number
-  sequenceNumber: string
-  short_rush_attempt: boolean
-  short_rush_success: boolean
+  sequenceNumber: number
+  short_rush_attempt?: boolean
+  short_rush_success?: boolean
   sp: boolean
   standard_down: boolean
   start: ProcessedPlayState
@@ -410,10 +465,9 @@ export interface ProcessedPlay {
   "start.yard": number
   "start.yardsToEndzone.touchback": number
   statYardage: number
+  status_type_completed: boolean
   stopped_run: boolean
   stuffed_run: boolean
-  tackler_player_id?: string
-  tackler_player_name: string
   target: boolean
   td_check: boolean
   td_play: boolean
@@ -421,29 +475,40 @@ export interface ProcessedPlay {
   text: string
   text_dupe: boolean
   touchdown: boolean
+  turnover_team?: number
   turnover_vec: boolean
+  two_point_conv_result: any
+  two_pt_recommendation?: string
+  two_pt_wp?: number
+  two_pt_wp_diff?: number
   type: ESPNPlayType
+  under_2: boolean
   wallclock: string
   week: number
   weight: number
   winProbability: ProcessedAdvancedMetric
   wp_after: number
-  wp_after_case?: number
+  wp_after_naive: number
   wp_before: number
+  wp_before_naive: number
+  wp_fail?: number
+  wp_succeed?: number
   wp_touchback: number
+  wp_touchback_naive: number
   wpa: number
+  wpa_naive: number
+  xp_wp?: number
+  xpass?: number
   yds_fg: any
   yds_fumble_return: any
   yds_int_return: any
   yds_kickoff: any
   yds_kickoff_return?: number
-  yds_passing?: number
-  yds_penalty?: number
+  yds_penalty?: string
   yds_punt_gained?: number
   yds_punt_return?: number
   yds_punted?: number
   yds_receiving?: number
-  yds_receiving_case?: number
   yds_rushed?: number
   yds_sacked?: number
 }
@@ -542,6 +607,9 @@ export interface ProcessedPassingBoxScore {
   rush_epa: number
   sack_epa: number
   spread: number
+  CompPct?: number
+  xCompPct?: number
+  CPOE?: number
 }
 
 export interface ProcessedReceivingBoxScore {
@@ -738,55 +806,32 @@ export interface ProcessedTurnoverBoxScore {
 
 export type ProcessedTeamMetricBoxScore = ProcessedTurnoverBoxScore | ProcessedTeamBoxScore | ProcessedDefensiveBoxScore | ProcessedDriveBoxScore | ProcessedSituationalBoxScore;
 
-export type ProcessedGameInfo = ESPNCompetition & {
+export type ProcessedGameTeamInfo = {
     away: ESPNTeam
     home: ESPNTeam
-    gei?: number
 }
 
-export interface ProcessedRawGame {
+export interface ProcessedGame {
     id: number
     count: number
-    box_score: ProcessedBoxScore
+    advBoxScore: ProcessedBoxScore
     plays: ProcessedPlay[]
-    homeTeamId: number
-    awayTeamId: number
     drives: { previous?: ProcessedDrive[], current?: ProcessedDrive }
-    // scoringPlays: ProcessedPlay[]
+    scoringPlays: ProcessedPlay[]
     winprobability: ESPNWinProbability[]
-    // boxScore: ProcessedBoxScore
     homeTeamSpread: number
     overUnder: number
     header: ESPNGameHeader
     broadcasts: ESPNGeoBroadcast[]
-    // gameInfo: ProcessedGameInfo
     season: ESPNSeason
-}
-
-export interface ProcessedGame extends Omit<ProcessedRawGame, 'box_score'> {
-    plays: ProcessedPlay[]
-    scoringPlays: ProcessedPlay[]
-    advBoxScore: ProcessedBoxScore
-    gameInfo: ProcessedGameInfo
+    gei?: number
+    teamInfo: ProcessedGameTeamInfo
 }
 
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:7000';
 
 export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
-    const processedGame = await processPlays(gameId);
-    
-    const pbp: ProcessedGame = {
-        ...processedGame,
-        plays: processedGame.plays,
-        scoringPlays: processedGame.plays.filter((p: ProcessedPlay) => ("scoringPlay" in p) && (p.scoringPlay == true)),
-        advBoxScore: processedGame["box_score"],
-        // boxScore: processedGame['boxScore'],
-        gameInfo: {
-            ...(processedGame.header.competitions[0]),
-            away: processedGame.header.competitions[0].competitors[1].team,
-            home: processedGame.header.competitions[0].competitors[0].team,
-        }
-    };
+    const pbp: ProcessedGame = await processPlays(gameId);
 
     for (let [key, baseData] of Object.entries(pbp.advBoxScore)) {
         const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
@@ -796,9 +841,9 @@ export async function retrieveProcessedGame(gameId: string | number): Promise<Pr
         }
 
         baseData.sort((a: any, b: any) => {
-            if (a[teamKey] == pbp.gameInfo.away.id && b[teamKey] == pbp.gameInfo.home.id) {
+            if (a[teamKey] == pbp.teamInfo.away.id && b[teamKey] == pbp.teamInfo.home.id) {
                 return -1;
-            } else if (b[teamKey] == pbp.gameInfo.away.id && a[teamKey] == pbp.gameInfo.home.id) {
+            } else if (b[teamKey] == pbp.teamInfo.away.id && a[teamKey] == pbp.teamInfo.home.id) {
                 return 1;
             } else {
                 return 0;
@@ -806,9 +851,10 @@ export async function retrieveProcessedGame(gameId: string | number): Promise<Pr
         });
     }
 
-    const homeTeamId = processedGame.homeTeamId;
-    const awayTeamId = processedGame.awayTeamId;
-    if (processedGame != null && pbp.gameInfo != null && pbp.gameInfo.status.type.completed == true) {
+    const homeTeamId = parseInt(pbp.teamInfo.home.id);
+    const awayTeamId = parseInt(pbp.teamInfo.away.id);
+    const status = pbp.header.competitions[0].status
+    if (pbp != null && status.type.completed == true) {
         if (pbp.plays[pbp.plays.length - 1].pos_team == homeTeamId && (pbp.plays[pbp.plays.length - 1].homeScore > pbp.plays[pbp.plays.length - 1].awayScore)) {
             pbp.plays[pbp.plays.length - 1].winProbability.after = 1.0
         } else if (pbp.plays[pbp.plays.length - 1].pos_team == awayTeamId && (pbp.plays[pbp.plays.length - 1].homeScore < pbp.plays[pbp.plays.length - 1].awayScore)) {
@@ -817,7 +863,7 @@ export async function retrieveProcessedGame(gameId: string | number): Promise<Pr
             pbp.plays[pbp.plays.length - 1].winProbability.after = 0.0
         }
 
-        pbp.gameInfo.gei = calculateGEI(pbp.plays, homeTeamId)
+        pbp.gei = calculateGEI(pbp.plays, homeTeamId)
     }
 
     return pbp;
@@ -867,7 +913,7 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number): Promise<ProcessedRawGame> {
+async function processPlays(gameId: string | number): Promise<ProcessedGame> {
     const req = await fetch(`${PYTHON_HTTP_URL}/cfb/process`, {
         method: "POST",
         body: JSON.stringify({ gameId })
@@ -875,6 +921,6 @@ async function processPlays(gameId: string | number): Promise<ProcessedRawGame> 
     const content = await req.text();
     // console.log(content)
     // console.log(req.status)
-    const resp: ProcessedRawGame = JSON.parse(content);
+    const resp: ProcessedGame = JSON.parse(content);
     return resp;
 }

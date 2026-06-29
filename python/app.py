@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 import numpy as np
 from datetime import datetime as dt, timezone as tz
-from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
+import polars as pl
+from sportsdataverse.cfb import CFBPlayProcess
+
 import os
 import logging
 import json
@@ -29,13 +31,10 @@ def after_request(response):
 def process():
     try:
         gameId = request.get_json(force=True)["gameId"]
-        processed_data = CFBPlayProcess(gameId=gameId)
-        pbp = processed_data.espn_cfb_pbp()
-        processed_data.run_processing_pipeline()
-        tmp_json = processed_data.plays_json.to_json(orient="records")
-        jsonified_df = json.loads(tmp_json)
+        game = CFBPlayProcess(gameId=gameId, join_participants=False)
+        game.espn_cfb_pbp()
+        processed_game = game.run_processing_pipeline()
 
-        box = processed_data.create_box_score()
         bad_cols = [
             "start.distance",
             "start.yardLine",
@@ -76,7 +75,7 @@ def process():
             "scoringType.abbreviation",
         ]
         # clean records back into ESPN format
-        for record in jsonified_df:
+        for record in processed_game["plays"]:
             record["clock"] = {
                 "displayValue": record["clock.displayValue"],
                 "minutes": record["clock.minutes"],
@@ -225,34 +224,7 @@ def process():
             for col in bad_cols:
                 record.pop(col, None)
 
-        result = {
-            "id": gameId,
-            "count": len(jsonified_df),
-            "plays": jsonified_df,
-            "box_score": box,
-            "homeTeamId": pbp["header"]["competitions"][0]["competitors"][0]["team"][
-                "id"
-            ],
-            "awayTeamId": pbp["header"]["competitions"][0]["competitors"][1]["team"][
-                "id"
-            ],
-            "drives": pbp["drives"],
-            "scoringPlays": np.array(pbp["scoringPlays"]).tolist(),
-            "winprobability": np.array(pbp["winprobability"]).tolist(),
-            "boxScore": pbp["boxscore"],
-            "homeTeamSpread": np.array(pbp["homeTeamSpread"]).tolist(),
-            "overUnder": np.array(pbp["overUnder"]).tolist(),
-            "header": pbp["header"],
-            "broadcasts": np.array(pbp["broadcasts"]).tolist(),
-            "videos": np.array(pbp["videos"]).tolist(),
-            "standings": pbp["standings"],
-            "pickcenter": np.array(pbp["pickcenter"]).tolist(),
-            "espnWinProbability": np.array(pbp["espnWP"]).tolist(),
-            "gameInfo": np.array(pbp["gameInfo"]).tolist(),
-            "season": np.array(pbp["season"]).tolist(),
-        }
-        # logging.getLogger("root").info(result)
-        return jsonify(result), 200
+        return jsonify(processed_game), 200
     except KeyError as e:
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
@@ -280,5 +252,5 @@ def healthcheck():
     return jsonify({"status": "ok"})
 
 
-# if __name__ == "__main__":
-#     app.run(port=7000, debug=False, host="0.0.0.0")
+if __name__ == "__main__":
+    app.run(port=7000, debug=False, host="0.0.0.0")
