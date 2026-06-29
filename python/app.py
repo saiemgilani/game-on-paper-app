@@ -31,7 +31,8 @@ def after_request(response):
 def process():
     try:
         gameId = request.get_json(force=True)["gameId"]
-        game = CFBPlayProcess(gameId=gameId, join_participants=False)
+        game = CFBPlayProcess(gameId=gameId)
+        game.join_participants = False
         game.espn_cfb_pbp()
         processed_game = game.run_processing_pipeline()
 

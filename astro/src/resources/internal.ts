@@ -831,7 +831,12 @@ export interface ProcessedGame {
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:7000';
 
 export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
-    const pbp: ProcessedGame = await processPlays(gameId);
+    const processed: ProcessedGame = await processPlays(gameId);
+
+    const pbp: ProcessedGame = {
+        ...processed,
+        scoringPlays: processed.plays.filter((p: ProcessedPlay) => ("scoringPlay" in p) && (p.scoringPlay == true)),
+    };
 
     for (let [key, baseData] of Object.entries(pbp.advBoxScore)) {
         const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []

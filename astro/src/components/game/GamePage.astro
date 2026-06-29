@@ -28,34 +28,38 @@ interface Props {
 }
 
 const { id } = Astro.props;
-let game: ProcessedGame;
+let game: ProcessedGame | null = null;
 try {
     game = await retrieveProcessedGame(id);
 } catch (e) {
     console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
+}
+
+if (!game) {
     return Astro.rewrite("/404")
 }
 
 const percentiles = await SummaryModel.retrievePercentiles({ year: (CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year });
-const homeComp = game.gameInfo.competitors[0];
-const awayComp = game.gameInfo.competitors[1];
+const homeComp = game.header.competitions[0].competitors[0];
+const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
+const gameStatus = game.header.competitions[0].status;
 
 let title = "";
 let subtitle = "";
-if (game.gameInfo.status.type.completed == true || game.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || (game.gameInfo.status.type.name.includes("STATUS_DELAYED") && game.plays.length > 0)) {
+if (gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0)) {
     title = `Game: ${cleanLocation(awayComp.team)} ${awayComp.score}, ${cleanLocation(homeComp.team)} ${homeComp.score} | Game on Paper`
 } else {
     title = `Game: ${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)} | Game on Paper`
 }
 subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)}`;
 
-const statusDetail = game.gameInfo.status.type.detail;
-const statusDescription = game.gameInfo.status.type.description ?? "Scheduled";
-const isGameInactive = (game.gameInfo.status.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
+const statusDetail = gameStatus.type.detail;
+const statusDescription = gameStatus.type.description ?? "Scheduled";
+const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
 
 
 const scrollerItems: ScrollerItem[] = [
@@ -134,7 +138,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
-        <DarkModeLogos teamIds={[game.homeTeamId, game.awayTeamId]} />
+        <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>
         <div class="container-fluid">
@@ -150,7 +154,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                                 (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                             }
                             {
-                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.gameInfo.date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
+                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.header.competitions[0].date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
                             }
                             {
                                 (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
@@ -158,7 +162,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                         </div>
                     </div>
                     <div class="col-2 d-flex justify-content-end align-items-center">
-                        <WatchButton game={game.gameInfo as ESPNCompetition} />
+                        <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
                     </div>
                 </div>
             </header>
@@ -171,7 +175,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                     <WinProbabilityChart client:only game={game} percentiles={percentiles} />
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.away} />
+                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} />
                 </div>
             </div>
             <div class="row mb-3">
@@ -388,7 +392,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                                 (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
                             }
                             {
-                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} showGuide={true} homeTeam={game.gameInfo.home} awayTeam={game.gameInfo.home} isNeutralSite={game.gameInfo.neutralSite} />
+                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} showGuide={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} />
                             }
                         </div>
                     </Panel>
@@ -398,19 +402,19 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="all-plays" title="All Plays">
                         {
-                            (game.gameInfo.status.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
+                            (gameStatus.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
                         }
                         <div class="row" slot="panel-body">
                             {
                                 (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
                             }
                             {
-                                (game.plays.length > 0) && (game.gameInfo.status.type.completed != true) && (
+                                (game.plays.length > 0) && (gameStatus.type.completed != true) && (
                                     <PlaysTable plays={game.plays.toReversed()} prefix="all" expandable={true} showGuide={false} />
                                 )
                             }
                             {
-                                (game.plays.length > 0) && (game.gameInfo.status.type.completed == true) && (
+                                (game.plays.length > 0) && (gameStatus.type.completed == true) && (
                                     <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={false} />
                                 )
                             }

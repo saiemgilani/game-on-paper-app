@@ -6,10 +6,11 @@ import { GradientFillLineController } from '../../resources/chart'
 
 const { game, percentiles } = $props()
 
-const homeComp = game.gameInfo.competitors[0];
-const awayComp = game.gameInfo.competitors[1];
+const homeComp = game.header.competitions[0].competitors[0];
+const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
+const gameStatus = game.header.competitions[0].status;
 
 function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null) {
     console.log(
@@ -133,9 +134,9 @@ function printSpread() {
     }
 }
 const lastPlay = game.plays[game.plays.length - 1]
-const gameInProgress = !(game.gameInfo.status.type.completed == true) && ((game.gameInfo.status.type.name.includes("STATUS_IN_PROGRESS") || game.gameInfo.status.type.name.includes("STATUS_END_PERIOD") || game.gameInfo.status.type.name.includes("STATUS_HALFTIME")) && game.plays.length > 0);
+const gameInProgress = !(gameStatus.type.completed == true) && ((gameStatus.type.name.includes("STATUS_IN_PROGRESS") || gameStatus.type.name.includes("STATUS_END_PERIOD") || gameStatus.type.name.includes("STATUS_HALFTIME")) && game.plays.length > 0);
 
-const geiVal = (Math.round(game.gameInfo.gei * 100) / 100) 
+const geiVal = (Math.round((game.gei || 0) * 100) / 100) 
 const geiPctl = geiGenerateColorRampValue(geiVal)
 const geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
 
@@ -186,7 +187,7 @@ async function generateChart() {
     var homeTeamWP = game.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
     // handle end of game
-    if (game.gameInfo.status.type.completed == true) {
+    if (gameStatus.type.completed == true) {
         if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
             timestamps.push((timestamps[timestamps.length - 1] + 1))
             homeTeamWP.push(translateWP(1.0))
