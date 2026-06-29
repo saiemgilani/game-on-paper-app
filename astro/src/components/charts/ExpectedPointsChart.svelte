@@ -60,7 +60,7 @@ async function generateChart() {
         },
         plugins: [
             {
-                afterDraw: (chart) => {
+                beforeDatasetDraw: (chart) => {
                     let viewport = getCurrentViewport(document, window)
                     if (viewport == "xl" || viewport == "lg") {
                         let sizeWidth = chart.ctx.canvas.clientWidth;

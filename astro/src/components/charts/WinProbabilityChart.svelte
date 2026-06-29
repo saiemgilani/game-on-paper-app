@@ -211,7 +211,26 @@ async function generateChart() {
 
     var wpChart = new Chart(document.getElementById("wpChart"), {
         type: 'GradientFillLineController',
-        plugins: periodMarkers,
+        plugins: [
+            ...periodMarkers,
+            {
+                beforeDatasetDraw: (chart) => {
+                    let viewport = getCurrentViewport(document, window)
+                    if (viewport == "xl" || viewport == "lg") {
+                        let sizeWidth = chart.ctx.canvas.clientWidth;
+                        let sizeHeight = chart.ctx.canvas.clientHeight;
+                        let imgSize = 75.0;
+
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.fillStyle = (isDarkMode) ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.5 * (sizeHeight / 8) - 45)
+                        chart.ctx.restore();
+                    }
+                }
+            }
+        ],
         data: {
             labels: timestamps,
             datasets: [
