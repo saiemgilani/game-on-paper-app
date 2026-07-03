@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', generateChart);
                 | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            | <a id="wp-download" download={`game-wp-${game.id}.jpg`} href="#">Download Chart</a>
+            | <a id="wp-download" download={`game-wp-${game.gameId}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380"><canvas id="wpChart"></canvas></div>
