@@ -1,14 +1,27 @@
 ---
 import GamePage from '../../../components/game/GamePage.astro';
 import PreGamePage from '../../../components/game/PreGamePage.astro';
-import { retrieveGamePage } from '../../../resources/espn';
+import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../../resources/espn';
 
 const { id } = Astro.params;
 if (!id) {
     return Astro.redirect("/cfb/"); 
 }
-const espnGame = await retrieveGamePage(id);
-
+let espnGame: ESPNPlayByPlayResponse | null;
+try {
+    espnGame = await retrieveGamePage(id);
+    if (!espnGame) {
+        throw new Error(`Game ID ${id} had no data`);
+    }
+    if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
+        Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+    } else {
+        Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
+    }
+} catch (e) {
+    console.error(e);
+    return Astro.redirect("/404")
+}
 ---
 {
     (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />

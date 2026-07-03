@@ -8,6 +8,7 @@ const metric = query.get("sort") || "advanced.epaPerPlay";
 if (year == `${CURRENT_YEAR}`) {
     return Astro.redirect(`/cfb/year/${LAST_YEAR}/players/${category}`)
 }
+Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 ---
 
 <PlayerLeaderboardPage season={parseInt(year || `${CURRENT_YEAR}`)} category={category} metric={metric} />
