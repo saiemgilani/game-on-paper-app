@@ -441,7 +441,7 @@ dependencies = [
 requires-dist = [
     { name = "flask" },
     { name = "gunicorn" },
-    { name = "sportsdataverse", specifier = "==0.0.71" },
+    { name = "sportsdataverse", git = "https://github.com/sportsdataverse/sportsdataverse-py" },
 ]
 
 [[package]]
@@ -2082,7 +2082,7 @@ wheels = [
 [[package]]
 name = "sportsdataverse"
 version = "0.0.71"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/sportsdataverse/sportsdataverse-py#9cc8e1268b02a6b96f976aff2774a9fe013f901d" }
 dependencies = [
     { name = "attrs" },
     { name = "beautifulsoup4" },
@@ -2108,10 +2108,6 @@ dependencies = [
     { name = "tqdm" },
     { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/99/9af24119fa42084fe4b97a942e8c1e33be96befc2f60f948a5b56eae20ba/sportsdataverse-0.0.71.tar.gz", hash = "sha256:b0f4592eb12569626c9e6a04f46fa8c3695236dbebabfa0d886b5578426e85cc", size = 14071463 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/52/ae0606760ea4d4700c965e6f7ec0395fc1ee009c565064cdfcd3414d11e5/sportsdataverse-0.0.71-py3-none-any.whl", hash = "sha256:95e442a28588a4211674ccacd36ab6e04e0744a59c421b9ff0c1a41eede95b5e", size = 14563593 },
 ]
 
 [[package]]

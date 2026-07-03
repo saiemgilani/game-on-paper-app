@@ -2,7 +2,7 @@ FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS pybuilder
 
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ && \
+    apt-get install -y --no-install-recommends gcc g++ git && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
