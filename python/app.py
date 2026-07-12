@@ -43,6 +43,7 @@ def process():
         game = CFBPlayProcess(gameId=gameId)
         game.join_participants = True
         game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+        espn_logged = False
         with stage(timings, "espn_fetch"):
             game.espn_cfb_pbp()
         TEL.push(
@@ -57,6 +58,7 @@ def process():
                 "error": None,
             },
         )
+        espn_logged = True
         with stage(timings, "pipeline"):
             processed_game = game.run_processing_pipeline()
 
@@ -254,18 +256,19 @@ def process():
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
         )
-        TEL.push(
-            "upstream_log",
-            {
-                "service": "python",
-                "target": "espn_pbp",
-                "status": None,
-                "duration_ms": timings.get("espn_fetch_ms"),
-                "ok": False,
-                "game_id": str(gameId) if "gameId" in locals() else None,
-                "error": ("KeyError: %r" % (e,))[:500],
-            },
-        )
+        if not locals().get("espn_logged"):  # fetch itself failed; don't double-count
+            TEL.push(
+                "upstream_log",
+                {
+                    "service": "python",
+                    "target": "espn_pbp",
+                    "status": None,
+                    "duration_ms": timings.get("espn_fetch_ms"),
+                    "ok": False,
+                    "game_id": str(gameId) if "gameId" in locals() else None,
+                    "error": ("KeyError: %r" % (e,))[:500],
+                },
+            )
         TEL.log_error(
             "ESPN payload malformed (KeyError: %r)" % (e,),
             path=request.path,

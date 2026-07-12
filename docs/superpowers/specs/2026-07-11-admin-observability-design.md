@@ -32,7 +32,7 @@ python service is the single Postgres client** — it keeps the buffered batch
 writer, and additionally exposes a secret-guarded ingest endpoint that the Astro
 side fires events at, fail-open, one POST per request.
 
-```
+```text
 browser ──(JS errors, web vitals)──> POST /api/client-log (Astro API route, rate-limited)─┐
 Astro middleware (src/middleware.ts): per-request timing/IP/UA/status/outcome ────────────┤ one fire-and-forget
 Astro timedFetch wrapper (resources/: espn.ts, internal.ts, summary.ts latency) ──────────┤ POST per request
@@ -71,7 +71,7 @@ Unchanged from the original design. Roles follow `02_schemas_roles.sql`:
 | Table | Columns (beyond `ts timestamptz NOT NULL DEFAULT now()`) | Written from |
 |---|---|---|
 | `request_log` | service (`astro`/`python`), method, path, route_pattern, status smallint, duration_ms real, ip inet, ua text, referrer text, game_id text, bytes_out int, cache_status text, render_outcome text (`ok`/`degraded`/`failed`/null), missing_datasets text[] | Astro middleware (via ingest); Flask after_request |
-| `upstream_log` | service, target (`espn_pbp`/`espn_scoreboard`/`espn_schedule`/`flask_process`/`summary`/`other`), status smallint, duration_ms real, ok bool, game_id text, error text | Astro `timedFetch` (via ingest); python espn stage |
+| `upstream_log` | service, target (`espn_pbp`/`espn_scoreboard`/`espn_schedule`/`espn_team`/`espn_team_schedule`/`flask_process`/`summary`/`other`), status smallint, duration_ms real, ok bool, game_id text, error text | Astro `timedFetch` (via ingest); python espn stage |
 | `error_log` | service (`astro`/`python`/`client`), level, message, stack, path, game_id, context jsonb | Astro middleware catch + client beacon; Flask except blocks |
 | `client_event` | type (`js_error`/`web_vital`), name, value real, path, game_id, ua, ip inet | `/api/client-log` beacon |
 | `system_stat` | service, rss_mb real, heap_mb real, cpu_pct real, event_loop_lag_ms real, redis_mem_mb real | python 30 s sampler (python only; Workers have no meaningful process stats) |

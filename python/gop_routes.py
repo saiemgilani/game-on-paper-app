@@ -7,12 +7,15 @@ nothing is buffered.
 
 import hmac
 import ipaddress
+import logging
 import os
 import threading
 
 from flask import Blueprint, jsonify, request
 
 from telemetry import TEL, _TABLES
+
+log = logging.getLogger("app.gop_admin")
 
 bp = Blueprint("gop", __name__)
 
@@ -69,7 +72,8 @@ def _q(sql, params=None):
                 cur.execute(sql, params or {})
                 cols = [d.name for d in cur.description]
                 return [dict(zip(cols, r)) for r in cur.fetchall()]
-        except Exception:
+        except Exception as exc:  # fail-open, but never silently
+            log.warning("gop admin query failed: %s", exc)
             try:
                 if _ro_conn is not None:
                     _ro_conn.close()
