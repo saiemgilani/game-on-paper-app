@@ -171,7 +171,7 @@ export const prerender = false;
         g.cache_hit == null ? '—' : fmt(100 * g.cache_hit) + '%', g.degraded, g.failed,
         fetchBy[g.game_id] ? `<span class="mono">${fetchBy[g.game_id].status ?? 'ERR'} · ${fmt(fetchBy[g.game_id].duration_ms)} ms</span>` : '—'] })));
     document.querySelectorAll('#t-games tbody tr[data-game]').forEach((tr) =>
-      tr.addEventListener('click', () => loadPageDetail(tr.dataset.game)));
+      tr.addEventListener('click', () => loadPageDetail(tr.dataset.game).catch(() => {})));
   }
 
   async function loadPageDetail(gameId) {
@@ -182,7 +182,7 @@ export const prerender = false;
     document.getElementById('page-detail').innerHTML =
       `<h2>Page detail · game ${esc(gameId)}</h2><div class="card">` +
       `<div style="display:flex;justify-content:space-between;margin-bottom:8px"><b class="mono">game_id ${esc(gameId)}</b>` +
-      (latest ? `<span class="pill ${latest.render_outcome === 'failed' ? 'crit' : 'warn'}">${latest.render_outcome}${latest.render_outcome === 'degraded' ? ' · salvageable' : ''}</span>` : '<span class="pill good">ok</span>') + '</div>' +
+      (latest ? `<span class="pill ${latest.render_outcome === 'failed' ? 'crit' : 'warn'}">${esc(latest.render_outcome)}${latest.render_outcome === 'degraded' ? ' · salvageable' : ''}</span>` : '<span class="pill good">ok</span>') + '</div>' +
       `<div class="bars" id="pd-bars"></div><div class="legend" id="pd-legend"></div>` +
       `<h2>Missing datasets · 24h</h2>` + (d.missing.length
         ? d.missing.map((m) => `<div class="kv"><span class="mono">${esc(m.dataset)}</span><b>${m.n} renders</b></div>`).join('')
