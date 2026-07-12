@@ -8,4 +8,10 @@ dependencies = [
     "gunicorn",
     "flask-compress>=1.24",
     "orjson>=3.11.9",
+    "psycopg[binary]>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
 ]
