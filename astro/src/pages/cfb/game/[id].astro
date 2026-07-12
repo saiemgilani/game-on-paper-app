@@ -13,11 +13,11 @@ try {
     if (!espnGame) {
         throw new Error(`Game ID ${id} had no data`);
     }
-    if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
-        Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
-    } else {
-        Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
-    }
+    // if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
+    //     Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+    // } else {
+    //     Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
+    // }
 } catch (e) {
     console.error(e);
     return Astro.redirect("/404")

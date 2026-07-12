@@ -43,8 +43,8 @@ const breadcrumbs: PageBreadcrumb[] = [
 ]
 
 const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
-const title = `National Trends | ${yearRange} | Game on Paper`
-Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+const title = `National Trends | ${yearRange} | Game on Paper`;
+// Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 
 ---
 

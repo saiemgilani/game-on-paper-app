@@ -82,9 +82,9 @@ const leaders = [
         title: "Receiving", 
         subtitle: `${roundNumber(leadingReceiver.advanced.epaPerPlay, 2, 2)} EPA/Play, ${leadingReceiver.statistics.plays} Cat, ${leadingReceiver.statistics.yards} yd${ (Math.abs(leadingReceiver.statistics.yards) == 1) ? "" : "s"}, ${leadingReceiver.statistics.touchdowns} TD`
     }
-].filter(d => !!d)
+].filter(d => !!d);
 
-Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+// Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 ---
 
 <GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/cfb/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
