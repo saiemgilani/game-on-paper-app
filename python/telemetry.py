@@ -101,6 +101,10 @@ class Telemetry:
         self._conn = None
         self._buf = []
         self._lock = threading.Lock()
+        self._flush_lock = (
+            threading.Lock()
+        )  # serializes flushes; _conn only touched under it
+        self._wake = threading.Event()  # signals worker to flush early at batch_rows
         self.dropped = 0
         self._started = False
 
@@ -119,40 +123,48 @@ class Telemetry:
             r = dict(row)
             r.setdefault("ts", datetime.now(timezone.utc))
             self._buf.append((table, r))
+            buffered = len(self._buf)
+        if buffered >= self.batch_rows:
+            self._wake.set()  # worker flushes; no PG I/O on request threads
 
     def flush(self):
         if not self.enabled:
             return {"written": 0, "dropped": self.dropped}
-        with self._lock:
-            batch, self._buf = (
-                self._buf[: self.batch_rows],
-                self._buf[self.batch_rows :],
-            )
-        if not batch:
-            return {"written": 0, "dropped": self.dropped}
-        by_table = {}
-        for table, r in batch:
-            by_table.setdefault(table, []).append(r)
-        written = 0
-        for table, rows in by_table.items():
-            cols = _TABLES[table]
-            values = [tuple(r.get(c) for c in cols) for r in rows]
-            try:
-                if self._conn is None or getattr(self._conn, "closed", False):
-                    self._conn = self._conn_factory()
-                with self._conn.cursor() as cur:
-                    cur.executemany(_SQL[table], values)
-                self._conn.commit()
-                written += len(rows)
-            except Exception:  # fail-open: drop batch, reset connection
-                self.dropped += len(rows)
+        with self._flush_lock:  # serialize flushes: _conn check-then-act must not race
+            with self._lock:
+                batch, self._buf = (
+                    self._buf[: self.batch_rows],
+                    self._buf[self.batch_rows :],
+                )
+            if not batch:
+                return {"written": 0, "dropped": self.dropped}
+            by_table = {}
+            for table, r in batch:
+                by_table.setdefault(table, []).append(r)
+            written = 0
+            for table, rows in by_table.items():
+                cols = _TABLES[table]
+                values = [tuple(r.get(c) for c in cols) for r in rows]
                 try:
-                    if self._conn is not None:
-                        self._conn.close()
-                except Exception:
-                    pass
-                self._conn = None
-        return {"written": written, "dropped": self.dropped}
+                    if self._conn is None or getattr(self._conn, "closed", False):
+                        self._conn = self._conn_factory()
+                    with self._conn.cursor() as cur:
+                        cur.executemany(_SQL[table], values)
+                    self._conn.commit()
+                    written += len(rows)
+                except Exception:  # fail-open: drop batch, reset connection
+                    log.warning(
+                        "gop telemetry flush failed; dropped %d rows", len(rows)
+                    )
+                    with self._lock:
+                        self.dropped += len(rows)
+                    try:
+                        if self._conn is not None:
+                            self._conn.close()
+                    except Exception:
+                        pass
+                    self._conn = None
+            return {"written": written, "dropped": self.dropped}
 
     def stats(self):
         with self._lock:
@@ -216,12 +228,13 @@ class Telemetry:
         self._started = True
 
         def run():
-            n = 0
+            last_sample = 0.0
             while True:
-                time.sleep(self.flush_s)
-                n += 1
-                if n % 6 == 0:  # every ~30s
-                    self._sample_system()
+                self._wake.wait(timeout=self.flush_s)  # early wakeup at batch_rows
+                self._wake.clear()
+                if time.monotonic() - last_sample >= 30.0:  # time-based: eager
+                    self._sample_system()  # wakeups would skew a counter
+                    last_sample = time.monotonic()
                 try:
                     self.flush()
                 except Exception:
