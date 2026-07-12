@@ -52,7 +52,7 @@ async function waitToGenerateChart() {
         console.error(e);
         const container = document.getElementById(`radar_container`);
         if (container) {
-            container.innerHTML = `<div class="col-12"><p class='m-0 mb-3 text-muted text-small'>Unable to generate charts. Please reach out to <a href="https://twitter.com/akeaswaran">@akeaswaran</a> or <a href="https://twitter.com/saiemgilani">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p></div>`
+            container.innerHTML = `<div class="col-12"><p class='m-0 mb-3 text-muted text-small'>Unable to generate charts. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p></div>`
         }
     }
 }
@@ -80,7 +80,7 @@ function onChangeValue(e: Event) {
     <div class="row mb-3">
         <div class="col-lg-6 col-xs-12">
             <h2 class="d-inline">Profile History</h2>
-            <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
         </div>
         <div class="ms-auto col-lg-2 col-xs-12">
             <select class="form-select form-select-md" onchange={onChangeValue}>
