@@ -328,7 +328,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                         </div>
-                    </Panel>
+                    </TeamPanel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam}>
@@ -341,7 +341,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                         </div>
-                    </Panel>
+                    </TeamPanel>
                 </div>
             </div>
             <div class="row mb-3">

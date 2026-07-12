@@ -147,7 +147,7 @@ for (const p of plays) {
                     <td class="align-middle tm-segment">
                         <p class="m-0"><strong>{roundNumber((passMatrix["deep"]["right"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
                         <p class="m-0"><small>{passMatrix["deep"]["right"]["completions"] || 0}/{passMatrix["deep"]["right"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["right"]["yards"] || 0} yds</p>
+                        <p class="m-0"><small>{passMatrix["deep"]["right"]["yards"] || 0} yds</small></p>
                     </td>
                 </tr>
                 <tr>
@@ -168,7 +168,7 @@ for (const p of plays) {
                     <td class="align-middle tm-segment">
                         <p class="m-0"><strong>{roundNumber((passMatrix["short"]["right"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
                         <p class="m-0"><small>{passMatrix["short"]["right"]["completions"] || 0}/{passMatrix["short"]["right"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["short"]["right"]["yards"] || 0} yds</p>
+                        <p class="m-0"><small>{passMatrix["short"]["right"]["yards"] || 0} yds</small></p>
                     </td>
                 </tr>
                 <tr>
@@ -177,7 +177,7 @@ for (const p of plays) {
                     <th class="align-middle">Middle</th>
                     <th class="align-middle">Right</th>
                 </tr>
-            </tfoot>
+            </tbody>
             <caption>Built off play-by-play data that started appearing in 2025. Sacks and passes that lack depth and direction information are not included.</caption>
         </table>
     </div>
