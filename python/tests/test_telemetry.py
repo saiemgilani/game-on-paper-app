@@ -99,3 +99,27 @@ def test_stage_contextmanager_records_ms():
     with stage(timings, "espn_fetch"):
         time.sleep(0.01)
     assert timings["espn_fetch_ms"] >= 5
+
+
+def test_push_signals_eager_flush_at_batch_rows():
+    tel, _ = make(batch_rows=3)
+    for i in range(2):
+        tel.push("system_stat", {"rss_mb": i})
+    assert not tel._wake.is_set()
+    tel.push("system_stat", {"rss_mb": 2})
+    assert tel._wake.is_set()
+
+
+def test_concurrent_flush_failure_counts_all_drops():
+    import threading as _t
+
+    tel, _ = make(fail=True, batch_rows=1)
+    tel.push("error_log", {"message": "a"})
+    tel.push("error_log", {"message": "b"})
+    threads = [_t.Thread(target=tel.flush) for _ in range(2)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    tel.flush()  # drain anything left
+    assert tel.stats()["dropped"] == 2
