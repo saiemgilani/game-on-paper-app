@@ -65,4 +65,6 @@ if python or Postgres is down the site is unaffected. `TELEMETRY_ENABLED=0`
 disables. Setup runbook: sdv-db `docs/gop-telemetry-runbook.md`. Local dev:
 `astro/.env.example` + `scripts/seed_gop.py`. Visitor analytics: Plausible
 Cloud (tag in `GenericPage.astro`).
-
+`astro/wrangler.jsonc` sets `global_fetch_strictly_public`, so on Workers the
+`http://python:7000` fallback is refused by the runtime — `PYTHON_HTTP_URL`
+must be set as a wrangler secret to python's public URL.

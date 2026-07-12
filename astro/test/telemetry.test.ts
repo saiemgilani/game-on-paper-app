@@ -84,4 +84,9 @@ describe('clientIp', () => {
     expect(clientIp(new Headers(), '3.3.3.3')).toBe('3.3.3.3');
     expect(clientIp(new Headers())).toBeNull();
   });
+  test('rejects malformed proxy-header values and falls through', () => {
+    expect(clientIp(new Headers({ 'cf-connecting-ip': 'nonsense injection' }))).toBeNull();
+    expect(clientIp(new Headers({ 'cf-connecting-ip': 'junk value', 'x-real-ip': '2.2.2.2' }))).toBe('2.2.2.2');
+    expect(clientIp(new Headers({ 'cf-connecting-ip': '2001:db8::1' }))).toBe('2001:db8::1');
+  });
 });
