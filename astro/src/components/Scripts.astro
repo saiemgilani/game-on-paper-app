@@ -24,12 +24,14 @@
       .observe({ type: 'largest-contentful-paint', buffered: true });
     new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { if (en.duration > inpVal) inpVal = en.duration; }); })
       .observe({ type: 'event', buffered: true, durationThreshold: 40 });
+    var vitalsSent = false;
     addEventListener('visibilitychange', function () {
-      if (document.visibilityState !== 'hidden') return;
+      if (vitalsSent || document.visibilityState !== 'hidden') return;
+      vitalsSent = true;
       if (lcpVal) send({ type: 'web_vital', name: 'LCP', value: lcpVal });
       send({ type: 'web_vital', name: 'CLS', value: clsVal });
       if (inpVal) send({ type: 'web_vital', name: 'INP', value: inpVal });
-    }, { once: true });
+    });
   } catch (e) {}
 })();
 </script>
