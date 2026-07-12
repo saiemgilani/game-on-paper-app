@@ -77,6 +77,41 @@ def test_ingest_strips_client_supplied_ts(client):
     assert "ts" not in row
 
 
+def test_ingest_normalizes_invalid_ip_to_none(client):
+    r = client.post(
+        "/gop/ingest",
+        headers={"X-GOP-Key": "k"},
+        json={
+            "events": [
+                {
+                    "table": "request_log",
+                    "row": {"service": "astro", "ip": "not-an-ip"},
+                },
+            ]
+        },
+    )
+    assert r.status_code == 202
+    _, row = client.tel.pushed[0]
+    assert row["ip"] is None
+
+
+def test_ingest_preserves_valid_ip(client):
+    client.post(
+        "/gop/ingest",
+        headers={"X-GOP-Key": "k"},
+        json={
+            "events": [
+                {
+                    "table": "request_log",
+                    "row": {"service": "astro", "ip": "9.9.9.9"},
+                },
+            ]
+        },
+    )
+    _, row = client.tel.pushed[0]
+    assert row["ip"] == "9.9.9.9"
+
+
 def test_admin_requires_key_and_knows_names(client, monkeypatch):
     monkeypatch.setattr(gop_routes, "_q", lambda sql, params=None: [])
     assert client.get("/gop/admin/overview").status_code == 401

@@ -90,6 +90,11 @@ export function validateClientEvent(body: ClientEventBody, ua: string, ip: strin
     ua: ua.slice(0, 400), ip } };
 }
 
+const IP_RE = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9a-fA-F:]{2,45})$/;
+function validIp(v: string | null): string | null {
+  return v && IP_RE.test(v) ? v : null;
+}
+
 export function clientIp(headers: Headers, fallback?: string | null): string | null {
-  return headers.get('cf-connecting-ip') || headers.get('x-real-ip') || fallback || null;
+  return validIp(headers.get('cf-connecting-ip')) || validIp(headers.get('x-real-ip')) || validIp(fallback ?? null);
 }

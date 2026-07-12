@@ -6,6 +6,7 @@ nothing is buffered.
 """
 
 import hmac
+import ipaddress
 import os
 import threading
 
@@ -41,6 +42,12 @@ def ingest():
         table, row = e.get("table"), e.get("row")
         if table in _TABLES and isinstance(row, dict):
             row.pop("ts", None)  # server assigns ts; client clocks drift
+            ip = row.get("ip")
+            if ip is not None:
+                try:
+                    ipaddress.ip_address(str(ip))
+                except ValueError:
+                    row["ip"] = None
             TEL.push(table, row)
             accepted += 1
     return jsonify({"ok": True, "accepted": accepted}), 202
