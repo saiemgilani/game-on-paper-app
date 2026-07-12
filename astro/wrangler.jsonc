@@ -9,6 +9,12 @@
 		"not_found_handling": "404-page",
 		"binding": "ASSETS"
 	},
+	"services": [
+		{
+			"binding": "SUMMARY",
+			"service": "game-on-paper-summary"
+		},
+	],
 	"observability": {
 		"enabled": true
 	}
