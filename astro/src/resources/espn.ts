@@ -1,3 +1,5 @@
+import { timedFetch } from '../lib/telemetry';
+
 export interface ESPNScoreboardResponse {
     leagues: ESPNLeague[]
     groups: string[]
@@ -343,7 +345,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         }
         const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
         // console.log(reqURL)
-        const resp = await fetch(reqURL);
+        const resp = await timedFetch(reqURL);
         if (!resp.ok) {
             throw new Error(`Response status: ${resp.status}`);
         }
@@ -380,7 +382,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         }
         return result;
     } else {
-        const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`)
+        const resp = await timedFetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`)
         let espnContent: ESPNScoreboardResponse = await resp.json();
         if (espnContent == null) {
             throw Error(`Data not available for ESPN's schedule endpoint.`)
@@ -402,7 +404,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
 
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
     const cacheBuster = ((new Date()).getTime() * 1000);
-    const req = await fetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const req = await timedFetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
     const res: ESPNPlayByPlayResponse = await req.json()
     return res
 }
@@ -419,7 +421,7 @@ async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<an
     const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
     const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
-    const req =  await fetch(url);
+    const req =  await timedFetch(url);
     const res: any = await req.json()
     return res
 }
@@ -433,7 +435,7 @@ async function retrieveTeamSchedule(payload: ESPNTeamRequestPayload): Promise<ES
         params.append("seasontype", `${payload.seasonType}`)
     }
     const reqUrl = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${payload.teamId}/schedule?` + params.toString()
-    const req = await fetch(reqUrl);
+    const req = await timedFetch(reqUrl);
     const res: ESPNTeamScheduleResponse = await req.json()
     return res
 }

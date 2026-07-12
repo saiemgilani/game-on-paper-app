@@ -1,6 +1,7 @@
 import { getSecret } from "astro:env/server";
 import { cleanUpParams } from "../utils/misc"
 import {DateTime} from "luxon";
+import { timedFetch } from '../lib/telemetry';
 
 export interface TeamSummary {
     teamId: number
@@ -255,11 +256,11 @@ async function retrieveAllTeams(): Promise<TeamIndex[]> {
 async function retrieveRemoteData(payload: Record<string, any>): Promise<any[]> {
     const query = cleanUpParams(payload);
     // logger.info(`loading from summary: ${JSON.stringify(query)}`)
-    const response = await fetch(`${SUMMARY_HTTP_URL}/`, {
+    const response = await timedFetch(`${SUMMARY_HTTP_URL}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(query)
-    });
+    }, { summaryBase: SUMMARY_HTTP_URL });
     const content: SummaryResponse = await response.json();
     return content.results;
 }

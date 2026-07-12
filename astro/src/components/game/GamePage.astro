@@ -2,6 +2,8 @@
 import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/internal';
+import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../lib/manifest';
+import { gopStorage } from '../../lib/telemetry';
 import { isChampionshipEvent } from '../../utils/common';
 import { cleanLocation } from '../../utils/misc';
 import { DateTime } from 'luxon';
@@ -35,9 +37,18 @@ try {
     console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
 }
 
-if (!game) {
+const gop = gopStorage.getStore();
+if (gop) gop.game_id = String(id);
+const verdict = evaluateManifest(GAME_PAGE_MANIFEST, game);
+if (gop) {
+    gop.render_outcome = verdict.outcome;
+    gop.missing_datasets = verdict.missingNames.length ? verdict.missingNames : null;
+}
+if (!game || verdict.requiredMissing.length) {
+    if (gop) gop.render_outcome = 'failed';
     return Astro.rewrite("/404")
 }
+salvageGame(game);
 
 const percentiles = await SummaryModel.retrievePercentiles({ year: (CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year });
 const homeComp = game.header.competitions[0].competitors[0];
