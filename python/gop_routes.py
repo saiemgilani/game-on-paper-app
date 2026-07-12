@@ -5,7 +5,9 @@ Workers — the shared key is the gate; unauthenticated requests get 401 and
 nothing is buffered.
 """
 
+import hmac
 import os
+import threading
 
 from flask import Blueprint, jsonify, request
 
@@ -14,11 +16,16 @@ from telemetry import TEL, _TABLES
 bp = Blueprint("gop", __name__)
 
 _ro_conn = None
+# ponytail: one global lock serializes all admin reads (psycopg3 conns are not
+# thread-safe for concurrent cursors); per-thread conns if dashboards pile up
+_ro_lock = threading.Lock()
 
 
 def _authed():
     key = os.environ.get("GOP_INGEST_KEY")
-    return bool(key) and request.headers.get("X-GOP-Key") == key
+    return bool(key) and hmac.compare_digest(
+        request.headers.get("X-GOP-Key") or "", key
+    )
 
 
 @bp.route("/gop/ingest", methods=["POST"])
@@ -45,23 +52,24 @@ def _q(sql, params=None):
     dsn = os.environ.get("GOP_PG_DSN_RO")
     if not dsn:
         return []
-    try:
-        import psycopg
-
-        if _ro_conn is None or _ro_conn.closed:
-            _ro_conn = psycopg.connect(dsn, connect_timeout=5, autocommit=True)
-        with _ro_conn.cursor() as cur:
-            cur.execute(sql, params or {})
-            cols = [d.name for d in cur.description]
-            return [dict(zip(cols, r)) for r in cur.fetchall()]
-    except Exception:
+    with _ro_lock:
         try:
-            if _ro_conn is not None:
-                _ro_conn.close()
+            import psycopg
+
+            if _ro_conn is None or _ro_conn.closed:
+                _ro_conn = psycopg.connect(dsn, connect_timeout=5, autocommit=True)
+            with _ro_conn.cursor() as cur:
+                cur.execute(sql, params or {})
+                cols = [d.name for d in cur.description]
+                return [dict(zip(cols, r)) for r in cur.fetchall()]
         except Exception:
-            pass
-        _ro_conn = None
-        return []
+            try:
+                if _ro_conn is not None:
+                    _ro_conn.close()
+            except Exception:
+                pass
+            _ro_conn = None
+            return []
 
 
 def _overview(args):
