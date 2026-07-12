@@ -1,5 +1,6 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNBroadcast, ESPNCompetition, ESPNCompetitor, ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlay, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
+import { timedFetch } from '../lib/telemetry';
 
 export enum SpiceLevel {
     BELL = 0,
@@ -919,10 +920,10 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
 }
 
 async function processPlays(gameId: string | number): Promise<ProcessedGame> {
-    const req = await fetch(`${PYTHON_HTTP_URL}/cfb/process`, {
+    const req = await timedFetch(`${PYTHON_HTTP_URL}/cfb/process`, {
         method: "POST",
         body: JSON.stringify({ gameId })
-    })
+    }, { game_id: String(gameId), pythonBase: PYTHON_HTTP_URL })
     const content = await req.text();
     // console.log(content)
     // console.log(req.status)

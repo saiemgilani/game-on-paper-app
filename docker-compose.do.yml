@@ -74,6 +74,11 @@ services:
           memory: 1gb
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
+    environment:
+      GOP_PG_DSN: ${GOP_PG_DSN:-}
+      GOP_PG_DSN_RO: ${GOP_PG_DSN_RO:-}
+      GOP_INGEST_KEY: ${GOP_INGEST_KEY:-}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-1}
     expose:
       - 7000
     healthcheck:

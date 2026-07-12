@@ -6,7 +6,13 @@ dependencies = [
     "Flask",
     "sportsdataverse==0.0.71",
     "gunicorn",
+    "psycopg[binary]>=3.1",
 ]
 
 [tool.uv.sources]
 sportsdataverse = { git = "https://github.com/sportsdataverse/sportsdataverse-py" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 import numpy as np
 from datetime import datetime as dt, timezone as tz
 import polars as pl
@@ -7,6 +7,8 @@ from sportsdataverse.cfb import CFBPlayProcess
 import os
 import logging
 import json
+from telemetry import TEL, stage, init_flask
+import gop_routes
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -27,15 +29,38 @@ def after_request(response):
     return response
 
 
+init_flask(app, TEL)
+TEL.start()
+app.register_blueprint(gop_routes.bp)
+
+
 @app.route("/cfb/process", methods=["POST"])
 def process():
+    timings = {}
     try:
         gameId = request.get_json(force=True)["gameId"]
+        g.gop_meta = {"game_id": str(gameId)}
         game = CFBPlayProcess(gameId=gameId)
         game.join_participants = True
-        game.resolve_missing=False ## this doesn't work as expected or there needs to be a way to set this as expected.
-        game.espn_cfb_pbp()
-        processed_game = game.run_processing_pipeline()
+        game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+        espn_logged = False
+        with stage(timings, "espn_fetch"):
+            game.espn_cfb_pbp()
+        TEL.push(
+            "upstream_log",
+            {
+                "service": "python",
+                "target": "espn_pbp",
+                "status": 200,
+                "duration_ms": timings["espn_fetch_ms"],
+                "ok": True,
+                "game_id": str(gameId),
+                "error": None,
+            },
+        )
+        espn_logged = True
+        with stage(timings, "pipeline"):
+            processed_game = game.run_processing_pipeline()
 
         bad_cols = [
             "start.distance",
@@ -231,6 +256,25 @@ def process():
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
         )
+        if not locals().get("espn_logged"):  # fetch itself failed; don't double-count
+            TEL.push(
+                "upstream_log",
+                {
+                    "service": "python",
+                    "target": "espn_pbp",
+                    "status": None,
+                    "duration_ms": timings.get("espn_fetch_ms"),
+                    "ok": False,
+                    "game_id": str(gameId) if "gameId" in locals() else None,
+                    "error": ("KeyError: %r" % (e,))[:500],
+                },
+            )
+        TEL.log_error(
+            "ESPN payload malformed (KeyError: %r)" % (e,),
+            path=request.path,
+            game_id=str(gameId) if "gameId" in locals() else None,
+        )
+        g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
         return jsonify(
             {
                 "status": "bad",
@@ -244,6 +288,13 @@ def process():
         import traceback
 
         traceback.print_tb(e.__traceback__)
+        TEL.log_error(
+            str(e),
+            stack="".join(traceback.format_tb(e.__traceback__))[:4000],
+            path=request.path,
+            game_id=str(gameId) if "gameId" in locals() else None,
+        )
+        g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
         return jsonify(
             {"status": "bad", "message": "Unknown error occurred, check logs."}
         ), 500

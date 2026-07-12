@@ -1,1 +1,36 @@
 <script is:inline src="/assets/js/bootstrap.bundle.min.js"></script>
+<script is:inline>
+(function () {
+  var gid = (location.pathname.match(/\/game\/(\d+)/) || [])[1] || null;
+  function send(payload) {
+    try {
+      var body = JSON.stringify(Object.assign({ path: location.pathname, game_id: gid }, payload));
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/client-log', new Blob([body], { type: 'application/json' }));
+      else fetch('/api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true });
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) {
+    send({ type: 'js_error', name: String(e.message).slice(0, 300), value: ((e.error && e.error.stack) || '').slice(0, 2000) });
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    send({ type: 'js_error', name: 'unhandledrejection: ' + String(e.reason).slice(0, 280), value: ((e.reason && e.reason.stack) || '').slice(0, 2000) });
+  });
+  try {
+    var clsVal = 0, lcpVal = 0, inpVal = 0;
+    new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { if (!en.hadRecentInput) clsVal += en.value; }); })
+      .observe({ type: 'layout-shift', buffered: true });
+    new PerformanceObserver(function (l) { var es = l.getEntries(); if (es.length) lcpVal = es[es.length - 1].startTime; })
+      .observe({ type: 'largest-contentful-paint', buffered: true });
+    new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { if (en.duration > inpVal) inpVal = en.duration; }); })
+      .observe({ type: 'event', buffered: true, durationThreshold: 40 });
+    var vitalsSent = false;
+    addEventListener('visibilitychange', function () {
+      if (vitalsSent || document.visibilityState !== 'hidden') return;
+      vitalsSent = true;
+      if (lcpVal) send({ type: 'web_vital', name: 'LCP', value: lcpVal });
+      send({ type: 'web_vital', name: 'CLS', value: clsVal });
+      if (inpVal) send({ type: 'web_vital', name: 'INP', value: inpVal });
+    });
+  } catch (e) {}
+})();
+</script>
