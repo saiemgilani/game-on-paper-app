@@ -1,13 +1,22 @@
 ---
+export const prerender = true;
+
 import TeamTrendsChart from "../../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../../layouts/GenericPage.astro";
-import type { SeasonPercentile, TeamSummary } from "../../../resources/summary";
+import type { SeasonPercentile, TeamIndex, TeamSummary } from "../../../resources/summary";
 import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue } from "../../../utils/misc";
 import { formatRank } from "../../../utils/common";
 import SummaryModel from "../../../resources/summary";
 import TeamRadarChart from "../../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../../components/DarkModeLogos.astro";
 import { retrieveTeamInformation } from "../../../resources/espn";
+
+export async function getStaticPaths() {
+    const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
+    return teams.flatMap(t => {
+        return { params: { id: t.team_id }}
+    })
+}
 
 const { id } = Astro.params;
 if (!id) {

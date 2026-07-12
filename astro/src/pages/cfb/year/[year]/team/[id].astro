@@ -1,4 +1,6 @@
 ---
+export const prerender = true;
+
 import TeamRadarChart from "../../../../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../../../../components/DarkModeLogos.astro";
 import GameThumb from "../../../../../components/schedule/GameThumb.astro";
@@ -13,7 +15,14 @@ import SummaryModel, { type PlayerStatistics, type PlayerSummary, type Receiving
 import { cleanLocation, roundNumber } from "../../../../../utils/misc";
 import TeamCard from "../../../../../components/team/TeamCard.astro";
 import TeamPlayerCard from "../../../../../components/team/TeamPlayerCard.astro";
-import type { PassingStats } from "../../../../../resources/summary";
+import type { PassingStats, TeamIndex } from "../../../../../resources/summary";
+
+export async function getStaticPaths() {
+    const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
+    return teams.flatMap(t => t.seasons.map(s => {
+        return { params: { year: String(s), id: t.team_id } }
+    }))
+}
 
 const { year, id } = Astro.params;
 if (!year) {
