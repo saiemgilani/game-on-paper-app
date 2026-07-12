@@ -10,6 +10,7 @@ import logging
 import os
 import threading
 import time
+from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -99,7 +100,7 @@ class Telemetry:
         self.batch_rows = batch_rows
         self._conn_factory = conn_factory or self._default_conn
         self._conn = None
-        self._buf = []
+        self._buf = deque()  # O(1) evict/drain; list.pop(0) is O(n) under lock
         self._lock = threading.Lock()
         self._flush_lock = (
             threading.Lock()
@@ -118,7 +119,7 @@ class Telemetry:
             return
         with self._lock:
             if len(self._buf) >= self.max_buffer:
-                self._buf.pop(0)
+                self._buf.popleft()
                 self.dropped += 1
             r = dict(row)
             r.setdefault("ts", datetime.now(timezone.utc))
@@ -132,10 +133,10 @@ class Telemetry:
             return {"written": 0, "dropped": self.dropped}
         with self._flush_lock:  # serialize flushes: _conn check-then-act must not race
             with self._lock:
-                batch, self._buf = (
-                    self._buf[: self.batch_rows],
-                    self._buf[self.batch_rows :],
-                )
+                batch = [
+                    self._buf.popleft()
+                    for _ in range(min(self.batch_rows, len(self._buf)))
+                ]
             if not batch:
                 return {"written": 0, "dropped": self.dropped}
             by_table = {}

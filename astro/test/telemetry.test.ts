@@ -12,6 +12,8 @@ describe('classifyTarget', () => {
     expect(classifyTarget('https://cdn.espn.com/core/college-football/playbyplay?gameId=1', py, sm)).toBe('espn_pbp');
     expect(classifyTarget('https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard', py, sm)).toBe('espn_scoreboard');
     expect(classifyTarget('https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams', py, sm)).toBe('espn_schedule');
+    expect(classifyTarget('https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2024/teams/52/record?lang=en&region=us', py, sm)).toBe('espn_team');
+    expect(classifyTarget('https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/52/schedule?season=2024', py, sm)).toBe('espn_team_schedule');
     expect(classifyTarget('http://python:7000/cfb/process', py, sm)).toBe('flask_process');
     expect(classifyTarget('http://summary:3000/', py, sm)).toBe('summary');
     expect(classifyTarget('https://collegefootballdata.com', py, sm)).toBe('other');

@@ -17,13 +17,13 @@
 - The vestigial `node/` Express app is OUT of scope — do not touch it.
 - Astro `src/lib/*.ts` modules under test must stay **pure** (no `astro:*` imports) so vitest runs them; `astro:env/server` (`getSecret`) is used only in `src/middleware.ts` and `src/pages/**` and passed down as arguments.
 - Env names (never commit values): `GOP_PG_DSN`, `GOP_PG_DSN_RO`, `GOP_INGEST_KEY` (shared astro↔python), `ADMIN_USER`, `ADMIN_PASS`, `TELEMETRY_ENABLED` (`0` disables), existing `PYTHON_HTTP_URL`.
-- Vocabulary (exact strings): services `astro`/`python`/`client`; outcomes `ok`/`degraded`/`failed`; targets `espn_pbp`/`espn_scoreboard`/`espn_schedule`/`flask_process`/`summary`/`other`.
+- Vocabulary (exact strings): services `astro`/`python`/`client`; outcomes `ok`/`degraded`/`failed`; targets `espn_pbp`/`espn_scoreboard`/`espn_schedule`/`espn_team`/`espn_team_schedule`/`flask_process`/`summary`/`other`.
 - Conventional Commits; **never add AI co-author trailers**. Droplet ops ship as runbook only.
 - Python commands run via uv from `python/` (`uv run pytest`, `uv add`); astro commands via npm from `astro/` (node >= 22.12).
 
 ## File Structure
 
-```
+```text
 game-on-paper-app/
   astro/
     src/lib/telemetry.ts          # NEW — collector, ALS store, classifyTarget, timedFetch, sendToIngest, validateClientEvent
@@ -735,6 +735,7 @@ These endpoints may be internet-reachable when Astro runs on Cloudflare
 Workers — the shared key is the gate; unauthenticated requests get 401 and
 nothing is buffered.
 """
+import hmac
 import os
 
 from flask import Blueprint, jsonify, request
@@ -748,7 +749,9 @@ _ro_conn = None
 
 def _authed():
     key = os.environ.get("GOP_INGEST_KEY")
-    return bool(key) and request.headers.get("X-GOP-Key") == key
+    return bool(key) and hmac.compare_digest(
+        request.headers.get("X-GOP-Key") or "", key
+    )
 
 
 @bp.route("/gop/ingest", methods=["POST"])
@@ -2117,8 +2120,8 @@ cd astro && cp .env.example .env   # edit ADMIN_PASS=dev
 npm run dev &
 sleep 8
 curl -s -o /dev/null -w "admin-anon: %{http_code}\n" http://localhost:4321/admin                     # 401
-curl -s -o /dev/null -w "admin-auth: %{http_code}\n" -u admin:dev http://localhost:4321/admin        # 200
-curl -s -u admin:dev http://localhost:4321/admin/api/overview | head -c 200; echo
+curl -s -o /dev/null -w "admin-auth: %{http_code}\n" -u "admin:${ADMIN_PASS:-dev}" http://localhost:4321/admin        # 200
+curl -s -u "admin:${ADMIN_PASS:-dev}" http://localhost:4321/admin/api/overview | head -c 200; echo
 curl -s -o /dev/null -w "beacon: %{http_code}\n" -X POST http://localhost:4321/api/client-log \
   -H 'Content-Type: application/json' -d '{"type":"web_vital","name":"LCP","value":1234,"path":"/cfb/"}'  # 200
 sleep 7

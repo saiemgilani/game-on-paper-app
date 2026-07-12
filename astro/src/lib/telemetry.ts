@@ -28,6 +28,8 @@ export function classifyTarget(url: string, pythonBase?: string, summaryBase?: s
   if (!url) return 'other';
   if (url.includes('cdn.espn.com') && url.includes('playbyplay')) return 'espn_pbp';
   if (url.includes('espn.com') && url.includes('scoreboard')) return 'espn_scoreboard';
+  if (url.includes('sports.core.api.espn.com')) return 'espn_team';
+  if (url.includes('espn.com') && url.includes('/teams/') && url.includes('schedule')) return 'espn_team_schedule';
   if (url.includes('espn.com')) return 'espn_schedule';
   if (pythonBase && url.startsWith(pythonBase)) return 'flask_process';
   if (/\/cfb\/\d+\/process\b/.test(url)) return 'flask_process';
