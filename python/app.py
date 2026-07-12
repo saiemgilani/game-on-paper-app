@@ -7,7 +7,6 @@ from sportsdataverse.cfb import CFBPlayProcess
 import os
 import logging
 import json
-import time
 from telemetry import TEL, stage, init_flask
 import gop_routes
 
@@ -286,11 +285,9 @@ def process():
         import traceback
 
         traceback.print_tb(e.__traceback__)
-        import traceback as _tb
-
         TEL.log_error(
             str(e),
-            stack="".join(_tb.format_tb(e.__traceback__))[:4000],
+            stack="".join(traceback.format_tb(e.__traceback__))[:4000],
             path=request.path,
             game_id=str(gameId) if "gameId" in locals() else None,
         )
