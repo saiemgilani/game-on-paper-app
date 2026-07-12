@@ -93,6 +93,11 @@ services:
     build: ./python
     ports:
       - 4000:4000
+    environment:
+      GOP_PG_DSN: ${GOP_PG_DSN:-}
+      GOP_PG_DSN_RO: ${GOP_PG_DSN_RO:-}
+      GOP_INGEST_KEY: ${GOP_INGEST_KEY:-}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-1}
     healthcheck:
       test: curl --fail http://python:4000/healthcheck || exit 1
       interval: 60s
