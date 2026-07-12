@@ -2117,11 +2117,12 @@ Then the Astro side:
 
 ```bash
 cd astro && cp .env.example .env   # edit ADMIN_PASS=dev
+GOP_ADMIN_AUTH="admin:${ADMIN_PASS:-dev}"   # user:pass pair matching astro/.env
 npm run dev &
 sleep 8
 curl -s -o /dev/null -w "admin-anon: %{http_code}\n" http://localhost:4321/admin                     # 401
-curl -s -o /dev/null -w "admin-auth: %{http_code}\n" -u "admin:${ADMIN_PASS:-dev}" http://localhost:4321/admin        # 200
-curl -s -u "admin:${ADMIN_PASS:-dev}" http://localhost:4321/admin/api/overview | head -c 200; echo
+curl -s -o /dev/null -w "admin-auth: %{http_code}\n" -u "$GOP_ADMIN_AUTH" http://localhost:4321/admin        # 200
+curl -s -u "$GOP_ADMIN_AUTH" http://localhost:4321/admin/api/overview | head -c 200; echo
 curl -s -o /dev/null -w "beacon: %{http_code}\n" -X POST http://localhost:4321/api/client-log \
   -H 'Content-Type: application/json' -d '{"type":"web_vital","name":"LCP","value":1234,"path":"/cfb/"}'  # 200
 sleep 7
