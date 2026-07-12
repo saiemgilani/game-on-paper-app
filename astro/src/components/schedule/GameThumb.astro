@@ -63,7 +63,7 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
                 </strong>
             </div>
             <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
-            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={homeScore < awayScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
+            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
             <GameSituation hidden={canShowSituation} game={espnGame} />
             <div class="d-flex justify-content-between">
                 <div class="text-left">
