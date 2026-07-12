@@ -30,6 +30,7 @@ export function classifyTarget(url: string, pythonBase?: string, summaryBase?: s
   if (url.includes('espn.com') && url.includes('scoreboard')) return 'espn_scoreboard';
   if (url.includes('espn.com')) return 'espn_schedule';
   if (pythonBase && url.startsWith(pythonBase)) return 'flask_process';
+  if (/\/cfb\/\d+\/process\b/.test(url)) return 'flask_process';
   if (summaryBase && url.startsWith(summaryBase)) return 'summary';
   return 'other';
 }
@@ -55,7 +56,7 @@ export type TimedFetchExtra = { game_id?: string | null; pythonBase?: string; su
 export async function timedFetch(url: string, init?: RequestInit, extra: TimedFetchExtra = {}): Promise<Response> {
   const c = gopStorage.getStore();
   const t0 = Date.now();
-  const gameId = extra.game_id ?? (url.match(/gameId=(\d+)/) || [])[1] ?? null;
+  const gameId = extra.game_id ?? (url.match(/gameId=(\d+)/) || [])[1] ?? (url.match(/\/cfb\/(\d+)\/process\b/) || [])[1] ?? null;
   const target = () => classifyTarget(url, extra.pythonBase, extra.summaryBase);
   try {
     const resp = await fetch(url, init);

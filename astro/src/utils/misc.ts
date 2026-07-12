@@ -1,6 +1,7 @@
 import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor, ESPNStatus } from "../resources/espn";
 import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES } from "./constants";
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
+import { timedFetch } from "../lib/telemetry"
 
 export type RGBColor = { r: number, g: number, b: number};
 export const STANDARD_THEME_COLOR = "#2394fd"
@@ -591,7 +592,8 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 
 export async function wrappedFetch(url: string, init?: RequestInit): Promise<Response> {
     const start = Date.now();
-    const resp = await fetch(url, init)
+    // single upstream choke point: every outbound call gets telemetry here
+    const resp = await timedFetch(url, init)
     console.info(`[request] ${init?.method || "GET"} ${url} - time: ${Date.now() - start} ms`)
     return resp;
 }
