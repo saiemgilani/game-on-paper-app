@@ -95,7 +95,7 @@ function createSeasonRow(summary: TeamSummary): string {
             </div>
         </div>
     </div>
-    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={"#B3A369"} teamData={teamData} percentiles={allPctls} />
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={team.color} teamData={teamData} percentiles={allPctls} />
     <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} />
     <div class="container mb-3">
         <div class="row mb-3">
