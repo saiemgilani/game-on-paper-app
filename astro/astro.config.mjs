@@ -3,6 +3,7 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import svelte from '@astrojs/svelte';
+import { cacheCloudflare } from '@astrojs/cloudflare/cache';
 
 // https://astro.build/config
 export default defineConfig({
@@ -18,5 +19,7 @@ export default defineConfig({
         "/game/[...slug]": "/cfb/game/[...slug]",
         "/year/[...slug]": "/cfb/year/[...slug]",
         "/team/[...slug]": "/cfb/team/[...slug]"
-    }
+    },
+    trailingSlash: 'ignore',
+    cache: { provider: cacheCloudflare() }
 });
