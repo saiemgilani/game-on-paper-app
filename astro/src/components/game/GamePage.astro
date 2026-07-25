@@ -22,6 +22,7 @@ import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import SummaryModel from '../../resources/summary';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import Footer from '../Footer.astro';
 
 interface Props {
    id: string | number
@@ -423,6 +424,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
                 </div>
             </div>
         </div>
+        <Footer />
         <Scripts />
     </body>
 </html>

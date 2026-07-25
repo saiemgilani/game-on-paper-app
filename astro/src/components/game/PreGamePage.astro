@@ -11,6 +11,7 @@ import LocalDate from '../LocalDate.svelte';
 import TeamCard from '../team/TeamCard.astro';
 import MatchupView from './MatchupView.astro';
 import WatchButton from './WatchButton.astro';
+import Footer from '../Footer.astro';
 
 interface Props {
     id: string | number
@@ -153,5 +154,6 @@ const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
             </div>
         </div>
         <MatchupView awayTeam={awayTeam} homeTeam={homeTeam} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} />
+        <Footer />
     </body>
 </html>
