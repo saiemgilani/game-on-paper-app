@@ -1,5 +1,5 @@
 <script>
-    import { TEAM_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
+    import { SDV_TEAM_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
     import { toTitleCase } from "../../utils/misc";
 
     const { season, category, metric, onChangeValue } = $props()
@@ -20,20 +20,30 @@
 		if (onChangeValue) {
             onChangeValue(s, c, m)
         } else {
+            if (c == "offensive" && m == "net_adj_epa") {
+                m = "adj_off_epa"
+            } else if (c == "defensive" && m == "net_adj_epa") {
+                m = "adj_def_epa"
+            }
             window.location = `/cfb/year/${s}/teams/${c}?sort=${m}`;
         }
     }
 
     let optGroupMap = {};
-    for (const [c, metrics] of Object.entries(TEAM_METRIC_CATEGORIES)) {
+    for (const [c, metrics] of Object.entries(SDV_TEAM_METRIC_CATEGORIES)) {
         if (category != c) {
             continue;
         }
         for (const [key, title] of Object.entries(metrics)) {
-            let splits = key.split(".")
-            let subcat = splits[0]
-            if (key == "overall.havocRate") {
+            let subcat = "other"
+            if (key.includes("_pass")) {
+                subcat = "passing"
+            } else if (key.includes("_rush")) {
+                subcat = "rushing"
+            } else if (key == "havoc_off" || key == "havoc_def") {
                 subcat = "other"
+            } else if (key.includes("_off") || key.includes("_def")) {
+                subcat = "overall"
             }
             
             if (!Object.keys(optGroupMap).includes(subcat)) {

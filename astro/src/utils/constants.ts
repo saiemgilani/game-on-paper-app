@@ -108,6 +108,98 @@ export const PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, numb
 };
 
 
+export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
+    "differential": {
+        "net_adj_epa": "Adj EPA/Play",
+        "EPAplay_margin": "EPA/Play",
+        "yardsplay_margin": "Yards/Play",
+        "success_margin": "SR%",
+    },
+    "offensive": {
+        "adj_off_epa": "Adj EPA/Play",
+        "EPAplay_off": "EPA/Play",
+        "yardsplay_off": "Yards/Play",
+        "success_off": "SR%",
+
+        "EPAplay_off_pass": "EPA/DB",
+        "yardsplay_off_pass": "Yards/DB",
+        "success_off_pass": "Pass SR%",
+
+        "EPAplay_off_rush": "EPA/Rush",
+        "yardsplay_off_rush": "Yards/Rush",
+        "success_off_rush": "Rush SR%",
+
+        "havoc_off": "Havoc %"
+    }, 
+    "defensive": {
+        "adj_def_epa": "Adj EPA/Play",
+        "EPAplay_def": "EPA/Play",
+        "yardsplay_def": "Yards/Play",
+        "success_def": "SR%",
+
+        "EPAplay_def_pass": "EPA/DB",
+        "yardsplay_def_pass": "Yards/DB",
+        "success_def_pass": "Pass SR%",
+
+        "EPAplay_def_rush": "EPA/Rush",
+        "yardsplay_def_rush": "Yards/Rush",
+        "success_def_rush": "Rush SR%",
+
+        "havoc_def": "Havoc %"
+    }
+}
+
+export const SDV_TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
+    "differential": {
+        "net_adj_epa": [ 1, 2, 2 ],
+        "EPAplay_margin": [ 1, 2, 2 ],
+        "yardsplay_margin": [ 1, 2, 2 ],
+        "success_margin": [ 100, 2, 1 ]
+    }, 
+    "offensive": {
+        "adj_off_epa": [ 1, 2, 2 ],
+        "EPAplay_off": [ 1, 2, 2 ],
+        "yardsplay_off": [ 1, 2, 2 ],
+        "success_off": [ 100, 2, 1 ],
+        "EPAplay_off_pass": [ 1, 2, 2 ],
+        "yardsplay_off_pass": [ 1, 2, 2 ],
+        "success_off_pass": [ 100, 2, 1 ],
+        "EPAplay_off_rush": [ 1, 2, 2 ],
+        "yardsplay_off_rush": [ 1, 2, 2 ],
+        "success_off_rush": [ 100, 2, 1 ],
+        "havoc_off": [ 100, 2, 1 ]
+    }, 
+    "defensive": {
+        "adj_def_epa": [ 1, 2, 2 ],
+        "EPAplay_def": [ 1, 2, 2 ],
+        "yardsplay_def": [ 1, 2, 2 ],
+        "success_def": [ 100, 2, 1 ],
+        "EPAplay_def_pass": [ 1, 2, 2 ],
+        "yardsplay_def_pass": [ 1, 2, 2 ],
+        "success_def_pass": [ 100, 2, 1 ],
+        "EPAplay_def_rush": [ 1, 2, 2 ],
+        "yardsplay_def_rush": [ 1, 2, 2 ],
+        "success_def_rush": [ 100, 2, 1 ],
+        "havoc_def": [ 100, 2, 1 ]
+    }
+};
+
+export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
+    "differential": {
+        "net_adj_epa": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+    }, 
+    "offensive": {
+        "adj_off_epa": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+        "EPAplay_off_pass": "DB: Dropbacks, includes pass attempts and sacks.",
+        "yardsplay_off_pass": "DB: Dropbacks, includes pass attempts and sacks.",
+    }, 
+    "defensive": {
+        "adj_def_epa": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
+        "EPAplay_def_pass": "DB: Dropbacks, includes pass attempts and sacks.",
+        "yardsplay_def_pass": "DB: Dropbacks, includes pass attempts and sacks.",
+    }
+};
+
 export const TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
     "differential": {
         "overall.adjEpaPerPlay": "Adj EPA/Play",
