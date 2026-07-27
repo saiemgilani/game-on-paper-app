@@ -274,7 +274,7 @@ export function calculateCumulativeSums(arr: number[]): number[] {
     return arr.map(cumulativeSum);
 }
 
-export function cleanField(team: any, field: "abbreviation" | "name" | "location" | "team" | "nickname" | "pos_team"): string {
+export function cleanField(team: any, field: string): string {
     if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
         return team[field]?.toLocaleLowerCase() || ""
     }

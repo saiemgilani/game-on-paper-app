@@ -1,6 +1,5 @@
 import { getSecret } from "astro:env/server";
-import { cleanUpParams } from "../utils/misc";
-import { SummaryType, type PercentileRequest, type PlayerSummary, type SeasonPercentile, type SummaryRequest, type SummaryResponse, type TeamSummary } from "./summary";
+import { SummaryType } from "./summary";
 import { URLSearchParams } from "node:url";
 import { SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 
@@ -8,6 +7,537 @@ export interface SDVSummaryResponse {
     data: any[]
     count: number
 }
+
+export interface SDVTeamSummary {
+    team_id: string
+    pos_team: string
+    division: string
+    conference: string
+    season: number
+    plays_off?: number
+    playsgame_off?: number
+    passrate_off?: number
+    rushrate_off?: number
+    havoc_off?: number
+    explosive_off?: number
+    TEPA_off?: number
+    EPAplay_off?: number
+    EPAdrive_off?: number
+    EPAgame_off?: number
+    yards_off?: number
+    yardsplay_off?: number
+    yardsgame_off?: number
+    play_stuffed_off?: number
+    drives_off?: number
+    drivesgame_off?: number
+    yardsdrive_off?: number
+    playsdrive_off?: number
+    success_off?: number
+    red_zone_success_off?: number
+    third_down_success_off?: number
+    third_down_distance_off?: number
+    late_down_success_off?: number
+    early_down_EPA_off?: number
+    start_position_off?: number
+    nonExplosiveEpaPerPlay_off?: number
+    line_yards_off?: number
+    opportunity_rate_off?: number
+    playsgame_off_rank?: number
+    TEPA_off_rank?: number
+    EPAgame_off_rank?: number
+    EPAplay_off_rank?: number
+    EPAdrive_off_rank?: number
+    early_down_EPA_off_rank?: number
+    success_off_rank?: number
+    yards_off_rank?: number
+    yardsplay_off_rank?: number
+    yardsgame_off_rank?: number
+    drivesgame_off_rank?: number
+    yardsdrive_off_rank?: number
+    playsdrive_off_rank?: number
+    play_stuffed_off_rank?: number
+    red_zone_success_off_rank?: number
+    third_down_success_off_rank?: number
+    late_down_success_off_rank?: number
+    third_down_distance_off_rank?: number
+    start_position_off_rank?: number
+    havoc_off_rank?: number
+    explosive_off_rank?: number
+    passrate_off_rank?: number
+    rushrate_off_rank?: number
+    nonExplosiveEpaPerPlay_off_rank?: number
+    line_yards_off_rank?: number
+    opportunity_rate_off_rank?: number
+    plays_def?: number
+    playsgame_def?: number
+    passrate_def?: number
+    rushrate_def?: number
+    havoc_def?: number
+    explosive_def?: number
+    TEPA_def?: number
+    EPAplay_def?: number
+    EPAdrive_def?: number
+    EPAgame_def?: number
+    yards_def?: number
+    yardsplay_def?: number
+    yardsgame_def?: number
+    play_stuffed_def?: number
+    drives_def?: number
+    drivesgame_def?: number
+    yardsdrive_def?: number
+    playsdrive_def?: number
+    success_def?: number
+    red_zone_success_def?: number
+    third_down_success_def?: number
+    third_down_distance_def?: number
+    late_down_success_def?: number
+    early_down_EPA_def?: number
+    start_position_def?: number
+    nonExplosiveEpaPerPlay_def?: number
+    line_yards_def?: number
+    opportunity_rate_def?: number
+    playsgame_def_rank?: number
+    TEPA_def_rank?: number
+    EPAgame_def_rank?: number
+    EPAplay_def_rank?: number
+    EPAdrive_def_rank?: number
+    early_down_EPA_def_rank?: number
+    success_def_rank?: number
+    yards_def_rank?: number
+    yardsplay_def_rank?: number
+    yardsgame_def_rank?: number
+    drivesgame_def_rank?: number
+    yardsdrive_def_rank?: number
+    playsdrive_def_rank?: number
+    play_stuffed_def_rank?: number
+    red_zone_success_def_rank?: number
+    third_down_success_def_rank?: number
+    late_down_success_def_rank?: number
+    third_down_distance_def_rank?: number
+    start_position_def_rank?: number
+    havoc_def_rank?: number
+    explosive_def_rank?: number
+    passrate_def_rank?: number
+    rushrate_def_rank?: number
+    nonExplosiveEpaPerPlay_def_rank?: number
+    line_yards_def_rank?: number
+    opportunity_rate_def_rank?: number
+    TEPA_margin?: number
+    EPAplay_margin?: number
+    EPAdrive_margin?: number
+    EPAgame_margin?: number
+    success_margin?: number
+    yardsplay_margin?: number
+    TEPA_margin_rank?: number
+    EPAgame_margin_rank?: number
+    EPAdrive_margin_rank?: number
+    EPAplay_margin_rank?: number
+    success_margin_rank?: number
+    yardsplay_margin_rank?: number
+    start_position_margin?: number
+    start_position_margin_rank?: number
+    total_available_yards_off?: number
+    total_gained_yards_off?: number
+    available_yards_pct_off?: number
+    available_yards_pct_off_rank?: number
+    total_available_yards_def?: number
+    total_gained_yards_def?: number
+    available_yards_pct_def?: number
+    available_yards_pct_def_rank?: number
+    total_available_yards_margin?: number
+    total_gained_yards_margin?: number
+    available_yards_pct_margin?: number
+    total_available_yards_margin_rank?: number
+    total_gained_yards_margin_rank?: number
+    available_yards_pct_margin_rank?: number
+    plays_off_pass?: number
+    playsgame_off_pass?: number
+    passrate_off_pass?: number
+    rushrate_off_pass?: number
+    havoc_off_pass?: number
+    explosive_off_pass?: number
+    TEPA_off_pass?: number
+    EPAplay_off_pass?: number
+    EPAdrive_off_pass?: number
+    EPAgame_off_pass?: number
+    yards_off_pass?: number
+    yardsplay_off_pass?: number
+    yardsgame_off_pass?: number
+    play_stuffed_off_pass?: number
+    drives_off_pass?: number
+    drivesgame_off_pass?: number
+    yardsdrive_off_pass?: number
+    playsdrive_off_pass?: number
+    success_off_pass?: number
+    red_zone_success_off_pass?: number
+    third_down_success_off_pass?: number
+    third_down_distance_off_pass?: number
+    late_down_success_off_pass?: number
+    early_down_EPA_off_pass?: number
+    nonExplosiveEpaPerPlay_off_pass?: number
+    line_yards_off_pass?: number
+    opportunity_rate_off_pass?: number
+    playsgame_off_pass_rank?: number
+    TEPA_off_pass_rank?: number
+    EPAgame_off_pass_rank?: number
+    EPAplay_off_pass_rank?: number
+    EPAdrive_off_pass_rank?: number
+    early_down_EPA_off_pass_rank?: number
+    success_off_pass_rank?: number
+    yards_off_pass_rank?: number
+    yardsplay_off_pass_rank?: number
+    yardsgame_off_pass_rank?: number
+    drivesgame_off_pass_rank?: number
+    yardsdrive_off_pass_rank?: number
+    playsdrive_off_pass_rank?: number
+    play_stuffed_off_pass_rank?: number
+    red_zone_success_off_pass_rank?: number
+    third_down_success_off_pass_rank?: number
+    late_down_success_off_pass_rank?: number
+    third_down_distance_off_pass_rank?: number
+    havoc_off_pass_rank?: number
+    explosive_off_pass_rank?: number
+    passrate_off_pass_rank?: number
+    rushrate_off_pass_rank?: number
+    nonExplosiveEpaPerPlay_off_pass_rank?: number
+    line_yards_off_pass_rank?: number
+    opportunity_rate_off_pass_rank?: number
+    plays_def_pass?: number
+    playsgame_def_pass?: number
+    passrate_def_pass?: number
+    rushrate_def_pass?: number
+    havoc_def_pass?: number
+    explosive_def_pass?: number
+    TEPA_def_pass?: number
+    EPAplay_def_pass?: number
+    EPAdrive_def_pass?: number
+    EPAgame_def_pass?: number
+    yards_def_pass?: number
+    yardsplay_def_pass?: number
+    yardsgame_def_pass?: number
+    play_stuffed_def_pass?: number
+    drives_def_pass?: number
+    drivesgame_def_pass?: number
+    yardsdrive_def_pass?: number
+    playsdrive_def_pass?: number
+    success_def_pass?: number
+    red_zone_success_def_pass?: number
+    third_down_success_def_pass?: number
+    third_down_distance_def_pass?: number
+    late_down_success_def_pass?: number
+    early_down_EPA_def_pass?: number
+    nonExplosiveEpaPerPlay_def_pass?: number
+    line_yards_def_pass?: number
+    opportunity_rate_def_pass?: number
+    playsgame_def_pass_rank?: number
+    TEPA_def_pass_rank?: number
+    EPAgame_def_pass_rank?: number
+    EPAplay_def_pass_rank?: number
+    EPAdrive_def_pass_rank?: number
+    early_down_EPA_def_pass_rank?: number
+    success_def_pass_rank?: number
+    yards_def_pass_rank?: number
+    yardsplay_def_pass_rank?: number
+    yardsgame_def_pass_rank?: number
+    drivesgame_def_pass_rank?: number
+    yardsdrive_def_pass_rank?: number
+    playsdrive_def_pass_rank?: number
+    play_stuffed_def_pass_rank?: number
+    red_zone_success_def_pass_rank?: number
+    third_down_success_def_pass_rank?: number
+    late_down_success_def_pass_rank?: number
+    third_down_distance_def_pass_rank?: number
+    havoc_def_pass_rank?: number
+    explosive_def_pass_rank?: number
+    passrate_def_pass_rank?: number
+    rushrate_def_pass_rank?: number
+    nonExplosiveEpaPerPlay_def_pass_rank?: number
+    line_yards_def_pass_rank?: number
+    opportunity_rate_def_pass_rank?: number
+    TEPA_margin_pass?: number
+    EPAplay_margin_pass?: number
+    EPAdrive_margin_pass?: number
+    EPAgame_margin_pass?: number
+    success_margin_pass?: number
+    yardsplay_margin_pass?: number
+    TEPA_margin_pass_rank?: number
+    EPAgame_margin_pass_rank?: number
+    EPAdrive_margin_pass_rank?: number
+    EPAplay_margin_pass_rank?: number
+    success_margin_pass_rank?: number
+    yardsplay_margin_pass_rank?: number
+    plays_off_rush?: number
+    playsgame_off_rush?: number
+    passrate_off_rush?: number
+    rushrate_off_rush?: number
+    havoc_off_rush?: number
+    explosive_off_rush?: number
+    TEPA_off_rush?: number
+    EPAplay_off_rush?: number
+    EPAdrive_off_rush?: number
+    EPAgame_off_rush?: number
+    yards_off_rush?: number
+    yardsplay_off_rush?: number
+    yardsgame_off_rush?: number
+    play_stuffed_off_rush?: number
+    drives_off_rush?: number
+    drivesgame_off_rush?: number
+    yardsdrive_off_rush?: number
+    playsdrive_off_rush?: number
+    success_off_rush?: number
+    red_zone_success_off_rush?: number
+    third_down_success_off_rush?: number
+    third_down_distance_off_rush?: number
+    late_down_success_off_rush?: number
+    early_down_EPA_off_rush?: number
+    nonExplosiveEpaPerPlay_off_rush?: number
+    line_yards_off_rush?: number
+    opportunity_rate_off_rush?: number
+    playsgame_off_rush_rank?: number
+    TEPA_off_rush_rank?: number
+    EPAgame_off_rush_rank?: number
+    EPAplay_off_rush_rank?: number
+    EPAdrive_off_rush_rank?: number
+    early_down_EPA_off_rush_rank?: number
+    success_off_rush_rank?: number
+    yards_off_rush_rank?: number
+    yardsplay_off_rush_rank?: number
+    yardsgame_off_rush_rank?: number
+    drivesgame_off_rush_rank?: number
+    yardsdrive_off_rush_rank?: number
+    playsdrive_off_rush_rank?: number
+    play_stuffed_off_rush_rank?: number
+    red_zone_success_off_rush_rank?: number
+    third_down_success_off_rush_rank?: number
+    late_down_success_off_rush_rank?: number
+    third_down_distance_off_rush_rank?: number
+    havoc_off_rush_rank?: number
+    explosive_off_rush_rank?: number
+    passrate_off_rush_rank?: number
+    rushrate_off_rush_rank?: number
+    nonExplosiveEpaPerPlay_off_rush_rank?: number
+    line_yards_off_rush_rank?: number
+    opportunity_rate_off_rush_rank?: number
+    plays_def_rush?: number
+    playsgame_def_rush?: number
+    passrate_def_rush?: number
+    rushrate_def_rush?: number
+    havoc_def_rush?: number
+    explosive_def_rush?: number
+    TEPA_def_rush?: number
+    EPAplay_def_rush?: number
+    EPAdrive_def_rush?: number
+    EPAgame_def_rush?: number
+    yards_def_rush?: number
+    yardsplay_def_rush?: number
+    yardsgame_def_rush?: number
+    play_stuffed_def_rush?: number
+    drives_def_rush?: number
+    drivesgame_def_rush?: number
+    yardsdrive_def_rush?: number
+    playsdrive_def_rush?: number
+    success_def_rush?: number
+    red_zone_success_def_rush?: number
+    third_down_success_def_rush?: number
+    third_down_distance_def_rush?: number
+    late_down_success_def_rush?: number
+    early_down_EPA_def_rush?: number
+    nonExplosiveEpaPerPlay_def_rush?: number
+    line_yards_def_rush?: number
+    opportunity_rate_def_rush?: number
+    playsgame_def_rush_rank?: number
+    TEPA_def_rush_rank?: number
+    EPAgame_def_rush_rank?: number
+    EPAplay_def_rush_rank?: number
+    EPAdrive_def_rush_rank?: number
+    early_down_EPA_def_rush_rank?: number
+    success_def_rush_rank?: number
+    yards_def_rush_rank?: number
+    yardsplay_def_rush_rank?: number
+    yardsgame_def_rush_rank?: number
+    drivesgame_def_rush_rank?: number
+    yardsdrive_def_rush_rank?: number
+    playsdrive_def_rush_rank?: number
+    play_stuffed_def_rush_rank?: number
+    red_zone_success_def_rush_rank?: number
+    third_down_success_def_rush_rank?: number
+    late_down_success_def_rush_rank?: number
+    third_down_distance_def_rush_rank?: number
+    havoc_def_rush_rank?: number
+    explosive_def_rush_rank?: number
+    passrate_def_rush_rank?: number
+    rushrate_def_rush_rank?: number
+    nonExplosiveEpaPerPlay_def_rush_rank?: number
+    line_yards_def_rush_rank?: number
+    opportunity_rate_def_rush_rank?: number
+    TEPA_margin_rush?: number
+    EPAplay_margin_rush?: number
+    EPAdrive_margin_rush?: number
+    EPAgame_margin_rush?: number
+    success_margin_rush?: number
+    yardsplay_margin_rush?: number
+    TEPA_margin_rush_rank?: number
+    EPAgame_margin_rush_rank?: number
+    EPAdrive_margin_rush_rank?: number
+    EPAplay_margin_rush_rank?: number
+    success_margin_rush_rank?: number
+    yardsplay_margin_rush_rank?: number
+    fbs_class: string
+    valid_games?: number
+    adj_off_epa?: number
+    adj_def_epa?: number
+    def_strength_faced?: number
+    off_strength_faced?: number
+    net_adj_epa?: number
+    adj_off_epa_rank?: number
+    adj_def_epa_rank?: number
+    net_adj_epa_rank?: number
+}
+
+export interface SDVSeasonPercentile {
+    season: number
+    pctile: number
+    GEI: number
+    EPAplay: number
+    pass_success: number
+    rush_success: number
+    early_down_success: number
+    early_down_EPA: number
+    late_down_success: number
+    success: number
+    yardsplay: number
+    dropbacks: number
+    rushes: number
+    EPAdropback: number
+    EPArush: number
+    yardsdropback: number
+    pass_explosive: number
+    rush_explosive: number
+    explosive: number
+    third_down_success: number
+    red_zone_success: number
+    play_stuffed: number
+    nonExplosiveEpaPerPlay: number
+    havoc: number
+    yardsrush: number
+    lineyards: number
+    opportunity_run: number
+    third_down_distance: number
+}
+
+export interface SDVPassingSummary {
+    team_id: string
+    pos_team: string
+    division: string
+    conference: string
+    season: number
+    player_id: number
+    passer_player_name: string
+    plays: number
+    games: number
+    team_games: number
+    playsgame: number
+    TEPA: number
+    EPAplay: number
+    EPAgame: number
+    yards: number
+    yardsplay: number
+    yardsgame: number
+    success: number
+    comp: number
+    att: number
+    comppct: number
+    passing_td: number
+    sacked: number
+    sack_yds: number
+    pass_int: number
+    detmer: number
+    detmergame: number
+    dropbacks: number
+    sack_adj_yards: number
+    yardsdropback: number
+    TEPA_rank?: number
+    EPAgame_rank?: number
+    EPAplay_rank?: number
+    success_rank?: number
+    comppct_rank?: number
+    yards_rank?: number
+    yardsplay_rank?: number
+    yardsgame_rank?: number
+    sack_adj_yards_rank?: number
+    yardsdropback_rank?: number
+    detmer_rank?: number
+    detmergame_rank?: number
+    fbs_class: string
+}
+
+export interface SDVRushingSummary {
+    team_id: string
+    pos_team: string
+    division: string
+    conference: string
+    season: number
+    player_id: number
+    rusher_player_name: string
+    plays: number
+    games: number
+    team_games: number
+    playsgame: number
+    TEPA: number
+    EPAplay: number
+    EPAgame: number
+    yards: number
+    yardsplay: number
+    yardsgame: number
+    success: number
+    rushing_td: number
+    fumbles: number
+    TEPA_rank: number
+    EPAgame_rank: number
+    EPAplay_rank: number
+    success_rank: number
+    yards_rank: number
+    yardsplay_rank: number
+    yardsgame_rank: number
+    fbs_class: string
+}
+
+export interface SDVReceivingSummary {
+    team_id: string
+    pos_team: string
+    division: string
+    conference: string
+    season: number
+    player_id: number
+    receiver_player_name: string
+    plays: number
+    games: number
+    team_games: number
+    playsgame: number
+    TEPA: number
+    EPAplay: number
+    EPAgame: number
+    yards: number
+    yardsplay: number
+    yardsgame: number
+    success: number
+    comp: number
+    targets: number
+    catchpct: number
+    passing_td: number
+    fumbles: number
+    TEPA_rank: number
+    EPAgame_rank: number
+    EPAplay_rank: number
+    success_rank: number
+    catchpct_rank: number
+    yards_rank: number
+    yardsplay_rank: number
+    yardsgame_rank: number
+    fbs_class: string
+}
+
+export type SDVPlayerSummary = SDVPassingSummary | SDVReceivingSummary | SDVRushingSummary;
 
 const SDV_HTTP_URL = 'https://data.sportsdataverse.org/v1/cfb';
 const SDV_AUTH_TOKEN = getSecret("SDV_AUTH_TOKEN")
@@ -32,7 +562,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     return await fetch(baseURL, config)
 }
 
-async function retrieveRemotePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SeasonPercentile[]> {
+async function retrieveRemotePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
     if (!season && !percentile) {
         // logger.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
         return [];
@@ -68,7 +598,7 @@ async function retrieveRemotePercentiles(season?: number, percentile?: number, m
     }
 }
 
-export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SeasonPercentile[]> {
+export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
     // console.log(JSON.stringify(payload))
     if (!season && !percentile) {
         // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
@@ -99,7 +629,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 }
 
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
-export async function retrieveTeamSummaries(season: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<TeamSummary[]> {
+export async function retrieveTeamSummaries(season: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<SDVTeamSummary[]> {
     if (!season) {
         // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
@@ -153,8 +683,8 @@ export async function retrieveTeamSummaries(season: number, category?: string, t
     }
 }
 
-async function retrievePlayerSummaries(season: number, type: SummaryType, team_id?: string | number, maxLookback = 2014): Promise<PlayerSummary[]> {
-    if (!season && !type) {
+export async function retrievePlayerSummaries(season: number, category: SummaryType, team_id?: string | number | null, sortBy?: string, ascending: boolean = false, limit: number = 150, maxLookback = 2014): Promise<SDVPlayerSummary[]> {
+    if (!season && !category) {
         // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
@@ -168,23 +698,28 @@ async function retrievePlayerSummaries(season: number, type: SummaryType, team_i
         payload["team_id"] = String(team_id)
     }
 
-    payload["limit"] = 150;
+    if (sortBy) {
+        payload["order"] = ((ascending) ? "" : "-") + sortBy
+    }
+
+    payload["limit"] = limit;
 
     try {        
         // update redis cache
-        let content: SDVSummaryResponse;
-        if (type == SummaryType.Passing) {
-            content = await requestSDV("passing", new URLSearchParams(payload));
-        } else if (type == SummaryType.Rushing) {
-            content = await requestSDV("rushing", new URLSearchParams(payload));
-        } else if (type == SummaryType.Receiving) {
-            content = await requestSDV("receiving", new URLSearchParams(payload));
+        let req: any;
+        if (category == SummaryType.Passing) {
+            req = await requestSDV("passing", new URLSearchParams(payload));
+        } else if (category == SummaryType.Rushing) {
+            req = await requestSDV("rushing", new URLSearchParams(payload));
+        } else if (category == SummaryType.Receiving) {
+            req = await requestSDV("receiving", new URLSearchParams(payload));
         } else {
-            throw Error(`Type '${type}' not implemented`)
+            throw Error(`Category '${category}' not implemented`)
         }
         // const key = generateKey(["league", season, type]);
         // expire every three days so that we get fresh data
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
+        const content: SDVSummaryResponse = await req.json();
         return content.data;
     } catch (err) {
         // logger.error(`could not find data for league in ${season}, checking ${season - 1}`)
@@ -197,393 +732,7 @@ async function retrievePlayerSummaries(season: number, type: SummaryType, team_i
         } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
             return [];
         } else {
-            return await retrievePlayerSummaries((season - 1), type, team_id, maxLookback);
+            return await retrievePlayerSummaries((season - 1), category, team_id, sortBy, ascending, limit, maxLookback);
         }
     }
 }
-
-export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
-    "team_id",
-    "pos_team",
-    "division",
-    "conference",
-    "season",
-    "plays_off",
-    "playsgame_off",
-    "passrate_off",
-    "rushrate_off",
-    "havoc_off",
-    "explosive_off",
-    "TEPA_off",
-    "EPAplay_off",
-    "EPAdrive_off",
-    "EPAgame_off",
-    "yards_off",
-    "yardsplay_off",
-    "yardsgame_off",
-    "play_stuffed_off",
-    "drives_off",
-    "drivesgame_off",
-    "yardsdrive_off",
-    "playsdrive_off",
-    "success_off",
-    "red_zone_success_off",
-    "third_down_success_off",
-    "third_down_distance_off",
-    "late_down_success_off",
-    "early_down_EPA_off",
-    "start_position_off",
-    "nonExplosiveEpaPerPlay_off",
-    "line_yards_off",
-    "opportunity_rate_off",
-    "playsgame_off_rank",
-    "TEPA_off_rank",
-    "EPAgame_off_rank",
-    "EPAplay_off_rank",
-    "EPAdrive_off_rank",
-    "early_down_EPA_off_rank",
-    "success_off_rank",
-    "yards_off_rank",
-    "yardsplay_off_rank",
-    "yardsgame_off_rank",
-    "drivesgame_off_rank",
-    "yardsdrive_off_rank",
-    "playsdrive_off_rank",
-    "play_stuffed_off_rank",
-    "red_zone_success_off_rank",
-    "third_down_success_off_rank",
-    "late_down_success_off_rank",
-    "third_down_distance_off_rank",
-    "start_position_off_rank",
-    "havoc_off_rank",
-    "explosive_off_rank",
-    "passrate_off_rank",
-    "rushrate_off_rank",
-    "nonExplosiveEpaPerPlay_off_rank",
-    "line_yards_off_rank",
-    "opportunity_rate_off_rank",
-    "plays_def",
-    "playsgame_def",
-    "passrate_def",
-    "rushrate_def",
-    "havoc_def",
-    "explosive_def",
-    "TEPA_def",
-    "EPAplay_def",
-    "EPAdrive_def",
-    "EPAgame_def",
-    "yards_def",
-    "yardsplay_def",
-    "yardsgame_def",
-    "play_stuffed_def",
-    "drives_def",
-    "drivesgame_def",
-    "yardsdrive_def",
-    "playsdrive_def",
-    "success_def",
-    "red_zone_success_def",
-    "third_down_success_def",
-    "third_down_distance_def",
-    "late_down_success_def",
-    "early_down_EPA_def",
-    "start_position_def",
-    "nonExplosiveEpaPerPlay_def",
-    "line_yards_def",
-    "opportunity_rate_def",
-    "playsgame_def_rank",
-    "TEPA_def_rank",
-    "EPAgame_def_rank",
-    "EPAplay_def_rank",
-    "EPAdrive_def_rank",
-    "early_down_EPA_def_rank",
-    "success_def_rank",
-    "yards_def_rank",
-    "yardsplay_def_rank",
-    "yardsgame_def_rank",
-    "drivesgame_def_rank",
-    "yardsdrive_def_rank",
-    "playsdrive_def_rank",
-    "play_stuffed_def_rank",
-    "red_zone_success_def_rank",
-    "third_down_success_def_rank",
-    "late_down_success_def_rank",
-    "third_down_distance_def_rank",
-    "start_position_def_rank",
-    "havoc_def_rank",
-    "explosive_def_rank",
-    "passrate_def_rank",
-    "rushrate_def_rank",
-    "nonExplosiveEpaPerPlay_def_rank",
-    "line_yards_def_rank",
-    "opportunity_rate_def_rank",
-    "TEPA_margin",
-    "EPAplay_margin",
-    "EPAdrive_margin",
-    "EPAgame_margin",
-    "success_margin",
-    "yardsplay_margin",
-    "TEPA_margin_rank",
-    "EPAgame_margin_rank",
-    "EPAdrive_margin_rank",
-    "EPAplay_margin_rank",
-    "success_margin_rank",
-    "yardsplay_margin_rank",
-    "start_position_margin",
-    "start_position_margin_rank",
-    "total_available_yards_off",
-    "total_gained_yards_off",
-    "available_yards_pct_off",
-    "available_yards_pct_off_rank",
-    "total_available_yards_def",
-    "total_gained_yards_def",
-    "available_yards_pct_def",
-    "available_yards_pct_def_rank",
-    "total_available_yards_margin",
-    "total_gained_yards_margin",
-    "available_yards_pct_margin",
-    "total_available_yards_margin_rank",
-    "total_gained_yards_margin_rank",
-    "available_yards_pct_margin_rank",
-    "plays_off_pass",
-    "playsgame_off_pass",
-    "passrate_off_pass",
-    "rushrate_off_pass",
-    "havoc_off_pass",
-    "explosive_off_pass",
-    "TEPA_off_pass",
-    "EPAplay_off_pass",
-    "EPAdrive_off_pass",
-    "EPAgame_off_pass",
-    "yards_off_pass",
-    "yardsplay_off_pass",
-    "yardsgame_off_pass",
-    "play_stuffed_off_pass",
-    "drives_off_pass",
-    "drivesgame_off_pass",
-    "yardsdrive_off_pass",
-    "playsdrive_off_pass",
-    "success_off_pass",
-    "red_zone_success_off_pass",
-    "third_down_success_off_pass",
-    "third_down_distance_off_pass",
-    "late_down_success_off_pass",
-    "early_down_EPA_off_pass",
-    "nonExplosiveEpaPerPlay_off_pass",
-    "line_yards_off_pass",
-    "opportunity_rate_off_pass",
-    "playsgame_off_pass_rank",
-    "TEPA_off_pass_rank",
-    "EPAgame_off_pass_rank",
-    "EPAplay_off_pass_rank",
-    "EPAdrive_off_pass_rank",
-    "early_down_EPA_off_pass_rank",
-    "success_off_pass_rank",
-    "yards_off_pass_rank",
-    "yardsplay_off_pass_rank",
-    "yardsgame_off_pass_rank",
-    "drivesgame_off_pass_rank",
-    "yardsdrive_off_pass_rank",
-    "playsdrive_off_pass_rank",
-    "play_stuffed_off_pass_rank",
-    "red_zone_success_off_pass_rank",
-    "third_down_success_off_pass_rank",
-    "late_down_success_off_pass_rank",
-    "third_down_distance_off_pass_rank",
-    "havoc_off_pass_rank",
-    "explosive_off_pass_rank",
-    "passrate_off_pass_rank",
-    "rushrate_off_pass_rank",
-    "nonExplosiveEpaPerPlay_off_pass_rank",
-    "line_yards_off_pass_rank",
-    "opportunity_rate_off_pass_rank",
-    "plays_def_pass",
-    "playsgame_def_pass",
-    "passrate_def_pass",
-    "rushrate_def_pass",
-    "havoc_def_pass",
-    "explosive_def_pass",
-    "TEPA_def_pass",
-    "EPAplay_def_pass",
-    "EPAdrive_def_pass",
-    "EPAgame_def_pass",
-    "yards_def_pass",
-    "yardsplay_def_pass",
-    "yardsgame_def_pass",
-    "play_stuffed_def_pass",
-    "drives_def_pass",
-    "drivesgame_def_pass",
-    "yardsdrive_def_pass",
-    "playsdrive_def_pass",
-    "success_def_pass",
-    "red_zone_success_def_pass",
-    "third_down_success_def_pass",
-    "third_down_distance_def_pass",
-    "late_down_success_def_pass",
-    "early_down_EPA_def_pass",
-    "nonExplosiveEpaPerPlay_def_pass",
-    "line_yards_def_pass",
-    "opportunity_rate_def_pass",
-    "playsgame_def_pass_rank",
-    "TEPA_def_pass_rank",
-    "EPAgame_def_pass_rank",
-    "EPAplay_def_pass_rank",
-    "EPAdrive_def_pass_rank",
-    "early_down_EPA_def_pass_rank",
-    "success_def_pass_rank",
-    "yards_def_pass_rank",
-    "yardsplay_def_pass_rank",
-    "yardsgame_def_pass_rank",
-    "drivesgame_def_pass_rank",
-    "yardsdrive_def_pass_rank",
-    "playsdrive_def_pass_rank",
-    "play_stuffed_def_pass_rank",
-    "red_zone_success_def_pass_rank",
-    "third_down_success_def_pass_rank",
-    "late_down_success_def_pass_rank",
-    "third_down_distance_def_pass_rank",
-    "havoc_def_pass_rank",
-    "explosive_def_pass_rank",
-    "passrate_def_pass_rank",
-    "rushrate_def_pass_rank",
-    "nonExplosiveEpaPerPlay_def_pass_rank",
-    "line_yards_def_pass_rank",
-    "opportunity_rate_def_pass_rank",
-    "TEPA_margin_pass",
-    "EPAplay_margin_pass",
-    "EPAdrive_margin_pass",
-    "EPAgame_margin_pass",
-    "success_margin_pass",
-    "yardsplay_margin_pass",
-    "TEPA_margin_pass_rank",
-    "EPAgame_margin_pass_rank",
-    "EPAdrive_margin_pass_rank",
-    "EPAplay_margin_pass_rank",
-    "success_margin_pass_rank",
-    "yardsplay_margin_pass_rank",
-    "plays_off_rush",
-    "playsgame_off_rush",
-    "passrate_off_rush",
-    "rushrate_off_rush",
-    "havoc_off_rush",
-    "explosive_off_rush",
-    "TEPA_off_rush",
-    "EPAplay_off_rush",
-    "EPAdrive_off_rush",
-    "EPAgame_off_rush",
-    "yards_off_rush",
-    "yardsplay_off_rush",
-    "yardsgame_off_rush",
-    "play_stuffed_off_rush",
-    "drives_off_rush",
-    "drivesgame_off_rush",
-    "yardsdrive_off_rush",
-    "playsdrive_off_rush",
-    "success_off_rush",
-    "red_zone_success_off_rush",
-    "third_down_success_off_rush",
-    "third_down_distance_off_rush",
-    "late_down_success_off_rush",
-    "early_down_EPA_off_rush",
-    "nonExplosiveEpaPerPlay_off_rush",
-    "line_yards_off_rush",
-    "opportunity_rate_off_rush",
-    "playsgame_off_rush_rank",
-    "TEPA_off_rush_rank",
-    "EPAgame_off_rush_rank",
-    "EPAplay_off_rush_rank",
-    "EPAdrive_off_rush_rank",
-    "early_down_EPA_off_rush_rank",
-    "success_off_rush_rank",
-    "yards_off_rush_rank",
-    "yardsplay_off_rush_rank",
-    "yardsgame_off_rush_rank",
-    "drivesgame_off_rush_rank",
-    "yardsdrive_off_rush_rank",
-    "playsdrive_off_rush_rank",
-    "play_stuffed_off_rush_rank",
-    "red_zone_success_off_rush_rank",
-    "third_down_success_off_rush_rank",
-    "late_down_success_off_rush_rank",
-    "third_down_distance_off_rush_rank",
-    "havoc_off_rush_rank",
-    "explosive_off_rush_rank",
-    "passrate_off_rush_rank",
-    "rushrate_off_rush_rank",
-    "nonExplosiveEpaPerPlay_off_rush_rank",
-    "line_yards_off_rush_rank",
-    "opportunity_rate_off_rush_rank",
-    "plays_def_rush",
-    "playsgame_def_rush",
-    "passrate_def_rush",
-    "rushrate_def_rush",
-    "havoc_def_rush",
-    "explosive_def_rush",
-    "TEPA_def_rush",
-    "EPAplay_def_rush",
-    "EPAdrive_def_rush",
-    "EPAgame_def_rush",
-    "yards_def_rush",
-    "yardsplay_def_rush",
-    "yardsgame_def_rush",
-    "play_stuffed_def_rush",
-    "drives_def_rush",
-    "drivesgame_def_rush",
-    "yardsdrive_def_rush",
-    "playsdrive_def_rush",
-    "success_def_rush",
-    "red_zone_success_def_rush",
-    "third_down_success_def_rush",
-    "third_down_distance_def_rush",
-    "late_down_success_def_rush",
-    "early_down_EPA_def_rush",
-    "nonExplosiveEpaPerPlay_def_rush",
-    "line_yards_def_rush",
-    "opportunity_rate_def_rush",
-    "playsgame_def_rush_rank",
-    "TEPA_def_rush_rank",
-    "EPAgame_def_rush_rank",
-    "EPAplay_def_rush_rank",
-    "EPAdrive_def_rush_rank",
-    "early_down_EPA_def_rush_rank",
-    "success_def_rush_rank",
-    "yards_def_rush_rank",
-    "yardsplay_def_rush_rank",
-    "yardsgame_def_rush_rank",
-    "drivesgame_def_rush_rank",
-    "yardsdrive_def_rush_rank",
-    "playsdrive_def_rush_rank",
-    "play_stuffed_def_rush_rank",
-    "red_zone_success_def_rush_rank",
-    "third_down_success_def_rush_rank",
-    "late_down_success_def_rush_rank",
-    "third_down_distance_def_rush_rank",
-    "havoc_def_rush_rank",
-    "explosive_def_rush_rank",
-    "passrate_def_rush_rank",
-    "rushrate_def_rush_rank",
-    "nonExplosiveEpaPerPlay_def_rush_rank",
-    "line_yards_def_rush_rank",
-    "opportunity_rate_def_rush_rank",
-    "TEPA_margin_rush",
-    "EPAplay_margin_rush",
-    "EPAdrive_margin_rush",
-    "EPAgame_margin_rush",
-    "success_margin_rush",
-    "yardsplay_margin_rush",
-    "TEPA_margin_rush_rank",
-    "EPAgame_margin_rush_rank",
-    "EPAdrive_margin_rush_rank",
-    "EPAplay_margin_rush_rank",
-    "success_margin_rush_rank",
-    "yardsplay_margin_rush_rank",
-    "fbs_class",
-    "valid_games",
-    "adj_off_epa",
-    "adj_def_epa",
-    "def_strength_faced",
-    "off_strength_faced",
-    "net_adj_epa",
-    "adj_off_epa_rank",
-    "adj_def_epa_rank",
-    "net_adj_epa_rank",
-]

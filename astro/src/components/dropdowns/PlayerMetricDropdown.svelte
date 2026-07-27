@@ -1,6 +1,6 @@
 <script>
     import { toTitleCase } from "../../utils/misc";
-    import { PLAYER_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
+    import { AVAILABLE_SEASONS, SDV_PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
 
     const { season, category, metric } = $props()
 
@@ -34,7 +34,7 @@
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeCategory}>
                 <option value="-1" disabled>Choose Category...</option>
-                {#each Object.keys(PLAYER_METRIC_CATEGORIES) as s}
+                {#each Object.keys(SDV_PLAYER_METRIC_CATEGORIES) as s}
 					<option value={s} selected={(category == s)}>{toTitleCase(s)}</option>
 				{/each}
             </select>
@@ -42,7 +42,7 @@
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
-                {#each Object.entries(PLAYER_METRIC_CATEGORIES) as [c, metrics]}
+                {#each Object.entries(SDV_PLAYER_METRIC_CATEGORIES) as [c, metrics]}
 					{#if category == c}
                     <optgroup label={toTitleCase(c)}>
                         {#each Object.entries(metrics) as [key, title]}

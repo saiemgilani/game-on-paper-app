@@ -3,15 +3,13 @@ import TrendsChart from '../../../components/charts/TrendsChart.svelte';
 import TrendsMetricDropdown from '../../../components/dropdowns/TrendsMetricDropdown.svelte';
 import GenericPage from '../../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../../layouts/GenericPage.astro';
-import { type SeasonPercentile } from '../../../resources/summary';
 import SummaryModel from '../../../resources/summary';
-import { retrievePercentiles } from '../../../resources/sdv';
-import { getPercentileKey } from '../../../utils/misc';
+import { retrievePercentiles, type SDVSeasonPercentile } from '../../../resources/sdv';
 
 const query = Astro.url.searchParams;
 const metric = query.get("sort") || "EPAplay";
 
-let allPctls: SeasonPercentile[] = []
+let allPctls: SDVSeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
     const percentiles = await retrievePercentiles(undefined, p);
     allPctls = allPctls.concat(percentiles);

@@ -14,7 +14,7 @@ interface Props {
 
 let { season, category, metric } = Astro.props;
 category = category || "passing";
-metric = metric || "advanced.epaPerPlay";
+metric = metric || "EPAplay";
 
 const categoryTitle = toTitleCase(category);
 const pageTitle = `${categoryTitle} Statistics | ${season} | Game on Paper`;

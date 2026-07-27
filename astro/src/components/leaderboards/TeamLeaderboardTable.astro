@@ -1,9 +1,8 @@
 ---
-import type { TeamSummary } from '../../resources/summary';
-import { retrieveTeamSummaries } from '../../resources/sdv';
+import { retrieveTeamSummaries, type SDVTeamSummary } from '../../resources/sdv';
+import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS } from '../../utils/constants';
 import { formatRank, generateMarginalString } from '../../utils/common';
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue } from '../../utils/misc';
-import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT } from '../../utils/constants';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
@@ -16,7 +15,7 @@ const { season, category, metric } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = ((category == "defensive" && metric != "havoc_def") || (category == "offensive" && metric == "havoc_off")) ? "up" : "down"
 
-let content: TeamSummary[] = await retrieveTeamSummaries(season, category);
+let content: SDVTeamSummary[] = await retrieveTeamSummaries(season, category, undefined, season);
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
@@ -57,7 +56,7 @@ function generateMetricCell(team: any, category: string, m: string): string {
     const rank = retrieveValue(team, m + '_rank');
     const value = parseFloat(retrieveValue(team, m)) * multiplier;
     let valString = category == "differential" ? generateMarginalString(value, power10, fixed) : roundNumber(value, power10, fixed);
-    valString += ((m.endsWith("Rate") || m.endsWith("Pct")) ? "%" : "")
+    valString += ((SDV_TEAM_PERCENT_COLUMNS.includes(m)) ? "%" : "");
     return `
     <td class="text-center ${generateColorRampValue(parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
     `

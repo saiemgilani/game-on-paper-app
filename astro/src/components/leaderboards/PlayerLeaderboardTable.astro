@@ -1,8 +1,9 @@
 ---
 import { formatRank } from '../../utils/common';
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue } from '../../utils/misc';
-import { PLAYER_METRIC_CATEGORIES, PLAYER_METRIC_FORMATTING_VALUES } from '../../utils/constants';
-import SummaryModel, { SummaryType, type PlayerSummary } from '../../resources/summary';
+import { retrievePlayerSummaries, type SDVPlayerSummary }  from '../../resources/sdv';
+import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from '../../utils/constants';
+import { SummaryType } from '../../resources/summary';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
@@ -12,10 +13,11 @@ interface Props {
 }
 
 const { season, category, metric } = Astro.props;
-let content = await SummaryModel.retrieveLeagueData({ year: season, type: category as SummaryType })
-content = content.filter(p => {
+
+let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, metric + "_rank", true, 150, season);
+content = content.filter((p: any) => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
-    const nonNullRank = retrieveValue(p, `${metric}Rank`) != null && retrieveValue(p, `${metric}Rank`) != "NA"
+    const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
     return nonNullRank && nonNullValue
 })
 
@@ -24,13 +26,13 @@ content = content.toSorted((a, b) => {
     return (-1 * compVal)
 })
 
-const columns = PLAYER_METRIC_CATEGORIES[category];
+const columns = SDV_PLAYER_METRIC_CATEGORIES[category];
 
 function generateMetricCell(player: any, c: string, m: string): string {
-    const [multiplier, power10, fixed] = PLAYER_METRIC_FORMATTING_VALUES[category][m] || [1, 2, 2];
-    const rank = retrieveValue(player, m + 'Rank');
+    const [multiplier, power10, fixed] = SDV_PLAYER_METRIC_FORMATTING_VALUES[c][m] || [1, 2, 2];
+    const rank = retrieveValue(player, m + '_rank');
     const value = parseFloat(retrieveValue(player, m)) * multiplier;
-    const valString = roundNumber(value, power10, fixed) + ((m.endsWith("Rate") || m.endsWith("Pct")) ? "%" : "")
+    const valString = roundNumber(value, power10, fixed) + ((SDV_PLAYER_PERCENT_COLUMNS.includes(m)) ? "%" : "")
     return `
     <td class="text-center ${generateColorRampValue(rank == "NA" ? null : parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
     `
@@ -40,7 +42,18 @@ function generateMetricRow(player: any): string {
     return Object.entries(columns).map(([k, _]) => generateMetricCell(player, category, k)).join("")
 }
 
-const allTeamIds = content.map(p => p.teamId);
+const allTeamIds = content.map(p => p.team_id);
+
+let nameField = "name";
+if (category == "passing") {
+    nameField = "passer_player_name"
+} else if (category == "rushing") {
+    nameField = "rusher_player_name"
+} else if (category == "receiving") {
+    nameField = "receiver_player_name"
+} else {
+    nameField = "name"
+}
 
 ---
 <DarkModeLogos teamIds={allTeamIds} />
@@ -63,9 +76,9 @@ const allTeamIds = content.map(p => p.teamId);
                         {
                             content.map((p) => (
                                 <tr>
-                                    <td class="text-right" colspan="1">{formatRank(parseFloat(retrieveValue(p, metric + `Rank`)))}</td>
-                                    <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.teamId}`}><img class={`img-fluid team-logo-${p.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.teamId}.png`} alt={`ESPN team id ${p.teamId} ${cleanField(p, "name")}`} title={p.team}/><span class="visually-hidden">{cleanField(p, "team")}</span></a> <strong>{cleanField(p, "name")}</strong></td>
-                                    <Fragment set:html={generateMetricCell(p, category, "statistics.games")} />
+                                    <td class="text-right" colspan="1">{formatRank(parseFloat(retrieveValue(p, metric + `_rank`)))}</td>
+                                    <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span></a> <strong>{cleanField(p, nameField)}</strong></td>
+                                    <Fragment set:html={generateMetricCell(p, category, "games")} />
                                     <Fragment set:html={generateMetricRow(p)} />
                                 </tr>
                             ))
