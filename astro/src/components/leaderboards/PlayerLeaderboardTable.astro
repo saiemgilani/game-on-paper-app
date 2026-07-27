@@ -13,12 +13,17 @@ interface Props {
 }
 
 const { season, category, metric } = Astro.props;
-
-let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, metric + "_rank", true, 150, season);
+const sortBy = ["comp", "dropbacks", "plays", "targets"].includes(metric) ? metric : `${metric}_rank`;
+const isMetricRanked = sortBy.endsWith("_rank")
+let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season);
 content = content.filter((p: any) => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
-    return nonNullRank && nonNullValue
+    if (isMetricRanked) { 
+        return nonNullRank && nonNullValue
+    } else {
+        return nonNullValue
+    }
 })
 
 content = content.toSorted((a, b) => {
@@ -74,9 +79,9 @@ if (category == "passing") {
                     </thead>
                     <tbody>
                         {
-                            content.map((p) => (
+                            content.map((p, i) => (
                                 <tr>
-                                    <td class="text-right" colspan="1">{formatRank(parseFloat(retrieveValue(p, metric + `_rank`)))}</td>
+                                    <td class="text-right" colspan="1">{isMetricRanked ? formatRank(parseFloat(retrieveValue(p, metric + `_rank`))) : (i + 1)}</td>
                                     <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span></a> <strong>{cleanField(p, nameField)}</strong></td>
                                     <Fragment set:html={generateMetricCell(p, category, "games")} />
                                     <Fragment set:html={generateMetricRow(p)} />
