@@ -13,12 +13,13 @@
         if (onChangeValue) {
             onChangeValue(c, m)
         } else {
-            window.location = `/charts/trends?type=${c}&sort=${m}`;
+            window.location = `/cfb/charts/trends?sort=${m}`;
         }
     }
 </script>
 <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
     <div class="row">
+        {#if !category }
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeCategory}>
                 <option value="-1" disabled>Choose Category...</option>
@@ -26,35 +27,41 @@
                 <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
             </select>
         </div>
+        {/if}
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
-                <option value="overall.epaPerPlay" selected={(metric == 'overall.epaPerPlay')}>EPA/Play</option>
-                <option value="overall.yardsPerPlay" selected={(metric == 'overall.yardsPerPlay')}>Yards/Play</option>
-                <option value="overall.successRate" selected={(metric == 'overall.successRate')}>SR%</option>
+                <option value="EPAplay" selected={(metric == "EPAplay")}>EPA/Play</option>
+                <option value="yardsplay" selected={(metric == "yardsplay")}>Yards/Play</option>
+                <option value="success" selected={(metric == "success")}>SR%</option>
 
                 <optgroup label="Passing">
-                    <option value="passing.epaPerPlay" selected={(metric == 'passing.epaPerPlay')}>EPA/DB</option>
-                    <option value="passing.yardsPerPlay" selected={(metric == 'passing.yardsPerPlay')}>Yards/DB</option>
-                    <option value="passing.successRate" selected={(metric == 'passing.successRate')}>Pass SR%</option>
-                    <option value="passing.explosiveRate" selected={(metric == 'passing.explosiveRate')}>Pass Expl %</option>
+                    <option value="dropbacks" selected={(metric == "dropbacks")}>Dropbacks</option>
+                    <option value="EPAdropback" selected={(metric == "EPAdropback")}>EPA/DB</option>
+                    <option value="yardsdropback" selected={(metric == "yardsdropback")}>Yards/DB</option>
+                    <option value="pass_success" selected={(metric == "pass_success")}>Pass SR%</option>
+                    <option value="pass_explosive" selected={(metric == "pass_explosive")}>Pass Expl %</option>
                 </optgroup>
                 <optgroup label="Rushing">
-                    <option value="rushing.epaPerPlay" selected={(metric == 'rushing.epaPerPlay')}>EPA/Rush</option>
-                    <option value="rushing.yardsPerPlay" selected={(metric == 'rushing.yardsPerPlay')}>Yards/Rush</option>
-                    <option value="rushing.successRate" selected={(metric == 'rushing.successRate')}>Rush SR%</option>
-                    <option value="rushing.explosiveRate" selected={(metric == 'rushing.explosiveRate')}>Rush Expl %</option>
-                    <option value="rushing.opportunityRate" selected={(metric == 'rushing.opportunityRate')}>Opportunity %</option>
-                    <option value="rushing.lineYards" selected={(metric == 'rushing.lineYards')}>Line Yards</option>
-                    <option value="rushing.stuffedPlayRate" selected={(metric == 'rushing.stuffedPlayRate')}>Stuffed %</option>
+                    <option value="rushes" selected={(metric == "rushes")}>Rush Attempts</option>
+                    <option value="EPArush" selected={(metric == "EPArush")}>EPA/Rush</option>
+                    <option value="yardsrush" selected={(metric == "yardsrush")}>Yards/Rush</option>
+                    <option value="rush_success" selected={(metric == "rush_success")}>Rush SR%</option>
+                    <option value="rush_explosive" selected={(metric == "rush_explosive")}>Rush Expl %</option>
+                    <option value="opportunity_run" selected={(metric == "opportunity_run")}>Opportunity %</option>
+                    <option value="lineyards" selected={(metric == "lineyards")}>Line Yards</option>
+                    <option value="play_stuffed" selected={(metric == "play_stuffed")}>Stuffed %</option>
                 </optgroup>
                 <optgroup label="Other">
-                    <option value="overall.havocRate" selected={(metric == 'overall.havocRate')}>Havoc %</option>
-                    <option value="overall.explosiveRate" selected={(metric == 'overall.explosiveRate')}>Explosive %</option>
-                    <option value="overall.nonExplosiveEpaPerPlay" selected={(metric == 'overall.nonExplosiveEpaPerPlay')}>Non-Expl EPA/Play</option>
-                    <option value="overall.earlyDownEPAPerPlay" selected={(metric == 'overall.earlyDownEPAPerPlay')}>Early Downs EPA/Play</option>
-                    <option value="overall.lateDownSuccessRate" selected={(metric == 'overall.lateDownSuccessRate')}>Late Downs SR%</option>
-                    <option value="overall.thirdDownDistance" selected={(metric == 'overall.thirdDownDistance')}>Avg Distance (3rd)</option>
+                    <option value="havoc" selected={(metric == "havoc")}>Havoc %</option>
+                    <option value="explosive" selected={(metric == "explosive")}>Explosive %</option>
+                    <option value="nonExplosiveEpaPerPlay" selected={(metric == "nonExplosiveEpaPerPlay")}>Non-Expl EPA/Play</option>
+                    <option value="early_down_EPA" selected={(metric == "early_down_EPA")}>Early Downs EPA/Play</option>
+                    <option value="early_down_success" selected={(metric == "early_down_success")}>Early Downs SR%</option>
+                    <option value="late_down_success" selected={(metric == "late_down_success")}>Late Downs SR%</option>
+                    <option value="third_down_distance" selected={(metric == "third_down_distance")}>Avg Distance (3rd)</option>
+                    <option value="red_zone_success" selected={(metric == "red_zone_success")}>Red Zone SR%</option>
+                    <option value="GEI" selected={(metric == "GEI")}>Game Excitement Index (GEI)</option>
                 </optgroup>
             </select>
         </div>

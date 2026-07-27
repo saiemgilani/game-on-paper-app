@@ -3,28 +3,25 @@ import TrendsChart from '../../../components/charts/TrendsChart.svelte';
 import TrendsMetricDropdown from '../../../components/dropdowns/TrendsMetricDropdown.svelte';
 import GenericPage from '../../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../../layouts/GenericPage.astro';
-import SummaryModel, { type SeasonPercentile } from '../../../resources/summary';
+import { type SeasonPercentile } from '../../../resources/summary';
+import SummaryModel from '../../../resources/summary';
+import { retrievePercentiles } from '../../../resources/sdv';
 import { getPercentileKey } from '../../../utils/misc';
 
 const query = Astro.url.searchParams;
-let category = query.get("type") || "offensive";
-if (category == "differential") {
-    category = "offensive"
-}
-const metric = query.get("sort") || "overall.epaPerPlay";
+const metric = query.get("sort") || "EPAplay";
 
 let allPctls: SeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-    const percentiles = await SummaryModel.retrievePercentiles({ pctile: p });
+    const percentiles = await retrievePercentiles(undefined, p);
     allPctls = allPctls.concat(percentiles);
 }
-// console.log(allPctls)
-const pctlKey = getPercentileKey(metric)
+
 const selectedPercentiles = allPctls.map((p: any) => {
     return {
-        season: p["season"],
+        season: p["season"] || 2025,
         pctile: p["pctile"],
-        value: p[pctlKey]
+        value: p[metric]
     }
 })
 // console.log(selectedPercentiles)
@@ -59,9 +56,9 @@ const title = `National Trends | ${yearRange} | Game on Paper`;
                 <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p>
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
-                <TrendsMetricDropdown client:idle category={category} metric={metric} />
+                <TrendsMetricDropdown client:idle category={null} metric={metric} />
             </div>
         </div>
     </div>
-    <TrendsChart client:only title="National Trends" teamColor={null} teamData={[]} category={category} metric={metric} percentiles={selectedPercentiles} />
+    <TrendsChart client:only title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles} />
 </GenericPage>

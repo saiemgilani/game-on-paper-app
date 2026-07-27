@@ -15,68 +15,76 @@ export function capitalizeFirstLetter(val: string): string {
 
 export function getAxisTitleForMetric(category: string, metric: string): string {
     var metricTitle = metric;
-    switch (metric) {
-        case "overall.adjEpaPerPlay": 
+    const cleanedMetric = (
+        metric
+            .replace("_off", "")
+            .replace("_def", "")
+            .replace("_margin", "")
+    )
+    switch (cleanedMetric) {
+        case "net_adj_epa":
+        case "adj_off_epa": 
+        case "adj_def_epa":
             metricTitle = "Adj EPA/Play";
             break;
-        case "overall.epaPerPlay": 
+        case "EPAplay": 
             metricTitle = "EPA/Play";
             break;
-        case "overall.yardsPerPlay": 
+        case "yardsplay": 
             metricTitle = "Yards/Play";
             break;
-        case "overall.successRate": 
-            metricTitle = "Success %";
+        case "success": 
+            metricTitle = "Success Rate";
             break;
-        case "passing.epaPerPlay": 
-            metricTitle = "EPA/DB";
+        case "EPAdropback": 
+            metricTitle = "EPA/Dropback";
             break;
-        case "passing.yardsPerPlay": 
+        case "yardsdropback": 
             metricTitle = "Yards/DB";
             break;
-        case "passing.successRate": 
+        case "success_pass": 
             metricTitle = "Pass SR%";
             break;
-        case "rushing.epaPerPlay": 
+        case "EPArush": 
             metricTitle = "EPA/Rush";
             break;
-        case "rushing.yardsPerPlay": 
+        case "yardsrush": 
             metricTitle = "Yards/Rush";
             break;
-        case "rushing.successRate": 
+        case "rush_success": 
             metricTitle = "Rush SR%";
             break;
-        case "overall.havocRate": 
+        case "havoc": 
             metricTitle = "Havoc %";
             break;
-        case "passing.explosiveRate":
+        case "pass_explosive":
             metricTitle = "Pass Expl %";
             break;
-        case "rushing.explosiveRate":
+        case "rush_explosive":
             metricTitle = "Rush Expl %";
             break;
-        case "rushing.opportunityRate":
+        case "opportunity_run":
             metricTitle = "Opportunity %";
             break;
-        case "rushing.lineYards":
+        case "lineyards":
             metricTitle = "Line Yards";
             break;
-        case "rushing.stuffedPlayRate":
+        case "play_stuffed":
             metricTitle = "Stuffed %";
             break;
-        case "overall.explosiveRate":
+        case "explosive":
             metricTitle = "Explosive %";
             break;
-        case "overall.nonExplosiveEpaPerPlay":
+        case "nonExplosiveEpaPerPlay":
             metricTitle =  "Non-Expl EPA/Play";
             break;
-        case "overall.earlyDownEPAPerPlay":
+        case "early_down_EPA":
             metricTitle =  "Early Downs EPA/Play";
             break;
-        case "overall.lateDownSuccessRate":
+        case "late_down_success":
             metricTitle =  "Late Downs SR%";
             break;
-        case "overall.thirdDownDistance":
+        case "third_down_distance":
             metricTitle =  "Avg Distance (3rd)";
             break;
         default:
@@ -94,68 +102,76 @@ export function getAxisTitleForMetric(category: string, metric: string): string 
 
 export function getTitleForMetric(category: string, metric: string): string {
     var metricTitle = metric;
-    switch (metric) {
-        case "overall.adjEpaPerPlay": 
+    const cleanedMetric = (
+        metric
+            .replace("_off", "")
+            .replace("_def", "")
+            .replace("_margin", "")
+    )
+    switch (cleanedMetric) {
+        case "net_adj_epa":
+        case "adj_off_epa": 
+        case "adj_def_epa":
             metricTitle = "Adj EPA/Play";
             break;
-        case "overall.epaPerPlay": 
+        case "EPAplay": 
             metricTitle = "EPA/Play";
             break;
-        case "overall.yardsPerPlay": 
+        case "yardsplay": 
             metricTitle = "Yards/Play";
             break;
-        case "overall.successRate": 
+        case "success": 
             metricTitle = "Success Rate";
             break;
-        case "passing.epaPerPlay": 
+        case "EPAdropback": 
             metricTitle = "EPA/Dropback";
             break;
-        case "passing.yardsPerPlay": 
+        case "yardsdropback": 
             metricTitle = "Yards/Dropback";
             break;
-        case "passing.successRate": 
+        case "success_pass": 
             metricTitle = "Pass Success Rate";
             break;
-        case "rushing.epaPerPlay": 
+        case "EPArush": 
             metricTitle = "EPA/Rush";
             break;
-        case "rushing.yardsPerPlay": 
+        case "yardsrush": 
             metricTitle = "Yards/Rush";
             break;
-        case "rushing.successRate": 
+        case "rush_success": 
             metricTitle = "Rush Success Rate";
             break;
-        case "overall.havocRate": 
+        case "havoc": 
             metricTitle = "Havoc Rate";
             break;
-        case "passing.explosiveRate":
+        case "pass_explosive":
             metricTitle = "Pass Explosive Play Rate";
             break;
-        case "rushing.explosiveRate":
+        case "rush_explosive":
             metricTitle = "Rush Explosive Play Rate";
             break;
-        case "rushing.opportunityRate":
+        case "opportunity_run":
             metricTitle = "Opportunity Rate";
             break;
-        case "rushing.lineYards":
+        case "lineyards":
             metricTitle = "Line Yards/Rush";
             break;
-        case "rushing.stuffedPlayRate":
+        case "play_stuffed":
             metricTitle = "Stuffed Run Rate";
             break;
-        case "overall.explosiveRate":
+        case "explosive":
             metricTitle = "Explosive Play Rate";
             break;
-        case "overall.nonExplosiveEpaPerPlay":
+        case "nonExplosiveEpaPerPlay":
             metricTitle =  "Non-Explosive EPA/Play";
             break;
-        case "overall.earlyDownEPAPerPlay":
+        case "early_down_EPA":
             metricTitle =  "Early Downs EPA/Play";
             break;
-        case "overall.lateDownSuccessRate":
+        case "late_down_success":
             metricTitle =  "Late Downs Success Rate";
             break;
-        case "overall.thirdDownDistance":
+        case "third_down_distance":
             metricTitle =  "Avg Distance on 3rd Down";
             break;
         default:
@@ -172,48 +188,56 @@ export function getTitleForMetric(category: string, metric: string): string {
 }
 
 function formatNumberForMetric(metric: string, value: number): string {
-    switch (metric) {
-        case "overall.adjEpaPerPlay": 
+    const cleanedMetric = (
+        metric
+            .replace("_off", "")
+            .replace("_def", "")
+            .replace("_margin", "")
+    )
+    switch (cleanedMetric) {
+        case "net_adj_epa":
+        case "adj_off_epa": 
+        case "adj_def_epa": 
             return `${roundNumber(value, 2, 2)}`;
-        case "overall.epaPerPlay": 
+        case "EPAplay": 
             return `${roundNumber(value, 2, 2)}`;
-        case "overall.yardsPerPlay": 
+        case "yardsplay": 
             return `${roundNumber(value, 2, 2)}`;
-        case "overall.successRate": 
+        case "success": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "passing.epaPerPlay": 
+        case "EPAdropback": 
             return `${roundNumber(value, 2, 2)}`;
-        case "passing.yardsPerPlay": 
+        case "yardsdropback": 
             return `${roundNumber(value, 2, 2)}`;
-        case "passing.successRate": 
+        case "success_pass": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "rushing.epaPerPlay": 
+        case "EPArush": 
             return `${roundNumber(value, 2, 2)}`;
-        case "rushing.yardsPerPlay": 
+        case "yardsrush": 
             return `${roundNumber(value, 2, 2)}`;
-        case "rushing.successRate": 
+        case "rush_success": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "overall.havocRate": 
+        case "havoc": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "passing.explosiveRate":
+        case "pass_explosive":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "rushing.explosiveRate":
+        case "rush_explosive":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "rushing.opportunityRate":
+        case "opportunity_run":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "rushing.lineYards":
+        case "lineyards":
             return `${roundNumber(value, 2, 2)}`;
-        case "rushing.stuffedPlayRate":
+        case "play_stuffed":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "overall.explosiveRate":
+        case "explosive":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "overall.nonExplosiveEpaPerPlay":
+        case "nonExplosiveEpaPerPlay":
             return `${roundNumber(value, 2, 2)}`;
-        case "overall.earlyDownEPAPerPlay":
+        case "early_down_EPA":
             return `${roundNumber(value, 2, 2)}`;
-        case "overall.lateDownSuccessRate":
+        case "late_down_success":
             return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "overall.thirdDownDistance":
+        case "third_down_distance":
             return `${roundNumber(value, 2, 2)}`;
         default:
             return `${roundNumber(value, 2, 2)}`;
@@ -261,6 +285,7 @@ function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl')
 function buildTeamChartData(teams: TeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
     let distributions: Record<number, ValueDistribution> = {};
     for (const p of percentiles) {
+        console.log(JSON.stringify(p))
         if (!Object.keys(distributions).includes(`${p["season"]}`)) {
             distributions[p["season"]] = {
                 min: null,
@@ -466,7 +491,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: Tea
     const viewport = getCurrentViewport(document, window);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    const shouldFlipYAxis = (category == "defensive" && !["overall.havocRate", "rushing.stuffedPlayRate", "overall.thirdDownDistance"].includes(metric)) || (category == "offensive" && ["rushing.stuffedPlayRate", "overall.havocRate", "overall.thirdDownDistance"].includes(metric))
+    const shouldFlipYAxis = (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
 
     return {
         type: 'boxplot',
@@ -479,7 +504,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: Tea
                     let sizeHeight = chart.ctx.canvas.clientHeight;
 
                     /* credit */
-                    if (metric.includes("adjEpaPerPlay")) {
+                    if (metric.includes("_adj_") || metric.startsWith("adj_")) {
                         chart.ctx.save()
                         chart.ctx.textAlign = "right"
                         chart.ctx.font = "8px Helvetica";
