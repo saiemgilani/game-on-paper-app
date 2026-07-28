@@ -57,10 +57,9 @@ for (const p of plays) {
         rushMatrix[direction]["yards"] += Number(p.yds_rushed || 0)
     }
 }
-
 ---
 
-<Fragment>
+<div hidden={(countableAttempts == 0)}>
     <h3 class="mt-3 mb-2">Rush Matrix</h3>
     <div class="table table-responsive">
         <table class="table table-sm table-responsive text-center target-matrix">
@@ -88,4 +87,4 @@ for (const p of plays) {
             <caption>Built off play-by-play data that started appearing in 2025. Rush attempts that lack direction information are not included.</caption>
         </table>
     </div>
-</Fragment>
+</div>
