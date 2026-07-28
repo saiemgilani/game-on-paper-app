@@ -37,7 +37,8 @@ try {
 }
 
 if (!game) {
-    return Astro.rewrite("/404")
+    Astro.cache.set(false);
+    return Astro.redirect("/404")
 }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);

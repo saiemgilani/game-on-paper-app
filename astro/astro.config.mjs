@@ -21,5 +21,19 @@ export default defineConfig({
         "/team/[...slug]": "/cfb/team/[...slug]"
     },
     trailingSlash: 'ignore',
-    cache: { provider: cacheCloudflare() }
+    cache: { 
+        provider: cacheCloudflare(),
+    },
+    routeRules: {
+        // one minute if live, one day if old -- set manually
+        // "/game/[...slug]": { maxAge: 60, swr: 60 },
+
+        // 3 days cache
+        "/trends": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
+        "/teams": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
+        "/players": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
+        "/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
+        "/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["season"] },
+        "/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["team"] }
+    }
 });

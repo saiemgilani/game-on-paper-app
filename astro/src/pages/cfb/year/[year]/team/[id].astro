@@ -27,10 +27,12 @@ export async function getStaticPaths() {
 
 const { year, id } = Astro.params;
 if (!year) {
-    return Astro.rewrite("/404");
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
 }
 if (!id) {
-    return Astro.rewrite("/404");
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
 }
 
 const team = await retrieveTeamInformation(id)
@@ -56,7 +58,8 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 const teamSummaries = await retrieveTeamSummaries(Number(year), undefined, Number(id));
 if (!teamSummaries) {
-    return Astro.rewrite('/404');
+    Astro.cache.set(false);
+    return Astro.redirect('/404');
 }
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color

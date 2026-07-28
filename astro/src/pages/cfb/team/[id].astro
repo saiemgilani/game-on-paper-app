@@ -21,7 +21,8 @@ export async function getStaticPaths() {
 
 const { id } = Astro.params;
 if (!id) {
-    return Astro.rewrite("/404");
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
 }
 
 const team = await retrieveTeamInformation(id)

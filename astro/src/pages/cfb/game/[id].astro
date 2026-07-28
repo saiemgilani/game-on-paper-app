@@ -2,9 +2,11 @@
 import GamePage from '../../../components/game/GamePage.astro';
 import PreGamePage from '../../../components/game/PreGamePage.astro';
 import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../../resources/espn';
+import { DateTime } from 'luxon';
 
 const { id } = Astro.params;
 if (!id) {
+    Astro.cache.set(false);
     return Astro.redirect("/cfb/"); 
 }
 let espnGame: ESPNPlayByPlayResponse | null;
@@ -13,13 +15,43 @@ try {
     if (!espnGame) {
         throw new Error(`Game ID ${id} had no data`);
     }
-    // if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
-    //     Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
-    // } else {
-    //     Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
-    // }
+
+    const gameDate = DateTime.fromISO(espnGame.gamepackageJSON.header.competitions[0].date);
+    const todayPlusOneWeek = DateTime.now().plus({ weeks: 1 })
+    const isGameWithinOneWeek = gameDate.diff(todayPlusOneWeek).days < 7;
+
+    if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
+        // cache one day for completed games
+        Astro.cache.set({
+            maxAge: 60 * 60 * 24,
+            swr: 60 * 10,
+            tags: ['game-completed'],
+        });
+    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneWeek) {
+        // cache one hour for scheduled games within 24 hours
+        Astro.cache.set({
+            maxAge: 60 * 60,
+            swr: 60 * 10,
+            tags: ['game-scheduled-today'],
+        });
+    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") {
+        // cache one day for scheduled games outside 24 hours
+        Astro.cache.set({
+            maxAge: 60 * 60 * 24,
+            swr: 60 * 10,
+            tags: ['game-scheduled-future'],
+        });
+    } else {
+        // cache one minute for live games
+        Astro.cache.set({
+            maxAge: 60,
+            swr: 60,
+            tags: ['game-scheduled'],
+        });
+    }
 } catch (e) {
     console.error(e);
+    Astro.cache.set(false);
     return Astro.redirect("/404")
 }
 ---
