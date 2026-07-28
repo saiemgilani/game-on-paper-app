@@ -74,7 +74,7 @@ export function range(start: number, end: number): number[] {
     return Array.from(Array(end + 1).keys()).slice(start);
 }
 
-export function roundNumber(value: string | number | null, power10: number, fixed: number): string {
+export function roundNumber(value: string | number | undefined | null, power10: number, fixed: number): string {
     if (typeof value == "number") {
         value = `${value}`;
     }

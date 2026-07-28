@@ -1,6 +1,6 @@
 ---
 import type { ESPNTeam } from '../../resources/espn'
-import type { TeamSummary } from '../../resources/summary'
+import type { SDVTeamSummary } from '../../resources/sdv'
 import { formatRank, generateMarginalString } from '../../utils/common'
 import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, roundNumber } from '../../utils/misc'
 
@@ -8,7 +8,7 @@ interface Props {
     team: ESPNTeam
     season: string | number
     teamSeasonData: any
-    summary?: TeamSummary | null
+    summary?: SDVTeamSummary | null
     hideNavigation: boolean
 }
 
@@ -18,7 +18,14 @@ const records = Array.isArray(teamSeasonData["record"]) ? teamSeasonData["record
 const overallStuff = records.filter(item => item["type"] == "total")[0];
 const overall = overallStuff?.displayValue || "0-0";
 const finishes = overallStuff?.stats?.filter((item: any) => item.name == "playoffSeed") || []
-const finish = (finishes.length > 0) ? getNumberWithOrdinal(parseInt(finishes[0].displayValue)) : 'N/A';
+// const finish = (finishes.length > 0) ? getNumberWithOrdinal(parseInt(finishes[0].displayValue)) : 'N/A';
+const finishValue = finishes.length > 0 ? parseInt(finishes[0].displayValue) : null;
+let finish = "N/A";
+if (!finishValue) {
+    finish = "N/A"
+} else {
+    finish = getNumberWithOrdinal(finishValue)
+}
 
 var conf = ""
 let confRecs = records.filter(item => item.type == "vsconf")
@@ -51,7 +58,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                     <tr>
                         <td class="numeral text-center" style="width: 33%">{overall}{conf}</td>
                         <td class="numeral text-center" style="width: 33%">{finish}</td>
-                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.epaPerPlayRank, 134, true)}`}>{generateMarginalString(summary?.differential?.overall?.epaPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.epaPerPlayRank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.EPAplay_margin_rank, 134, true)}`}>{generateMarginalString(summary?.EPAplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.EPAplay_margin_rank)}</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -71,9 +78,9 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                 </thead>
                 <tbody>
                     <tr>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.yardsPerPlayRank, 134, true)}`} style="width: 33%">{generateMarginalString(summary?.differential?.overall?.yardsPerPlay, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.yardsPerPlayRank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.availableYardsPctRank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.availableYardsPct || summary?.differential?.overall?.availableYardsPct == 0) ? (100 * summary?.differential?.overall?.availableYardsPct) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.availableYardsPctRank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.differential?.overall?.successRateRank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.differential?.overall?.successRate || summary?.differential?.overall?.successRate == 0) ? 100 * summary?.differential?.overall?.successRate : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.differential?.overall?.successRateRank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.yardsplay_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString(summary?.yardsplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.yardsplay_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.available_yards_pct_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.available_yards_pct_margin || summary?.available_yards_pct_margin == 0) ? (100 * summary?.available_yards_pct_margin) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.available_yards_pct_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.success_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.success_margin || summary?.success_margin == 0) ? 100 * summary?.success_margin : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.success_margin_rank)}</span></td>
                     </tr>
                 </tbody>
             </table>

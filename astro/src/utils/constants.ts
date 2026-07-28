@@ -983,3 +983,27 @@ export const SDV_RADAR_COLUMNS: Record<string, string[]> = {
         "havoc_off",
     ]
 }
+
+export const SDV_TEAM_CARD_COLUMNS: Record<string, string[]> = {
+    "differential": [
+        "available_yards_pct_margin",
+        "yardsplay_margin",
+        "EPAplay_margin",
+        "start_position_margin",
+        "EPAdrive_margin"
+    ],
+    "defensive": [
+        "start_position_def",
+        "available_yards_pct_def",
+        "yardsplay_def",
+        "EPAplay_def",
+        "EPAdrive_def"
+    ],
+    "offensive": [
+        "start_position_off",
+        "available_yards_pct_off",
+        "yardsplay_off",
+        "EPAplay_off",
+        "EPAdrive_off"
+    ]
+}

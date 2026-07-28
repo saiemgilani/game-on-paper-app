@@ -1,7 +1,7 @@
 import { getSecret } from "astro:env/server";
 import { SummaryType } from "./summary";
 import { URLSearchParams } from "node:url";
-import { SDV_RADAR_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 
 export interface SDVSummaryResponse {
     data: any[]
@@ -646,16 +646,16 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
 
     let metric_columns: string[] = []
     if (category) {
-        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category])
+        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
     } else if (!category) {
         // not implemented yet
-        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p]))
+        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p]).concat(SDV_TEAM_CARD_COLUMNS[p]))
     } else {
         throw Error(`Category ${category} not implemented`)
     }
     const category_columns: string[] = metric_columns.concat(metric_columns.map(m => `${m}_rank`))
 
-    payload["select"] = (["pos_team", "team_id", "season", "conference", "division"].concat(category_columns)).join(",");
+    payload["select"] = (["pos_team", "team_id", "season", "conference", "division"].concat([...new Set(category_columns)])).join(",");
     payload["limit"] = 150;
 
     try {        

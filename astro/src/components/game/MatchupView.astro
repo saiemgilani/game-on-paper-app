@@ -1,6 +1,6 @@
 ---
 import type { ESPNTeam } from '../../resources/espn'
-import type { TeamSummary } from '../../resources/summary';
+import type { SDVTeamSummary } from '../../resources/sdv';
 import { generateMarginalString } from '../../utils/common';
 import { cleanNickname, formatYardline, roundNumber, generateColorRampValue } from '../../utils/misc';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
@@ -8,38 +8,22 @@ import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
-    homeTeamSummary: TeamSummary | null
-    awayTeamSummary: TeamSummary | null
+    homeTeamSummary: SDVTeamSummary | null
+    awayTeamSummary: SDVTeamSummary | null
 }
 
 const { homeTeam, awayTeam, homeTeamSummary, awayTeamSummary } = Astro.props;
 
 
-function cleanBreakdown(breakdown: TeamSummary | null): any {
-    if (!breakdown || !Object.keys(breakdown).includes("offensive")) {
-        return {
-            "offensive": {
-                "overall": {},
-                "passing": {},
-                "rushing": {}
-            },
-            "defensive": {
-                "overall": {},
-                "passing": {},
-                "rushing": {}
-            },
-            "differential" : {
-                "overall": {},
-                "passing": {},
-                "rushing": {}
-            }
-        }
+function cleanBreakdown(breakdown: SDVTeamSummary | null): any {
+    if (!breakdown || !Object.keys(breakdown).includes("team_id")) {
+        return {}
     }
     return breakdown
 }
 
-function produceRankHtml(rank: number, addClass: string = "", addStyle: string = ""): string {       
-    if (rank == null || (!rank && rank != 0)) {
+function produceRankHtml(rank?: number, addClass: string = "", addStyle: string = ""): string {       
+    if (rank == null || rank == undefined || (!rank && rank != 0)) {
         return `<td class="${addClass} text-center" style="${addStyle}">N/A</td>`
     }
 
@@ -57,20 +41,25 @@ function produceRankHtml(rank: number, addClass: string = "", addStyle: string =
 }
 
 function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any, awaySideOfBall: string, category: string, statKey: string): string {
-    let homeSideOfBall = (awaySideOfBall == "offensive") ? "defensive" : "offensive"
-    let homeRank = homeBreakdown[homeSideOfBall][category][`${statKey}Rank`]
-    let awayRank = awayBreakdown[awaySideOfBall][category][`${statKey}Rank`]
+    const homeSuffix = (awaySideOfBall == "offensive") ? "_def" : "_off";
+    const awaySuffix = (awaySideOfBall == "offensive") ? "_off" : "_def";
 
-    var homeValue = homeBreakdown[homeSideOfBall][category][statKey]
-    var awayValue = awayBreakdown[awaySideOfBall][category][statKey]
+    const homeKey = statKey.replace("_off", homeSuffix)
+    const awayKey = statKey.replace("_off", awaySuffix)
 
-    if (['epaPerPlay', "thirdDownDistance", "earlyDownEPAPerPlay"].includes(statKey)) {
+    const homeRank = homeBreakdown[`${homeKey}_rank`]
+    const awayRank = awayBreakdown[`${awayKey}_rank`]
+
+    var homeValue = homeBreakdown[homeKey]
+    var awayValue = awayBreakdown[awayKey]
+
+    if (['EPAplay_off_pass', 'EPAplay_off_rush', "third_down_distance_off", "early_down_EPA_off"].includes(statKey)) {
         homeValue = roundNumber(homeValue, 2, 2)
         awayValue = roundNumber(awayValue, 2, 2)
-    } else if (['successRate', "thirdDownSuccessRate", "availableYardsPct", "lateDownSuccessRate"].includes(statKey)) {
+    } else if (['success_off', "third_down_success_off", "available_yards_pct_off", "late_down_success_off"].includes(statKey)) {
         homeValue = `${roundNumber(homeValue * 100, 2, 1)}%`
         awayValue = `${roundNumber(awayValue * 100, 2, 1)}%`
-    } else if (statKey == "startingFP") {
+    } else if (['start_position_off'].includes(statKey)) {
         homeValue = formatYardline(parseInt(roundNumber(homeValue, 2, 1)), "Own", "Opp", "startingFP")
         awayValue = formatYardline(parseInt(roundNumber(awayValue, 2, 1)), "Own", "Opp", "startingFP")
     }
@@ -90,7 +79,7 @@ function produceTeamLogoLink(team: ESPNTeam, headerType: string = "h4", showNick
     return `<${headerType} class="d-inline"><a href="/cfb/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a>${showNickname ? (" " + cleanNickname(team)) : ""}</${headerType}>`
 }
 
-function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
+function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
     return `
     <div class="col-md-12 ms-sm-auto col-lg-3">
         <div class="h4 text-center">${produceTeamLogoLink(team, "h4", true)}</div>
@@ -106,18 +95,18 @@ function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
                 <tbody>
                     <tr>
                         <td class="text-left">Net EPA/Play</td>
-                        <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["epaPerPlay"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["differential"]["overall"]["epaPerPlayRank"])}
+                        <td class="text-center">${generateMarginalString(breakdown?.EPAplay_margin, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_margin_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Offense</td>
-                        <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["epaPerPlay"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["offensive"]["passing"]["epaPerPlayRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.EPAplay_off, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Defense</td>
-                        <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["epaPerPlay"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["defensive"]["passing"]["epaPerPlayRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.EPAplay_def, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_def_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -134,18 +123,18 @@ function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
                 <tbody>
                     <tr>
                         <td>Offense Success</td>
-                        <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["offensive"]["overall"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_off * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
-                        <td class="text-center">${roundNumber(breakdown["offensive"]["passing"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["offensive"]["passing"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_off_pass * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
-                        <td class="text-center">${roundNumber(breakdown["offensive"]["rushing"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["offensive"]["rushing"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_off_rush * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_rush_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -162,18 +151,18 @@ function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
                 <tbody>
                     <tr>
                         <td>Defense Success</td>
-                        <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["defensive"]["overall"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_def * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
-                        <td class="text-center">${roundNumber(breakdown["defensive"]["passing"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["defensive"]["passing"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_def_pass * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
-                        <td class="text-center">${roundNumber(breakdown["defensive"]["rushing"]["successRate"] * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown["defensive"]["rushing"]["successRateRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.success_def_rush * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_rush_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -190,18 +179,18 @@ function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
                 <tbody>
                     <tr>
                         <td>Net EPA/Drive</td>
-                        <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["epaPerDrive"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["differential"]["overall"]["epaPerDriveRank"])}
+                        <td class="text-center">${generateMarginalString(breakdown?.EPAdrive_margin, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_margin_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Offense</td>
-                        <td class="text-center">${roundNumber(breakdown["offensive"]["overall"]["epaPerDrive"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["offensive"]["overall"]["epaPerDriveRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.EPAdrive_off, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Defense</td>
-                        <td class="text-center">${roundNumber(breakdown["defensive"]["overall"]["epaPerDrive"], 2, 2)}</td>
-                        ${produceRankHtml(breakdown["defensive"]["overall"]["epaPerDriveRank"])}
+                        <td class="text-center">${roundNumber(breakdown?.EPAdrive_def, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_def_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -218,8 +207,8 @@ function produceTeamSector(team: ESPNTeam, breakdown: TeamSummary) {
                 <tbody>
                     <tr>
                         <td class="w-50">Net Field Position</td>
-                        <td class="text-center">${generateMarginalString(breakdown["differential"]["overall"]["startingFP"], 2, 1)}</td>
-                        ${produceRankHtml(breakdown["differential"]["overall"]["startingFPRank"])}
+                        <td class="text-center">${generateMarginalString(breakdown?.start_position_margin, 2, 1)}</td>
+                        ${produceRankHtml(breakdown?.start_position_margin_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -254,13 +243,13 @@ const matchupData = [
                         </tr>
                     </thead>
                     <tbody>
-                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "offensive", "passing", "epaPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "offensive", "rushing", "epaPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "availableYardsPct")} />
-                        <Fragment set:html={produceMatchupRow("Starting Field Position", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "startingFP")} />
-                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "earlyDownEPAPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "lateDownSuccessRate")} />
-                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "thirdDownDistance")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "offensive", "passing", "EPAplay_off_pass")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "offensive", "rushing", "EPAplay_off_rush")} />
+                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "available_yards_pct_off")} />
+                        <Fragment set:html={produceMatchupRow("Starting Field Position", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "start_position_off")} />
+                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "early_down_EPA_off")} />
+                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "late_down_success_off")} />
+                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "third_down_distance_off")} />
                     </tbody>
                 </table>
             </div>
@@ -277,13 +266,13 @@ const matchupData = [
                         </tr>
                     </thead>
                     <tbody>
-                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "defensive", "passing", "epaPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "defensive", "rushing", "epaPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "availableYardsPct")} />
-                        <Fragment set:html={produceMatchupRow("Starting FP", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "startingFP")} />
-                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "earlyDownEPAPerPlay")} />
-                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "thirdDownSuccessRate")} />
-                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "thirdDownDistance")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "defensive", "passing", "EPAplay_off_pass")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "defensive", "rushing", "EPAplay_off_rush")} />
+                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "available_yards_pct_off")} />
+                        <Fragment set:html={produceMatchupRow("Starting FP", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "start_position_off")} />
+                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "early_down_EPA_off")} />
+                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "late_down_success_off")} />
+                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "third_down_distance_off")} />
                     </tbody>
                 </table>
             </div>

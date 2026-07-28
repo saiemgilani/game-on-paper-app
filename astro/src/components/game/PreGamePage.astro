@@ -1,8 +1,8 @@
 ---
 import { DateTime } from 'luxon';
 import { type ESPNPlayByPlayResponse, retrieveTeamSeasonInformation } from '../../resources/espn';
-import type { TeamSummary } from '../../resources/summary';
-import SummaryModel from '../../resources/summary';
+import type { SDVTeamSummary } from '../../resources/sdv';
+import { retrieveTeamSummaries } from '../../resources/sdv';
 import { isChampionshipEvent } from '../../utils/common';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 import { cleanLocation } from '../../utils/misc';
@@ -50,9 +50,9 @@ try {
     awayTeamSeason = {}
 }
 
-let homeSummaries: TeamSummary[] = [];
+let homeSummaries: SDVTeamSummary[] = [];
 try {
-    homeSummaries = await SummaryModel.retrieveTeamData({ team: Number(homeTeam.id), year: metricYear });
+    homeSummaries = await retrieveTeamSummaries(metricYear, undefined, Number(homeTeam.id));
     if (!homeSummaries) {
         homeSummaries = []
     }
@@ -61,9 +61,9 @@ try {
     homeSummaries = [];
 }
 
-let awaySummaries: TeamSummary[] = [];
+let awaySummaries: SDVTeamSummary[] = [];
 try {
-    awaySummaries = await SummaryModel.retrieveTeamData({ team: Number(awayTeam.id), year: metricYear });
+    awaySummaries = await retrieveTeamSummaries(metricYear, undefined, Number(awayTeam.id));
     if (!awaySummaries) {
         awaySummaries = []
     }
