@@ -1,4 +1,3 @@
-import type { ESPNTeam } from "../resources/espn";
 import { MEME_LIST } from "./constants";
 
 export type RGBColor = { r: number, g: number, b: number};

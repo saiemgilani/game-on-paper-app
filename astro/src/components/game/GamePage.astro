@@ -19,7 +19,7 @@ import BinionBoxScore from './metrics/BinionBoxScore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
-import SummaryModel from '../../resources/summary';
+import { retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 import Footer from '../Footer.astro';
@@ -40,7 +40,7 @@ if (!game) {
     return Astro.rewrite("/404")
 }
 
-const percentiles = await SummaryModel.retrievePercentiles({ year: (CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year });
+const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;

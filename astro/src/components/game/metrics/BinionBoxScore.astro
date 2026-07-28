@@ -1,31 +1,29 @@
 ---
 import type { ProcessedBoxScore } from '../../../resources/processor';
-import { type SeasonPercentile } from '../../../resources/summary';
 import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
+import type { SDVSeasonPercentile } from '../../../resources/sdv';
 
 interface Props {
     season: number
     advancedBoxScore: ProcessedBoxScore
-    percentiles: SeasonPercentile[]
+    percentiles: SDVSeasonPercentile[]
 }
 
 const {season, advancedBoxScore, percentiles} = Astro.props;
 
-
-
 const percentile_title_key_mapping: Record<string, string> = {
-    "EPA_per_play" : "epaPerPlay",
-    "EPA_passing_per_play" : "epaPerDropback",
-    "EPA_rushing_per_play" : "epaPerRush",
-    "havoc_total" : "havocRate",
-    "EPA_success" : "successRate",
-    "EPA_explosive" : "explosivePlayRate",
-    "yards_per_pass": "yardsPerDropback",
-    "yards_per_play": "yardsPerPlay",
-    "rushing_stuff" : "playStuffedRate",
-    "EPA_success_rate_third" : "thirdDownSuccessRate",
-    "EPA_success_rate_rz" : "redZoneSuccessRate"
+    "EPA_per_play" : "EPAplay",
+    "EPA_passing_per_play" : "EPAdropback",
+    "EPA_rushing_per_play" : "EPArush",
+    "havoc_total" : "havoc",
+    "EPA_success" : "success",
+    "EPA_explosive" : "explosive",
+    "yards_per_pass": "yardsdropback",
+    "yards_per_play": "yardsplay",
+    "rushing_stuff" : "play_stuffed",
+    "EPA_success_rate_third" : "third_down_success",
+    "EPA_success_rate_rz" : "red_zone_success"
 }
 
 const slim_title_mapping: Record<string, string> = {
