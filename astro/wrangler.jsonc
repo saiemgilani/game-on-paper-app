@@ -12,6 +12,9 @@
 	"observability": {
 		"enabled": true
 	},
+	"cache": {
+		"enabled": true
+	},
 	"kv_namespaces": [
 		{
 			"binding": "SDV_API_CACHE",

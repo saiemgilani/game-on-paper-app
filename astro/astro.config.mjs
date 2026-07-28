@@ -1,6 +1,6 @@
 // @ts-check
 
-import { defineConfig } from 'astro/config';
+import { defineConfig, logHandlers } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import svelte from '@astrojs/svelte';
 import { cacheCloudflare } from '@astrojs/cloudflare/cache';
@@ -35,5 +35,6 @@ export default defineConfig({
         "/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
         "/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["season"] },
         "/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["team"] }
-    }
+    },
+    logger: logHandlers.json({ level: "info" })
 });

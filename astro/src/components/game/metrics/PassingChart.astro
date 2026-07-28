@@ -111,12 +111,11 @@ for (const p of plays) {
                 }
             }
 
-            //console.log(depth)
-            //console.log(direction)
+
             passMatrix[depth][direction]["attempts"] += 1
             passMatrix[depth][direction]["EPA"] += (p.EPA || 0)
             passMatrix[depth][direction]["TD"] += Number(p.pass_td || 0)
-            passMatrix[depth][direction]["yards"] += (p.yds_passing || 0)
+            passMatrix[depth][direction]["yards"] += (p.yds_receiving || 0)
             passMatrix[depth][direction]["completions"] += Number(p.completion || 0)
         }
     }

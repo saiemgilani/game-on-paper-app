@@ -37,7 +37,6 @@ export function generateRadarPercentiles(breakdown: any, titleKey: string) {
         { title: 'Pass SR%', key: `success${suffix}_pass`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `success${suffix}_pass_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `success${suffix}_pass`)) * 100, 2, 1)}%` }, 
         { title: 'Havoc %', key: `havoc${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `havoc${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `havoc${suffix}`)) * 100, 2, 1)}%` }, 
     ];
-    console.log(base.map(b => b.key))
     return base
 }
 

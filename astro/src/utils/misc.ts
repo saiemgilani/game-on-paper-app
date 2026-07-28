@@ -33,7 +33,7 @@ export function cleanUpParams(payload: any): any {
 //         check = await axios.get(url)
 //         return { "status": check.status } 
 //     } catch (err) {
-//         logger.error(`Error while checking status of ${url}: ${err}`)
+//         console.error(`Error while checking status of ${url}: ${err}`)
 //         return { "status": 500 };
 //     }
 // }

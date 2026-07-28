@@ -22,7 +22,7 @@ const selectedPercentiles = allPctls.map((p: any) => {
         value: p[metric]
     }
 })
-// console.log(selectedPercentiles)
+
 let availableSeasons = selectedPercentiles.map(b => b.season)
 availableSeasons = [...new Set(availableSeasons)].sort();
 

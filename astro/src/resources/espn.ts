@@ -342,7 +342,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
             query.append("seasontype", `${seasontype || 2}`);
         }
         const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
-        // console.log(reqURL)
+        console.info(`ESPN schedule query: ${reqURL}`)
         const resp = await fetch(reqURL);
         if (!resp.ok) {
             throw new Error(`Response status: ${resp.status}`);

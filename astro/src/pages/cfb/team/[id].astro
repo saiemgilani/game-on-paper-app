@@ -53,7 +53,7 @@ teamData = teamData.sort((a,b) => a.season - b.season).map((t:any) => {
     return t
 })
 
-// console.log(selectedPercentiles)
+
 let availableSeasons = teamData.map(b => b.season)
 availableSeasons = [...new Set(availableSeasons)].sort();
 const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`

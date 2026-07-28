@@ -42,9 +42,9 @@ try {
             tags: ['game-scheduled-future'],
         });
     } else {
-        // cache one minute for live games
+        // cache two minutes for live games
         Astro.cache.set({
-            maxAge: 60,
+            maxAge: 60 * 2,
             swr: 60,
             tags: ['game-scheduled'],
         });

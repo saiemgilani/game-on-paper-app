@@ -12,7 +12,7 @@ const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P
 export function generateGlossaryItems(): Glossary {
     let glossary: Glossary = new Map<string, GlossaryEntry[]>();
     try {
-        // logger.info(`Loading glossary...`)
+        console.info(`Loading glossary...`)
         ALPHABET.forEach(letter => {
             let records = (glossaryRaw as Record<string, GlossaryEntry[]>)[letter];
             if (records) {
@@ -27,9 +27,7 @@ export function generateGlossaryItems(): Glossary {
         console.info(`Loaded glossary for ${glossary.size} letters`)
         // return glossary;
     } catch (err) {
-        console.error(err)
-        // logger.error(err)
-        // return null;
+        console.error(`ERROR while loading glossary: ${err}`)
     } finally {
         return glossary;
     }

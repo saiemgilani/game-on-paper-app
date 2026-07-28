@@ -543,25 +543,27 @@ export type SDVPlayerSummary = SDVPassingSummary | SDVReceivingSummary | SDVRush
 const SDV_HTTP_URL = 'https://data.sportsdataverse.org/v1/cfb';
 const SDV_AUTH_TOKEN = getSecret("SDV_AUTH_TOKEN")
 
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60): Promise<any> {
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
 
-    let baseURL = `${SDV_HTTP_URL}/${endpoint}`
+    let endpointURL = `${endpoint}`
     if (query && (query?.size || 0) > 0) {
-        baseURL += `?${query.toString()}`
+        endpointURL += `?${query.toString()}`
     }
     // console.info(baseURL)
 
     // check cache first
-    const cachedContent = await env.SDV_API_CACHE.get(baseURL, "json");
-    if (cachedContent) {
-        // logger.info(`cache hit: ${baseURL}`)
-        return cachedContent
+    if (cacheEnabled) { 
+        const cachedContent = await env.SDV_API_CACHE.get(endpointURL, "json");
+        if (cachedContent) {
+            console.info(`cache hit: ${endpointURL}`)
+            return cachedContent
+        }
     }
 
-    // logger.info(`cache miss: ${baseURL}`)
+    console.info(`cache miss: ${endpointURL}`)
     const config: RequestInit = {
         headers: {
             "Authorization": `Bearer ${SDV_AUTH_TOKEN}`
@@ -569,16 +571,16 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         body
     }
     try {
-        const req = await fetch(baseURL, config);
+        const req = await fetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const content: any = await req.json();
-        if (content) {
-            // logger.info(`cache update: ${baseURL}`)
-            await env.SDV_API_CACHE.put(baseURL, content, { expirationTtl: cacheTTL })
+        if (content && cacheEnabled) {
+            console.info(`cache update: ${endpointURL}`)
+            await env.SDV_API_CACHE.put(endpointURL, content, { expirationTtl: cacheTTL })
         }
 
         return content;
     } catch (e) {
-        //logger.error(e)
+        console.error(`ERROR while loading data from SDV endpoint (${endpointURL}): ${e}`)
         return {
             "data": []
         }
@@ -587,7 +589,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
 
 export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
     if (!season && !percentile) {
-        // logger.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
+        console.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
         return [];
     }
     try {
@@ -602,13 +604,12 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
         }
    
 
-        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7);
-        // console.error(JSON.stringify(content))
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true);
         return content["data"];
     } catch (err) {
-        // logger.error(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
+        console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
+            console.error(`also err: ${err}`);
         }
         if (!season) {
             return [];
@@ -623,7 +624,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
 export async function retrieveTeamSummaries(season?: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<SDVTeamSummary[]> {
     if (!season && !category && !team_id) {
-        // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
+        console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
 
@@ -652,19 +653,18 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
 
     try {        
         // update redis cache
-        const content: SDVSummaryResponse = await requestSDV("team_summaries", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
+        const content: SDVSummaryResponse = await requestSDV("team_summaries", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         // console.log(content)
         // const key = generateKey(["league", season, type]);
         // expire every three days so that we get fresh data
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content.data;
     } catch (err) {
-        // logger.error(`could not find data for league in ${season}, checking ${season - 1}`)
+        console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
         if (err) {
-            console.error(`also err: ${err}`);
-        }
-
-        if (!season) {
+            console.error(`ERROR while loading team summaries from SDV: ${err}`);
+            return [];
+        } else if (!season) {
             return [];
         } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
             return [];
@@ -676,7 +676,7 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
 
 export async function retrievePlayerSummaries(season: number, category: SummaryType, team_id?: string | number | null, sortBy?: string, ascending: boolean = false, limit: number = 150, maxLookback = 2014): Promise<SDVPlayerSummary[]> {
     if (!season && !category) {
-        // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
+        console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
 
@@ -699,11 +699,11 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
         // update redis cache
         let content: SDVSummaryResponse;
         if (category == SummaryType.Passing) {
-            content = await requestSDV("passing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
+            content = await requestSDV("passing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         } else if (category == SummaryType.Rushing) {
-            content = await requestSDV("rushing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
+            content = await requestSDV("rushing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         } else if (category == SummaryType.Receiving) {
-            content = await requestSDV("receiving", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
+            content = await requestSDV("receiving", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         } else {
             throw Error(`Category '${category}' not implemented`)
         }
@@ -712,12 +712,11 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content.data;
     } catch (err) {
-        // logger.error(`could not find data for league in ${season}, checking ${season - 1}`)
+        console.error(`could not find player summary data from SDV in ${season}, checking ${season - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
-        }
-
-        if (!season) {
+            console.error(`ERROR while loading player summaries from SDV: ${err}`);
+            return [];
+        } else if (!season) {
             return [];
         } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
             return [];

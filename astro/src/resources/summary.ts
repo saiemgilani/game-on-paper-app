@@ -238,23 +238,22 @@ export interface SummaryResponse {
 }
 
 const SUMMARY_HTTP_URL = getSecret("SUMMARY_HTTP_URL") || 'http://summary:3000';
-console.log(SUMMARY_HTTP_URL)
 
 async function retrieveAllTeams(): Promise<TeamIndex[]> {
     try {
-        // logger.info(`loading from summary at url: /teams`)
+        console.info(`loading from summary at url: /teams`)
         const req = await fetch(`${SUMMARY_HTTP_URL}/teams`);
         const res: { teams: TeamIndex[] } = await req.json()
         return res.teams;
     } catch (err) {
-        // logger.info(`error when loading from summary at url: /teams: ${err}`)
+        console.info(`error when loading from summary at url: /teams: ${err}`)
         return [];
     }
 }
 
 async function retrieveRemoteData(payload: Record<string, any>): Promise<any[]> {
     const query = cleanUpParams(payload);
-    // logger.info(`loading from summary: ${JSON.stringify(query)}`)
+    console.info(`loading from summary: ${JSON.stringify(query)}`)
     const response = await fetch(`${SUMMARY_HTTP_URL}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -266,7 +265,7 @@ async function retrieveRemoteData(payload: Record<string, any>): Promise<any[]> 
 
 async function retrieveRemoteLeagueData(payload: SummaryRequest, maxLookback = 2014): Promise<TeamSummary[]> {
     if (!payload.year && !payload.type) {
-        // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
+        console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
     try {        
@@ -277,12 +276,11 @@ async function retrieveRemoteLeagueData(payload: SummaryRequest, maxLookback = 2
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content;
     } catch (err) {
-        // logger.error(`could not find data for league in ${payload.year}, checking ${payload.year - 1}`)
+        console.error(`could not find data for league in ${payload.year}, checking ${(payload.year || 0) - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
-        }
-
-        if (!payload.year) {
+            console.error(`ERROR while retrieving league level data from summary service: ${err}`)
+            return [];
+        } else if (!payload.year) {
             return [];
         } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
             return [];
@@ -294,7 +292,7 @@ async function retrieveRemoteLeagueData(payload: SummaryRequest, maxLookback = 2
 
 async function retrieveLeagueData(payload: SummaryRequest, maxLookback = 2014): Promise<TeamSummary[]> {
     if (!payload.year && !payload.type) {
-        // logger.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
+        console.error(`failed to retreive league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
     // const key = generateKey(["league", payload.year, payload.type]);
@@ -306,8 +304,8 @@ async function retrieveLeagueData(payload: SummaryRequest, maxLookback = 2014): 
         // logger.info(`found content for key ${key}: ${content}`)
         // return JSON.parse(content);
     // } catch (err) {
-        // logger.error(err)
-        // logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
+        // console.error(err)
+        // console.error(`receieved some error from redis for key: ${key}, repulling league data`)
         return await retrieveRemoteLeagueData(payload, maxLookback);
     // }
 }
@@ -330,14 +328,14 @@ async function retrieveLastUpdated(): Promise<string>  {
     //     }
     //     return JSON.parse(content).last_updated;
     // } catch (err) {
-    //     logger.error(err)
+    //     console.error(err)
         return await retrieveRemoteLastUpdated();
     // }
 }
 
 async function retrieveRemotePercentiles(payload: PercentileRequest, maxLookback = 2014): Promise<SeasonPercentile[]> {
     if (!payload.year && !payload.pctile) {
-        // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
     }
     try {
@@ -351,11 +349,11 @@ async function retrieveRemotePercentiles(payload: PercentileRequest, maxLookback
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
         return content["results"];
     } catch (err) {
-        // logger.error(`could not find percentiles (${pctile}) for league in ${year}, checking ${year - 1}`)
+        console.error(`could not find percentiles (${payload.pctile}) for league in ${payload.year}, checking ${(payload.year || 0) - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
-        }
-        if (!payload.year) {
+            console.error(`ERROR while retrieving percentiles from summary service: ${err}`)
+            return [];
+        } else if (!payload.year) {
             return [];
         } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
             return [];
@@ -368,7 +366,7 @@ async function retrieveRemotePercentiles(payload: PercentileRequest, maxLookback
 async function retrievePercentiles(payload: PercentileRequest, maxLookback = 2014): Promise<SeasonPercentile[]> {
     console.log(JSON.stringify(payload))
     if (!payload.year && !payload.pctile) {
-        // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
+        console.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
         return [];
     }
    
@@ -378,14 +376,15 @@ async function retrievePercentiles(payload: PercentileRequest, maxLookback = 201
         // if (!content) {
         //     throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
         // }
-        // logger.error(`found content for key ${key}: ${content}`)
+        // console.error(`found content for key ${key}: ${content}`)
         // return JSON.parse(content);
          const content = await retrieveRemotePercentiles(payload);
          return content;
     } catch (err) {
-        // logger.error(err)
-        // logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
-        if (!payload.year) {
+        if (err) {
+            console.error(`ERROR while retrieving percentiles from summary service: ${err}`)
+            return [];
+        } else if (!payload.year) {
             return [];
         } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
             return [];
@@ -397,7 +396,7 @@ async function retrievePercentiles(payload: PercentileRequest, maxLookback = 201
 
 async function retrieveRemoteTeamData(payload: TeamDataRequest, maxLookback = 2014): Promise<TeamSummary[]> {
     if (!payload.year && !payload.team) {
-        // logger.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
+        console.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
         return [];
     }
     try {
@@ -408,10 +407,9 @@ async function retrieveRemoteTeamData(payload: TeamDataRequest, maxLookback = 20
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
         return content;
     } catch (err) {
-        // logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
+        console.error(`could not find data for ${payload.team} in ${payload.year}, checking ${(payload.year || 0) - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
-            console.log(err)
+            console.error(`ERROR while retrieving team data from summary service: ${err}`)
             return [];
         } else if (!payload.year) {
             return []; 
@@ -445,7 +443,7 @@ async function retrieveTeamData(payload: TeamDataRequest, maxLookback = 2014): P
         // }
         // return JSON.parse(content)
     // } catch (err) {
-        // logger.error(err)
+        // console.error(err)
     return await retrieveRemoteTeamData(payload, maxLookback);
     // }
 }
@@ -472,14 +470,14 @@ async function retrievePlayerData(payload: TeamDataRequest, maxLookback = 2014):
         // }
         // return JSON.parse(content)
     // } catch (err) {
-        // logger.error(err)
+        // console.error(err)
     return await retrieveRemotePlayerData(payload, maxLookback);
     // }
 }
 
 async function retrieveRemotePlayerData(payload: TeamDataRequest, maxLookback = 2014): Promise<PlayerSummary[]> {
     if (!payload.year && !payload.team) {
-        // logger.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
+        console.error(`failed to retreive remote team data, must provide 'year' AND/OR 'team_id'`)
         return [];
     }
     try {
@@ -490,11 +488,11 @@ async function retrieveRemotePlayerData(payload: TeamDataRequest, maxLookback = 
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 });
         return content;
     } catch (err) {
-        // logger.error(`could not find data for ${team_id} in ${year}, checking ${year - 1}`)
+        console.error(`could not find player data for ${payload.team} in ${payload.year}, checking ${(payload.year || 0) - 1}`)
         if (err) {
-            // logger.error(`also err: ${err}`);
-        }
-        if (!payload.year) {
+            console.error(`ERROR while loading player data from summary service: ${err}`);
+            return []
+        } else if (!payload.year) {
             return []; 
         } else if ((payload.year >= 2014) && ((payload.year - 1) < maxLookback)) {
             return [];

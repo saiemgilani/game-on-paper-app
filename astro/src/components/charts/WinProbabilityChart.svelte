@@ -13,9 +13,9 @@ const awayTeam = awayComp.team;
 const gameStatus = game.header.competitions[0].status;
 
 function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null) {
-    console.log(
-        [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
-    )
+    // console.log(
+    //     [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
+    // )
 
     const callback = (chart) => {
         const xScale = chart.scales.x;

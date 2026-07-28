@@ -11,7 +11,7 @@ import DarkModeLogos from "../../components/DarkModeLogos.astro";
 const title = `Team Index | College Football | Game on Paper`;
 const subtitle = 'Full team list for college football';
 const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
-// console.log(teams)
+
 
 function generateTeamRow(team: any): string {
     const seasonCells = AVAILABLE_SEASONS.map((p) => {
