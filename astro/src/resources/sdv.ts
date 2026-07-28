@@ -558,7 +558,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     if (cacheEnabled) { 
         const cachedContent = await env.SDV_API_CACHE.get(endpointURL, "json");
         if (cachedContent) {
-            console.info(`cache hit: ${endpointURL}`)
+            console.info(`SDV API cache hit: ${endpointURL}`)
             return cachedContent
         }
     }
@@ -574,13 +574,13 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         const req = await fetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const content: any = await req.json();
         if (content && cacheEnabled) {
-            console.info(`cache update: ${endpointURL}`)
+            console.info(`SDV API cache update: ${endpointURL}`)
             await env.SDV_API_CACHE.put(endpointURL, content, { expirationTtl: cacheTTL })
         }
 
         return content;
     } catch (e) {
-        console.error(`ERROR while loading data from SDV endpoint (${endpointURL}): ${e}`)
+        console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
         return {
             "data": []
         }
