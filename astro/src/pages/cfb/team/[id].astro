@@ -3,10 +3,11 @@ export const prerender = true;
 
 import TeamTrendsChart from "../../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../../layouts/GenericPage.astro";
-import type { SeasonPercentile, TeamIndex, TeamSummary } from "../../../resources/summary";
-import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue } from "../../../utils/misc";
+import type { TeamIndex } from "../../../resources/summary";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField } from "../../../utils/misc";
 import { formatRank } from "../../../utils/common";
 import SummaryModel from "../../../resources/summary";
+import { retrievePercentiles, type SDVSeasonPercentile, retrieveTeamSummaries, type SDVTeamSummary } from "../../../resources/sdv";
 import TeamRadarChart from "../../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../../components/DarkModeLogos.astro";
 import { retrieveTeamInformation } from "../../../resources/espn";
@@ -37,17 +38,17 @@ const breadcrumbs: PageBreadcrumb[] = [
     }
 ]
 
-let allPctls: SeasonPercentile[] = []
+let allPctls: SDVSeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-    const percentiles = await SummaryModel.retrievePercentiles({ pctile: p });
+    const percentiles = await retrievePercentiles(undefined, p);
     allPctls = allPctls.concat(percentiles);
 }
 
-let teamData = await SummaryModel.retrieveTeamData({ team: Number(id) })
+let teamData = await retrieveTeamSummaries(undefined, undefined, id)
 teamData = teamData.map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor
-    t.teamName = cleanLocation(team)
+    t.teamName = cleanField(team, "pos_team")
     return t
 })
 
@@ -56,9 +57,9 @@ let availableSeasons = teamData.map(b => b.season)
 availableSeasons = [...new Set(availableSeasons)].sort();
 const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
 
-function createSeasonColumn(summary: TeamSummary, key: string): string {
+function createSeasonColumn(summary: SDVTeamSummary, key: string): string {
     const val = roundNumber(retrieveValue(summary, key), 2, 2)
-    const rank = retrieveValue(summary, `${key}Rank`)
+    const rank = retrieveValue(summary, `${key}_rank`)
 
     const colorRampClass = generateColorRampValue(parseInt(rank), 134, true)
     const rankStr = formatRank(parseInt(rank))
@@ -67,8 +68,8 @@ function createSeasonColumn(summary: TeamSummary, key: string): string {
     `
 }
 
-function createSeasonRow(summary: TeamSummary): string {
-    const cols = ["differential.overall.epaPerPlay", "offensive.overall.epaPerPlay", "defensive.overall.epaPerPlay"].map(x => createSeasonColumn(summary, x)).join("")
+function createSeasonRow(summary: SDVTeamSummary): string {
+    const cols = ["EPAplay_margin", "EPAplay_off", "EPAplay_def"].map(x => createSeasonColumn(summary, x)).join("")
     return `
     <tr>
         <td><a href="/cfb/year/${summary.season}/team/${team.id}">${summary.season}</a></td>

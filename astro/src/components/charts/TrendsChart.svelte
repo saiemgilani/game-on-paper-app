@@ -1,9 +1,9 @@
 <script lang="ts">
 import Chart from 'chart.js/auto';
-import { SPECIAL_IMAGES } from "../../utils/constants";
+import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
 import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR } from "../../utils/misc";
-import type { TeamSummary } from "../../resources/summary";
+import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
@@ -37,36 +37,46 @@ export function getAxisTitleForMetric(category: string, metric: string): string 
             metricTitle = "Success Rate";
             break;
         case "EPAdropback": 
+        case "EPAplay_pass":
             metricTitle = "EPA/Dropback";
             break;
         case "yardsdropback": 
+        case "yardsplay_pass":
             metricTitle = "Yards/DB";
             break;
         case "success_pass": 
+        case "pass_success":
             metricTitle = "Pass SR%";
             break;
         case "EPArush": 
+        case "EPAplay_rush":
             metricTitle = "EPA/Rush";
             break;
         case "yardsrush": 
+        case "yardsplay_rush":
             metricTitle = "Yards/Rush";
             break;
         case "rush_success": 
+        case "success_rush":
             metricTitle = "Rush SR%";
             break;
         case "havoc": 
             metricTitle = "Havoc %";
             break;
         case "pass_explosive":
+        case "explosive_pass":
             metricTitle = "Pass Expl %";
             break;
         case "rush_explosive":
+        case "explosive_rush":
             metricTitle = "Rush Expl %";
             break;
         case "opportunity_run":
+        case "opportunity_rate":
             metricTitle = "Opportunity %";
             break;
         case "lineyards":
+        case "line_yards":
             metricTitle = "Line Yards";
             break;
         case "play_stuffed":
@@ -123,37 +133,47 @@ export function getTitleForMetric(category: string, metric: string): string {
         case "success": 
             metricTitle = "Success Rate";
             break;
-        case "EPAdropback": 
+        case "EPAdropback":
+        case "EPAplay_pass": 
             metricTitle = "EPA/Dropback";
             break;
         case "yardsdropback": 
+        case "yardsplay_pass": 
             metricTitle = "Yards/Dropback";
             break;
         case "success_pass": 
+        case "pass_success": 
             metricTitle = "Pass Success Rate";
             break;
-        case "EPArush": 
+        case "EPArush":
+        case "EPAplay_rush": 
             metricTitle = "EPA/Rush";
             break;
-        case "yardsrush": 
+        case "yardsrush":
+        case "yardsplay_rush": 
             metricTitle = "Yards/Rush";
             break;
         case "rush_success": 
+        case "success_rush":
             metricTitle = "Rush Success Rate";
             break;
         case "havoc": 
             metricTitle = "Havoc Rate";
             break;
         case "pass_explosive":
+        case "explosive_pass":
             metricTitle = "Pass Explosive Play Rate";
             break;
         case "rush_explosive":
+        case "explosive_rush":
             metricTitle = "Rush Explosive Play Rate";
             break;
         case "opportunity_run":
+        case "opportunity_rate":
             metricTitle = "Opportunity Rate";
             break;
         case "lineyards":
+        case "line_yards":
             metricTitle = "Line Yards/Rush";
             break;
         case "play_stuffed":
@@ -206,26 +226,35 @@ function formatNumberForMetric(metric: string, value: number): string {
         case "success": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "EPAdropback": 
+        case "EPAplay_pass":
             return `${roundNumber(value, 2, 2)}`;
         case "yardsdropback": 
+        case "yardsplay_pass":
             return `${roundNumber(value, 2, 2)}`;
         case "success_pass": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "EPArush": 
+        case "EPAplay_rush":
             return `${roundNumber(value, 2, 2)}`;
-        case "yardsrush": 
+        case "yardsrush":
+        case "yardsplay_rush":
             return `${roundNumber(value, 2, 2)}`;
         case "rush_success": 
+        case "success_rush":
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "havoc": 
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "pass_explosive":
+        case "explosive_pass":
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "rush_explosive":
+        case "explosive_rush":
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "opportunity_run":
+        case "opportunity_rate":
             return `${roundNumber((100.0 * value), 2, 0)}%`
         case "lineyards":
+        case "line_yards":
             return `${roundNumber(value, 2, 2)}`;
         case "play_stuffed":
             return `${roundNumber((100.0 * value), 2, 0)}%`
@@ -282,10 +311,9 @@ function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl')
     }
 }
 
-function buildTeamChartData(teams: TeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
+function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
     let distributions: Record<number, ValueDistribution> = {};
     for (const p of percentiles) {
-        console.log(JSON.stringify(p))
         if (!Object.keys(distributions).includes(`${p["season"]}`)) {
             distributions[p["season"]] = {
                 min: null,
@@ -316,8 +344,8 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
 
 
     let seasons = Object.keys(distributions).map(p => parseInt(p)).sort((a,b) => (a - b))
-    if (seasons.length == 0 && teams.length > 0) {
-        seasons = teams.map((t: TeamSummary) => t.season).sort((a: number, b: number) => (a - b))
+    if (teams.length > seasons.length) {
+        seasons = teams.map((t: SDVTeamSummary) => t.season).sort((a: number, b: number) => (a - b))
     }
 
     let composite: Record<number, {
@@ -326,15 +354,15 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
         data?: { x: number, y: number | null } | null
     }> = {};
     for (const s of seasons) {
-        const data = teams.find(t => t["season"] == s)
-
+        const data = teams.find(t => String(t["season"]) == String(s))
         composite[s] = {
             "season": s,
             "distribution": distributions[s]
         }
 
         if (data) {
-            const val = retrieveValue((data as any)[category], metric) 
+            const val = retrieveValue((data as any), metric) 
+            console.log(metric)
             composite[s].data = {
                 x: data?.season || s,
                 y: (typeof(val) == "string" ? parseFloat(val) : val) || null
@@ -347,14 +375,14 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
     const imageSize = getImageSizeForViewport(getCurrentViewport(document, window))
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const metricTitle = getAxisTitleForMetric(category, metric)
-    const isRateMetric = metricTitle.includes("Rate")
+    const isRateMetric = SDV_TEAM_PERCENT_COLUMNS.includes(metric)
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
     
     let datasets: ChartDataset<'boxplot' | 'line'>[] = []
 
     if (teams.length > 0) {
-        const teamName = teams.map(p => p.team)[0]
-        const teamId = teams.map(p => p.teamId)[0]
+        const teamName = teams.map(p => p.pos_team)[0]
+        const teamId = teams.map(p => p.team_id)[0]
         let img = new Image(imageSize, imageSize)
         if (Object.keys(SPECIAL_IMAGES).includes(String(teamId))) {
             img.src = SPECIAL_IMAGES[teamId];
@@ -463,7 +491,7 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
                         q3: (dist.q3 || 0) * (isRateMetric ? 100.0 : 1.0),
                         max: (dist.max || 0) * (isRateMetric ? 100.0 : 1.0),
                     }
-                }).filter(s => s != null),
+                }),
             }
         )
     }
@@ -475,7 +503,7 @@ function buildTeamChartData(teams: TeamSummary[], color: string | null, percenti
 
 }
 
-function generateTeamChartConfig(title: string, color: string | null, teams: TeamSummary[], percentiles: ValuePercentile[], category: string, metric: string): ChartConfiguration<'boxplot' | 'line'> {
+function generateTeamChartConfig(title: string, color: string | null, teams: SDVTeamSummary[], percentiles: ValuePercentile[], category: string, metric: string): ChartConfiguration<'boxplot' | 'line'> {
     const chartData = buildTeamChartData(teams, color, percentiles, category, metric);
     let seasons = percentiles.map(d => d.season).sort((a, b) => (a - b))
     if (seasons.length == 0 && teams.length > 0) {

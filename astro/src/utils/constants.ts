@@ -943,3 +943,43 @@ export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
     "passrate_def",
     "rushrate_def"
 ];
+
+export const SDV_RADAR_COLUMNS: Record<string, string[]> = {
+    "differential": [],
+    "defensive": [
+        "EPAplay_def",
+        "early_down_EPA_def",
+        "late_down_success_def",
+        "third_down_distance_def",
+        "EPAplay_def_rush",
+        "play_stuffed_def",
+        "line_yards_def",
+        "opportunity_rate_def",
+        "explosive_def",
+        "explosive_def_pass",
+        "explosive_def_rush",
+        "nonExplosiveEpaPerPlay_def",
+        "EPAplay_def_pass",
+        "yardsplay_def_pass",
+        "success_def_pass",
+        "havoc_def",
+    ],
+    "offensive": [
+        "EPAplay_off",
+        "early_down_EPA_off",
+        "late_down_success_off",
+        "third_down_distance_off",
+        "EPAplay_off_rush",
+        "play_stuffed_off",
+        "line_yards_off",
+        "opportunity_rate_off",
+        "explosive_off",
+        "explosive_off_pass",
+        "explosive_off_rush",
+        "nonExplosiveEpaPerPlay_off",
+        "EPAplay_off_pass",
+        "yardsplay_off_pass",
+        "success_off_pass",
+        "havoc_off",
+    ]
+}

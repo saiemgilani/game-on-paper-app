@@ -13,24 +13,32 @@ function generatePercentile(input: number, max: number = 134): number {
 
 export function generateRadarPercentiles(breakdown: any, titleKey: string) {
     const key = titleKey.toLocaleLowerCase()
-    return [
-        { title: 'EPA/Play', key: "overall.epaPerPlay", percentile: generatePercentile(breakdown[key]?.overall.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.epaPerPlay"), 2, 2) }, 
-        { title: 'Early Downs EPA/Play', key: "overall.earlyDownEPAPerPlay", percentile: generatePercentile(breakdown[key]?.overall.earlyDownEPAPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.earlyDownEPAPerPlay"), 2, 2) }, 
-        { title: 'Late Downs SR%', key: "overall.lateDownSuccessRate", percentile: generatePercentile(breakdown[key]?.overall.lateDownSuccessRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "overall.lateDownSuccessRate")) * 100, 2, 1)}%` }, 
-        { title: 'Avg Distance (3rd)', key: "overall.thirdDownDistance", percentile: generatePercentile(breakdown[key]?.overall.thirdDownDistanceRank, 134), value: roundNumber(parseFloat(retrieveValue(breakdown[key], "overall.thirdDownDistance")), 2, 2) }, 
-        { title: 'Rush EPA/Play', key: "rushing.epaPerPlay", percentile: generatePercentile(breakdown[key]?.rushing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.epaPerPlay"), 2, 2) }, 
-        { title: 'Stuff %', key: "rushing.stuffedPlayRate", percentile: generatePercentile(breakdown[key]?.rushing.stuffedPlayRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "rushing.stuffedPlayRate")) * 100, 2, 1)}%` },
-        { title: 'Line Yards', key: "rushing.lineYards", percentile: generatePercentile(breakdown[key]?.rushing.lineYardsRank, 134), value: roundNumber(retrieveValue(breakdown[key], "rushing.lineYards"), 2, 2) },
-        { title: 'Opportunity %', key: "rushing.opportunityRate", percentile: generatePercentile(breakdown[key]?.rushing.opportunityRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "rushing.opportunityRate")) * 100, 2, 1)}%` }, 
-        { title: 'Explosive %', key: "overall.explosiveRate", percentile: generatePercentile(breakdown[key]?.overall.explosiveRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "overall.explosiveRate")) * 100, 2, 1)}%` }, 
-        { title: 'Pass Expl %', key: "passing.explosiveRate", percentile: generatePercentile(breakdown[key]?.passing.explosiveRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "passing.explosiveRate")) * 100, 2, 1)}%` }, 
-        { title: 'Rush Expl %', key: "rushing.explosiveRate", percentile: generatePercentile(breakdown[key]?.rushing.explosiveRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "rushing.explosiveRate")) * 100, 2, 1)}%` }, 
-        { title: 'Non-Expl EPA/Play', key: "overall.nonExplosiveEpaPerPlay", percentile: generatePercentile(breakdown[key]?.overall.nonExplosiveEpaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "overall.nonExplosiveEpaPerPlay"), 2, 2) },
-        { title: 'Pass EPA/Play', key: "passing.epaPerPlay", percentile: generatePercentile(breakdown[key]?.passing.epaPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.epaPerPlay"), 2, 2) }, 
-        { title: 'Yds/DB', key: "passing.yardsPerPlay", percentile: generatePercentile(breakdown[key]?.passing.yardsPerPlayRank, 134), value: roundNumber(retrieveValue(breakdown[key], "passing.yardsPerPlay"), 2, 2) }, 
-        { title: 'Pass SR%', key: "passing.successRate", percentile: generatePercentile(breakdown[key]?.passing.successRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "passing.successRate")) * 100, 2, 1)}%` }, 
-        { title: 'Havoc %', key: "overall.havocRate", percentile: generatePercentile(breakdown[key]?.overall.havocRateRank, 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown[key], "overall.havocRate")) * 100, 2, 1)}%` }, 
-    ]
+    let suffix = ""
+    if (key == "defensive") {
+        suffix = "_def";
+    } else if (key == "offensive") {
+        suffix = "_off";
+    }
+    const base = [
+        { title: 'EPA/Play', key: `EPAplay${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `EPAplay${suffix}_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `EPAplay${suffix}`), 2, 2) }, 
+        { title: 'Early Downs EPA/Play', key: `early_down_EPA${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `early_down_EPA${suffix}_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `early_down_EPA${suffix}`), 2, 2) }, 
+        { title: 'Late Downs SR%', key: `late_down_success${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `late_down_success${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `late_down_success${suffix}`)) * 100, 2, 1)}%` }, 
+        { title: 'Avg Distance (3rd)', key: `third_down_distance${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `third_down_distance${suffix}_rank`)), 134), value: roundNumber(parseFloat(retrieveValue(breakdown, `third_down_distance${suffix}`)), 2, 2) }, 
+        { title: 'Rush EPA/Play', key: `EPAplay${suffix}_rush`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `EPAplay${suffix}_rush_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `EPAplay${suffix}_rush`), 2, 2) }, 
+        { title: 'Stuff %', key: `play_stuffed${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `play_stuffed${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `play_stuffed${suffix}`)) * 100, 2, 1)}%` },
+        { title: 'Line Yards', key: `line_yards${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `line_yards${suffix}_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `line_yards${suffix}`), 2, 2) },
+        { title: 'Opportunity %', key: `opportunity_rate${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `opportunity_rate${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `opportunity_rate${suffix}`)) * 100, 2, 1)}%` }, 
+        { title: 'Explosive %', key: `explosive${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `explosive${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `explosive${suffix}`)) * 100, 2, 1)}%` }, 
+        { title: 'Pass Expl %', key: `explosive${suffix}_pass`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `explosive${suffix}_pass_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `explosive${suffix}_pass`)) * 100, 2, 1)}%` }, 
+        { title: 'Rush Expl %', key: `explosive${suffix}_rush`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `explosive${suffix}_rush_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `explosive${suffix}_rush`)) * 100, 2, 1)}%` }, 
+        { title: 'Non-Expl EPA/Play', key: `nonExplosiveEpaPerPlay${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `nonExplosiveEpaPerPlay${suffix}_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `nonExplosiveEpaPerPlay${suffix}`), 2, 2) },
+        { title: 'Pass EPA/Play', key: `EPAplay${suffix}_pass`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `EPAplay${suffix}_pass_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `EPAplay${suffix}_pass`), 2, 2) }, 
+        { title: 'Yds/DB', key: `yardsplay${suffix}_pass`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `yardsplay${suffix}_pass_rank`)), 134), value: roundNumber(retrieveValue(breakdown, `yardsplay${suffix}_pass`), 2, 2) }, 
+        { title: 'Pass SR%', key: `success${suffix}_pass`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `success${suffix}_pass_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `success${suffix}_pass`)) * 100, 2, 1)}%` }, 
+        { title: 'Havoc %', key: `havoc${suffix}`, percentile: generatePercentile(parseFloat(retrieveValue(breakdown, `havoc${suffix}_rank`)), 134), value: `${roundNumber(parseFloat(retrieveValue(breakdown, `havoc${suffix}`)) * 100, 2, 1)}%` }, 
+    ];
+    console.log(base.map(b => b.key))
+    return base
 }
 
 export function generateRadarDataset(breakdowns: any[], titleKey: string, opponentKey: string | null = null, isDarkMode: boolean = false): ChartData<'radar'> {

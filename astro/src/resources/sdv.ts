@@ -1,7 +1,7 @@
 import { getSecret } from "astro:env/server";
 import { SummaryType } from "./summary";
 import { URLSearchParams } from "node:url";
-import { SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { SDV_RADAR_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 
 export interface SDVSummaryResponse {
     data: any[]
@@ -629,8 +629,8 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 }
 
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
-export async function retrieveTeamSummaries(season: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<SDVTeamSummary[]> {
-    if (!season) {
+export async function retrieveTeamSummaries(season?: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<SDVTeamSummary[]> {
+    if (!season && !category && !team_id) {
         // logger.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
@@ -646,10 +646,10 @@ export async function retrieveTeamSummaries(season: number, category?: string, t
 
     let metric_columns: string[] = []
     if (category) {
-        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category])
+        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category])
     } else if (!category) {
         // not implemented yet
-        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]))
+        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p]))
     } else {
         throw Error(`Category ${category} not implemented`)
     }
