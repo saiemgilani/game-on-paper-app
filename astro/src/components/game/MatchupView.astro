@@ -123,17 +123,17 @@ function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
                 <tbody>
                     <tr>
                         <td>Offense Success</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_off * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_off_pass * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off_pass || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_off_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_off_rush * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off_rush || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_off_rush_rank)}
                     </tr>
                 </tbody>
@@ -151,17 +151,17 @@ function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
                 <tbody>
                     <tr>
                         <td>Defense Success</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_def * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_def_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_def_pass * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def_pass || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_def_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
-                        <td class="text-center">${roundNumber(breakdown?.success_def_rush * 100, 2, 1)}%</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def_rush || 0) * 100, 2, 1)}%</td>
                         ${produceRankHtml(breakdown?.success_def_rush_rank)}
                     </tr>
                 </tbody>
