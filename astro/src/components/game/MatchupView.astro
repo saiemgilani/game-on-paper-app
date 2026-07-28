@@ -236,31 +236,6 @@ const matchupData = [
 ]
 
 ---
-<!-- <div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-lg-2 col-md-0">
-
-        </div>
-        <div class="col-lg-4 col-md-12 margin-override">
-            <%- include('../../partials/team_card', {
-                teamData: awayComp,
-                breakdown: [gameData.matchup.team[0]],
-                season: season,
-                week,
-                hideNavigation: false
-            }) %>
-        </div>
-        <div class="col-lg-4 col-md-12">
-            <%- include('../../partials/team_card', {
-                teamData: homeComp,
-                breakdown: [gameData.matchup.team[1]],
-                season: season,
-                week,
-                hideNavigation: false
-            }) %>
-        </div>
-    </div>
-</div> -->
 <div class="container mb-3">
     <MatchupRadarChart client:only awayTeam={awayTeam} homeTeam={homeTeam} teamData={matchupData} />
     <div class="row">

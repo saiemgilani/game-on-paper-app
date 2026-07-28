@@ -72,7 +72,7 @@ function geiGenerateColorRampValue(input) {
     //console.log(`calc pctl for key ${adjKey} w/ val ${value}`)
 
     let basePctls = percentiles.map(item => {
-        let val = item["gei"];
+        let val = item["GEI"];
         return parseFloat(val)
     })
     basePctls.sort((a, b) => {
