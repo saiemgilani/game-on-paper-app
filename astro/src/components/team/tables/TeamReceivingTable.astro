@@ -1,9 +1,10 @@
 ---
+import type { SDVReceivingSummary } from '../../../resources/sdv';
 import { roundNumber } from '../../../utils/misc';
 import TeamPlayerTable from './TeamPlayerTable.astro';
 
 interface Props {
-    players: any[]
+    players: SDVReceivingSummary[]
 }
 
 const { players } = Astro.props;
@@ -21,24 +22,24 @@ const { players } = Astro.props;
         <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/play</th>
         <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
         <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
-        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR%</th>
     </Fragment>
 
     <Fragment slot="rows">
         {
             players.map((p: any) => (
                 <tr>
-                <td style="text-align: left;">{ p.name }</td>
-                <td class="numeral" style="text-align: center;">{ p.statistics.catches }</td>
-                <td class="numeral" style="text-align: center;">{ p.statistics.targets }</td>
-                <td class="numeral" style="text-align: center;">{roundNumber(parseFloat(p.statistics.catchPct || 0) * 100, 2, 0)}%</td>
-                <td class="numeral" style="text-align: center;">{ p.statistics.yards }</td>
-                <td class="numeral" style="text-align: center;">{ p.statistics.touchdowns }</td>
-                <td class="numeral" style="text-align: center;">{ p.statistics.fumbles }</td>
-                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.statistics.yardsPerPlay || 0), 2, 2) }</td>
-                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.epaPerPlay), 2, 2) }</td>
-                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.totalEPA), 2, 2) }</td>
-                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.advanced.successRate) * 100, 2, 0) }%</td>
+                <td style="text-align: left;">{ p.receiver_player_name }</td>
+                <td class="numeral" style="text-align: center;">{ p.comp }</td>
+                <td class="numeral" style="text-align: center;">{ p.targets }</td>
+                <td class="numeral" style="text-align: center;">{roundNumber(parseFloat(p.catchpct || 0) * 100, 2, 0)}%</td>
+                <td class="numeral" style="text-align: center;">{ p.yards }</td>
+                <td class="numeral" style="text-align: center;">{ p.passing_td }</td>
+                <td class="numeral" style="text-align: center;">{ p.fumbles }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.yardsplay || 0), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.EPAplay), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.TEPA), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.success) * 100, 2, 0) }%</td>
                 </tr>
             ))
         }

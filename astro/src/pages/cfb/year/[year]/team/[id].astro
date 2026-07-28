@@ -11,11 +11,12 @@ import type { PageBreadcrumb } from "../../../../../layouts/GenericPage.astro";
 import GenericPage from "../../../../../layouts/GenericPage.astro";
 import GenericPanel from "../../../../../layouts/panel/GenericPanel.astro";
 import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../../resources/espn";
-import SummaryModel, { type PlayerStatistics, type PlayerSummary, type ReceivingStats, type SeasonPercentile } from "../../../../../resources/summary";
+import SummaryModel, { SummaryType } from "../../../../../resources/summary";
+import { retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVSeasonPercentile } from "../../../../../resources/sdv";
 import { cleanLocation, roundNumber } from "../../../../../utils/misc";
 import TeamCard from "../../../../../components/team/TeamCard.astro";
 import TeamPlayerCard from "../../../../../components/team/TeamPlayerCard.astro";
-import type { PassingStats, TeamIndex } from "../../../../../resources/summary";
+import type { TeamIndex } from "../../../../../resources/summary";
 
 export async function getStaticPaths() {
     const teams: TeamIndex[] = await SummaryModel.retrieveAllTeams()
@@ -53,7 +54,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 ]
 
 
-const teamSummaries = await SummaryModel.retrieveTeamData({ team: Number(id), year: Number(year) })
+const teamSummaries = await retrieveTeamSummaries(Number(year), undefined, Number(id));
 if (!teamSummaries) {
     return Astro.rewrite('/404');
 }
@@ -64,32 +65,35 @@ const teamData = teamSummaries.map((t:any) => {
     return t
 })
 
-const passers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'passing'});
-const rushers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'rushing'});
-const receivers: PlayerSummary[] = await SummaryModel.retrievePlayerData({team: Number(id), year: Number(year), type:'receiving'});
+const passersRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.Passing, Number(id), "plays", false, 10, Number(year));
+const passers = (passersRaw as SDVPassingSummary[]);
+const rushersRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.Rushing, Number(id), "plays", false, 20, Number(year));
+const rushers = (rushersRaw as SDVRushingSummary[]);
+const receiversRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.Receiving, Number(id), "plays", false, 25, Number(year));
+const receivers = (receiversRaw as SDVReceivingSummary[]);
 
-const leadingPasser: PlayerSummary | null = (passers.length == 0) ? null : passers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
-const leadingRusher: PlayerSummary | null = (rushers.length == 0) ? null : rushers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
-const leadingReceiver: PlayerSummary | null = (receivers.length == 0) ? null :  receivers.toSorted((a, b) => b.statistics.plays - a.statistics.plays)[0];
+const leadingPasser: SDVPassingSummary | null = (passers.length == 0) ? null : (passers.toSorted((a, b) => b.plays - a.plays)[0] as SDVPassingSummary);
+const leadingRusher: SDVRushingSummary | null = (rushers.length == 0) ? null : (rushers.toSorted((a, b) => b.plays - a.plays)[0] as SDVRushingSummary);
+const leadingReceiver: SDVReceivingSummary | null = (receivers.length == 0) ? null :  (receivers.toSorted((a, b) => b.plays - a.plays)[0] as SDVReceivingSummary);
 
 const leaders = [
     leadingPasser == null ? null : { 
-        playerId: leadingPasser.playerId, 
-        name: leadingPasser.name, 
+        playerId: leadingPasser.player_id, 
+        name: leadingPasser.passer_player_name, 
         title: "Passing", 
-        subtitle: `${roundNumber(leadingPasser.advanced.epaPerPlay, 2, 2)} EPA/Play, ${roundNumber(100 * ((leadingPasser.statistics as PassingStats).completionPct), 2, 1)}% Comp, ${leadingPasser.statistics.yards} yd${ (Math.abs(leadingPasser.statistics.yards) == 1) ? "" : "s"}, ${leadingPasser.statistics.touchdowns} TD`
+        subtitle: `${roundNumber(leadingPasser.EPAplay, 2, 2)} EPA/Play, ${roundNumber(100 * leadingPasser.comppct, 2, 1)}% Comp, ${leadingPasser.yards} yd${ (Math.abs(leadingPasser.yards) == 1) ? "" : "s"}, ${leadingPasser.passing_td} TD`
     },
     leadingRusher == null ? null : { 
-        playerId: leadingRusher.playerId, 
-        name: leadingRusher.name, 
+        playerId: leadingRusher.player_id, 
+        name: leadingRusher.rusher_player_name, 
         title: "Rushing", 
-        subtitle: `${roundNumber(leadingRusher.advanced.epaPerPlay, 2, 2)} EPA/Play, ${leadingRusher.statistics.plays} Car, ${leadingRusher.statistics.yards} yd${ (Math.abs(leadingRusher.statistics.yards) == 1) ? "" : "s"}, ${leadingRusher.statistics.touchdowns} TD`
+        subtitle: `${roundNumber(leadingRusher.EPAplay, 2, 2)} EPA/Play, ${leadingRusher.plays} Car, ${leadingRusher.yards} yd${ (Math.abs(leadingRusher.yards) == 1) ? "" : "s"}, ${leadingRusher.rushing_td} TD`
     },
     leadingReceiver == null ? null : { 
-        playerId: leadingReceiver.playerId, 
-        name: leadingReceiver.name, 
+        playerId: leadingReceiver.player_id, 
+        name: leadingReceiver.receiver_player_name, 
         title: "Receiving", 
-        subtitle: `${roundNumber(leadingReceiver.advanced.epaPerPlay, 2, 2)} EPA/Play, ${leadingReceiver.statistics.plays} Cat, ${leadingReceiver.statistics.yards} yd${ (Math.abs(leadingReceiver.statistics.yards) == 1) ? "" : "s"}, ${leadingReceiver.statistics.touchdowns} TD`
+        subtitle: `${roundNumber(leadingReceiver.EPAplay, 2, 2)} EPA/Play, ${leadingReceiver.plays} Cat, ${leadingReceiver.yards} yd${ (Math.abs(leadingReceiver.yards) == 1) ? "" : "s"}, ${leadingReceiver.passing_td} TD`
     }
 ].filter(d => !!d);
 
@@ -115,9 +119,9 @@ const leaders = [
         </GenericPanel>
     </div>
     <div class="container">
-        <TeamPassingTable players={passers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
-        <TeamRushingTable players={rushers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
-        <TeamReceivingTable players={receivers.filter(p => p.name != "NA").toSorted((a, b) => b.statistics.plays - a.statistics.plays)} />
+        <TeamPassingTable players={passers.filter(p => p.passer_player_name != "NA" && p.passer_player_name != null && p.passer_player_name).toSorted((a, b) => b.plays - a.plays)} />
+        <TeamRushingTable players={rushers.filter(p => p.rusher_player_name != "NA" && p.rusher_player_name != null && p.rusher_player_name).toSorted((a, b) => b.plays - a.plays)} />
+        <TeamReceivingTable players={receivers.filter(p => p.receiver_player_name != "NA" && p.receiver_player_name != null && p.receiver_player_name).toSorted((a, b) => b.plays - a.plays)} />
     </div>
     <div class="container mb-3">
         <GenericPanel id="schedule" title="Schedule">
