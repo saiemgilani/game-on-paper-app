@@ -2,6 +2,7 @@ import { getSecret } from "astro:env/server";
 import { SummaryType } from "./summary";
 import { URLSearchParams } from "node:url";
 import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { env } from "cloudflare:workers";
 
 export interface SDVSummaryResponse {
     data: any[]
@@ -542,7 +543,7 @@ export type SDVPlayerSummary = SDVPassingSummary | SDVReceivingSummary | SDVRush
 const SDV_HTTP_URL = 'https://data.sportsdataverse.org/v1/cfb';
 const SDV_AUTH_TOKEN = getSecret("SDV_AUTH_TOKEN")
 
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams): Promise<any> {
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
@@ -551,18 +552,40 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     if (query && (query?.size || 0) > 0) {
         baseURL += `?${query.toString()}`
     }
-    console.info(baseURL)
+    // console.info(baseURL)
+
+    // check cache first
+    const cachedContent = await env.SDV_API_CACHE.get(baseURL, "json");
+    if (cachedContent) {
+        // logger.info(`cache hit: ${baseURL}`)
+        return cachedContent
+    }
+
+    // logger.info(`cache miss: ${baseURL}`)
     const config: RequestInit = {
         headers: {
             "Authorization": `Bearer ${SDV_AUTH_TOKEN}`
         },
         body
     }
+    try {
+        const req = await fetch(baseURL, config);
+        const content: any = await req.json();
+        if (content) {
+            // logger.info(`cache update: ${baseURL}`)
+            await env.SDV_API_CACHE.put(baseURL, content, { expirationTtl: cacheTTL })
+        }
 
-    return await fetch(baseURL, config)
+        return content;
+    } catch (e) {
+        //logger.error(e)
+        return {
+            "data": []
+        }
+    }
 }
 
-async function retrieveRemotePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
+export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
     if (!season && !percentile) {
         // logger.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
         return [];
@@ -579,8 +602,7 @@ async function retrieveRemotePercentiles(season?: number, percentile?: number, m
         }
    
 
-        const req = await requestSDV("percentiles", new URLSearchParams(payload));
-        const content: any = await req.json();
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7);
         // console.error(JSON.stringify(content))
         return content["data"];
     } catch (err) {
@@ -593,37 +615,7 @@ async function retrieveRemotePercentiles(season?: number, percentile?: number, m
         } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
             return [];
         } else {
-            return await retrieveRemotePercentiles(season - 1, percentile, maxLookback);
-        }
-    }
-}
-
-export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = 2014): Promise<SDVSeasonPercentile[]> {
-    // console.log(JSON.stringify(payload))
-    if (!season && !percentile) {
-        // logger.error(`failed to retreive percentiles, must provide 'year' AND/OR 'pctile'`)
-        return [];
-    }
-
-    // const key = generateKey(["percentiles", year, pctile])
-    try {
-        // const content = await lruCache.get(key);
-        // if (!content) {
-        //     throw new Error(`receieved invalid/empty league data from redis for key: ${key}, repulling`)
-        // }
-        // logger.error(`found content for key ${key}: ${content}`)
-        // return JSON.parse(content);
-         const content = await retrieveRemotePercentiles(season, percentile, maxLookback);
-         return content;
-    } catch (err) {
-        // logger.error(err)
-        // logger.error(`receieved some error from redis for key: ${key}, repulling league data`)
-        if (!season) {
-            return [];
-        } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
-            return [];
-        } else {
-            return await retrieveRemotePercentiles(season - 1, percentile, maxLookback);
+            return await retrievePercentiles(season - 1, percentile, maxLookback);
         }
     }
 }
@@ -660,8 +652,7 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
 
     try {        
         // update redis cache
-        const req = await requestSDV("team_summaries", new URLSearchParams(payload));
-        const content: SDVSummaryResponse = await req.json();
+        const content: SDVSummaryResponse = await requestSDV("team_summaries", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
         // console.log(content)
         // const key = generateKey(["league", season, type]);
         // expire every three days so that we get fresh data
@@ -706,20 +697,19 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
 
     try {        
         // update redis cache
-        let req: any;
+        let content: SDVSummaryResponse;
         if (category == SummaryType.Passing) {
-            req = await requestSDV("passing", new URLSearchParams(payload));
+            content = await requestSDV("passing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
         } else if (category == SummaryType.Rushing) {
-            req = await requestSDV("rushing", new URLSearchParams(payload));
+            content = await requestSDV("rushing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
         } else if (category == SummaryType.Receiving) {
-            req = await requestSDV("receiving", new URLSearchParams(payload));
+            content = await requestSDV("receiving", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3);
         } else {
             throw Error(`Category '${category}' not implemented`)
         }
         // const key = generateKey(["league", season, type]);
         // expire every three days so that we get fresh data
         // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
-        const content: SDVSummaryResponse = await req.json();
         return content.data;
     } catch (err) {
         // logger.error(`could not find data for league in ${season}, checking ${season - 1}`)
