@@ -571,6 +571,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         body
     }
     try {
+        console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
         const req = await fetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const content: any = await req.json();
         if (content && cacheEnabled) {
