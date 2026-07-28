@@ -45,7 +45,7 @@ for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
 }
 
 let teamData = await retrieveTeamSummaries(undefined, undefined, id)
-teamData = teamData.map((t:any) => {
+teamData = teamData.sort((a,b) => a.season - b.season).map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor
     t.teamName = cleanField(team, "pos_team")
