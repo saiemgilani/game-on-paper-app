@@ -6,6 +6,8 @@ dependencies = [
     "Flask",
     "sportsdataverse==0.0.72",
     "gunicorn",
+    "flask-compress>=1.24",
+    "orjson>=3.11.9",
 ]
 
 [tool.uv.sources]

@@ -1,10 +1,13 @@
 from functools import wraps
+import math
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import numpy as np
 from datetime import datetime as dt, timezone as tz
 import polars as pl
 from sportsdataverse.cfb import CFBPlayProcess
+from flask_compress import Compress
+import orjson
 
 import os
 import logging
@@ -17,6 +20,29 @@ assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
 app.config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", "INFO")
+
+app.config["COMPRESS_BR_LEVEL"] = 4
+app.config["COMPRESS_LEVEL"] = 5
+app.config["COMPRESS_MIN_SIZE"] = 1024
+Compress(app)
+
+def _orjson_default(obj):
+    """orjson fallback for types its native handling can't serialize.
+
+    OPT_SERIALIZE_NUMPY covers the common numpy types (int*, uint*,
+    float32/64, ndarray of those) but trips on object-dtype arrays,
+    numpy strings, or numpy scalars in less-common dtypes — which
+    pop up when sportsdataverse stores mixed-content lists. Duck-
+    typing via tolist()/item() handles these without importing numpy
+    (which we dropped above when removing the np.array().tolist()
+    wraps in the top-level result dict).
+    """
+    if hasattr(obj, "tolist"):
+        return obj.tolist()
+    if hasattr(obj, "item"):
+        return obj.item()
+    raise TypeError(f"orjson: unsupported type {type(obj).__name__}")
+
 
 
 @app.after_request
@@ -248,9 +274,25 @@ def process():
             #     'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
             # }
             # remove added columns
-            for col in bad_cols:
-                record.pop(col, None)
+            for k in list(record.keys()):
+                if k in bad_cols:
+                    del record[k]
+                    continue
+                v = record[k]
+                if isinstance(v, float) and not math.isfinite(v):
+                    record[k] = None
 
+        body_bytes = orjson.dumps(
+            processed_game,
+            default=_orjson_default,
+            option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS,
+        )
+        response = Response(body_bytes, mimetype="application/json")
+        # timings["total"] = time.perf_counter() - request_start
+        # response.headers["Server-Timing"] = _server_timing_header(timings)
+        response.headers["X-Result-Cache"] = "MISS"
+        # _emit_metrics(timings, gameId, 200)
+        return response, 200
         return jsonify(processed_game), 200
     except KeyError as e:
         logging.getLogger("root").error(
