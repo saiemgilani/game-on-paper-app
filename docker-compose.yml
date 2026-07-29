@@ -1,13 +1,15 @@
 services:
-  # nginx:
-  #   build: 
-  #     context: ./nginx
-  #     dockerfile: ./Dockerfile.dev
-  #   restart: unless-stopped
-  #   ports:
-  #     - 8080:8080
-  #   depends_on:
-  #     - node
+  nginx:
+    build: 
+      context: ./nginx
+      dockerfile: ./Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    depends_on:
+      - python
+    links:
+      - python
   # node:
   #   build: ./node
   #   command: ["node", "handlers/server.js"]
@@ -93,8 +95,8 @@ services:
     build: ./python
     environment:
       - HTTP_TOKEN=test-token
-    ports:
-      - 4000:4000
+    expose:
+      - 4000
     healthcheck:
       test: curl --fail http://python:4000/healthcheck || exit 1
       interval: 60s
