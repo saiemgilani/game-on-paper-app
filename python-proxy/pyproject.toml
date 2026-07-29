@@ -1,0 +1,15 @@
+[project]
+name = "python-proxy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "sportsdataverse==0.0.72"
+]
+
+[tool.uv]
+exclude-dependencies = ["rapidfuzz"]
+
+[dependency-groups]
+dev = ["workers-py", "workers-runtime-sdk"]
