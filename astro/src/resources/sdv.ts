@@ -596,9 +596,9 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     try {
         const payload: Record<string, any> = {};
         // not a supported param yet
-        // if (season) {
-        //     payload["season"] = //String(season)
-        // }
+        if (season) {
+            payload["season"] = String(season)
+        }
 
         if (percentile) {
             payload["pctile"] = percentile
