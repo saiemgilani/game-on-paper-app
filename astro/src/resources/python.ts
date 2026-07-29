@@ -1,5 +1,7 @@
 import { getSecret } from "astro:env/server"
-import type { ESPNBroadcast, ESPNCompetition, ESPNCompetitor, ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlay, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
+import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNTeam, ESPNWinProbability } from "./espn"
+import { getContainer, getRandom } from "@cloudflare/containers"
+import { env } from "cloudflare:workers"
 
 export enum SpiceLevel {
     BELL = 0,
@@ -924,8 +926,7 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    
-    const req = await fetch(`${PYTHON_HTTP_URL}/cfb/process`, {
+    const req = await fetch(`/cfb/process`, {
         method: "POST",
         body: JSON.stringify({ gameId }),
         headers: {
@@ -933,6 +934,14 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
             "Referrer": "gameonpaper.com" 
         }
     })
-    const resp: ProcessedGame = await req.json();
-    return resp;
+    const content = await req.text();
+
+    try {
+        const resp: ProcessedGame = JSON.parse(content);
+        return resp;
+    } catch (e) {
+        console.error(`ERROR while processing game ${gameId} plays: ${e}`)
+        console.error(`HTML content: ${content}`)
+        throw e;
+    }
 }

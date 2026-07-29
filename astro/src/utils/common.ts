@@ -1,5 +1,5 @@
 import { type ESPNCompetition, type ESPNCompetitor, type ESPNScheduleEvent, type ESPNTeam } from "../resources/espn"
-import { SpiceLevel } from "../resources/processor"
+import { SpiceLevel } from "../resources/python"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
 import { roundNumber, hexToRgb } from "./misc"

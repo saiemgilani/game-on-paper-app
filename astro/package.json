@@ -18,6 +18,7 @@
     "@astrojs/cloudflare": "^14.1.4",
     "@astrojs/node": "^11.0.2",
     "@astrojs/svelte": "^9.0.1",
+    "@cloudflare/containers": "^0.3.7",
     "@sgratzl/chartjs-chart-boxplot": "^4.4.5",
     "@types/node": "^26.0.0",
     "astro": "^7.1.3",
