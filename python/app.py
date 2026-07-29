@@ -317,7 +317,6 @@ def process():
 
 
 @app.route("/healthcheck", methods=["GET"])
-@require_auth_token
 def healthcheck():
     return jsonify({"status": "ok"})
 

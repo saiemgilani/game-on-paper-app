@@ -563,7 +563,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         }
     }
 
-    console.info(`cache miss: ${endpointURL}`)
+    console.info(`SDV API cache miss: ${endpointURL}`)
     const config: RequestInit = {
         headers: {
             "Authorization": `Bearer ${SDV_AUTH_TOKEN}`

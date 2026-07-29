@@ -1,3 +1,5 @@
+import { env } from "cloudflare:workers"
+
 export interface ESPNScoreboardResponse {
     leagues: ESPNLeague[]
     groups: string[]
@@ -397,6 +399,30 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
         }
 
         return result;
+    }
+}
+
+export async function getCurrentScoreboard(cacheEnabled = true, writeOnly = false): Promise<ESPNScheduleEvent[]> {
+    const cacheTTL = env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
+    try {
+        if (cacheEnabled) { 
+            const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");
+            if (cachedContent) {
+                console.info(`ESPN API cache hit: scoreboard`)
+                return (cachedContent as ESPNScheduleEvent[]);
+            }
+        }
+
+        console.info(`ESPN API cache miss (forcedWrite: ${writeOnly}): scoreboard`)
+        const result = await getRemoteGames(undefined, undefined, undefined, 80);
+        if ((cacheEnabled || writeOnly) && result) {
+            console.info(`ESPN API cache update: scoreboard`)
+            await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
+        }
+        return result;
+    } catch (e) {
+        console.error(`ERROR while pulling latest scoreboard: ${e}`)
+        return [];
     }
 }
 

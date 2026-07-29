@@ -3,7 +3,7 @@
 	"compatibility_date": "2026-05-24",
 	"compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
 	"name": "game-on-paper-astro",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	"main": "./src/worker.ts",
 	"assets": {
 		"directory": "./dist",
 		"not_found_handling": "404-page",
@@ -19,6 +19,13 @@
 		{
 			"binding": "SDV_API_CACHE",
 			"id": "sdv"
+		},
+		{
+			"binding": "ESPN_API_CACHE",
+			"id": "espn"
 		}
-	]
+	],
+	"triggers": {
+		"crons": ["*/2 * * * *"]
+	}
 }
