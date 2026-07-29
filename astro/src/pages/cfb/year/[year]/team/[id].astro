@@ -20,7 +20,7 @@ import { SummaryType, type TeamIndex, retrieveAllTeams } from "../../../../../ut
 export function getStaticPaths() {
     const teams: TeamIndex[] = retrieveAllTeams()
     return teams.flatMap(t => t.seasons.map(s => {
-        return { params: { year: String(s), id: t.team_id } }
+        return { params: { year: String(s), id: String(t.team_id) } }
     }))
 }
 
