@@ -91,6 +91,8 @@ services:
 
   python:
     build: ./python
+    environment:
+      - HTTP_TOKEN=test-token
     ports:
       - 4000:4000
     healthcheck:

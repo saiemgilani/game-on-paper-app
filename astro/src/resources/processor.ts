@@ -829,6 +829,7 @@ export interface ProcessedGame {
 }
 
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:7000';
+const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 
 export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
     const processed: ProcessedGame = await processPlays(gameId);
@@ -919,13 +920,19 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
 }
 
 async function processPlays(gameId: string | number): Promise<ProcessedGame> {
+    if (!PYTHON_HTTP_TOKEN) {
+        throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
+    }
+    const encodedToken = btoa(PYTHON_HTTP_TOKEN);
+    
     const req = await fetch(`${PYTHON_HTTP_URL}/cfb/process`, {
         method: "POST",
-        body: JSON.stringify({ gameId })
+        body: JSON.stringify({ gameId }),
+        headers: {
+            "Authorization": `Bearer ${encodedToken}`,
+            "Referrer": "gameonpaper.com" 
+        }
     })
-    const content = await req.text();
-    // console.log(content)
-    // console.log(req.status)
-    const resp: ProcessedGame = JSON.parse(content);
+    const resp: ProcessedGame = await req.json();
     return resp;
 }

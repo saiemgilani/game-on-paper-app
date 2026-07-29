@@ -1,3 +1,5 @@
+from functools import wraps
+
 from flask import Flask, request, jsonify
 import numpy as np
 from datetime import datetime as dt, timezone as tz
@@ -7,6 +9,10 @@ from sportsdataverse.cfb import CFBPlayProcess
 import os
 import logging
 import json
+import base64
+
+HTTP_TOKEN = os.getenv("HTTP_TOKEN")
+assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -27,7 +33,26 @@ def after_request(response):
     return response
 
 
+def require_auth_token(func):
+    @wraps(func)
+    def check_token(*args, **kwargs):
+        headers = request.headers
+        bearer = headers.get('Authorization')
+        if not bearer:
+            return jsonify({ "status": "bad", "message": "Access denied" }), 401
+
+        raw_token = bearer.split()[1]
+        token = base64.b64decode(raw_token).decode("ascii")
+        if token != HTTP_TOKEN:
+            return jsonify({ "status": "bad", "message": "Access denied" }), 401 
+
+        # Otherwise just send them where they wanted to go
+        return func(*args, **kwargs)
+
+    return check_token
+
 @app.route("/cfb/process", methods=["POST"])
+@require_auth_token
 def process():
     try:
         gameId = request.get_json(force=True)["gameId"]
@@ -250,6 +275,7 @@ def process():
 
 
 @app.route("/healthcheck", methods=["GET"])
+@require_auth_token
 def healthcheck():
     return jsonify({"status": "ok"})
 
