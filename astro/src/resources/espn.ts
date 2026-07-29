@@ -402,7 +402,7 @@ export async function getRemoteGames(year?: number, seasontype?: number, week?: 
     }
 }
 
-export async function getCurrentScoreboard(cacheEnabled = true, writeOnly = false): Promise<ESPNScheduleEvent[]> {
+export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = false): Promise<ESPNScheduleEvent[]> {
     const cacheTTL = env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
     try {
         if (cacheEnabled) { 
@@ -413,9 +413,9 @@ export async function getCurrentScoreboard(cacheEnabled = true, writeOnly = fals
             }
         }
 
-        console.info(`ESPN API cache miss (forcedWrite: ${writeOnly}): scoreboard`)
+        console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
         const result = await getRemoteGames(undefined, undefined, undefined, 80);
-        if ((cacheEnabled || writeOnly) && result) {
+        if ((cacheEnabled || forceWrite) && result) {
             console.info(`ESPN API cache update: scoreboard`)
             await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
         }
