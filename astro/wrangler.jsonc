@@ -3,7 +3,7 @@
 	"compatibility_date": "2026-05-24",
 	"compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
 	"name": "game-on-paper-astro",
-	"main": "./src/worker.ts",
+	"main": "@astrojs/cloudflare/entrypoints/server",
 	"assets": {
 		"directory": "./dist",
 		"not_found_handling": "404-page",
@@ -19,28 +19,6 @@
 		{
 			"binding": "SDV_API_CACHE",
 			"id": "sdv"
-		}
-	],
-	"containers": [
-		{
-			"max_instances": 3,
-			"class_name": "PythonProcessor",
-			"image": "/Users/akeaswaran/Documents/Apps/game-on-paper/python/Dockerfile",
-			"name": "PYTHON_PROCESSOR"
-		},
-	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"class_name": "PythonProcessor",
-				"name": "PYTHON_PROCESSOR"
-			}
-		]
-	},
-	"migrations": [
-		{
-			"new_sqlite_classes": ["PythonProcessor"],
-			"tag": "v1"
 		}
 	]
 }
