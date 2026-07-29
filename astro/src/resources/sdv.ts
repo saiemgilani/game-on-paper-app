@@ -1,8 +1,8 @@
 import { getSecret } from "astro:env/server";
-import { SummaryType } from "./summary";
 import { URLSearchParams } from "node:url";
 import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 import { env } from "cloudflare:workers";
+import { SummaryType } from "../utils/common";
 
 export interface SDVSummaryResponse {
     data: any[]
@@ -699,12 +699,8 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     try {        
         // update redis cache
         let content: SDVSummaryResponse;
-        if (category == SummaryType.Passing) {
-            content = await requestSDV("passing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
-        } else if (category == SummaryType.Rushing) {
-            content = await requestSDV("rushing", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
-        } else if (category == SummaryType.Receiving) {
-            content = await requestSDV("receiving", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
+        if (Object.values(SummaryType).includes(category)) {
+            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         } else {
             throw Error(`Category '${category}' not implemented`)
         }

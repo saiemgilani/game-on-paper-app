@@ -3,6 +3,7 @@ import { SpiceLevel } from "../resources/processor"
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 import { FBS_CONFERENCES, MEME_LIST } from "./constants"
 import { roundNumber, hexToRgb } from "./misc"
+import teamsRaw from '../static/teams.json' with { type: 'json' };
 
 export function formatScore(score: string | { displayValue: string }, winner: boolean, complete: boolean): string {
     const cleanedScore = typeof(score) == 'object' ? cleanScore(score) : score;
@@ -146,4 +147,26 @@ export function formatRank(rank: number | undefined | null) {
         rankString = "N/A"
     }
     return rankString
+}
+
+export interface TeamIndex { 
+    team_id: number
+    name: string
+    seasons: number[]
+}
+
+export enum SummaryType {
+    OVERALL = 'overall',
+    PASSING = 'passing',
+    RUSHING = 'rushing',
+    RECEIVING = 'receiving'
+}
+
+export function retrieveAllTeams(): TeamIndex[] {
+    try {
+        return (teamsRaw.teams as TeamIndex[]);
+    } catch (err) {
+        console.info(`error when loading team index: ${err}`)
+        return [];
+    }    
 }
