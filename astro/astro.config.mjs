@@ -11,14 +11,14 @@ export default defineConfig({
     adapter: cloudflare(),
     integrations: [svelte()],
     redirects: {
-        "/": "/cfb",
-        "/trends": "/cfb/charts/trends",
-        "/teams": "/cfb/teams",
-        "/players": "/cfb/players",
-        "/charts/[...slug]": "/cfb/charts/[...slug]",
-        "/game/[...slug]": "/cfb/game/[...slug]",
-        "/year/[...slug]": "/cfb/year/[...slug]",
-        "/team/[...slug]": "/cfb/team/[...slug]"
+        // "/[...slug]": "/cfb/[...slug]",
+        // "/trends": "/cfb/charts/trends",
+        // "/teams": "/cfb/teams",
+        // "/players": "/cfb/players",
+        // "/charts/[...slug]": "/cfb/charts/[...slug]",
+        // "/game/[...slug]": "/cfb/game/[...slug]",
+        // "/year/[...slug]": "/cfb/year/[...slug]",
+        // "/team/[...slug]": "/cfb/team/[...slug]"
     },
     trailingSlash: 'ignore',
     cache: { 
@@ -29,11 +29,11 @@ export default defineConfig({
         // "/game/[...slug]": { maxAge: 60, swr: 60 },
 
         // 3 days cache
-        "/trends": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
-        "/teams": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
-        "/players": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
-        "/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
-        "/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["season"] },
-        "/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["team"] }
+        "/cfb/trends": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
+        "/cfb/teams": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
+        "/cfb/players": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards"] },
+        "/cfb/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
+        "/cfb/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["season"] },
+        "/cfb/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["team"] }
     },
 });
