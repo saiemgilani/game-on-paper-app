@@ -15,3 +15,5 @@ cfb-api
 .ipynb_checkpoints
 __pycache__
 */__pycache__
+*.bak
+.venv

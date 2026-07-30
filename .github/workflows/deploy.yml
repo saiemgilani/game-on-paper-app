@@ -1,15 +1,7 @@
 name: deploy
 
 on:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: "0 12 * * 1"
-  repository_dispatch:
-    types: [deploy]
   workflow_dispatch:
-  workflow_call:
 
 jobs:
   build-node:
@@ -44,6 +36,22 @@ jobs:
           directory: ./python
           dockerfile: ./python/Dockerfile
           tags: latest
+  build-python-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: saiemgilani/game-on-paper-app
+      - name: Publish Python container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@v6
+        with:
+          image: saiemgilani/game-on-paper-python-v2
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./python-v2
+          dockerfile: ./python-v2/Dockerfile
+          tags: latest
   build-redis:
     runs-on: ubuntu-latest
     steps:
@@ -76,11 +84,21 @@ jobs:
       - build-node
       - build-python
       - build-redis
+      - build-python-v2
     steps:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Push updated docker-compose override file
+        uses: vtisweden/sftp-action@v1.0.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          localPath: "./config/apache2.conf"
+          remotePath: "/etc/apache2/sites-enabled/gameonpaper.com.conf"
+      - name: Push updated Apache config file
         uses: vtisweden/sftp-action@v1.0.7
         with:
           host: ${{ secrets.HOST }}
@@ -96,12 +114,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
           DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE, PYTHON_HTTP_TOKEN
           script: |
             docker stop $(docker ps -a -q)
             docker system prune --force
