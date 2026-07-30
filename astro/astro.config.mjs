@@ -25,14 +25,20 @@ export default defineConfig({
         "/cfb/charts/trends": "/charts/trends",
 
         "/cfb/year/[year]": "/year/[year]",
+
         "/cfb/year/[year]/players": "/year/[year]/players",
         "/cfb/year/[year]/players/[category]": "/year/[year]/players/[category]",
+
         "/cfb/year/[year]/teams": "/year/[year]/teams",
         "/cfb/year/[year]/teams/[category]": "/year/[year]/teams/[category]",
+
         "/cfb/year/[year]/[type]": "/year/[year]/[type]",
         "/cfb/year/[year]/type/[type]": "/year/[year]/type/[type]",
 
         "/cfb/year/[year]/team/[id]": "/year/[year]/team/[id]",
+
+        "/trends": "/charts/trends",
+        "/players": "/year/2026/players",
     },
     trailingSlash: 'ignore',
     cache: { 
