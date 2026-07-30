@@ -11,15 +11,28 @@ export default defineConfig({
     adapter: cloudflare(),
     integrations: [svelte()],
     redirects: {
-        "/cfb": "/",
-        "/cfb/[...slug]": "/[...slug]",
-        // "/trends": "/cfb/charts/trends",
-        // "/teams": "/cfb/teams",
-        // "/players": "/cfb/players",
-        // "/charts/[...slug]": "/cfb/charts/[...slug]",
-        // "/game/[...slug]": "/cfb/game/[...slug]",
-        // "/year/[...slug]": "/cfb/year/[...slug]",
-        // "/team/[...slug]": "/cfb/team/[...slug]"
+        "/cfb": "/index",
+        "/cfb/trends": "/charts/trends",
+        "/cfb/teams": "/teams",
+        "/cfb/players": "/players",
+        "/cfb/charts": "/charts",
+        "/cfb/game": "/index",
+        "/cfb/year": "/teams",
+        "/cfb/team": "/teams",
+
+        "/cfb/game/[id]": "/game/[id]",
+        "/cfb/team/[id]": "/team/[id]",
+        "/cfb/charts/trends": "/charts/trends",
+
+        "/cfb/year/[year]": "/year/[year]",
+        "/cfb/year/[year]/players": "/year/[year]/players",
+        "/cfb/year/[year]/players/[category]": "/year/[year]/players/[category]",
+        "/cfb/year/[year]/teams": "/year/[year]/teams",
+        "/cfb/year/[year]/teams/[category]": "/year/[year]/teams/[category]",
+        "/cfb/year/[year]/[type]": "/year/[year]/[type]",
+        "/cfb/year/[year]/type/[type]": "/year/[year]/type/[type]",
+
+        "/cfb/year/[year]/team/[id]": "/year/[year]/team/[id]",
     },
     trailingSlash: 'ignore',
     cache: { 
