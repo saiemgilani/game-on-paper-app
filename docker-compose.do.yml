@@ -88,6 +88,8 @@ services:
           memory: 4gb
   python-v2:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-v2:latest
+    environment:
+      - PYTHON_HTTP_TOKEN
     expose:
       - 5000
     healthcheck:
