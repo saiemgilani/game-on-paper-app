@@ -90,8 +90,8 @@ services:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-v2:latest
     environment:
       - PYTHON_HTTP_TOKEN
-    expose:
-      - 5000
+    ports:
+      - 5000:5000
     healthcheck:
       test: curl --fail http://python-v2:5000/healthcheck || exit 1
       interval: 60s
