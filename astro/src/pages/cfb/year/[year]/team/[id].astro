@@ -1,5 +1,5 @@
 ---
-export const prerender = true;
+// export const prerender = true;
 
 import TeamRadarChart from "../../../../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../../../../components/DarkModeLogos.astro";
@@ -17,12 +17,12 @@ import TeamCard from "../../../../../components/team/TeamCard.astro";
 import TeamPlayerCard from "../../../../../components/team/TeamPlayerCard.astro";
 import { SummaryType, type TeamIndex, retrieveAllTeams } from "../../../../../utils/common";
 
-export function getStaticPaths() {
-    const teams: TeamIndex[] = retrieveAllTeams()
-    return teams.flatMap(t => t.seasons.map(s => {
-        return { params: { year: String(s), id: String(t.team_id) } }
-    }))
-}
+// export function getStaticPaths() {
+//     const teams: TeamIndex[] = retrieveAllTeams()
+//     return teams.flatMap(t => t.seasons.map(s => {
+//         return { params: { year: String(s), id: String(t.team_id) } }
+//     }))
+// }
 
 const { year, id } = Astro.params;
 if (!year) {
