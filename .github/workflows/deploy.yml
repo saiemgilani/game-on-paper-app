@@ -127,3 +127,18 @@ jobs:
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
             docker-compose pull
             docker-compose -f docker-compose.yml up -d
+            systemctl reload apache2
+      - name: Check that site is live
+        uses: jtalk/url-health-check-action@v5
+        with:
+          url: https://gameonpaper.com|http://gameonpaper.com
+          follow-redirect: false
+          max-attempts: 10
+          retry-delay: 5s
+      - name: Check that v2 API is live
+        uses: jtalk/url-health-check-action@v5
+        with:
+          url: https://gameonpaper.com/api/v2/healthcheck|http://gameonpaper.com/api/v2/healthcheck
+          follow-redirect: false
+          max-attempts: 10
+          retry-delay: 5s
