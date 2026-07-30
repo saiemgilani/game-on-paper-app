@@ -14,7 +14,7 @@ import logging
 import json
 import base64
 
-HTTP_TOKEN = os.getenv("HTTP_TOKEN")
+HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
 
 app = Flask(__name__)
