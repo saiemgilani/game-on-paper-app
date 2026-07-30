@@ -829,7 +829,7 @@ export interface ProcessedGame {
     teamInfo: ProcessedGameTeamInfo
 }
 
-const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:7000';
+const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 
 export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {

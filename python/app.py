@@ -62,18 +62,22 @@ def after_request(response):
 def require_auth_token(func):
     @wraps(func)
     def check_token(*args, **kwargs):
-        headers = request.headers
-        bearer = headers.get('Authorization')
-        if not bearer:
-            return jsonify({ "status": "bad", "message": "Access denied" }), 401
-
-        raw_token = bearer.split()[1]
-        token = base64.b64decode(raw_token).decode("ascii")
-        if token != HTTP_TOKEN:
+        try:
+            headers = request.headers
+            bearer = headers.get('Authorization')
+            assert bearer, "Bearer Auth not provided in this request"
+    
+            raw_token = bearer.split()[1]
+            token = base64.b64decode(raw_token).decode("ascii")
+            assert token == HTTP_TOKEN, "provided token value did not match expected token"
+                
+    
+            # Otherwise just send them where they wanted to go
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.getLogger("root").error(f"ERROR while checking token: {e}")
             return jsonify({ "status": "bad", "message": "Access denied" }), 401 
 
-        # Otherwise just send them where they wanted to go
-        return func(*args, **kwargs)
 
     return check_token
 
