@@ -1,8 +1,18 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"compatibility_date": "2026-05-24",
-	"compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+	"compatibility_flags": [
+		"global_fetch_strictly_public",
+		"nodejs_compat"
+	],
 	"name": "game-on-paper-astro",
+	"vars": {
+		"PYTHON_HTTP_TOKEN": "05dfb756beae8c2efbd1acca7508f874bba7ebed30a5f33bfc32bae5ec030e0a",
+		"SDV_AUTH_TOKEN": "sdv_rxdHXQus6WBMko6cgGeUOIq9sjkf0QzboI_EqrLxLvo",
+		"PYTHON_HTTP_URL": "https://gameonpaper.com/api/v2",
+		"APP_VERSION": "2026-07-30",
+		"SEASON_MODE": "normal"
+	},
 	"main": "./src/worker.ts",
 	"assets": {
 		"directory": "./dist",
@@ -17,12 +27,16 @@
 	},
 	"kv_namespaces": [
 		{
+			"binding": "SESSION",
+			"id": "063425af77c44f45883bfcbee66298bc"
+		},
+		{
 			"binding": "SDV_API_CACHE",
-			"id": "sdv"
+			"id": "6c577b7a0b2c4e6cbf6754fbc923b5a5"
 		},
 		{
 			"binding": "ESPN_API_CACHE",
-			"id": "espn"
+			"id": "a79130ba55134dfd85727bd6d1467570"
 		}
 	],
 	// "triggers": {
