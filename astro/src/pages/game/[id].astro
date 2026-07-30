@@ -1,13 +1,13 @@
 ---
-import GamePage from '../../../components/game/GamePage.astro';
-import PreGamePage from '../../../components/game/PreGamePage.astro';
-import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../../resources/espn';
+import GamePage from '../../components/game/GamePage.astro';
+import PreGamePage from '../../components/game/PreGamePage.astro';
+import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { DateTime } from 'luxon';
 
 const { id } = Astro.params;
 if (!id) {
     Astro.cache.set(false);
-    return Astro.redirect("/cfb/"); 
+    return Astro.redirect("/"); 
 }
 let espnGame: ESPNPlayByPlayResponse | null;
 try {

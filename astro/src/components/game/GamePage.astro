@@ -33,12 +33,9 @@ let game: ProcessedGame | null = null;
 try {
     game = await retrieveProcessedGame(id);
 } catch (e) {
-    console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
-}
-
-if (!game) {
     Astro.cache.set(false);
-    return Astro.redirect("/404")
+    console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
+    return Astro.redirect("/404");
 }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);

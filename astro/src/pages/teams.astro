@@ -1,11 +1,11 @@
 ---
 export const prerender = true;
 
-import GenericPage from "../../layouts/GenericPage.astro";
-import { cleanField } from "../../utils/misc";
-import { AVAILABLE_SEASONS } from "../../utils/constants";
-import DarkModeLogos from "../../components/DarkModeLogos.astro";
-import { type TeamIndex, retrieveAllTeams } from "../../utils/common";
+import GenericPage from "../layouts/GenericPage.astro";
+import { cleanField } from "../utils/misc";
+import { AVAILABLE_SEASONS } from "../utils/constants";
+import DarkModeLogos from "../components/DarkModeLogos.astro";
+import { type TeamIndex, retrieveAllTeams } from "../utils/common";
 
 const title = `Team Index | College Football | Game on Paper`;
 const subtitle = 'Full team list for college football';
@@ -15,14 +15,14 @@ const teams: TeamIndex[] = retrieveAllTeams()
 function generateTeamRow(team: any): string {
     const seasonCells = AVAILABLE_SEASONS.map((p) => {
         if (team.seasons.includes(p)) {
-            return `<td class="text-center" colspan="1"><a href="/cfb/year/${p}/team/${team.team_id}">${p}</a></td>`
+            return `<td class="text-center" colspan="1"><a href="/year/${p}/team/${team.team_id}">${p}</a></td>`
         } else {
             return `<td class="text-center" colspan="1"><p class="m-0 text-muted">${p}</p></td>`
         }
     }).join("")
     return `
     <tr>
-        <td class="text-left" colspan="1"><a href="/cfb/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
+        <td class="text-left" colspan="1"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
         ${seasonCells}
     </tr>
     `
@@ -30,7 +30,7 @@ function generateTeamRow(team: any): string {
 
 ---
 
-<GenericPage title={title} subtitle={subtitle} slug="/cfb/teams" breadcrumbs={[]}>
+<GenericPage title={title} subtitle={subtitle} slug="/teams" breadcrumbs={[]}>
     <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
     <div class="container">
         <div class="row mb-3">
