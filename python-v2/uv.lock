@@ -752,7 +752,7 @@ requires-dist = [
     { name = "flask-compress", specifier = ">=1.24" },
     { name = "gunicorn" },
     { name = "orjson", specifier = ">=3.11.9" },
-    { name = "sportsdataverse", git = "https://github.com/sportsdataverse/sportsdataverse-py?branch=main" },
+    { name = "sportsdataverse", specifier = ">=0.0.72" },
 ]
 
 [[package]]
@@ -2550,8 +2550,8 @@ wheels = [
 
 [[package]]
 name = "sportsdataverse"
-version = "0.0.71"
-source = { git = "https://github.com/sportsdataverse/sportsdataverse-py?branch=main#a25c4d0e9a1723cecb31f85989a15c879049906a" }
+version = "0.0.72"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "beautifulsoup4" },
@@ -2575,8 +2575,13 @@ dependencies = [
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "tqdm" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/b3/22a16a0183fb25b5e77e1aab425ea30ee2fe8ea88a7de9378b594c5631b3/sportsdataverse-0.0.72.tar.gz", hash = "sha256:ac2b24c70b2f1266af68680c9782d03c74d6c115ffc02c0ce95a2ef9cc52700c", size = 18076821, upload-time = "2026-07-22T06:42:23.354Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/8d/153b74e0c746049abba7fe7ce278ca5e4eaa21aaa9c7a69737e6bfc64d1c/sportsdataverse-0.0.72-py3-none-any.whl", hash = "sha256:3f33ea9a2f12d681037450ac9ed23aea899a307a3ad7f722d6ed2e32570c68b9", size = 18861744, upload-time = "2026-07-22T06:42:20.841Z" },
 ]
 
 [[package]]
