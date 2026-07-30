@@ -7,11 +7,12 @@
 	],
 	"name": "game-on-paper-astro",
 	"vars": {
-		"PYTHON_HTTP_TOKEN": "05dfb756beae8c2efbd1acca7508f874bba7ebed30a5f33bfc32bae5ec030e0a",
-		"SDV_AUTH_TOKEN": "sdv_rxdHXQus6WBMko6cgGeUOIq9sjkf0QzboI_EqrLxLvo",
 		"PYTHON_HTTP_URL": "https://gameonpaper.com/api/v2",
 		"APP_VERSION": "2026-07-30",
 		"SEASON_MODE": "normal"
+	},
+	"secrets": {
+		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN"]
 	},
 	"main": "./src/worker.ts",
 	"assets": {
