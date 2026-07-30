@@ -4,7 +4,6 @@ import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
-import { env } from "cloudflare:workers";
 
 interface Props {
   title?: string;
@@ -102,7 +101,7 @@ const allTeamIds = games.map(g => {
             </div>
             <div class="row justify-content-center">
                 <div class="col-lg-3 col-xs-12 mb-3">
-                    <a href={`/cfb/year/${season}/teams`} class="w-100 btn btn-lg btn-primary">Team Leaderboards</a>
+                    <a href={`/year/${season}/teams`} class="w-100 btn btn-lg btn-primary">Team Leaderboards</a>
                 </div>
                 <div class="col-lg-3 col-xs-12 mb-3">
                     <a href="/players" class="w-100 btn btn-lg btn-primary">Player Leaderboards</a>
