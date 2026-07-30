@@ -1,0 +1,53 @@
+---
+import GenericPage from '../../layouts/GenericPage.astro'
+const allLogs = Object.values(import.meta.glob('./*.md', { eager: true }));
+
+let yearLogs: Record<string, unknown[]> = {};
+for (const log of allLogs) {
+  const date: string = String((log as any).url).replace("/changelog/", "")
+  const year = date.slice(0, 4)
+  if (!Object.keys(yearLogs).includes(year)) {
+    yearLogs[year] = [];
+  }
+  yearLogs[year].push(log)
+}
+
+
+function generateLogHtml(log: any): string {
+  return `
+  <dl class="row">
+  <dt class="col-sm-3"><a href=${log.url}>${log.frontmatter.title}</a></dt>
+  <dd class="col-sm-9"><p>${log.frontmatter.subtitle}</p></dd>
+  </dl>
+  `
+}
+
+function generateLogSectionHtml(year: string, logs: any): string {
+  const logList = logs.map(generateLogHtml).join("\n")
+  return `
+  <h2 id="changelog-year-${year}">${year.toLocaleUpperCase()}</h2>
+  ${logList}
+  `
+}
+
+const yearKeysOrdered = Object.keys(yearLogs).sort((a, b) => Number(b) - Number(a))
+---
+<GenericPage title="Changelog" subtitle='All updates to gameonpaper.com' slug='/changelog' breadcrumbs={[]}>
+      <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2>Changelog</h2>
+                <p class="m-0 mb-2 text-muted text-small">Learn more about recent changes to <a href="/">gameonpaper.com</a>!</p>
+            </div>
+        </div>
+    </div>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+      {
+        yearKeysOrdered.map((yr) => (<Fragment set:html={generateLogSectionHtml(yr, yearLogs[yr])} />)) 
+      }
+      </div>
+    </div>
+  </div>
+</GenericPage>
