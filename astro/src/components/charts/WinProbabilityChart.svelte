@@ -1,7 +1,8 @@
 <script>
 import Chart from 'chart.js/auto';
 import {LineController} from "chart.js";
-import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
+import { SPECIAL_IMAGES } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
 const { game, percentiles } = $props()
@@ -215,21 +216,92 @@ async function generateChart() {
             ...periodMarkers,
             {
                 beforeDatasetDraw: (chart) => {
-                    let viewport = getCurrentViewport(document, window)
-                    if (viewport == "xl" || viewport == "lg") {
-                        let sizeWidth = chart.ctx.canvas.clientWidth;
-                        let sizeHeight = chart.ctx.canvas.clientHeight;
-                        let imgSize = 75.0;
+                    const viewport = getCurrentViewport(document, window);
+                    const sizeWidth = chart.ctx.canvas.clientWidth;
+                    const sizeHeight = chart.ctx.canvas.clientHeight;
+                    const imgSize = 75.0;
 
+                    if (viewport == "xl" || viewport == "lg") {
                         chart.ctx.save()
                         chart.ctx.textAlign = "right"
                         chart.ctx.font = "8px Helvetica";
                         chart.ctx.fillStyle = (isDarkMode) ? '#e8e6e3' : '#525252';
                         chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.5 * (sizeHeight / 8) - 45)
                         chart.ctx.restore();
+
+                        // get the context
+                        chart.ctx.save();
+                        chart.ctx.globalAlpha = 0.4;
+
+                        if (chart.homeTeamImage) {
+                            chart.ctx.drawImage(chart.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (imgSize / 4.0), imgSize, imgSize);  
+                        }
+
+                        if (chart.awayTeamImage) {
+                            chart.ctx.drawImage(chart.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);    
+                        //     // draw it - ~145 px per half                                           // and force re-render to include it 
+                        }
+
+                        // const homeImage = new Image();
+                        // const homeId = `${homeTeam.id}`;
+                        // homeImage.setAttribute('crossOrigin','anonymous');
+                        // if (Object.keys(SPECIAL_IMAGES).includes(homeId)) {
+                        //     homeImage.src = SPECIAL_IMAGES[homeId];
+                        // } else {
+                        //     homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+                        // }
+                        // homeImage.onload = () => { 
+                        //     chart.ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (imgSize / 4.0), imgSize, imgSize);                                      // if the image is loaded
+                        //     // draw it - ~145 px per half
+                        // }
+
+                        // const awayImage = new Image();
+                        // const awayId = `${awayTeam.id}`;
+                        // awayImage.setAttribute('crossOrigin','anonymous');
+                        // if (Object.keys(SPECIAL_IMAGES).includes(awayId)) {
+                        //     awayImage.src = SPECIAL_IMAGES[awayId];
+                        // } else {
+                        //     awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+                        // }
+                        // awayImage.onload = () => {                                            // when the image loads
+                        //     chart.ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);    
+                        //     // draw it - ~145 px per half                                           // and force re-render to include it
+                        // };
+
+                        // pop the context
+                        chart.ctx.restore();
                     }
+                },
+            },
+            {
+                afterInit: (chart) => {
+                    const homeImage = new Image();
+                    const homeId = `${homeTeam.id}`;
+                    homeImage.setAttribute('crossOrigin','anonymous');
+                    if (Object.keys(SPECIAL_IMAGES).includes(homeId)) {
+                        homeImage.src = SPECIAL_IMAGES[homeId];
+                    } else {
+                        homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+                    }
+                    homeImage.onload = () => {                                            // when the image loads
+                        chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
+                        chart.render();                                                 // and force re-render to include it
+                    };
+
+                    var awayImage = new Image();
+                    var awayId = `${awayTeam.id}`;
+                    awayImage.setAttribute('crossOrigin','anonymous');
+                    if (Object.keys(SPECIAL_IMAGES).includes(awayId)) {
+                        awayImage.src = SPECIAL_IMAGES[awayId];
+                    } else {
+                        awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+                    }
+                    awayImage.onload = () => {                                            // when the image loads
+                        chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
+                        chart.render();                                                 // and force re-render to include it
+                    };
                 }
-            }
+            },
         ],
         data: {
             labels: timestamps,
@@ -259,7 +331,7 @@ async function generateChart() {
                         }
                     },
                     title: {
-                        display: true,
+                        display: false,
                         text: "Win Probability",
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252',
                         font: {
@@ -336,7 +408,28 @@ async function generateChart() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', generateChart);
+async function waitToGenerateChart() {
+    try {
+        const context = await waitForElement(document, "wpChart")
+        await generateChart()
+    } catch (e) {
+        console.error(e);
+        const container = document.getElementById("wp_container");
+        if (container) {
+            container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
+        }
+    }
+}
+
+if (document.readyState !== 'loading') {
+    console.log(`DOM ready state`)
+    waitToGenerateChart()
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log(`DOM content loaded state`)
+        waitToGenerateChart()
+    })
+}
 
 </script>
 
@@ -360,5 +453,5 @@ document.addEventListener('DOMContentLoaded', generateChart);
             | <a id="wp-download" download={`game-wp-${game.gameId}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
-    <div class="w-100"  width="900" height="380"><canvas id="wpChart"></canvas></div>
+    <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
 </div>
