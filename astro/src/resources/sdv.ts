@@ -623,7 +623,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 }
 
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
-export async function retrieveTeamSummaries(season?: number, category?: string, team_id?: string | number, maxLookback = 2014): Promise<SDVTeamSummary[]> {
+export async function retrieveTeamSummaries(season?: number, category?: string, team_id?: string | number, columns: string[] = [], maxLookback = 2014): Promise<SDVTeamSummary[]> {
     if (!season && !category && !team_id) {
         console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
@@ -639,7 +639,9 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
     }
 
     let metric_columns: string[] = []
-    if (category) {
+    if (columns) {
+        metric_columns = columns
+    } else if (category) {
         metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
     } else if (!category) {
         // not implemented yet
@@ -666,7 +668,7 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
         } else if ((season >= 2014) && ((season - 1) < maxLookback)) {
             return [];
         } else {
-            return await retrieveTeamSummaries((season - 1), category, team_id, maxLookback);
+            return await retrieveTeamSummaries((season - 1), category, team_id, columns, maxLookback);
         }
     }
 }

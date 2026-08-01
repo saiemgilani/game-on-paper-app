@@ -10,7 +10,7 @@ const season = query.get("season") || `${LAST_YEAR}`;
 const metricX = query.get("x") || "adj_off_epa";
 const metricY = query.get("y") || "adj_def_epa";
 
-const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, Number(season));
+const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, [metricX, metricY], Number(season));
 const points = teamData.map((t: any) => {
     return {
         team_id: t.team_id,

@@ -361,7 +361,7 @@
                 </div>
             </form>
             <div class="mb-3 d-flex justify-content-lg-end justify-content-xs-start  mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2">
-                <button onclick={onSubmit} class="btn btn-md btn-secondary me-2" title="Download Chart">Download Chart</button>
+                <!-- <a href="#" class="btn btn-md btn-secondary me-2" title="Download Chart" download={`chart-${x}-${y}-${season}.jpg`} id="chart-download">Download Chart</a> -->
                 <button onclick={onSubmit} class="btn btn-md btn-primary" title="Generate">Generate</button>
             </div>
         </div>
