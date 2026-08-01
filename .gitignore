@@ -18,3 +18,5 @@ __pycache__
 *.bak
 .pytest_cache
 .wrangler
+astro/dist
+astro/.astro
