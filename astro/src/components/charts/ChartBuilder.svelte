@@ -45,8 +45,8 @@
         const averageY = (points.map((t: any) => parseFloat(t.y)).reduce((a: number, b: number) => a + b)) / points.length
         const minY = Math.min(...points.map((t: any) => t.y))
         const maxY = Math.max(...points.map((t: any) => t.y))
-        console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
-        console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
+        // console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
+        // console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
         const suggestedRange = {
             min: {
@@ -313,7 +313,7 @@
     }
 </script>
 <div class="container">
-<div class="row mb-3">
+    <div class="row mb-3">
         <div class="col-lg-6 col-xs-12 mb-xs-3">
             <h1>Chart Builder</h1>
             <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
@@ -368,6 +368,6 @@
     </div>
 </div>
 
-<div class="container" id="chart_container">
+<div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
 </div>

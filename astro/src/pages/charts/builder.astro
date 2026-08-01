@@ -3,12 +3,15 @@ import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
 import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrieveTeamSummaries } from '../../resources/sdv';
-import { LAST_YEAR, CURRENT_YEAR } from '../../utils/constants';
+import DarkModeLogos from './../../components/DarkModeLogos.astro';
+import { LAST_YEAR, CURRENT_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from '../../utils/constants';
+import { cleanField, formatNumberForMetric, generateColorRampValue, generateTeamMetricTitle } from '../../utils/misc';
 
 const query = Astro.url.searchParams;
 const season = query.get("season") || `${LAST_YEAR}`;
 const metricX = query.get("x") || "adj_off_epa";
 const metricY = query.get("y") || "adj_def_epa";
+const metricRanks = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter((k: string) => k == `${metricX}_rank` || k == `${metricY}_rank`)
 
 const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, [metricX, metricY], Number(season));
 const points = teamData.map((t: any) => {
@@ -16,7 +19,9 @@ const points = teamData.map((t: any) => {
         team_id: t.team_id,
         pos_team: t.pos_team,
         x: t[metricX],
-        y: t[metricY]
+        x_rank: t[`${metricX}_rank`],
+        y: t[metricY],
+        y_rank: t[`${metricY}_rank`]
     }
 })
 
@@ -34,8 +39,40 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 const title = `Chart Builder | Game on Paper`;
 
+const flipArrow = (
+    (metricX.includes("_def") && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metricX))
+    || (metricX.includes("_off") && ["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metricX))
+)
+
 ---
 
-<GenericPage title={title} subtitle={`Custom metric comparison builder`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
+<GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
     <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} />
+    <DarkModeLogos teamIds={points.map(t => t.team_id)} />
+    <div class="container">
+        <div class="table">
+            <table class="table table-responsive table-sm">
+                <thead>
+                    <tr>
+                        <th class="text-right" colspan="1">Rk</th>
+                        <th class="text-left" colspan="1">Team</th>
+                        <th class="text-center" colspan="1">{generateTeamMetricTitle(metricX)} <i class=`bi-arrow-${flipArrow ? "up" : "down"}`></i></th>
+                        <th class="text-center" colspan="1">{generateTeamMetricTitle(metricY)}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        points.sort((a: any, b: any) => flipArrow ? a.x - b.x : b.x - a.x).map((p: any, index) => (
+                            <tr>
+                                <td class="text-right" colspan="1">{index + 1}</td>
+                                <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
+                                <td class={`text-center ${generateColorRampValue(parseFloat(p.x_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricX, p.x)}</td>
+                                <td class={`text-center ${generateColorRampValue(parseFloat(p.y_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricY, p.y)}</td>
+                            </tr>
+                        ))
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </GenericPage>
