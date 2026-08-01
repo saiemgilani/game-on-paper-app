@@ -60,6 +60,12 @@ const statusDetail = gameStatus.type.detail;
 const statusDescription = gameStatus.type.description ?? "Scheduled";
 const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
 
+const previewUrlParams = new URLSearchParams({
+    homeSeason: String(game.season.year),
+    awaySeason: String(game.season.year),
+    homeTeamId: homeTeam.id,
+    awayTeamId: awayTeam.id
+})
 
 const scrollerItems: ScrollerItem[] = [
     { href: "#wpChart", title: "WP Chart" },
@@ -71,7 +77,7 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#scoring-plays", title: "Scoring Plays" },
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
-    // { href: `/game/${game.id}?preview_mode=new`, title: "Matchup Preview" },
+    { href: `/game/matchup?${previewUrlParams.toString()}`, title: "Matchup Preview" },
     { href: `https://www.espn.com/college-football/game/_/gameId/${game.id}`, title: "Gamecast" },
 ];
 
