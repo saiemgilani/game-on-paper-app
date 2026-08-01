@@ -1,0 +1,41 @@
+---
+import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
+import GenericPage from '../../layouts/GenericPage.astro';
+import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import { retrieveTeamSummaries } from '../../resources/sdv';
+import { CURRENT_YEAR } from '../../utils/constants';
+
+const query = Astro.url.searchParams;
+const season = query.get("season") || `${CURRENT_YEAR}`;
+const metricX = query.get("x") || "EPAplay_off";
+const metricY = query.get("y") || "EPAplay_def";
+
+const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, Number(season));
+const points = teamData.map((t: any) => {
+    return {
+        team_id: t.team_id,
+        pos_team: t.pos_team,
+        x: t[metricX],
+        y: t[metricY]
+    }
+})
+
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: 'Charts',
+        active: false
+    },
+    {
+        title: 'Builder',
+        active: true,
+    }
+]
+
+
+const title = `Chart Builder | Game on Paper`;
+
+---
+
+<GenericPage title={title} subtitle={`Custom metric comparison builder`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} />
+</GenericPage>
