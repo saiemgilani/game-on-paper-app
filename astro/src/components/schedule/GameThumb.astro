@@ -67,7 +67,7 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
             <GameSituation hidden={canShowSituation} game={espnGame} />
             <div class="d-flex justify-content-between">
                 <div class="text-left">
-                    <a class=`btn btn-sm ${btnTheme} ${canLoadStatsTheme}` role="button" href={`/cfb/game/${espnGame.id}`}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
+                    <a class=`btn btn-sm ${btnTheme} ${canLoadStatsTheme}` role="button" href={`/game/${espnGame.id}`}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
                 </div>
                 <div class="text-right">
                     <BroadcastButton game={espnGame} />
