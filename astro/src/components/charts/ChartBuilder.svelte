@@ -2,7 +2,7 @@
     import Chart from 'chart.js/auto';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric } from '../../utils/misc'
     
     const { season, x, y, points } = $props();
     let selectedSeason = season;
@@ -13,7 +13,9 @@
 
     const availableMetricColumns = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter(m => !["fbs_class", "valid_games", "team_id", "pos_team", "division", "conference", "season"].includes(m) && !m.endsWith("_rank"))
     let availableMetricCategories: Record<string, Record<string, string>> = {
-        "Differential": {},
+        "Differential - Passing": {},
+        "Differential - Rushing": {},
+        "Differential - Other": {},
         "Offensive - Passing": {},
         "Defensive - Passing": {},
         "Offensive - Rushing": {},
@@ -23,15 +25,18 @@
     };
 
     for (const m of availableMetricColumns) {
-        let category = (m.includes("_margin") || m.startsWith("net_")) ? "Differential" : ((m.includes("_off") || m.includes("off_")) ? "Offensive" : "Defensive")
-        let subcat = (m.includes("_pass") || ["passrate_off", "passrate_def"].includes("m")) ? "Passing" : (m.includes("_rush") ? "Rushing" : "Other")
-
-        const title = generateTeamMetricTitle(m)
-        if (category == "Differential") {
-            availableMetricCategories[category][m] = title;
-        } else {
-            availableMetricCategories[`${category} - ${subcat}`][m] = title;
+        if (m.includes("passrate") && m.includes("_rush")) {
+            continue
         }
+
+        if (m.includes("rushrate") && m.includes("_pass")) {
+            continue
+        }
+        
+        let category = generateCategoryForMetric(m)
+        let subcat = generateSubCategoryForMetric(m)
+        const title = generateTeamMetricTitle(m)
+        availableMetricCategories[`${category} - ${subcat}`][m] = title;
     }
 
     const viewport = getCurrentViewport(document, window)
@@ -64,8 +69,8 @@
         const lineMultiplier = 0.125
         const xAdjust = 0.05
 
-        const shouldFlipYAxis = (selectedMetricY.includes("_def") && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(selectedMetricY)) || (selectedMetricY.includes("_off")  && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(selectedMetricY))
-
+        const shouldFlipYAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY);
+        const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricX);
 
         const config: ChartConfiguration<'scatter' | 'line'> = {
             type: 'scatter',
@@ -158,7 +163,7 @@
                         chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - (lineMultiplier)) * (sizeHeight / 8))
                         chart.ctx.restore();
 
-                        if (shouldFlipYAxis) {
+                        if (shouldFlipYAxis && !shouldFlipXAxis) {
                             chart.ctx.save()
                             chart.ctx.textAlign = "right"
                             chart.ctx.font = "italic 8px Helvetica";
@@ -166,6 +171,24 @@
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                             chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
                             chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.restore();
+                        } else if (shouldFlipXAxis && !shouldFlipYAxis) {
+                            chart.ctx.save()
+                            chart.ctx.textAlign = "right"
+                            chart.ctx.font = "italic 8px Helvetica";
+                            chart.ctx.globalAlpha = 0.5;
+                            chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                            chart.ctx.fillText("NOTE: x-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("towards the right and 'bad' performances are towards the left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.restore();
+                        } else if (shouldFlipXAxis && shouldFlipYAxis) {
+                            chart.ctx.save()
+                            chart.ctx.textAlign = "right"
+                            chart.ctx.font = "italic 8px Helvetica";
+                            chart.ctx.globalAlpha = 0.5;
+                            chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                            chart.ctx.fillText("NOTE: both axes are flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("towards the top-right and 'bad' performances are towards the bottom-left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
                             chart.ctx.restore();
                         }
                     }
@@ -175,6 +198,7 @@
                 responsive: true,
                 scales: {
                     x: {
+                        reverse: shouldFlipXAxis,
                         grid: {
                             color: (line) => {
                                 if (line.tick.value == 0) {

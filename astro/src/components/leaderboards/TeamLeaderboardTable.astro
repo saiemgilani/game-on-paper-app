@@ -2,7 +2,7 @@
 import { retrieveTeamSummaries, type SDVTeamSummary } from '../../resources/sdv';
 import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS } from '../../utils/constants';
 import { formatRank, generateMarginalString } from '../../utils/common';
-import { roundNumber, cleanField, retrieveValue, generateColorRampValue } from '../../utils/misc';
+import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldInvertSortForMetric } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 
 const { season, category, metric } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
-const arrowDirection = ((category == "defensive" && metric != "havoc_def") || (category == "offensive" && metric == "havoc_off")) ? "up" : "down"
+const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
 let content: SDVTeamSummary[] = await retrieveTeamSummaries(season, category, undefined, [], season);
 content = content.filter(p => {

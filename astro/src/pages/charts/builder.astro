@@ -5,7 +5,7 @@ import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrieveTeamSummaries } from '../../resources/sdv';
 import DarkModeLogos from './../../components/DarkModeLogos.astro';
 import { LAST_YEAR, CURRENT_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from '../../utils/constants';
-import { cleanField, formatNumberForMetric, generateColorRampValue, generateTeamMetricTitle } from '../../utils/misc';
+import { cleanField, formatNumberForMetric, generateColorRampValue, generateTeamMetricTitle, shouldInvertSortForMetric } from '../../utils/misc';
 
 const query = Astro.url.searchParams;
 const season = query.get("season") || `${LAST_YEAR}`;
@@ -38,11 +38,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 
 const title = `Chart Builder | Game on Paper`;
-
-const flipArrow = (
-    (metricX.includes("_def") && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metricX))
-    || (metricX.includes("_off") && ["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metricX))
-)
+const flipArrow = shouldInvertSortForMetric(metricX.includes("_def") ? "defensive" : "offensive", metricX)
 
 ---
 

@@ -2,7 +2,7 @@
 import Chart from 'chart.js/auto';
 import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
@@ -217,7 +217,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
     const viewport = getCurrentViewport(document, window);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    const shouldFlipYAxis = (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
+    const shouldFlipYAxis = shouldInvertSortForMetric(category, metric);
 
     return {
         type: 'boxplot',

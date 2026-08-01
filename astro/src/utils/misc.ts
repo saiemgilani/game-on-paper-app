@@ -443,9 +443,17 @@ export function generateTeamMetricTitle(metric: string): string {
     } 
     
     if (metric.includes("_pass")) {
-        title = title.replace("Play", "Dropback")
+        if (title.includes("Play")) {
+            title = title.replace("Play", "Dropback")
+        } else if (!title.startsWith("Pass")) {
+            title = `Pass ${title}`
+        }
     } else if (metric.includes("_rush")) {
-        title = title.replace("Play", "Rush")
+        if (title.includes("Play")) {
+            title = title.replace("Play", "Rush")
+        } else if (!title.startsWith("Rush")) {
+            title = `Rush ${title}`
+        }
     }
     
     if (!prefix) {
@@ -486,4 +494,31 @@ export function formatNumberForMetric(metric: string, value: number): string {
         default:
             return `${roundNumber(value, 2, 2)}`;
     }
+}
+
+export function shouldInvertSortForMetric(category: string, metric: string): boolean {
+    return (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
+}
+
+export function generateCategoryForMetric(metric: string): string {
+    return (metric.includes("_margin") || metric.startsWith("net_")) ? "Differential" : ((metric.includes("_off") || metric.includes("off_")) ? "Offensive" : "Defensive");
+}
+
+export function generateSubCategoryForMetric(metric: string): string {
+    if (metric.includes("passrate_")) {
+        return "Passing"
+    }
+    if (metric.includes("rushrate_") || metric.includes("play_stuffed") || metric.includes("opportunity_rate") || metric.includes("opportunity_run") || ["line_yards", "lineyards", "opportunity_rate", "opportunity_run"].includes(metric)) {
+        return "Rushing"
+    }
+
+    if (metric.includes("_pass")) {
+        return "Passing"
+    }
+
+    if (metric.includes("_rush")) {
+        return "Rushing"
+    }
+
+    return "Other"
 }
