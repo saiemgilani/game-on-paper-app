@@ -40,6 +40,14 @@ const breadcrumbs: PageBreadcrumb[] = [
 const title = `Chart Builder | Game on Paper`;
 const flipArrow = shouldInvertSortForMetric(metricX.includes("_def") ? "defensive" : "offensive", metricX)
 
+if (points.length > 0) {
+    Astro.cache.set({
+        maxAge: 60 * 60 * 24, // one day
+        tags: ['chart'],
+    })
+} else {
+    Astro.cache.set(false);
+}
 ---
 
 <GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
