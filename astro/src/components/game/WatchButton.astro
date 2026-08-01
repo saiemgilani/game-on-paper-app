@@ -16,7 +16,8 @@ if (game.status.type.completed == true) {
 }
 
 let networkName: string | null = null;
-if ((game.geoBroadcasts?.length ?? 0) > 0) {
+const geoBroadcasts = ((game.geoBroadcasts) || []).filter((g: ESPNGeoBroadcast) => ["1", "4"].includes(g.type.id)); // only look at TV & streaming
+if (geoBroadcasts.length > 0) {
     networkName = game.geoBroadcasts![0].media.shortName;
 } else if ((game.broadcasts?.length ?? 0) > 0) {
     networkName = game.broadcasts![0].media?.shortName || null;

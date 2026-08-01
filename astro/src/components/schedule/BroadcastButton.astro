@@ -8,8 +8,9 @@ interface Props {
 
 const { game } = Astro.props;
 let networkName: string | null = null;
-if ((game.competitions[0].geoBroadcasts?.length ?? 0) > 0) {
-    networkName = game.competitions[0].geoBroadcasts![0].media.shortName;
+const geoBroadcasts = ((game.competitions[0].geoBroadcasts) || []).filter((g: ESPNGeoBroadcast) => ["1", "4"].includes(g.type.id)); // only look at TV & streaming
+if (geoBroadcasts.length > 0) {
+    networkName = geoBroadcasts[0].media.shortName;
 } else if ((game.competitions[0].broadcasts?.length ?? 0) > 0) {
     networkName = game.competitions[0].broadcasts![0].media?.shortName || null;
 }
