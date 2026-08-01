@@ -752,7 +752,7 @@ requires-dist = [
     { name = "flask-compress", specifier = ">=1.24" },
     { name = "gunicorn" },
     { name = "orjson", specifier = ">=3.11.9" },
-    { name = "sportsdataverse", specifier = ">=0.0.72" },
+    { name = "sportsdataverse", specifier = ">=0.0.73" },
 ]
 
 [[package]]
@@ -2550,7 +2550,7 @@ wheels = [
 
 [[package]]
 name = "sportsdataverse"
-version = "0.0.72"
+version = "0.0.73"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -2579,9 +2579,9 @@ dependencies = [
     { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/b3/22a16a0183fb25b5e77e1aab425ea30ee2fe8ea88a7de9378b594c5631b3/sportsdataverse-0.0.72.tar.gz", hash = "sha256:ac2b24c70b2f1266af68680c9782d03c74d6c115ffc02c0ce95a2ef9cc52700c", size = 18076821, upload-time = "2026-07-22T06:42:23.354Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/2a/b3de964f544e4ffa87c6d323724800557afb01f7144c6f2fe8dfc9594036/sportsdataverse-0.0.73.tar.gz", hash = "sha256:364b5d4069894b12c8a2a5e116c2db74df7e845edb61c551785ebcdd37bffbef", size = 18096932, upload-time = "2026-08-01T05:40:17.461Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/8d/153b74e0c746049abba7fe7ce278ca5e4eaa21aaa9c7a69737e6bfc64d1c/sportsdataverse-0.0.72-py3-none-any.whl", hash = "sha256:3f33ea9a2f12d681037450ac9ed23aea899a307a3ad7f722d6ed2e32570c68b9", size = 18861744, upload-time = "2026-07-22T06:42:20.841Z" },
+    { url = "https://files.pythonhosted.org/packages/90/22/da450257ac0f013fff79fa808e3165ae76369b98814a038f49a3a2b82bf6/sportsdataverse-0.0.73-py3-none-any.whl", hash = "sha256:ce9507cf927a685bf9ee9e09787fc43615ab9e4c75a1413d956e364e67815091", size = 18877887, upload-time = "2026-08-01T05:40:14.027Z" },
 ]
 
 [[package]]
