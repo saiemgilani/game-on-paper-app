@@ -639,7 +639,7 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
     }
 
     let metric_columns: string[] = []
-    if (columns) {
+    if (columns && columns.length > 0) {
         metric_columns = columns
     } else if (category) {
         metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
