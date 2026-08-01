@@ -70,7 +70,7 @@
         const xAdjust = 0.05
 
         const shouldFlipYAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY);
-        const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricX);
+        const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX);
 
         const config: ChartConfiguration<'scatter' | 'line'> = {
             type: 'scatter',
