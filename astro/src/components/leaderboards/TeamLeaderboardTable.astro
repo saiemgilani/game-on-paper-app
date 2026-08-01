@@ -72,7 +72,7 @@ function generateMetricRow(team: any): string {
     <tr>
         <td class="text-right" colspan="1">${rankStr}</td>
         <td class="text-left" colspan="1">
-            <a href="/cfb/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong>${cleanField(team, "pos_team")}</strong></a>
+            <a href="/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong>${cleanField(team, "pos_team")}</strong></a>
         </td>
         ${colContent}
     </tr>`;

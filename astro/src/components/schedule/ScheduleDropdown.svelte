@@ -20,7 +20,7 @@
 	function onSubmit(e) {
 		e.preventDefault();
 		
-		var baseUrl = `/cfb/year/${selectedSeason.value}`
+		var baseUrl = `/year/${selectedSeason.value}`
 		if (selectedWeek.value != "-1;-1") {
 			const cleanWeekItems = selectedWeek.value.split(';')
 			const scheduleType = cleanWeekItems[0]

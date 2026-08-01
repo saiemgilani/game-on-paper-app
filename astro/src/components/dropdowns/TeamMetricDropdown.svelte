@@ -25,7 +25,7 @@
             } else if (c == "defensive" && m == "net_adj_epa") {
                 m = "adj_def_epa"
             }
-            window.location = `/cfb/year/${s}/teams/${c}?sort=${m}`;
+            window.location = `/year/${s}/teams/${c}?sort=${m}`;
         }
     }
 

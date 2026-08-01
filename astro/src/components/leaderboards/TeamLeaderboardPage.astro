@@ -20,13 +20,13 @@ const pageTitle = `${categoryTitle} Statistics | ${season} | Game on Paper`;
 
 const breadcrumbs: PageBreadcrumb[] = [
     { title: "Seasons", active: false },
-    { title: `${season}`, url: `/cfb/year/${season}`, active: false },
-    { title: `${categoryTitle} Statistics`, url: `/cfb/year/${season}/teams/${category}`, active: true },
+    { title: `${season}`, url: `/year/${season}`, active: false },
+    { title: `${categoryTitle} Statistics`, url: `/year/${season}/teams/${category}`, active: true },
 ];
 
 ---
 
-<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} slug={`/cfb/year/${season}/${category}`} breadcrumbs={breadcrumbs}>
+<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} slug={`/year/${season}/${category}`} breadcrumbs={breadcrumbs}>
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">

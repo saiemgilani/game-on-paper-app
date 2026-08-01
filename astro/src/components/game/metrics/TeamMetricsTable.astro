@@ -85,7 +85,7 @@ function handleMetricRows(item: string): string {
                 <th class="box-heading">{title}</th>
                 {
                     (teamBoxScores.map((group: any) => group[teamKey]).map(value => (
-                        <th style="text-align: center;"><a href={`/cfb/year/${season}/team/${value}`}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                        <th style="text-align: center;"><a href={`/year/${season}/team/${value}`}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
                     )))
                 }
             </tr>

@@ -61,7 +61,7 @@ const flipArrow = shouldInvertSortForMetric(metricX.includes("_def") ? "defensiv
                         points.sort((a: any, b: any) => flipArrow ? a.x - b.x : b.x - a.x).map((p: any, index) => (
                             <tr>
                                 <td class="text-right" colspan="1">{index + 1}</td>
-                                <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
+                                <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
                                 <td class={`text-center ${generateColorRampValue(parseFloat(p.x_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricX, p.x)}</td>
                                 <td class={`text-center ${generateColorRampValue(parseFloat(p.y_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricY, p.y)}</td>
                             </tr>

@@ -76,7 +76,7 @@ function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any
 }
 
 function produceTeamLogoLink(team: ESPNTeam, headerType: string = "h4", showNickname: boolean = false): string {
-    return `<${headerType} class="d-inline"><a href="/cfb/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a>${showNickname ? (" " + cleanNickname(team)) : ""}</${headerType}>`
+    return `<${headerType} class="d-inline"><a href="/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a>${showNickname ? (" " + cleanNickname(team)) : ""}</${headerType}>`
 }
 
 function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {

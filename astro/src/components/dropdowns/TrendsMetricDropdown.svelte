@@ -13,7 +13,7 @@
         if (onChangeValue) {
             onChangeValue(c, m)
         } else {
-            window.location = `/cfb/charts/trends?sort=${m}`;
+            window.location = `/charts/trends?sort=${m}`;
         }
     }
 </script>

@@ -87,7 +87,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
         </div>
 
         {
-            (summary && !hideNavigation) && (<a class="text-left" href={`/cfb/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>)
+            (summary && !hideNavigation) && (<a class="text-left" href={`/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>)
         }
     </div>
 </div>

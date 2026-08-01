@@ -81,7 +81,7 @@ if (category == "passing") {
                             content.map((p, i) => (
                                 <tr>
                                     <td class="text-right" colspan="1">{isMetricRanked ? formatRank(parseFloat(retrieveValue(p, metric + `_rank`))) : (i + 1)}</td>
-                                    <td class="text-left" colspan="1"><a href={`/cfb/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span></a> <strong>{cleanField(p, nameField)}</strong></td>
+                                    <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span></a> <strong>{cleanField(p, nameField)}</strong></td>
                                     <Fragment set:html={generateMetricCell(p, category, "games")} />
                                     <Fragment set:html={generateMetricRow(p)} />
                                 </tr>

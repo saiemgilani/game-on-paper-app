@@ -21,7 +21,7 @@
 		if (onChangeValue) {
             onChangeValue(c, m)
         } else {
-            window.location = `/cfb/teams/${c}?sort=${m}`;
+            window.location = `/teams/${c}?sort=${m}`;
         }
     }
 
