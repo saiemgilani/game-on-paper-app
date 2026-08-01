@@ -1,4 +1,4 @@
-import { MEME_LIST } from "./constants";
+import { MEME_LIST, SDV_BASE_METRIC_TITLES } from "./constants";
 
 export type RGBColor = { r: number, g: number, b: number};
 export const STANDARD_THEME_COLOR = "#2394fd"
@@ -207,6 +207,42 @@ export function getCurrentViewport(document: HTMLDocument, window: Window): 'xs'
     return 'xl'
 }
 
+export function getImageSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
+    switch (viewport) {
+        case 'xs':
+        case 'sm':
+            return 25;
+        case 'md':
+        case 'lg':
+        case 'xl':
+            return 37.5;
+    }
+}
+
+export function getTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
+    switch (viewport) {
+        case 'xs':
+        case 'sm':
+            return 15;
+        case 'md':
+        case 'lg':
+        case 'xl':
+            return 20;
+    }
+}
+
+export function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
+    switch (viewport) {
+        case 'xs':
+        case 'sm':
+            return 10
+        case 'md':
+        case 'lg':
+        case 'xl':
+            return 15;
+    }
+}
+
 export function adjustTeamColorsForContrast(awayTeam: { color: string, alternateColor: string }, homeTeam: { color: string, alternateColor: string }): RGBColor[] {
     let awayTeamColor = hexToRgb(awayTeam.color) || { r: 0, g: 0, b: 255 }
     let homeTeamColor = hexToRgb(homeTeam.color) || { r: 255, g: 0, b: 0 }
@@ -389,5 +425,65 @@ export function generateColorRampValue(input: number | undefined | null, max: nu
         return null
     } else {
         return `hulk-bg-level-${clampedStep}`
+    }
+}
+
+export function generateTeamMetricTitle(metric: string): string {
+    const cleanedMetric = metric.replace("_def","").replace("_off","").replace("net_","").replace("off_","").replace("def_","").replace("_margin","").replace("_pass","").replace("_rush","").replace("pass_","").replace("rush_","")
+
+    let title = SDV_BASE_METRIC_TITLES[cleanedMetric] || metric
+
+    let prefix = ""
+    if (metric.includes("_off") || metric.includes("off_")) {
+        prefix = "Off"
+    } else if (metric.includes("_def") || metric.includes("def_")) {
+        prefix = "Def"
+    } else if (metric.includes("_margin") || metric.includes("net_")) {
+        prefix = "Net"
+    } 
+    
+    if (metric.includes("_pass")) {
+        title = title.replace("Play", "Dropback")
+    } else if (metric.includes("_rush")) {
+        title = title.replace("Play", "Rush")
+    }
+    
+    if (!prefix) {
+        return title;
+    } else {
+        return `${prefix} ${title}`;
+    }
+}
+
+
+export function formatNumberForMetric(metric: string, value: number): string {
+    const cleanedMetric = metric.replace("_def","").replace("_off","").replace("net_","").replace("off_","").replace("def_","").replace("_margin","").replace("_pass","").replace("_rush","").replace("pass_","").replace("rush_","")
+    
+    switch (cleanedMetric) {
+        case "net_adj_epa":
+        case "adj_epa": 
+        case "strength_faced":
+        case "EPAplay": 
+        case "EPAdropback":
+        case "EPArush":
+        case "yardsplay": 
+        case "yardsdropback":
+        case "yardsrush":
+        case "lineyards":
+        case "line_yards":
+        case "nonExplosiveEpaPerPlay":
+        case "early_down_EPA":
+        case "third_down_distance":
+            return `${roundNumber(value, 2, 2)}`;
+        case "success": 
+        case "havoc":
+        case "explosive":
+        case "play_stuffed":
+        case "opportunity_run":
+        case "opportunity_rate":
+        case "late_down_success":
+            return `${roundNumber((100.0 * value), 2, 0)}%`
+        default:
+            return `${roundNumber(value, 2, 2)}`;
     }
 }

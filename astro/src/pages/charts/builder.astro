@@ -3,12 +3,12 @@ import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
 import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrieveTeamSummaries } from '../../resources/sdv';
-import { CURRENT_YEAR } from '../../utils/constants';
+import { LAST_YEAR, CURRENT_YEAR } from '../../utils/constants';
 
 const query = Astro.url.searchParams;
-const season = query.get("season") || `${CURRENT_YEAR}`;
-const metricX = query.get("x") || "EPAplay_off";
-const metricY = query.get("y") || "EPAplay_def";
+const season = query.get("season") || `${LAST_YEAR}`;
+const metricX = query.get("x") || "adj_off_epa";
+const metricY = query.get("y") || "adj_def_epa";
 
 const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, Number(season));
 const points = teamData.map((t: any) => {

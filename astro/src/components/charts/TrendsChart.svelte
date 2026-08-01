@@ -2,314 +2,12 @@
 import Chart from 'chart.js/auto';
 import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
 const { title, teamColor, teamData, category, metric, percentiles } = $props();
-
-export function capitalizeFirstLetter(val: string): string {
-    return String(val).charAt(0).toUpperCase() + String(val).slice(1);
-}
-
-export function getAxisTitleForMetric(category: string, metric: string): string {
-    var metricTitle = metric;
-    const cleanedMetric = (
-        metric
-            .replace("_off", "")
-            .replace("_def", "")
-            .replace("_margin", "")
-    )
-    switch (cleanedMetric) {
-        case "net_adj_epa":
-        case "adj_off_epa": 
-        case "adj_def_epa":
-            metricTitle = "Adj EPA/Play";
-            break;
-        case "EPAplay": 
-            metricTitle = "EPA/Play";
-            break;
-        case "yardsplay": 
-            metricTitle = "Yards/Play";
-            break;
-        case "success": 
-            metricTitle = "Success Rate";
-            break;
-        case "EPAdropback": 
-        case "EPAplay_pass":
-            metricTitle = "EPA/Dropback";
-            break;
-        case "yardsdropback": 
-        case "yardsplay_pass":
-            metricTitle = "Yards/DB";
-            break;
-        case "success_pass": 
-        case "pass_success":
-            metricTitle = "Pass SR%";
-            break;
-        case "EPArush": 
-        case "EPAplay_rush":
-            metricTitle = "EPA/Rush";
-            break;
-        case "yardsrush": 
-        case "yardsplay_rush":
-            metricTitle = "Yards/Rush";
-            break;
-        case "rush_success": 
-        case "success_rush":
-            metricTitle = "Rush SR%";
-            break;
-        case "havoc": 
-            metricTitle = "Havoc %";
-            break;
-        case "pass_explosive":
-        case "explosive_pass":
-            metricTitle = "Pass Expl %";
-            break;
-        case "rush_explosive":
-        case "explosive_rush":
-            metricTitle = "Rush Expl %";
-            break;
-        case "opportunity_run":
-        case "opportunity_rate":
-            metricTitle = "Opportunity %";
-            break;
-        case "lineyards":
-        case "line_yards":
-            metricTitle = "Line Yards";
-            break;
-        case "play_stuffed":
-            metricTitle = "Stuffed %";
-            break;
-        case "explosive":
-            metricTitle = "Explosive %";
-            break;
-        case "nonExplosiveEpaPerPlay":
-            metricTitle =  "Non-Expl EPA/Play";
-            break;
-        case "early_down_EPA":
-            metricTitle =  "Early Downs EPA/Play";
-            break;
-        case "late_down_success":
-            metricTitle =  "Late Downs SR%";
-            break;
-        case "third_down_distance":
-            metricTitle =  "Avg Distance (3rd)";
-            break;
-        default:
-            metricTitle = metric;
-            break;
-    }
-
-    if (category == "differential") {
-        metricTitle = `Net ${metricTitle}`
-    } else {
-        metricTitle = `${capitalizeFirstLetter(category.slice(0, 3))} ${metricTitle}`
-    }
-    return metricTitle
-}
-
-export function getTitleForMetric(category: string, metric: string): string {
-    var metricTitle = metric;
-    const cleanedMetric = (
-        metric
-            .replace("_off", "")
-            .replace("_def", "")
-            .replace("_margin", "")
-    )
-    switch (cleanedMetric) {
-        case "net_adj_epa":
-        case "adj_off_epa": 
-        case "adj_def_epa":
-            metricTitle = "Adj EPA/Play";
-            break;
-        case "EPAplay": 
-            metricTitle = "EPA/Play";
-            break;
-        case "yardsplay": 
-            metricTitle = "Yards/Play";
-            break;
-        case "success": 
-            metricTitle = "Success Rate";
-            break;
-        case "EPAdropback":
-        case "EPAplay_pass": 
-            metricTitle = "EPA/Dropback";
-            break;
-        case "yardsdropback": 
-        case "yardsplay_pass": 
-            metricTitle = "Yards/Dropback";
-            break;
-        case "success_pass": 
-        case "pass_success": 
-            metricTitle = "Pass Success Rate";
-            break;
-        case "EPArush":
-        case "EPAplay_rush": 
-            metricTitle = "EPA/Rush";
-            break;
-        case "yardsrush":
-        case "yardsplay_rush": 
-            metricTitle = "Yards/Rush";
-            break;
-        case "rush_success": 
-        case "success_rush":
-            metricTitle = "Rush Success Rate";
-            break;
-        case "havoc": 
-            metricTitle = "Havoc Rate";
-            break;
-        case "pass_explosive":
-        case "explosive_pass":
-            metricTitle = "Pass Explosive Play Rate";
-            break;
-        case "rush_explosive":
-        case "explosive_rush":
-            metricTitle = "Rush Explosive Play Rate";
-            break;
-        case "opportunity_run":
-        case "opportunity_rate":
-            metricTitle = "Opportunity Rate";
-            break;
-        case "lineyards":
-        case "line_yards":
-            metricTitle = "Line Yards/Rush";
-            break;
-        case "play_stuffed":
-            metricTitle = "Stuffed Run Rate";
-            break;
-        case "explosive":
-            metricTitle = "Explosive Play Rate";
-            break;
-        case "nonExplosiveEpaPerPlay":
-            metricTitle =  "Non-Explosive EPA/Play";
-            break;
-        case "early_down_EPA":
-            metricTitle =  "Early Downs EPA/Play";
-            break;
-        case "late_down_success":
-            metricTitle =  "Late Downs Success Rate";
-            break;
-        case "third_down_distance":
-            metricTitle =  "Avg Distance on 3rd Down";
-            break;
-        default:
-            metricTitle = metric;
-            break;
-    }
-
-    if (category == "differential") {
-        metricTitle = `Net ${metricTitle}`
-    } else {
-        metricTitle = `${capitalizeFirstLetter(category.slice(0, 3))} ${metricTitle}`
-    }
-    return metricTitle
-}
-
-function formatNumberForMetric(metric: string, value: number): string {
-    const cleanedMetric = (
-        metric
-            .replace("_off", "")
-            .replace("_def", "")
-            .replace("_margin", "")
-    )
-    switch (cleanedMetric) {
-        case "net_adj_epa":
-        case "adj_off_epa": 
-        case "adj_def_epa": 
-            return `${roundNumber(value, 2, 2)}`;
-        case "EPAplay": 
-            return `${roundNumber(value, 2, 2)}`;
-        case "yardsplay": 
-            return `${roundNumber(value, 2, 2)}`;
-        case "success": 
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "EPAdropback": 
-        case "EPAplay_pass":
-            return `${roundNumber(value, 2, 2)}`;
-        case "yardsdropback": 
-        case "yardsplay_pass":
-            return `${roundNumber(value, 2, 2)}`;
-        case "success_pass": 
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "EPArush": 
-        case "EPAplay_rush":
-            return `${roundNumber(value, 2, 2)}`;
-        case "yardsrush":
-        case "yardsplay_rush":
-            return `${roundNumber(value, 2, 2)}`;
-        case "rush_success": 
-        case "success_rush":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "havoc": 
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "pass_explosive":
-        case "explosive_pass":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "rush_explosive":
-        case "explosive_rush":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "opportunity_run":
-        case "opportunity_rate":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "lineyards":
-        case "line_yards":
-            return `${roundNumber(value, 2, 2)}`;
-        case "play_stuffed":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "explosive":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "nonExplosiveEpaPerPlay":
-            return `${roundNumber(value, 2, 2)}`;
-        case "early_down_EPA":
-            return `${roundNumber(value, 2, 2)}`;
-        case "late_down_success":
-            return `${roundNumber((100.0 * value), 2, 0)}%`
-        case "third_down_distance":
-            return `${roundNumber(value, 2, 2)}`;
-        default:
-            return `${roundNumber(value, 2, 2)}`;
-    }
-}
-
-
-function getImageSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-    switch (viewport) {
-        case 'xs':
-        case 'sm':
-            return 25;
-        case 'md':
-        case 'lg':
-        case 'xl':
-            return 37.5;
-    }
-}
-
-
-function getTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-    switch (viewport) {
-        case 'xs':
-        case 'sm':
-            return 15;
-        case 'md':
-        case 'lg':
-        case 'xl':
-            return 20;
-    }
-}
-
-function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-    switch (viewport) {
-        case 'xs':
-        case 'sm':
-            return 10
-        case 'md':
-        case 'lg':
-        case 'xl':
-            return 15;
-    }
-}
 
 function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
     let distributions: Record<number, ValueDistribution> = {};
@@ -374,7 +72,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
 
     const imageSize = getImageSizeForViewport(getCurrentViewport(document, window))
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const metricTitle = getAxisTitleForMetric(category, metric)
+    const metricTitle = generateTeamMetricTitle(metric)
     const isRateMetric = SDV_TEAM_PERCENT_COLUMNS.includes(metric)
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
     
@@ -568,7 +266,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
             plugins: {
                     title: {
                     display: true,
-                    text: `${title} - ${getTitleForMetric(category, metric)} - ${yearRange}`,
+                    text: `${title} - ${generateTeamMetricTitle(metric)} - ${yearRange}`,
                     color: (isDarkMode) ? "white" : "black",
                     font: {
                         size: getTitleSizeForViewport(viewport),
@@ -601,7 +299,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                     },
                     title: {
                         display: true,
-                        text: getAxisTitleForMetric(category, metric),
+                        text: generateTeamMetricTitle(metric),
                         color: (isDarkMode) ? '#e8e6e3' : '#525252',
                         font: {
                             size: getAxisTitleSizeForViewport(viewport),

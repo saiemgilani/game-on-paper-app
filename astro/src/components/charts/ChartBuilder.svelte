@@ -2,17 +2,17 @@
     import Chart from 'chart.js/auto';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES } from '../../utils/constants';
-    import { roundNumber, waitForElement } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement } from '../../utils/misc'
     
     const { season, x, y, points } = $props();
-    let selectedSeason = $state(season);
-    let selectedMetricX = $state(x)
-    let selectedMetricY = $state(y)
+    let selectedSeason = season;
+    let selectedMetricX = x
+    let selectedMetricY =y
 
     const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
 
     const availableMetricColumns = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter(m => !["fbs_class", "valid_games", "team_id", "pos_team", "division", "conference", "season"].includes(m) && !m.endsWith("_rank"))
-    let availableMetricCategories = {
+    let availableMetricCategories: Record<string, Record<string, string>> = {
         "Differential": {},
         "Offensive - Passing": {},
         "Defensive - Passing": {},
@@ -23,10 +23,10 @@
     };
 
     for (const m of availableMetricColumns) {
-        let category = m.endsWith("_margin") ? "Differential" : (m.includes("_off") ? "Offensive" : "Defensive")
+        let category = (m.includes("_margin") || m.startsWith("net_")) ? "Differential" : ((m.includes("_off") || m.includes("off_")) ? "Offensive" : "Defensive")
         let subcat = m.includes("_pass") ? "Passing" : (m.includes("_rush") ? "Rushing" : "Other")
 
-        const title = getTitleForMetric(category.toLocaleLowerCase(), m)
+        const title = generateTeamMetricTitle(m)
         if (category == "Differential") {
             availableMetricCategories[category][m] = title;
         } else {
@@ -34,264 +34,17 @@
         }
     }
 
-    function capitalizeFirstLetter(val: string): string {
-        return String(val).charAt(0).toUpperCase() + String(val).slice(1);
-    }
-
-    function getImageSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-        switch (viewport) {
-            case 'xs':
-            case 'sm':
-                return 25;
-            case 'md':
-            case 'lg':
-            case 'xl':
-                return 37.5;
-        }
-    }
-
-    function getTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-        switch (viewport) {
-            case 'xs':
-            case 'sm':
-                return 15;
-            case 'md':
-            case 'lg':
-            case 'xl':
-                return 20;
-        }
-    }
-
-    function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
-        switch (viewport) {
-            case 'xs':
-            case 'sm':
-                return 10
-            case 'md':
-            case 'lg':
-            case 'xl':
-                return 15;
-        }
-    }
-
-    function getCurrentViewport(document: HTMLDocument, window: Window): 'xs' | 'sm' | 'md' | 'lg' | 'xl' {
-    // https://stackoverflow.com/a/8876069
-        const width = Math.max(
-            document.documentElement.clientWidth,
-            window.innerWidth || 0
-        )
-        if (width <= 576) return 'xs'
-        if (width <= 768) return 'sm'
-        if (width <= 992) return 'md'
-        if (width <= 1200) return 'lg'
-        return 'xl'
-    }
-
-    function getAxisTitleForMetric(category: string, metric: string): string {
-        var metricTitle = metric;
-        const cleanedMetric = (
-            metric
-                .replace("_off", "")
-                .replace("_def", "")
-                .replace("_margin", "")
-        )
-        switch (cleanedMetric) {
-            case "net_adj_epa":
-            case "adj_off_epa": 
-            case "adj_def_epa":
-                metricTitle = "Adj EPA/Play";
-                break;
-            case "EPAplay": 
-                metricTitle = "EPA/Play";
-                break;
-            case "yardsplay": 
-                metricTitle = "Yards/Play";
-                break;
-            case "success": 
-                metricTitle = "Success Rate";
-                break;
-            case "EPAdropback": 
-            case "EPAplay_pass":
-                metricTitle = "EPA/Dropback";
-                break;
-            case "yardsdropback": 
-            case "yardsplay_pass":
-                metricTitle = "Yards/DB";
-                break;
-            case "success_pass": 
-            case "pass_success":
-                metricTitle = "Pass SR%";
-                break;
-            case "EPArush": 
-            case "EPAplay_rush":
-                metricTitle = "EPA/Rush";
-                break;
-            case "yardsrush": 
-            case "yardsplay_rush":
-                metricTitle = "Yards/Rush";
-                break;
-            case "rush_success": 
-            case "success_rush":
-                metricTitle = "Rush SR%";
-                break;
-            case "havoc": 
-                metricTitle = "Havoc %";
-                break;
-            case "pass_explosive":
-            case "explosive_pass":
-                metricTitle = "Pass Expl %";
-                break;
-            case "rush_explosive":
-            case "explosive_rush":
-                metricTitle = "Rush Expl %";
-                break;
-            case "opportunity_run":
-            case "opportunity_rate":
-                metricTitle = "Opportunity %";
-                break;
-            case "lineyards":
-            case "line_yards":
-                metricTitle = "Line Yards";
-                break;
-            case "play_stuffed":
-                metricTitle = "Stuffed %";
-                break;
-            case "explosive":
-                metricTitle = "Explosive %";
-                break;
-            case "nonExplosiveEpaPerPlay":
-                metricTitle =  "Non-Expl EPA/Play";
-                break;
-            case "early_down_EPA":
-                metricTitle =  "Early Downs EPA/Play";
-                break;
-            case "late_down_success":
-                metricTitle =  "Late Downs SR%";
-                break;
-            case "third_down_distance":
-                metricTitle =  "Avg Distance (3rd)";
-                break;
-            default:
-                metricTitle = metric;
-                break;
-        }
-
-        if (category == "differential") {
-            metricTitle = `Net ${metricTitle}`
-        } else {
-            metricTitle = `${capitalizeFirstLetter(category.slice(0, 3))} ${metricTitle}`
-        }
-        return metricTitle
-    }
-
-    function getTitleForMetric(category: string, metric: string): string {
-        var metricTitle = metric;
-        const cleanedMetric = (
-            metric
-                .replace("_off", "")
-                .replace("_def", "")
-                .replace("_margin", "")
-        )
-        switch (cleanedMetric) {
-            case "net_adj_epa":
-            case "adj_off_epa": 
-            case "adj_def_epa":
-                metricTitle = "Adj EPA/Play";
-                break;
-            case "EPAplay": 
-                metricTitle = "EPA/Play";
-                break;
-            case "yardsplay": 
-                metricTitle = "Yards/Play";
-                break;
-            case "success": 
-                metricTitle = "Success Rate";
-                break;
-            case "EPAdropback":
-            case "EPAplay_pass": 
-                metricTitle = "EPA/Dropback";
-                break;
-            case "yardsdropback": 
-            case "yardsplay_pass": 
-                metricTitle = "Yards/Dropback";
-                break;
-            case "success_pass": 
-            case "pass_success": 
-                metricTitle = "Pass Success Rate";
-                break;
-            case "EPArush":
-            case "EPAplay_rush": 
-                metricTitle = "EPA/Rush";
-                break;
-            case "yardsrush":
-            case "yardsplay_rush": 
-                metricTitle = "Yards/Rush";
-                break;
-            case "rush_success": 
-            case "success_rush":
-                metricTitle = "Rush Success Rate";
-                break;
-            case "havoc": 
-                metricTitle = "Havoc Rate";
-                break;
-            case "pass_explosive":
-            case "explosive_pass":
-                metricTitle = "Pass Explosive Play Rate";
-                break;
-            case "rush_explosive":
-            case "explosive_rush":
-                metricTitle = "Rush Explosive Play Rate";
-                break;
-            case "opportunity_run":
-            case "opportunity_rate":
-                metricTitle = "Opportunity Rate";
-                break;
-            case "lineyards":
-            case "line_yards":
-                metricTitle = "Line Yards/Rush";
-                break;
-            case "play_stuffed":
-                metricTitle = "Stuffed Run Rate";
-                break;
-            case "explosive":
-                metricTitle = "Explosive Play Rate";
-                break;
-            case "nonExplosiveEpaPerPlay":
-                metricTitle =  "Non-Explosive EPA/Play";
-                break;
-            case "early_down_EPA":
-                metricTitle =  "Early Downs EPA/Play";
-                break;
-            case "late_down_success":
-                metricTitle =  "Late Downs Success Rate";
-                break;
-            case "third_down_distance":
-                metricTitle =  "Avg Distance on 3rd Down";
-                break;
-            default:
-                metricTitle = metric;
-                break;
-        }
-
-        if (category == "differential") {
-            metricTitle = `Net ${metricTitle}`
-        } else {
-            metricTitle = `${capitalizeFirstLetter(category.slice(0, 3))} ${metricTitle}`
-        }
-        return metricTitle
-    }
-
     const viewport = getCurrentViewport(document, window)
     const imageSize = getImageSizeForViewport(viewport);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
-        const averageX = (points.map((t: any) => parseFloat(t.x)).reduce((a, b) => a + b)) / points.length
-        const minX = Math.min(...points.map(t => t.x))
-        const maxX = Math.max(...points.map(t => t.x))
-        const averageY = (points.map(t => parseFloat(t.y)).reduce((a, b) => a + b)) / points.length
-        const minY = Math.min(...points.map(t => t.y))
-        const maxY = Math.max(...points.map(t => t.y))
+        const averageX = (points.map((t: any) => parseFloat(t.x)).reduce((a: number, b: number) => a + b)) / points.length
+        const minX = Math.min(...points.map((t: any) => t.x))
+        const maxX = Math.max(...points.map((t: any) => t.x))
+        const averageY = (points.map((t: any) => parseFloat(t.y)).reduce((a: number, b: number) => a + b)) / points.length
+        const minY = Math.min(...points.map((t: any) => t.y))
+        const maxY = Math.max(...points.map((t: any) => t.y))
         console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
         console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
@@ -432,7 +185,7 @@
                         },
                         title: {
                         display: true,
-                            text: getAxisTitleForMetric(selectedMetricX.includes("_off") ? "offensive" : "defensive", selectedMetricX),
+                            text: generateTeamMetricTitle(selectedMetricX),
                             color: (isDarkMode) ? '#e8e6e3' : '#525252',
                             font: {
                                 size: getAxisTitleSizeForViewport(viewport),
@@ -460,7 +213,7 @@
                         },
                         title: {
                         display: true,
-                            text: getAxisTitleForMetric(selectedMetricY.includes("_off") ? "offensive" : "defensive", selectedMetricY),
+                            text: generateTeamMetricTitle(selectedMetricY),
                             color: (isDarkMode) ? '#e8e6e3' : '#525252',
                             font: {
                                 size: getAxisTitleSizeForViewport(viewport),
@@ -480,7 +233,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: `${getTitleForMetric(selectedMetricX.includes("_off") ? "offensive" : "defensive", selectedMetricX)} vs ${getTitleForMetric(selectedMetricY.includes("_off") ? "offensive" : "defensive", selectedMetricY)} - ${selectedSeason}`,
+                        text: `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
                         font: {
                             size: getTitleSizeForViewport(viewport),
@@ -494,6 +247,13 @@
                         callbacks: {
                             title: (items) => {
                                 return points[items[0].dataIndex].pos_team
+                            },
+                            label: (item) => {
+                                const lines = [
+                                    `${generateTeamMetricTitle(selectedMetricX)}: ${formatNumberForMetric(selectedMetricX, item.parsed.x)},`,
+                                    `${generateTeamMetricTitle(selectedMetricY)}: ${formatNumberForMetric(selectedMetricY, item.parsed.y)}`
+                                ] 
+                                return lines.join("\n")
                             }
                         }
                     }
