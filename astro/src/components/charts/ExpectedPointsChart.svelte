@@ -1,7 +1,7 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, calculateCumulativeSums, roundNumber } from '../../utils/misc';
+import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, calculateCumulativeSums, roundNumber, waitForElement } from '../../utils/misc';
 const { id, plays, homeTeam, awayTeam } = $props();
 
 async function generateChart() {
@@ -165,8 +165,28 @@ async function generateChart() {
     });
 }
 
+async function waitToGenerateChart() {
+    try {
+        const context = await waitForElement(document, "epChart")
+        await generateChart()
+    } catch (e) {
+        console.error(e);
+        const container = document.getElementById("ep_container");
+        if (container) {
+            container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
+        }
+    }
+}
 
-document.addEventListener('DOMContentLoaded', generateChart);
+if (document.readyState !== 'loading') {
+    console.log(`DOM ready state`)
+    waitToGenerateChart()
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log(`DOM content loaded state`)
+        waitToGenerateChart()
+    })
+}
 
 </script>
 
@@ -175,5 +195,5 @@ document.addEventListener('DOMContentLoaded', generateChart);
         <h2 class="mb-0">Expected Points</h2>
         <p class="text-small"><a id="ep-download" download={`game-ep-${id}.jpg`} href="#">Download Chart</a></p>
     </div>
-    <div class="w-100"  width="900" height="380"><canvas id="epChart"></canvas></div>
+    <div class="w-100"  width="900" height="380" id="ep_container"><canvas id="epChart"></canvas></div>
 </div>
