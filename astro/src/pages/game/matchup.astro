@@ -1,0 +1,41 @@
+---
+import MatchupView from "../../components/game/MatchupView.astro";
+import MatchupBuilder from "../../components/game/MatchupBuilder.svelte";
+import GenericPage from "../../layouts/GenericPage.astro";
+import { retrieveTeamSeasonInformation } from "../../resources/espn";
+import { retrieveTeamSummaries } from "../../resources/sdv";
+import { retrieveAllTeams } from "../../utils/common";
+
+const query = Astro.url.searchParams;
+const awaySeason = query.get("awaySeason") || "2025";
+const awayTeamId = query.get("awayTeamId") || "52";
+const homeSeason = query.get("homeSeason") || "2025";
+const homeTeamId = query.get("homeTeamId") || "59";
+
+const allTeamSeasons = retrieveAllTeams();
+
+let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)
+let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries(Number(awaySeason), undefined, awayTeamId, Number(awaySeason));
+let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
+let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries(Number(homeSeason), undefined, homeTeamId, Number(homeSeason));
+---
+
+<GenericPage title={"Matchup Builder | Game on Paper"} subtitle={`Pick two team-seasons to compare`} slug="/game/matchup" breadcrumbs={[]}>
+    <MatchupBuilder client:idle teamSeasons={allTeamSeasons} awaySeason={awaySeason} homeSeason={homeSeason} awayTeamId={awayTeamId} homeTeamId={homeTeamId} />
+    {
+        !(awaySeason && homeSeason && awayTeamId && homeTeamId) && (
+            <div class="container">
+                <div class="row mb-3">
+                    <div class="col-12 text-center">
+                        <p class="text-muted">Please select two team-seasons to compare.</p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+    {
+        (awaySeason && homeSeason && awayTeamId && homeTeamId) && (
+            <MatchupView awayTeam={awayTeam} homeTeam={homeTeam} awayTeamSummary={(awayTeamData.length > 0) ? awayTeamData[0] : null} homeTeamSummary={(homeTeamData.length > 0) ? homeTeamData[0] : null} />
+        )
+    }
+</GenericPage>

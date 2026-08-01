@@ -6,8 +6,8 @@
     
     const { season, x, y, points } = $props();
     let selectedSeason = season;
-    let selectedMetricX = x
-    let selectedMetricY =y
+    let selectedMetricX = x;
+    let selectedMetricY = y;
 
     const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
 
