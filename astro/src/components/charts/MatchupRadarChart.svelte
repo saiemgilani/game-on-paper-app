@@ -16,6 +16,9 @@ async function waitToGenerateChart() {
         const offRadarCtx = await waitForElement(document, "offensive-canvas");
         const defRadarCtx = await waitForElement(document, "defensive-canvas");
 
+        const awayTeamTitle = teamData[0].season ? `${teamData[0].season} ${cleanLocation(awayTeam)}` : cleanLocation(awayTeam)
+        const homeTeamTitle = teamData[1].season ? `${teamData[1].season} ${cleanLocation(homeTeam)}` : cleanLocation(homeTeam)
+
         if (offRadarChart) {
             offRadarChart?.destroy()
         }
@@ -24,7 +27,7 @@ async function waitToGenerateChart() {
             offRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(teamData, "Offensive", "Defensive", isDarkMode),
-                `${cleanLocation(awayTeam)} Offense vs ${cleanLocation(homeTeam)} Defense`,
+                `${awayTeamTitle} Offense vs ${homeTeamTitle} Defense`,
                 isDarkMode,
                 true
             )
@@ -39,7 +42,7 @@ async function waitToGenerateChart() {
             defRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(teamData, "Defensive", "Offensive", isDarkMode),
-                `${cleanLocation(awayTeam)} Defense vs ${cleanLocation(homeTeam)} Offense`,
+                `${awayTeamTitle} Defense vs ${homeTeamTitle} Offense`,
                 isDarkMode,
                 true
             )
