@@ -24,7 +24,7 @@
 
     for (const m of availableMetricColumns) {
         let category = (m.includes("_margin") || m.startsWith("net_")) ? "Differential" : ((m.includes("_off") || m.includes("off_")) ? "Offensive" : "Defensive")
-        let subcat = m.includes("_pass") ? "Passing" : (m.includes("_rush") ? "Rushing" : "Other")
+        let subcat = (m.includes("_pass") || ["passrate_off", "passrate_def"].includes("m")) ? "Passing" : (m.includes("_rush") ? "Rushing" : "Other")
 
         const title = generateTeamMetricTitle(m)
         if (category == "Differential") {
