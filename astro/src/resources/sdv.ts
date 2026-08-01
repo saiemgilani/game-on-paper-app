@@ -653,12 +653,8 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
     payload["limit"] = 150;
 
     try {        
-        // update redis cache
+        // can't cache these because the keys are too big
         const content: SDVSummaryResponse = await requestSDV("team_summaries", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
-        // console.log(content)
-        // const key = generateKey(["league", season, type]);
-        // expire every three days so that we get fresh data
-        // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content.data;
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
@@ -697,16 +693,12 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     payload["limit"] = limit;
 
     try {        
-        // update redis cache
         let content: SDVSummaryResponse;
         if (Object.values(SummaryType).includes(category)) {
-            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
+            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true);
         } else {
             throw Error(`Category '${category}' not implemented`)
         }
-        // const key = generateKey(["league", season, type]);
-        // expire every three days so that we get fresh data
-        // await lruCache.set(key, JSON.stringify(content), { EX: 60 * 60 * 24 * 3 })
         return content.data;
     } catch (err) {
         console.error(`could not find player summary data from SDV in ${season}, checking ${season - 1}`)
