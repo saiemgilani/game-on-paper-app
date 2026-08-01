@@ -21,7 +21,14 @@
 		"binding": "ASSETS"
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": false
+		}
 	},
 	"cache": {
 		"enabled": true
