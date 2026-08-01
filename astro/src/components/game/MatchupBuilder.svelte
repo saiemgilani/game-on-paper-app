@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { TeamIndex } from "../../utils/common";
+    import { cleanName } from "../../utils/misc";
 
     const { teamSeasons, homeTeamId, homeSeason, awayTeamId, awaySeason } = $props();
 
@@ -57,7 +58,7 @@
                     <select class="form-select form-select-md mb-2" onchange={onChangeAwayTeam}>
                         <option value="-1" disabled>Team...</option>
                         {#each teamSeasons as s}
-                            <option value={s.team_id} selected={(String(selectedAwayTeamId) == String(s.team_id))}>{s.name}</option>
+                            <option value={s.team_id} selected={(String(selectedAwayTeamId) == String(s.team_id))}>{cleanName(s)}</option>
                         {/each}
                     </select>
                     <select class="form-select form-select-md" onchange={onChangeAwaySeason}>
@@ -72,7 +73,7 @@
                     <select class="form-select form-select-md mb-2" onchange={onChangeHomeTeam}>
                         <option value="-1" disabled>Team...</option>
                         {#each teamSeasons as s}
-                            <option value={s.team_id} selected={(String(selectedHomeTeamId) == String(s.team_id))}>{s.name}</option>
+                            <option value={s.team_id} selected={(String(selectedHomeTeamId) == String(s.team_id))}>{cleanName(s)}</option>
                         {/each}
                     </select>
                     <select class="form-select form-select-md" onchange={onChangeHomeSeason}>
