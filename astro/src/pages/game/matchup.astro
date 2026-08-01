@@ -18,12 +18,22 @@ let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInf
 let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries(Number(awaySeason), undefined, awayTeamId, Number(awaySeason));
 let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
 let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries(Number(homeSeason), undefined, homeTeamId, Number(homeSeason));
+
+const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTeamId)
+if (canDisplayMatchupView) {
+    Astro.cache.set({
+        maxAge: 60 * 60 * 24, // one day
+        tags: ['matchup'],
+    })
+} else {
+    Astro.cache.set(false);
+}
 ---
 
 <GenericPage title={"Matchup Builder | Game on Paper"} subtitle={`Pick two team-seasons to compare`} slug="/game/matchup" breadcrumbs={[]}>
     <MatchupBuilder client:idle teamSeasons={allTeamSeasons} awaySeason={awaySeason} homeSeason={homeSeason} awayTeamId={awayTeamId} homeTeamId={homeTeamId} />
     {
-        !(awaySeason && homeSeason && awayTeamId && homeTeamId) && (
+        !canDisplayMatchupView && (
             <div class="container">
                 <div class="row mb-3">
                     <div class="col-12 text-center">
@@ -34,7 +44,7 @@ let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummari
         )
     }
     {
-        (awaySeason && homeSeason && awayTeamId && homeTeamId) && (
+        canDisplayMatchupView && (
             <MatchupView awayTeam={awayTeam} homeTeam={homeTeam} awayTeamSummary={(awayTeamData.length > 0) ? awayTeamData[0] : null} homeTeamSummary={(homeTeamData.length > 0) ? homeTeamData[0] : null} />
         )
     }
