@@ -351,6 +351,7 @@ export interface ProcessedPlay {
   pen_epa?: number
   pen_weight?: number
   penalized_team?: number
+  penalty_assessed_on_kickoff?: boolean
   penalty_1st_conv: boolean
   penalty_declined: boolean
   penalty_detail?: string

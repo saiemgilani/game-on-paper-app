@@ -13,7 +13,7 @@ const { play, expandable, prefix } = Astro.props;
 
 
 let classText = "";
-if (TURNOVER_VEC.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_poss == 1) || (play.start.down == 4 && play.statYardage < play.start.distance && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
+if (TURNOVER_VEC.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_pos_team) || (play.start.down == 4 && play.statYardage < play.start.distance && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
     classText = " table-danger"
 } else if (play.scoringPlay == true || play.scoring_play == true) {
     classText = " table-success"
