@@ -1,5 +1,5 @@
 import type { ChartConfiguration, ChartData } from "chart.js";
-import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal } from "./misc";
+import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal, cleanField } from "./misc";
 
 
 function generatePercentile(input: number, max: number = 134): number {
@@ -58,9 +58,12 @@ export function generateRadarDataset(breakdowns: any[], titleKey: string, oppone
             const key = (i % 2) == 0 ? titleKey : opponentKey;
             const teamPercentilesDataset = generateRadarPercentiles(b, key)
             const teamColor = adjTeamColors[i];
+
+            const teamTitle = b.season ? `${b.season} ${cleanField(b, "teamName")}` : cleanField(b, "teamName")
+
             return {
-                labels: teamPercentilesDataset.map(p => `${b.teamName} - Raw: ${p.value}`),
-                label: b.teamName,
+                labels: teamPercentilesDataset.map(p => `${teamTitle} - Raw: ${p.value}`),
+                label: teamTitle,
                 data: teamPercentilesDataset.map(p => p.percentile),
                 fill: true,
                 backgroundColor: `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, 0.2)`,

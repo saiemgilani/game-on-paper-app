@@ -5,6 +5,7 @@ import GenericPage from "../../layouts/GenericPage.astro";
 import { retrieveTeamSeasonInformation } from "../../resources/espn";
 import { retrieveTeamSummaries } from "../../resources/sdv";
 import { retrieveAllTeams } from "../../utils/common";
+import DarkModeLogos from "../../components/DarkModeLogos.astro";
 
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
@@ -31,6 +32,7 @@ if (canDisplayMatchupView) {
 ---
 
 <GenericPage title={"Matchup Builder | Game on Paper"} subtitle={`Pick two team-seasons to compare`} slug="/game/matchup" breadcrumbs={[]}>
+    <DarkModeLogos teamIds={[homeTeamId, awayTeamId]} />
     <div class="container">
         <div class="row mb-3">
             <div class="col-12 mb-xs-3">
