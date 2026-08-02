@@ -43,7 +43,7 @@ for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
     allPctls = allPctls.concat(percentiles);
 }
 
-let teamData = await retrieveTeamSummaries(undefined, undefined, id)
+let teamData = await retrieveTeamSummaries({ team_id: Number(id) })
 teamData = teamData.sort((a,b) => a.season - b.season).map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor

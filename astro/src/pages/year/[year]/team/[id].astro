@@ -55,7 +55,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 ]
 
 
-const teamSummaries = await retrieveTeamSummaries(Number(year), undefined, Number(id));
+const teamSummaries = await retrieveTeamSummaries({season: Number(year), team_id: Number(id)});
 if (!teamSummaries) {
     Astro.cache.set(false);
     return Astro.redirect('/404');

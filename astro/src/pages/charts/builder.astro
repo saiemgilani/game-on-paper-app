@@ -13,7 +13,7 @@ const metricX = query.get("x") || "adj_off_epa";
 const metricY = query.get("y") || "adj_def_epa";
 const metricRanks = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter((k: string) => k == `${metricX}_rank` || k == `${metricY}_rank`)
 
-const teamData = await retrieveTeamSummaries(Number(season), undefined, undefined, [metricX, metricY], Number(season));
+const teamData = await retrieveTeamSummaries({ season: Number(season), columns: [metricX, metricY], maxLookback: Number(season) })//(Number(season), undefined, undefined, [metricX, metricY], Number(season));
 const points = teamData.map((t: any) => {
     return {
         team_id: t.team_id,

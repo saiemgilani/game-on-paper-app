@@ -16,9 +16,9 @@ const homeTeamId = query.get("homeTeamId") || "59";
 const allTeamSeasons = retrieveAllTeams();
 
 let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)
-let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries(Number(awaySeason), undefined, awayTeamId, [], Number(awaySeason));
+let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries({ season: Number(awaySeason), team_id: awayTeamId, maxLookback: Number(awaySeason)});
 let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
-let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries(Number(homeSeason), undefined, homeTeamId, [], Number(homeSeason));
+let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason)});
 
 const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTeamId)
 if (canDisplayMatchupView) {

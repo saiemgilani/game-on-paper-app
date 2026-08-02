@@ -625,15 +625,36 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 }
 
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
-export async function retrieveTeamSummaries(season?: number, category?: string, team_id?: string | number, columns: string[] = [], maxLookback = SDV_MAX_LOOKBACK_YEAR): Promise<SDVTeamSummary[]> {
+export interface SDVTeamSummaryRequest {
+    season?: number
+    week?: number // set to 0 for all weeks
+    category?: string
+    team_id?: string | number
+    columns?: string[]
+    fbs_class?: string
+    maxLookback?: number
+}
+export async function retrieveTeamSummaries({ season, week, fbs_class, category, team_id, columns, maxLookback }: SDVTeamSummaryRequest): Promise<SDVTeamSummary[]> {
     if (!season && !category && !team_id) {
         console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
         return [];
     }
 
     const payload: Record<string, any> = {};
+    let endpoint = "team_summaries";
     if (season) {
         payload["season"] = String(season)
+    }
+
+    if (week) {
+        if (week > 0) { // sentinel for all weeks
+            payload["week"] = String(week)
+        }
+        endpoint = "team_summaries_weekly"
+    }
+
+    if (fbs_class) {
+        payload["fbs_class"] = fbs_class
     }
 
     if (team_id) {
@@ -653,12 +674,12 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
     }
     const category_columns: string[] = metric_columns.concat(metric_columns.map(m => `${m}_rank`))
 
-    payload["select"] = (["pos_team", "team_id", "season", "conference", "division"].concat([...new Set(category_columns)])).join(",");
+    payload["select"] = (["pos_team", "team_id", "season", "conference", "division"].concat(week ? ["week"] : []).concat([...new Set(category_columns)])).join(",");
     payload["limit"] = 150;
 
     try {        
         // can't cache these because the keys are too big
-        const content: SDVSummaryResponse = await requestSDV("team_summaries", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
+        const content: SDVSummaryResponse = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         return content.data;
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
@@ -667,10 +688,10 @@ export async function retrieveTeamSummaries(season?: number, category?: string, 
             return [];
         } else if (!season) {
             return [];
-        } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < maxLookback)) {
+        } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < (maxLookback || SDV_MAX_LOOKBACK_YEAR))) {
             return [];
         } else {
-            return await retrieveTeamSummaries((season - 1), category, team_id, columns, maxLookback);
+            return await retrieveTeamSummaries({ season: (season - 1), category, week, team_id, columns, maxLookback});
         }
     }
 }

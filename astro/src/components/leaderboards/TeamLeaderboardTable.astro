@@ -15,7 +15,7 @@ const { season, category, metric } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
-let content: SDVTeamSummary[] = await retrieveTeamSummaries(season, category, undefined, [], season);
+let content: SDVTeamSummary[] = await retrieveTeamSummaries({ season, category, maxLookback: season});
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"

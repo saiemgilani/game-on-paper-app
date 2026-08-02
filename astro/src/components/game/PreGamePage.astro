@@ -52,7 +52,7 @@ try {
 
 let homeSummaries: SDVTeamSummary[] = [];
 try {
-    homeSummaries = await retrieveTeamSummaries(metricYear, undefined, Number(homeTeam.id));
+    homeSummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(homeTeam.id) });
     if (!homeSummaries) {
         homeSummaries = []
     }
@@ -63,7 +63,7 @@ try {
 
 let awaySummaries: SDVTeamSummary[] = [];
 try {
-    awaySummaries = await retrieveTeamSummaries(metricYear, undefined, Number(awayTeam.id));
+    awaySummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(awayTeam.id) });
     if (!awaySummaries) {
         awaySummaries = []
     }
