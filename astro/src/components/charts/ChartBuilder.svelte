@@ -44,23 +44,23 @@
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
-        const averageX = (points.map((t: any) => parseFloat(t.x)).reduce((a: number, b: number) => a + b)) / points.length
+        const averageX = (points.map((t: any) => parseFloat(t.x)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / points.length
         const minX = Math.min(...points.map((t: any) => t.x))
         const maxX = Math.max(...points.map((t: any) => t.x))
-        const averageY = (points.map((t: any) => parseFloat(t.y)).reduce((a: number, b: number) => a + b)) / points.length
+        const averageY = (points.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / points.length
         const minY = Math.min(...points.map((t: any) => t.y))
         const maxY = Math.max(...points.map((t: any) => t.y))
-        // console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
-        // console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
+        console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
+        console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
         const suggestedRange = {
             min: {
-                x: parseFloat(roundNumber(minX, 1, 1)) - 0.1,
-                y: parseFloat(roundNumber(minY, 1, 1)) - 0.1,
+                x: parseFloat(roundNumber(minX, 1, 1)) * 1.25,
+                y: parseFloat(roundNumber(minY, 1, 1)) * 1.25,
             },
             max: {
-                x: parseFloat(roundNumber(maxX, 1, 1)) + 0.1,
-                y: parseFloat(roundNumber(maxY, 1, 1)) + 0.1
+                x: parseFloat(roundNumber(maxX, 1, 1)) * 1.25,
+                y: parseFloat(roundNumber(maxY, 1, 1)) * 1.25
             }
         }
 
@@ -222,8 +222,8 @@
                         ticks: {
                             color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
                         },
-                        suggestedMax: suggestedRange.max.x,
-                        suggestedMin: suggestedRange.min.x
+                        max: suggestedRange.max.x,
+                        min: suggestedRange.min.x
                     },
                     y: {
                         reverse: shouldFlipYAxis,
@@ -250,8 +250,8 @@
                         ticks: {
                             color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
                         },
-                        suggestedMax: suggestedRange.max.y,
-                        suggestedMin: suggestedRange.min.y
+                        max: suggestedRange.max.y,
+                        min: suggestedRange.min.y
                     }
                 },
                 plugins: {
