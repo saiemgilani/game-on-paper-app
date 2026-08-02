@@ -1044,4 +1044,6 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
   "available_yards_pct": "Available Yards %",
   "adj_epa": "Adj EPA/Play",
   "strength_faced": "Strength Faced",
+  "EPAdropback": "EPA/Dropback",
+  "EPArush": "EPA/Rush"
 }
