@@ -5,7 +5,8 @@ import { waitForElement, cleanLocation } from "../../utils/misc";
 import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 
 const { team, teamData, showSeasonPicker } = $props();
-let season = $state(teamData[0].season)
+const maxSeason = Math.max(...(teamData.map(t => t.season)))
+let season = $state(maxSeason)
 const availableTeamSeasons = [...new Set(teamData.map((t: any) => t.season))]
 
 let offRadarChart: Chart | null = null;
