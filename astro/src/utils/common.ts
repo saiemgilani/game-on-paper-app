@@ -164,7 +164,9 @@ export enum SummaryType {
 
 export function retrieveAllTeams(): TeamIndex[] {
     try {
-        return (teamsRaw.teams as TeamIndex[]);
+        const content = teamsRaw.teams as TeamIndex[]
+        content.sort((a, b) => a.name.localeCompare(b.name));
+        return content;
     } catch (err) {
         console.info(`error when loading team index: ${err}`)
         return [];

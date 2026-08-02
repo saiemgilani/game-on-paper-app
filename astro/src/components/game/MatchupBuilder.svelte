@@ -12,7 +12,7 @@
         const oldTeamId = selectedHomeTeamId;
         selectedHomeTeamId = e.target.value;
         if (oldTeamId != selectedHomeTeamId) {
-            selectedHomeSeason = availableHomeTeamSeasons[0]
+            selectedHomeSeason = Math.max(...availableHomeTeamSeasons)
         }
     }
 
@@ -29,7 +29,7 @@
         const oldTeamId = selectedAwayTeamId;
         selectedAwayTeamId = e.target.value;
         if (oldTeamId != selectedAwayTeamId) {
-            selectedAwaySeason = availableAwayTeamSeasons[0]
+            selectedAwaySeason = Math.max(...availableAwayTeamSeasons)
         }
     }
 

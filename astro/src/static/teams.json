@@ -2,7 +2,7 @@
     "teams": [
         {
             "team_id": 2,
-            "pos_team": "Auburn",
+            "name": "Auburn",
             "seasons": [
                 2004,
                 2005,
@@ -30,7 +30,7 @@
         },
         {
             "team_id": 5,
-            "pos_team": "UAB",
+            "name": "UAB",
             "seasons": [
                 2004,
                 2005,
@@ -56,7 +56,7 @@
         },
         {
             "team_id": 6,
-            "pos_team": "South Alabama",
+            "name": "South Alabama",
             "seasons": [
                 2012,
                 2013,
@@ -76,7 +76,7 @@
         },
         {
             "team_id": 8,
-            "pos_team": "Arkansas",
+            "name": "Arkansas",
             "seasons": [
                 2004,
                 2005,
@@ -104,7 +104,7 @@
         },
         {
             "team_id": 9,
-            "pos_team": "Arizona State",
+            "name": "Arizona State",
             "seasons": [
                 2004,
                 2005,
@@ -132,7 +132,7 @@
         },
         {
             "team_id": 12,
-            "pos_team": "Arizona",
+            "name": "Arizona",
             "seasons": [
                 2004,
                 2005,
@@ -160,7 +160,7 @@
         },
         {
             "team_id": 21,
-            "pos_team": "San Diego State",
+            "name": "San Diego State",
             "seasons": [
                 2004,
                 2005,
@@ -188,7 +188,7 @@
         },
         {
             "team_id": 23,
-            "pos_team": "San Jose State",
+            "name": "San Jose State",
             "seasons": [
                 2004,
                 2005,
@@ -216,7 +216,7 @@
         },
         {
             "team_id": 24,
-            "pos_team": "Stanford",
+            "name": "Stanford",
             "seasons": [
                 2004,
                 2005,
@@ -244,7 +244,7 @@
         },
         {
             "team_id": 25,
-            "pos_team": "California",
+            "name": "California",
             "seasons": [
                 2004,
                 2005,
@@ -272,7 +272,7 @@
         },
         {
             "team_id": 26,
-            "pos_team": "UCLA",
+            "name": "UCLA",
             "seasons": [
                 2004,
                 2005,
@@ -300,7 +300,7 @@
         },
         {
             "team_id": 30,
-            "pos_team": "USC",
+            "name": "USC",
             "seasons": [
                 2004,
                 2005,
@@ -328,7 +328,7 @@
         },
         {
             "team_id": 36,
-            "pos_team": "Colorado State",
+            "name": "Colorado State",
             "seasons": [
                 2004,
                 2005,
@@ -356,7 +356,7 @@
         },
         {
             "team_id": 38,
-            "pos_team": "Colorado",
+            "name": "Colorado",
             "seasons": [
                 2004,
                 2005,
@@ -384,7 +384,7 @@
         },
         {
             "team_id": 41,
-            "pos_team": "Connecticut",
+            "name": "Connecticut",
             "seasons": [
                 2004,
                 2005,
@@ -411,21 +411,21 @@
         },
         {
             "team_id": 48,
-            "pos_team": "Delaware",
+            "name": "Delaware",
             "seasons": [
                 2025
             ]
         },
         {
             "team_id": 50,
-            "pos_team": "Florida A&M",
+            "name": "Florida A&M",
             "seasons": [
                 2004
             ]
         },
         {
             "team_id": 52,
-            "pos_team": "Florida State",
+            "name": "Florida State",
             "seasons": [
                 2004,
                 2005,
@@ -453,7 +453,7 @@
         },
         {
             "team_id": 55,
-            "pos_team": "Jacksonville State",
+            "name": "Jacksonville State",
             "seasons": [
                 2023,
                 2024,
@@ -462,7 +462,7 @@
         },
         {
             "team_id": 57,
-            "pos_team": "Florida",
+            "name": "Florida",
             "seasons": [
                 2004,
                 2005,
@@ -490,7 +490,7 @@
         },
         {
             "team_id": 58,
-            "pos_team": "South Florida",
+            "name": "South Florida",
             "seasons": [
                 2004,
                 2005,
@@ -518,7 +518,7 @@
         },
         {
             "team_id": 59,
-            "pos_team": "Georgia Tech",
+            "name": "Georgia Tech",
             "seasons": [
                 2004,
                 2005,
@@ -546,7 +546,7 @@
         },
         {
             "team_id": 61,
-            "pos_team": "Georgia",
+            "name": "Georgia",
             "seasons": [
                 2004,
                 2005,
@@ -574,7 +574,7 @@
         },
         {
             "team_id": 62,
-            "pos_team":"Hawai'i",
+            "name":"Hawai'i",
             "seasons": [
                 2004,
                 2005,
@@ -602,7 +602,7 @@
         },
         {
             "team_id": 66,
-            "pos_team": "Iowa State",
+            "name": "Iowa State",
             "seasons": [
                 2004,
                 2005,
@@ -630,7 +630,7 @@
         },
         {
             "team_id": 68,
-            "pos_team": "Boise State",
+            "name": "Boise State",
             "seasons": [
                 2004,
                 2005,
@@ -658,7 +658,7 @@
         },
         {
             "team_id": 70,
-            "pos_team": "Idaho",
+            "name": "Idaho",
             "seasons": [
                 2004,
                 2005,
@@ -678,7 +678,7 @@
         },
         {
             "team_id": 77,
-            "pos_team": "Northwestern",
+            "name": "Northwestern",
             "seasons": [
                 2004,
                 2005,
@@ -706,7 +706,7 @@
         },
         {
             "team_id": 84,
-            "pos_team": "Indiana",
+            "name": "Indiana",
             "seasons": [
                 2004,
                 2005,
@@ -734,7 +734,7 @@
         },
         {
             "team_id": 87,
-            "pos_team": "Notre Dame",
+            "name": "Notre Dame",
             "seasons": [
                 2004,
                 2005,
@@ -762,7 +762,7 @@
         },
         {
             "team_id": 96,
-            "pos_team": "Kentucky",
+            "name": "Kentucky",
             "seasons": [
                 2004,
                 2005,
@@ -790,7 +790,7 @@
         },
         {
             "team_id": 97,
-            "pos_team": "Louisville",
+            "name": "Louisville",
             "seasons": [
                 2004,
                 2005,
@@ -818,7 +818,7 @@
         },
         {
             "team_id": 98,
-            "pos_team": "Western Kentucky",
+            "name": "Western Kentucky",
             "seasons": [
                 2007,
                 2008,
@@ -843,7 +843,7 @@
         },
         {
             "team_id": 99,
-            "pos_team": "LSU",
+            "name": "LSU",
             "seasons": [
                 2004,
                 2005,
@@ -871,7 +871,7 @@
         },
         {
             "team_id": 103,
-            "pos_team": "Boston College",
+            "name": "Boston College",
             "seasons": [
                 2004,
                 2005,
@@ -899,7 +899,7 @@
         },
         {
             "team_id": 113,
-            "pos_team": "Massachusetts",
+            "name": "Massachusetts",
             "seasons": [
                 2012,
                 2013,
@@ -919,7 +919,7 @@
         },
         {
             "team_id": 120,
-            "pos_team": "Maryland",
+            "name": "Maryland",
             "seasons": [
                 2004,
                 2005,
@@ -947,7 +947,7 @@
         },
         {
             "team_id": 127,
-            "pos_team": "Michigan State",
+            "name": "Michigan State",
             "seasons": [
                 2004,
                 2005,
@@ -975,7 +975,7 @@
         },
         {
             "team_id": 130,
-            "pos_team": "Michigan",
+            "name": "Michigan",
             "seasons": [
                 2004,
                 2005,
@@ -1003,7 +1003,7 @@
         },
         {
             "team_id": 135,
-            "pos_team": "Minnesota",
+            "name": "Minnesota",
             "seasons": [
                 2004,
                 2005,
@@ -1031,7 +1031,7 @@
         },
         {
             "team_id": 142,
-            "pos_team": "Missouri",
+            "name": "Missouri",
             "seasons": [
                 2004,
                 2005,
@@ -1059,7 +1059,7 @@
         },
         {
             "team_id": 145,
-            "pos_team": "Ole Miss",
+            "name": "Ole Miss",
             "seasons": [
                 2004,
                 2005,
@@ -1087,7 +1087,7 @@
         },
         {
             "team_id": 150,
-            "pos_team": "Duke",
+            "name": "Duke",
             "seasons": [
                 2004,
                 2005,
@@ -1115,7 +1115,7 @@
         },
         {
             "team_id": 151,
-            "pos_team": "East Carolina",
+            "name": "East Carolina",
             "seasons": [
                 2004,
                 2005,
@@ -1143,7 +1143,7 @@
         },
         {
             "team_id": 152,
-            "pos_team": "NC State",
+            "name": "NC State",
             "seasons": [
                 2004,
                 2005,
@@ -1171,7 +1171,7 @@
         },
         {
             "team_id": 153,
-            "pos_team": "North Carolina",
+            "name": "North Carolina",
             "seasons": [
                 2004,
                 2005,
@@ -1199,7 +1199,7 @@
         },
         {
             "team_id": 154,
-            "pos_team": "Wake Forest",
+            "name": "Wake Forest",
             "seasons": [
                 2004,
                 2005,
@@ -1227,7 +1227,7 @@
         },
         {
             "team_id": 158,
-            "pos_team": "Nebraska",
+            "name": "Nebraska",
             "seasons": [
                 2004,
                 2005,
@@ -1255,7 +1255,7 @@
         },
         {
             "team_id": 164,
-            "pos_team": "Rutgers",
+            "name": "Rutgers",
             "seasons": [
                 2004,
                 2005,
@@ -1283,7 +1283,7 @@
         },
         {
             "team_id": 166,
-            "pos_team": "New Mexico State",
+            "name": "New Mexico State",
             "seasons": [
                 2004,
                 2005,
@@ -1310,7 +1310,7 @@
         },
         {
             "team_id": 167,
-            "pos_team": "New Mexico",
+            "name": "New Mexico",
             "seasons": [
                 2004,
                 2005,
@@ -1338,7 +1338,7 @@
         },
         {
             "team_id": 183,
-            "pos_team": "Syracuse",
+            "name": "Syracuse",
             "seasons": [
                 2004,
                 2005,
@@ -1366,7 +1366,7 @@
         },
         {
             "team_id": 189,
-            "pos_team": "Bowling Green",
+            "name": "Bowling Green",
             "seasons": [
                 2004,
                 2005,
@@ -1394,7 +1394,7 @@
         },
         {
             "team_id": 193,
-            "pos_team": "Miami (OH)",
+            "name": "Miami (OH)",
             "seasons": [
                 2004,
                 2005,
@@ -1422,7 +1422,7 @@
         },
         {
             "team_id": 194,
-            "pos_team": "Ohio State",
+            "name": "Ohio State",
             "seasons": [
                 2004,
                 2005,
@@ -1450,7 +1450,7 @@
         },
         {
             "team_id": 195,
-            "pos_team": "Ohio",
+            "name": "Ohio",
             "seasons": [
                 2004,
                 2005,
@@ -1478,7 +1478,7 @@
         },
         {
             "team_id": 197,
-            "pos_team": "Oklahoma State",
+            "name": "Oklahoma State",
             "seasons": [
                 2004,
                 2005,
@@ -1506,7 +1506,7 @@
         },
         {
             "team_id": 201,
-            "pos_team": "Oklahoma",
+            "name": "Oklahoma",
             "seasons": [
                 2004,
                 2005,
@@ -1534,7 +1534,7 @@
         },
         {
             "team_id": 202,
-            "pos_team": "Tulsa",
+            "name": "Tulsa",
             "seasons": [
                 2004,
                 2005,
@@ -1562,7 +1562,7 @@
         },
         {
             "team_id": 204,
-            "pos_team": "Oregon State",
+            "name": "Oregon State",
             "seasons": [
                 2004,
                 2005,
@@ -1590,7 +1590,7 @@
         },
         {
             "team_id": 213,
-            "pos_team": "Penn State",
+            "name": "Penn State",
             "seasons": [
                 2004,
                 2005,
@@ -1618,7 +1618,7 @@
         },
         {
             "team_id": 218,
-            "pos_team": "Temple",
+            "name": "Temple",
             "seasons": [
                 2004,
                 2005,
@@ -1646,7 +1646,7 @@
         },
         {
             "team_id": 221,
-            "pos_team": "Pittsburgh",
+            "name": "Pittsburgh",
             "seasons": [
                 2004,
                 2005,
@@ -1674,7 +1674,7 @@
         },
         {
             "team_id": 228,
-            "pos_team": "Clemson",
+            "name": "Clemson",
             "seasons": [
                 2004,
                 2005,
@@ -1702,7 +1702,7 @@
         },
         {
             "team_id": 235,
-            "pos_team": "Memphis",
+            "name": "Memphis",
             "seasons": [
                 2004,
                 2005,
@@ -1730,7 +1730,7 @@
         },
         {
             "team_id": 238,
-            "pos_team": "Vanderbilt",
+            "name": "Vanderbilt",
             "seasons": [
                 2004,
                 2005,
@@ -1758,7 +1758,7 @@
         },
         {
             "team_id": 239,
-            "pos_team": "Baylor",
+            "name": "Baylor",
             "seasons": [
                 2004,
                 2005,
@@ -1786,7 +1786,7 @@
         },
         {
             "team_id": 242,
-            "pos_team": "Rice",
+            "name": "Rice",
             "seasons": [
                 2004,
                 2005,
@@ -1814,7 +1814,7 @@
         },
         {
             "team_id": 245,
-            "pos_team": "Texas A&M",
+            "name": "Texas A&M",
             "seasons": [
                 2004,
                 2005,
@@ -1842,7 +1842,7 @@
         },
         {
             "team_id": 248,
-            "pos_team": "Houston",
+            "name": "Houston",
             "seasons": [
                 2004,
                 2005,
@@ -1870,7 +1870,7 @@
         },
         {
             "team_id": 249,
-            "pos_team": "North Texas",
+            "name": "North Texas",
             "seasons": [
                 2004,
                 2005,
@@ -1898,7 +1898,7 @@
         },
         {
             "team_id": 251,
-            "pos_team": "Texas",
+            "name": "Texas",
             "seasons": [
                 2004,
                 2005,
@@ -1926,7 +1926,7 @@
         },
         {
             "team_id": 252,
-            "pos_team": "BYU",
+            "name": "BYU",
             "seasons": [
                 2004,
                 2005,
@@ -1954,7 +1954,7 @@
         },
         {
             "team_id": 254,
-            "pos_team": "Utah",
+            "name": "Utah",
             "seasons": [
                 2004,
                 2005,
@@ -1982,7 +1982,7 @@
         },
         {
             "team_id": 256,
-            "pos_team": "James Madison",
+            "name": "James Madison",
             "seasons": [
                 2022,
                 2023,
@@ -1992,7 +1992,7 @@
         },
         {
             "team_id": 258,
-            "pos_team": "Virginia",
+            "name": "Virginia",
             "seasons": [
                 2004,
                 2005,
@@ -2020,7 +2020,7 @@
         },
         {
             "team_id": 259,
-            "pos_team": "Virginia Tech",
+            "name": "Virginia Tech",
             "seasons": [
                 2004,
                 2005,
@@ -2048,7 +2048,7 @@
         },
         {
             "team_id": 264,
-            "pos_team": "Washington",
+            "name": "Washington",
             "seasons": [
                 2004,
                 2005,
@@ -2076,7 +2076,7 @@
         },
         {
             "team_id": 265,
-            "pos_team": "Washington State",
+            "name": "Washington State",
             "seasons": [
                 2004,
                 2005,
@@ -2104,7 +2104,7 @@
         },
         {
             "team_id": 275,
-            "pos_team": "Wisconsin",
+            "name": "Wisconsin",
             "seasons": [
                 2004,
                 2005,
@@ -2132,7 +2132,7 @@
         },
         {
             "team_id": 276,
-            "pos_team": "Marshall",
+            "name": "Marshall",
             "seasons": [
                 2004,
                 2005,
@@ -2160,7 +2160,7 @@
         },
         {
             "team_id": 277,
-            "pos_team": "West Virginia",
+            "name": "West Virginia",
             "seasons": [
                 2004,
                 2005,
@@ -2188,7 +2188,7 @@
         },
         {
             "team_id": 278,
-            "pos_team": "Fresno State",
+            "name": "Fresno State",
             "seasons": [
                 2004,
                 2005,
@@ -2216,7 +2216,7 @@
         },
         {
             "team_id": 290,
-            "pos_team": "Georgia Southern",
+            "name": "Georgia Southern",
             "seasons": [
                 2014,
                 2015,
@@ -2234,7 +2234,7 @@
         },
         {
             "team_id": 295,
-            "pos_team": "Old Dominion",
+            "name": "Old Dominion",
             "seasons": [
                 2014,
                 2015,
@@ -2251,7 +2251,7 @@
         },
         {
             "team_id": 309,
-            "pos_team": "Louisiana",
+            "name": "Louisiana",
             "seasons": [
                 2004,
                 2005,
@@ -2279,7 +2279,7 @@
         },
         {
             "team_id": 324,
-            "pos_team": "Coastal Carolina",
+            "name": "Coastal Carolina",
             "seasons": [
                 2017,
                 2018,
@@ -2294,7 +2294,7 @@
         },
         {
             "team_id": 326,
-            "pos_team": "Texas State",
+            "name": "Texas State",
             "seasons": [
                 2012,
                 2013,
@@ -2314,7 +2314,7 @@
         },
         {
             "team_id": 328,
-            "pos_team": "Utah State",
+            "name": "Utah State",
             "seasons": [
                 2004,
                 2005,
@@ -2342,7 +2342,7 @@
         },
         {
             "team_id": 333,
-            "pos_team": "Alabama",
+            "name": "Alabama",
             "seasons": [
                 2004,
                 2005,
@@ -2370,7 +2370,7 @@
         },
         {
             "team_id": 338,
-            "pos_team": "Kennesaw State",
+            "name": "Kennesaw State",
             "seasons": [
                 2024,
                 2025
@@ -2378,7 +2378,7 @@
         },
         {
             "team_id": 344,
-            "pos_team": "Mississippi State",
+            "name": "Mississippi State",
             "seasons": [
                 2004,
                 2005,
@@ -2406,7 +2406,7 @@
         },
         {
             "team_id": 349,
-            "pos_team": "Army",
+            "name": "Army",
             "seasons": [
                 2004,
                 2005,
@@ -2434,7 +2434,7 @@
         },
         {
             "team_id": 356,
-            "pos_team": "Illinois",
+            "name": "Illinois",
             "seasons": [
                 2004,
                 2005,
@@ -2462,7 +2462,7 @@
         },
         {
             "team_id": 2005,
-            "pos_team": "Air Force",
+            "name": "Air Force",
             "seasons": [
                 2004,
                 2005,
@@ -2490,7 +2490,7 @@
         },
         {
             "team_id": 2006,
-            "pos_team": "Akron",
+            "name": "Akron",
             "seasons": [
                 2004,
                 2005,
@@ -2518,7 +2518,7 @@
         },
         {
             "team_id": 2026,
-            "pos_team": "Appalachian State",
+            "name": "Appalachian State",
             "seasons": [
                 2014,
                 2015,
@@ -2536,7 +2536,7 @@
         },
         {
             "team_id": 2032,
-            "pos_team": "Arkansas State",
+            "name": "Arkansas State",
             "seasons": [
                 2004,
                 2005,
@@ -2564,7 +2564,7 @@
         },
         {
             "team_id": 2050,
-            "pos_team": "Ball State",
+            "name": "Ball State",
             "seasons": [
                 2004,
                 2005,
@@ -2592,7 +2592,7 @@
         },
         {
             "team_id": 2084,
-            "pos_team": "Buffalo",
+            "name": "Buffalo",
             "seasons": [
                 2004,
                 2005,
@@ -2620,7 +2620,7 @@
         },
         {
             "team_id": 2116,
-            "pos_team": "UCF",
+            "name": "UCF",
             "seasons": [
                 2004,
                 2005,
@@ -2648,7 +2648,7 @@
         },
         {
             "team_id": 2117,
-            "pos_team": "Central Michigan",
+            "name": "Central Michigan",
             "seasons": [
                 2004,
                 2005,
@@ -2676,7 +2676,7 @@
         },
         {
             "team_id": 2132,
-            "pos_team": "Cincinnati",
+            "name": "Cincinnati",
             "seasons": [
                 2004,
                 2005,
@@ -2704,7 +2704,7 @@
         },
         {
             "team_id": 2199,
-            "pos_team": "Eastern Michigan",
+            "name": "Eastern Michigan",
             "seasons": [
                 2004,
                 2005,
@@ -2732,7 +2732,7 @@
         },
         {
             "team_id": 2226,
-            "pos_team": "Florida Atlantic",
+            "name": "Florida Atlantic",
             "seasons": [
                 2005,
                 2006,
@@ -2759,7 +2759,7 @@
         },
         {
             "team_id": 2229,
-            "pos_team": "Florida Intl",
+            "name": "Florida Intl",
             "seasons": [
                 2005,
                 2006,
@@ -2786,7 +2786,7 @@
         },
         {
             "team_id": 2247,
-            "pos_team": "Georgia State",
+            "name": "Georgia State",
             "seasons": [
                 2013,
                 2014,
@@ -2805,7 +2805,7 @@
         },
         {
             "team_id": 2294,
-            "pos_team": "Iowa",
+            "name": "Iowa",
             "seasons": [
                 2004,
                 2005,
@@ -2833,7 +2833,7 @@
         },
         {
             "team_id": 2305,
-            "pos_team": "Kansas",
+            "name": "Kansas",
             "seasons": [
                 2004,
                 2005,
@@ -2861,7 +2861,7 @@
         },
         {
             "team_id": 2306,
-            "pos_team": "Kansas State",
+            "name": "Kansas State",
             "seasons": [
                 2004,
                 2005,
@@ -2889,7 +2889,7 @@
         },
         {
             "team_id": 2309,
-            "pos_team": "Kent State",
+            "name": "Kent State",
             "seasons": [
                 2004,
                 2005,
@@ -2917,7 +2917,7 @@
         },
         {
             "team_id": 2335,
-            "pos_team": "Liberty",
+            "name": "Liberty",
             "seasons": [
                 2018,
                 2019,
@@ -2931,7 +2931,7 @@
         },
         {
             "team_id": 2348,
-            "pos_team": "Louisiana Tech",
+            "name": "Louisiana Tech",
             "seasons": [
                 2004,
                 2005,
@@ -2959,7 +2959,7 @@
         },
         {
             "team_id": 2390,
-            "pos_team": "Miami",
+            "name": "Miami",
             "seasons": [
                 2004,
                 2005,
@@ -2987,7 +2987,7 @@
         },
         {
             "team_id": 2393,
-            "pos_team": "Middle Tennessee",
+            "name": "Middle Tennessee",
             "seasons": [
                 2004,
                 2005,
@@ -3015,7 +3015,7 @@
         },
         {
             "team_id": 2426,
-            "pos_team": "Navy",
+            "name": "Navy",
             "seasons": [
                 2004,
                 2005,
@@ -3043,7 +3043,7 @@
         },
         {
             "team_id": 2429,
-            "pos_team": "Charlotte",
+            "name": "Charlotte",
             "seasons": [
                 2015,
                 2016,
@@ -3060,7 +3060,7 @@
         },
         {
             "team_id": 2433,
-            "pos_team": "Louisiana Monroe",
+            "name": "Louisiana Monroe",
             "seasons": [
                 2004,
                 2005,
@@ -3088,7 +3088,7 @@
         },
         {
             "team_id": 2439,
-            "pos_team": "UNLV",
+            "name": "UNLV",
             "seasons": [
                 2004,
                 2005,
@@ -3116,7 +3116,7 @@
         },
         {
             "team_id": 2440,
-            "pos_team": "Nevada",
+            "name": "Nevada",
             "seasons": [
                 2004,
                 2005,
@@ -3144,7 +3144,7 @@
         },
         {
             "team_id": 2459,
-            "pos_team": "Northern Illinois",
+            "name": "Northern Illinois",
             "seasons": [
                 2004,
                 2005,
@@ -3172,7 +3172,7 @@
         },
         {
             "team_id": 2483,
-            "pos_team": "Oregon",
+            "name": "Oregon",
             "seasons": [
                 2004,
                 2005,
@@ -3200,7 +3200,7 @@
         },
         {
             "team_id": 2509,
-            "pos_team": "Purdue",
+            "name": "Purdue",
             "seasons": [
                 2004,
                 2005,
@@ -3228,7 +3228,7 @@
         },
         {
             "team_id": 2534,
-            "pos_team": "Sam Houston",
+            "name": "Sam Houston",
             "seasons": [
                 2023,
                 2024,
@@ -3237,7 +3237,7 @@
         },
         {
             "team_id": 2567,
-            "pos_team": "SMU",
+            "name": "SMU",
             "seasons": [
                 2004,
                 2005,
@@ -3265,7 +3265,7 @@
         },
         {
             "team_id": 2572,
-            "pos_team": "Southern Miss",
+            "name": "Southern Miss",
             "seasons": [
                 2004,
                 2005,
@@ -3293,7 +3293,7 @@
         },
         {
             "team_id": 2579,
-            "pos_team": "South Carolina",
+            "name": "South Carolina",
             "seasons": [
                 2004,
                 2005,
@@ -3321,14 +3321,14 @@
         },
         {
             "team_id": 2623,
-            "pos_team": "Missouri State",
+            "name": "Missouri State",
             "seasons": [
                 2025
             ]
         },
         {
             "team_id": 2628,
-            "pos_team": "TCU",
+            "name": "TCU",
             "seasons": [
                 2004,
                 2005,
@@ -3356,7 +3356,7 @@
         },
         {
             "team_id": 2633,
-            "pos_team": "Tennessee",
+            "name": "Tennessee",
             "seasons": [
                 2004,
                 2005,
@@ -3384,7 +3384,7 @@
         },
         {
             "team_id": 2636,
-            "pos_team": "UT San Antonio",
+            "name": "UT San Antonio",
             "seasons": [
                 2012,
                 2013,
@@ -3404,7 +3404,7 @@
         },
         {
             "team_id": 2638,
-            "pos_team": "UTEP",
+            "name": "UTEP",
             "seasons": [
                 2004,
                 2005,
@@ -3432,7 +3432,7 @@
         },
         {
             "team_id": 2641,
-            "pos_team": "Texas Tech",
+            "name": "Texas Tech",
             "seasons": [
                 2004,
                 2005,
@@ -3460,7 +3460,7 @@
         },
         {
             "team_id": 2649,
-            "pos_team": "Toledo",
+            "name": "Toledo",
             "seasons": [
                 2004,
                 2005,
@@ -3488,7 +3488,7 @@
         },
         {
             "team_id": 2653,
-            "pos_team": "Troy",
+            "name": "Troy",
             "seasons": [
                 2004,
                 2005,
@@ -3516,7 +3516,7 @@
         },
         {
             "team_id": 2655,
-            "pos_team": "Tulane",
+            "name": "Tulane",
             "seasons": [
                 2004,
                 2005,
@@ -3544,7 +3544,7 @@
         },
         {
             "team_id": 2711,
-            "pos_team": "Western Michigan",
+            "name": "Western Michigan",
             "seasons": [
                 2004,
                 2005,
@@ -3572,7 +3572,7 @@
         },
         {
             "team_id": 2751,
-            "pos_team": "Wyoming",
+            "name": "Wyoming",
             "seasons": [
                 2004,
                 2005,
