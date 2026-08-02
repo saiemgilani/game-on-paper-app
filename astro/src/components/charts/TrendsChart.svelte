@@ -33,10 +33,10 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
             distributions[p["season"]].median = p.value
         } else if (p.pctile == 0.75) {
             // console.log(`adding q3 to ${p["season"]}`)
-            distributions[p.season].q3 = p.value
+            distributions[p["season"]].q3 = p.value
         } else if (p.pctile >= 0.99) {
             // console.log(`adding max to ${p["season"]}`)
-            distributions[p.season].max = p.value
+            distributions[p["season"]].max = p.value
         }
     }
 
@@ -181,6 +181,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
                     if (!dist) {
                         return null;
                     }
+
                     return {
                         min: (dist.min || 0) * (isRateMetric ? 100.0 : 1.0),
                         q1: (dist.q1 || 0) * (isRateMetric ? 100.0 : 1.0),
@@ -188,6 +189,8 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
                         mean: (dist.median || 0) * (isRateMetric ? 100.0 : 1.0),
                         q3: (dist.q3 || 0) * (isRateMetric ? 100.0 : 1.0),
                         max: (dist.max || 0) * (isRateMetric ? 100.0 : 1.0),
+                        whiskerMax: (dist.max || 0),
+                        whiskerMin: (dist.min || 0)
                     }
                 }),
             }
