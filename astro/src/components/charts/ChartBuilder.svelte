@@ -2,7 +2,7 @@
     import Chart from 'chart.js/auto';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR } from '../../utils/misc'
     
     const { season, x, y, points } = $props();
     let selectedSeason = season;
@@ -55,12 +55,12 @@
 
         const suggestedRange = {
             min: {
-                x: parseFloat(roundNumber(minX, 1, 1)) * 1.25,
-                y: parseFloat(roundNumber(minY, 1, 1)) * 1.25,
+                x: minX * 1.25,
+                y: minY * 1.25,
             },
             max: {
-                x: parseFloat(roundNumber(maxX, 1, 1)) * 1.25,
-                y: parseFloat(roundNumber(maxY, 1, 1)) * 1.25
+                x: maxX * 1.25,
+                y: maxY * 1.25
             }
         }
 
@@ -94,46 +94,6 @@
                         showLine: false,
                         fill: false,
                     },
-                    {
-                        type: "line",
-                        label: 'Avg X',
-                        data: [
-                            {
-                                x: averageX,
-                                y: suggestedRange.min.y
-                            },
-                            {
-                                x: averageX,
-                                y: suggestedRange.max.y
-                            }
-                        ],
-                        borderDash: [5, 15],
-                        borderColor: "red",
-                        pointBorderColor: "rgba(0,0,0,0)",
-                        pointBackgroundColor: "rgba(0,0,0,0)",
-                        showLine: true,
-                        // clip: true
-                    },
-                    {
-                        type: "line",
-                        label: 'Avg Y',
-                        data: [
-                            {
-                                x: suggestedRange.min.x,
-                                y: averageY,
-                            },
-                            {
-                                x: suggestedRange.max.x,
-                                y: averageY,
-                            }
-                        ],
-                        borderDash: [5, 15],
-                        borderColor: "red",
-                        pointBorderColor: "rgba(0,0,0,0)",
-                        pointBackgroundColor: "rgba(0,0,0,0)",
-                        showLine: true,
-                        // clip: true
-                    }
                 ]
             },
             plugins: [{
@@ -192,6 +152,33 @@
                         }
                     }
                 },
+                afterDraw: (chart) => {
+                    const yValue = chart.scales.y.getPixelForValue(averageY);
+                    const xValue = chart.scales.x.getPixelForValue(averageX);
+
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(chart.chartArea.left, yValue);
+                    ctx.lineTo(chart.chartArea.right, yValue);
+                    ctx.strokeStyle = STANDARD_THEME_COLOR;
+                    ctx.globalAlpha = 0.75;
+                    ctx.setLineDash([5, 15]);
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(xValue, chart.chartArea.top);
+                    ctx.lineTo(xValue, chart.chartArea.bottom);
+                    ctx.strokeStyle = STANDARD_THEME_COLOR;
+                    ctx.globalAlpha = 0.75;
+                    ctx.setLineDash([5, 15]);
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                }
             }],
             options: {
                 responsive: true,
@@ -221,8 +208,6 @@
                         ticks: {
                             color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
                         },
-                        max: suggestedRange.max.x,
-                        min: suggestedRange.min.x
                     },
                     y: {
                         reverse: shouldFlipYAxis,
@@ -249,8 +234,6 @@
                         ticks: {
                             color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
                         },
-                        max: suggestedRange.max.y,
-                        min: suggestedRange.min.y
                     }
                 },
                 plugins: {
