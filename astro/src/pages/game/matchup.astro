@@ -6,6 +6,8 @@ import { retrieveTeamSeasonInformation } from "../../resources/espn";
 import { retrieveTeamSummaries } from "../../resources/sdv";
 import { retrieveAllTeams } from "../../utils/common";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
+import { isTeamFavorite } from "../../utils/misc";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
 
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
@@ -13,7 +15,17 @@ const awayTeamId = query.get("awayTeamId") || "52";
 const homeSeason = query.get("homeSeason") || "2025";
 const homeTeamId = query.get("homeTeamId") || "59";
 
-const allTeamSeasons = retrieveAllTeams();
+let allTeamSeasons = retrieveAllTeams();
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+allTeamSeasons.sort((a, b) => {
+    if (isTeamFavorite(favorites, a.team_id) && !isTeamFavorite(favorites, b.team_id)) {
+        return -1;
+    } else if (!isTeamFavorite(favorites, a.team_id) && isTeamFavorite(favorites, b.team_id)) {
+        return 1;
+    } else {
+        return a.name.localeCompare(b.name)
+    }
+})
 
 let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)
 let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries({ season: Number(awaySeason), team_id: awayTeamId, maxLookback: Number(awaySeason)});
@@ -24,7 +36,7 @@ const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTea
 if (canDisplayMatchupView) {
     Astro.cache.set({
         maxAge: 60 * 60 * 24, // one day
-        tags: ['matchup'],
+        tags: ['matchup', "favorites-enabled"],
     })
 } else {
     Astro.cache.set(false);

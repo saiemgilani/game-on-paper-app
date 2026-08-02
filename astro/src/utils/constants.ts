@@ -1046,3 +1046,5 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
   "EPAdropback": "EPA/Dropback",
   "EPArush": "EPA/Rush"
 }
+
+export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };

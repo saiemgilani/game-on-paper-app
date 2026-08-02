@@ -25,7 +25,7 @@ try {
         Astro.cache.set({
             maxAge: 60 * 60 * 24,
             swr: 60 * 10,
-            tags: ['game-completed'],
+            tags: ['game-completed', "favorites-enabled"],
         });
     } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneWeek) {
         // cache one hour for scheduled games within 24 hours
@@ -39,14 +39,14 @@ try {
         Astro.cache.set({
             maxAge: 60 * 60 * 24,
             swr: 60 * 10,
-            tags: ['game-scheduled-future'],
+            tags: ['game-scheduled-future', "favorites-enabled"],
         });
     } else {
         // cache two minutes for live games
         Astro.cache.set({
             maxAge: 60 * 2,
             swr: 60,
-            tags: ['game-scheduled'],
+            tags: ['game-scheduled', "favorites-enabled"],
         });
     }
 } catch (e) {

@@ -3,7 +3,7 @@ import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import { isChampionshipEvent } from '../../utils/common';
-import { cleanLocation } from '../../utils/misc';
+import { cleanLocation, isEventFavorite } from '../../utils/misc';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';
@@ -21,7 +21,7 @@ import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import { retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
-import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import Footer from '../Footer.astro';
 
 interface Props {
@@ -46,6 +46,9 @@ const awayTeam = awayComp.team;
 const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = game.header.competitions[0].status;
+
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const isFavorite = isEventFavorite(favorites, game.header.competitions[0])
 
 let title = "";
 let subtitle = "";
@@ -118,6 +121,7 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         <link href="/assets/css/dark-game.css" rel="stylesheet">
         <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
         { (isChampEvent) && (<link href="/assets/css/championship.css" rel="stylesheet" />) }
+        { (isFavorite) && (<link href="/assets/css/favorite.css" rel="stylesheet" />) }
 
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">

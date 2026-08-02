@@ -1,3 +1,4 @@
+import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam } from "../resources/espn";
 import { MEME_LIST, SDV_BASE_METRIC_TITLES } from "./constants";
 
 export type RGBColor = { r: number, g: number, b: number};
@@ -521,4 +522,34 @@ export function generateSubCategoryForMetric(metric: string): string {
     }
 
     return "Other"
+}
+
+export function isEventFavorite(favorites: { teams?: (string | number)[], games?: (string | number)[] }, g: ESPNScheduleEvent | ESPNCompetition): boolean {
+    if ((favorites.games || []).includes(g.id)) {
+        return true;
+    }
+
+    const ids = Object.keys(g).includes("competitions") ? (g as ESPNScheduleEvent).competitions.flatMap(c => c.competitors.map(p => p.id)) : (g as ESPNCompetition).competitors.map(p => p.id)
+    const idSet = new Set(ids)
+    if (idSet.intersection(new Set((favorites.teams || []))).size > 0) {
+        return true
+    }
+    
+    return false
+}
+
+export function isTeamFavorite(favorites?: { teams?: (string | number)[], games?: (string | number)[] }, tId?: string | number): boolean {
+    if (!favorites) {
+        return false;
+    }
+
+    if (!tId) {
+        return false;
+    }
+
+    if ((favorites.teams || []).includes(tId)) {
+        return true;
+    }
+    
+    return false
 }

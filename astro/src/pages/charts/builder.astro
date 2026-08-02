@@ -4,8 +4,8 @@ import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrieveTeamSummaries } from '../../resources/sdv';
 import DarkModeLogos from './../../components/DarkModeLogos.astro';
-import { LAST_YEAR, CURRENT_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from '../../utils/constants';
-import { cleanField, formatNumberForMetric, generateColorRampValue, generateTeamMetricTitle, shouldInvertSortForMetric } from '../../utils/misc';
+import { LAST_YEAR, CURRENT_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
+import { cleanField, formatNumberForMetric, generateColorRampValue, generateTeamMetricTitle, isTeamFavorite, shouldInvertSortForMetric, STANDARD_THEME_COLOR } from '../../utils/misc';
 
 const query = Astro.url.searchParams;
 const season = query.get("season") || `${LAST_YEAR}`;
@@ -43,11 +43,15 @@ const flipArrow = shouldInvertSortForMetric(metricX.includes("_def") ? "defensiv
 if (points.length > 0) {
     Astro.cache.set({
         maxAge: 60 * 60 * 24, // one day
-        tags: ['chart'],
+        tags: ['chart', "favorites-enabled"],
     })
 } else {
     Astro.cache.set(false);
 }
+
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const favoriteColor = `background: ${STANDARD_THEME_COLOR} !important; color: white !important;`
+const favoriteTextColor = `color: white !important;text-decoration-color: white !important;`
 ---
 
 <GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
@@ -67,9 +71,9 @@ if (points.length > 0) {
                 <tbody>
                     {
                         points.sort((a: any, b: any) => flipArrow ? a.x - b.x : b.x - a.x).map((p: any, index) => (
-                            <tr>
+                            <tr style={isTeamFavorite(favorites, p.team_id) ? favoriteColor : null}>
                                 <td class="text-right" colspan="1">{index + 1}</td>
-                                <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
+                                <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong style={isTeamFavorite(favorites, p.team_id) ? favoriteTextColor : null}>{cleanField(p, "pos_team")}</strong></a></td>
                                 <td class={`text-center ${generateColorRampValue(parseFloat(p.x_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricX, p.x)}</td>
                                 <td class={`text-center ${generateColorRampValue(parseFloat(p.y_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(metricY, p.y)}</td>
                             </tr>

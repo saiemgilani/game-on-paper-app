@@ -1,5 +1,7 @@
 ---
 import { getCurrentScoreboard, getRemoteGames, type ESPNScheduleEvent } from "../../resources/espn";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import { isEventFavorite } from "../../utils/misc";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
@@ -30,8 +32,14 @@ if (isScoreboard) {
     games = await getRemoteGames(season, seasontype, week, group);
 }
 
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+
 games.sort((a, b) => {
-    if (a.status?.type.name.includes("IN_PROGRESS") && !b.status?.type.name.includes("IN_PROGRESS")) {
+    if (isEventFavorite(favorites, a) && !isEventFavorite(favorites, b)) {
+        return -1;
+    } else if (!isEventFavorite(favorites, a) && isEventFavorite(favorites, b)) {
+        return 1;
+    } else if (a.status?.type.name.includes("IN_PROGRESS") && !b.status?.type.name.includes("IN_PROGRESS")) {
         return -1;
     } else if (b.status?.type.name.includes("IN_PROGRESS") && !a.status?.type.name.includes("IN_PROGRESS")) {
         return 1;

@@ -2433,9 +2433,7 @@
     ::placeholder {
         opacity: 0.5 !important;
     }
-    a[href="https://coinmarketcap.com/"] > svg[width="94"][height="16"] > path {
-        fill: var(--darkreader-neutral-text) !important;
-    }
+
     #edge-translate-panel-body {
         color: var(--darkreader-neutral-text) !important;
     }
@@ -2473,12 +2471,23 @@
     .btn-championship {
         color: white !important; 
         background-color: #b3a369 !important;/* #eeb211*/
-
     }
 
     .btn-outline-championship {
         border-color: #b3a369 !important; /* #eeb211*/
         color: #b3a369 !important; /* #eeb211*/
+    }
+
+    .btn-outline-championship::selection {
+        background-color: #b3a369 !important;
+        border-color:  #b3a369 !important;
+        color: #e8e6e3 !important;
+    }
+
+    .btn-outline-championship:hover {
+        background-color: #b3a369 !important;
+        border-color: #b3a369 !important;
+        color: #e8e6e3 !important;
     }
 
     .outline-championship {
@@ -2487,5 +2496,35 @@
 
     .text-championship {
         color: #b3a369 !important; /* #eeb211*/
+    }
+
+    .btn-favorite {
+        color: white !important; 
+        background-color: rgb(35, 148, 253) !important;/* #eeb211*/
+    }
+
+    .btn-outline-favorite {
+        border-color: rgb(35, 148, 253) !important; /* #eeb211*/
+        color: rgb(35, 148, 253) !important; /* #eeb211*/
+    }
+
+    .btn-outline-favorite::selection {
+        background-color: rgb(35, 148, 253) !important;
+        border-color: rgb(35, 148, 253) !important;
+        color: #e8e6e3 !important;
+    }
+
+    .btn-outline-favorite:hover {
+        background-color: rgb(35, 148, 253) !important;
+        border-color: rgb(35, 148, 253) !important;
+        color: #e8e6e3 !important;
+    }
+
+    .outline-favorite {
+        border-color: rgb(35, 148, 253) !important; /* #eeb211*/
+    }
+
+    .text-favorite {
+        color: rgb(35, 148, 253) !important; /* #eeb211*/
     }
 }

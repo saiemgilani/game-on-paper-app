@@ -9,3 +9,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare namespace App {
+  interface SessionData {
+    favorites?: {
+      teams?: (string | number)[];
+      games?: (string | number)[];
+    }
+  }
+}

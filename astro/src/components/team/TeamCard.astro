@@ -1,8 +1,10 @@
 ---
+import { actions } from 'astro:actions'
 import type { ESPNTeam } from '../../resources/espn'
 import type { SDVTeamSummary } from '../../resources/sdv'
 import { formatRank, generateMarginalString } from '../../utils/common'
-import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, roundNumber } from '../../utils/misc'
+import { SESSION_FAVORITES_DEFAULT } from '../../utils/constants'
+import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, isTeamFavorite, roundNumber } from '../../utils/misc'
 
 interface Props {
     team: ESPNTeam
@@ -36,8 +38,10 @@ if (confRecs.length > 0) {
 }
 
 const metricSeason = (summary?.season && season != summary?.season) ? `${summary.season} ` : "";
----
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const isFavorite = isTeamFavorite(favorites, team.id)
 
+---
 
 <div class="card border rounded">
     <div class="card-body">
@@ -87,7 +91,9 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
         </div>
 
         {
-            (summary && !hideNavigation) && (<a class="text-left" href={`/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>)
+            (summary && !hideNavigation) && (
+                <a href={`/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>
+            )
         }
     </div>
 </div>
