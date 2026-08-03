@@ -128,6 +128,7 @@
                             chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                             chart.ctx.restore();
                         }
+
                         chart.ctx.save()
                         chart.ctx.textAlign = "left"
                         chart.ctx.font = "8px Helvetica";
@@ -135,6 +136,15 @@
                         chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                         chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)", sizeWidth * (margin - 0.02), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                         chart.ctx.fillText("and Saiem Gilani (@saiemgilani).", sizeWidth * (margin - 0.02), (baseMultiplier - (lineMultiplier)) * (sizeHeight / 8))
+                        chart.ctx.restore();
+
+                        // show filters
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.globalAlpha = 0.75;
+                        chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText(`Filters: FBS groups - ${selectedFBSClassFilter}, Conferences - ${selectedConferenceFilter}`, sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                         chart.ctx.restore();
 
                         if (shouldFlipYAxis && !shouldFlipXAxis) {
@@ -300,6 +310,9 @@
     async function waitToGenerateChart() {
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
+            if (chartedPoints.length == 0) {
+                throw new Error("Unable to generate chart, no points available.")
+            }
             generateChart(context, selectedMetricX, selectedMetricY)
         } catch (e) {
             console.error(e);
@@ -413,11 +426,11 @@
 </div>
 <div class="container mb-3">
     <div class="row d-flex">
-        <div class="col-xs-12 col-sm-auto mb-xs-1 mb-sm-3 mx-xs-0 mx-sm-2 d-flex justify-content-start">
-            <span class="align-self-center ms-md-1">Focus on:</span>
+        <div class="col-xs-12 col-sm-auto mb-xs-1 mb-sm-3 mx-xs-0 mx-sm-1 d-flex justify-content-start">
+            <span class="align-self-center">Focus on:</span>
         </div>
         
-        <form class="col-xs-12 col-sm-auto mb-3 mx-xs- mx-sm-2 d-flex justify-content-start">
+        <form class="col-xs-12 col-sm-auto mb-3 mr-xs-0 mr-sm-2 d-flex justify-content-start">
             <select class="form-select form-select-md" onchange={onChangeFBSClassFilter}>
                 <option value="-1" disabled>Focus on FBS group...</option>
                 <option value="all">All FBS Groups</option>
@@ -432,7 +445,7 @@
             </select>
             
         </form>
-        <form class="col-xs-12 col-sm-auto mb-3 mx-xs-0 mx-sm-2 d-flex justify-content-start" onchange={onChangeConferenceFilter}>
+        <form class="col-xs-12 col-sm-auto mb-3 mr-xs-0 mr-sm-2 d-flex justify-content-start" onchange={onChangeConferenceFilter}>
             <select class="form-select form-select-md">
                 <option value="-1" disabled>Focus on FBS conference...</option>
                 <option value="all">All FBS Conferences</option>
