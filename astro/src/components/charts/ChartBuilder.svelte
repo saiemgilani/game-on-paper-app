@@ -9,9 +9,18 @@
     let selectedMetricX = x;
     let selectedMetricY = y;
 
+    let conferenceList = [...new Set(points.map(p => p.conference))].sort()
+
     let selectedSort = $state("x");
+    let selectedFBSClassFilter = $state("all");
+    let selectedConferenceFilter = $state("all");
     let flipArrow = $derived((selectedSort == "x") ? shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX) : shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY))
-    let sortedPoints = $derived(points.toSorted((a, b) => flipArrow ? (a[selectedSort] - b[selectedSort]) : (b[selectedSort] - a[selectedSort])))
+    let chartedPoints = $derived(
+        points
+            .filter((p) => (selectedFBSClassFilter == "all") || (selectedFBSClassFilter == p.fbs_class))
+            .filter((p) => (selectedConferenceFilter == "all") || (selectedConferenceFilter == p.conference))
+            .toSorted((a, b) => flipArrow ? (a[selectedSort] - b[selectedSort]) : (b[selectedSort] - a[selectedSort]))
+    )
 
     const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
 
@@ -47,13 +56,15 @@
     const imageSize = getImageSizeForViewport(viewport);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+    let builderChart: Chart | null = null;
+
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
-        const averageX = (points.map((t: any) => parseFloat(t.x)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / points.length
-        const minX = Math.min(...points.map((t: any) => t.x))
-        const maxX = Math.max(...points.map((t: any) => t.x))
-        const averageY = (points.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / points.length
-        const minY = Math.min(...points.map((t: any) => t.y))
-        const maxY = Math.max(...points.map((t: any) => t.y))
+        const averageX = (chartedPoints.map((t: any) => parseFloat(t.x)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
+        const minX = Math.min(...chartedPoints.map((t: any) => t.x))
+        const maxX = Math.max(...chartedPoints.map((t: any) => t.x))
+        const averageY = (chartedPoints.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
+        const minY = Math.min(...chartedPoints.map((t: any) => t.y))
+        const maxY = Math.max(...chartedPoints.map((t: any) => t.y))
         console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
         console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
@@ -76,17 +87,17 @@
         const shouldFlipYAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY);
         const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX);
 
-        const config: ChartConfiguration<'scatter' | 'line'> = {
+        const config: ChartConfiguration<'scatter'> = {
             type: 'scatter',
             data: {
                 datasets: [
                     {
                         type: "scatter",
-                        data: points.map((t: any) => { 
+                        data: chartedPoints.map((t: any) => { 
                             return { x: t.x, y: t.y }
                         }),
                         pointRadius: imageSize / 2,
-                        pointStyle: points.map((t: any) => {
+                        pointStyle: chartedPoints.map((t: any) => {
                             const img = new Image(imageSize, imageSize)
                             if (Object.keys(SPECIAL_IMAGES).includes(String(t.team_id))) {
                                 img.src = SPECIAL_IMAGES[t.team_id];
@@ -256,7 +267,7 @@
                     tooltip: {
                         callbacks: {
                             title: (items) => {
-                                return points[items[0].dataIndex].pos_team
+                                return chartedPoints[items[0].dataIndex].pos_team
                             },
                             label: (item) => {
                                 const lines = [
@@ -270,11 +281,20 @@
                 }
             }
         }
-        // Stores the controller so that the chart initialization routine can look it up
-        new Chart(
-            chartContext as ChartItem,
-            config
-        )
+        
+        if (!builderChart) {
+            // Stores the controller so that the chart initialization routine can look it up
+            builderChart = new Chart(
+                chartContext as ChartItem,
+                config
+            )
+        } else {
+            console.log("reloading data with new config")
+            builderChart.data = config.data
+            builderChart.plugins = config.plugins
+            builderChart.options = config.options
+            builderChart.update()
+        }
     }
 
     async function waitToGenerateChart() {
@@ -300,6 +320,16 @@
 
     async function onChangeMetricY(e: Event) {
         selectedMetricY = e.target.value
+    }
+
+    async function onChangeConferenceFilter(e: Event) {
+        selectedConferenceFilter = e.target.value
+        waitToGenerateChart()
+    }
+
+    async function onChangeFBSClassFilter(e: Event) {
+        selectedFBSClassFilter = e.target.value
+        waitToGenerateChart()
     }
 
     async function onSubmit(e: Event) {
@@ -381,6 +411,38 @@
 <div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
 </div>
+<div class="container mb-3">
+    <div class="row d-flex">
+        <div class="col-xs-12 col-sm-auto mb-xs-1 mb-sm-3 mx-xs-0 mx-sm-2 d-flex justify-content-start">
+            <span class="align-self-center ms-md-1">Focus on:</span>
+        </div>
+        
+        <form class="col-xs-12 col-sm-auto mb-3 mx-xs- mx-sm-2 d-flex justify-content-start">
+            <select class="form-select form-select-md" onchange={onChangeFBSClassFilter}>
+                <option value="-1" disabled>Focus on FBS group...</option>
+                <option value="all">All FBS Groups</option>
+                {#if selectedSeason >= 2024}
+                <option value="G6" selected={selectedFBSClassFilter == "G6"}>Group of 6</option>
+                <option value="P4" selected={selectedFBSClassFilter == "P4"}>Power 4 + ND</option>
+                {/if}
+                {#if selectedSeason < 2024}
+                <option value="G5" selected={selectedFBSClassFilter == "G5"}>Group of 5</option>
+                <option value="P5" selected={selectedConferenceFilter == "P5"}>Power 5 + ND</option>
+                {/if}
+            </select>
+            
+        </form>
+        <form class="col-xs-12 col-sm-auto mb-3 mx-xs-0 mx-sm-2 d-flex justify-content-start" onchange={onChangeConferenceFilter}>
+            <select class="form-select form-select-md">
+                <option value="-1" disabled>Focus on FBS conference...</option>
+                <option value="all">All FBS Conferences</option>
+                {#each conferenceList as c}
+                <option value={c} selected={selectedConferenceFilter == c}>{c}</option>
+                {/each}
+            </select>
+        </form>
+    </div>
+</div>
 
 <div class="container" id="points_table">
     <div class="row">
@@ -403,7 +465,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each sortedPoints as p, i}
+                        {#each chartedPoints as p, i}
                         <tr>
                             <td class="text-right" colspan="1">{i + 1}</td>
                             <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>

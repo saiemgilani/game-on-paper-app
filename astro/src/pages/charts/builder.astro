@@ -20,7 +20,9 @@ const points = teamData.map((t: any) => {
         x: t[metricX],
         x_rank: t[`${metricX}_rank`],
         y: t[metricY],
-        y_rank: t[`${metricY}_rank`]
+        y_rank: t[`${metricY}_rank`],
+        conference: t.conference,
+        fbs_class: t.fbs_class
     }
 })
 

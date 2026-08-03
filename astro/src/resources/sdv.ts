@@ -676,7 +676,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     }
     const category_columns: string[] = metric_columns.concat(metric_columns.map(m => `${m}_rank`))
 
-    payload["select"] = (["pos_team", "team_id", "season", "conference", "division"].concat(week ? ["week"] : []).concat([...new Set(category_columns)])).join(",");
+    payload["select"] = (["pos_team", "team_id", "season", "conference", "division", "fbs_class"].concat(week ? ["week"] : []).concat([...new Set(category_columns)])).join(",");
     payload["limit"] = 150;
 
     try {        
