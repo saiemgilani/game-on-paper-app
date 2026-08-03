@@ -6,6 +6,7 @@ import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDAR
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
+import ChartJSTrendline from 'chartjs-plugin-trendline';
 
 const { title, teamColor, teamData, category, metric, percentiles } = $props();
 
@@ -60,7 +61,6 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
 
         if (data) {
             const val = retrieveValue((data as any), metric) 
-            console.log(metric)
             composite[s].data = {
                 x: data?.season || s,
                 y: (typeof(val) == "string" ? parseFloat(val) : val) || null
@@ -135,36 +135,36 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
             }
         )
 
-        // if (percentiles.length == 0) {
-        //     const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
-        //     const trend = TREND_FUNCTION(publishedData.filter(p => p.data != null).map(d => [d.data.x, d.data.y]))
+        if (percentiles.length == 0) {
+            const TREND_FUNCTION = d3.regressionLoess().bandwidth(0.45) // 0.75 matches ggplot/stats::loess default span param
+            const trend = TREND_FUNCTION(publishedData.filter(p => p.data != null).map(d => [d.data.x, d.data.y]))
 
-        //     datasets.push(
-        //         {
-        //             type: "line",
-        //             labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
-        //             label: 'Team Trend',
-        //             data: seasons.map(p => {
-        //                 const element = trend.find(d => d[0] == p)
-        //                 if (!element) {
-        //                     return null;
-        //                 }
-        //                 return {
-        //                     x: element[0],
-        //                     y: element[1]
-        //                 }
-        //             }),
-        //             borderDash: [5, 15],
-        //             borderColor: color,
-        //             pointBorderColor: "rgba(0,0,0,0)",
-        //             pointBackgroundColor: "rgba(0,0,0,0)",
-        //             showLine: true,
-        //             fill: false,
-        //             clip: true
-        //         }
-        //     )
+            datasets.push(
+                {
+                    type: "line",
+                    labels: trend.map(p => "Team Trend"),//trend.map(p => `Season: ${p[0]}, Team Trend (LOESS): ${roundNumber(p[1], 2, 2)}`),
+                    label: 'Team Trend',
+                    data: seasons.map(p => {
+                        const element = trend.find(d => d[0] == p)
+                        if (!element) {
+                            return null;
+                        }
+                        return {
+                            x: element[0],
+                            y: element[1]
+                        }
+                    }),
+                    borderDash: [5, 15],
+                    borderColor: color,
+                    pointBorderColor: "rgba(0,0,0,0)",
+                    pointBackgroundColor: "rgba(0,0,0,0)",
+                    showLine: true,
+                    fill: false,
+                    clip: true
+                }
+            )
         
-        // }
+        }
     }
 
     if (hasAvailableDistributions) {
@@ -240,7 +240,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                         chart.ctx.globalAlpha = 0.75;
                         chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
                         chart.ctx.fillText("Adj EPA/Play methodology adapted from Makenna Hack (@makennahack) and Bud Davis (@jbuddavis).", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
-                        // chart.ctx.fillText("LOESS regression used for team trend line.", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
+                        chart.ctx.fillText("LOESS regression used for team trend line.", sizeWidth * (1 - margin + xAdjust), (baseMultiplier - lineMultiplier) * (sizeHeight / 8))
                         chart.ctx.restore();
                     }
                     chart.ctx.save()
