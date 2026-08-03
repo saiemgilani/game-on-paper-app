@@ -553,3 +553,12 @@ export function isTeamFavorite(favorites?: { teams?: (string | number)[], games?
     
     return false
 }
+
+// adapted from https://www.math.ucla.edu/~tom/distributions/normal.html?
+export function calculateNormCdf(x: number, mean: number, sd: number): number {
+    const z = (x - mean) / sd
+    const T = 1 / (1+.2316419 * Math.abs(z));
+	const D = .3989423 * Math.exp(-z*z/2);
+	const Prob = D * T * (.3193815 + T * (-.3565638 + T * (1.781478 + T * (-1.821256 + T * 1.330274))));
+	return (z > 0) ? (1 - Prob) : Prob;
+}

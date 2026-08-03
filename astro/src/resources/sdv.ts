@@ -3,6 +3,8 @@ import { URLSearchParams } from "node:url";
 import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 import { env } from "cloudflare:workers";
 import { SummaryType } from "../utils/common";
+import { number } from "astro:schema";
+import { calculateNormCdf } from "../utils/misc";
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -738,4 +740,30 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
             return await retrievePlayerSummaries((season - 1), category, team_id, sortBy, ascending, limit, maxLookback);
         }
     }
+}
+
+// Mirrors https://github.com/sportsdataverse/sportsdataverse-py/blob/a19e7f2e89cf428e6d5aec137f18300484c5b2a9/sportsdataverse/cfb/cfb_prediction_constants.py#L103-L123
+const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
+    net_points_scale: 44.5367,
+    hfa_epa: 0.01848,
+    margin_sd: 17.2493
+};
+
+// Mirrors: https://github.com/sportsdataverse/sportsdataverse-py/blob/a19e7f2e89cf428e6d5aec137f18300484c5b2a9/sportsdataverse/cfb/cfb_game_predict.py#L42
+export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false): number | null {
+    if (!away_adj_epa || !home_adj_epa) {
+        return null
+    }
+
+    const hfa_net = neutral_site ? 0.0 : (2.0 * SDV_CFB_RATINGS_PREDICTION_CONFIG.hfa_epa)
+    return SDV_CFB_RATINGS_PREDICTION_CONFIG.net_points_scale * (home_adj_epa - away_adj_epa + hfa_net)
+}
+
+// https://github.com/sportsdataverse/sportsdataverse-py/blob/a19e7f2e89cf428e6d5aec137f18300484c5b2a9/sportsdataverse/cfb/cfb_game_predict.py#L80
+export function calculatePredictedWinProb(pred_margin: number | null): number | null {
+    if (!pred_margin && pred_margin != 0) {
+        return null;
+    }
+
+    return calculateNormCdf(pred_margin, 0, SDV_CFB_RATINGS_PREDICTION_CONFIG.margin_sd)
 }

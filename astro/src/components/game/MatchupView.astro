@@ -94,6 +94,34 @@ function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
                 </thead>
                 <tbody>
                     <tr>
+                        <td class="text-left">Net Adj EPA/Play</td>
+                        <td class="text-center">${generateMarginalString(breakdown?.net_adj_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.net_adj_epa_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Offense</td>
+                        <td class="text-center">${roundNumber(breakdown?.adj_off_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.adj_off_epa_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Defense</td>
+                        <td class="text-center">${roundNumber(breakdown?.adj_def_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.adj_def_epa_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
                         <td class="text-left">Net EPA/Play</td>
                         <td class="text-center">${generateMarginalString(breakdown?.EPAplay_margin, 2, 2)}</td>
                         ${produceRankHtml(breakdown?.EPAplay_margin_rank)}
