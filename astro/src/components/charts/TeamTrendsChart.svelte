@@ -3,6 +3,7 @@
     import TrendsChart from './TrendsChart.svelte';
     import { type ValuePercentile } from '../../resources/chart';
     import { getPercentileKey } from '../../utils/misc';
+    import { EVENT_KEY_TRENDS_METRIC_CHANGED } from '../../utils/constants';
 
     const { title, teamColor, teamData, percentiles } = $props();
     let selectedCategory = "offensive"
@@ -25,6 +26,10 @@
         } else {
             selectedPercentiles = []
         }
+
+        const changeEvent = new CustomEvent(EVENT_KEY_TRENDS_METRIC_CHANGED, { detail: { category, metric }})
+        console.log("firing event: " + EVENT_KEY_TRENDS_METRIC_CHANGED)
+        document.dispatchEvent(changeEvent)
     }
 
     onChangeValue(selectedCategory, selectedMetric)    

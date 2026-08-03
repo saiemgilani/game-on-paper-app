@@ -1,6 +1,6 @@
 <script lang="ts">
 import Chart from 'chart.js/auto';
-import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES } from "../../utils/constants";
+import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
 import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
@@ -337,13 +337,24 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
     }
 }
 
+Chart.register(BoxPlotController, BoxAndWiskers, ChartJSTrendline);
+
+let trendsChart: Chart | null = null;
 function generateChart(chartContext: HTMLElement | null) {
-    Chart.register(BoxPlotController, BoxAndWiskers);
     // Stores the controller so that the chart initialization routine can look it up
-    new Chart(
-        chartContext as ChartItem,
-        generateTeamChartConfig(title, teamColor, teamData, percentiles, category, metric)
-    )
+    const config = generateTeamChartConfig(title, teamColor, teamData, percentiles, category, metric)
+    if (!trendsChart) {
+        trendsChart = new Chart(
+            chartContext as ChartItem,
+            config
+        )
+    } else {
+        console.log("reloading data")
+        trendsChart.data = config.data
+        trendsChart.plugins = config.plugins
+        trendsChart.options = config.options
+        trendsChart.update()
+    }
 }
 
 async function waitToGenerateChart() {
@@ -368,6 +379,11 @@ if (document.readyState !== 'loading') {
         waitToGenerateChart()
     })
 }
+
+document.addEventListener(EVENT_KEY_TRENDS_METRIC_CHANGED, () => {
+    console.log(`${EVENT_KEY_TRENDS_METRIC_CHANGED}, reloading`)
+    waitToGenerateChart()
+})
 
 </script>
 <div class="container" id="chart_container">

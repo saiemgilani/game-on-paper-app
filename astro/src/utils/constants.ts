@@ -1048,3 +1048,4 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
 }
 
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };
+export const EVENT_KEY_TRENDS_METRIC_CHANGED = 'TrendsMetricChanged';
