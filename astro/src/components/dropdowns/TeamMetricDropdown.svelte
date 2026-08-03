@@ -27,6 +27,8 @@
             m = m.replace("_def", "_off").replace("_margin", "_off")
         } else if (c == "defensive" && (m.includes("_off") || m.includes("_margin"))) {
             m = m.replace("_off", "_def").replace("_margin", "_def")
+        } else if (c == "differential" && (m.includes("_off") || m.includes("_def"))) {
+            m = m.replace("_off", "_margin").replace("_def", "_margin")
         }
 
 		if (onChangeValue) {
