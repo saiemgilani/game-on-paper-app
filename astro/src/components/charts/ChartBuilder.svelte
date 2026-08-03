@@ -2,12 +2,16 @@
     import Chart from 'chart.js/auto';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     
     const { season, x, y, points } = $props();
     let selectedSeason = season;
     let selectedMetricX = x;
     let selectedMetricY = y;
+
+    let selectedSort = $state("x");
+    let flipArrow = $derived((selectedSort == "x") ? shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX) : shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY))
+    let sortedPoints = $derived(points.toSorted((a, b) => flipArrow ? (a[selectedSort] - b[selectedSort]) : (b[selectedSort] - a[selectedSort])))
 
     const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
 
@@ -376,4 +380,40 @@
 
 <div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
+</div>
+
+<div class="container" id="points_table">
+    <div class="row">
+        <div class="col-12">
+            <p class="text-muted text-small">Tap/click on the metric titles to sort the table.</p>
+            <div class="table">
+                <table class="table table-responsive table-sm">
+                    <thead>
+                        <tr>
+                            <th class="text-right" colspan="1">Rk</th>
+                            <th class="text-left" colspan="1">Team</th>
+                            <th class="text-center" colspan="1">
+                                <a href="#points_table" style={isDarkMode ? "color: #e8e6e3" : "color: #212529"} onclick={() => { selectedSort = "x" }}>{generateTeamMetricTitle(selectedMetricX)}</a>
+                                <i hidden={selectedSort != "x"} class={`bi-arrow-${flipArrow ? "up" : "down"}`}></i>
+                            </th>
+                            <th class="text-center" colspan="1">
+                                <a href="#points_table" style={isDarkMode ? "color: #e8e6e3" : "color: #212529"} onclick={() => { selectedSort = "y" }}>{generateTeamMetricTitle(selectedMetricY)}</a>
+                                <i hidden={selectedSort != "y"} class={`bi-arrow-${flipArrow ? "up" : "down"}`}></i>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each sortedPoints as p, i}
+                        <tr>
+                            <td class="text-right" colspan="1">{i + 1}</td>
+                            <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
+                            <td class={`text-center ${generateColorRampValue(parseFloat(p.x_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(selectedMetricX, p.x)}</td>
+                            <td class={`text-center ${generateColorRampValue(parseFloat(p.y_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(selectedMetricY, p.y)}</td>
+                        </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
