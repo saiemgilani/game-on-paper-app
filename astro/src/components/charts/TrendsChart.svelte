@@ -189,8 +189,8 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
                         mean: (dist.median || 0) * (isRateMetric ? 100.0 : 1.0),
                         q3: (dist.q3 || 0) * (isRateMetric ? 100.0 : 1.0),
                         max: (dist.max || 0) * (isRateMetric ? 100.0 : 1.0),
-                        whiskerMax: (dist.max || 0),
-                        whiskerMin: (dist.min || 0)
+                        whiskerMax: (dist.max || 0) * (isRateMetric ? 100.0 : 1.0),
+                        whiskerMin: (dist.min || 0) * (isRateMetric ? 100.0 : 1.0)
                     }
                 }),
             }
