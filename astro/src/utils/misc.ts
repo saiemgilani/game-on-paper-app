@@ -505,6 +505,23 @@ export function generateCategoryForMetric(metric: string): string {
     return (metric.includes("_margin") || metric.startsWith("net_")) ? "Differential" : ((metric.includes("_off") || metric.includes("off_")) ? "Offensive" : "Defensive");
 }
 
+export function modifyMetricForCategory(category: string, metric: string) {
+    if (category == "offensive" && ["adj_def_epa", "net_adj_epa"].includes(metric)) {
+        return "adj_off_epa"
+    } else if (category == "defensive" && ["adj_off_epa", "net_adj_epa"].includes(metric)) {
+        return "adj_def_epa"
+    } else if (category == "differential" && ["adj_off_epa", "adj_def_epa"].includes(metric)) {
+        return "net_adj_epa"
+    } else if (category == "offensive" && (metric.includes("_def") || metric.includes("_margin"))) {
+        return metric.replace("_def", "_off").replace("_margin", "_off")
+    } else if (category == "defensive" && (metric.includes("_off") || metric.includes("_margin"))) {
+        return metric.replace("_off", "_def").replace("_margin", "_def")
+    } else if (category == "differential" && (metric.includes("_off") || metric.includes("_def"))) {
+        return metric.replace("_off", "_margin").replace("_def", "_margin")
+    }
+    return metric;
+}
+
 export function generateSubCategoryForMetric(metric: string): string {
     if (metric.includes("passrate_")) {
         return "Passing"

@@ -1,6 +1,6 @@
 <script>
     import { SDV_TEAM_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
-    import { toTitleCase } from "../../utils/misc";
+    import { toTitleCase, modifyMetricForCategory } from "../../utils/misc";
 
     const { season, category, metric, onChangeValue } = $props()
 
@@ -17,19 +17,7 @@
     }
 
     function onChangeValueWrapper(s, c, m) {
-        if (c == "offensive" && ["adj_def_epa", "net_adj_epa"].includes(m)) {
-            m = "adj_off_epa"
-        } else if (c == "defensive" && ["adj_off_epa", "net_adj_epa"].includes(m)) {
-            m = "adj_def_epa"
-        } else if (c == "differential" && ["adj_off_epa", "adj_def_epa"].includes(m)) {
-            m = "net_adj_epa"
-        } else if (c == "offensive" && (m.includes("_def") || m.includes("_margin"))) {
-            m = m.replace("_def", "_off").replace("_margin", "_off")
-        } else if (c == "defensive" && (m.includes("_off") || m.includes("_margin"))) {
-            m = m.replace("_off", "_def").replace("_margin", "_def")
-        } else if (c == "differential" && (m.includes("_off") || m.includes("_def"))) {
-            m = m.replace("_off", "_margin").replace("_def", "_margin")
-        }
+        m = modifyMetricForCategory(c, m)
 
 		if (onChangeValue) {
             onChangeValue(s, c, m)
