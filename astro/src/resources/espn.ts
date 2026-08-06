@@ -3,6 +3,12 @@ import { DateTime } from "luxon"
 import { CURRENT_YEAR } from "../utils/constants"
 import { wrappedFetch } from "../utils/misc"
 
+export interface ESPNCoreScoreboardResponse {
+    content: {
+        sbData: ESPNScoreboardResponse
+    }
+}
+
 export interface ESPNScoreboardResponse {
     leagues: ESPNLeague[]
     groups: string[]
@@ -397,7 +403,11 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
         }
 
         console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
-        const result = await getRemoteGames(CURRENT_YEAR, undefined, undefined, 80); 
+        // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
+        const resp = await fetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
+        let espnContent: ESPNCoreScoreboardResponse = await resp.json();
+        const result = espnContent?.content.sbData.events || [];
+
         if ((cacheEnabled || forceWrite) && result) {
             console.info(`ESPN API cache update: scoreboard`)
             await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
