@@ -47,6 +47,10 @@ export const SPECIAL_IMAGES: { [teamId: string]: string} = {
     "59": "/assets/img/gt-old-gold.png"
     // "2390": "/assets/img/upside-down-u.png",
 };
+export const SPECIAL_IMAGES_DARK: { [teamId: string]: string} = {
+    "59": "/assets/img/gt-old-gold-dark.png"
+    // "2390": "/assets/img/upside-down-u.png",
+};
 
 export const PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
     "passing": {
