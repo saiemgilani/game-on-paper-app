@@ -1,4 +1,6 @@
 ---
+import { SPECIAL_IMAGES } from '../utils/constants';
+
 interface Props {
     teamIds: (string | number)[]
 }
@@ -12,11 +14,16 @@ let teamIdCSS = teamIds.map(p => {
     `
 })
 
-teamIdCSS = teamIdCSS.concat(`
-img.team-logo-61 {
-    content: url('/assets/img/ennui-uga.png');
-}`)
+let specialTeamIdCSS = Object.entries(SPECIAL_IMAGES).map((k,v) => {
+    return `
+    img.team-logo-${k} {
+        content: url('${v}')
+    }
+    `
+})
+
 
 ---
 
-<style set:html={teamIdCSS.join("")}></style>
+<style set:html={`@media (prefers-color-scheme: dark) { ${teamIdCSS.join("")} }`}></style>
+<style set:html={specialTeamIdCSS.join("")}></style>
