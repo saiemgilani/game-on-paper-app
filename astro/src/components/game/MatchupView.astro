@@ -1,18 +1,18 @@
 ---
 import type { ESPNTeam } from '../../resources/espn'
-import type { SDVTeamSummary } from '../../resources/sdv';
+import type { SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
 import { generateMarginalString } from '../../utils/common';
-import { cleanNickname, formatYardline, roundNumber, generateColorRampValue } from '../../utils/misc';
+import { cleanNickname, formatYardline, roundNumber, generateColorRampValue, cleanField } from '../../utils/misc';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 
 interface Props {
-    homeTeam: ESPNTeam
-    awayTeam: ESPNTeam
+    homeTeamSeason: SDVTeamSeasonInformation | null
+    awayTeamSeason: SDVTeamSeasonInformation | null
     homeTeamSummary: SDVTeamSummary | null
     awayTeamSummary: SDVTeamSummary | null
 }
 
-const { homeTeam, awayTeam, homeTeamSummary, awayTeamSummary } = Astro.props;
+const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary } = Astro.props;
 
 
 function cleanBreakdown(breakdown: SDVTeamSummary | null): any {
@@ -75,11 +75,14 @@ function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any
     `
 }
 
-function produceTeamLogoLink(team: ESPNTeam, headerType: string = "h4", showNickname: boolean = false): string {
-    return `<${headerType} class="d-inline"><a href="/team/${team.id}"><img class="img-fluid team-logo-${team.id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png" alt="ESPN team id ${team.id}"/></a>${showNickname ? (" " + cleanNickname(team)) : ""}</${headerType}>`
+function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", showNickname: boolean = false): string {
+    if (!team) {
+        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="35px" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
+    }
+    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
 }
 
-function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
+function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
     return `
     <div class="col-md-12 ms-sm-auto col-lg-3">
         <div class="h4 text-center">${produceTeamLogoLink(team, "h4", true)}</div>
@@ -248,17 +251,17 @@ function produceTeamSector(team: ESPNTeam, breakdown: SDVTeamSummary) {
 const awayTeamBreakdown = cleanBreakdown(awayTeamSummary)
 const homeTeamBreakdown = cleanBreakdown(homeTeamSummary)
 const matchupData = [
-    { ...awayTeamBreakdown, teamName: awayTeam.location, id: awayTeam.id, color: awayTeam.color, alternateColor: awayTeam.alternateColor },
-    { ...homeTeamBreakdown, teamName: homeTeam.location, id: homeTeam.id, color: homeTeam.color, alternateColor: homeTeam.alternateColor }
+    { ...awayTeamBreakdown, teamName: awayTeamSeason?.team?.school, id: awayTeamSeason?.team?.team_id, color: awayTeamSeason?.team?.color, alternateColor: awayTeamSeason?.team?.alt_color },
+    { ...homeTeamBreakdown, teamName: homeTeamSeason?.team?.school, id: homeTeamSeason?.team?.team_id, color: homeTeamSeason?.team?.color, alternateColor: homeTeamSeason?.team?.alt_color }
 ]
 
 ---
 <div class="container mb-3">
-    <MatchupRadarChart client:only awayTeam={awayTeam} homeTeam={homeTeam} teamData={matchupData} />
+    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} />
     <div class="row">
-        <Fragment set:html={produceTeamSector(awayTeam, awayTeamBreakdown)} />
+        <Fragment set:html={produceTeamSector(awayTeamSeason?.team, awayTeamBreakdown)} />
         <div class="col-md-12 ms-sm-auto col-lg-6">
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeam, "h3", false)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeam, "h3", false)} /> Defense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Defense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -281,7 +284,7 @@ const matchupData = [
                     </tbody>
                 </table>
             </div>
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeam, "h3", false)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeam, "h3", false)} /> Offense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Offense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -305,7 +308,7 @@ const matchupData = [
                 </table>
             </div>
         </div>
-        <Fragment set:html={produceTeamSector(homeTeam, homeTeamBreakdown)} />
+        <Fragment set:html={produceTeamSector(homeTeamSeason?.team, homeTeamBreakdown)} />
     </div>
     <div class="row mb-3">
         <div class="col-12">

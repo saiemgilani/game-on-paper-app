@@ -4,12 +4,12 @@ import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } 
 import { env } from "cloudflare:workers";
 import { SummaryType } from "../utils/common";
 import { number } from "astro:schema";
-import { calculateNormCdf } from "../utils/misc";
+import { calculateNormCdf, cleanUpParams, wrappedFetch } from "../utils/misc";
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
-export interface SDVSummaryResponse {
-    data: any[]
+export interface SDVAPIResponse<T> {
+    data: T[]
     count: number
 }
 
@@ -610,7 +610,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
    
 
         const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true);
-        return content["data"];
+        return content.data;
     } catch (err) {
         console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
         if (err) {
@@ -681,7 +681,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
 
     try {        
         // can't cache these because the keys are too big
-        const content: SDVSummaryResponse = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
+        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
         return content.data;
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
@@ -720,7 +720,7 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     payload["limit"] = limit;
 
     try {        
-        let content: SDVSummaryResponse;
+        let content: SDVAPIResponse<SDVPlayerSummary>;
         if (Object.values(SummaryType).includes(category)) {
             content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true);
         } else {
@@ -766,4 +766,152 @@ export function calculatePredictedWinProb(pred_margin: number | null): number | 
     }
 
     return calculateNormCdf(pred_margin, 0, SDV_CFB_RATINGS_PREDICTION_CONFIG.margin_sd)
+}
+
+export interface SDVTeamScheduleRequest {
+    game_id?: string | number
+    home_id?: string | number
+    away_id?: string | number
+    season?: string | number
+    season_type?: "regular" | "postseason"
+
+}
+
+export interface SDVGame {
+    game_id: number
+    season: number
+    week: number
+    season_type: string
+    start_date: string
+    start_time_tbd: boolean
+    completed?: boolean
+    neutral_site: boolean
+    conference_game: boolean
+    attendance?: number
+    
+    venue_id: number
+    venue: string
+    home_id: number
+    home_team: string
+    home_conference: string
+    home_division: string
+    home_points: number
+    home_post_win_prob: string
+    home_pregame_elo?: number
+    home_postgame_elo?: number
+
+    away_id: number
+    away_team: string
+    away_conference: string
+    away_division: string
+    away_points: number
+    away_post_win_prob: string
+    away_pregame_elo?: number
+    away_postgame_elo?: number
+
+    excitement_index?: number
+    highlights?: string
+    notes?: string
+}
+
+export async function retrieveTeam(teamId: string | number): Promise<SDVTeam | null> {
+    const content: SDVAPIResponse<SDVTeam> = await requestSDV("team_info", new URLSearchParams({ team_id: String(teamId), limit: "1" }), undefined, 60 * 60 * 24 * 7, true);
+    const result = content.data.length == 0 ? null : content.data[0]
+    if (!result) {
+        return result
+    }
+
+    if (teamId == 59) {
+        return {
+            ...result,
+            color: "#b3a369",
+            alt_color: "#003057"
+        }
+    }
+    return result
+}
+
+export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promise<SDVGame[]> {
+    const params = new URLSearchParams(cleanUpParams(payload))
+    const content: SDVAPIResponse<SDVGame>  = await requestSDV("schedule", params, undefined, 60 * 60 * 24, true);
+    return content.data
+}
+
+export async function retrieveTeamSchedule(season: string | number, teamId: string | number): Promise<SDVGame[]> {
+    const schedulePromises: Promise<SDVGame[]>[] = [];
+    for (const k of ["home_id", "away_id"]) {
+        let params: any = { season }
+        params[k] = teamId
+        schedulePromises.push(retrieveTeamGames(params))
+    }
+    
+    let events: SDVGame[] = [];
+    const scheduleResults = await Promise.all(schedulePromises);
+    for (const sched of scheduleResults) {
+        events = events.concat(sched)
+    }
+
+    return events;
+}
+
+export interface SDVTeam {
+    team_id: number
+    school: string
+    mascot: string
+    abbreviation: string
+    conference?: string
+    division?: string
+    classification?: string
+    color: string
+    alt_color?: string
+    logo: string
+    logo_2?: string
+
+    grass: boolean
+    dome: boolean
+}
+
+export interface SDVTeamSeasonInformation {
+    team: SDVTeam | null
+    events: SDVGame[]
+    record?: string
+    confRecord?: string
+}
+
+export async function retrieveTeamSeasonInformation(season: string | number, teamId: string | number): Promise<SDVTeamSeasonInformation> {
+    const team = await retrieveTeam(teamId)
+    const schedule = await retrieveTeamSchedule(season, teamId);
+    let wins = 0;
+    let losses = 0;
+    let confWins = 0;
+    let confLosses = 0;
+    for (const g of schedule) {
+        if (!g.completed) {
+            continue;
+        }
+
+        if (String(g.home_id) == String(teamId) && g.home_points > g.away_points) {
+            wins += 1;
+            if (g.conference_game) {
+                confWins += 1;
+            }
+        } else if (String(g.away_id) == String(teamId) && g.home_points < g.away_points) {
+            wins += 1;
+            if (g.conference_game) {
+                confWins += 1;
+            }
+        } else {
+            losses += 1;
+            if (g.conference_game) {
+                confLosses += 1;
+            }
+        }
+    }
+
+    return {
+        team,
+        events: schedule,
+        record: `${wins}-${losses}`,
+        confRecord: (confLosses + confWins) > 0 ? `${confWins}-${confLosses}` : undefined
+    }
 }

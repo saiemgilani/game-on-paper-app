@@ -1,8 +1,8 @@
 ---
 import { DateTime } from 'luxon';
-import { type ESPNPlayByPlayResponse, retrieveTeamSeasonInformation } from '../../resources/espn';
-import type { SDVTeamSummary } from '../../resources/sdv';
-import { retrieveTeamSummaries } from '../../resources/sdv';
+import { type ESPNPlayByPlayResponse } from '../../resources/espn';
+import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
+import { retrieveTeamSummaries, retrieveTeamSeasonInformation } from '../../resources/sdv';
 import { isChampionshipEvent } from '../../utils/common';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 import { cleanLocation } from '../../utils/misc';
@@ -34,20 +34,32 @@ let subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team
 const statusDescription = game.status.type.description ?? "Scheduled";
 const metricYear = espnGame.gamepackageJSON.header.season.year == CURRENT_YEAR ? LAST_YEAR : espnGame.gamepackageJSON.header.season.year;
 
-let homeTeamSeason: any = {};
+let homeTeamSeason: SDVTeamSeasonInformation = {
+    team: null,
+    events: [],
+};
 try {
     homeTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, homeTeam.id)
 } catch (e) {
     console.error(e);
-    homeTeamSeason = {}
+    homeTeamSeason = {
+        team: null,
+        events: [],
+    }
 }
 
-let awayTeamSeason: any = {};
+let awayTeamSeason: SDVTeamSeasonInformation = {
+    team: null,
+    events: [],
+};
 try {
     awayTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, awayTeam.id);
 } catch (e) {
     console.error(e);
-    awayTeamSeason = {}
+    awayTeamSeason = {
+        team: null,
+        events: [],
+    }
 }
 
 let homeSummaries: SDVTeamSummary[] = [];
@@ -146,14 +158,14 @@ const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
 
                 </div>
                 <div class="col-lg-4 col-md-12 margin-override">
-                    <TeamCard team={awayTeam} season={espnGame.gamepackageJSON.header.season.year} teamSeasonData={awayTeamSeason} summary={awaySummary} hideNavigation={false} />
+                    <TeamCard team={awayTeam} season={espnGame.gamepackageJSON.header.season.year} teamSeason={awayTeamSeason} summary={awaySummary} hideNavigation={false} />
                 </div>
                 <div class="col-lg-4 col-md-12">
-                    <TeamCard team={homeTeam} season={espnGame.gamepackageJSON.header.season.year} teamSeasonData={homeTeamSeason} summary={homeSummary} hideNavigation={false} />
+                    <TeamCard team={homeTeam} season={espnGame.gamepackageJSON.header.season.year} teamSeason={homeTeamSeason} summary={homeSummary} hideNavigation={false} />
                 </div>
             </div>
         </div>
-        <MatchupView awayTeam={awayTeam} homeTeam={homeTeam} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} />
+        <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} />
         <Footer />
     </body>
 </html>

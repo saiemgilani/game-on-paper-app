@@ -1,4 +1,7 @@
 import { env } from "cloudflare:workers"
+import { DateTime } from "luxon"
+import { CURRENT_YEAR } from "../utils/constants"
+import { wrappedFetch } from "../utils/misc"
 
 export interface ESPNScoreboardResponse {
     leagues: ESPNLeague[]
@@ -446,52 +449,23 @@ async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<an
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
     const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
     const req =  await fetch(url);
-    const res: any = await req.json()
+    const res = await req.json()
     return res
 }
 
-async function retrieveTeamSchedule(payload: ESPNTeamRequestPayload): Promise<ESPNTeamScheduleResponse> {
-    let params = new URLSearchParams({ })
-    if (payload.season) {
-        params.append("season", `${payload.season}`)
-    }
-    if (payload.seasonType) {
-        params.append("seasontype", `${payload.seasonType}`)
-    }
-    const reqUrl = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${payload.teamId}/schedule?` + params.toString()
-    const req = await fetch(reqUrl);
-    const res: ESPNTeamScheduleResponse = await req.json()
-    return res
-}
-
-export async function retrieveTeamInformation(teamId: string | number): Promise<any> {
+export async function retrieveTeamInformation(teamId: string | number): Promise<ESPNTeam> {
     return await retrieveTeamEndpoint({ teamId })
 }
 
-export async function retrieveTeamSeasonInformation(season: string | number, teamId: string | number): Promise<any> {
-    const seasonInfo = await retrieveTeamEndpoint({ season, teamId })
-    const populatableKeys = ["record", "athletes", "ranks", "leaders"];
-    const typeKeys = ["record", "leaders"];
-    const valPromises: Promise<any>[] = [];
-    for (const k of populatableKeys) {
-        valPromises.push(retrieveTeamEndpoint({ endpoint: k, season, teamId, seasonType: typeKeys.includes(k) ? "2" : null }))
-    }
+export interface ESPNTeamEndpointResponse<T> {
+  count: number
+  pageIndex: number
+  pageSize: number
+  pageCount: number
+  items: T[]
+}
 
-    const valResults = await Promise.all(valPromises);
-    for (const [i, k] of populatableKeys.entries()) {
-        seasonInfo[k] = valResults[i]["items"];
-    }
-
-    seasonInfo.events = []
-    const schedulePromises: Promise<ESPNTeamScheduleResponse>[] = [];
-    for (const k of [2, 3]) {
-        schedulePromises.push(retrieveTeamSchedule({ season, teamId, seasonType: k }))
-    }
-    
-    const scheduleResults = await Promise.all(schedulePromises);
-    for (const sched of scheduleResults) {
-        seasonInfo.events = seasonInfo.events.concat(sched.events)
-    }
-
-    return seasonInfo;
+export async function retrieveTeamSeasonRecord(season: string | number, teamId: string | number): Promise<ESPNRecord[]> {
+    const records: ESPNTeamEndpointResponse<ESPNRecord> = await retrieveTeamEndpoint({ endpoint: "records", season, teamId })
+    return records.items
 }

@@ -579,3 +579,13 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 	const Prob = D * T * (.3193815 + T * (-.3565638 + T * (1.781478 + T * (-1.821256 + T * 1.330274))));
 	return (z > 0) ? (1 - Prob) : Prob;
 }
+
+export async function wrappedFetch(url: string, init?: RequestInit): Promise<Response> {
+    return fetch(url, {
+        ...init,
+        headers: {
+            ...(init?.headers || {}),
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15",
+        }
+    })
+}

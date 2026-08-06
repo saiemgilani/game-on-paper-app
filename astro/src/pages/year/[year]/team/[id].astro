@@ -10,8 +10,8 @@ import TeamReceivingTable from "../../../../components/team/tables/TeamReceiving
 import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
 import GenericPage from "../../../../layouts/GenericPage.astro";
 import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
-import { retrieveTeamInformation, retrieveTeamSeasonInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
-import { retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVSeasonPercentile } from "../../../../resources/sdv";
+import { retrieveTeamInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
+import { retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, retrieveTeamSeasonInformation, type SDVGame } from "../../../../resources/sdv";
 import { cleanLocation, roundNumber } from "../../../../utils/misc";
 import TeamCard from "../../../../components/team/TeamCard.astro";
 import TeamPlayerCard from "../../../../components/team/TeamPlayerCard.astro";
@@ -107,7 +107,7 @@ const leaders = [
     <div class="container">
         <div class="row my-3">
             <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
-                <TeamCard team={team} season={year} teamSeasonData={teamSeason} summary={teamSummaries[0]} hideNavigation={true} />
+                <TeamCard team={team} season={year} teamSeason={teamSeason} summary={teamSummaries[0]} hideNavigation={true} />
             </div>
             <div class="col-lg-8 col-md-12">
                 <TeamPlayerCard team={team} season={year} players={leaders} />
@@ -128,9 +128,9 @@ const leaders = [
     <div class="container mb-3">
         <GenericPanel id="schedule" title="Schedule">
         <div class="row mb-3" slot="panel-body">
-            {
-                (teamSeason.events.length > 0) && (teamSeason.events.map(((g: ESPNScheduleEvent) => <GameThumb game={g} />)))
-            }
+            <!-- {
+                (teamSeason.events.length > 0) && (teamSeason.events.map(((g: SDVGame) => <GameThumb game={g} />)))
+            } -->
             {
                 (teamSeason.events.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
             }

@@ -2,8 +2,7 @@
 import MatchupView from "../../components/game/MatchupView.astro";
 import MatchupBuilder from "../../components/game/MatchupBuilder.svelte";
 import GenericPage from "../../layouts/GenericPage.astro";
-import { retrieveTeamSeasonInformation } from "../../resources/espn";
-import { calculatePredictedPointMargin, retrieveTeamSummaries } from "../../resources/sdv";
+import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation } from "../../resources/sdv";
 import { retrieveAllTeams } from "../../utils/common";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { isTeamFavorite } from "../../utils/misc";
@@ -81,7 +80,7 @@ if (canDisplayMatchupView) {
     }
     {
         canDisplayMatchupView && (
-            <MatchupView awayTeam={awayTeam} homeTeam={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} />
+            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} />
         )
     }
 </GenericPage>
