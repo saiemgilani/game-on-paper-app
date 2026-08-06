@@ -1,7 +1,7 @@
 <script lang="ts">
 import Chart from 'chart.js/auto'
 import type { ChartItem } from "chart.js";
-import { waitForElement, cleanLocation } from "../../utils/misc";
+import { waitForElement, cleanLocation, cleanField } from "../../utils/misc";
 import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 
 const { homeTeam, awayTeam, teamData } = $props();
@@ -16,8 +16,8 @@ async function waitToGenerateChart() {
         const offRadarCtx = await waitForElement(document, "offensive-canvas");
         const defRadarCtx = await waitForElement(document, "defensive-canvas");
 
-        const awayTeamTitle = teamData[0].season ? `${teamData[0].season} ${cleanLocation(awayTeam)}` : cleanLocation(awayTeam)
-        const homeTeamTitle = teamData[1].season ? `${teamData[1].season} ${cleanLocation(homeTeam)}` : cleanLocation(homeTeam)
+        const awayTeamTitle = teamData[0].season ? `${teamData[0].season} ${cleanField(awayTeam, "school")}` : cleanField(awayTeam, "school")
+        const homeTeamTitle = teamData[1].season ? `${teamData[1].season} ${cleanField(homeTeam, "school")}` : cleanField(homeTeam, "school")
 
         if (offRadarChart) {
             offRadarChart?.destroy()

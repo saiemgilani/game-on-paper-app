@@ -1,7 +1,7 @@
 <script lang="ts">
 import Chart from 'chart.js/auto'
 import type { ChartItem } from "chart.js";
-import { waitForElement, cleanLocation } from "../../utils/misc";
+import { waitForElement, cleanField } from "../../utils/misc";
 import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 
 const { team, teamData, showSeasonPicker } = $props();
@@ -28,7 +28,7 @@ async function waitToGenerateChart() {
             offRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(selectedTeamData, "Offensive", null, isDarkMode),
-                `${cleanLocation(team)} ${season} Offensive Profile`,
+                `${cleanField(team, "school")} ${season} Offensive Profile`,
                 isDarkMode,
                 false
             )
@@ -43,7 +43,7 @@ async function waitToGenerateChart() {
             defRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(selectedTeamData, "Defensive", null, isDarkMode),
-                `${cleanLocation(team)} ${season} Defensive Profile`,
+                `${cleanField(team, "school")} ${season} Defensive Profile`,
                 isDarkMode,
                 false
             )
