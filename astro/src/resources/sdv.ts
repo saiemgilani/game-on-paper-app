@@ -821,6 +821,7 @@ export async function retrieveTeam(teamId: string | number): Promise<SDVTeam | n
         return result
     }
 
+    // override GT colors, old gold FTW
     if (teamId == 59) {
         return {
             ...result,

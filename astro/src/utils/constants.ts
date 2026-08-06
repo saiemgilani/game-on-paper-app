@@ -44,6 +44,7 @@ const SICKOS_GOTW = [];
 export const MEME_LIST = [61];
 export const SPECIAL_IMAGES: { [teamId: string]: string} = {
     "61": "/assets/img/ennui-uga.png",
+    "59": "/assets/img/gt-old-gold.png"
     // "2390": "/assets/img/upside-down-u.png",
 };
 
