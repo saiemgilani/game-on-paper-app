@@ -321,88 +321,68 @@ export interface ESPNPlayByPlayResponse {
     }
 }
 
-export async function getRemoteGames(year?: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
+export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
     let espnGroup = group;
     if (espnGroup && espnGroup < 0) {
         espnGroup = 80; // All FBS which we will filter
     }
 
-    if (year && week) {
-        const baseParams: Record<string, any> = {
-            xhr: 1,
-            render: false,
-            userab: 18
-        };
-        let query: URLSearchParams = new URLSearchParams(baseParams);
-        if (year) {
-            query.append("year", `${year}`);
-        }
-        if (week && week != 999) {
-            query.append("week", `${week}`);
-        }
-        if (espnGroup) {
-            query.append("group", `${espnGroup || 80}`);
-        }
-        if (seasontype) {
-            query.append("seasontype", `${seasontype || 2}`);
-        }
-        const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
-        console.info(`ESPN schedule query: ${reqURL}`)
-        const resp = await fetch(reqURL);
-        if (!resp.ok) {
-            throw new Error(`Response status: ${resp.status}`);
-        }
-
-        const espnRaw = await resp.text();
-        if (!espnRaw) {
-            throw Error(`Data not available for ESPN's schedule endpoint.`)
-        }
-
-        if (typeof espnRaw == 'string' && espnRaw.toLocaleLowerCase().includes("<html>")) {
-            throw Error("Data returned from ESPN was HTML file, not valid JSON.")
-        }
-
-        const espnContent: ESPNScheduleResponse = JSON.parse(espnRaw) as ESPNScheduleResponse;
-        var result: any[] = [];
-        const actualContent = espnContent?.content?.schedule || {};
-        if (!actualContent) {
-            throw Error(`Data not available for ESPN's schedule endpoint.`)
-        }
-
-        for (const [_, schedule] of Object.entries(actualContent)) {
-            if (schedule && Object.keys(schedule).includes("games") && schedule.games) {
-                result = result.concat(schedule.games)
-            }
-        }
-
-        if (group == -1) { // top 25
-            result = result.filter((g: ESPNScheduleEvent) => {
-                const home = g.competitions[0].competitors[0];
-                const away = g.competitions[0].competitors[1];
-
-                return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
-            })
-        }
-        return result;
-    } else {
-        const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${espnGroup || 80}&size=100000&${new Date().getTime()}`)
-        let espnContent: ESPNScoreboardResponse = await resp.json();
-        if (espnContent == null) {
-            throw Error(`Data not available for ESPN's schedule endpoint.`)
-        }
-        let result = espnContent?.events || [];
-
-        if (group == -1) { // top 25
-            result = result.filter((g: ESPNScheduleEvent) => {
-                const home = g.competitions[0].competitors[0];
-                const away = g.competitions[0].competitors[1];
-
-                return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
-            })
-        }
-
-        return result;
+    const baseParams: Record<string, any> = {
+        xhr: 1,
+        render: false,
+        userab: 18
+    };
+    let query: URLSearchParams = new URLSearchParams(baseParams);
+    if (year) {
+        query.append("year", `${year}`);
     }
+    if (week && week != 999) {
+        query.append("week", `${week}`);
+    }
+    if (espnGroup) {
+        query.append("group", `${espnGroup || 80}`);
+    }
+    if (seasontype) {
+        query.append("seasontype", `${seasontype || 2}`);
+    }
+    const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
+    console.info(`ESPN schedule query: ${reqURL}`)
+    const resp = await fetch(reqURL);
+    if (!resp.ok) {
+        throw new Error(`Response status: ${resp.status}`);
+    }
+
+    const espnRaw = await resp.text();
+    if (!espnRaw) {
+        throw Error(`Data not available for ESPN's schedule endpoint.`)
+    }
+
+    if (typeof espnRaw == 'string' && espnRaw.toLocaleLowerCase().includes("<html>")) {
+        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
+    }
+
+    const espnContent: ESPNScheduleResponse = JSON.parse(espnRaw) as ESPNScheduleResponse;
+    var result: any[] = [];
+    const actualContent = espnContent?.content?.schedule || {};
+    if (!actualContent) {
+        throw Error(`Data not available for ESPN's schedule endpoint.`)
+    }
+
+    for (const [_, schedule] of Object.entries(actualContent)) {
+        if (schedule && Object.keys(schedule).includes("games") && schedule.games) {
+            result = result.concat(schedule.games)
+        }
+    }
+
+    if (group == -1) { // top 25
+        result = result.filter((g: ESPNScheduleEvent) => {
+            const home = g.competitions[0].competitors[0];
+            const away = g.competitions[0].competitors[1];
+
+            return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
+        })
+    }
+    return result;
 }
 
 export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = false): Promise<ESPNScheduleEvent[]> {
@@ -417,7 +397,7 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
         }
 
         console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
-        const result = await getRemoteGames(undefined, undefined, undefined, 80);
+        const result = await getRemoteGames(CURRENT_YEAR, undefined, undefined, 80); 
         if ((cacheEnabled || forceWrite) && result) {
             console.info(`ESPN API cache update: scoreboard`)
             await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
