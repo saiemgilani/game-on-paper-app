@@ -1,5 +1,6 @@
 ---
 import { SPECIAL_IMAGES } from '../utils/constants';
+import { existsSync } from 'node:fs';
 
 interface Props {
     teamIds: (string | number)[]
@@ -15,13 +16,15 @@ let teamIdCSS = teamIds.map(p => {
 })
 
 let specialTeamIdCSS = Object.entries(SPECIAL_IMAGES).map(([k, v]) => {
-    return `
-    img.team-logo-${k} {
-        content: url('${v}') !important
-    }
+    const darkModeUrl = v.replace(".png", "-dark.png")
+    const hasDarkModeLogo = existsSync(darkModeUrl)
 
-    @media (prefers-color-scheme: dark) { img.team-logo-${k} { content: url('${v.replace(".png", "-dark.png")}') !important } }
-    `
+    let base = `img.team-logo-${k} { content: url('${v}') !important }`;
+    if (hasDarkModeLogo) {
+        base += `\n@media (prefers-color-scheme: dark) { img.team-logo-${k} { content: url('${darkModeUrl}') !important } }`
+    }
+    
+    return base
 })
 
 
