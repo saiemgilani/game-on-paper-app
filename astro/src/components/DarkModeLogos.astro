@@ -14,11 +14,13 @@ let teamIdCSS = teamIds.map(p => {
     `
 })
 
-let specialTeamIdCSS = Object.entries(SPECIAL_IMAGES).map((k,v) => {
+let specialTeamIdCSS = Object.entries(SPECIAL_IMAGES).map(([k, v]) => {
     return `
     img.team-logo-${k} {
-        content: url('${v}')
+        content: url('${v}') !important
     }
+
+    @media (prefers-color-scheme: dark) { img.team-logo-${k} { content: url('${v.replace(".png", "-dark.png")}') !important } }
     `
 })
 
