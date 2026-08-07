@@ -14,6 +14,7 @@ interface Props {
 
 const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary } = Astro.props;
 
+const showSeasons = awayTeamSummary?.season && homeTeamSummary?.season && homeTeamSummary?.season != awayTeamSummary?.season;
 
 function cleanBreakdown(breakdown: SDVTeamSummary | null): any {
     if (!breakdown || !Object.keys(breakdown).includes("team_id")) {
@@ -83,9 +84,11 @@ function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", s
 }
 
 function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
+    const seasonLabel = showSeasons ? `<p class="text-muted text-center text-small mb-0">${breakdown?.season} Season Ranks</p>` : ""
     return `
     <div class="col-md-12 ms-sm-auto col-lg-3">
-        <div class="h4 text-center">${produceTeamLogoLink(team, "h4", true)}</div>
+        <div class="h4 text-center mb-0">${produceTeamLogoLink(team, "h4", true)}</div>
+        ${seasonLabel}
         <div class="table-responsive">
             <table class="table table-sm table-responsive">
                 <thead>
