@@ -85,8 +85,8 @@ jobs:
             docker stop $(docker ps -a -q) || true
             docker system prune --force
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
-            docker-compose pull
-            docker-compose -f docker-compose.yml up -d
+            docker compose pull
+            docker compose -f docker-compose.yml up -d
           ENDSSH
 
       - name: Check that API is live
