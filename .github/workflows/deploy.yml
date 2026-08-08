@@ -76,6 +76,8 @@ jobs:
           SSH_USER: ${{ secrets.API_USERNAME }}
           SSH_PORT: ${{ secrets.PORT }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sftp -i ~/.ssh/deploy_key -P $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             put docker-compose.do.yml docker-compose.yml
