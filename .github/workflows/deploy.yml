@@ -48,7 +48,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
-        uses: docker/docker-build-push@b9769986761dfcf8828a58eadbd440d1738476f9
+        uses: docker/build-push-action@b9769986761dfcf8828a58eadbd440d1738476f9
         with:
           image: saiemgilani/game-on-paper-python-api
           registry: ghcr.io
@@ -64,7 +64,7 @@ jobs:
           DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
           echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
       - name: Push updated docker-compose override file
-        uses: vtisweden/sftp-action@94621fd31c690bb564051a8bdd36286a69cf59c8
+        uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
