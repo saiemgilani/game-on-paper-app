@@ -1,10 +1,10 @@
 services:
   python:
-    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python:latest
+    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:REPLACE_ME
     environment:
       - PYTHON_HTTP_TOKEN
     ports:
-      - 5000:5000
+      - 3000:5000
     healthcheck:
       test: curl --fail http://python:5000/healthcheck || exit 1
       interval: 60s

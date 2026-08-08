@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
-      - uses: cloudflare/wrangler-action@v4
+      - uses: cloudflare/wrangler-action@84c72882ef1dacec6f70cdca9666d4625494e009
         env: 
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
@@ -41,65 +41,61 @@ jobs:
           max-attempts: 10
           retry-delay: 5s
 
-  # deploy-api:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v7
-  #       with:
-  #         repository: saiemgilani/game-on-paper-app
-  #     - name: Publish Python container to GitHub
-  #       uses: mr-smithers-excellent/docker-build-push@v7
-  #       with:
-  #         image: saiemgilani/game-on-paper-python
-  #         registry: ghcr.io
-  #         username: ${{ secrets.GH_USERNAME }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #         directory: ./python
-  #         dockerfile: ./python/Dockerfile
-  #         tags: latest
-  #     - name: Push updated Apache config file
-  #       uses: vtisweden/sftp-action@v1.0.6
-  #       with:
-  #         host: ${{ secrets.HOST }}
-  #         username: ${{ secrets.USERNAME }}
-  #         password: ${{ secrets.PASSWORD }}
-  #         port: ${{ secrets.PORT }}
-  #         localPath: "./config/apache2.conf"
-  #         remotePath: "/etc/apache2/sites-enabled/gameonpaper.com.conf"
-  #     - name: Push updated docker-compose override file
-  #       uses: vtisweden/sftp-action@v1.0.6
-  #       with:
-  #         host: ${{ secrets.HOST }}
-  #         username: ${{ secrets.USERNAME }}
-  #         password: ${{ secrets.PASSWORD }}
-  #         port: ${{ secrets.PORT }}
-  #         localPath: "./docker-compose.do.yml"
-  #         remotePath: "./docker-compose.yml"
-  #     - name: Deploy package to DigitalOcean
-  #       uses: appleboy/ssh-action@v1.2.5
-  #       env:
-  #         GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
-  #         DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
-  #         PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
-  #       with:
-  #         host: ${{ secrets.HOST }}
-  #         username: ${{ secrets.USERNAME }}
-  #         password: ${{ secrets.PASSWORD }}
-  #         port: ${{ secrets.PORT }}
-  #         envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE, PYTHON_HTTP_TOKEN
-  #         script: |
-  #           docker stop $(docker ps -a -q)
-  #           docker system prune --force
-  #           docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-  #           docker-compose pull
-  #           docker-compose -f docker-compose.yml up -d
-  #           systemctl reload apache2
-  #     - name: Check that API is live
-  #       uses: jtalk/url-health-check-action@v5
-  #       with:
-  #         url: https://api.gameonpaper.com/healthcheck|http://api.gameonpaper.com/healthcheck
-  #         follow-redirect: false
-  #         max-attempts: 10
-  #         retry-delay: 5s
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: saiemgilani/game-on-paper-app
+      - name: Publish Python container to GitHub
+        uses: docker/docker-build-push@b9769986761dfcf8828a58eadbd440d1738476f9
+        with:
+          image: saiemgilani/game-on-paper-python-api
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./python
+          dockerfile: ./python/Dockerfile
+          tags: latest
+      - name: Update SHA for docker compose
+        run: |
+          DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
+          SHA="${{ github.sha }}"
+          DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
+          echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
+      - name: Push updated docker-compose override file
+        uses: vtisweden/sftp-action@94621fd31c690bb564051a8bdd36286a69cf59c8
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          localPath: "./docker-compose.do.yml"
+          remotePath: "./docker-compose.yml"
+      - name: Deploy package to DigitalOcean
+        uses: garygrossgarten/github-action-ssh@3d6a341d282a92d2253ba26640fcc44f1a38ce92
+        env:
+          GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
+          DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
+          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
+        with:
+          host: ${{ secrets.API_HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE, PYTHON_HTTP_TOKEN
+          script: |
+            docker stop $(docker ps -a -q)
+            docker system prune --force
+            docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
+            docker-compose pull
+            docker-compose -f docker-compose.yml up -d
+      - name: Check that API is live
+        uses: jtalk/url-health-check-action@v5
+        with:
+          url: https://api.gameonpaper.com/healthcheck|http://api.gameonpaper.com/healthcheck
+          follow-redirect: false
+          max-attempts: 10
+          retry-delay: 5s
