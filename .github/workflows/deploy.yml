@@ -77,12 +77,11 @@ jobs:
           SSH_PORT: ${{ secrets.PORT }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          sftp -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
+          sftp -i ~/.ssh/deploy_key -P $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             put docker-compose.do.yml docker-compose.yml
           ENDSSH
           ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             set -e
-
             docker stop $(docker ps -a -q)
             docker system prune --force
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
