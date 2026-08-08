@@ -10,36 +10,36 @@ on:
   # workflow_call:
 
 jobs:
-  deploy-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: saiemgilani/game-on-paper-app
-      - uses: cloudflare/wrangler-action@v4
-        env: 
-          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
-          SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
-          APP_VERSION: ${{ github.sha }}
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: "./astro"
-          secrets: |
-            PYTHON_HTTP_TOKEN
-            SDV_AUTH_TOKEN
-          vars: |
-            APP_VERSION
-          preCommands: |
-            npm install --save
-            npm run build
-      - name: Check that web is live
-        uses: jtalk/url-health-check-action@v5
-        with:
-          url: https://game-on-paper-astro.akeaswaran.workers.dev/ #https://gameonpaper.com|http://gameonpaper.com|https://www.gameonpaper.com|http://www.gameonpaper.com
-          follow-redirect: false
-          max-attempts: 10
-          retry-delay: 5s
+  # deploy-web:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #       with:
+  #         repository: saiemgilani/game-on-paper-app
+  #     - uses: cloudflare/wrangler-action@v4
+  #       env: 
+  #         PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
+  #         SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+  #         APP_VERSION: ${{ github.sha }}
+  #       with:
+  #         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  #         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  #         workingDirectory: "./astro"
+  #         secrets: |
+  #           PYTHON_HTTP_TOKEN
+  #           SDV_AUTH_TOKEN
+  #         vars: |
+  #           APP_VERSION
+  #         preCommands: |
+  #           npm install --save
+  #           npm run build
+  #     - name: Check that web is live
+  #       uses: jtalk/url-health-check-action@v5
+  #       with:
+  #         url: https://game-on-paper-astro.akeaswaran.workers.dev/ #https://gameonpaper.com|http://gameonpaper.com|https://www.gameonpaper.com|http://www.gameonpaper.com
+  #         follow-redirect: false
+  #         max-attempts: 10
+  #         retry-delay: 5s
 
   deploy-api:
     runs-on: ubuntu-latest
@@ -66,9 +66,9 @@ jobs:
       - name: Push updated docker-compose override file
         uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
+          host: ${{ secrets.API_HOST }}
+          username: ${{ secrets.API_USERNAME }}
+          password: ${{ secrets.API_PASSWORD }}
           port: ${{ secrets.PORT }}
           localPath: "./docker-compose.do.yml"
           remotePath: "./docker-compose.yml"
@@ -82,8 +82,8 @@ jobs:
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
         with:
           host: ${{ secrets.API_HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
+          username: ${{ secrets.API_USERNAME }}
+          password: ${{ secrets.API_PASSWORD }}
           port: ${{ secrets.PORT }}
           envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE, PYTHON_HTTP_TOKEN
           script: |
