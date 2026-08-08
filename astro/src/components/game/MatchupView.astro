@@ -76,26 +76,23 @@ function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any
     `
 }
 
-function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", showNickname: boolean = false): string {
+function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
     if (!team) {
-        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="35px" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
+        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
     }
-    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="35px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
+    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
 }
 
 function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
-    const seasonLabel = showSeasons ? `<p class="text-muted text-center text-small mb-0">${breakdown?.season} Season Ranks</p>` : ""
+    const seasonLabel = showSeasons ? `${breakdown?.season} Rk` : ""
     return `
     <div class="col-md-12 ms-sm-auto col-lg-3">
-        <div class="h4 text-center mb-0">${produceTeamLogoLink(team, "h4", true)}</div>
-        ${seasonLabel}
         <div class="table-responsive">
             <table class="table table-sm table-responsive">
                 <thead>
                     <tr>
-                        <th class="w-50" style="text-align: left;" colspan="1"></th>
-                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
-                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px")}</div></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1">${seasonLabel}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -317,7 +314,6 @@ const matchupData = [
         <div class="col-12">
             <p class="m-0 text-muted text-small">
                 <small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</small>
-                {(awayTeamBreakdown.season || homeTeamBreakdown.season) && (<small> Ranks from {awayTeamBreakdown.season || homeTeamBreakdown.season} season.</small>)}
             </p>
         </div>
     </div>
