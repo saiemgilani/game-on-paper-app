@@ -64,31 +64,32 @@ jobs:
       #     DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
       #     echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
       #     cat ./docker-compose.do.yml
-      - name: Push updated docker-compose override file
-        uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
-        with:
-          host: ${{ secrets.API_HOST }}
-          username: ${{ secrets.API_USERNAME }}
-          password: ${{ secrets.API_PASSWORD }}
-          localPath: "./docker-compose.do.yml"
-          remotePath: "./docker-compose.yml"
-      - name: Deploy package to DigitalOcean
-        uses: garygrossgarten/github-action-ssh@3d6a341d282a92d2253ba26640fcc44f1a38ce92
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.PORT }} ${{ secrets.API_HOST }} >> ~/.ssh/known_hosts
+      - name: Restart Docker Compose
         env:
-          GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
-        with:
-          host: ${{ secrets.API_HOST }}
-          username: ${{ secrets.API_USERNAME }}
-          password: ${{ secrets.API_PASSWORD }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, PYTHON_HTTP_TOKEN
-          command: |
+          SSH_HOST: ${{ secrets.API_HOST }}
+          SSH_USER: ${{ secrets.API_USERNAME }}
+          SSH_PORT: ${{ secrets.PORT }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          sftp -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
+            put docker-compose.do.yml docker-compose.yml
+          ENDSSH
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
+            set -e
+
             docker stop $(docker ps -a -q)
             docker system prune --force
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
             docker-compose pull
             docker-compose -f docker-compose.yml up -d
+          ENDSSH
+
       - name: Check that API is live
         uses: jtalk/url-health-check-action@v5
         with:
