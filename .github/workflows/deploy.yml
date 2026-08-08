@@ -64,14 +64,14 @@ jobs:
       #     DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
       #     echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
       #     cat ./docker-compose.do.yml
-      # - name: Push updated docker-compose override file
-      #   uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
-      #   with:
-      #     host: ${{ secrets.API_HOST }}
-      #     username: ${{ secrets.API_USERNAME }}
-      #     password: ${{ secrets.API_PASSWORD }}
-      #     localPath: "./docker-compose.do.yml"
-      #     remotePath: "./docker-compose.yml"
+      - name: Push updated docker-compose override file
+        uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
+        with:
+          host: ${{ secrets.API_HOST }}
+          username: ${{ secrets.API_USERNAME }}
+          password: ${{ secrets.API_PASSWORD }}
+          localPath: "./docker-compose.do.yml"
+          remotePath: "./docker-compose.yml"
       - name: Deploy package to DigitalOcean
         uses: garygrossgarten/github-action-ssh@3d6a341d282a92d2253ba26640fcc44f1a38ce92
         env:
