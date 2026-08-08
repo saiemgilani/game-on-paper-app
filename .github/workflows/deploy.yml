@@ -63,7 +63,7 @@ jobs:
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
           SHA="${{ github.sha }}"
           DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
-          echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
+          echo "$DOCKER_COMPOSE_CONTENT" > ./docker-compose.do.yml
           cat ./docker-compose.do.yml
       - name: Configure SSH
         run: |
