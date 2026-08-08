@@ -47,23 +47,24 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
-      # - name: Publish Python container to GitHub
-      #   uses: mr-smithers-excellent/docker-build-push@b6e94a8afeb0887d5cddb51a1db7dcc6bb6864ba
-      #   with:
-      #     image: saiemgilani/game-on-paper-python-api
-      #     registry: ghcr.io
-      #     username: ${{ secrets.GH_USERNAME }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-      #     directory: ./python
-      #     dockerfile: ./python/Dockerfile
-      #     tags: latest
-      # - name: Update SHA for docker compose
-      #   run: |
-      #     DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
-      #     SHA="${{ github.sha }}"
-      #     DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
-      #     echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
-      #     cat ./docker-compose.do.yml
+      - name: Publish Python container to GitHub
+        uses: mr-smithers-excellent/docker-build-push@b6e94a8afeb0887d5cddb51a1db7dcc6bb6864ba
+        with:
+          image: saiemgilani/game-on-paper-python-api
+          registry: ghcr.io
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./python
+          dockerfile: ./python/Dockerfile
+          addLatest: true
+          tags: ${{ github.sha }}
+      - name: Update SHA for docker compose
+        run: |
+          DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
+          SHA="${{ github.sha }}"
+          DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
+          echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
+          cat ./docker-compose.do.yml
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh

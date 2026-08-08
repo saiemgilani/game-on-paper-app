@@ -1,6 +1,6 @@
 services:
   python:
-    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:latest
+    image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:REPLACE_ME
     environment:
       - PYTHON_HTTP_TOKEN
     ports:
