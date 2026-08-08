@@ -62,31 +62,22 @@ jobs:
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
           SHA="${{ github.sha }}"
           DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
-          echo $DOCKER_COMPOSE_CONTENT > ./docker-compose.do.yml
-      - name: Push updated docker-compose override file
-        uses: vtisweden/sftp-action@79906f399a4e708972c4a458a40f13d14ecd4304
-        with:
-          host: ${{ secrets.API_HOST }}
-          username: ${{ secrets.API_USERNAME }}
-          password: ${{ secrets.API_PASSWORD }}
-          port: ${{ secrets.PORT }}
-          localPath: "./docker-compose.do.yml"
-          remotePath: "./docker-compose.yml"
+          echo "DOCKER_COMPOSE_FILE=${DOCKER_COMPOSE_CONTENT}" >> $GITHUB_ENV
       - name: Deploy package to DigitalOcean
         uses: garygrossgarten/github-action-ssh@3d6a341d282a92d2253ba26640fcc44f1a38ce92
         env:
           GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
-          DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
+          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
         with:
           host: ${{ secrets.API_HOST }}
           username: ${{ secrets.API_USERNAME }}
           password: ${{ secrets.API_PASSWORD }}
           port: ${{ secrets.PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE, PYTHON_HTTP_TOKEN
+          envs: GITHUB_USERNAME, GITHUB_TOKEN, PYTHON_HTTP_TOKEN, DOCKER_COMPOSE_FILE
           script: |
+            echo $DOCKER_COMPOSE_FILE > ./docker-compose.yml
             docker stop $(docker ps -a -q)
             docker system prune --force
             docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
