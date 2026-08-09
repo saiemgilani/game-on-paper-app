@@ -3,11 +3,11 @@ name: deploy
 on:
   push:
     branches:
-      - AE/cloudflare
-  # repository_dispatch:
-  #   types: [ deploy ]
+      - main
+  repository_dispatch:
+    types: [ deploy ]
   workflow_dispatch:
-  # workflow_call:
+  workflow_call:
 
 jobs:
   deploy-web:
