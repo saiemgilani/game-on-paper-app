@@ -41,12 +41,10 @@ app.use((req, res, next) => {
     }
 })
 
-app.use('/cfb', cfb);
-
-// index page
-app.get('/', function(req, res) {
-    res.redirect('/cfb/');
+app.all('*', function(req, res) {
+    return res.render("maintenance")
 });
+
 
 // Start the frontend service
 app.listen(port, () => {
