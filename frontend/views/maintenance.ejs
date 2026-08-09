@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Maintenance | Game on Paper</title>  
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">
+        <link href="/assets/css/dark-index.css" rel="stylesheet"> 
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <img class="img img-responsive mb-3" src="/assets/img/favicon.svg" height="50px" />
+                    <h3>Game on Paper is down for maintenance.</h3>
+                    <p class="mb-3">We're working on a massive update of Game on Paper for 2026. Check back soon for more details!</p>
+                    <p id="tech-details" class="d-inline">Technical Details <a data-bs-toggle="collapse" href="#tech-content" style="text-decoration: none;" role="button" aria-expanded="false">[show/hide]</a></span></p>
+                    <div class="panel-group mb-3">
+                        <div class="panel panel-default collapse" id="tech-content">
+                            <div>
+                                <div class="panel-body">
+                                    <div class="row">
+                                        <div class="col-12 text-muted text-small">
+                                            <p>We rebuilt the site and are waiting for DNS updates at our new provider to propagate before we can cut over the domain. </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 text-center text-muted">
+                      <p>Follow the site on <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a>. Love the site? Support us on <a href="https://ko-fi.com/G2G0KJ588">Ko-fi</a>!</p>
+                </div>
+            </div>
+        </div>
+        <%- include('./partials/scripts') %>
+    </body>
+</html>
