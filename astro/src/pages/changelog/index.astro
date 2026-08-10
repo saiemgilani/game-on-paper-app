@@ -1,9 +1,16 @@
 ---
+export const prerender = true;
+
 import GenericPage from '../../layouts/GenericPage.astro'
 const allLogs = Object.values(import.meta.glob('./*.md', { eager: true }));
 
 let yearLogs: Record<string, unknown[]> = {};
 for (const log of allLogs) {
+  const url = String((log as any).url)
+  if (url.includes("latest")) {
+    continue;
+  }
+  
   const date: string = String((log as any).url).replace("/changelog/", "")
   const year = date.slice(0, 4)
   if (!Object.keys(yearLogs).includes(year)) {
