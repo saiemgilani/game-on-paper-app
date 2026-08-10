@@ -2,7 +2,7 @@
 import Chart from 'chart.js/auto';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
-import { SPECIAL_IMAGES } from '../../utils/constants'
+import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
 const { game, percentiles } = $props()
@@ -242,32 +242,6 @@ async function generateChart() {
                         //     // draw it - ~145 px per half                                           // and force re-render to include it 
                         }
 
-                        // const homeImage = new Image();
-                        // const homeId = `${homeTeam.id}`;
-                        // homeImage.setAttribute('crossOrigin','anonymous');
-                        // if (Object.keys(SPECIAL_IMAGES).includes(homeId)) {
-                        //     homeImage.src = SPECIAL_IMAGES[homeId];
-                        // } else {
-                        //     homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
-                        // }
-                        // homeImage.onload = () => { 
-                        //     chart.ctx.drawImage(this.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (imgSize / 4.0), imgSize, imgSize);                                      // if the image is loaded
-                        //     // draw it - ~145 px per half
-                        // }
-
-                        // const awayImage = new Image();
-                        // const awayId = `${awayTeam.id}`;
-                        // awayImage.setAttribute('crossOrigin','anonymous');
-                        // if (Object.keys(SPECIAL_IMAGES).includes(awayId)) {
-                        //     awayImage.src = SPECIAL_IMAGES[awayId];
-                        // } else {
-                        //     awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
-                        // }
-                        // awayImage.onload = () => {                                            // when the image loads
-                        //     chart.ctx.drawImage(this.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);    
-                        //     // draw it - ~145 px per half                                           // and force re-render to include it
-                        // };
-
                         // pop the context
                         chart.ctx.restore();
                     }
@@ -280,9 +254,16 @@ async function generateChart() {
                     homeImage.setAttribute('crossOrigin','anonymous');
                     if (Object.keys(SPECIAL_IMAGES).includes(homeId)) {
                         homeImage.src = SPECIAL_IMAGES[homeId];
-                    } else {
-                        homeImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
                     }
+                    
+                    if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(homeId)) {
+                        homeImage.src = SPECIAL_IMAGES_DARK[homeId];
+                    }
+
+                    if (!homeImage.src) {
+                        homeImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+                    }
+
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
@@ -293,9 +274,16 @@ async function generateChart() {
                     awayImage.setAttribute('crossOrigin','anonymous');
                     if (Object.keys(SPECIAL_IMAGES).includes(awayId)) {
                         awayImage.src = SPECIAL_IMAGES[awayId];
-                    } else {
-                        awayImage.src = window.matchMedia('(prefers-color-scheme: dark)').matches ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
                     }
+
+                    if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(awayId)) {
+                        awayImage.src = SPECIAL_IMAGES_DARK[awayId];
+                    }
+
+                    if (!awayImage.src) {
+                        awayImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+                    }
+
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
