@@ -353,7 +353,7 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
     }
     const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
     console.info(`ESPN schedule query: ${reqURL}`)
-    const resp = await fetch(reqURL);
+    const resp = await wrappedFetch(reqURL);
     if (!resp.ok) {
         throw new Error(`Response status: ${resp.status}`);
     }
@@ -404,7 +404,7 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
 
         console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
         // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
-        const resp = await fetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
+        const resp = await wrappedFetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
         let espnContent: ESPNCoreScoreboardResponse = await resp.json();
         const result = espnContent?.content.sbData.events || [];
 
@@ -421,7 +421,7 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
 
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
     const cacheBuster = ((new Date()).getTime() * 1000);
-    const req = await fetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const req = await wrappedFetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
     const res: ESPNPlayByPlayResponse = await req.json()
     return res
 }
@@ -438,7 +438,7 @@ async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<an
     const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
     const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
-    const req =  await fetch(url);
+    const req =  await wrappedFetch(url);
     const res = await req.json()
     return res
 }

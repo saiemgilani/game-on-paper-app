@@ -1,6 +1,7 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNTeam, ESPNWinProbability } from "./espn"
 import { env } from "cloudflare:workers"
+import { wrappedFetch } from "../utils/misc"
 
 export enum SpiceLevel {
     BELL = 0,
@@ -926,7 +927,7 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await fetch(`${PYTHON_HTTP_URL}/cfb/process`, {
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/process`, {
         method: "POST",
         body: JSON.stringify({ gameId }),
         headers: {

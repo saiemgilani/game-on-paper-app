@@ -581,11 +581,8 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 }
 
 export async function wrappedFetch(url: string, init?: RequestInit): Promise<Response> {
-    return fetch(url, {
-        ...init,
-        headers: {
-            ...(init?.headers || {}),
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15",
-        }
-    })
+    const start = Date.now();
+    const resp = await fetch(url, init)
+    console.info(`[request] ${init?.method || "GET"} ${url} - time: ${Date.now() - start} ms`)
+    return resp;
 }

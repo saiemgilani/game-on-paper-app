@@ -576,7 +576,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     }
     try {
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
-        const req = await fetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
+        const req = await wrappedFetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const contentRaw: string = await req.text();
         if (contentRaw && cacheEnabled) {
             console.info(`SDV API cache update: ${endpointURL}`)
