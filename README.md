@@ -11,7 +11,7 @@ Make sure you have the following installed:
 
 You will need to create a `.env` file in the `.astro` folder, following the example of `.env.example`. The credentials and how to acquire them are listed below:
 
-- `SDV_AUTH_TOKEN`: Please reach out to [@akeaswaran](https://github.com/akeaswaran) or [@saiemgilani](https://github.com/saiemgilani) for access to the Sportsdataverse web platform, where you can get a API token.
+- `SDV_AUTH_TOKEN`: Please reach out to [@akeaswaran](https://github.com/akeaswaran) or [@saiemgilani](https://github.com/saiemgilani) for access to the [Sportsdataverse web platform](https://www.sportsdataverse.org), where you can get a API token.
 - `PYTHON_HTTP_TOKEN`: please leave this as `test-token`. If you do change this, make sure the change is replicated in `./docker-compose.yml`.
 - `PYTHON_HTTP_URL`: please leave this as `http://localhost:8080`.
 
