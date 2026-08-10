@@ -26,15 +26,13 @@ import Footer from '../Footer.astro';
 
 interface Props {
    id: string | number
+   game: ProcessedGame | null
 }
 
-const { id } = Astro.props;
-let game: ProcessedGame | null = null;
-try {
-    game = await retrieveProcessedGame(id);
-} catch (e) {
+const { id, game } = Astro.props;
+if (!game) {
     Astro.cache.set(false);
-    console.error(`ERROR while loading game ${id}: ${e} (${(e as Error).stack})`)
+    console.error(`ERROR while loading game ${id}: received null game`)
     return Astro.redirect("/404");
 }
 

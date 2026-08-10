@@ -3,6 +3,7 @@ import GamePage from '../../components/game/GamePage.astro';
 import PreGamePage from '../../components/game/PreGamePage.astro';
 import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { DateTime } from 'luxon';
+import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 
 const { id } = Astro.params;
 if (!id) {
@@ -10,10 +11,15 @@ if (!id) {
     return Astro.redirect("/"); 
 }
 let espnGame: ESPNPlayByPlayResponse | null;
+let game: ProcessedGame | null = null;
 try {
     espnGame = await retrieveGamePage(id);
     if (!espnGame) {
         throw new Error(`Game ID ${id} had no data`);
+    }
+
+    if (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED") {
+        game = await retrieveProcessedGame(id);
     }
 
     const gameDate = DateTime.fromISO(espnGame.gamepackageJSON.header.competitions[0].date);
@@ -56,8 +62,8 @@ try {
 }
 ---
 {
-    (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" || !game) && <PreGamePage id={id} espnGame={espnGame} />
 }
 {
-    (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED") && <GamePage id={id} />
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && game) && <GamePage id={id} game={game} />
 }
