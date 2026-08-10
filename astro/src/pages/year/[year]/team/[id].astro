@@ -125,17 +125,17 @@ const leaders = [
         <TeamRushingTable players={rushers.filter(p => p.rusher_player_name != "NA" && p.rusher_player_name != null && p.rusher_player_name).toSorted((a, b) => b.plays - a.plays)} />
         <TeamReceivingTable players={receivers.filter(p => p.receiver_player_name != "NA" && p.receiver_player_name != null && p.receiver_player_name).toSorted((a, b) => b.plays - a.plays)} />
     </div>
-    <div class="container mb-3">
+    <!-- <div class="container mb-3">
         <GenericPanel id="schedule" title="Schedule">
         <div class="row mb-3" slot="panel-body">
-            <!-- {
+            {
                 (teamSeason.events.length > 0) && (teamSeason.events.map(((g: SDVGame) => <GameThumb game={g} />)))
-            } -->
+            }
             {
                 (teamSeason.events.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
             }
         </div>
         </GenericPanel>
-    </div>
+    </div> -->
     
 </GenericPage>
