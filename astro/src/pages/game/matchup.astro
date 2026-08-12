@@ -1,0 +1,86 @@
+---
+import MatchupView from "../../components/game/MatchupView.astro";
+import MatchupBuilder from "../../components/game/MatchupBuilder.svelte";
+import GenericPage from "../../layouts/GenericPage.astro";
+import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation } from "../../resources/sdv";
+import { retrieveAllTeams } from "../../utils/common";
+import DarkModeLogos from "../../components/DarkModeLogos.astro";
+import { isTeamFavorite } from "../../utils/misc";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import { calculatePredictedWinProb } from "../../resources/sdv";
+
+const query = Astro.url.searchParams;
+const awaySeason = query.get("awaySeason") || "2025";
+const awayTeamId = query.get("awayTeamId") || "52";
+const homeSeason = query.get("homeSeason") || "2025";
+const homeTeamId = query.get("homeTeamId") || "59";
+
+let allTeamSeasons = retrieveAllTeams();
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+allTeamSeasons.sort((a, b) => {
+    if (isTeamFavorite(favorites, a.team_id) && !isTeamFavorite(favorites, b.team_id)) {
+        return -1;
+    } else if (!isTeamFavorite(favorites, a.team_id) && isTeamFavorite(favorites, b.team_id)) {
+        return 1;
+    } else {
+        return a.name.localeCompare(b.name)
+    }
+})
+
+let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)
+let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries({ season: Number(awaySeason), team_id: awayTeamId, maxLookback: Number(awaySeason)});
+let awayTeamSummary = (awayTeamData.length > 0) ? awayTeamData[0] : null
+let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
+let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason)});
+let homeTeamSummary = (homeTeamData.length > 0) ? homeTeamData[0] : null
+
+const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
+const predWinProb = calculatePredictedWinProb(predMargin)
+
+const projection = (homeTeamSummary && awayTeamSummary && predWinProb) ? {
+    winner: ((predMargin || 0) > 0) ? `${homeSeason} ${homeTeamSummary.pos_team}` : `${awaySeason} ${awayTeamSummary.pos_team}`,
+    team_id: ((predMargin || 0) > 0) ? homeTeamId : awayTeamId,
+    margin: Math.abs(predMargin || 0),
+    win_prob: ((predMargin || 0) > 0) ? predWinProb : (1 - predWinProb)
+} : null;
+
+const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTeamId)
+if (canDisplayMatchupView) {
+    Astro.cache.set({
+        maxAge: 60 * 60 * 24, // one day
+        tags: ['matchup', "favorites-enabled"],
+    })
+} else {
+    Astro.cache.set(false);
+}
+---
+
+<GenericPage title={"Matchup Builder | Game on Paper"} subtitle={`Pick two team-seasons to compare`} slug="/game/matchup" breadcrumbs={[]}>
+    <DarkModeLogos teamIds={[homeTeamId, awayTeamId]} />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12 mb-xs-3">
+                <h1>Matchup Builder</h1>
+                <p class="m-0 text-muted">Data shown is from FBS vs FBS games only.</p>
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+            </div>
+        </div>
+    </div>
+    <MatchupBuilder client:idle teamSeasons={allTeamSeasons} awaySeason={awaySeason} homeSeason={homeSeason} awayTeamId={awayTeamId} homeTeamId={homeTeamId} projection={projection} />
+    {
+        !canDisplayMatchupView && (
+            <div class="container">
+                <div class="row mb-3">
+                    <div class="col-12 text-center">
+                        <p class="text-muted">Please select two team-seasons to compare.</p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+    {
+        canDisplayMatchupView && (
+            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} />
+        )
+    }
+</GenericPage>

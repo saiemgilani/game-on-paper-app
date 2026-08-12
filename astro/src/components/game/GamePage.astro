@@ -1,0 +1,436 @@
+---
+import WatchButton from '../../components/game/WatchButton.astro';
+import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
+import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+import { isChampionshipEvent } from '../../utils/common';
+import { cleanLocation, isEventFavorite } from '../../utils/misc';
+import { DateTime } from 'luxon';
+import LocalDate from '../LocalDate.svelte';
+import type { ESPNCompetition } from '../../resources/espn';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import Scripts from '../Scripts.astro';
+import PlaysTable from './plays/PlaysTable.astro';
+import TeamPanel from '../../layouts/panel/TeamPanel.astro';
+import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
+import PassingChart from './metrics/PassingChart.astro';
+import RushingChart from './metrics/RushingChart.astro';
+import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
+import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import DrivesTable from './drives/DrivesTable.astro';
+import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
+import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
+import { retrievePercentiles } from '../../resources/sdv';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
+import Footer from '../Footer.astro';
+
+interface Props {
+   id: string | number
+   game: ProcessedGame | null
+}
+
+const { id, game } = Astro.props;
+if (!game) {
+    Astro.cache.set(false);
+    console.error(`ERROR while loading game ${id}: received null game`)
+    return Astro.redirect("/404");
+}
+
+const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
+const homeComp = game.header.competitions[0].competitors[0];
+const awayComp = game.header.competitions[0].competitors[1];
+const homeTeam = homeComp.team;
+const awayTeam = awayComp.team;
+const gameNote = game.header?.gameNote ?? "";
+const isChampEvent = isChampionshipEvent(gameNote);
+const gameStatus = game.header.competitions[0].status;
+
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const isFavorite = isEventFavorite(favorites, game.header.competitions[0])
+
+let title = "";
+let subtitle = "";
+if (gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0)) {
+    title = `Game: ${cleanLocation(awayComp.team)} ${awayComp.score}, ${cleanLocation(homeComp.team)} ${homeComp.score} | Game on Paper`
+} else {
+    title = `Game: ${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)} | Game on Paper`
+}
+subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)}`;
+
+const statusDetail = gameStatus.type.detail;
+const statusDescription = gameStatus.type.description ?? "Scheduled";
+const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
+
+const previewUrlParams = new URLSearchParams({
+    homeSeason: String(game.season.year),
+    awaySeason: String(game.season.year),
+    homeTeamId: homeTeam.id,
+    awayTeamId: awayTeam.id
+})
+
+const scrollerItems: ScrollerItem[] = [
+    { href: "#wpChart", title: "WP Chart" },
+    { href: "#epChart", title: "EPA Chart" },
+    { href: "#team-stats", title: "Team Stats" },
+    { href: "#player-stats", title: "Player Stats" },
+    { href: "#big-plays", title: "Big Plays" },
+    { href: "#most-imp-plays", title: "Most Important Plays" },
+    { href: "#scoring-plays", title: "Scoring Plays" },
+    { href: "#drives", title: "Drives" },
+    { href: "#all-plays", title: "All Plays" },
+    { href: `/game/matchup?${previewUrlParams.toString()}`, title: "Matchup Preview" },
+    { href: `https://www.espn.com/college-football/game/_/gameId/${game.id}`, title: "Gamecast" },
+];
+
+const bigPlays = game.plays.toSorted((a, b) => {
+    const diff = Math.abs(a.expectedPoints.added) - Math.abs(b.expectedPoints.added)
+    if (diff < 0) {
+        return 1
+    } else if (diff > 0) {
+        return -1
+    } else {
+        return 0
+    }
+}).slice(0, 10)
+
+const mostImpPlays = game.plays.toSorted((a, b) => {
+    const diff = Math.abs(a.winProbability.added) - Math.abs(b.winProbability.added)
+    if (diff < 0) {
+        return 1
+    } else if (diff > 0) {
+        return -1
+    } else {
+        return 0
+    }
+}).slice(0, 10)
+
+
+const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
+---
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/base.css" rel="stylesheet">
+        <link href="/assets/css/nav-header.css" rel="stylesheet">
+        <link href="/assets/css/dark-game.css" rel="stylesheet">
+        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+        { (isChampEvent) && (<link href="/assets/css/championship.css" rel="stylesheet" />) }
+        { (isFavorite) && (<link href="/assets/css/favorite.css" rel="stylesheet" />) }
+
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="referrer" content="origin-when-cross-origin">
+        <link rel="canonical" href={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <title>{title}</title>
+        <meta name="description" content={`Advanced stats for ${subtitle}`}>
+
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta property="og:title" content={title}>
+        <meta property="og:description" content={`"Advanced stats for ${subtitle}"`}>
+        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:type" content="website">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta name="twitter:title" content={title}>
+        <meta name="twitter:description" content={subtitle}>
+        <meta name="twitter:card" content="summary">
+        <meta name="title" content={title}>
+        <meta name="medium" content="website">
+        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
+    </head>
+    <body>
+        <div class="container-fluid">
+            <header class="blog-header py-3">
+                <div class="row flex-nowrap justify-content-between align-items-center">
+                    <div class="col-2 pt-1">
+                        <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
+                    </div>
+                    <div class="col-8 text-center">
+                        <div>
+                            <h2 class="mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h2>
+                            {
+                                (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
+                            }
+                            {
+                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.header.competitions[0].date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
+                            }
+                            {
+                                (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-2 d-flex justify-content-end align-items-center">
+                        <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
+                    </div>
+                </div>
+            </header>
+
+            <NavScroller items={scrollerItems} />
+        </div>
+        <div class="container-fluid">
+            <div class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <WinProbabilityChart client:only game={game} percentiles={percentiles} />
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} />
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <Panel id="team-stats" title="Team Stats">
+                        <div class="row" slot="panel-body">
+                            <div class="col-md-4 ms-sm-auto col-lg-4">
+                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
+                                <TeamMetricsTable 
+                                    title="Expected Points"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "EPA_plays","EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty"                                 
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.team}
+                                    useSuffix={true}
+                                    decimalPoints={2}
+                                />
+                                <TeamMetricsTable 
+                                    title="Production"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "scrimmage_plays","off_yards","yards_per_play","EPA_overall_off","EPA_per_play","passes","pass_yards","yards_per_pass","EPA_passing_overall","EPA_passing_per_play","rushes","rush_yards","yards_per_rush", "EPA_rushing_overall","EPA_rushing_per_play"                                    
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.team}
+                                    useSuffix={true}
+                                    decimalPoints={2}
+                                />
+                                <TeamMetricsTable 
+                                    title="Rushing"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","line_yards","line_yards_per_carry","rushing_highlight_yards","rushing_highlight_yards_per_opp"                                
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.team}
+                                    useSuffix={true}
+                                    decimalPoints={2}
+                                />
+                            </div>
+                            <div class="col-md-4 ms-sm-auto col-lg-4">
+                                <TeamMetricsTable 
+                                    title="Explosiveness"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing","EPA_non_explosive","EPA_non_explosive_per_play","EPA_non_explosive_passing","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing","EPA_non_explosive_rushing_per_play"
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.team}
+                                    useSuffix={true}
+                                    decimalPoints={2}
+                                />
+                                <TeamMetricsTable 
+                                    title="Situational"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "EPA_success",
+                                        "EPA_success_pass",
+                                        "EPA_success_rush",
+                                        "EPA_success_standard_down",
+                                        "EPA_success_passing_down",
+                                        "EPA_success_early_down",
+                                        "EPA_success_late_down",
+                                        "EPA_middle_8_success",
+                                        "early_downs",
+                                        "early_down_first_down",
+                                        "EPA_early_down",
+                                        "EPA_early_down_per_play",
+                                        "early_down_pass",
+                                        "early_down_rush",
+                                        "EPA_success_early_down_pass",
+                                        "EPA_success_early_down_rush",
+                                        "late_downs",
+                                        "EPA_late_down",
+                                        "EPA_late_down_per_play",
+                                        "late_down_pass",
+                                        "late_down_rush",
+                                        "EPA_success_late_down_pass",
+                                        "EPA_success_late_down_rush",
+                                        "late_down_avg_distance",
+
+                                        "middle_8",
+                                        "EPA_middle_8",
+                                        "EPA_middle_8_per_play",
+                                        "middle_8_pass",
+                                        "middle_8_rush",
+                                        "EPA_middle_8_success_pass",
+                                        "EPA_middle_8_success_rush"
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.situational}
+                                    useSuffix={true}
+                                    decimalPoints={2}
+                                />
+                            </div>
+                            <div class="col-md-4 ms-sm-auto col-lg-4">
+                                <TeamMetricsTable 
+                                    title="Drives"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "drives",
+                                        "avg_field_position",
+                                        "plays_per_drive",
+                                        "yards_per_drive",
+                                        "drive_total_gained_yards_rate"
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.drives}
+                                    useSuffix={false}
+                                    decimalPoints={2}
+                                />
+                                <TeamMetricsTable 
+                                    title="Defensive"
+                                    teamKey='def_pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","def_int","fumbles"
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.defensive}
+                                    useSuffix={true}
+                                    decimalPoints={0}
+                                />
+                                <TeamMetricsTable 
+                                    title="Turnovers"
+                                    teamKey='pos_team'
+                                    season={game.season.year}
+                                    columns={[
+                                        "turnovers","total_fumbles","fumbles_lost","fumbles_recovered","Int","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"
+                                    ]}
+                                    teamBoxScores={game.advBoxScore.turnover}
+                                    useSuffix={false}
+                                    decimalPoints={0}
+                                />
+                            </div>
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div id="player-stats" class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam}>
+                        <div class="row" slot="panel-body">
+                            <PlayerBoxScore 
+                                pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                            />
+                            <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
+                            <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
+                        </div>
+                    </TeamPanel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam}>
+                        <div class="row" slot="panel-body">
+                            <PlayerBoxScore 
+                                pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                            />
+                            <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
+                            <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
+                        </div>
+                    </TeamPanel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="big-plays" title="Big Plays">
+                        <p class="text-small" slot="panel-subtitle">As determined by absolute EPA.</p>
+                        <div class="row" slot="panel-body">
+                            {
+                                (bigPlays.length == 0) && (<p class="text-center text-muted">No big plays in this game.</p>)
+                            }
+                            {
+                                (bigPlays.length > 0) && (<PlaysTable plays={bigPlays} prefix='big-play' expandable={true} showGuide={false} />)
+                            }
+                        </div>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="most-important-plays" title="Most Important Plays">
+                        <p class="text-small" slot="panel-subtitle">As determined by absolute WPA.</p>
+                        <div class="row" slot="panel-body">
+                            {
+                                (mostImpPlays.length == 0) && (<p class="text-center text-muted">No important plays in this game.</p>)
+                            }
+                            {
+                                (mostImpPlays.length > 0) && (<PlaysTable plays={mostImpPlays} prefix='most-important-play' expandable={true} showGuide={false} />)
+                            }
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="scoring-plays" title="Scoring Plays">
+                        <div class="row" slot="panel-body">
+                            {
+                                (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
+                            }
+                            {
+                                (game.scoringPlays.length > 0) && (<PlaysTable plays={game.scoringPlays} prefix='scoring-play' expandable={true} showGuide={false} />)
+                            }
+                        </div>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 ms-sm-auto px-md-4">
+                    <Panel id="drives" title="Drives">
+                        <div class="row" slot="panel-body">
+                            {
+                                (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
+                            }
+                            {
+                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} showGuide={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} />
+                            }
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <Panel id="all-plays" title="All Plays">
+                        {
+                            (gameStatus.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
+                        }
+                        <div class="row" slot="panel-body">
+                            {
+                                (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
+                            }
+                            {
+                                (game.plays.length > 0) && (gameStatus.type.completed != true) && (
+                                    <PlaysTable plays={game.plays.toReversed()} prefix="all" expandable={true} showGuide={false} />
+                                )
+                            }
+                            {
+                                (game.plays.length > 0) && (gameStatus.type.completed == true) && (
+                                    <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={false} />
+                                )
+                            }
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+        </div>
+        <Footer />
+        <Scripts />
+    </body>
+</html>

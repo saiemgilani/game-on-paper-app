@@ -1,0 +1,320 @@
+---
+import type { ESPNTeam } from '../../resources/espn'
+import type { SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
+import { generateMarginalString } from '../../utils/common';
+import { cleanNickname, formatYardline, roundNumber, generateColorRampValue, cleanField } from '../../utils/misc';
+import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
+
+interface Props {
+    homeTeamSeason: SDVTeamSeasonInformation | null
+    awayTeamSeason: SDVTeamSeasonInformation | null
+    homeTeamSummary: SDVTeamSummary | null
+    awayTeamSummary: SDVTeamSummary | null
+}
+
+const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary } = Astro.props;
+
+const showSeasons = awayTeamSummary?.season && homeTeamSummary?.season && homeTeamSummary?.season != awayTeamSummary?.season;
+
+function cleanBreakdown(breakdown: SDVTeamSummary | null): any {
+    if (!breakdown || !Object.keys(breakdown).includes("team_id")) {
+        return {}
+    }
+    return breakdown
+}
+
+function produceRankHtml(rank?: number, addClass: string = "", addStyle: string = ""): string {       
+    if (rank == null || rank == undefined || (!rank && rank != 0)) {
+        return `<td class="${addClass} text-center" style="${addStyle}">N/A</td>`
+    }
+
+    let tied = String(rank)?.includes(".5")
+    let rankString = ""
+    if (rank && tied) {
+        rankString = `T-#${roundNumber(Math.floor(rank), 2, 0)}`;
+    } else if (rank) {
+        rankString = `#${roundNumber(Math.floor(rank), 2, 0)}`
+    } else {
+        rankString = "N/A"
+    }
+
+    return `<td class="${generateColorRampValue(rank, 134, true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
+}
+
+function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any, awaySideOfBall: string, category: string, statKey: string): string {
+    const homeSuffix = (awaySideOfBall == "offensive") ? "_def" : "_off";
+    const awaySuffix = (awaySideOfBall == "offensive") ? "_off" : "_def";
+
+    const homeKey = statKey.replace("_off", homeSuffix)
+    const awayKey = statKey.replace("_off", awaySuffix)
+
+    const homeRank = homeBreakdown[`${homeKey}_rank`]
+    const awayRank = awayBreakdown[`${awayKey}_rank`]
+
+    var homeValue = homeBreakdown[homeKey]
+    var awayValue = awayBreakdown[awayKey]
+
+    if (['EPAplay_off_pass', 'EPAplay_off_rush', "third_down_distance_off", "early_down_EPA_off"].includes(statKey)) {
+        homeValue = roundNumber(homeValue, 2, 2)
+        awayValue = roundNumber(awayValue, 2, 2)
+    } else if (['success_off', "third_down_success_off", "available_yards_pct_off", "late_down_success_off"].includes(statKey)) {
+        homeValue = `${roundNumber(homeValue * 100, 2, 1)}%`
+        awayValue = `${roundNumber(awayValue * 100, 2, 1)}%`
+    } else if (['start_position_off'].includes(statKey)) {
+        homeValue = formatYardline(parseInt(roundNumber(homeValue, 2, 1)), "Own", "Opp", "startingFP")
+        awayValue = formatYardline(parseInt(roundNumber(awayValue, 2, 1)), "Own", "Opp", "startingFP")
+    }
+
+    return `
+    <tr>
+        ${produceRankHtml(awayRank, "", "width: 10% !important;")}
+        <td class="text-center" style="width: 20% !important;" >${awayValue || "N/A"}</td>
+        <td class="text-center" style="width: 40% !important;">${title}</td>
+        <td class="text-center" style="width: 20% !important;" >${homeValue || "N/A"}</td>
+        ${produceRankHtml(homeRank, "", "width: 10% !important;")}
+    </tr>
+    `
+}
+
+function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
+    if (!team) {
+        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
+    }
+    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
+}
+
+function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
+    const seasonLabel = showSeasons ? `${breakdown?.season} Rk` : ""
+    return `
+    <div class="col-md-12 ms-sm-auto col-lg-3">
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px")}</div></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1">${seasonLabel}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left">Net Adj EPA/Play</td>
+                        <td class="text-center">${generateMarginalString(breakdown?.net_adj_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.net_adj_epa_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Offense</td>
+                        <td class="text-center">${roundNumber(breakdown?.adj_off_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.adj_off_epa_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Defense</td>
+                        <td class="text-center">${roundNumber(breakdown?.adj_def_epa, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.adj_def_epa_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left">Net EPA/Play</td>
+                        <td class="text-center">${generateMarginalString(breakdown?.EPAplay_margin, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_margin_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Offense</td>
+                        <td class="text-center">${roundNumber(breakdown?.EPAplay_off, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_off_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Defense</td>
+                        <td class="text-center">${roundNumber(breakdown?.EPAplay_def, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAplay_def_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Offense Success</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Pass</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off_pass || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_pass_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Rush</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_off_rush || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_off_rush_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Defense Success</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Pass</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def_pass || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_pass_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Rush</td>
+                        <td class="text-center">${roundNumber((breakdown?.success_def_rush || 0) * 100, 2, 1)}%</td>
+                        ${produceRankHtml(breakdown?.success_def_rush_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Net EPA/Drive</td>
+                        <td class="text-center">${generateMarginalString(breakdown?.EPAdrive_margin, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_margin_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Offense</td>
+                        <td class="text-center">${roundNumber(breakdown?.EPAdrive_off, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_off_rank)}
+                    </tr>
+                    <tr>
+                        <td class="ps-4">Defense</td>
+                        <td class="text-center">${roundNumber(breakdown?.EPAdrive_def, 2, 2)}</td>
+                        ${produceRankHtml(breakdown?.EPAdrive_def_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="w-50" style="text-align: left;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                        <th class="text-center w-25" style="text-align: center;" colspan="1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="w-50">Net Field Position</td>
+                        <td class="text-center">${generateMarginalString(breakdown?.start_position_margin, 2, 1)}</td>
+                        ${produceRankHtml(breakdown?.start_position_margin_rank)}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    `;
+}
+
+const awayTeamBreakdown = cleanBreakdown(awayTeamSummary)
+const homeTeamBreakdown = cleanBreakdown(homeTeamSummary)
+const matchupData = [
+    { ...awayTeamBreakdown, teamName: awayTeamSeason?.team?.school, id: awayTeamSeason?.team?.team_id, color: awayTeamSeason?.team?.color, alternateColor: awayTeamSeason?.team?.alt_color },
+    { ...homeTeamBreakdown, teamName: homeTeamSeason?.team?.school, id: homeTeamSeason?.team?.team_id, color: homeTeamSeason?.team?.color, alternateColor: homeTeamSeason?.team?.alt_color }
+]
+
+---
+<div class="container mb-3">
+    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} />
+    <div class="row">
+        <Fragment set:html={produceTeamSector(awayTeamSeason?.team, awayTeamBreakdown)} />
+        <div class="col-md-12 ms-sm-auto col-lg-6">
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Defense</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 40% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "offensive", "passing", "EPAplay_off_pass")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "offensive", "rushing", "EPAplay_off_rush")} />
+                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "available_yards_pct_off")} />
+                        <Fragment set:html={produceMatchupRow("Starting Field Position", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "start_position_off")} />
+                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "early_down_EPA_off")} />
+                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "late_down_success_off")} />
+                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "offensive", "overall", "third_down_distance_off")} />
+                    </tbody>
+                </table>
+            </div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Offense</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 40% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 20% !important;" colspan="1"></th>
+                            <th class="text-center" style="width: 10% !important;" colspan="1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <Fragment set:html={produceMatchupRow("EPA/Pass", awayTeamBreakdown, homeTeamBreakdown, "defensive", "passing", "EPAplay_off_pass")} />
+                        <Fragment set:html={produceMatchupRow("EPA/Rush", awayTeamBreakdown, homeTeamBreakdown, "defensive", "rushing", "EPAplay_off_rush")} />
+                        <Fragment set:html={produceMatchupRow("Available Yards %", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "available_yards_pct_off")} />
+                        <Fragment set:html={produceMatchupRow("Starting FP", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "start_position_off")} />
+                        <Fragment set:html={produceMatchupRow("Early Downs EPA/Play", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "early_down_EPA_off")} />
+                        <Fragment set:html={produceMatchupRow("3rd/4th Down Success", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "late_down_success_off")} />
+                        <Fragment set:html={produceMatchupRow("Avg 3rd Down Distance", awayTeamBreakdown, homeTeamBreakdown, "defensive", "overall", "third_down_distance_off")} />
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <Fragment set:html={produceTeamSector(homeTeamSeason?.team, homeTeamBreakdown)} />
+    </div>
+    <div class="row mb-3">
+        <div class="col-12">
+            <p class="m-0 text-muted text-small">
+                <small>Matchup table concept adapted from <a href="https://sumersports.com/games/2024-01-BAL-KC/">SumerSports's NFL matchup pages</a>.</small>
+            </p>
+        </div>
+    </div>
+</div>

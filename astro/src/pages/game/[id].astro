@@ -1,0 +1,69 @@
+---
+import GamePage from '../../components/game/GamePage.astro';
+import PreGamePage from '../../components/game/PreGamePage.astro';
+import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
+import { DateTime } from 'luxon';
+import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+
+const { id } = Astro.params;
+if (!id) {
+    Astro.cache.set(false);
+    return Astro.redirect("/"); 
+}
+let espnGame: ESPNPlayByPlayResponse | null;
+let game: ProcessedGame | null = null;
+try {
+    espnGame = await retrieveGamePage(id);
+    if (!espnGame) {
+        throw new Error(`Game ID ${id} had no data`);
+    }
+
+    if (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED") {
+        game = await retrieveProcessedGame(id);
+    }
+
+    const gameDate = DateTime.fromISO(espnGame.gamepackageJSON.header.competitions[0].date);
+    const todayPlusOneWeek = DateTime.now().plus({ weeks: 1 })
+    const isGameWithinOneWeek = gameDate.diff(todayPlusOneWeek).days < 7;
+
+    if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
+        // cache one day for completed games
+        Astro.cache.set({
+            maxAge: 60 * 60 * 24,
+            swr: 60 * 10,
+            tags: ['game-completed', "favorites-enabled"],
+        });
+    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneWeek) {
+        // cache one hour for scheduled games within 24 hours
+        Astro.cache.set({
+            maxAge: 60 * 60,
+            swr: 60 * 10,
+            tags: ['game-scheduled-today'],
+        });
+    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") {
+        // cache one day for scheduled games outside 24 hours
+        Astro.cache.set({
+            maxAge: 60 * 60 * 24,
+            swr: 60 * 10,
+            tags: ['game-scheduled-future', "favorites-enabled"],
+        });
+    } else {
+        // cache two minutes for live games
+        Astro.cache.set({
+            maxAge: 60 * 2,
+            swr: 60,
+            tags: ['game-scheduled', "favorites-enabled"],
+        });
+    }
+} catch (e) {
+    console.error(e);
+    Astro.cache.set(false);
+    return Astro.redirect("/404")
+}
+---
+{
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" || !game) && <PreGamePage id={id} espnGame={espnGame} />
+}
+{
+    (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && game) && <GamePage id={id} game={game} />
+}

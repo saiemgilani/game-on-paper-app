@@ -1,0 +1,32 @@
+---
+import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../utils/constants';
+
+interface Props {
+    teamIds: (string | number)[]
+}
+const { teamIds } = Astro.props;
+
+let teamIdCSS = teamIds.map(p => {
+    return `
+    img.team-logo-${p} {
+        content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${p}.png')
+    }
+    `
+})
+
+let specialTeamIdCSS = Object.entries(SPECIAL_IMAGES).map(([k, v]) => {
+    const darkModeUrl = SPECIAL_IMAGES_DARK[k]
+
+    let base = `img.team-logo-${k} { content: url('${v}') !important }`;
+    if (darkModeUrl) {
+        base += `\n@media (prefers-color-scheme: dark) { img.team-logo-${k} { content: url('${darkModeUrl}') !important } }`
+    }
+    
+    return base
+})
+
+
+---
+
+<style set:html={`@media (prefers-color-scheme: dark) { ${teamIdCSS.join("")} }`}></style>
+<style set:html={specialTeamIdCSS.join("")}></style>

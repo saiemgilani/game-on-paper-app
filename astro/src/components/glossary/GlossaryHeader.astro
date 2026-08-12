@@ -1,0 +1,18 @@
+---
+interface Props {
+	keys: string[];
+}
+
+const { keys } = Astro.props;
+---
+
+<div class="container-fluid">
+    <nav class="nav d-flex justify-content-center">
+        {
+            keys.map((k, i, arr) => (
+                <a class="link-primary p-2" href={`#glossary-section-${k}`}>{k.toLocaleUpperCase()}</a>
+                <span class="p align-self-center" hidden={i == arr.length - 1}>&#9899;</span>
+            ))
+        }
+    </nav>
+</div>

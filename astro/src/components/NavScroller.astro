@@ -1,0 +1,23 @@
+---
+
+export interface ScrollerItem {
+    href: string
+    title: string
+}
+
+interface Props {
+    items: ScrollerItem[]
+}
+
+const { items } = Astro.props;
+
+---
+
+
+<div class="nav-scroller py-1 mb-3">
+    <nav class="nav d-flex justify-content-between">
+        {
+            (items.map((p) => <a href={p.href} class="p-2 link-secondary">{p.title}</a>))
+        }
+    </nav>
+</div>

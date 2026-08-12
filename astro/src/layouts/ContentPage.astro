@@ -1,0 +1,31 @@
+---
+import type { MarkdownLayoutProps } from 'astro';
+import GenericPage, { type PageBreadcrumb } from './GenericPage.astro';
+
+type Props = MarkdownLayoutProps<{
+  title: string;
+  subtitle: string;
+}>;
+
+// Now, `frontmatter`, `url`, and other Markdown layout properties
+// are accessible with type safety
+const { frontmatter, url } = Astro.props;
+
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: "Changelog", url: "/changelog", active: false },
+    { title: frontmatter.title, url, active: true },
+];
+
+---
+<GenericPage title={`${frontmatter.title} | Changelog | Game on Paper`} subtitle={frontmatter.subtitle} slug={frontmatter.title} breadcrumbs={breadcrumbs}>
+  <div class="container mb-3">
+    <h1>{frontmatter.title}</h1>
+  </div>
+  <div class="container">
+  <div class="row mb-3">
+    <div class="col-12">
+        <slot />
+    </div>
+  </div>
+  </div>
+</GenericPage>

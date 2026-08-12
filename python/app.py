@@ -1,18 +1,48 @@
-from flask import Flask, request, jsonify
+from functools import wraps
+import math
+
+from flask import Flask, request, jsonify, Response
 import numpy as np
 from datetime import datetime as dt, timezone as tz
-from flask_logs import LogSetup
-from sportsdataverse.cfb.cfb_pbp import CFBPlayProcess
+import polars as pl
+from sportsdataverse.cfb import CFBPlayProcess
+from flask_compress import Compress
+import orjson
+
 import os
 import logging
 import json
+import base64
+
+HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
+assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
 app.config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", "INFO")
 
-logs = LogSetup()
-logs.init_app(app)
+app.config["COMPRESS_BR_LEVEL"] = 4
+app.config["COMPRESS_LEVEL"] = 5
+app.config["COMPRESS_MIN_SIZE"] = 1024
+Compress(app)
+
+def _orjson_default(obj):
+    """orjson fallback for types its native handling can't serialize.
+
+    OPT_SERIALIZE_NUMPY covers the common numpy types (int*, uint*,
+    float32/64, ndarray of those) but trips on object-dtype arrays,
+    numpy strings, or numpy scalars in less-common dtypes — which
+    pop up when sportsdataverse stores mixed-content lists. Duck-
+    typing via tolist()/item() handles these without importing numpy
+    (which we dropped above when removing the np.array().tolist()
+    wraps in the top-level result dict).
+    """
+    if hasattr(obj, "tolist"):
+        return obj.tolist()
+    if hasattr(obj, "item"):
+        return obj.item()
+    raise TypeError(f"orjson: unsupported type {type(obj).__name__}")
+
 
 
 @app.after_request
@@ -29,17 +59,37 @@ def after_request(response):
     return response
 
 
+def require_auth_token(func):
+    @wraps(func)
+    def check_token(*args, **kwargs):
+        try:
+            headers = request.headers
+            bearer = headers.get('Authorization')
+            assert bearer, "Bearer Auth not provided in this request"
+    
+            raw_token = bearer.split()[1]
+            token = base64.b64decode(raw_token).decode("ascii")
+            assert token == HTTP_TOKEN, "provided token value did not match expected token"
+
+            # Otherwise just send them where they wanted to go
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.getLogger("root").error(f"ERROR while checking token: {e}")
+            return jsonify({ "status": "bad", "message": "Access denied" }), 401 
+
+    return check_token
+
 @app.route("/cfb/process", methods=["POST"])
+@require_auth_token
 def process():
     try:
         gameId = request.get_json(force=True)["gameId"]
-        processed_data = CFBPlayProcess(gameId=gameId)
-        pbp = processed_data.espn_cfb_pbp()
-        processed_data.run_processing_pipeline()
-        tmp_json = processed_data.plays_json.to_json(orient="records")
-        jsonified_df = json.loads(tmp_json)
+        game = CFBPlayProcess(gameId=gameId)
+        game.join_participants = True
+        game.resolve_missing=False ## this doesn't work as expected or there needs to be a way to set this as expected.
+        game.espn_cfb_pbp()
+        processed_game = game.run_processing_pipeline()
 
-        box = processed_data.create_box_score()
         bad_cols = [
             "start.distance",
             "start.yardLine",
@@ -80,7 +130,7 @@ def process():
             "scoringType.abbreviation",
         ]
         # clean records back into ESPN format
-        for record in jsonified_df:
+        for record in processed_game["plays"]:
             record["clock"] = {
                 "displayValue": record["clock.displayValue"],
                 "minutes": record["clock.minutes"],
@@ -226,37 +276,26 @@ def process():
             #     'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
             # }
             # remove added columns
-            for col in bad_cols:
-                record.pop(col, None)
+            for k in list(record.keys()):
+                if k in bad_cols:
+                    del record[k]
+                    continue
+                v = record[k]
+                if isinstance(v, float) and not math.isfinite(v):
+                    record[k] = None
 
-        result = {
-            "id": gameId,
-            "count": len(jsonified_df),
-            "plays": jsonified_df,
-            "box_score": box,
-            "homeTeamId": pbp["header"]["competitions"][0]["competitors"][0]["team"][
-                "id"
-            ],
-            "awayTeamId": pbp["header"]["competitions"][0]["competitors"][1]["team"][
-                "id"
-            ],
-            "drives": pbp["drives"],
-            "scoringPlays": np.array(pbp["scoringPlays"]).tolist(),
-            "winprobability": np.array(pbp["winprobability"]).tolist(),
-            "boxScore": pbp["boxscore"],
-            "homeTeamSpread": np.array(pbp["homeTeamSpread"]).tolist(),
-            "overUnder": np.array(pbp["overUnder"]).tolist(),
-            "header": pbp["header"],
-            "broadcasts": np.array(pbp["broadcasts"]).tolist(),
-            "videos": np.array(pbp["videos"]).tolist(),
-            "standings": pbp["standings"],
-            "pickcenter": np.array(pbp["pickcenter"]).tolist(),
-            "espnWinProbability": np.array(pbp["espnWP"]).tolist(),
-            "gameInfo": np.array(pbp["gameInfo"]).tolist(),
-            "season": np.array(pbp["season"]).tolist(),
-        }
-        # logging.getLogger("root").info(result)
-        return jsonify(result), 200
+        body_bytes = orjson.dumps(
+            processed_game,
+            default=_orjson_default,
+            option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS,
+        )
+        response = Response(body_bytes, mimetype="application/json")
+        # timings["total"] = time.perf_counter() - request_start
+        # response.headers["Server-Timing"] = _server_timing_header(timings)
+        response.headers["X-Result-Cache"] = "MISS"
+        # _emit_metrics(timings, gameId, 200)
+        return response, 200
+        return jsonify(processed_game), 200
     except KeyError as e:
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)

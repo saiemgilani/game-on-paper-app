@@ -1,0 +1,86 @@
+---
+import type { ProcessedPlay } from '../../../resources/python';
+import { formatYardline, roundNumber, cleanAbbreviation, toTitleCase } from '../../../utils/misc';
+
+interface Props {
+    play: ProcessedPlay
+}
+
+const { play } = Astro.props;
+const homeTeam = { id: play.homeTeamId, location: play.homeTeamName, abbreviation: play.homeTeamAbbrev }
+const awayTeam = { id: play.awayTeamId, location: play.awayTeamName, abbreviation: play.awayTeamAbbrev }
+const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
+const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
+
+let goRecommendation: string | null = null;
+if (play.fourth_down_recommendation) {
+    switch (play.fourth_down_recommendation) {
+        case "go":
+            goRecommendation = "Go"
+            break;
+        case "field_goal":
+            goRecommendation = "Field Goal";
+            break;
+        case "punt":
+            goRecommendation = "Punt";
+            break;
+        default:
+            goRecommendation = null;
+            break;
+    }
+}
+
+let xpRecommendation: string | null = null;
+if (play.two_pt_recommendation) {
+    switch (play.two_pt_recommendation) {
+        case "kick_xp":
+            xpRecommendation = "XP"
+            break;
+        case "go_for_2":
+            xpRecommendation = "2PT";
+            break;
+        default:
+            xpRecommendation = null;
+            break;
+    }
+}
+
+---
+<div class="row p-1">
+<div class="ms-sm-auto col-lg-6">
+<p style="text-align: center;"><strong>Play Type:</strong> {play.type.text}</p>
+<p style="text-align: center;"><strong>Yards to End Zone (Before to After):</strong> {play.start.yardsToEndzone} to {play.end.yardsToEndzone}</p>
+<p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation({offense}), cleanAbbreviation(defense), play.type.text)}</p>
+<p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> {roundNumber(play.expectedPoints.after, 2, 2)} - {roundNumber(play.expectedPoints.before, 2, 2)} = {roundNumber(play.expectedPoints.added, 2, 2)}</p>
+<p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
+<p style="text-align: center;"><strong>Score Difference (End):</strong> {play.end.pos_score_diff} ({roundNumber(play.end.ExpScoreDiff, 2, 2)})</p>
+<p style="text-align: center;"><strong>Change of Possession:</strong> {play.change_of_poss || "false"}</p>
+{
+    (play.start.down == 4) && (goRecommendation) && (
+        <p class="mb-0" style="text-align: center;">
+            <strong title="Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).">Fourth Down Bot says:</strong> <span>{goRecommendation}</span>
+        </p>
+        <p class="mb-3" style="text-align: center;"><strong>Expected WP:</strong> Go {roundNumber((play.go_wp || 0) * 100, 2, 1)}% / FG {roundNumber((play.fg_wp || 0) * 100, 2, 1)}% / Punt {roundNumber((play.punt_wp || 0) * 100, 2, 1)}%</p>
+    )
+}
+</div>
+<div class="ms-sm-auto col-lg-6">
+<p style="text-align: center;"><strong>Score:</strong> {cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</p>
+<p style="text-align: center;"><strong>Drive Summary:</strong> {play.drive_play_index} play{(play.drive_play_index) == 1 ? "" : "s"}, {play.drive_total_yards} yards</p>
+<p style="text-align: center;"><strong>Win Probability (Before):</strong> {roundNumber(play.winProbability.before * 100, 3, 1)}%</p>
+<p style="text-align: center;"><strong>Win Probability (After):</strong> {roundNumber(play.winProbability.after * 100, 3, 1)}%</p>
+<p style="text-align: center;"><strong>Away Score:</strong> {play.start.awayScore} ({play.awayScore}) <strong>Home Score:</strong> {play.start.homeScore} ({play.homeScore})</p>
+<p style="text-align: center;"><strong>Pos Team Timeouts:</strong> {play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> {play.end.defPosTeamTimeouts}</p>
+
+{
+    (xpRecommendation) && (
+        <p class="mb-0" style="text-align: center;">
+            <strong title="Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).">2PT Bot says:</strong> <span>{xpRecommendation}</span>
+        </p>
+        <p class="mb-3" style="text-align: center;"><strong>Expected WP:</strong> 2PT {roundNumber((play.two_pt_wp || 0) * 100, 2, 1)}% / XP {roundNumber((play.xp_wp || 0) * 100, 2, 1)}%</p>
+    )
+}
+
+</div>
+</div>
+

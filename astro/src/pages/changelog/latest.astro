@@ -1,0 +1,32 @@
+---
+export const prerender = true;
+import { DateTime } from 'luxon';
+const allLogs = Object.values(import.meta.glob('./*.md', { eager: true }));
+
+const MIN_DATE = DateTime.fromFormat('1970-01-01', 'yyyy-LL-dd');
+
+let maxRecord: { log: any, date: DateTime } = {
+    log: null,
+    date: MIN_DATE
+}
+for (const log of allLogs) {
+  const url = String((log as any).url)
+  if (url.includes("latest")) {
+    continue;
+  }
+  
+  const dateString: string = String((log as any).url).replace("/changelog/", "")
+  const date = DateTime.fromFormat(dateString, 'yyyy-LL-dd')
+  if (date > maxRecord.date) {
+    maxRecord = {
+        log,
+        date
+    }
+  }
+}
+
+if (maxRecord && maxRecord.date != MIN_DATE) {
+    return Astro.redirect("/changelog/" + maxRecord.date.toFormat('yyyy-LL-dd'))
+}
+return Astro.redirect("/changelog")
+---

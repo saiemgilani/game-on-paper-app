@@ -1,0 +1,16 @@
+---
+import type { GlossaryEntry } from '../../resources/glossary';
+
+interface Props {
+	entry: GlossaryEntry;
+}
+
+const { entry } = Astro.props;
+---
+
+<dl class="row">
+{
+    (entry.source) ? <dt class="col-sm-3"><a href={entry.source}>{entry.term}</a></dt> : <dt class="col-sm-3">{entry.term}</dt>
+}
+<dd class="col-sm-9"><Fragment set:html={entry.definition}/></dd>
+</dl>

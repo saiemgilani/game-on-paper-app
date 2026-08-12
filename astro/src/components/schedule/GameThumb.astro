@@ -1,0 +1,111 @@
+---
+import type { ESPNCompetitor, ESPNScheduleEvent } from "../../resources/espn";
+import { cleanScore } from "../../utils/common";
+import { calculateSpiceLevel, formatScore, getRecordString, isChampionshipEvent } from "../../utils/common";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import { isEventFavorite } from "../../utils/misc";
+import LocalDate from "../LocalDate.svelte";
+import BroadcastButton from "./BroadcastButton.astro";
+import GameSituation from "./GameSituation.astro";
+import TeamRow from "./TeamRow.astro";
+import {DateTime} from "luxon";
+
+interface Props {
+  game: ESPNScheduleEvent
+}
+
+interface GameThumbTheme {
+    borderClass?: string
+    buttonClass: string
+    outlineClass?: string
+    textClass?: string
+}
+
+const { game } = Astro.props;
+
+const espnGame = (game as ESPNScheduleEvent);
+const espnGameComp = espnGame.competitions[0];
+const homeComp = espnGameComp.competitors[0];
+const awayComp = espnGameComp.competitors[1];
+const homeScore = cleanScore(homeComp.score);
+const awayScore = cleanScore(awayComp.score);
+const gameStatus = espnGameComp.status;
+
+const spiceLevel = calculateSpiceLevel(espnGame) || 'none';
+const gameNote = espnGame.competitions[0].notes.length > 0 ? espnGame.competitions[0].notes[0].headline : ""
+const isChamp = isChampionshipEvent(gameNote);
+
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const isFavorite = isEventFavorite(favorites, game)
+
+function generateThumbTheme(): GameThumbTheme {
+    if (isChamp) {
+        return {
+            buttonClass: "btn-outline-championship",
+            borderClass: (spiceLevel == 'none') ? undefined : `spice-level-${spiceLevel}`,
+            outlineClass: "outline-championship",
+            textClass: "text-championship"
+        }
+    }
+
+    if (isFavorite) {
+        return {
+            buttonClass: "btn-outline-favorite",
+            borderClass: (spiceLevel == 'none') ? "outline-favorite" : `spice-level-${spiceLevel}`,
+            outlineClass: "outline-favorite",
+            textClass: "text-favorite"
+        }
+    }
+
+    return {
+        buttonClass: "btn-outline-primary",
+        borderClass: `spice-level-${spiceLevel}`,
+        textClass: "text-primary"
+    }
+}
+
+const { buttonClass, borderClass, outlineClass, textClass } = generateThumbTheme()
+const hasLastPlay = (espnGameComp.situation && espnGameComp.situation?.lastPlay);
+const canShowSituation = (
+    (!(gameStatus.type.completed == true || gameStatus.type.detail.includes("Cancel") || gameStatus.type.detail.includes("Postpone")))
+    && (espnGameComp.situation != null && espnGameComp.situation.lastPlay != null)
+)
+const canLoadStats = gameStatus && (
+    (gameStatus.type.name.includes("STATUS_DELAYED") && !hasLastPlay) 
+    || gameStatus.type.detail.includes("Cancel") 
+    || gameStatus.type.detail.includes("Postpone") 
+    || (gameStatus.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
+)
+const canLoadStatsTheme = canLoadStats ? `disabled` : ``
+---
+
+<div class="col-xl-3 col-lg-6">
+    <div class={`row border rounded m-2 mb-4 ${outlineClass} ${borderClass}`}>
+        <div class="col p-3">
+            <div class="d-flex justify-content-between">
+                <strong class={`d-inline-block mb-2 ${textClass} text-small`}>
+                    {
+                        (gameStatus.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={gameStatus.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                    }
+                    {
+                        (gameStatus.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                    }
+                    {
+                        (gameStatus.type.completed != true) && (!gameStatus.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{gameStatus.type.detail}</Fragment>
+                    }
+                </strong>
+            </div>
+            <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
+            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
+            <GameSituation hidden={canShowSituation} game={espnGame} />
+            <div class="d-flex justify-content-between">
+                <div class="text-left">
+                    <a class=`btn btn-sm ${buttonClass} ${canLoadStatsTheme}` role="button" href={`/game/${espnGame.id}`}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
+                </div>
+                <div class="text-right">
+                    <BroadcastButton game={espnGame} />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

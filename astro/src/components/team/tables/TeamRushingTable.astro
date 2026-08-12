@@ -1,0 +1,43 @@
+---
+import type { SDVRushingSummary } from '../../../resources/sdv';
+import { roundNumber } from '../../../utils/misc';
+import TeamPlayerTable from './TeamPlayerTable.astro';
+
+interface Props {
+    players: SDVRushingSummary[]
+}
+
+const { players } = Astro.props;
+---
+
+<TeamPlayerTable id="rushing-players" title="Rushing">
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Carries</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">TD</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Fum</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yds/rush</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Rush">EPA/rush</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
+        <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Success Rate">SR%</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {
+            players.map((p: any) => (
+                <tr>
+                <td style="text-align: left;">{ p.rusher_player_name }</td>
+                <td class="numeral" style="text-align: center;">{ p.plays }</td>
+                <td class="numeral" style="text-align: center;">{ p.yards }</td>
+                <td class="numeral" style="text-align: center;">{ p.rushing_td }</td>
+                <td class="numeral" style="text-align: center;">{ p.fumbles }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.yardsplay || 0), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.EPAplay), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.TEPA), 2, 2) }</td>
+                <td class="numeral" style="text-align: center;">{ roundNumber(parseFloat(p.success) * 100, 2, 0) }%</td>
+                </tr>
+            ))
+        }
+    </Fragment>
+</TeamPlayerTable>

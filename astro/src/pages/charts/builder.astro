@@ -1,0 +1,57 @@
+---
+import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
+import GenericPage from '../../layouts/GenericPage.astro';
+import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import { retrieveTeamSummaries } from '../../resources/sdv';
+import DarkModeLogos from './../../components/DarkModeLogos.astro';
+import { LAST_YEAR } from '../../utils/constants';
+import { generateTeamMetricTitle } from '../../utils/misc';
+
+const query = Astro.url.searchParams;
+const season = query.get("season") || `${LAST_YEAR}`;
+const metricX = query.get("x") || "adj_off_epa";
+const metricY = query.get("y") || "adj_def_epa";
+
+const teamData = await retrieveTeamSummaries({ season: Number(season), columns: [metricX, metricY], maxLookback: Number(season) })//(Number(season), undefined, undefined, [metricX, metricY], Number(season));
+const points = teamData.map((t: any) => {
+    return {
+        team_id: t.team_id,
+        pos_team: t.pos_team,
+        x: t[metricX],
+        x_rank: t[`${metricX}_rank`],
+        y: t[metricY],
+        y_rank: t[`${metricY}_rank`],
+        conference: t.conference,
+        fbs_class: t.fbs_class
+    }
+})
+
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: 'Charts',
+        active: false
+    },
+    {
+        title: 'Builder',
+        active: true,
+    }
+]
+
+
+const title = `Chart Builder | Game on Paper`;
+
+if (points.length > 0) {
+    Astro.cache.set({
+        maxAge: 60 * 60 * 24, // one day
+        tags: ['chart', "favorites-enabled"],
+    })
+} else {
+    Astro.cache.set(false);
+}
+
+---
+
+<GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={points.map(t => t.team_id)} />
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} />
+</GenericPage>

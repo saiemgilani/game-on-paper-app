@@ -1,0 +1,51 @@
+---
+import type { ProcessedPlay } from '../../../resources/python'
+import ExpandedPlayRow from './ExpandedPlayRow.astro'
+import PlayRow from './PlayRow.astro'
+
+
+interface Props {
+    plays: ProcessedPlay[]
+    prefix: string
+    expandable: boolean
+    showGuide: boolean
+}
+
+const { plays, prefix, expandable, showGuide } = Astro.props;
+
+---
+
+<div class="table table-responsive">
+    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
+        {
+            (showGuide) && (
+                <caption>Play shading guide:
+                    <ul>
+                        <li><strong>Yellow</strong> - penalty</li>
+                        <li><strong>Red</strong> - turnover</li>
+                        <li><strong>Green</strong> - scoring play</li>
+                    </ul>
+                </caption>
+            )
+        }
+        <thead>
+            <tr>
+                <th style="text-align: left;">Time</th>
+                <th style="text-align: center;">Offense</th>
+                <th style="text-align: left;">Play Description</th>
+                <th style="text-align: center;">EPA</th>
+                <th style="text-align: center;">WP%</th>
+                <th style="text-align: right;">WPA</th>
+            </tr>
+        </thead>
+        <tbody>
+            {
+                (plays.map(p => (
+                    <PlayRow play={p} expandable={expandable} prefix={prefix}>
+                        <ExpandedPlayRow play={p} slot="expandable-row-content"/>
+                    </PlayRow>
+                )))
+            }
+        </tbody>
+    </table>
+</div>

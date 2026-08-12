@@ -1,0 +1,461 @@
+import { env } from "cloudflare:workers"
+import { DateTime } from "luxon"
+import { CURRENT_YEAR } from "../utils/constants"
+import { wrappedFetch } from "../utils/misc"
+
+export interface ESPNCoreScoreboardResponse {
+    content: {
+        sbData: ESPNScoreboardResponse
+    }
+}
+
+export interface ESPNScoreboardResponse {
+    leagues: ESPNLeague[]
+    groups: string[]
+    events?: ESPNScheduleEvent[]
+    week: { number: number }
+}
+
+export interface ESPNTeamScheduleResponse {
+  timestamp: string
+  status: string
+  season: ESPNSeason
+  team: ESPNTeam
+  events: ESPNScheduleEvent[]
+  requestedSeason: ESPNRequestedSeason
+}
+
+export interface ESPNRequestedSeason {
+    year: number
+    type: number
+    name: string
+    displayName: string
+}
+
+export interface ESPNScheduleResponse {
+    content: ESPNScheduleContent
+}
+
+export interface ESPNScheduleContent {
+    schedule: { [date: string]: { games: ESPNScheduleEvent[] } }
+    league: string
+    activeDate: string
+    title: string
+    description: string
+    root: string
+    edition: string
+    pageTitle: string
+    daysToShow: number
+    canonical: string
+    sport: string
+    calendar: ESPNCalendar[]
+    weekMap: { number: number }
+    og_type: string
+}
+
+export interface ESPNLeague {
+    id: string
+    uid: string
+    name: string
+    abbreviation: string
+    midsizeName: string
+    slug: string
+    season: ESPNSeason
+    calendarType: string
+    calendarIsWhitelist: boolean
+    calendarStartDate: string
+    calendarEndDate: string
+    calendar: ESPNCalendar[]
+}
+
+export interface ESPNSeason {
+    year: number
+    startDate: string
+    endDate: string
+    displayName: string
+    type: ESPNSeasonType
+}
+
+export interface ESPNSeasonType {
+    id: string
+    type: number
+    name: string
+    abbreviation: string
+}
+
+export interface ESPNCalendar {
+    label: string
+    value: string
+    startDate: string
+    endDate: string
+    entries: ESPNScheduleEntry[]
+}
+
+export interface ESPNScheduleEntry {
+    label: string
+    alternateLabel: string
+    detail: string
+    value: string
+    startDate: string
+    endDate: string
+}
+
+export interface ESPNScheduleEvent {
+    id: string
+    uid: string
+    date: string
+    name: string
+    shortName: string
+    season: { year: number, type: number, slug: string }
+    week: { number: number }
+    competitions: ESPNCompetition[]
+    status?: ESPNStatus
+    timeValid?: boolean
+}
+
+export interface ESPNCompetition {
+    id: string
+    uid: string
+    date: string
+    attendance: number
+    type: { id: string, abbreviation: string }
+    timeValid: boolean
+    dateValid: boolean
+    neutralSite: boolean
+    conferenceCompetition: boolean
+    playByPlayAvailable: boolean
+    recent: boolean
+    competitors: ESPNCompetitor[]
+    status: ESPNStatus
+    broadcasts?: ESPNBroadcast[]
+    format: { regulation: { periods: number } }
+    startDate: string
+    broadcast: string
+    geoBroadcasts?: ESPNGeoBroadcast[]
+    situation?: ESPNGameSituation
+    notes: { type: string, headline: string }[]
+
+    boxscoreAvailable?: boolean
+    commentaryAvailable?: boolean
+    liveAvailable?: boolean
+    onWatchESPN?: boolean
+    wallclockAvailable?: boolean
+    boxscoreSource?: string
+    playByPlaySource?: string
+}
+
+export interface ESPNGameSituation {
+    downDistanceText?: string
+    isRedZone?: boolean
+    lastPlay?: {
+        text?: string
+        probability?: { awayWinPercentage: number, homeWinPercentage: number }
+        end?: {
+            team: { id: string }
+        }
+    }
+}
+export interface ESPNCompetitor {
+    id: string
+    uid: string
+    type: string
+    order: number
+    homeAway: string
+    winner: boolean
+    team: ESPNTeam
+    score: string
+    statistics: any[]
+    curatedRank?: { current?: number }
+    records: ESPNRecord[]
+
+    possession?: boolean
+    rank?: number
+}
+
+export interface ESPNTeam {
+    id: string
+    uid: string
+    location: string
+    name: string
+    abbreviation: string
+    displayName: string
+    shortDisplayName: string
+    color: string
+    alternateColor?: string
+    isActive: boolean
+    logo: string
+    conferenceId: string
+}
+
+export interface ESPNRecord {
+    name: string
+    abbreviation?: string
+    type: string
+    summary: string
+}
+
+export interface ESPNStatus {
+    clock: number
+    displayClock: string
+    period: number
+    type: ESPNStatusType
+}
+
+export interface ESPNStatusType {
+    id: string
+    name: string
+    state: string
+    completed: boolean
+    description: string
+    detail: string
+    shortDetail: string
+}
+
+export interface ESPNBroadcast {
+    market: string
+    media?: { shortName: string, logo?: string, darkLogo?: string}
+    names: string[]
+}
+
+export interface ESPNGeoBroadcast {
+    type: { id: string, shortName: string }
+    market: { id: string, type: string }
+    media: { shortName: string, logo?: string, darkLogo?: string }
+    lang: string
+    region: string
+}
+
+export interface ESPNPlayState {
+    down: number
+    distance: number
+    yardLine: number
+    yardsToEndzone: number
+    team: { id: number }
+    downDistanceText?: string
+    shortDownDistanceText?: string
+    possessionText?: string
+}
+
+export interface ESPNPlayTeamParticipant {
+    team: { "$ref": string }
+    id: string
+    order: number
+    type: string
+    timeout?: boolean
+}
+
+export interface ESPNPlayScoringType {
+  name: string
+  displayName: string
+  abbreviation: string
+}
+
+export interface ESPNPlayPointAfterAttempt {
+  id: number
+  text: string
+  abbreviation: string
+  value: number
+}
+
+export interface ESPNPlay {
+    id: string
+    type: ESPNPlayType
+    clock: ESPNGameClock
+    text?: string
+    sequenceNumber: string
+    awayScore: number
+    homeScore: number
+    period: { number: number }
+    scoringPlay: boolean
+    priority: boolean
+    modified: string
+    wallclock: string
+    teamParticipants: ESPNPlayTeamParticipant[]
+    isPenalty: boolean
+    statYardage: number
+    start: ESPNPlayState
+    end?: ESPNPlayState
+    isTurnover: boolean
+    scoringType?: ESPNPlayScoringType
+    pointAfterAttempt?: ESPNPlayPointAfterAttempt
+
+    probability?: { awayWinPercentage: number, homeWinPercentage: number }
+}
+
+export interface ESPNPlayTeam {
+    id: string
+    name: string
+    abbreviation: string
+    displayName: string
+    shortDisplayName: string
+}
+
+export interface ESPNWinProbability {
+    homeWinPercentage: number
+    tiePercentage: number
+    playId: string
+}
+
+export interface ESPNGameHeader {
+  id: string
+  uid: string
+  season: ESPNSeason
+  timeValid: boolean
+  competitions: ESPNCompetition[]
+//   links: Link10[]
+  week: number
+  league: ESPNLeague
+  gameNote: string
+}
+
+export interface ESPNGameClock {
+    displayValue: string
+    minutes?: number
+    seconds?: number
+}
+
+export interface ESPNPlayType {
+    id: number
+    text: string
+    abbreviation: string
+}
+
+export interface ESPNPlayByPlayResponse {
+    gameId: number
+    gamepackageJSON: {
+        header: ESPNGameHeader
+    }
+}
+
+export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
+    let espnGroup = group;
+    if (espnGroup && espnGroup < 0) {
+        espnGroup = 80; // All FBS which we will filter
+    }
+
+    const baseParams: Record<string, any> = {
+        xhr: 1,
+        render: false,
+        userab: 18
+    };
+    let query: URLSearchParams = new URLSearchParams(baseParams);
+    if (year) {
+        query.append("year", `${year}`);
+    }
+    if (week && week != 999) {
+        query.append("week", `${week}`);
+    }
+    if (espnGroup) {
+        query.append("group", `${espnGroup || 80}`);
+    }
+    if (seasontype) {
+        query.append("seasontype", `${seasontype || 2}`);
+    }
+    const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
+    console.info(`ESPN schedule query: ${reqURL}`)
+    const resp = await wrappedFetch(reqURL);
+    if (!resp.ok) {
+        throw new Error(`Response status: ${resp.status}`);
+    }
+
+    const espnRaw = await resp.text();
+    if (!espnRaw) {
+        throw Error(`Data not available for ESPN's schedule endpoint.`)
+    }
+
+    if (typeof espnRaw == 'string' && espnRaw.toLocaleLowerCase().includes("<html>")) {
+        throw Error("Data returned from ESPN was HTML file, not valid JSON.")
+    }
+
+    const espnContent: ESPNScheduleResponse = JSON.parse(espnRaw) as ESPNScheduleResponse;
+    var result: any[] = [];
+    const actualContent = espnContent?.content?.schedule || {};
+    if (!actualContent) {
+        throw Error(`Data not available for ESPN's schedule endpoint.`)
+    }
+
+    for (const [_, schedule] of Object.entries(actualContent)) {
+        if (schedule && Object.keys(schedule).includes("games") && schedule.games) {
+            result = result.concat(schedule.games)
+        }
+    }
+
+    if (group == -1) { // top 25
+        result = result.filter((g: ESPNScheduleEvent) => {
+            const home = g.competitions[0].competitors[0];
+            const away = g.competitions[0].competitors[1];
+
+            return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
+        })
+    }
+    return result;
+}
+
+export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = false): Promise<ESPNScheduleEvent[]> {
+    const cacheTTL = env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
+    try {
+        if (cacheEnabled) { 
+            const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");
+            if (cachedContent) {
+                console.info(`ESPN API cache hit: scoreboard`)
+                return (cachedContent as ESPNScheduleEvent[]);
+            }
+        }
+
+        console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
+        // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
+        const resp = await wrappedFetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
+        let espnContent: ESPNCoreScoreboardResponse = await resp.json();
+        const result = espnContent?.content.sbData.events || [];
+
+        if ((cacheEnabled || forceWrite) && result) {
+            console.info(`ESPN API cache update: scoreboard`)
+            await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
+        }
+        return result;
+    } catch (e) {
+        console.error(`ERROR while pulling latest scoreboard: ${e}`)
+        return [];
+    }
+}
+
+export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
+    const cacheBuster = ((new Date()).getTime() * 1000);
+    const req = await wrappedFetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const res: ESPNPlayByPlayResponse = await req.json()
+    return res
+}
+
+export interface ESPNTeamRequestPayload {
+    endpoint?: string
+    teamId: string | number
+    season?: string | number
+    seasonType?: string | number | null
+}
+
+async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<any> {
+    const endpoint = payload.endpoint ? payload.endpoint : ""
+    const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
+    const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
+    const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
+    const req =  await wrappedFetch(url);
+    const res = await req.json()
+    return res
+}
+
+export async function retrieveTeamInformation(teamId: string | number): Promise<ESPNTeam> {
+    return await retrieveTeamEndpoint({ teamId })
+}
+
+export interface ESPNTeamEndpointResponse<T> {
+  count: number
+  pageIndex: number
+  pageSize: number
+  pageCount: number
+  items: T[]
+}
+
+export async function retrieveTeamSeasonRecord(season: string | number, teamId: string | number): Promise<ESPNRecord[]> {
+    const records: ESPNTeamEndpointResponse<ESPNRecord> = await retrieveTeamEndpoint({ endpoint: "records", season, teamId })
+    return records.items
+}

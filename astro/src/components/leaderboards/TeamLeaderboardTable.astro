@@ -1,0 +1,119 @@
+---
+import { retrieveTeamSummaries, type SDVTeamSummary } from '../../resources/sdv';
+import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
+import { formatRank, generateMarginalString } from '../../utils/common';
+import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldInvertSortForMetric, STANDARD_THEME_COLOR, isTeamFavorite } from '../../utils/misc';
+import DarkModeLogos from '../DarkModeLogos.astro';
+
+interface Props {
+    season: number
+    category: string
+    metric: string
+}
+
+const { season, category, metric } = Astro.props;
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const columns = SDV_TEAM_METRIC_CATEGORIES[category];
+const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
+
+let content: SDVTeamSummary[] = await retrieveTeamSummaries({ season, category, maxLookback: season});
+content = content.filter(p => {
+    const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
+    const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
+    if (metric.includes("_adj_") || metric.startsWith("adj_")) {
+        return true
+    }
+    return nonNullRank && nonNullValue
+})
+
+content = content.toSorted((a, b) => {
+    const aVal = retrieveValue(a, metric)
+    const bVal = retrieveValue(b, metric)
+    
+    if (aVal == null && bVal != null) {
+        return 1
+    } else if (aVal != null && bVal == null) {
+        return -1
+    } else if (aVal == null && bVal == null) {
+        return 0
+    } else {
+        const compVal = parseFloat(aVal) - parseFloat(bVal)
+        return (arrowDirection == "up") ? compVal : (-1 * compVal)
+    }
+})
+
+function generateMetricHead(key: string, title: string): string {
+    const abbr = SDV_TEAM_METRIC_HOVER_TEXT[category][key];
+    if (abbr) {
+        title = `<abbr title="${abbr}">${title}</abbr>`
+    }
+    return `
+        <th class="text-center" colspan="1">${title} <i class="bi bi-arrow-${arrowDirection}" ${(key != metric ? 'hidden' : '')}></i></th>
+    `
+}
+
+function generateMetricCell(team: any, category: string, m: string): string {
+    const [multiplier, power10, fixed] = SDV_TEAM_METRIC_FORMATTING_VALUES[category][m] || [1, 2, 2];
+    const rank = retrieveValue(team, m + '_rank');
+    const value = parseFloat(retrieveValue(team, m)) * multiplier;
+    let valString = category == "differential" ? generateMarginalString(value, power10, fixed) : roundNumber(value, power10, fixed);
+    valString += ((SDV_TEAM_PERCENT_COLUMNS.includes(m)) ? "%" : "");
+    return `
+    <td class="text-center ${generateColorRampValue(parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
+    `
+}
+
+function generateMetricRow(team: any): string {
+    const colContent = Object.entries(columns).map(([k, _]) => generateMetricCell(team, category, k)).join("")
+    let rankStr = formatRank(parseFloat(retrieveValue(team, metric + '_rank')))
+    if ((rankStr == "N/A" && metric == 'net_adj_epa') || (metric == "net_adj_epa" && retrieveValue(team, metric) == "N/A")) {
+        rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
+    }
+
+    if (isTeamFavorite(favorites, team.team_id)) {
+        const favoriteColor = `style="background: ${STANDARD_THEME_COLOR} !important; color: white !important;"`
+        return `
+        <tr ${isTeamFavorite(favorites, team.team_id) ? favoriteColor : ''}>
+            <td class="text-right" colspan="1">${rankStr}</td>
+            <td class="text-left" colspan="1">
+                <a href="/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong style="color: white !important;text-decoration-color: white !important;">${cleanField(team, "pos_team")}</strong></a>
+            </td>
+            ${colContent}
+        </tr>`;
+    }
+
+    return `
+    <tr>
+        <td class="text-right" colspan="1">${rankStr}</td>
+        <td class="text-left" colspan="1">
+            <a href="/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong>${cleanField(team, "pos_team")}</strong></a>
+        </td>
+        ${colContent}
+    </tr>`;
+}
+
+const allTeamIds = content.map((c) => c.team_id);
+
+
+---
+<DarkModeLogos teamIds={allTeamIds} />
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive">
+                    <thead>
+                        <th class="text-right" colspan="1">Rk</th>
+                        <th class="text-left" colspan="1">Team</th>
+                        <Fragment set:html={Object.entries(columns).map(([k, v]) => generateMetricHead(k, v)).join("")} />
+                    </thead>
+                    <tbody>
+                        {
+                            content.map((t) => <Fragment set:html={generateMetricRow(t)} />)
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

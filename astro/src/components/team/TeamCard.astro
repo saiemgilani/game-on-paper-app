@@ -1,0 +1,88 @@
+---
+import { actions } from 'astro:actions'
+import type { ESPNTeam } from '../../resources/espn'
+import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv'
+import { formatRank, generateMarginalString } from '../../utils/common'
+import { SESSION_FAVORITES_DEFAULT } from '../../utils/constants'
+import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, isTeamFavorite, roundNumber } from '../../utils/misc'
+
+interface Props {
+    team: ESPNTeam
+    season: string | number
+    teamSeason: SDVTeamSeasonInformation
+    summary?: SDVTeamSummary | null
+    hideNavigation: boolean
+}
+
+const { team, season, teamSeason, summary, hideNavigation } = Astro.props;
+
+
+const overall = teamSeason.record || "0-0";
+
+let conf = ""
+if (teamSeason.confRecord) {
+    conf = ` (Conf: ${teamSeason.confRecord})`;
+} else {
+    conf = ""
+}
+
+const metricSeason = (summary?.season && season != summary?.season) ? `${summary.season} ` : "";
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+const isFavorite = isTeamFavorite(favorites, team.id)
+
+---
+
+<div class="card border rounded">
+    <div class="card-body">
+        <div class="card-title mb-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2>{cleanLocation(team)}</h2>
+                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} /> 
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <th class="text-center" style="width: 33%">{season} Record</th>
+                    <th class="text-center" style="width: 33%">{metricSeason}Adj EPA/Play</th>
+                    <th class="text-center" style="width: 33%">{metricSeason}EPA/Play</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="numeral text-center" style="width: 33%">{overall}{conf}</td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.net_adj_epa_rank, 134, true)}`}>{generateMarginalString(summary?.net_adj_epa, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.net_adj_epa_rank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.EPAplay_margin_rank, 134, true)}`}>{generateMarginalString(summary?.EPAplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.EPAplay_margin_rank)}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-responsive pe-0">
+            <table class="table table-sm table-responsive">
+                <caption class="text-muted">
+                    <small>
+                        <p class="mb-0">Stats shown as margins. AY% (available yards pct) concept from Brian Fremeau (<a href="http://bcftoys.com">http://bcftoys.com</a>).</p>
+                    </small>
+                </caption>
+                <thead>
+                    <th class="text-center" style="width: 33%">{metricSeason}Yards/Play</th>
+                    <th class="text-center" style="width: 33%">{metricSeason}AY%</th>
+                    <th class="text-center" style="width: 33%">{metricSeason}Success %</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.yardsplay_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString(summary?.yardsplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.yardsplay_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.available_yards_pct_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.available_yards_pct_margin || summary?.available_yards_pct_margin == 0) ? (100 * summary?.available_yards_pct_margin) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.available_yards_pct_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.success_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.success_margin || summary?.success_margin == 0) ? 100 * summary?.success_margin : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.success_margin_rank)}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {
+            (summary && !hideNavigation) && (
+                <a href={`/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>
+            )
+        }
+    </div>
+</div>

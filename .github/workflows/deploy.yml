@@ -4,107 +4,96 @@ on:
   push:
     branches:
       - main
-  schedule:
-    - cron: "0 12 * * 1"
   repository_dispatch:
-    types: [deploy]
+    types: [ deploy ]
   workflow_dispatch:
   workflow_call:
 
 jobs:
-  build-node:
+  deploy-web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
-      - name: Publish Node container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
+      - uses: cloudflare/wrangler-action@v4
+        env: 
+          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
+          SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+          APP_VERSION: ${{ github.sha }}
         with:
-          image: saiemgilani/game-on-paper-node
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./frontend
-          dockerfile: ./frontend/Dockerfile
-          tags: latest
-  build-python:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: "./astro"
+          secrets: |
+            PYTHON_HTTP_TOKEN
+            SDV_AUTH_TOKEN
+          vars: |
+            APP_VERSION
+          preCommands: |
+            npm install --save
+            npm run build
+      - name: Check that web is live
+        uses: jtalk/url-health-check-action@v5
+        with:
+          url: https://game-on-paper-astro.akeaswaran.workers.dev/ #https://gameonpaper.com|http://gameonpaper.com|https://www.gameonpaper.com|http://www.gameonpaper.com
+          follow-redirect: false
+          max-attempts: 10
+          retry-delay: 5s
+
+  deploy-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
+        uses: mr-smithers-excellent/docker-build-push@b6e94a8afeb0887d5cddb51a1db7dcc6bb6864ba
         with:
-          image: saiemgilani/game-on-paper-python
+          image: saiemgilani/game-on-paper-python-api
           registry: ghcr.io
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
           directory: ./python
           dockerfile: ./python/Dockerfile
-          tags: latest
-  build-redis:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: saiemgilani/game-on-paper-app
-      - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-redis
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./redis
-          dockerfile: ./redis/Dockerfile.lru
-          tags: latest
-      - name: Publish Redis container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: saiemgilani/game-on-paper-cache
-          registry: ghcr.io
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./redis
-          dockerfile: ./redis/Dockerfile.cache
-          tags: latest
-  deploy:
-    runs-on: ubuntu-latest
-    needs:
-      - build-node
-      - build-python
-      - build-redis
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: saiemgilani/game-on-paper-app
-      - name: Push updated docker-compose override file
-        uses: vtisweden/sftp-action@v1.0.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          localPath: "./docker-compose.do.yml"
-          remotePath: "./docker-compose.yml"
-      - name: Deploy package to DigitalOcean
-        uses: appleboy/ssh-action@v1
+          addLatest: true
+          tags: ${{ github.sha }}
+      - name: Update SHA for docker compose
+        run: |
+          DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
+          SHA="${{ github.sha }}"
+          DOCKER_COMPOSE_CONTENT="${DOCKER_COMPOSE_CONTENT//REPLACE_ME/$SHA}"
+          echo "$DOCKER_COMPOSE_CONTENT" > ./docker-compose.do.yml
+          cat ./docker-compose.do.yml
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.PORT }} ${{ secrets.API_HOST }} >> ~/.ssh/known_hosts
+      - name: Restart Docker Compose
         env:
-          GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
-          DOCKER_COMPOSE_OVERRIDE_FILE: ${{ env.DOCKER_COMPOSE_OVERRIDE_FILE }}
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          envs: GITHUB_USERNAME, GITHUB_TOKEN, DOCKER_COMPOSE_FILE, DOCKER_COMPOSE_OVERRIDE_FILE
-          script: |
-            docker stop $(docker ps -a -q)
+          SSH_HOST: ${{ secrets.API_HOST }}
+          SSH_USER: ${{ secrets.API_USERNAME }}
+          SSH_PORT: ${{ secrets.PORT }}
+        run: |
+          sftp -i ~/.ssh/deploy_key -P $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
+            put docker-compose.do.yml docker-compose.yml
+          ENDSSH
+
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
+            set -e
+            docker stop $(docker ps -a -q) || true
             docker system prune --force
-            docker login ghcr.io -u $GITHUB_USERNAME -p $GITHUB_TOKEN
-            docker-compose pull
-            docker-compose -f docker-compose.yml up -d
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
+            docker compose pull
+            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d
+          ENDSSH
+
+      - name: Check that API is live
+        uses: jtalk/url-health-check-action@v5
+        with:
+          url: https://api.gameonpaper.com/healthcheck|http://api.gameonpaper.com/healthcheck
+          follow-redirect: false
+          max-attempts: 10
+          retry-delay: 5s

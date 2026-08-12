@@ -1,0 +1,29 @@
+---
+import GenericPanel from "../../../layouts/panel/GenericPanel.astro";
+
+interface Props {
+    id: string
+    title: string
+}
+
+const { id, title } = Astro.props;
+---
+
+<GenericPanel id={id} title={title}>
+    <p slot="panel-subtitle" class="text-small text-muted">Data shown is from FBS vs FBS games only.</p>
+    <div slot="panel-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <slot name="header" />
+                    </tr>
+                </thead>
+                <tbody>
+                    <slot name="rows" />
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</GenericPanel>

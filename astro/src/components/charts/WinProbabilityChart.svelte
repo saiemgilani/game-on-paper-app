@@ -1,0 +1,445 @@
+<script>
+import Chart from 'chart.js/auto';
+import {LineController} from "chart.js";
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
+import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
+import { GradientFillLineController } from '../../resources/chart'
+
+const { game, percentiles } = $props()
+
+const homeComp = game.header.competitions[0].competitors[0];
+const awayComp = game.header.competitions[0].competitors[1];
+const homeTeam = homeComp.team;
+const awayTeam = awayComp.team;
+const gameStatus = game.header.competitions[0].status;
+
+function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null) {
+    // console.log(
+    //     [id, title, value, color, lineWidth, xAxisId, yAxisId, yMin, yMax]
+    // )
+
+    const callback = (chart) => {
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        
+        var top = chart.chartArea.top;
+        var bottom = chart.chartArea.bottom;
+        if (yMin != null && yMax != null) {
+            top = yScale.getPixelForValue(yMax);
+            bottom = yScale.getPixelForValue(yMin);
+        }
+
+        const xValue = xScale.getPixelForValue(value);
+        const ctx = chart.ctx;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(xValue, top);
+        ctx.lineTo(xValue, bottom);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        ctx.restore();
+
+        // only draw titles when there's space
+        let viewport = getCurrentViewport(document, window)
+        if (viewport == "xl" || viewport == "lg") {
+            chart.ctx.save()
+            chart.ctx.textAlign = "left"
+            chart.ctx.font = "10px Helvetica";
+            chart.ctx.fillStyle = color;
+            chart.ctx.fillText(title, xValue + 5, top + 15)
+            chart.ctx.restore();
+        }
+    }
+    return {
+        id: id,
+        beforeDraw: callback
+    };
+}
+
+function geiGenerateColorRampValue(input) {
+    if (percentiles.length == 0) {
+        //console.log('no pctls available')
+        return {
+            pctl: null,
+            ramp_class: null,
+            min: null,
+            mid: null,
+            max: null
+        }
+    }
+
+    //console.log(`calc pctl for key ${adjKey} w/ val ${value}`)
+
+    let basePctls = percentiles.map(item => {
+        let val = item["GEI"];
+        return parseFloat(val)
+    })
+    basePctls.sort((a, b) => {
+        return parseFloat(a) - parseFloat(b)
+    })
+
+    if (basePctls[0] == null || basePctls.length == 0) {
+        //console.log('all ptcls null for key ' + adjKey)
+        return {
+            pctl: null,
+            ramp_class: null,
+            min: null,
+            mid: null,
+            max: null
+        }
+    }
+    
+    let pctls = [...basePctls];
+    //console.log(`mapped pctls for key ${adjKey}: ${JSON.stringify(pctls, null, 2)}`)
+    pctls = pctls.filter(item => {
+        return parseFloat(item) <= parseFloat(input)
+    });
+
+    // console.log(`pct calc for key ${key} is ${pct}`)
+    let value = parseFloat(pctls.length) / 100
+    let step = Math.round(value / 0.1)
+    let clampedStep = Math.min(Math.max(step, 0), 9)
+
+    if (clampedStep == 4 || clampedStep == 5) {
+        return {
+            pctl: pctls.length,
+            ramp_class: null,
+            min: roundNumber(basePctls[0], 2, 2),
+            mid: roundNumber(basePctls[Math.floor(basePctls.length / 2)], 2, 2),
+            max: roundNumber(basePctls[basePctls.length - 1], 2, 2),
+        }
+    } else {
+        return {
+            pctl: pctls.length,
+            ramp_class: ` hulk-bg-level-${clampedStep}`,
+            min: roundNumber(basePctls[0], 2, 2),
+            mid: roundNumber(basePctls[Math.floor(basePctls.length / 2)], 2, 2),
+            max: roundNumber(basePctls[basePctls.length - 1], 2, 2),
+        }
+    }
+}
+
+function translateWP(input) {
+  return translateValue(input, 0.0, 1.0, -1.0, 1.0)
+}
+
+function printSpread() {
+    if (parseFloat(game.homeTeamSpread) > 0) {
+        return `${cleanAbbreviation(homeTeam)} -${game.homeTeamSpread}`
+    } else if (parseFloat(game.homeTeamSpread) < 0) {
+        return `${cleanAbbreviation(awayTeam)} ${game.homeTeamSpread}`
+    } else {
+        return "PUSH"
+    }
+}
+const lastPlay = game.plays[game.plays.length - 1]
+const gameInProgress = !(gameStatus.type.completed == true) && ((gameStatus.type.name.includes("STATUS_IN_PROGRESS") || gameStatus.type.name.includes("STATUS_END_PERIOD") || gameStatus.type.name.includes("STATUS_HALFTIME")) && game.plays.length > 0);
+
+const geiVal = (Math.round((game.gei || 0) * 100) / 100) 
+const geiPctl = geiGenerateColorRampValue(geiVal)
+const geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
+
+async function generateChart() {
+    GradientFillLineController.id = 'GradientFillLineController';
+    GradientFillLineController.defaults = LineController.defaults;
+
+    // Stores the controller so that the chart initialization routine can look it up
+    Chart.register(GradientFillLineController);
+
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
+
+    const plays = [...game.plays];
+    // console.log(game.plays[0])
+    var timestamps = [...Array(plays.length).keys()];
+    let periodMarkers = []
+    let periodTracks = {}
+    for (let i = 0; i < (plays.length - 1); i++) {
+        const j = (i - 1);
+        const prevPlay = plays[j];
+        const curPlay = plays[i];
+
+        if (!prevPlay || ((parseInt(prevPlay.period) < parseInt(curPlay.period)) && (parseInt(curPlay.period) <= 5))) {
+            const title = parseInt(curPlay.period) < 5 ? `Q${curPlay.period}` : `OT`;
+
+            if (Object.keys(periodTracks).includes(title)) {
+                continue;
+            }
+
+            periodMarkers.push(
+                createVerticalLinePlugin(
+                    `period-${curPlay.period}`,
+                    title,
+                    i,
+                    isDarkMode ? '#e8e6e3' : '#525252',
+                    2.5,
+                    'x-axis-0',
+                    'y-axis-0',
+                    -1,
+                    1
+                )
+            )
+            periodTracks[title] = i;
+        }
+    }
+
+    var homeTeamWP = game.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
+
+    // handle end of game
+    if (gameStatus.type.completed == true) {
+        if (homeComp.winner == true || parseInt(homeComp.score) > parseInt(awayComp.score)) {
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
+            homeTeamWP.push(translateWP(1.0))
+        } else if (awayComp.winner == true || parseInt(homeComp.score) < parseInt(awayComp.score)) {
+            timestamps.push((timestamps[timestamps.length - 1] + 1))
+            homeTeamWP.push(translateWP(0.0))
+        }
+    }
+
+    var targetDataSet = {
+        fill: true,
+        lineTension: 0,
+        pointRadius: 0,
+        borderWidth: 3,
+        label: null,
+        data: homeTeamWP,
+        hoverBackgroundColor: JSON.stringify(awayTeamColor),
+        hoverBorderColor: JSON.stringify(homeTeamColor)
+    };
+
+
+    var wpChart = new Chart(document.getElementById("wpChart"), {
+        type: 'GradientFillLineController',
+        plugins: [
+            ...periodMarkers,
+            {
+                beforeDatasetDraw: (chart) => {
+                    const viewport = getCurrentViewport(document, window);
+                    const sizeWidth = chart.ctx.canvas.clientWidth;
+                    const sizeHeight = chart.ctx.canvas.clientHeight;
+                    const imgSize = 75.0;
+
+                    if (viewport == "xl" || viewport == "lg") {
+                        chart.ctx.save()
+                        chart.ctx.textAlign = "right"
+                        chart.ctx.font = "8px Helvetica";
+                        chart.ctx.fillStyle = (isDarkMode) ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillText("From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.5 * (sizeHeight / 8) - 45)
+                        chart.ctx.restore();
+
+                        // get the context
+                        chart.ctx.save();
+                        chart.ctx.globalAlpha = 0.4;
+
+                        if (chart.homeTeamImage) {
+                            chart.ctx.drawImage(chart.homeTeamImage, (sizeWidth / 8), (sizeHeight / 8) - (imgSize / 4.0), imgSize, imgSize);  
+                        }
+
+                        if (chart.awayTeamImage) {
+                            chart.ctx.drawImage(chart.awayTeamImage, (sizeWidth / 8), 5 * (sizeHeight / 8) - (imgSize / 2.0), imgSize, imgSize);    
+                        //     // draw it - ~145 px per half                                           // and force re-render to include it 
+                        }
+
+                        // pop the context
+                        chart.ctx.restore();
+                    }
+                },
+            },
+            {
+                afterInit: (chart) => {
+                    const homeImage = new Image();
+                    const homeId = `${homeTeam.id}`;
+                    homeImage.setAttribute('crossOrigin','anonymous');
+                    if (Object.keys(SPECIAL_IMAGES).includes(homeId)) {
+                        homeImage.src = SPECIAL_IMAGES[homeId];
+                    }
+                    
+                    if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(homeId)) {
+                        homeImage.src = SPECIAL_IMAGES_DARK[homeId];
+                    }
+
+                    if (!homeImage.src) {
+                        homeImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+                    }
+
+                    homeImage.onload = () => {                                            // when the image loads
+                        chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
+                        chart.render();                                                 // and force re-render to include it
+                    };
+
+                    var awayImage = new Image();
+                    var awayId = `${awayTeam.id}`;
+                    awayImage.setAttribute('crossOrigin','anonymous');
+                    if (Object.keys(SPECIAL_IMAGES).includes(awayId)) {
+                        awayImage.src = SPECIAL_IMAGES[awayId];
+                    }
+
+                    if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(awayId)) {
+                        awayImage.src = SPECIAL_IMAGES_DARK[awayId];
+                    }
+
+                    if (!awayImage.src) {
+                        awayImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+                    }
+
+                    awayImage.onload = () => {                                            // when the image loads
+                        chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
+                        chart.render();                                                 // and force re-render to include it
+                    };
+                }
+            },
+        ],
+        data: {
+            labels: timestamps,
+            datasets: [
+                targetDataSet,
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    suggestedMax: 1.0,
+                    suggestedMin: -1.0,
+                    ticks: {
+                        stepSize: 0.5,
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252',
+                        callback: function(value) {
+                            if (value > 0) {
+                                let transVal = translateValue(value, 0.0, 1.0, 50, 100);
+                                return `${cleanAbbreviation(homeTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
+                            } else if (value < 0) {
+                                let transVal = translateValue(value, -1.0, 0.0, 100, 50);
+                                return `${cleanAbbreviation(awayTeam)} ${(Math.round(Math.abs(transVal) * 100) / 100)}%`
+                            } else {
+                                return "50%";
+                            }
+                        }
+                    },
+                    title: {
+                        display: false,
+                        text: "Win Probability",
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252',
+                        font: {
+                            family: '"Chivo", "Fira Mono", serif'
+                        },
+                    },
+                    grid: {
+                        color: (line) => {
+                            if (line.tick.value == 0) {
+                                return (isDarkMode) ? "white" : "#ACACAC"
+                            }
+                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        }, 
+                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252'
+                    },
+                    title: {
+                        display: true,
+                        text: "Play Number",
+                        color: (isDarkMode) ?  '#e8e6e3' : '#525252',
+                        font: {
+                            family: '"Chivo", "Fira Mono", serif'
+                        },
+                    },
+                    grid: {
+                        color: (line) => {
+                            if (line.tick.value == 0) {
+                                return (isDarkMode) ? "white" : "#ACACAC"
+                            }
+                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        },
+                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(contexts) {
+                            return `Play Number: ${contexts[0].dataIndex}` 
+                        },
+                        label: function(context) {
+                            // value is always from perspective of home team
+                            if (context.parsed.y > 0) {
+                                let transVal = translateValue(context.parsed.y, 0.0, 1.0, 50, 100);
+                                return `${cleanAbbreviation(homeTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`
+                            } else if (context.parsed.y < 0) {
+                                let transVal = translateValue(context.parsed.y, -1.0, 0.0, 100, 50);
+                                return `${cleanAbbreviation(awayTeam)} WP: ${(Math.round(Math.abs(transVal) * 10) / 10)}%`;
+                            } else {
+                                return "50%";
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    })
+
+    document.getElementById("wp-download").addEventListener('click', function() {
+        /*Get image of canvas element*/
+        var url_base64jp = wpChart.toBase64Image();
+        /*get download button (tag: <a></a>) */
+        var a =  document.getElementById("wp-download");
+        /*insert chart image url to download button (tag: <a></a>) */
+        a.href = url_base64jp;
+    });
+}
+
+async function waitToGenerateChart() {
+    try {
+        const context = await waitForElement(document, "wpChart")
+        await generateChart()
+    } catch (e) {
+        console.error(e);
+        const container = document.getElementById("wp_container");
+        if (container) {
+            container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
+        }
+    }
+}
+
+if (document.readyState !== 'loading') {
+    console.log(`DOM ready state`)
+    waitToGenerateChart()
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log(`DOM content loaded state`)
+        waitToGenerateChart()
+    })
+}
+
+</script>
+
+<div class="row">
+    <div>
+        <h2 class="mb-0">Win Probability</h2>
+        <p class="m-0 text-muted text-small" hidden={lastPlay.gameSpreadAvailable}>ESPN does not list betting odds for this game, so we've used default values: {cleanAbbreviation(homeTeam)} -2.5, O/U 55.5.</p>
+        <p class="text-small">
+            {#if !gameInProgress}
+            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={`${geiPctl.ramp_class} px-1`} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
+            {/if}
+            Odds: {printSpread()}, O/U {roundNumber(parseFloat(game.overUnder), 2, 1)}
+            {#if gameInProgress}
+                {#if (lastPlay.winProbability.before >= 0.5) }
+                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
+                {/if}
+                {#if (lastPlay.winProbability.before < 0.5) }
+                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
+                {/if}
+            {/if}
+            | <a id="wp-download" download={`game-wp-${game.gameId}.jpg`} href="#">Download Chart</a>
+        </p>
+    </div>
+    <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
+</div>

@@ -1,0 +1,140 @@
+---
+import { getCurrentScoreboard, getRemoteGames, type ESPNScheduleEvent } from "../../resources/espn";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import { isEventFavorite } from "../../utils/misc";
+import DarkModeLogos from "../DarkModeLogos.astro";
+import Footer from "../Footer.astro";
+import GameThumb from "./GameThumb.astro";
+import ScheduleDropdown from "./ScheduleDropdown.svelte";
+import Header from "../Header.astro"
+import Scripts from "../Scripts.astro"
+
+interface Props {
+  title?: string;
+  season: number;
+  seasontype?: number;
+  week?: number;
+  group?: number;
+  isScoreboard?: boolean
+}
+
+const { title, season, seasontype, week, group, isScoreboard } = Astro.props;
+let titleParts: string[] = [];
+if (season) {
+    titleParts.push(`${season}`)
+}
+
+titleParts = titleParts.concat(["College Football", "Game on Paper"])
+
+const titleText = titleParts.join(" | ")
+let games: ESPNScheduleEvent[] = [];
+if (isScoreboard) {
+    games = await getCurrentScoreboard();
+} else {
+    games = await getRemoteGames(season, seasontype, week, group);
+}
+
+const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
+
+games.sort((a, b) => {
+    if (isEventFavorite(favorites, a) && !isEventFavorite(favorites, b)) {
+        return -1;
+    } else if (!isEventFavorite(favorites, a) && isEventFavorite(favorites, b)) {
+        return 1;
+    } else if (a.status?.type.name.includes("IN_PROGRESS") && !b.status?.type.name.includes("IN_PROGRESS")) {
+        return -1;
+    } else if (b.status?.type.name.includes("IN_PROGRESS") && !a.status?.type.name.includes("IN_PROGRESS")) {
+        return 1;
+    } else if ((a.status?.type.name.includes("END_OF") || a.status?.type.name.includes("END_PERIOD")) && !(b.status?.type.name.includes("END_OF") || b.status?.type.name.includes("END_PERIOD"))) {
+        return -1;
+    } else if ((b.status?.type.name.includes("END_PERIOD") || b.status?.type.name.includes("END_OF")) && !(a.status?.type.name.includes("END_OF") || a.status?.type.name.includes("END_PERIOD"))) {
+        return 1;
+    } else if (a.status?.type.name.includes("STATUS_HALFTIME") && !b.status?.type.name.includes("STATUS_HALFTIME")) {
+        return -1;
+    } else if (b.status?.type.name.includes("STATUS_HALFTIME") && !a.status?.type.name.includes("STATUS_HALFTIME")) {
+        return 1;
+    } else {
+        var aDate = Date.parse(a.date)
+        var bDate = Date.parse(b.date)
+        if (aDate < bDate) {
+            return -1
+        } else if (bDate < aDate) {
+            return 1
+        } else {
+            var aVal = parseInt(a.status?.type?.id || "0")
+            var bVal = parseInt(b.status?.type?.id || "0")
+            if (aVal < bVal) {
+                return -1
+            } else if (bVal < aVal) {
+                return 1
+            } else {
+                return 0
+            }
+        }
+    }
+})
+
+const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(item.status?.type.completed == true || item.status?.type.name.includes("SCHEDULED") || item.status?.type.name.includes("CANCEL") || item.status?.type.name.includes("POSTPONE") || item.status?.type.name.includes("DELAY")))
+
+const allTeamIds = games.map(g => {
+    return g.competitions[0].competitors.map(t => t.id)
+}).reduce((a,b) => a.concat(b), [])
+---
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <title>{title || titleText}</title>
+        <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+        <link href="/assets/css/index.css" rel="stylesheet">
+        <link href="/assets/css/dark-index.css" rel="stylesheet">
+        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <DarkModeLogos teamIds={allTeamIds} />
+    </head>
+    <body>
+        <Header />
+        <div class="container">
+            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
+            <div class="row mb-3">
+                {
+                    (games.length > 0) && (games.map((g => <GameThumb game={g} />)))
+                }
+                {
+                    (games.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
+                }
+            </div>
+            <div class="row mb-3" hidden={!hasActiveGames}>
+                <div class="col-12">
+                    <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                </div>
+            </div>
+            <div class="row text-muted">
+                <div class="col-12">
+                    <caption>Game border color guide:
+                        <ul>
+                            <li><strong>Gray</strong> - normal</li>
+                            <li><strong>Green</strong> - Close game late</li>
+                            <li><strong>Yellow</strong> - Ranked Upset</li>
+                            <li><strong>Orange</strong> - Ranked Opponents + close game late</li>
+                            <li><strong>Red</strong> - FCS Upset</li>
+                        </ul>
+                    </caption>
+                </div>
+            </div>
+            <Footer />
+            <Scripts />
+            <script>
+                document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
+                    e.preventDefault()
+                    const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
+                    if (gameId) {
+                        window.location.assign("/game/" + gameId);
+                    }
+                });
+            </script>
+        </div>
+    </body>
+</html>

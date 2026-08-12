@@ -1,0 +1,141 @@
+---
+// export const prerender = true;
+
+import TeamRadarChart from "../../../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../../../components/DarkModeLogos.astro";
+import GameThumb from "../../../../components/schedule/GameThumb.astro";
+import TeamPassingTable from "../../../../components/team/tables/TeamPassingTable.astro";
+import TeamRushingTable from "../../../../components/team/tables/TeamRushingTable.astro";
+import TeamReceivingTable from "../../../../components/team/tables/TeamReceivingTable.astro";
+import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
+import GenericPage from "../../../../layouts/GenericPage.astro";
+import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
+import { retrieveTeamInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
+import { retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, retrieveTeamSeasonInformation, type SDVGame } from "../../../../resources/sdv";
+import { cleanLocation, roundNumber } from "../../../../utils/misc";
+import TeamCard from "../../../../components/team/TeamCard.astro";
+import TeamPlayerCard from "../../../../components/team/TeamPlayerCard.astro";
+import { SummaryType, type TeamIndex, retrieveAllTeams } from "../../../../utils/common";
+
+// export function getStaticPaths() {
+//     const teams: TeamIndex[] = retrieveAllTeams()
+//     return teams.flatMap(t => t.seasons.map(s => {
+//         return { params: { year: String(s), id: String(t.team_id) } }
+//     }))
+// }
+
+const { year, id } = Astro.params;
+if (!year) {
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
+}
+if (!id) {
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
+}
+
+const team = await retrieveTeamInformation(id)
+const teamSeason = await retrieveTeamSeasonInformation(year, id)
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: "Teams",
+        url: "/teams",
+        active: false
+    },
+    {
+        title: cleanLocation(team),
+        url: `/team/${id}`,
+        active: false
+    },
+    {
+        title: year,
+        url: `/year/${year}/team/${id}`,
+        active: true
+    }
+]
+
+
+const teamSummaries = await retrieveTeamSummaries({season: Number(year), team_id: Number(id)});
+if (!teamSummaries) {
+    Astro.cache.set(false);
+    return Astro.redirect('/404');
+}
+const teamData = teamSummaries.map((t:any) => {
+    t.color = team.color
+    t.alternateColor = team.alternateColor
+    t.teamName = cleanLocation(team)
+    return t
+})
+
+const passersRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year));
+const passers = (passersRaw as SDVPassingSummary[]);
+const rushersRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year));
+const rushers = (rushersRaw as SDVRushingSummary[]);
+const receiversRaw: SDVPlayerSummary[] = await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year));
+const receivers = (receiversRaw as SDVReceivingSummary[]);
+
+const leadingPasser: SDVPassingSummary | null = (passers.length == 0) ? null : (passers.toSorted((a, b) => b.plays - a.plays)[0] as SDVPassingSummary);
+const leadingRusher: SDVRushingSummary | null = (rushers.length == 0) ? null : (rushers.toSorted((a, b) => b.plays - a.plays)[0] as SDVRushingSummary);
+const leadingReceiver: SDVReceivingSummary | null = (receivers.length == 0) ? null :  (receivers.toSorted((a, b) => b.plays - a.plays)[0] as SDVReceivingSummary);
+
+const leaders = [
+    leadingPasser == null ? null : { 
+        playerId: leadingPasser.player_id, 
+        name: leadingPasser.passer_player_name, 
+        title: "Passing", 
+        subtitle: `${roundNumber(leadingPasser.EPAplay, 2, 2)} EPA/Play, ${roundNumber(100 * leadingPasser.comppct, 2, 1)}% Comp, ${leadingPasser.yards} yd${ (Math.abs(leadingPasser.yards) == 1) ? "" : "s"}, ${leadingPasser.passing_td} TD`
+    },
+    leadingRusher == null ? null : { 
+        playerId: leadingRusher.player_id, 
+        name: leadingRusher.rusher_player_name, 
+        title: "Rushing", 
+        subtitle: `${roundNumber(leadingRusher.EPAplay, 2, 2)} EPA/Play, ${leadingRusher.plays} Car, ${leadingRusher.yards} yd${ (Math.abs(leadingRusher.yards) == 1) ? "" : "s"}, ${leadingRusher.rushing_td} TD`
+    },
+    leadingReceiver == null ? null : { 
+        playerId: leadingReceiver.player_id, 
+        name: leadingReceiver.receiver_player_name, 
+        title: "Receiving", 
+        subtitle: `${roundNumber(leadingReceiver.EPAplay, 2, 2)} EPA/Play, ${leadingReceiver.plays} Cat, ${leadingReceiver.yards} yd${ (Math.abs(leadingReceiver.yards) == 1) ? "" : "s"}, ${leadingReceiver.passing_td} TD`
+    }
+].filter(d => !!d);
+
+// Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+---
+
+<GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={[team.id]} />
+    <div class="container">
+        <div class="row my-3">
+            <div class="col-lg-4 col-md-12 mb-md-3 mb-lg-0 margin-override">
+                <TeamCard team={team} season={year} teamSeason={teamSeason} summary={teamSummaries[0]} hideNavigation={true} />
+            </div>
+            <div class="col-lg-8 col-md-12">
+                <TeamPlayerCard team={team} season={year} players={leaders} />
+            </div>
+        </div>
+    </div>
+    <div class="container mb-3">
+        <GenericPanel id="radar" title="Profile">
+            <p slot="panel-subtitle" class="text-muted text-small m-0">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            <TeamRadarChart slot="panel-body" client:only team={team} teamData={teamData} showSeasonPicker={false} />
+        </GenericPanel>
+    </div>
+    <div class="container">
+        <TeamPassingTable players={passers.filter(p => p.passer_player_name != "NA" && p.passer_player_name != null && p.passer_player_name).toSorted((a, b) => b.plays - a.plays)} />
+        <TeamRushingTable players={rushers.filter(p => p.rusher_player_name != "NA" && p.rusher_player_name != null && p.rusher_player_name).toSorted((a, b) => b.plays - a.plays)} />
+        <TeamReceivingTable players={receivers.filter(p => p.receiver_player_name != "NA" && p.receiver_player_name != null && p.receiver_player_name).toSorted((a, b) => b.plays - a.plays)} />
+    </div>
+    <!-- <div class="container mb-3">
+        <GenericPanel id="schedule" title="Schedule">
+        <div class="row mb-3" slot="panel-body">
+            {
+                (teamSeason.events.length > 0) && (teamSeason.events.map(((g: SDVGame) => <GameThumb game={g} />)))
+            }
+            {
+                (teamSeason.events.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
+            }
+        </div>
+        </GenericPanel>
+    </div> -->
+    
+</GenericPage>

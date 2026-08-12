@@ -1,0 +1,72 @@
+---
+import { AVAILABLE_SEASONS, LAST_YEAR } from "../utils/constants";
+
+const METRIC_YEAR = LAST_YEAR;
+---
+
+<header class="p-3 mb-3 border-bottom">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+            <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
+                <a href="/" class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
+            </div>
+
+            <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+                <li><a href="/" class="nav-link px-2 link-secondary">Scoreboard</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Leaderboards
+                    </a>
+                    <ul class="dropdown-menu">
+                        <h6 class="dropdown-header">Team Level</h6>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/differential`}>Net Statistics</a></li>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/offensive`}>Offensive</a></li>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/defensive`}>Defensive</a></li>
+                        <h6 class="dropdown-header">Player Level</h6>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/passing`}>Passing</a></li>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/rushing`}>Rushing</a></li>
+                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/receiving`}>Receiving</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Charts
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/charts/trends">Trends</a></li>
+                        <li><a class="dropdown-item" href="/charts/builder">Builder</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Seasons
+                    </a>
+                    <ul class="dropdown-menu">
+                    {
+                        AVAILABLE_SEASONS.map((yr) => (
+                            <li><a class="dropdown-item" href={`/year/${yr}/teams`}>{yr}</a></li>
+                        ))
+                    }
+                    </ul>
+                </li>
+                <li><a href="/teams" class="nav-link px-2 link-secondary">Teams</a></li>
+                <li><a href="/game/matchup" class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
+                <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
+            </ul>
+
+            <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3" role="search" id="game-id-form">
+                <input id="inputGameId" type="search" class="form-control" placeholder="Search for an ESPN game ID..." aria-label="Search">
+            </form>
+        </div>
+    </div>
+</header>
+<script>
+    document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
+        e.preventDefault()
+        const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
+        if (gameId) {
+            window.location.assign("/game/" + gameId);
+        }
+    });
+</script>

@@ -1,0 +1,128 @@
+---
+// export const prerender = true;
+
+import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
+import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField } from "../../utils/misc";
+import { formatRank, retrieveAllTeams, type TeamIndex } from "../../utils/common";
+import { retrievePercentiles, type SDVSeasonPercentile, retrieveTeamSummaries, type SDVTeamSummary } from "../../resources/sdv";
+import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
+import DarkModeLogos from "../../components/DarkModeLogos.astro";
+import { retrieveTeamInformation } from "../../resources/espn";
+
+// export function getStaticPaths() {
+//     const teams: TeamIndex[] = retrieveAllTeams()
+//     return teams.flatMap(t => {
+//         return { params: { id: String(t.team_id) }}
+//     })
+// }
+
+const { id } = Astro.params;
+if (!id) {
+    Astro.cache.set(false);
+    return Astro.redirect("/404");
+}
+
+const team = await retrieveTeamInformation(id)
+
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: "Teams",
+        url: "/teams",
+        active: false
+    },
+    {
+        title: cleanLocation(team),
+        active: true
+    }
+]
+
+let allPctls: SDVSeasonPercentile[] = []
+for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+    const percentiles = await retrievePercentiles(undefined, p);
+    allPctls = allPctls.concat(percentiles);
+}
+
+let teamData = await retrieveTeamSummaries({ team_id: Number(id) })
+teamData = teamData.sort((a,b) => a.season - b.season).map((t:any) => {
+    t.color = team.color
+    t.alternateColor = team.alternateColor
+    t.teamName = cleanField(team, "pos_team")
+    return t
+})
+
+let availableSeasons = teamData.map(b => b.season)
+availableSeasons = [...new Set(availableSeasons)].sort();
+const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
+
+function createSeasonColumn(summary: SDVTeamSummary, key: string): string {
+    const val = roundNumber(retrieveValue(summary, key), 2, 2)
+    const rank = retrieveValue(summary, `${key}_rank`)
+
+    const colorRampClass = generateColorRampValue(parseInt(rank), 134, true)
+    const rankStr = formatRank(parseInt(rank))
+    return `
+    <td class="numeral ${colorRampClass}" style="text-align: center;">${val} <small class="align-self-center" style="opacity: 50%">#${rankStr}</small></td>
+    `
+}
+
+function createSeasonRow(summary: SDVTeamSummary): string {
+    const cols = ["net_adj_epa", "EPAplay_margin", "adj_off_epa", "EPAplay_off", "adj_def_epa", "EPAplay_def"].map(x => createSeasonColumn(summary, x)).join("")
+    return `
+    <tr>
+        <td><a href="/year/${summary.season}/team/${team.id}">${summary.season}</a></td>
+        ${cols}
+    </tr>
+    `
+}
+
+// Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+---
+
+<GenericPage title={`${cleanLocation(team)} | ${yearRange} | Game on Paper`} subtitle={`Team level metric history`} slug={`/team/${team.id}`} breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={[team.id]} />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <h1 class="d-flex"><img class={`img-fluid team-logo-${team.id} me-2`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/> <span class="ms-1">{cleanLocation(team)}</span></h1>
+                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
+                <!-- <p class="m-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
+            </div>
+            <div class="col-lg-6 col-xs-12 mb-xs-3">
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
+                <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
+            </div>
+        </div>
+    </div>
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={(team.color.startsWith("#") ? team.color : `#${team.color}`)} teamData={teamData} percentiles={allPctls} />
+    <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} />
+    <div class="container mb-3">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2 class="d-inline">Seasons</h2>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-responsive">
+                        <thead>
+                            <th class="text-left" colspan="1">Season</th>
+                            <th class="text-center" colspan="1">Net Adj EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Net EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Off Adj EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Off EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Def Adj EPA/Play (Rk)</th>
+                            <th class="text-center" colspan="1">Def EPA/Play (Rk)</th>
+                        </thead>
+                        <tbody>
+                            {
+                                teamData.map(t => <Fragment set:html={createSeasonRow(t)} />)
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</GenericPage>
