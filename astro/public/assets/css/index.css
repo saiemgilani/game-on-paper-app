@@ -17,13 +17,6 @@
   font-weight: 500;
 }
 
-body {
-  /* display: flex; */
-  /* align-items: center; */
-  padding-top: 40px;
-  padding-bottom: 40px;
-}
-
 .form-picker {
   width: 100%;
   max-width: 900px;

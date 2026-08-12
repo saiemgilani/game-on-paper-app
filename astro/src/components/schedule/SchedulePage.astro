@@ -6,6 +6,8 @@ import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
+import Header from "../Header.astro"
+import Scripts from "../Scripts.astro"
 
 interface Props {
   title?: string;
@@ -93,31 +95,8 @@ const allTeamIds = games.map(g => {
         <DarkModeLogos teamIds={allTeamIds} />
     </head>
     <body>
+        <Header />
         <div class="container">
-            <div class="row text-center mb-3">
-                <div class="form-signin col-12">
-                    <h1 class="mb-3 fw-normal"><img src="/assets/img/favicon.svg" height="50px" class="align-self-center me-1"/> Game on Paper</h1>
-                    <form id="game-id-form">
-                        <label for="inputGameId" class="visually-hidden">Game ID</label>
-                        <input type="text" id="inputGameId" class="form-control mb-3" placeholder="Provide a valid ESPN Game ID for a CFB game" required="">
-                        <button class="w-100 btn btn-lg btn-primary" type="submit">View Stats</button>
-                    </form>
-                </div>
-            </div>
-            <div class="row mb-1">
-                <h3 class="text-center"> -- OR -- </h3>
-            </div>
-            <div class="row justify-content-center">
-                <div class="col-lg-3 col-xs-12 mb-3">
-                    <a href={`/year/${season}/teams`} class="w-100 btn btn-lg btn-primary">Team Leaderboards</a>
-                </div>
-                <div class="col-lg-3 col-xs-12 mb-3">
-                    <a href="/players" class="w-100 btn btn-lg btn-primary">Player Leaderboards</a>
-                </div>
-            </div>
-            <div class="row mb-1">
-                <h3 class="text-center"> -- OR -- </h3>
-            </div>
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
             <div class="row mb-3">
                 {
@@ -146,6 +125,7 @@ const allTeamIds = games.map(g => {
                 </div>
             </div>
             <Footer />
+            <Scripts />
             <script>
                 document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
                     e.preventDefault()
