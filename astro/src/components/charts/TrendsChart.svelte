@@ -113,7 +113,10 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
 
             return {
                 label: `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, element.data.y || 0)}`,
-                data: element.data,
+                data: {
+                    x: element.data.x,
+                    y: (element.data.y || 0) * (isRateMetric ? 100.0 : 1.0)
+                },
                 pointStyle: img,
             }
         }).filter(d => !!d).sort((a, b) => a.data.x - b.data.x)
