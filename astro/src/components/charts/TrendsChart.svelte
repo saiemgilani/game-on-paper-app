@@ -6,7 +6,6 @@ import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDAR
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
-import ChartJSTrendline from 'chartjs-plugin-trendline';
 
 const { title, teamColor, teamData, category, metric, percentiles } = $props();
 
