@@ -339,7 +339,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
     }
 }
 
-Chart.register(BoxPlotController, BoxAndWiskers, ChartJSTrendline);
+Chart.register(BoxPlotController, BoxAndWiskers);
 
 let trendsChart: Chart | null = null;
 function generateChart(chartContext: HTMLElement | null) {
