@@ -31,7 +31,7 @@ jobs:
           vars: |
             APP_VERSION
           preCommands: |
-            npm install --save
+            npm ci
             npm run build
       - name: Check that web is live
         uses: jtalk/url-health-check-action@v5
