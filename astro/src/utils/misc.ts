@@ -586,3 +586,11 @@ export async function wrappedFetch(url: string, init?: RequestInit): Promise<Res
     console.info(`[request] ${init?.method || "GET"} ${url} - time: ${Date.now() - start} ms`)
     return resp;
 }
+
+export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number): Promise<void> {
+    try {
+        await cache.put(key, value, { expirationTtl: ttl })
+    } catch (e: any) {
+        console.error(`ERROR while writing to KV with key ${key}: ${e}\n${e.stack}`)
+    }
+}

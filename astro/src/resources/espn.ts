@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers"
 import { DateTime } from "luxon"
 import { CURRENT_YEAR } from "../utils/constants"
-import { wrappedFetch } from "../utils/misc"
+import { safeCachePut, wrappedFetch } from "../utils/misc"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
@@ -391,10 +391,10 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
     return result;
 }
 
-export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = false): Promise<ESPNScheduleEvent[]> {
+export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEnabled = false): Promise<ESPNScheduleEvent[]> {
     const cacheTTL = (60 * 60 * 24) // env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
     try {
-        if (cacheEnabled) { 
+        if (cacheReadEnabled) { 
             const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");
             if (cachedContent) {
                 console.info(`ESPN API cache hit: scoreboard`)
@@ -402,15 +402,15 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
             }
         }
 
-        console.info(`ESPN API cache miss (forceWrite: ${forceWrite}): scoreboard`)
+        console.info(`ESPN API cache miss (cacheWriteEnabled: ${cacheWriteEnabled}): scoreboard`)
         // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
         const resp = await wrappedFetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
         let espnContent: ESPNCoreScoreboardResponse = await resp.json();
         const result = espnContent?.content.sbData.events || [];
 
-        if ((cacheEnabled || forceWrite) && result) {
+        if (cacheWriteEnabled && result) {
             console.info(`ESPN API cache update: scoreboard`)
-            await env.ESPN_API_CACHE.put("scoreboard", JSON.stringify(result), { expirationTtl: cacheTTL })
+            await safeCachePut(env.ESPN_API_CACHE, "scoreboard", JSON.stringify(result), cacheTTL)
         }
         return result;
     } catch (e) {
@@ -422,7 +422,11 @@ export async function getCurrentScoreboard(cacheEnabled = true, forceWrite = fal
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
     const cacheBuster = ((new Date()).getTime() * 1000);
     const req = await wrappedFetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
-    const res: ESPNPlayByPlayResponse = await req.json()
+    const contentRaw = await req.text();
+    if (!req.ok) {
+        throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
+    }
+    const res: ESPNPlayByPlayResponse = JSON.parse(contentRaw);
     return res
 }
 
