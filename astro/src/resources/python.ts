@@ -932,7 +932,7 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
         body: JSON.stringify({ gameId }),
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
-            "Referrer": "gameonpaper.com" 
+            "Referer": "gameonpaper.com" 
         }
     })
     const content = await req.text();
