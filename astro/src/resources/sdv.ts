@@ -4,7 +4,7 @@ import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } 
 import { env } from "cloudflare:workers";
 import { SummaryType } from "../utils/common";
 import { number } from "astro:schema";
-import { calculateNormCdf, cleanUpParams, wrappedFetch } from "../utils/misc";
+import { calculateNormCdf, cleanUpParams, safeCachePut, wrappedFetch } from "../utils/misc";
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -578,9 +578,11 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
         const req = await wrappedFetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const contentRaw: string = await req.text();
-        if (contentRaw && cacheEnabled) {
+        if (req.ok && contentRaw && cacheEnabled) {
             console.info(`SDV API cache update: ${endpointURL}`)
-            await env.SDV_API_CACHE.put(endpointURL, contentRaw, { expirationTtl: cacheTTL })
+            await safeCachePut(env.SDV_API_CACHE, endpointURL, contentRaw, cacheTTL)
+        } else if (!req.ok) {
+            throw new Error(`Request returned with status ${req.statusText}, content: ${contentRaw}`)
         }
         const content = JSON.parse(contentRaw);
         return content;
