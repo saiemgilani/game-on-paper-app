@@ -58,7 +58,7 @@ try {
 } catch (e) {
     console.error(e);
     Astro.cache.set(false);
-    return Astro.redirect("/404")
+    return Astro.rewrite("/404")
 }
 ---
 {
