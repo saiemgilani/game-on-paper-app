@@ -9,6 +9,7 @@ import { retrievePercentiles, type SDVSeasonPercentile, retrieveTeamSummaries, t
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { retrieveTeamInformation } from "../../resources/espn";
+import FallbackSpinner from '../../components/FallbackSpinner.astro';
 
 // export function getStaticPaths() {
 //     const teams: TeamIndex[] = retrieveAllTeams()
@@ -94,8 +95,12 @@ function createSeasonRow(summary: SDVTeamSummary): string {
             </div>
         </div>
     </div>
-    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={(team.color.startsWith("#") ? team.color : `#${team.color}`)} teamData={teamData} percentiles={allPctls} />
-    <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} />
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={(team.color.startsWith("#") ? team.color : `#${team.color}`)} teamData={teamData} percentiles={allPctls}>
+        <FallbackSpinner slot="fallback" />
+    </TeamTrendsChart>
+    <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true}>
+        <FallbackSpinner slot="fallback" />
+    </TeamRadarChart>
     <div class="container mb-3">
         <div class="row mb-3">
             <div class="col-12">

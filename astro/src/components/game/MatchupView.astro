@@ -3,6 +3,7 @@ import type { ESPNTeam } from '../../resources/espn'
 import type { SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
 import { cleanNickname, formatYardline, roundNumber, generateColorRampValue, cleanField, generateMarginalString } from '../../utils/misc';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
+import FallbackSpinner from '../FallbackSpinner.astro';
 
 interface Props {
     homeTeamSeason: SDVTeamSeasonInformation | null
@@ -256,7 +257,9 @@ const matchupData = [
 
 ---
 <div class="container mb-3">
-    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} />
+    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData}>
+        <FallbackSpinner slot="fallback" />
+    </MatchupRadarChart>
     <div class="row">
         <Fragment set:html={produceTeamSector(awayTeamSeason?.team, awayTeamBreakdown)} />
         <div class="col-md-12 ms-sm-auto col-lg-6">

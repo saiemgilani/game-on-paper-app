@@ -1,6 +1,7 @@
 ---
 import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
 import GenericPage from '../../layouts/GenericPage.astro';
+import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrieveTeamSummaries } from '../../resources/sdv';
 import DarkModeLogos from './../../components/DarkModeLogos.astro';
@@ -53,5 +54,7 @@ if (points.length > 0) {
 
 <GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={points.map(t => t.team_id)} />
-    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} />
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points}>
+        <FallbackSpinner slot="fallback" />
+    </ChartBuilder>
 </GenericPage>

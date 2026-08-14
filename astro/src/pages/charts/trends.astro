@@ -1,6 +1,7 @@
 ---
 import TrendsChart from '../../components/charts/TrendsChart.svelte';
 import TrendsMetricDropdown from '../../components/dropdowns/TrendsMetricDropdown.svelte';
+import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrievePercentiles, type SDVSeasonPercentile } from '../../resources/sdv';
@@ -57,5 +58,7 @@ const title = `National Trends | ${yearRange} | Game on Paper`;
             </div>
         </div>
     </div>
-    <TrendsChart client:only title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles} />
+    <TrendsChart client:only title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
+        <FallbackSpinner slot="fallback" />
+    </TrendsChart>
 </GenericPage>

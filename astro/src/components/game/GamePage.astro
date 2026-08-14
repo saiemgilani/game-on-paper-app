@@ -23,6 +23,7 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
+import FallbackSpinner from '../FallbackSpinner.astro';
 
 interface Props {
    id: string | number
@@ -179,10 +180,14 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         <div class="container-fluid">
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only game={game} percentiles={percentiles} />
+                    <WinProbabilityChart client:only game={game} percentiles={percentiles}>
+                        <FallbackSpinner slot="fallback" />
+                    </WinProbabilityChart>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} />
+                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
+                        <FallbackSpinner slot="fallback" />
+                    </ExpectedPointsChart>
                 </div>
             </div>
             <div class="row mb-3">
