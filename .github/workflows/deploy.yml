@@ -36,7 +36,7 @@ jobs:
       - name: Check that web is live
         uses: jtalk/url-health-check-action@v5
         with:
-          url: https://gameonpaper.com
+          url: https://gameonpaper.com/health
           follow-redirect: true
           max-attempts: 10
           retry-delay: 5s
