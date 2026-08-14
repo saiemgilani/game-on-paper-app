@@ -9,5 +9,5 @@ const formattedDate = DateTime.fromISO(date).toLocaleString(format);
 <p class={divClass}>{`${prefix} - ${formattedDate}`}</p>
 {/if}
 {#if !prefix}
-   <p class={divClass}>{`${formattedDate}`}</p>
+<p class={divClass}>{`${formattedDate}`}</p>
 {/if}

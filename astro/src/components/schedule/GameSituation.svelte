@@ -1,12 +1,12 @@
----
+<script lang="ts">
 import type { ESPNGameSituation, ESPNScheduleEntry, ESPNScheduleEvent } from "../../resources/espn";
-import { cleanAbbreviation } from "../../utils/misc";
+import { cleanAbbreviation, roundNumber } from "../../utils/misc";
 
 interface Props {
     hidden: boolean
     game: ESPNScheduleEvent
 }
-const { hidden, game } = Astro.props;
+const { hidden, game } = $props();
 
 const espnGame = (game as ESPNScheduleEvent);
 const espnGameComp = espnGame.competitions[0];
@@ -72,10 +72,10 @@ function setLastPlayWP(situation?: ESPNGameSituation): string {
         `
     }
 }
----
+</script>
 
 
 <div class="card-text mb-2" hidden={hidden}>
-<Fragment set:html={setLastPlayHtml(espnGameComp.situation)} />
-<Fragment set:html={setLastPlayWP(espnGameComp.situation)} />
+{@html setLastPlayHtml(espnGameComp.situation)}
+{@html setLastPlayWP(espnGameComp.situation)}
 </div>

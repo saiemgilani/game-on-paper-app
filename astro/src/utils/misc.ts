@@ -1,5 +1,6 @@
-import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam } from "../resources/espn";
-import { MEME_LIST, SDV_BASE_METRIC_TITLES } from "./constants";
+import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor } from "../resources/espn";
+import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES } from "./constants";
+import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 
 export type RGBColor = { r: number, g: number, b: number};
 export const STANDARD_THEME_COLOR = "#2394fd"
@@ -13,6 +14,14 @@ export const WHITE_THEME_HOVER_RGBA = "rgba(255, 255, 255, 0.5)"
 export const BLACK_THEME_COLOR = "#000000"
 export const BLACK_THEME_BACKGROUND_RGBA = "rgba(0, 0, 0, 0.25)"
 export const BLACK_THEME_HOVER_RGBA = "rgba(0, 0, 0, 0.5)"
+
+export enum SpiceLevel {
+    BELL = 0,
+    SERRANO,
+    CAYENNE,
+    GHOST,
+    REAPER
+}
 
 
 export function cleanUpParams(payload: any): any {
@@ -593,4 +602,79 @@ export async function safeCachePut(cache: KVNamespace, key: string, value: strin
     } catch (e: any) {
         console.error(`ERROR while writing to KV with key ${key}: ${e}\n${e.stack}`)
     }
+}
+
+export function cleanScore(score: { displayValue: string } | string): number {
+    return (typeof(score) == 'object') ? parseInt(score.displayValue) : parseInt(score)
+}
+
+export function isChampionshipEvent(gameNote: string): boolean {
+    return (
+        gameNote.includes("CFP")
+        || gameNote.includes("College Football Playoff")
+        || gameNote.includes("National Championship")
+        || gameNote.includes("FCS Championship")
+        || gameNote.includes("Celebration Bowl") // HBCU National Championship
+        || gameNote.includes("Division II Championship")
+        || gameNote.includes("Division III Championship")
+    );
+}
+
+
+
+export function getRecordString(competitor: ESPNCompetitor): string {
+    if (!competitor.records) {
+        return '';
+    }
+    const records = competitor.records || [];
+    const overallStuff = records.filter(item => item.type == "total")[0];
+    const overall = overallStuff?.summary || "0-0"
+    
+    let base = '';
+    if (overall) {
+        base += `${overall}`
+    }
+
+    const confStuff = records.filter(item => item.type == "vsconf")[0];
+    const confRec = confStuff?.summary || "0-0"
+
+    const indyConfs = [18, 35, 80, 81];
+    const confId = parseInt(competitor.team.conferenceId);
+    // const conf = CONFERENCE_MAP[confId];
+    const conf = GLOBAL_GROUP_LIST.find((p) => p.id == confId);
+    if (confStuff && conf && !indyConfs.includes(confId)) {
+        base += `, ${confRec} ${conf.name}`
+    } else if (conf) {
+        base += ` ${conf.name}`
+    }
+    return `<span class="small text-muted h6">${base}</span>`;
+}
+
+export function generateMarginalString(input: number | undefined | null, power10: number, fixed: number): string {
+    if (!input && input != 0) {
+        return "N/A";
+    }
+
+    if (input >= 0) {
+        return `+${roundNumber(input, power10, fixed)}`;
+    } else {
+        return roundNumber(input, power10, fixed);
+    }
+}
+
+export function formatRank(rank: number | undefined | null) {
+    if (!rank && rank != 0) {
+        return "N/A"
+    }
+
+    let tied = String(rank)?.includes(".5") || false
+    let rankString = ""
+    if (rank && tied) {
+        rankString = `T-${roundNumber(Math.floor(rank), 2, 0)}`;
+    } else if (rank) {
+        rankString = `${roundNumber(Math.floor(rank), 2, 0)}`
+    } else {
+        rankString = "N/A"
+    }
+    return rankString
 }

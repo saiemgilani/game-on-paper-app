@@ -2,8 +2,7 @@
 import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
-import { isChampionshipEvent } from '../../utils/common';
-import { cleanLocation, isEventFavorite } from '../../utils/misc';
+import { cleanLocation, isEventFavorite, isChampionshipEvent } from '../../utils/misc';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';

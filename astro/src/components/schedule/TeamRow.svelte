@@ -1,0 +1,47 @@
+<script lang="ts">
+import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
+import { cleanScore, getRecordString, cleanAbbreviation } from "../../utils/misc";
+
+
+interface Props {
+    espnComp: ESPNCompetitor
+    espnStatus: ESPNStatus
+    isRedZone?: boolean
+    hasBall: boolean
+    winner: boolean
+    completed: boolean
+    spacer: string
+}
+const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer } = $props();
+
+function formatScore(score: string | { displayValue: string }, winner: boolean, complete: boolean): string {
+    const cleanedScore = typeof(score) == 'object' ? cleanScore(score) : score;
+    if (winner && complete) {
+        return `<strong>${cleanedScore}</strong>`
+    } else if (!winner && complete) {
+        return `<span style="opacity: 0.5;">${cleanedScore}</span>`
+    } else {
+        return `<span>${cleanedScore}</span>`
+    }
+}
+
+
+const comp = (espnComp as ESPNCompetitor);
+const status = (espnStatus as ESPNStatus);
+const rank = comp.curatedRank?.current || 99;
+const possessionClass = isRedZone ? "text-danger" : "text-primary";
+const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
+</script>
+<div class={`m-0 d-flex ${spacer}`}>
+    <div class="d-flex me-auto">
+        <img class={`float-start align-self-center me-2 team-logo-${comp.id}`} height="30px" alt={`ESPN team id ${comp.id}`} src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png`} />
+        <div class="d-flex flex-column me-3 align-self-center">
+            <div class="d-flex align-items-center">
+                <span class={`small text-muted ${(rank != 99) ? "me-1" : ""}`}>{(rank != 99) ? ("#" + rank) : ""}</span>
+                <span class="align-self-center h4 mb-0">{@html formatScore(cleanAbbreviation(comp.team), winner, completed)} {@html possessionMarker}</span>
+            </div>
+            {@html getRecordString(comp) }
+        </div>
+    </div>
+    <span class="align-self-center h4"><strong hidden={(status.type.name.includes("STATUS_SCHEDULED") || status.type.detail.includes("Cancel") || status.type.detail.includes("Postpone"))}>{@html formatScore(comp.score, winner, completed)}</strong></span>
+</div>

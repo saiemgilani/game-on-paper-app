@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { TeamIndex } from "../../utils/common";
+    import type { TeamIndex } from "../../utils/teams";
     import { cleanName, roundNumber, cleanField } from "../../utils/misc";
 
     const { teamSeasons, homeTeamId, homeSeason, awayTeamId, awaySeason, projection } = $props();

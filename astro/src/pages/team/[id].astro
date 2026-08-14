@@ -3,8 +3,8 @@
 
 import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField } from "../../utils/misc";
-import { formatRank, retrieveAllTeams, type TeamIndex } from "../../utils/common";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField, formatRank } from "../../utils/misc";
+import { retrieveAllTeams, type TeamIndex } from "../../utils/teams";
 import { retrievePercentiles, type SDVSeasonPercentile, retrieveTeamSummaries, type SDVTeamSummary } from "../../resources/sdv";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";

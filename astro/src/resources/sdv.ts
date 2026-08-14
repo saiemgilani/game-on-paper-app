@@ -2,11 +2,16 @@ import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
 import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 import { env } from "cloudflare:workers";
-import { SummaryType } from "../utils/common";
-import { number } from "astro:schema";
 import { calculateNormCdf, cleanUpParams, safeCachePut, wrappedFetch } from "../utils/misc";
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
+
+export enum SummaryType {
+    OVERALL = 'overall',
+    PASSING = 'passing',
+    RUSHING = 'rushing',
+    RECEIVING = 'receiving'
+}
 
 export interface SDVAPIResponse<T> {
     data: T[]

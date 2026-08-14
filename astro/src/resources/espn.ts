@@ -1,6 +1,4 @@
 import { env } from "cloudflare:workers"
-import { DateTime } from "luxon"
-import { CURRENT_YEAR } from "../utils/constants"
 import { safeCachePut, wrappedFetch } from "../utils/misc"
 
 export interface ESPNCoreScoreboardResponse {

@@ -1,15 +1,6 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNTeam, ESPNWinProbability } from "./espn"
-import { env } from "cloudflare:workers"
 import { wrappedFetch } from "../utils/misc"
-
-export enum SpiceLevel {
-    BELL = 0,
-    SERRANO,
-    CAYENNE,
-    GHOST,
-    REAPER
-}
 
 export interface ProcessedModelInput {
     down: number

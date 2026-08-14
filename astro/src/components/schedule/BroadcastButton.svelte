@@ -1,4 +1,4 @@
----
+<script lang="ts">
 import type { ESPNGeoBroadcast, ESPNScheduleEvent } from "../../resources/espn";
 import { NETWORK_MAPPINGS } from "../../utils/constants";
 
@@ -6,7 +6,7 @@ interface Props {
   game: ESPNScheduleEvent
 }
 
-const { game } = Astro.props;
+const { game } = $props();
 let networkName: string | null = null;
 const geoBroadcasts = ((game.competitions[0].geoBroadcasts) || []).filter((g: ESPNGeoBroadcast) => ["1", "4"].includes(g.type.id)); // only look at TV & streaming
 if (geoBroadcasts.length > 0) {
@@ -17,13 +17,11 @@ if (geoBroadcasts.length > 0) {
 
 const networkMapping = networkName ? NETWORK_MAPPINGS[networkName] : null;
 const networkURL = (networkName?.includes('ESPN') || networkName?.includes('LHN') || networkName?.includes('Longhorn Network') || networkName?.includes('ACCN') || networkName?.includes('ACC Network') || networkName?.includes('SEC Network') || networkName?.includes('SECN') || networkName?.includes('BIG12') || networkName?.includes('ABC')) ? `https://www.espn.com/watch/player/_/eventCalendarId/${game.id}` : networkMapping;
----
+</script>
 
-<Fragment>
-    {
-        (networkURL) && <a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href={networkURL}>{networkName}</a>
-    }
-    {
-        (!networkURL && networkName) && <span class="badge bg-secondary bg-sm align-self-center">{networkName}</span>
-    }
-</Fragment>
+{#if networkURL}
+<a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href={networkURL}>{networkName}</a>
+{/if}
+{#if !networkURL && networkName}
+<span class="badge bg-secondary bg-sm align-self-center">{networkName}</span>
+{/if}

@@ -1,10 +1,8 @@
 ---
-import { actions } from 'astro:actions'
 import type { ESPNTeam } from '../../resources/espn'
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv'
-import { formatRank, generateMarginalString } from '../../utils/common'
 import { SESSION_FAVORITES_DEFAULT } from '../../utils/constants'
-import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, isTeamFavorite, roundNumber } from '../../utils/misc'
+import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, isTeamFavorite, roundNumber, formatRank, generateMarginalString } from '../../utils/misc'
 
 interface Props {
     team: ESPNTeam
