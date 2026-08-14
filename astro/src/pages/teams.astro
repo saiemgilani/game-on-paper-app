@@ -30,6 +30,7 @@ function generateTeamRow(team: any): string {
 ---
 
 <GenericPage title={title} subtitle={subtitle} slug="/teams" breadcrumbs={[]}>
+    <link href="/assets/css/sticky-table.css" rel="stylesheet">
     <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
     <div class="container">
         <div class="row mb-3">
@@ -42,7 +43,7 @@ function generateTeamRow(team: any): string {
         <div class="row mb-3">
             <div class="col-12">
                 <div class="table-responsive">
-                    <table class="table table-sm table-responsive">
+                    <table class="table table-sm table-responsive table-fix-first-col">
                         <thead>
                             <th class="text-left" colspan="1">Team</th>
                             {
