@@ -7,7 +7,7 @@
 	],
 	"name": "game-on-paper-astro",
 	"vars": {
-		"PYTHON_HTTP_URL": "https://api.gameonpaper.com/",
+		"PYTHON_HTTP_URL": "https://api.gameonpaper.com",
 		"APP_VERSION": "2026-07-30",
 		"SEASON_MODE": "normal"
 	},

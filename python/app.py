@@ -79,12 +79,11 @@ def require_auth_token(func):
 
     return check_token
 
-@app.route("/cfb/process", methods=["POST"])
+@app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
-def process():
+def process(game_id: int):
     try:
-        gameId = request.get_json(force=True)["gameId"]
-        game = CFBPlayProcess(gameId=gameId)
+        game = CFBPlayProcess(gameId=game_id)
         game.join_participants = True
         game.resolve_missing=False ## this doesn't work as expected or there needs to be a way to set this as expected.
         game.espn_cfb_pbp()

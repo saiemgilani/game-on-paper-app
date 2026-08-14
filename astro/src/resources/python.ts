@@ -914,17 +914,17 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
 }
 
 async function processPlays(gameId: string | number): Promise<ProcessedGame> {
+    // const cacheTTL = (60 * 60 * 24) // eventually, 1 min for live games?
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/process`, {
-        method: "POST",
-        body: JSON.stringify({ gameId }),
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/${gameId}/process`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
-        }
+        },
+        cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 30, 404: 1, "500-599": 0 } }
     })
     const content = await req.text();
 
