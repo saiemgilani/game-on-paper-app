@@ -1,17 +1,9 @@
 <script>
-    const { category, metric, onChangeValue } = $props()
-
-    function onChangeCategory(e) {
-        onChangeValueWrapper(e.target.value, metric)
-    }
+    const { metric, onChangeValue } = $props()
 
     function onChangeMetric(e) {
-        onChangeValueWrapper(category, e.target.value)
-    }
-
-    function onChangeValueWrapper(c, m) {
         if (onChangeValue) {
-            onChangeValue(c, m)
+            onChangeValue(m)
         } else {
             window.location = `/charts/trends?sort=${m}`;
         }
@@ -19,15 +11,6 @@
 </script>
 <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
     <div class="row">
-        {#if !category }
-        <div class="col-auto mb-xs-3 mb-sm-0">
-            <select class="form-select form-select-md" onchange={onChangeCategory}>
-                <option value="-1" disabled>Choose Category...</option>
-                <option value="offensive" selected={(category == 'offensive')}>Offensive</option>
-                <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
-            </select>
-        </div>
-        {/if}
         <div class="col-auto mb-xs-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
