@@ -45,15 +45,11 @@ export default defineConfig({
         provider: cacheCloudflare(),
     },
     routeRules: {
-        // one minute if live, one day if old -- set manually
-        // "/game/[...slug]": { maxAge: 60, swr: 60 },
-
-        // 3 days cache
-        "/trends": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts"] },
-        "/teams": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards", "favorites-enabled"] },
-        "/players": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["leaderboards", "favorites-enabled"] },
-        "/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["charts", "favorites-enabled"] },
-        "/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["season"] },
-        "/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, swr: 60 * 10, tags: ["team"] }
+        "/trends": { maxAge: 60 * 60 * 24 * 3, tags: ["charts"] },
+        "/teams": { maxAge: 60 * 60 * 24 * 3, tags: ["leaderboards", "favorites-enabled"] },
+        "/players": { maxAge: 60 * 60 * 24 * 3, tags: ["leaderboards", "favorites-enabled"] },
+        "/charts/[...slug]": { maxAge: 60 * 60 * 24 * 3, tags: ["charts", "favorites-enabled"] },
+        "/year/[...slug]": { maxAge: 60 * 60 * 24 * 3, tags: ["season"] },
+        "/team/[...slug]": { maxAge: 60 * 60 * 24 * 3, tags: ["team"] }
     },
 });
