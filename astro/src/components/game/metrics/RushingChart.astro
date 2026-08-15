@@ -37,7 +37,7 @@ for (const p of plays) {
     }
     //console.log(`${p['text']}: ${p['yds_passing']}`)
 
-    const directionMatches = p["text"].match(directionRegex)
+    const directionMatches = p["text"]?.match(directionRegex)
     if (directionMatches && directionMatches.length > 0) {
         const direction = directionMatches[0].trim()
         countableAttempts += 1;

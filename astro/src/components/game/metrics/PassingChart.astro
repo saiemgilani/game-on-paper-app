@@ -67,10 +67,10 @@ for (const p of plays) {
     }
     //console.log(`${p['text']}: ${p['yds_passing']}`)
 
-    const depthMatches = p["text"].match(depthRegex)
+    const depthMatches = p["text"]?.match(depthRegex)
     if (depthMatches && depthMatches.length > 0) {
         const depth = depthMatches[0].trim()
-        const directionMatches = p["text"].match(directionRegex)
+        const directionMatches = p["text"]?.match(directionRegex);
         if (directionMatches && directionMatches.length > 0) {
             const direction = directionMatches[0].trim()
             countableAttempts += 1;
