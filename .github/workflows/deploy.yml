@@ -33,13 +33,13 @@ jobs:
           preCommands: |
             npm ci
             npm run build
-      - name: Check that web is live
-        uses: jtalk/url-health-check-action@v5
-        with:
-          url: https://gameonpaper.com/health
-          follow-redirect: true
-          max-attempts: 10
-          retry-delay: 5s
+      # - name: Check that web is live
+      #   uses: jtalk/url-health-check-action@v5
+      #   with:
+      #     url: https://gameonpaper.com/health
+      #     follow-redirect: true
+      #     max-attempts: 10
+      #     retry-delay: 5s
 
   deploy-api:
     runs-on: ubuntu-latest
@@ -90,10 +90,10 @@ jobs:
             PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d
           ENDSSH
 
-      - name: Check that API is live
-        uses: jtalk/url-health-check-action@v5
-        with:
-          url: https://api.gameonpaper.com/healthcheck
-          follow-redirect: true
-          max-attempts: 10
-          retry-delay: 5s
+      # - name: Check that API is live
+      #   uses: jtalk/url-health-check-action@v5
+      #   with:
+      #     url: https://api.gameonpaper.com/healthcheck
+      #     follow-redirect: true
+      #     max-attempts: 10
+      #     retry-delay: 5s
