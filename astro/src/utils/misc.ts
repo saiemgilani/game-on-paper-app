@@ -679,9 +679,14 @@ export function formatRank(rank: number | undefined | null) {
     return rankString
 }
 
-export function produceTeamLogoLink(team?: { team_id: string | number, school: string } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
+export function produceTeamLogoLink(team?: { team_id: string | number, school: string, season?: string | number } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
     if (!team) {
         return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
     }
-    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
+    const teamLink = (team.season) ? `/year/${team.season}/team/${team.team_id}` : `/team/${team.team_id}`
+    return `<${headerType} class="d-inline"><a href="${teamLink}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
+}
+
+export function capitalizeFirstLetter(val: string): string {
+    return String(val).charAt(0).toUpperCase() + String(val).slice(1);
 }

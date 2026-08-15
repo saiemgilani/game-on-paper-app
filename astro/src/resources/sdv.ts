@@ -845,6 +845,21 @@ export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promis
     return content.data
 }
 
+export async function retrieveMatchupHistory(team1Id: string | number, team2Id: string | number, limit: number = 10): Promise<SDVGame[]> {
+    const schedulePromises: Promise<SDVGame[]>[] = [];
+    schedulePromises.push(retrieveTeamGames({ home_id: team1Id, away_id: team2Id, limit: limit * 2 }))
+    schedulePromises.push(retrieveTeamGames({ home_id: team2Id, away_id: team1Id, limit: limit * 2 }))
+    
+    let events: SDVGame[] = [];
+    const scheduleResults = await Promise.all(schedulePromises);
+    for (const sched of scheduleResults) {
+        events = events.concat(sched)
+    }
+
+    return events.sort((a, b) => a.start_date.localeCompare(b.start_date)).splice(0, limit);
+}
+
+
 export async function retrieveTeamSchedule(season: string | number, teamId: string | number): Promise<SDVGame[]> {
     const schedulePromises: Promise<SDVGame[]>[] = [];
     for (const k of ["home_id", "away_id"]) {
