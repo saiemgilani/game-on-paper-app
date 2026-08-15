@@ -3,19 +3,17 @@
 
 import TeamRadarChart from "../../../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../../../components/DarkModeLogos.astro";
-// import GameThumb from "../../../../components/schedule/GameThumb.astro";
 import TeamPassingTable from "../../../../components/team/tables/TeamPassingTable.astro";
 import TeamRushingTable from "../../../../components/team/tables/TeamRushingTable.astro";
 import TeamReceivingTable from "../../../../components/team/tables/TeamReceivingTable.astro";
 import type { PageBreadcrumb } from "../../../../layouts/GenericPage.astro";
 import GenericPage from "../../../../layouts/GenericPage.astro";
 import GenericPanel from "../../../../layouts/panel/GenericPanel.astro";
-import { retrieveTeamInformation, type ESPNScheduleEvent } from "../../../../resources/espn";
-import { SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, retrieveTeamSeasonInformation, type SDVGame } from "../../../../resources/sdv";
+import { retrieveTeamInformation, type ESPNTeam } from "../../../../resources/espn";
+import { SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, type SDVPassingSummary, type SDVPlayerSummary, type SDVReceivingSummary, type SDVRushingSummary, retrieveTeamSeasonInformation, type SDVGame, type SDVTeamSeasonInformation, type SDVTeamSummary } from "../../../../resources/sdv";
 import { cleanLocation, roundNumber } from "../../../../utils/misc";
 import TeamCard from "../../../../components/team/TeamCard.astro";
 import TeamPlayerCard from "../../../../components/team/TeamPlayerCard.astro";
-// import { type TeamIndex, retrieveAllTeams } from "../../../../utils/teams";
 import FallbackSpinner from '../../../../components/FallbackSpinner.astro';
 
 // export function getStaticPaths() {
@@ -35,32 +33,19 @@ if (!id) {
     return Astro.redirect("/404");
 }
 
-const team = await retrieveTeamInformation(id)
-const teamSeason = await retrieveTeamSeasonInformation(year, id)
-const breadcrumbs: PageBreadcrumb[] = [
-    {
-        title: "Teams",
-        url: "/teams",
-        active: false
-    },
-    {
-        title: cleanLocation(team),
-        url: `/team/${id}`,
-        active: false
-    },
-    {
-        title: year,
-        url: `/year/${year}/team/${id}`,
-        active: true
-    }
-]
-
-
-const teamSummaries = await retrieveTeamSummaries({season: Number(year), team_id: Number(id)});
-if (!teamSummaries) {
+let team: ESPNTeam | null = null;
+let teamSeason: SDVTeamSeasonInformation | null = null;
+let teamSummaries: SDVTeamSummary[] = [];
+try {
+    team = await retrieveTeamInformation(id);
+    teamSeason = await retrieveTeamSeasonInformation(year, id);
+    teamSummaries = await retrieveTeamSummaries({season: Number(year), team_id: Number(id)});
+} catch (e: any) {
+    console.error(`ERROR while loading team information: ${e}, ${e.stack}`)
     Astro.cache.set(false);
-    return Astro.redirect('/404');
+    return Astro.rewrite('/404');
 }
+
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor
@@ -100,7 +85,23 @@ const leaders = [
     }
 ].filter(d => !!d);
 
-// Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: "Teams",
+        url: "/teams",
+        active: false
+    },
+    {
+        title: cleanLocation(team),
+        url: `/team/${id}`,
+        active: false
+    },
+    {
+        title: year,
+        url: `/year/${year}/team/${id}`,
+        active: true
+    }
+]
 ---
 
 <GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
