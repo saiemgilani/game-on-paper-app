@@ -16,11 +16,13 @@ export default {
 
         if (utcMillis % scoreboardTTLMillis == 0) {
             try {
-                console.info(`${utcMillis} Firing scheduled refresh of scoreboard...`)
+                console.info(`Firing scheduled refresh of scoreboard...`)
                 await getCurrentScoreboard(false, true);
             } catch (err) {
                 console.error(`ERROR while refreshing scoreboard cache: ${err}`)
             }
+        } else {
+            console.info(`Skipping scheduled refresh of scoreboard, cadence: ${scoreboardTTLMillis}.`)
         }
     },
 } satisfies ExportedHandler<Env>;
