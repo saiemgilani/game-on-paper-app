@@ -1,23 +1,23 @@
 import { env } from "cloudflare:workers"
 
 export interface SeasonConfig {
-    liveGameTTL: number
-    scoreboardTTL: number
+    liveGameRefreshRate: number
+    scoreboardRefreshRate: number
 }
-
 
 function retrieveSeasonConfig(): SeasonConfig {
     if (env.SEASON_MODE == "normal") {
         return {
-            liveGameTTL: 60,
-            scoreboardTTL: 60,
+            liveGameRefreshRate: 60 * 2,
+            scoreboardRefreshRate: 60 * 2,
         }
     } else {
         return {
-            liveGameTTL: 60 * 60 * 24,
-            scoreboardTTL: 60 * 60 * 24,
+            liveGameRefreshRate: 60 * 60 * 24,
+            scoreboardRefreshRate: 60 * 60 * 24,
         }
     }
 }
 
 export const CURRENT_SEASON_CONFIG = retrieveSeasonConfig();
+export const CACHE_TTL_MULTIPLIER = 2;

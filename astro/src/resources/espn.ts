@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers"
 import { safeCachePut, wrappedFetch } from "../utils/misc"
-import { CURRENT_SEASON_CONFIG } from "../utils/config"
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
@@ -392,7 +392,7 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
 
 export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEnabled = false): Promise<ESPNScheduleEvent[]> {
     // for safety, this cache TTL should be longer than the refresh rate
-    const cacheTTL = CURRENT_SEASON_CONFIG.scoreboardTTL * 2;
+    const cacheTTL = CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER;
     try {
         if (cacheReadEnabled) { 
             const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");

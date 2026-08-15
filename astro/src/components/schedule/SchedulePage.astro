@@ -8,7 +8,7 @@ import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
-import { CURRENT_SEASON_CONFIG } from "../../utils/config";
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../../utils/config";
 
 interface Props {
   title?: string;
@@ -33,8 +33,8 @@ try {
     if (isScoreboard) {
         games = await getCurrentScoreboard(true, false);
         Astro.cache.set({
-            maxAge: CURRENT_SEASON_CONFIG.scoreboardTTL,
-            swr: CURRENT_SEASON_CONFIG.scoreboardTTL * 2,
+            maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
+            swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
             tags: ["favorites-enabled", "scoreboard"],
         });
     } else {

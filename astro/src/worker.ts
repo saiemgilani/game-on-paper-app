@@ -11,7 +11,7 @@ export default {
     async scheduled(controller, env, ctx) {
         // cron fires every minute.
         const config = CURRENT_SEASON_CONFIG;
-        const scoreboardTTLMillis = (config.scoreboardTTL * 1000);
+        const scoreboardTTLMillis = (config.scoreboardRefreshRate * 1000);
         const utcMillis = new Date().getTime();
 
         if (utcMillis % scoreboardTTLMillis == 0) {

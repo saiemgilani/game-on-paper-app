@@ -5,6 +5,7 @@ import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/e
 import { DateTime } from 'luxon';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import ErrorPage from "../../components/ErrorPage.astro";
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from '../../utils/config';
 
 const { id } = Astro.params;
 if (!id) {
@@ -49,11 +50,12 @@ try {
             tags: ['game-scheduled-future', "favorites-enabled"],
         });
     } else {
-        // cache two minutes for live games
+        // cache N minutes for live games
         Astro.cache.set({
-            maxAge: 60 * 2,
-            swr: 60,
-            tags: ['game-scheduled', "favorites-enabled"],
+            maxAge: CURRENT_SEASON_CONFIG.liveGameRefreshRate,
+            // use SWR here for performance 
+            swr: CURRENT_SEASON_CONFIG.liveGameRefreshRate * CACHE_TTL_MULTIPLIER,
+            tags: ['game-in-progress', "favorites-enabled"],
         });
     }
 } catch (e) {
