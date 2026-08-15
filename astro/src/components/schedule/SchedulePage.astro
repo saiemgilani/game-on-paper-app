@@ -4,8 +4,8 @@ import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
 import { isEventFavorite } from "../../utils/misc";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
+import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
-import ScheduleGrid from "./ScheduleGrid.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
 import { env } from "cloudflare:workers";
@@ -118,7 +118,14 @@ const allTeamIds = games.map(g => {
         <Header />
         <div class="container">
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
-            <ScheduleGrid client:load games={games} />
+            <div class="row mb-3">
+                {
+                    (games.length > 0) && (games.map((g => <GameThumb game={g} />)))
+                }
+                {
+                    (games.length == 0) && <p class="text-center text-muted">No games scheduled.</p>
+                }
+            </div>
             <div class="row mb-3" hidden={!hasActiveGames}>
                 <div class="col-12">
                     <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
