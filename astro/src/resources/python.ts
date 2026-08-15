@@ -930,10 +930,15 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
 
     try {
         const resp: ProcessedGame = JSON.parse(content);
+        if (resp.plays.length == 0) {
+            throw new Error(`Game ID ${gameId} has no PBP`)
+        }
         return resp;
-    } catch (e) {
+    } catch (e: any) {
         console.error(`ERROR while processing game ${gameId} plays: ${e}`)
-        console.error(`HTML content: ${content}`)
+        if (!e.message.includes("no PBP")) {
+            console.error(`HTML content: ${content}`)
+        }
         throw e;
     }
 }
