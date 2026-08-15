@@ -93,6 +93,15 @@
         <div class="col-12 text-center">
             <p class="mb-0 fs-2"><strong>Projected Winner: <a href={`/team/${projection.team_id}`}><img class={`img-fluid team-logo-${projection.team_id} me-1 align-middle`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${projection.team_id}.png`} alt={`ESPN team id ${projection.team_id}`}/></a>{cleanField(projection, "winner")}</strong></p>
             <p title="Based on the two teams' Net Adj EPA/Play at a neutral site. This projection is for fun -- please don't use this for anything important.">by {roundNumber(projection.margin, 2, 1)} pts ({roundNumber(projection.win_prob * 100, 2, 1)}%) on a neutral site</p>
+            {#if projection.actual_game_id}
+            <div class="d-flex justify-content-center">
+                <div class="w-50">
+                    <div class="alert alert-primary" role="alert" style="background: #031633; border: 1px solid #084298;">
+                    We found a game for this matchup! <a href={`/game/${projection.actual_game_id}`}>Check out what actually happened.</a>
+                    </div>
+                </div>
+            </div>
+            {/if}
         </div>
     </div>
     {/if}

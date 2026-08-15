@@ -1,0 +1,62 @@
+---
+import type { SDVGame } from '../../resources/sdv';
+import { produceTeamLogoLink } from '../../utils/misc';
+import LocalDate from '../LocalDate.svelte';
+import { DateTime } from "luxon";
+
+interface Props {
+    games: SDVGame[]
+}
+
+const { games } = Astro.props;
+---
+
+<Fragment>
+    <div class="h3 text-center">Last {games.length} Game{games.length > 1 ? "s" : ""}</div>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <th class="text-left">Date</th>
+                <th class="text-left">Type</th>
+                <th class="text-center">Away</th>
+                <th class="text-center">Home</th>
+            </thead>
+            <tbody>
+                {
+                    games.length > 0 && games.map(m => (
+                        <tr>
+                            <td class="text-left">
+                                <a href={`/game/${m.game_id}`}>
+                                    <LocalDate client:only divClass="text-small m-0" date={m.start_date} format={DateTime.DATE_SHORT} prefix={null} />
+                                </a>
+                            </td>
+                            <td class="text-left">
+                                {
+                                    (m.notes) && <Fragment>{m.notes}</Fragment>
+                                }
+                                {
+                                    (!m.notes && m.conference_game && !m.neutral_site) && <Fragment>Conference Play</Fragment>
+                                }
+                                {
+                                    (!m.notes && m.conference_game && m.neutral_site) && <Fragment>{m.home_conference} Championship</Fragment>
+                                }
+                            </td>
+                            {
+                                m.completed && (
+                                    <td class="text-center" style={(m.away_points < m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team }, "span", true, "14px")} /> {m.away_points}</td>
+                                    <td class="text-center" style={(m.away_points > m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team }, "span", true, "14px")} /> {m.home_points}</td>
+                                )
+                            }
+                            {
+                                (!m.completed) && (
+                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team }, "span", true, "14px")} /></td>
+                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team }, "span", true, "14px")} /></td>
+                                )
+                            }
+                        </tr>
+                    ))
+                }
+            </tbody>
+        </table>
+    </div>
+</Fragment>

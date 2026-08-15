@@ -781,7 +781,7 @@ export interface SDVTeamScheduleRequest {
     away_id?: string | number
     season?: string | number
     season_type?: "regular" | "postseason"
-
+    limit?: number
 }
 
 export interface SDVGame {
@@ -840,7 +840,7 @@ export async function retrieveTeam(teamId: string | number): Promise<SDVTeam | n
 }
 
 export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promise<SDVGame[]> {
-    const params = new URLSearchParams(cleanUpParams(payload))
+    const params = new URLSearchParams(cleanUpParams({...payload, orderBy: "start_date"}))
     const content: SDVAPIResponse<SDVGame>  = await requestSDV("schedule", params, undefined, 60 * 60 * 24, true);
     return content.data
 }

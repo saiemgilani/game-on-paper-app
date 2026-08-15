@@ -1,18 +1,19 @@
 ---
-import type { ESPNTeam } from '../../resources/espn'
-import type { SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
-import { cleanNickname, formatYardline, roundNumber, generateColorRampValue, cleanField, generateMarginalString } from '../../utils/misc';
+import type { SDVGame, SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
+import { formatYardline, roundNumber, generateColorRampValue, generateMarginalString, produceTeamLogoLink } from '../../utils/misc';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 import FallbackSpinner from '../FallbackSpinner.astro';
+import MatchupHistoryTable from './MatchupHistoryTable.astro';
 
 interface Props {
     homeTeamSeason: SDVTeamSeasonInformation | null
     awayTeamSeason: SDVTeamSeasonInformation | null
     homeTeamSummary: SDVTeamSummary | null
     awayTeamSummary: SDVTeamSummary | null
+    matchupHistory: SDVGame[]
 }
 
-const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary } = Astro.props;
+const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary, matchupHistory } = Astro.props;
 
 const showSeasons = awayTeamSummary?.season && homeTeamSummary?.season && homeTeamSummary?.season != awayTeamSummary?.season;
 
@@ -74,13 +75,6 @@ function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any
         ${produceRankHtml(homeRank, "", "width: 10% !important;")}
     </tr>
     `
-}
-
-function produceTeamLogoLink(team?: SDVTeam | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
-    if (!team) {
-        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
-    }
-    return `<${headerType} class="d-inline"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
 }
 
 function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
@@ -309,6 +303,12 @@ const matchupData = [
                     </tbody>
                 </table>
             </div>
+            
+            {
+                matchupHistory && matchupHistory.length > 0 && (
+                    <MatchupHistoryTable games={matchupHistory} />
+                )
+            }
         </div>
         <Fragment set:html={produceTeamSector(homeTeamSeason?.team, homeTeamBreakdown)} />
     </div>

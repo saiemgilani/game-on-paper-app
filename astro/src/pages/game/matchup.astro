@@ -2,12 +2,11 @@
 import MatchupView from "../../components/game/MatchupView.astro";
 import MatchupBuilder from "../../components/game/MatchupBuilder.svelte";
 import GenericPage from "../../layouts/GenericPage.astro";
-import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation } from "../../resources/sdv";
+import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamGames, calculatePredictedWinProb, type SDVGame } from "../../resources/sdv";
 import { retrieveAllTeams } from "../../utils/teams";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { isTeamFavorite } from "../../utils/misc";
 import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
-import { calculatePredictedWinProb } from "../../resources/sdv";
 
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
@@ -33,6 +32,7 @@ let awayTeamSummary = (awayTeamData.length > 0) ? awayTeamData[0] : null
 let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
 let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason)});
 let homeTeamSummary = (homeTeamData.length > 0) ? homeTeamData[0] : null
+const actualGames = (!homeSeason || !homeTeamId || !awayTeamId || !awaySeason || homeSeason != awaySeason) ? [] : await retrieveTeamGames({ season: homeSeason, home_id: homeTeamId, away_id: awayTeamId, limit: 1 })
 
 const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
 const predWinProb = calculatePredictedWinProb(predMargin)
@@ -41,7 +41,8 @@ const projection = (homeTeamSummary && awayTeamSummary && predWinProb) ? {
     winner: ((predMargin || 0) > 0) ? `${homeSeason} ${homeTeamSummary.pos_team}` : `${awaySeason} ${awayTeamSummary.pos_team}`,
     team_id: ((predMargin || 0) > 0) ? homeTeamId : awayTeamId,
     margin: Math.abs(predMargin || 0),
-    win_prob: ((predMargin || 0) > 0) ? predWinProb : (1 - predWinProb)
+    win_prob: ((predMargin || 0) > 0) ? predWinProb : (1 - predWinProb),
+    actual_game_id: (actualGames.length > 0) ? actualGames[0].game_id : null
 } : null;
 
 const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTeamId)
@@ -80,7 +81,7 @@ if (canDisplayMatchupView) {
     }
     {
         canDisplayMatchupView && (
-            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} />
+            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} matchupHistory={[]} />
         )
     }
 </GenericPage>

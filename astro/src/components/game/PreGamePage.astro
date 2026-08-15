@@ -2,7 +2,7 @@
 import { DateTime } from 'luxon';
 import { type ESPNPlayByPlayResponse } from '../../resources/espn';
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
-import { retrieveTeamSummaries, retrieveTeamSeasonInformation } from '../../resources/sdv';
+import { retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamGames } from '../../resources/sdv';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 import { cleanLocation, isChampionshipEvent } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
@@ -87,6 +87,8 @@ try {
 const homeSummary = homeSummaries.length == 0 ? null : homeSummaries[0];
 const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
 
+const matchupHistory = await retrieveTeamGames({ home_id: homeTeam.id, away_id: awayTeam.id, limit: 5 })
+
 ---
 
 <!DOCTYPE html>
@@ -165,7 +167,7 @@ const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
                 </div>
             </div>
         </div>
-        <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} />
+        <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} matchupHistory={matchupHistory} />
         <Footer />
     </body>
 </html>
