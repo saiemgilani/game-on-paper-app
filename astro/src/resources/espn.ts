@@ -390,7 +390,7 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
 }
 
 export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEnabled = false): Promise<ESPNScheduleEvent[]> {
-    const cacheTTL = (60 * 60 * 24) // env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
+    const cacheTTL = (60 * 60 * 24 * 1.5) // env.SEASON_MODE == "normal" ? (60 * 3) : (60 * 60 * 24)
     try {
         if (cacheReadEnabled) { 
             const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");
