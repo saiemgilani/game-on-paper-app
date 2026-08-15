@@ -34,7 +34,7 @@ const { id, game } = Astro.props;
 if (!game) {
     Astro.cache.set(false);
     console.error(`ERROR while loading game ${id}: received null game`)
-    return Astro.redirect("/404");
+    return Astro.rewrite("/404");
 }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
