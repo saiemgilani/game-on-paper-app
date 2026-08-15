@@ -833,7 +833,7 @@ export async function retrieveProcessedGame(gameId: string | number): Promise<Pr
         scoringPlays: processed.plays.filter((p: ProcessedPlay) => ("scoringPlay" in p) && (p.scoringPlay == true)),
     };
 
-    for (let [key, baseData] of Object.entries(pbp.advBoxScore)) {
+    for (let [key, baseData] of Object.entries(pbp.advBoxScore || {})) {
         const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
         let teamKey = "pos_team"
         if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
