@@ -8,7 +8,7 @@ import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
-import { env } from "cloudflare:workers";
+import { CURRENT_SEASON_CONFIG } from "../../utils/config";
 
 interface Props {
   title?: string;
@@ -32,19 +32,11 @@ let games: ESPNScheduleEvent[] = [];
 try {
     if (isScoreboard) {
         games = await getCurrentScoreboard(true, false);
-        if (env.SEASON_MODE == "normal") {
-            Astro.cache.set({
-                maxAge: 60 * 3,
-                swr: 60 * 3,
-                tags: ["favorites-enabled", "scoreboard"],
-            });
-        } else {
-            Astro.cache.set({
-                maxAge: 60 * 60 * 24,
-                swr: 60 * 3,
-                tags: ["favorites-enabled", "scoreboard"],
-            });
-        }
+        Astro.cache.set({
+            maxAge: CURRENT_SEASON_CONFIG.scoreboardTTL,
+            swr: CURRENT_SEASON_CONFIG.scoreboardTTL * 2,
+            tags: ["favorites-enabled", "scoreboard"],
+        });
     } else {
         games = await getRemoteGames(season, seasontype, week, group);
         // each page handles this differently
