@@ -21,7 +21,7 @@ import FallbackSpinner from '../../components/FallbackSpinner.astro';
 const { id } = Astro.params;
 if (!id) {
     Astro.cache.set(false);
-    return Astro.redirect("/404");
+    return Astro.rewrite("/404");
 }
 
 const team = await retrieveTeamInformation(id)

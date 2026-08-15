@@ -27,16 +27,10 @@ import FallbackSpinner from '../FallbackSpinner.astro';
 
 interface Props {
    id: string | number
-   game: ProcessedGame | null
+   game: ProcessedGame
 }
 
 const { id, game } = Astro.props;
-if (!game) {
-    Astro.cache.set(false);
-    console.error(`ERROR while loading game ${id}: received null game`)
-    return Astro.rewrite("/404");
-}
-
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];

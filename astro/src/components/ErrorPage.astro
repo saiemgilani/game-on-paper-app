@@ -1,0 +1,28 @@
+---
+import GenericPage from "../layouts/GenericPage.astro";
+
+interface Props {
+    htmlTitle: string
+    htmlSubtitle: string
+    slug: string
+    humanTitle: string
+    message?: string
+}
+
+const { htmlTitle, htmlSubtitle, humanTitle, slug, message } = Astro.props;
+
+---
+
+<GenericPage title={htmlTitle} subtitle={htmlSubtitle} slug={slug} breadcrumbs={[]}>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h3>{humanTitle}</h3>
+                {
+                    (message) && (<p class="mb-0"><Fragment set:html={message} /></p>)
+                }
+                <p class="mb-3">If you need further technical support, please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the URL you're trying to access.</p>
+            </div>
+        </div>
+    </div>
+</GenericPage>

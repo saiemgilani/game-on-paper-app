@@ -4,13 +4,14 @@ import PreGamePage from '../../components/game/PreGamePage.astro';
 import { retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { DateTime } from 'luxon';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+import ErrorPage from "../../components/ErrorPage.astro";
 
 const { id } = Astro.params;
 if (!id) {
     Astro.cache.set(false);
     return Astro.redirect("/"); 
 }
-let espnGame: ESPNPlayByPlayResponse | null;
+let espnGame: ESPNPlayByPlayResponse | null = null;
 let game: ProcessedGame | null = null;
 try {
     espnGame = await retrieveGamePage(id);
@@ -58,12 +59,33 @@ try {
 } catch (e) {
     console.error(e);
     Astro.cache.set(false);
-    return Astro.rewrite("/404")
 }
 ---
 {
-    (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" || !game) && <PreGamePage id={id} espnGame={espnGame} />
+    (!espnGame && !game) && (
+        <ErrorPage 
+            htmlTitle="Game Not Found" 
+            htmlSubtitle="Unable to find game" 
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be found."
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+        />
+    )
 }
 {
-    (espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && game) && <GamePage id={id} game={game} />
+    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
+}
+{
+    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && !game) && (
+        <ErrorPage 
+            htmlTitle="Game Unprocessable" 
+            htmlSubtitle="Unable to process game" 
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be processed."
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+        />
+    )
+}
+{
+    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && game) && <GamePage id={id} game={game} />
 }
