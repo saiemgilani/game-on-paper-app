@@ -31,7 +31,7 @@ const titleText = titleParts.join(" | ")
 let games: ESPNScheduleEvent[] = [];
 try {
     if (isScoreboard) {
-        games = await getCurrentScoreboard(true, false);
+        games = await getCurrentScoreboard(true, true);
         Astro.cache.set({
             maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
             swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
