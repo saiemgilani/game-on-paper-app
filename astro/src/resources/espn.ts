@@ -326,6 +326,18 @@ export interface ESPNPlayByPlayResponse {
     }
 }
 
+async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
+    return await wrappedFetch(
+        url, 
+        {
+            ...init, 
+            headers: { 
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15"
+            }
+        }
+    )
+}
+
 export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
     let espnGroup = group;
     if (espnGroup && espnGroup < 0) {
@@ -352,9 +364,9 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
     }
     const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
     console.info(`ESPN schedule query: ${reqURL}`)
-    const resp = await wrappedFetch(reqURL);
+    const resp = await requestESPN(reqURL);
     if (!resp.ok) {
-        throw new Error(`Response status: ${resp.status}`);
+        throw new Error(`Response status: ${resp.statusText}`);
     }
 
     const espnRaw = await resp.text();
@@ -386,6 +398,14 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
 
             return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
         })
+    } else if (week === 999) { // CFP
+        result = result.filter((g: ESPNScheduleEvent) => {
+            const gameNote = g.competitions[0].notes.length > 0 ? g.competitions[0].notes[0].headline : ""
+            return (
+                gameNote.includes("CFP")
+                || gameNote.includes("College Football Playoff")
+            )
+        })
     }
     return result;
 }
@@ -404,7 +424,11 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
         console.info(`ESPN API cache miss (cacheWriteEnabled: ${cacheWriteEnabled}): scoreboard`)
         // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
-        const resp = await wrappedFetch(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=100&xhr=1`)
+        const resp = await requestESPN(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=1000&xhr=1`)
+
+        if (!resp.ok) {
+            throw new Error(`ESPN API: scoreboard request received ${resp.statusText}`)
+        }
         let espnContent: ESPNCoreScoreboardResponse = await resp.json();
         const result = espnContent?.content.sbData.events || [];
 
@@ -421,7 +445,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
     const cacheBuster = ((new Date()).getTime() * 1000);
-    const req = await wrappedFetch(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const req = await requestESPN(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
     const contentRaw = await req.text();
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
@@ -442,7 +466,7 @@ async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<an
     const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
     const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
-    const req =  await wrappedFetch(url);
+    const req =  await requestESPN(url);
     const res = await req.json()
     return res
 }
