@@ -27,8 +27,28 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "MWN App": "https://themw.com/watch/",
     "truTV": "https://www.trutv.com/watchtrutv",
     "TNT": "https://www.tntdrama.com/watchtnt",
-    "USA Net": "https://www.usanetwork.com/sports"
+    "USA Net": "https://www.usanetwork.com/sports",
+    "Scripps Sports": "https://scrippssportsnetwork.com/"
 };
+
+export function isESPNNetwork(networkName?: string | null): boolean {
+    if (!networkName) {
+        return false;
+    }
+    
+    return (
+        networkName.includes('ESPN') 
+        || networkName.includes('LHN')
+        || networkName.includes('Longhorn Network')
+        || networkName.includes('ACCN')
+        || networkName.includes('ACC Extra')
+        || networkName.includes('ACC Network')
+        || networkName.includes('SEC Network')
+        || networkName.includes('SECN')
+        || networkName.includes('BIG12')
+        || networkName.includes('ABC')
+    )
+}
 
 export const GAME_QUARANTINE_LIST = [
     "401411157",
