@@ -6,6 +6,7 @@
 		"nodejs_compat"
 	],
 	"name": "game-on-paper-astro",
+	"workers_dev": false,
 	"vars": {
 		"PYTHON_HTTP_URL": "https://api.gameonpaper.com",
 		"APP_VERSION": "2026-07-30",
