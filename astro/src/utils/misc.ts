@@ -600,7 +600,7 @@ export async function safeCachePut(cache: KVNamespace, key: string, value: strin
     try {
         await cache.put(key, value, { expirationTtl: ttl })
     } catch (e: any) {
-        console.error(`ERROR while writing to KV with key ${key}: ${e}\n${e.stack}`)
+        console.error(`ERROR while writing to KV with key ${key}: ${e}, ${e.stack}`)
     }
 }
 

@@ -55,8 +55,8 @@ try {
             tags: ['game-in-progress', "favorites-enabled"],
         });
     }
-} catch (e) {
-    console.error(e);
+} catch (e: any) {
+    console.error(`ERROR while retrieving game data: ${e}, ${e.stack}`);
     Astro.cache.set(false);
 }
 ---
