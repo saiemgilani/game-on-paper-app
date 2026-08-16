@@ -95,7 +95,7 @@
             <p title="Based on the two teams' Net Adj EPA/Play at a neutral site. This projection is for fun -- please don't use this for anything important.">by {roundNumber(projection.margin, 2, 1)} pts ({roundNumber(projection.win_prob * 100, 2, 1)}%) on a neutral site</p>
             {#if projection.actual_game_id}
             <div class="d-flex justify-content-center">
-                <div class="w-50">
+                <div class="w-auto">
                     <div class="alert alert-primary" role="alert" style="background: #031633; border: 1px solid #084298;">
                     We found a game for this matchup! <a href={`/game/${projection.actual_game_id}`}>Check out what actually happened.</a>
                     </div>
