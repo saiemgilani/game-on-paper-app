@@ -5,13 +5,9 @@ import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, g
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
-const { game, percentiles } = $props()
-
-const homeComp = game.header.competitions[0].competitors[0];
-const awayComp = game.header.competitions[0].competitors[1];
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
-const gameStatus = game.header.competitions[0].status;
 
 function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null) {
     // console.log(
@@ -126,18 +122,18 @@ function translateWP(input) {
 }
 
 function printSpread() {
-    if (parseFloat(game.homeTeamSpread) > 0) {
-        return `${cleanAbbreviation(homeTeam)} -${game.homeTeamSpread}`
-    } else if (parseFloat(game.homeTeamSpread) < 0) {
-        return `${cleanAbbreviation(awayTeam)} ${game.homeTeamSpread}`
+    if (parseFloat(homeTeamSpread) > 0) {
+        return `${cleanAbbreviation(homeTeam)} -${homeTeamSpread}`
+    } else if (parseFloat(homeTeamSpread) < 0) {
+        return `${cleanAbbreviation(awayTeam)} ${homeTeamSpread}`
     } else {
         return "PUSH"
     }
 }
-const lastPlay = game.plays[game.plays.length - 1]
-const gameInProgress = !(gameStatus.type.completed == true) && ((gameStatus.type.name.includes("STATUS_IN_PROGRESS") || gameStatus.type.name.includes("STATUS_END_PERIOD") || gameStatus.type.name.includes("STATUS_HALFTIME")) && game.plays.length > 0);
+const lastPlay = plays[plays.length - 1]
+const gameInProgress = !(gameStatus.type.completed == true) && ((gameStatus.type.name.includes("STATUS_IN_PROGRESS") || gameStatus.type.name.includes("STATUS_END_PERIOD") || gameStatus.type.name.includes("STATUS_HALFTIME")) && plays.length > 0);
 
-const geiVal = (Math.round((game.gei || 0) * 100) / 100) 
+const geiVal = (Math.round((gei || 0) * 100) / 100) 
 const geiPctl = geiGenerateColorRampValue(geiVal)
 const geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
 
@@ -151,8 +147,6 @@ async function generateChart() {
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
 
-    const plays = [...game.plays];
-    // console.log(game.plays[0])
     var timestamps = [...Array(plays.length).keys()];
     let periodMarkers = []
     let periodTracks = {}
@@ -185,7 +179,7 @@ async function generateChart() {
         }
     }
 
-    var homeTeamWP = game.plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
+    var homeTeamWP = plays.map(p => (p.pos_team == homeTeam.id) ? translateWP(p.winProbability.before) : translateWP(1.0 - p.winProbability.before));
 
     // handle end of game
     if (gameStatus.type.completed == true) {
@@ -429,7 +423,7 @@ if (document.readyState !== 'loading') {
             {#if !gameInProgress}
             <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={`${geiPctl.ramp_class} px-1`} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
             {/if}
-            Odds: {printSpread()}, O/U {roundNumber(parseFloat(game.overUnder), 2, 1)}
+            Odds: {printSpread()}, O/U {roundNumber(parseFloat(overUnder), 2, 1)}
             {#if gameInProgress}
                 {#if (lastPlay.winProbability.before >= 0.5) }
                 | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
@@ -438,7 +432,7 @@ if (document.readyState !== 'loading') {
                 | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            | <a id="wp-download" download={`game-wp-${game.gameId}.jpg`} href="#">Download Chart</a>
+            | <a id="wp-download" download={`game-wp-${id}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>

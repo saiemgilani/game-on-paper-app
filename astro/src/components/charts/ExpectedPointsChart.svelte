@@ -7,8 +7,8 @@ const { id, plays, homeTeam, awayTeam } = $props();
 async function generateChart() {
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    let homeTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == homeTeam.id && p.scrimmage_play == true)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
-    let awayTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == awayTeam.id && p.scrimmage_play == true)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    let homeTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == homeTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
+    let awayTeamEPA = calculateCumulativeSums(plays.filter(p => (p.pos_team == awayTeam.id)).map(p => p.expectedPoints.added)).map((p, idx) => { return { "x": (idx + 1), "y": p } });
 
     homeTeamEPA.splice(0, 0, {
         x: 0,

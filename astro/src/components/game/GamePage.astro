@@ -101,6 +101,20 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
 
 
 const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
+const epPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
+    return {
+        pos_team: p.pos_team, 
+        expectedPoints: p.expectedPoints
+    }
+});
+const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
+    return {
+        pos_team: p.pos_team, 
+        period: p.period,
+        winProbability: p.winProbability,
+        gameSpreadAvailable: p.gameSpreadAvailable
+    }
+});
 ---
 <!DOCTYPE html>
 <html>
@@ -174,12 +188,12 @@ const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([ga
         <div class="container-fluid">
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only game={game} percentiles={percentiles}>
+                    <WinProbabilityChart client:only id={game.id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <ExpectedPointsChart client:only id={game.id} plays={game.plays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
+                    <ExpectedPointsChart client:only id={game.id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>
                 </div>
