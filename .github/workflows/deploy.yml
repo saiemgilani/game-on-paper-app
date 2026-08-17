@@ -83,11 +83,11 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             set -e
-            docker stop $(docker ps -a -q) || true
-            docker system prune --force
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
             docker compose pull
-            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d
+            docker stop $(docker ps -a -q) || true
+            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml -d --pull always
+            docker system prune --force
           ENDSSH
 
       # - name: Check that API is live
