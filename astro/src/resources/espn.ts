@@ -444,8 +444,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 }
 
 export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
-    const cacheBuster = ((new Date()).getTime() * 1000);
-    const req = await requestESPN(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18&${cacheBuster}`);
+    const req = await requestESPN(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
     const contentRaw = await req.text();
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
