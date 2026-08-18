@@ -649,6 +649,11 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
         return [];
     }
 
+    // default max lookback to season - 1
+    if (!maxLookback && season) {
+        maxLookback = (season - 1)
+    }
+
     const payload: Record<string, any> = {};
     let endpoint = "team_summaries";
     if (season) {
