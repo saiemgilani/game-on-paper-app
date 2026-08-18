@@ -2,10 +2,9 @@
 import GamePage from '../../components/game/GamePage.astro';
 import PreGamePage from '../../components/game/PreGamePage.astro';
 import { ESPN_IN_PROGRESS_STATUS_NAMES, retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
-import { DateTime } from 'luxon';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import ErrorPage from "../../components/ErrorPage.astro";
-import { getGameCacheConfig } from '../../utils/misc';
+import { getGameCacheConfig } from '../../utils/config';
 
 const { id } = Astro.params;
 if (!id) {
