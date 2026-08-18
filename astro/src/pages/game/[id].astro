@@ -25,8 +25,8 @@ try {
     }
 
     const gameDate = DateTime.fromISO(espnGame.gamepackageJSON.header.competitions[0].date);
-    const todayPlusOneWeek = DateTime.now().plus({ weeks: 1 })
-    const isGameWithinOneWeek = gameDate.diff(todayPlusOneWeek).days < 7;
+    const todayPlusOneDay = DateTime.now().plus({ days: 1 })
+    const isGameWithinOneDay = gameDate.diff(todayPlusOneDay).days < 1;
 
     if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
         // cache one week for completed games
@@ -34,7 +34,7 @@ try {
             maxAge: 60 * 60 * 24 * 7,
             tags: ['game-completed', "favorites-enabled"],
         });
-    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneWeek) {
+    } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneDay) {
         // cache one hour for scheduled games within 24 hours
         Astro.cache.set({
             maxAge: 60 * 60,
