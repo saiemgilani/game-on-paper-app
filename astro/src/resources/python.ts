@@ -917,6 +917,7 @@ async function processPlays(gameId: string | number, cacheTTL: number): Promise<
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
+
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
     const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/${gameId}/process`, {
         headers: {

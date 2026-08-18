@@ -326,6 +326,7 @@ export interface ESPNPlayByPlayResponse {
     }
 }
 export const ESPN_IN_PROGRESS_STATUS_NAMES = ["STATUS_IN_PROGRESS", "STATUS_END_PERIOD", "STATUS_HALFTIME", "STATUS_DELAYED"]
+export const ESPN_INVALID_GAME_STATUS_NAMES = ["STATUS_SCHEDULED", "STATUS_ABANDONED", "STATUS_POSTPONED", "STATUS_DELAYED"]
 
 async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
     return await wrappedFetch(

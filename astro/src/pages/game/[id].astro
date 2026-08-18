@@ -1,7 +1,7 @@
 ---
 import GamePage from '../../components/game/GamePage.astro';
 import PreGamePage from '../../components/game/PreGamePage.astro';
-import { ESPN_IN_PROGRESS_STATUS_NAMES, retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
+import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import ErrorPage from "../../components/ErrorPage.astro";
 import { getGameCacheConfig } from '../../utils/config';
@@ -20,7 +20,7 @@ try {
     }
     
     const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
-    if (espnGame && (espnGame.gamepackageJSON.header.competitions[0].status.type.state == "in" || ESPN_IN_PROGRESS_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name))) {
+    if (espnGame && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
         game = await retrieveProcessedGame(id, config.maxAge || 30);
     }
 
@@ -45,7 +45,7 @@ try {
     (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
 }
 {
-    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && !game) && (
+    (espnGame && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name) || !game) && (
         <ErrorPage 
             htmlTitle="Game Unprocessable" 
             htmlSubtitle="Unable to process game" 
@@ -56,5 +56,5 @@ try {
     )
 }
 {
-    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name != "STATUS_SCHEDULED" && game) && <GamePage id={id} game={game} />
+    (espnGame && game) && <GamePage id={id} game={game} />
 }
