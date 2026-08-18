@@ -1,6 +1,6 @@
 <script lang="ts">
 import Chart from 'chart.js/auto';
-import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED } from "../../utils/constants";
+import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED, SPECIAL_IMAGES_DARK } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
 import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
@@ -81,7 +81,9 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
         const teamName = teams.map(p => p.pos_team)[0]
         const teamId = teams.map(p => p.team_id)[0]
         let img = new Image(imageSize, imageSize)
-        if (Object.keys(SPECIAL_IMAGES).includes(String(teamId))) {
+        if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(String(teamId))) {
+            img.src = SPECIAL_IMAGES_DARK[teamId];
+        } else if (Object.keys(SPECIAL_IMAGES).includes(String(teamId))) {
             img.src = SPECIAL_IMAGES[teamId];
         } else {
             img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png`
