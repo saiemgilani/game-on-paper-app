@@ -552,6 +552,16 @@ export type SDVPlayerSummary = SDVPassingSummary | SDVReceivingSummary | SDVRush
 const SDV_HTTP_URL = 'https://data.sportsdataverse.org/v1/cfb';
 const SDV_AUTH_TOKEN = getSecret("SDV_AUTH_TOKEN")
 
+async function generateSDVCacheKey(fullKey: string): Promise<string> {
+    const bufferText = new TextEncoder().encode(fullKey);
+    const myDigest = await crypto.subtle.digest('SHA-256', bufferText);
+
+    const hexString = [...new Uint8Array(myDigest)]
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+    return hexString;
+}
+
 async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
@@ -561,11 +571,12 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     if (query && (query?.size || 0) > 0) {
         endpointURL += `?${query.toString()}`
     }
-    // console.info(baseURL)
+
+    const cacheKey = await generateSDVCacheKey(endpointURL);
 
     // check cache first
     if (cacheEnabled) { 
-        const cachedContent = await env.SDV_API_CACHE.get(endpointURL, "json");
+        const cachedContent = await env.SDV_API_CACHE.get(cacheKey, "json");
         if (cachedContent) {
             console.info(`SDV API cache hit: ${endpointURL}`)
             return cachedContent;
@@ -585,7 +596,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         const contentRaw: string = await req.text();
         if (req.ok && contentRaw && cacheEnabled) {
             console.info(`SDV API cache update: ${endpointURL}`)
-            await safeCachePut(env.SDV_API_CACHE, endpointURL, contentRaw, cacheTTL)
+            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
         } else if (!req.ok) {
             throw new Error(`Request returned with status ${req.statusText}, content: ${contentRaw}`)
         }
@@ -692,8 +703,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     payload["limit"] = 150;
 
     try {        
-        // can't cache these because the keys are too big
-        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, false);
+        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true);
         return content.data;
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
