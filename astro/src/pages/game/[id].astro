@@ -29,9 +29,9 @@ try {
     const isGameWithinOneDay = gameDate.diff(todayPlusOneDay).days < 1;
 
     if (espnGame.gamepackageJSON.header.competitions[0].status.type.completed) {
-        // cache one week for completed games
+        // cache one year for completed games
         Astro.cache.set({
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 7 * 52,
             tags: ['game-completed', "favorites-enabled"],
         });
     } else if (espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED" && isGameWithinOneDay) {
