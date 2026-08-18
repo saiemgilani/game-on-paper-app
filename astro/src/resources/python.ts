@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server"
-import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNTeam, ESPNWinProbability } from "./espn"
-import { wrappedFetch } from "../utils/misc"
+import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
+import { getGameCacheConfig, wrappedFetch } from "../utils/misc"
 
 export interface ProcessedModelInput {
     down: number
@@ -825,8 +825,8 @@ export interface ProcessedGame {
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 
-export async function retrieveProcessedGame(gameId: string | number): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -913,8 +913,7 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number): Promise<ProcessedGame> {
-    // const cacheTTL = (60 * 60 * 24) // eventually, 1 min for live games?
+async function processPlays(gameId: string | number, cacheTTL: number): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
@@ -924,7 +923,7 @@ async function processPlays(gameId: string | number): Promise<ProcessedGame> {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
         },
-        cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 30, 404: 1, "500-599": 0 } }
+        cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 } }
     })
     const content = await req.text();
 
