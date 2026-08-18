@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
-import { getGameCacheConfig, wrappedFetch } from "../utils/misc"
+import { wrappedFetch } from "../utils/misc"
 
 export interface ProcessedModelInput {
     down: number
