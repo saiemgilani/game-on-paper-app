@@ -86,7 +86,7 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
             docker compose pull
             docker stop $(docker ps -a -q) || true
-            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml -d --pull always
+            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d --pull always
             docker system prune --force
           ENDSSH
 
