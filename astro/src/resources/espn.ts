@@ -439,7 +439,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
         return result;
     } catch (e) {
         console.error(`ERROR while pulling latest scoreboard: ${e}`)
-        return [];
+        throw e;
     }
 }
 

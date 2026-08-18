@@ -44,6 +44,8 @@ try {
 } catch (e) {
     console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
     Astro.cache.set(false);
+    // make sure the page still loads
+    games = [];
 }
 
 const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
