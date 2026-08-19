@@ -426,7 +426,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
         console.info(`ESPN API cache miss (cacheWriteEnabled: ${cacheWriteEnabled}): scoreboard`)
         // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
-        const resp = await requestESPN(`https://cdn.espn.com/core/college-football/scoreboard?groups=80&size=1000&xhr=1`)
+        const resp = await requestESPN(`https://cdn.espn.com/core/college-football/scoreboard?group=80&limit=1000&xhr=1`)
 
         if (!resp.ok) {
             throw new Error(`ESPN API: scoreboard request received ${resp.statusText}`)
