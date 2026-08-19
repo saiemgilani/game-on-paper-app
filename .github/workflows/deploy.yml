@@ -48,7 +48,7 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - name: Publish Python container to GitHub
-        uses: mr-smithers-excellent/docker-build-push@b6e94a8afeb0887d5cddb51a1db7dcc6bb6864ba
+        uses: mr-smithers-excellent/docker-build-push@v7.0
         with:
           image: saiemgilani/game-on-paper-python-api
           registry: ghcr.io
