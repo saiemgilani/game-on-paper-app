@@ -17,9 +17,14 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - uses: cloudflare/wrangler-action@v4
-        env: 
+        env:
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+          PYTHON_HTTP_URL: ${{ secrets.PYTHON_HTTP_URL }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+          GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
+          TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
           APP_VERSION: ${{ github.sha }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -28,6 +33,11 @@ jobs:
           secrets: |
             PYTHON_HTTP_TOKEN
             SDV_AUTH_TOKEN
+            PYTHON_HTTP_URL
+            ADMIN_USER
+            ADMIN_PASS
+            GOP_INGEST_KEY
+            TELEMETRY_ENABLED
           vars: |
             APP_VERSION
           preCommands: |
@@ -86,7 +96,7 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
             docker compose pull
             docker stop $(docker ps -a -q) || true
-            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d --pull always
+            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} GOP_PG_DSN='${{ secrets.GOP_PG_DSN }}' GOP_PG_DSN_RO='${{ secrets.GOP_PG_DSN_RO }}' GOP_INGEST_KEY='${{ secrets.GOP_INGEST_KEY }}' TELEMETRY_ENABLED='${{ secrets.TELEMETRY_ENABLED }}' docker compose -f docker-compose.yml up -d --pull always
             docker system prune --force
           ENDSSH
 
