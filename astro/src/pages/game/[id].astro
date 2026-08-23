@@ -30,17 +30,7 @@ try {
     Astro.cache.set(false);
 }
 ---
-{
-    (!espnGame && !game) && (
-        <ErrorPage 
-            htmlTitle="Game Not Found" 
-            htmlSubtitle="Unable to find game" 
-            slug={Astro.url.pathname}
-            humanTitle="This game could not be found."
-            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
-        />
-    )
-}
+
 {
     (espnGame && !game && espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
 }
@@ -51,6 +41,17 @@ try {
             htmlSubtitle="Unable to process game" 
             slug={Astro.url.pathname}
             humanTitle="This game could not be processed."
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+        />
+    )
+}
+{
+    (!espnGame && !game) && (
+        <ErrorPage 
+            htmlTitle="Game Not Found" 
+            htmlSubtitle="Unable to find game" 
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be found."
             message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
         />
     )
