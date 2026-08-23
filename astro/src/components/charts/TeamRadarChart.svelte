@@ -28,7 +28,7 @@ async function waitToGenerateChart() {
             offRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(selectedTeamData, "Offensive", null, isDarkMode),
-                `${cleanField(team, "school")} ${season} Offensive Profile`,
+                `${cleanField(selectedTeamData, "pos_team")} ${season} Offensive Profile`,
                 isDarkMode,
                 false
             )
@@ -43,7 +43,7 @@ async function waitToGenerateChart() {
             defRadarCtx as ChartItem,
             generateRadarConfig(
                 generateRadarDataset(selectedTeamData, "Defensive", null, isDarkMode),
-                `${cleanField(team, "school")} ${season} Defensive Profile`,
+                `${cleanField(selectedTeamData, "pos_team")} ${season} Defensive Profile`,
                 isDarkMode,
                 false
             )
