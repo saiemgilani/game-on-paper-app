@@ -17,17 +17,28 @@ jobs:
         with:
           repository: saiemgilani/game-on-paper-app
       - uses: cloudflare/wrangler-action@v4
-        env: 
+        env:
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+          GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
+          TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
           APP_VERSION: ${{ github.sha }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: "./astro"
+          # PYTHON_HTTP_URL is intentionally NOT pushed as a secret: it already
+          # exists as a plaintext var in wrangler.jsonc and a same-name secret
+          # would collide with that binding.
           secrets: |
             PYTHON_HTTP_TOKEN
             SDV_AUTH_TOKEN
+            ADMIN_USER
+            ADMIN_PASS
+            GOP_INGEST_KEY
+            TELEMETRY_ENABLED
           vars: |
             APP_VERSION
           preCommands: |
@@ -76,17 +87,35 @@ jobs:
           SSH_HOST: ${{ secrets.API_HOST }}
           SSH_USER: ${{ secrets.API_USERNAME }}
           SSH_PORT: ${{ secrets.PORT }}
+          PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
+          GOP_PG_DSN: ${{ secrets.GOP_PG_DSN }}
+          GOP_PG_DSN_RO: ${{ secrets.GOP_PG_DSN_RO }}
+          GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
+          TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
         run: |
+          # Build the compose env file on the runner from real env vars (never
+          # interpolate secret values into shell source: an apostrophe/newline
+          # in a DSN would break the remote script after containers stopped).
+          {
+            printf 'PYTHON_HTTP_TOKEN=%s\n' "$PYTHON_HTTP_TOKEN"
+            printf 'GOP_PG_DSN=%s\n' "$GOP_PG_DSN"
+            printf 'GOP_PG_DSN_RO=%s\n' "$GOP_PG_DSN_RO"
+            printf 'GOP_INGEST_KEY=%s\n' "$GOP_INGEST_KEY"
+            printf 'TELEMETRY_ENABLED=%s\n' "$TELEMETRY_ENABLED"
+          } > deploy.env
+
           sftp -i ~/.ssh/deploy_key -P $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             put docker-compose.do.yml docker-compose.yml
+            put deploy.env .env
           ENDSSH
 
           ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST bash << 'ENDSSH'
             set -e
+            chmod 600 .env
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
             docker compose pull
             docker stop $(docker ps -a -q) || true
-            PYTHON_HTTP_TOKEN=${{ secrets.PYTHON_HTTP_TOKEN }} docker compose -f docker-compose.yml up -d --pull always
+            docker compose -f docker-compose.yml up -d --pull always
             docker system prune --force
           ENDSSH
 
