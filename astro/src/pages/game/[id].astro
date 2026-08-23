@@ -42,10 +42,10 @@ try {
     )
 }
 {
-    (espnGame && espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
+    (espnGame && !game && espnGame.gamepackageJSON.header.competitions[0].status.type.name == "STATUS_SCHEDULED") && <PreGamePage id={id} espnGame={espnGame} />
 }
 {
-    (espnGame && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name) || !game) && (
+    (espnGame && !game && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) && (
         <ErrorPage 
             htmlTitle="Game Unprocessable" 
             htmlSubtitle="Unable to process game" 
