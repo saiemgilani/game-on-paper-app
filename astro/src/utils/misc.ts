@@ -321,6 +321,10 @@ export function calculateCumulativeSums(arr: number[]): number[] {
 }
 
 export function cleanField(team: any, field: string): string {
+    if (!team) {
+        return ""
+    }
+
     if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
         return team[field]?.toLocaleLowerCase() || ""
     }
