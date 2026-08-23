@@ -3,9 +3,9 @@
 
     function onChangeMetric(e) {
         if (onChangeValue) {
-            onChangeValue(m)
+            onChangeValue(e.target.value)
         } else {
-            window.location = `/charts/trends?sort=${m}`;
+            window.location = `/charts/trends?sort=${e.target.value}`;
         }
     }
 </script>
