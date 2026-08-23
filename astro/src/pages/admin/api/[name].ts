@@ -8,7 +8,7 @@ const ALLOWED = ['overview', 'games', 'upstream', 'errors', 'traffic', 'system',
 export const GET: APIRoute = async ({ params, url }) => {
   const name = params.name ?? '';
   if (!ALLOWED.includes(name)) return new Response('not found', { status: 404 });
-  const py = getSecret('PYTHON_HTTP_URL') || 'http://python:7000';
+  const py = getSecret('PYTHON_HTTP_URL') || 'http://python:5000';
   try {
     const r = await fetch(`${py}/gop/admin/${name}${url.search}`, {
       headers: { 'X-GOP-Key': getSecret('GOP_INGEST_KEY') ?? '' },

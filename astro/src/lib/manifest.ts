@@ -3,7 +3,7 @@
 
 export type ManifestEntry = { name: string; need: 'required' | 'optional'; check: (g: any) => boolean };
 
-// Field names below are the real `ProcessedGame` shape (astro/src/resources/internal.ts):
+// Field names below are the real `ProcessedGame` shape (astro/src/resources/python.ts):
 // `header`, `plays`, `advBoxScore` (not `boxScore`), per-play `winProbability`,
 // `drives.previous/current`.
 export const GAME_PAGE_MANIFEST: ManifestEntry[] = [

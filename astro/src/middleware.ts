@@ -64,7 +64,7 @@ function emit(context: any, c: GopCollector, url: URL, status: number, t0: numbe
       render_outcome: c.render_outcome,
       missing_datasets: c.missing_datasets,
     } });
-    const pythonBase = getSecret('PYTHON_HTTP_URL') || 'http://python:7000';
+    const pythonBase = getSecret('PYTHON_HTTP_URL') || 'http://python:5000';
     const p = sendToIngest(c.events, { url: `${pythonBase}/gop/ingest`, key });
     // Workers: keep the isolate alive for the POST; node dev: fire-and-forget.
     context.locals?.runtime?.ctx?.waitUntil?.(p);
