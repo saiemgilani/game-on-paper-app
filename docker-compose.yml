@@ -13,6 +13,10 @@ services:
     build: ./python
     environment:
       - PYTHON_HTTP_TOKEN=test-token
+      - GOP_PG_DSN=${GOP_PG_DSN:-}
+      - GOP_PG_DSN_RO=${GOP_PG_DSN_RO:-}
+      - GOP_INGEST_KEY=${GOP_INGEST_KEY:-}
+      - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-1}
     expose:
       - 5000
     healthcheck:

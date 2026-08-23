@@ -1,0 +1,269 @@
+---
+export const prerender = false;
+
+import GenericPage from "../../layouts/GenericPage.astro";
+
+const title = `Admin | Game on Paper`;
+const subtitle = "Operational dashboards for Game on Paper";
+---
+<GenericPage title={title} subtitle={subtitle} slug="admin" breadcrumbs={[
+    { title: "Home", url: "/", active: false },
+    { title: "Admin", active: true },
+]}>
+<div class="container admin-root pb-5">
+  <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+    <h2 class="mb-0">Admin</h2>
+    <span class="badge text-bg-danger text-uppercase">ops</span>
+    <span class="ms-auto small admin-muted" id="asof"></span>
+  </div>
+  <ul class="nav nav-tabs admin-tabs mb-3" id="tabs">
+    <li class="nav-item"><button class="nav-link active" data-t="overview">Overview</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="games">Live games</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="upstream">ESPN / upstream</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="errors">Errors</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="traffic">Traffic</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="system">System</button></li>
+  </ul>
+  <section id="overview" class="on">
+    <div class="tiles" id="ov-tiles"></div>
+    <h6 class="admin-label">Last 60 minutes</h6>
+    <div class="grid2">
+      <div class="card"><h6 class="admin-label mt-0">Requests / min (astro)</h6><canvas id="c-reqs" height="150"></canvas></div>
+      <div class="card"><h6 class="admin-label mt-0">Status mix · 1h</h6><div class="bars" id="statusbars"></div><div class="legend" id="statuslegend"></div><div id="ov-services"></div></div>
+    </div>
+    <div class="card mt-2"><h6 class="admin-label mt-0">Latency percentiles (ms)</h6><canvas id="c-pct" height="150"></canvas></div>
+  </section>
+  <section id="games">
+    <h6 class="admin-label">Games with activity · last 30 min (click a row for page detail)</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-games"></table></div>
+    <div id="page-detail"></div>
+  </section>
+  <section id="upstream">
+    <h6 class="admin-label">Per-target health · 24h</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-targets"></table></div>
+    <h6 class="admin-label">Failures per hour · 24h</h6>
+    <div class="card"><canvas id="c-fail" height="140"></canvas></div>
+    <h6 class="admin-label">Slowest calls · last hour</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-slowest"></table></div>
+  </section>
+  <section id="errors">
+    <h6 class="admin-label">Grouped by signature · 24h</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-errgroups"></table></div>
+    <h6 class="admin-label">Most recent</h6>
+    <div id="err-recent"></div>
+  </section>
+  <section id="traffic">
+    <div class="card"><p class="admin-muted m-0">Visitor analytics live in
+      <a href="https://plausible.io/gameonpaper.com">Plausible → gameonpaper.com</a>.
+      Below is ops traffic from request_log (IPs shown here only).</p></div>
+    <div class="grid2eq mt-2">
+      <div class="card twrap"><h6 class="admin-label mt-0">Top routes · 1h</h6><table class="table table-sm mb-0" id="t-routes"></table></div>
+      <div class="card twrap"><h6 class="admin-label mt-0">Top IPs · 1h</h6><table class="table table-sm mb-0" id="t-ips"></table></div>
+    </div>
+    <div class="card mt-2"><h6 class="admin-label mt-0">Web vitals p75 · 24h</h6><div id="t-vitals"></div></div>
+  </section>
+  <section id="system">
+    <h6 class="admin-label">Python RSS (MB) + CPU · 6h <span class="text-lowercase" style="letter-spacing:0">(Astro runs on Workers — no process stats)</span></h6>
+    <div class="card"><canvas id="c-mem" height="150"></canvas></div>
+  </section>
+</div>
+</GenericPage>
+
+<style is:global>
+  /* Light palette matches the regular site; dark overrides mirror dark-game.css's
+     prefers-color-scheme approach. The red accent + ops badge are the deliberate
+     "you are on an admin page" distinctions. */
+  .admin-root{
+    --a-card:var(--bs-white,#fff);--a-line:#dee2e6;--a-ink:#212529;--a-muted:#6c757d;--a-faint:#868e96;
+    --a-accent:#d64550;--a-good:#2e8b5f;--a-warn:#9c7311;--a-crit:#c9303c;
+    --a-good-bg:#e3f2ea;--a-warn-bg:#faf3d9;--a-crit-bg:#fbe4e6;
+    --a-grid:#eceff2;--a-chip:#f1f3f5;
+  }
+  @media (prefers-color-scheme: dark){
+    .admin-root{
+      --a-card:#1c212a;--a-line:#2a303b;--a-ink:#e6e8ec;--a-muted:#98a1ad;--a-faint:#6b7480;
+      --a-good:#3fae72;--a-warn:#d9a441;--a-crit:#e05561;
+      --a-good-bg:#1a2e24;--a-warn-bg:#2e2717;--a-crit-bg:#331b1e;
+      --a-grid:#232933;--a-chip:#242a34;
+    }
+    .admin-root .card{color:var(--a-ink)}
+    .admin-root .table{color:var(--a-ink);--bs-table-color:var(--a-ink)}
+    .admin-root .nav-tabs .nav-link{color:var(--a-muted)}
+    .admin-root .nav-tabs .nav-link.active{color:var(--a-ink);background:var(--a-card);border-color:var(--a-line) var(--a-line) var(--a-card)}
+  }
+  .admin-root .mono,.admin-root td.num{font-family:"Fira Mono",ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .admin-root section{display:none}
+  .admin-root section.on{display:block}
+  .admin-root .admin-tabs .nav-link{cursor:pointer}
+  .admin-root .admin-tabs .nav-link.active{border-top:2px solid var(--a-accent)}
+  .admin-root .admin-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--a-muted);margin:20px 0 8px;font-weight:700}
+  .admin-root .admin-muted{color:var(--a-muted)}
+  .admin-root .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .admin-root .card{background:var(--a-card);border:1px solid var(--a-line);border-radius:8px;padding:12px 14px;min-width:0}
+  .admin-root .tile{background:var(--a-card);border:1px solid var(--a-line);border-radius:8px;padding:12px 14px;min-width:0}
+  .admin-root .tile span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--a-muted)}
+  .admin-root .tile b{display:block;font-size:26px;font-weight:500;margin-top:4px;font-family:"Fira Mono",ui-monospace,Consolas,monospace}
+  .admin-root .grid2{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+  .admin-root .grid2eq{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:900px){.admin-root .grid2,.admin-root .grid2eq{grid-template-columns:1fr}}
+  .admin-root .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}
+  .admin-root .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .admin-root .pill.good{color:var(--a-good);background:var(--a-good-bg)}
+  .admin-root .pill.warn{color:var(--a-warn);background:var(--a-warn-bg)}
+  .admin-root .pill.crit{color:var(--a-crit);background:var(--a-crit-bg)}
+  .admin-root .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--a-muted);margin:2px 0 6px}
+  .admin-root .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .admin-root .twrap{overflow-x:auto}
+  .admin-root table{font-size:13px}
+  .admin-root th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--a-faint);white-space:nowrap}
+  .admin-root td{white-space:nowrap}
+  .admin-root td.num,.admin-root th.num{text-align:right}
+  .admin-root tbody tr[data-game]{cursor:pointer}
+  .admin-root .bars{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px}
+  .admin-root .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--a-muted);padding:3px 0}
+  .admin-root .kv b{color:var(--a-ink);font-weight:500;font-family:"Fira Mono",ui-monospace,Consolas,monospace}
+  .admin-root pre{background:var(--a-chip);border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;font-family:"Fira Mono",ui-monospace,Consolas,monospace;color:var(--a-muted)}
+  .admin-root canvas{max-width:100%}
+</style>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  const S = ['#4d8df0', '#c97a20', '#1d9e7c', '#a95cc6'];
+  const STATUS = { good: '#3fae72', warn: '#d9a441', crit: '#e05561' };
+  const DARK = matchMedia('(prefers-color-scheme: dark)').matches;
+  const TICK = DARK ? '#98a1ad' : '#6c757d';
+  const GRID = DARK ? '#232933' : '#eceff2';
+  const charts = {};
+  const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (x, d = 0) => (x == null ? '—' : Number(x).toFixed(d));
+  const hhmm = (t) => new Date(t).toTimeString().slice(0, 5);
+  const api = (name, qs = '') => fetch(`/admin/api/${name}${qs}`).then((r) => r.json());
+
+  function line(id, labels, datasets) {
+    charts[id]?.destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels, datasets: datasets.map((d, i) => ({ ...d, borderColor: d.borderColor ?? S[i % 4], backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, tension: 0.25 })) },
+      options: { animation: false, plugins: { legend: { labels: { color: TICK } } },
+        scales: { x: { ticks: { color: TICK, maxTicksLimit: 8 }, grid: { color: GRID } },
+                  y: { ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true } } },
+    });
+  }
+  function table(el, head, rows) {
+    document.getElementById(el).innerHTML =
+      '<thead><tr>' + head.map((h, i) => `<th${i ? ' class="num"' : ''}>${h}</th>`).join('') + '</tr></thead>' +
+      '<tbody>' + rows.map((r) => `<tr${r.attr ?? ''}>` + r.cells.map((c, i) => `<td${i ? ' class="num"' : ''}>${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  }
+  function segbar(el, legEl, parts) {
+    const total = parts.reduce((a, p) => a + p.v, 0) || 1;
+    document.getElementById(el).innerHTML = parts.map((p) => `<div style="flex:${Math.max(p.v, 0.001)};background:${p.c}" title="${p.n}: ${p.v}"></div>`).join('');
+    document.getElementById(legEl).innerHTML = parts.map((p) => `<span><i style="background:${p.c}"></i>${p.n} ${(100 * p.v / total).toFixed(1)}%</span>`).join('');
+  }
+
+  async function refreshOverview() {
+    const d = await api('overview');
+    const total = d.statusMix.reduce((a, s) => a + s.n, 0) || 1;
+    const errs = d.statusMix.filter((s) => s.klass === 5).reduce((a, s) => a + s.n, 0);
+    const lastMin = d.reqPerMin.at(-1)?.n ?? 0;
+    document.getElementById('ov-tiles').innerHTML =
+      `<div class="tile"><span>Requests / min</span><b>${lastMin}</b></div>` +
+      `<div class="tile"><span>HTTP 5xx rate 1h</span><b>${fmt(100 * errs / total, 2)} %</b></div>` +
+      `<div class="tile"><span>ESPN success 1h</span><b>${d.espn.total ? fmt(100 * d.espn.oks / d.espn.total, 1) + ' %' : '—'}</b></div>` +
+      `<div class="tile"><span>Telemetry buffered / dropped</span><b>${d.telemetry.buffered} / ${d.telemetry.dropped}</b></div>`;
+    line('c-reqs', d.reqPerMin.map((r) => hhmm(r.m)), [{ label: 'req/min', data: d.reqPerMin.map((r) => r.n) }]);
+    line('c-pct', d.pct.map((r) => hhmm(r.b)), [
+      { label: 'p50', data: d.pct.map((r) => Math.round(r.p50)) },
+      { label: 'p95', data: d.pct.map((r) => Math.round(r.p95)) },
+      { label: 'p99', data: d.pct.map((r) => Math.round(r.p99)) }]);
+    segbar('statusbars', 'statuslegend', d.statusMix.map((s, i) => ({ n: s.klass + 'xx', v: s.n, c: S[i % 4] })));
+    document.getElementById('ov-services').innerHTML = d.services.map((s) => {
+      const fresh = Date.now() - new Date(s.ts).getTime() < 90000;
+      return `<div class="kv"><span><span class="pill ${fresh ? 'good' : 'crit'}">${fresh ? 'up' : 'stale'}</span> ${esc(s.service)}</span><b>rss ${fmt(s.rss_mb)} MB · cpu ${fmt(s.cpu_pct)}%</b></div>`;
+    }).join('');
+    document.getElementById('asof').textContent = new Date().toLocaleTimeString() + ' · refresh 15s';
+  }
+
+  async function refreshGames() {
+    const d = await api('games');
+    const fetchBy = Object.fromEntries(d.lastFetch.map((f) => [f.game_id, f]));
+    table('t-games', ['Game ID', 'Req 30m', 'p95 ms', 'Cache hit', 'Degraded', 'Failed', 'Last ESPN fetch'],
+      d.gamesAgg.map((g) => ({ attr: ` data-game="${esc(g.game_id)}"`, cells: [
+        `<span class="mono">${esc(g.game_id)}</span>`, g.req_30m, fmt(g.p95_ms),
+        g.cache_hit == null ? '—' : fmt(100 * g.cache_hit) + '%', g.degraded, g.failed,
+        fetchBy[g.game_id] ? `<span class="mono">${fetchBy[g.game_id].status ?? 'ERR'} · ${fmt(fetchBy[g.game_id].duration_ms)} ms</span>` : '—'] })));
+    document.querySelectorAll('#t-games tbody tr[data-game]').forEach((tr) =>
+      tr.addEventListener('click', () => loadPageDetail(tr.dataset.game).catch(() => {})));
+  }
+
+  async function loadPageDetail(gameId) {
+    const d = await api('page', `?game_id=${encodeURIComponent(gameId)}`);
+    const oc = { ok: 0, degraded: 0, failed: 0 };
+    d.outcomes.forEach((o) => { oc[o.outcome] = o.n; });
+    const latest = d.latest;
+    document.getElementById('page-detail').innerHTML =
+      `<h6 class="admin-label">Page detail · game ${esc(gameId)}</h6><div class="card">` +
+      `<div style="display:flex;justify-content:space-between;margin-bottom:8px"><b class="mono">game_id ${esc(gameId)}</b>` +
+      (latest ? `<span class="pill ${latest.render_outcome === 'failed' ? 'crit' : 'warn'}">${esc(latest.render_outcome)}${latest.render_outcome === 'degraded' ? ' · salvageable' : ''}</span>` : '<span class="pill good">ok</span>') + '</div>' +
+      `<div class="bars" id="pd-bars"></div><div class="legend" id="pd-legend"></div>` +
+      `<h6 class="admin-label">Missing datasets · 24h</h6>` + (d.missing.length
+        ? d.missing.map((m) => `<div class="kv"><span class="mono">${esc(m.dataset)}</span><b>${m.n} renders</b></div>`).join('')
+        : '<p class="admin-muted">none</p>') +
+      `<h6 class="admin-label">Related errors · 24h</h6>` + (d.errors.length
+        ? d.errors.map((e) => `<div class="kv"><span>${esc(e.message).slice(0, 90)}</span><b>${hhmm(e.ts)}</b></div>`).join('')
+        : '<p class="admin-muted">none</p>') + '</div>';
+    segbar('pd-bars', 'pd-legend', [
+      { n: 'ok', v: oc.ok, c: STATUS.good }, { n: 'degraded', v: oc.degraded, c: STATUS.warn },
+      { n: 'failed', v: oc.failed, c: STATUS.crit }]);
+  }
+
+  async function refreshUpstream() {
+    const d = await api('upstream');
+    table('t-targets', ['Target', 'p50 ms', 'p95 ms', 'Success 24h', 'Calls'],
+      d.targets.map((t) => ({ cells: [`<span class="mono">${esc(t.target)}</span>`, fmt(t.p50), fmt(t.p95), t.success == null ? '—' : fmt(100 * t.success, 2) + '%', t.total] })));
+    line('c-fail', d.failures.map((f) => hhmm(f.h)), [
+      { label: '5xx', data: d.failures.map((f) => f.s5xx), borderColor: S[1] },
+      { label: 'timeout', data: d.failures.map((f) => f.timeouts), borderColor: S[3] }]);
+    table('t-slowest', ['When', 'Target', 'Game', 'ms', 'Status'],
+      d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`, esc(s.game_id ?? '—'), fmt(s.duration_ms), s.status ?? '—'] })));
+  }
+
+  async function refreshErrors() {
+    const d = await api('errors');
+    table('t-errgroups', ['Signature', 'Service', 'Count', 'Last seen'],
+      d.groups.map((g) => ({ cells: [esc(g.signature), esc(g.service), g.n, `<span class="mono">${hhmm(g.last_seen)}</span>`] })));
+    document.getElementById('err-recent').innerHTML = d.recent.slice(0, 5).map((e) =>
+      `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>[${esc(e.service)}] ${esc(e.message).slice(0, 120)}</span><b class="mono">${hhmm(e.ts)}</b></div>${e.stack ? `<pre>${esc(e.stack).slice(0, 1200)}</pre>` : ''}</div>`).join('');
+  }
+
+  async function refreshTraffic() {
+    const d = await api('traffic');
+    table('t-routes', ['Route', 'Req', 'p95 ms'], d.routes.map((r) => ({ cells: [`<span class="mono">${esc(r.route_pattern)}</span>`, r.n, fmt(r.p95)] })));
+    table('t-ips', ['IP', 'Req', '4xx'], d.ips.map((r) => ({ cells: [`<span class="mono">${esc(r.ip)}</span>`, r.n, r.c4xx] })));
+    document.getElementById('t-vitals').innerHTML = d.vitals.map((v) =>
+      `<div class="kv"><span>${esc(v.name)}</span><b>${fmt(v.p75, v.name === 'CLS' ? 3 : 0)}${v.name === 'CLS' ? '' : ' ms'}</b></div>`).join('') || '<p class="admin-muted">no vitals yet</p>';
+  }
+
+  async function refreshSystem() {
+    const d = await api('system');
+    const services = [...new Set(d.series.map((r) => r.service))];
+    const labels = [...new Set(d.series.map((r) => r.m))].sort();
+    line('c-mem', labels.map(hhmm), services.map((svc, i) => {
+      const vals = Object.fromEntries(d.series.filter((r) => r.service === svc).map((r) => [r.m, r.rss_mb]));
+      return { label: svc + ' rss', data: labels.map((l) => Math.round(vals[l] ?? 0)), borderColor: S[i % 4] };
+    }));
+  }
+
+  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, traffic: refreshTraffic, system: refreshSystem };
+  let active = 'overview';
+  document.getElementById('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    active = b.dataset.t;
+    document.querySelectorAll('#tabs .nav-link').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('.admin-root section').forEach((s) => s.classList.toggle('on', s.id === active));
+    refreshers[active]().catch(() => {});
+  });
+  refreshOverview().catch(() => {});
+  setInterval(() => refreshers[active]().catch(() => {}), 15000);
+</script>

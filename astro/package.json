@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "server": "node dist/server/entry.mjs",
-    "generate-types": "wrangler types"
+    "generate-types": "wrangler types",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@types/chart.js": "^2.9.41",
     "@types/luxon": "^3.7.1",
-    "vite": "^8.1.5"
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   }
 }
