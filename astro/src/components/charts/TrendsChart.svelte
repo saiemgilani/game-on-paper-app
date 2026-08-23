@@ -2,7 +2,7 @@
 import Chart from 'chart.js/auto';
 import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED, SPECIAL_IMAGES_DARK } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
-import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric } from "../../utils/misc";
+import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric, cleanField } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
@@ -78,8 +78,9 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
     let datasets: ChartDataset<'boxplot' | 'line'>[] = []
 
     if (teams.length > 0) {
-        const teamName = teams.map(p => p.pos_team)[0]
+        let teamNameRaw = teams.map(p => p.pos_team)[0]
         const teamId = teams.map(p => p.team_id)[0]
+        const teamName = cleanField({ team_id: teamId, team_name: teamNameRaw}, "team_name");
         let img = new Image(imageSize, imageSize)
         if (isDarkMode && Object.keys(SPECIAL_IMAGES_DARK).includes(String(teamId))) {
             img.src = SPECIAL_IMAGES_DARK[teamId];
