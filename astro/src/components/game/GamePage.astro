@@ -2,8 +2,8 @@
 import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
-import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../lib/manifest';
-import { gopStorage } from '../../lib/telemetry';
+import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/manifest';
+import { gopStorage } from '../../utils/telemetry';
 import { cleanLocation, isEventFavorite, isChampionshipEvent } from '../../utils/misc';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';

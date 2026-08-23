@@ -4,7 +4,7 @@ export const CURRENT_YEAR = 2026;
 export const LAST_YEAR = 2025;
 export const AVAILABLE_SEASONS = range(2004, CURRENT_YEAR);
 export const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-
+export const MEME_LIST = [61];
 export const FBS_CONFERENCES = ['1','4','5','8','9','12','15','17','37','151','80', '18'];
 export const NETWORK_MAPPINGS: Record<string, string> = {
     "FOX" : 'https://www.foxsports.com/live',
@@ -59,9 +59,6 @@ export const GAME_QUARANTINE_LIST = [
     "401628398"
 ]
 
-const SICKOS_GOTW = [];
-
-export const MEME_LIST = [61];
 export const SPECIAL_IMAGES: { [teamId: string]: string} = {
     "61": "/assets/img/ennui-uga.png",
     "59": "/assets/img/gt-old-gold.png"

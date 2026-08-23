@@ -2,8 +2,8 @@ import { defineMiddleware } from 'astro:middleware';
 import { getSecret } from 'astro:env/server';
 import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
-} from './lib/telemetry';
-import { checkBasicAuth } from './lib/adminAuth';
+} from './utils/telemetry';
+import { checkBasicAuth } from './resources/admin';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 

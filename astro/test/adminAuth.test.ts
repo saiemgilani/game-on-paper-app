@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { checkBasicAuth } from '../src/lib/adminAuth';
+import { checkBasicAuth } from '../src/resources/admin';
 
 describe('checkBasicAuth', () => {
   const good = 'Basic ' + btoa('gop:sekret');

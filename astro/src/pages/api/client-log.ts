@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
-import { clientIp, sendToIngest, validateClientEvent } from '../../lib/telemetry';
+import { clientIp, sendToIngest, validateClientEvent } from '../../utils/telemetry';
 
 export const prerender = false;
 

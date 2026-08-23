@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   classifyTarget, clientIp, createCollector, gopStorage, sendToIngest,
   timedFetch, validateClientEvent,
-} from '../src/lib/telemetry';
+} from '../src/utils/telemetry';
 
 afterEach(() => vi.unstubAllGlobals());
 

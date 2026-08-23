@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../src/lib/manifest';
+import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../src/utils/manifest';
 
 // Field names mirror the real ProcessedGame shape (astro/src/resources/internal.ts):
 // `header`, `advBoxScore` (not `boxScore`), per-play `winProbability`, `drives.previous`.
