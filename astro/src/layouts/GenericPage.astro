@@ -2,6 +2,7 @@
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import Scripts from "../components/Scripts.astro";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export interface PageBreadcrumb { title: string, url?: string, active: boolean }
 
@@ -51,7 +52,6 @@ function generateBreadcrumbsListHtml(): string {
         <link href="/assets/css/base.css" rel="stylesheet">
         <link href="/assets/css/nav-header.css" rel="stylesheet">
         <link href="/assets/css/dark-game.css" rel="stylesheet">
-        <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
