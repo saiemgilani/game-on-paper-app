@@ -181,7 +181,7 @@ const subtitle = "Operational dashboards for Game on Paper";
       const fresh = Date.now() - new Date(s.ts).getTime() < 90000;
       return `<div class="kv"><span><span class="pill ${fresh ? 'good' : 'crit'}">${fresh ? 'up' : 'stale'}</span> ${esc(s.service)}</span><b>rss ${fmt(s.rss_mb)} MB · cpu ${fmt(s.cpu_pct)}%</b></div>`;
     }).join('');
-    document.getElementById('asof').textContent = new Date().toLocaleTimeString() + ' · refresh 15s';
+    document.getElementById('asof').textContent = new Date().toLocaleTimeString() + ' · refresh 45s';
   }
 
   async function refreshGames() {
@@ -265,5 +265,5 @@ const subtitle = "Operational dashboards for Game on Paper";
     refreshers[active]().catch(() => {});
   });
   refreshOverview().catch(() => {});
-  setInterval(() => refreshers[active]().catch(() => {}), 15000);
+  setInterval(() => refreshers[active]().catch(() => {}), 45000);
 </script>
