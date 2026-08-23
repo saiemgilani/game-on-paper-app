@@ -1,7 +1,7 @@
 from functools import wraps
 import math
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, g
 import numpy as np
 from datetime import datetime as dt, timezone as tz
 import polars as pl
@@ -14,6 +14,9 @@ import logging
 import json
 import base64
 
+from telemetry import TEL, stage, init_flask
+import gop_routes
+
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
 
@@ -25,6 +28,7 @@ app.config["COMPRESS_BR_LEVEL"] = 4
 app.config["COMPRESS_LEVEL"] = 5
 app.config["COMPRESS_MIN_SIZE"] = 1024
 Compress(app)
+
 
 def _orjson_default(obj):
     """orjson fallback for types its native handling can't serialize.
@@ -44,7 +48,6 @@ def _orjson_default(obj):
     raise TypeError(f"orjson: unsupported type {type(obj).__name__}")
 
 
-
 @app.after_request
 def after_request(response):
     logger = logging.getLogger("app.access")
@@ -59,35 +62,61 @@ def after_request(response):
     return response
 
 
+init_flask(app, TEL)
+TEL.start()
+app.register_blueprint(gop_routes.bp)
+
+
 def require_auth_token(func):
     @wraps(func)
     def check_token(*args, **kwargs):
         try:
             headers = request.headers
-            bearer = headers.get('Authorization')
+            bearer = headers.get("Authorization")
             assert bearer, "Bearer Auth not provided in this request"
-    
+
             raw_token = bearer.split()[1]
             token = base64.b64decode(raw_token).decode("ascii")
-            assert token == HTTP_TOKEN, "provided token value did not match expected token"
+            assert token == HTTP_TOKEN, (
+                "provided token value did not match expected token"
+            )
 
             # Otherwise just send them where they wanted to go
             return func(*args, **kwargs)
         except Exception as e:
             logging.getLogger("root").error(f"ERROR while checking token: {e}")
-            return jsonify({ "status": "bad", "message": "Access denied" }), 401 
+            return jsonify({"status": "bad", "message": "Access denied"}), 401
 
     return check_token
+
 
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process(game_id: int):
+    timings = {}
     try:
+        g.gop_meta = {"game_id": str(game_id)}
         game = CFBPlayProcess(gameId=game_id)
         game.join_participants = True
-        game.resolve_missing=False ## this doesn't work as expected or there needs to be a way to set this as expected.
-        game.espn_cfb_pbp()
-        processed_game = game.run_processing_pipeline()
+        game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+        espn_logged = False
+        with stage(timings, "espn_fetch"):
+            game.espn_cfb_pbp()
+        TEL.push(
+            "upstream_log",
+            {
+                "service": "python",
+                "target": "espn_pbp",
+                "status": 200,
+                "duration_ms": timings["espn_fetch_ms"],
+                "ok": True,
+                "game_id": str(game_id),
+                "error": None,
+            },
+        )
+        espn_logged = True
+        with stage(timings, "pipeline"):
+            processed_game = game.run_processing_pipeline()
 
         bad_cols = [
             "start.distance",
@@ -299,6 +328,25 @@ def process(game_id: int):
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
         )
+        if not locals().get("espn_logged"):  # fetch itself failed; don't double-count
+            TEL.push(
+                "upstream_log",
+                {
+                    "service": "python",
+                    "target": "espn_pbp",
+                    "status": None,
+                    "duration_ms": timings.get("espn_fetch_ms"),
+                    "ok": False,
+                    "game_id": str(game_id),
+                    "error": ("KeyError: %r" % (e,))[:500],
+                },
+            )
+        TEL.log_error(
+            "ESPN payload malformed (KeyError: %r)" % (e,),
+            path=request.path,
+            game_id=str(game_id),
+        )
+        g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
         return jsonify(
             {
                 "status": "bad",
@@ -312,6 +360,13 @@ def process(game_id: int):
         import traceback
 
         traceback.print_tb(e.__traceback__)
+        TEL.log_error(
+            str(e),
+            stack="".join(traceback.format_tb(e.__traceback__))[:4000],
+            path=request.path,
+            game_id=str(game_id),
+        )
+        g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
         return jsonify(
             {"status": "bad", "message": "Unknown error occurred, check logs."}
         ), 500
