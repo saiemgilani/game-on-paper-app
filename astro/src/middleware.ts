@@ -67,7 +67,9 @@ function emit(context: any, c: GopCollector, url: URL, status: number, t0: numbe
     const pythonBase = getSecret('PYTHON_HTTP_URL') || 'http://python:5000';
     const p = sendToIngest(c.events, { url: `${pythonBase}/gop/ingest`, key });
     // Workers: keep the isolate alive for the POST; node dev: fire-and-forget.
-    context.locals?.runtime?.ctx?.waitUntil?.(p);
+    // NOTE: locals.runtime.ctx THROWS in @astrojs/cloudflare v14 (removed API);
+    // the execution context now lives at locals.cfContext.
+    (context.locals as any)?.cfContext?.waitUntil?.(p);
   } catch {
     /* fail-open */
   }
