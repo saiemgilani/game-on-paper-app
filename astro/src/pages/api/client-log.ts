@@ -27,7 +27,7 @@ export const POST: APIRoute = async (context) => {
     const key = getSecret('GOP_INGEST_KEY') ?? '';
     const pythonBase = getSecret('PYTHON_HTTP_URL') || 'http://python:5000';
     const p = sendToIngest([event], { url: `${pythonBase}/gop/ingest`, key });
-    (context.locals as any)?.runtime?.ctx?.waitUntil?.(p);
+    (context.locals as any)?.cfContext?.waitUntil?.(p);
     return json({ ok: true }, 200);
   } catch {
     return json({ ok: true }, 200); // fail-open even here
