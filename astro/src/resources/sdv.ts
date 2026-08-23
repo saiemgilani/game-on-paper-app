@@ -2,7 +2,8 @@ import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
 import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
 import { env } from "cloudflare:workers";
-import { calculateNormCdf, cleanUpParams, safeCachePut, wrappedFetch } from "../utils/misc";
+import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
+import { wrappedFetch } from "../utils/telemetry"
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers"
-import { safeCachePut, wrappedFetch } from "../utils/misc"
+import { safeCachePut } from "../utils/misc"
+import { wrappedFetch } from "../utils/telemetry"
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
 
 export interface ESPNCoreScoreboardResponse {

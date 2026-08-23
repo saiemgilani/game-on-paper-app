@@ -55,6 +55,13 @@ export async function sendToIngest(events: GopEvent[], cfg: IngestConfig): Promi
 
 export type TimedFetchExtra = { game_id?: string | null; pythonBase?: string; summaryBase?: string };
 
+export async function wrappedFetch(url: string, init?: RequestInit): Promise<Response> {
+    const start = Date.now();
+    const resp = await timedFetch(url, init)
+    console.info(`[request] ${init?.method || "GET"} ${url} - time: ${Date.now() - start} ms`)
+    return resp;
+}
+
 export async function timedFetch(url: string, init?: RequestInit, extra: TimedFetchExtra = {}): Promise<Response> {
   const c = gopStorage.getStore();
   const t0 = Date.now();
