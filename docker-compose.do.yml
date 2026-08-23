@@ -2,7 +2,7 @@ services:
   python:
     image: ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:REPLACE_ME
     environment:
-      - PYTHON_HTTP_TOKEN
+      - PYTHON_HTTP_TOKEN=${PYTHON_HTTP_TOKEN:-}
       - GOP_PG_DSN=${GOP_PG_DSN:-}
       - GOP_PG_DSN_RO=${GOP_PG_DSN_RO:-}
       - GOP_INGEST_KEY=${GOP_INGEST_KEY:-}

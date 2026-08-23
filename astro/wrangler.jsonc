@@ -13,7 +13,7 @@
 		"SEASON_MODE": "offseason"
 	},
 	"secrets": {
-		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN"]
+		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN", "ADMIN_USER", "ADMIN_PASS", "GOP_INGEST_KEY"]
 	},
 	"main": "./src/worker.ts",
 	"assets": {
