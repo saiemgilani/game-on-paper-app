@@ -49,8 +49,8 @@ async function waitToGenerateChart() {
             )
         );
 
-    } catch (e) {
-        console.error(e);
+    } catch (e: any) {
+        console.error(`ERROR while loading radars: ${e}, ${e.stack}`);
         const container = document.getElementById(`radar_container`);
         if (container) {
             container.innerHTML = `<div class="col-12"><p class='m-0 mb-3 text-muted text-small'>Unable to generate charts. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p></div>`
