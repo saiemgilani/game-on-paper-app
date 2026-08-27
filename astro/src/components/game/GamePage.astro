@@ -90,7 +90,7 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
     { href: `/game/matchup?${previewUrlParams.toString()}`, title: "Matchup Preview" },
-    { href: `https://www.espn.com/college-football/game/_/gameId/${game.id}`, title: "Gamecast" },
+    { href: `https://www.espn.com/college-football/game/_/gameId/${id}`, title: "Gamecast" },
 ];
 
 const bigPlays = game.plays.toSorted((a, b) => {
@@ -150,20 +150,20 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="referrer" content="origin-when-cross-origin">
-        <link rel="canonical" href={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <link rel="canonical" href={`https://gameonpaper.com/cfb/game/${id}`}>
         <title>{title}</title>
         <meta name="description" content={`Advanced stats for ${subtitle}`}>
 
         <meta property="og:site_name" content="GameOnPaper.com">
-        <meta property="og:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta property="og:url" content={`https://gameonpaper.com/cfb/game/${id}`}>
         <meta property="og:title" content={title}>
         <meta property="og:description" content={`"Advanced stats for ${subtitle}"`}>
-        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
+        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${id}.png?templateId=espn.com.share.1`}>
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="Game on Paper">
-        <meta name="twitter:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta name="twitter:url" content={`https://gameonpaper.com/cfb/game/${id}`}>
         <meta name="twitter:title" content={title}>
         <meta name="twitter:description" content={subtitle}>
         <meta name="twitter:card" content="summary">
@@ -204,12 +204,12 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <div class="container-fluid">
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={game.id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <ExpectedPointsChart client:only id={game.id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
+                    <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>
                 </div>
