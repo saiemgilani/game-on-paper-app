@@ -687,3 +687,11 @@ export function produceTeamLogoLink(team?: { team_id: string | number, school: s
 export function capitalizeFirstLetter(val: string): string {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
 }
+
+export function deduplicateByKey(array: any[], key: string): any[] {
+    var seen: Record<any, boolean> = {};
+    return array.filter(function(item) {
+        const val = item[key]
+        return seen.hasOwnProperty(val) ? false : (seen[val] = true);
+    });
+}

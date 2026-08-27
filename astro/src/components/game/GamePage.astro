@@ -4,7 +4,7 @@ import NavScroller, { type ScrollerItem } from '../../components/NavScroller.ast
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/manifest';
 import { gopStorage } from '../../utils/telemetry';
-import { cleanLocation, isEventFavorite, isChampionshipEvent } from '../../utils/misc';
+import { cleanLocation, isEventFavorite, isChampionshipEvent, deduplicateByKey } from '../../utils/misc';
 import { DateTime } from 'luxon';
 import LocalDate from '../LocalDate.svelte';
 import type { ESPNCompetition } from '../../resources/espn';
@@ -116,7 +116,8 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
 }).slice(0, 10)
 
 
-const gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
+let gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
+gameDrives = deduplicateByKey(gameDrives, "id");
 const epPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
     return {
         pos_team: p.pos_team, 
