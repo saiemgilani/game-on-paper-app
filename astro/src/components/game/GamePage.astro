@@ -446,7 +446,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                             }
                             {
                                 (game.plays.length > 0) && (gameStatus.type.completed != true) && (
-                                    <PlaysTable plays={game.plays.toReversed()} prefix="all" expandable={true} showGuide={false} />
+                                    <PlaysTable plays={game.plays.toReversed()} prefix="all" expandable={true} caption="While this game is live, this page will auto-update every 2 minutes." showGuide={true} />
                                 )
                             }
                             {
@@ -461,5 +461,10 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         </div>
         <Footer />
         <Scripts />
+        {
+            (game.plays.length > 0) && (gameStatus.type.completed != true) && (
+                <script is:inline src="/assets/js/auto-update.js" />
+            )
+        }
     </body>
 </html>

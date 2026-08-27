@@ -122,7 +122,7 @@ const allTeamIds = games.map(g => {
             </div>
             <div class="row mb-3" hidden={!hasActiveGames}>
                 <div class="col-12">
-                    <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                    <p class="text-small text-muted">Because there are active games, page will auto-refresh two minutes.</p>
                 </div>
             </div>
             <div class="row text-muted">
@@ -149,6 +149,11 @@ const allTeamIds = games.map(g => {
                     }
                 });
             </script>
+            {
+                (hasActiveGames) && (
+                    <script is:inline src="/assets/js/auto-update.js" />
+                )
+            }
         </div>
     </body>
 </html>

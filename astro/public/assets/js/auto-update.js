@@ -1,0 +1,1 @@
+setTimeout("location.reload(true);", 60 * 2 * 1000);
