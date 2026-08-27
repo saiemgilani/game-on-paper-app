@@ -389,7 +389,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 (bigPlays.length == 0) && (<p class="text-center text-muted">No big plays in this game.</p>)
                             }
                             {
-                                (bigPlays.length > 0) && (<PlaysTable plays={bigPlays} prefix='big-play' expandable={true} showGuide={false} />)
+                                (bigPlays.length > 0) && (<PlaysTable plays={bigPlays} prefix='big-play' expandable={true} />)
                             }
                         </div>
                     </Panel>
@@ -402,7 +402,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 (mostImpPlays.length == 0) && (<p class="text-center text-muted">No important plays in this game.</p>)
                             }
                             {
-                                (mostImpPlays.length > 0) && (<PlaysTable plays={mostImpPlays} prefix='most-important-play' expandable={true} showGuide={false} />)
+                                (mostImpPlays.length > 0) && (<PlaysTable plays={mostImpPlays} prefix='most-important-play' expandable={true} />)
                             }
                         </div>
                     </Panel>
@@ -416,7 +416,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }
                             {
-                                (game.scoringPlays.length > 0) && (<PlaysTable plays={game.scoringPlays} prefix='scoring-play' expandable={true} showGuide={false} />)
+                                (game.scoringPlays.length > 0) && (<PlaysTable plays={game.scoringPlays} prefix='scoring-play' expandable={true} />)
                             }
                         </div>
                     </Panel>
@@ -428,13 +428,13 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
                             }
                             {
-                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} showGuide={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} />
+                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} />
                             }
                         </div>
                     </Panel>
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-0">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="all-plays" title="All Plays">
                         {
@@ -451,7 +451,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                             }
                             {
                                 (game.plays.length > 0) && (gameStatus.type.completed == true) && (
-                                    <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={false} />
+                                    <PlaysTable plays={game.plays} prefix="all" expandable={true} showGuide={true} />
                                 )
                             }
                         </div>

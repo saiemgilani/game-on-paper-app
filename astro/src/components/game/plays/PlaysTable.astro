@@ -8,23 +8,47 @@ interface Props {
     plays: ProcessedPlay[]
     prefix: string
     expandable: boolean
-    showGuide: boolean
+    caption?: string
+    showGuide?: boolean
 }
 
-const { plays, prefix, expandable, showGuide } = Astro.props;
+const { plays, prefix, expandable, caption, showGuide } = Astro.props;
 
 ---
 
 <div class="table table-responsive">
     <table class="table table-sm table-responsive" style="border-collapse:collapse;">
         {
-            (showGuide) && (
-                <caption>Play shading guide:
+            (caption && !showGuide) && (
+                <caption>{caption}</caption>
+            )
+        }
+        {
+            (caption && showGuide) && (
+                <caption>
+                <span class="mb-1">{caption}</span>
+                <div>
+                    <p class="mb-0">Play shading guide:</p>
                     <ul>
-                        <li><strong>Yellow</strong> - penalty</li>
-                        <li><strong>Red</strong> - turnover</li>
-                        <li><strong>Green</strong> - scoring play</li>
+                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li><strong class="text-danger">Red</strong> - turnover</li>
+                        <li><strong class="text-success">Green</strong> - scoring play</li>
                     </ul>
+                </div>
+                </caption>
+            )
+        }
+        {
+            (!caption && showGuide) && (
+                <caption>
+                <div>
+                    <p class="mb-0">Play shading guide:</p>
+                    <ul>
+                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li><strong class="text-danger">Red</strong> - turnover</li>
+                        <li><strong class="text-success">Green</strong> - scoring play</li>
+                    </ul>
+                </div>
                 </caption>
             )
         }
