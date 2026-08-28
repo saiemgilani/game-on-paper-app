@@ -34,10 +34,12 @@ function setLastPlayHtml(situation?: ESPNGameSituation): string {
             <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
             <p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>
         `
-    } else if (isEmpty) {
+    } else if (isEmpty && situation.lastPlay?.text) {
         return `
             <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
         `
+    } else if (isEmpty && !situation.lastPlay?.text) {
+        return ``
     } else {
         return `
             <p class="mb-0 text-muted"><strong>Last Play:</strong>${situation.lastPlay?.text}</p>
