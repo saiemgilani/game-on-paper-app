@@ -104,3 +104,30 @@ PY`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     console.log(`  captured timelines: ${games.length} games, ${caught} regressions caught, ${forward} forward steps allowed`);
   });
 });
+
+// Regression: ESPN omits `period` on FINAL payloads and sometimes ships no
+// `drives` object at all. Coercing either to 0 marked every completed game as
+// stale, which disabled its year-long cache and forced a refetch per view.
+describe('absent signals are not regressions', () => {
+  test('a FINAL payload with no period does not regress a 4th-quarter mark', () => {
+    const final = { period: null, plays: 155, scores: [21, 14], completed: true, status: 'STATUS_FINAL' };
+    expect(isRegression(final as any, st(4, 150)).regressed).toBe(false);
+  });
+  test('a payload with no drives object does not regress on plays', () => {
+    const noDrives = { period: 4, plays: null, scores: [0, 0], completed: false, status: 'STATUS_IN_PROGRESS' };
+    expect(isRegression(noDrives as any, st(4, 120)).regressed).toBe(false);
+  });
+  test('extractGameState reports absent as null, never 0', () => {
+    const s = extractGameState({ gamepackageJSON: { header: { competitions: [{
+      status: { type: { name: 'STATUS_FINAL', completed: true } }, competitors: [] } ] } } });
+    expect(s!.period).toBeNull();
+    expect(s!.plays).toBeNull();
+  });
+  test('high-water still rises when one side is unknown', () => {
+    const hw = mergeHighWater(st(4, 150), { period: null, plays: null, scores: [0, 0], completed: true, status: 'STATUS_FINAL' } as any);
+    expect(hw).toMatchObject({ period: 4, plays: 150, completed: true });
+  });
+  test('real regressions are still caught', () => {
+    expect(isRegression(st(3, 103), st(4, 138)).regressed).toBe(true);
+  });
+});

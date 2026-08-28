@@ -20,8 +20,10 @@
  */
 
 export type GameState = {
-    period: number;
-    plays: number;
+    /** null when ESPN omits it -- FINAL payloads carry no period at all */
+    period: number | null;
+    /** null when the payload ships no drives object, which happens mid-game too */
+    plays: number | null;
     scores: number[];
     completed: boolean;
     status: string;
@@ -39,12 +41,19 @@ export function extractGameState(payload: any): GameState | null {
     const comp = gp.header?.competitions?.[0];
     if (!comp) return null;
     const status = comp.status ?? {};
-    const drives = gp.drives ?? {};
-    let plays = 0;
-    for (const d of drives.previous ?? []) plays += (d?.plays ?? []).length;
-    if (drives.current) plays += (drives.current.plays ?? []).length;
+    // Absent is NOT zero. A FINAL payload omits `period` entirely, and some
+    // in-progress payloads ship no `drives` at all; coercing either to 0 makes
+    // every such payload look like a regression.
+    const drives = gp.drives;
+    let plays: number | null = null;
+    if (drives && (drives.previous || drives.current)) {
+        plays = 0;
+        for (const d of drives.previous ?? []) plays += (d?.plays ?? []).length;
+        if (drives.current) plays += (drives.current.plays ?? []).length;
+    }
+    const rawPeriod = Number(status.period);
     return {
-        period: Number(status.period) || 0,
+        period: Number.isFinite(rawPeriod) && rawPeriod > 0 ? rawPeriod : null,
         plays,
         scores: (comp.competitors ?? []).map((c: any) => Number(c?.score) || 0),
         completed: Boolean(status.type?.completed),
@@ -62,17 +71,18 @@ export function extractGameState(payload: any): GameState | null {
  */
 export function isRegression(candidate: GameState | null, highWater: GameState | null): RegressionVerdict {
     if (!candidate || !highWater) return { regressed: false, reason: null };
-    const gameHasStarted = highWater.period > 0 || highWater.plays > 0 || highWater.completed;
+    const gameHasStarted = (highWater.period ?? 0) > 0 || (highWater.plays ?? 0) > 0 || highWater.completed;
     if (candidate.status === "STATUS_SCHEDULED") {
         return gameHasStarted
             ? { regressed: true, reason: `reverted to scheduled after kickoff (hw period ${highWater.period}, ${highWater.plays} plays)` }
             : { regressed: false, reason: null };
     }
 
-    if (candidate.period < highWater.period) {
+    // Compare only signals present on BOTH sides. An unknown is not a regression.
+    if (candidate.period != null && highWater.period != null && candidate.period < highWater.period) {
         return { regressed: true, reason: `period ${highWater.period} -> ${candidate.period}` };
     }
-    if (candidate.plays < highWater.plays) {
+    if (candidate.plays != null && highWater.plays != null && candidate.plays < highWater.plays) {
         return { regressed: true, reason: `plays ${highWater.plays} -> ${candidate.plays}` };
     }
     // A final payload must never be replaced by a non-final one.
@@ -86,9 +96,11 @@ export function isRegression(candidate: GameState | null, highWater: GameState |
 export function mergeHighWater(highWater: GameState | null, state: GameState | null): GameState | null {
     if (!state) return highWater;
     if (!highWater) return state;
+    const maxOrKnown = (a: number | null, b: number | null) =>
+        a == null ? b : b == null ? a : Math.max(a, b);
     return {
-        period: Math.max(highWater.period, state.period),
-        plays: Math.max(highWater.plays, state.plays),
+        period: maxOrKnown(highWater.period, state.period),
+        plays: maxOrKnown(highWater.plays, state.plays),
         scores: state.scores.map((s, i) => Math.max(s, highWater.scores[i] ?? 0)),
         completed: highWater.completed || state.completed,
         status: state.completed ? state.status : (highWater.completed ? highWater.status : state.status),
@@ -100,7 +112,9 @@ export function pickFresher<T>(a: { state: GameState | null; payload: T },
                                b: { state: GameState | null; payload: T }): { state: GameState | null; payload: T } {
     if (!a.state) return b;
     if (!b.state) return a;
-    if (b.state.period !== a.state.period) return b.state.period > a.state.period ? b : a;
-    if (b.state.plays !== a.state.plays) return b.state.plays > a.state.plays ? b : a;
+    const ap = a.state.period ?? -1, bp = b.state.period ?? -1;
+    if (bp !== ap) return bp > ap ? b : a;
+    const an = a.state.plays ?? -1, bn = b.state.plays ?? -1;
+    if (bn !== an) return bn > an ? b : a;
     return b.state.completed && !a.state.completed ? b : a;
 }
