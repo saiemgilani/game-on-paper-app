@@ -10,33 +10,12 @@ export default defineConfig({
     output: 'server',
     adapter: cloudflare(),
     integrations: [svelte()],
+    // Legacy /cfb/* URLs are resolved in middleware (utils/legacyCfb.ts), not
+    // here. This map pointed "/cfb" and "/cfb/game" at "/index", which is not a
+    // route, so the site's most-shared URL answered 404; the dynamic entries
+    // resolved to "/game/<id>/index.html" and 404'd too. One prefix rule in
+    // middleware covers every legacy path, including ones never enumerated here.
     redirects: {
-        "/cfb": "/index",
-        "/cfb/trends": "/charts/trends",
-        "/cfb/teams": "/teams",
-        "/cfb/players": "/players",
-        "/cfb/charts": "/charts",
-        "/cfb/game": "/index",
-        "/cfb/year": "/teams",
-        "/cfb/team": "/teams",
-
-        "/cfb/game/[id]": "/game/[id]",
-        "/cfb/team/[id]": "/team/[id]",
-        "/cfb/charts/trends": "/charts/trends",
-
-        "/cfb/year/[year]": "/year/[year]",
-
-        "/cfb/year/[year]/players": "/year/[year]/players",
-        "/cfb/year/[year]/players/[category]": "/year/[year]/players/[category]",
-
-        "/cfb/year/[year]/teams": "/year/[year]/teams",
-        "/cfb/year/[year]/teams/[category]": "/year/[year]/teams/[category]",
-
-        "/cfb/year/[year]/[type]": "/year/[year]/[type]",
-        "/cfb/year/[year]/type/[type]": "/year/[year]/type/[type]",
-
-        "/cfb/year/[year]/team/[id]": "/year/[year]/team/[id]",
-
         "/trends": "/charts/trends",
         "/players": "/year/2026/players",
     },

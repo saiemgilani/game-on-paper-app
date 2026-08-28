@@ -4,11 +4,19 @@ import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
+import { legacyCfbTarget } from './utils/legacyCfb';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+
+  // Legacy /cfb/* URLs, handled before routing so every historical link lands.
+  // These were pointed at /index by the redirects map, which is not a route.
+  const legacy = legacyCfbTarget(url.pathname);
+  if (legacy) {
+    return context.redirect(legacy + url.search, 301);
+  }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
     const ok = checkBasicAuth(context.request.headers.get('authorization'),
