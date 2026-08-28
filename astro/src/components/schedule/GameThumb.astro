@@ -1,6 +1,6 @@
 ---
 import type { ESPNScheduleEvent } from "../../resources/espn";
-import { isChampionshipEvent, SpiceLevel, isEventFavorite, cleanScore } from "../../utils/misc";
+import { isChampionshipEvent, SpiceLevel, isEventFavorite, cleanScore, cx } from "../../utils/misc";
 import { FBS_CONFERENCES, SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
 import LocalDate from "../LocalDate.svelte";
 import BroadcastButton from "./BroadcastButton.astro";
@@ -138,10 +138,10 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
 ---
 
 <div class="col-xl-3 col-lg-6">
-    <div class={`row border rounded m-2 mb-4 ${outlineClass} ${borderClass}`}>
+    <div class={cx("row border rounded m-2 mb-4", outlineClass, borderClass)}>
         <div class="col p-3">
             <div class="d-flex justify-content-between">
-                <strong class={`d-inline-block mb-2 ${textClass} text-small`}>
+                <strong class={cx("d-inline-block mb-2", textClass, "text-small")}>
                     {
                         (gameStatus.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={gameStatus.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }

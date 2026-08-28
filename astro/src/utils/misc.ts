@@ -259,6 +259,18 @@ export function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' 
  * most non-FBS), which used to throw on `.startsWith` and 500 the team page /
  * kill DriveChart hydration. Always returns a paintable color.
  */
+/**
+ * Join class names, dropping anything falsy.
+ *
+ * Interpolating an optional class straight into a template literal renders the
+ * string "undefined" into the class attribute when it is not set -- which is
+ * what put `class="row border rounded m-2 mb-4 undefined spice-level-none"` on
+ * every game card on the scoreboard and home page.
+ */
+export function cx(...parts: (string | false | null | undefined)[]): string {
+    return parts.filter(Boolean).join(" ");
+}
+
 export function teamColorHex(color: string | null | undefined, fallback: string = STANDARD_THEME_COLOR): string {
     const c = (color ?? "").trim();
     if (!c) return fallback;
