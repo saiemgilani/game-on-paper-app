@@ -83,18 +83,39 @@ concentrating 10× traffic into a 6-hour window is ~46/min — past the ceiling.
 Expect 60 s+ game pages on the first big Saturday unless the work per request
 drops or the cache starts absorbing it.
 
-## 4. Cache is the cheapest large win
+## 4. Cache works; crawlers are the real load
 
-    1,782 game page views -> 1,673 python calls   (94% pass-through)
-    1,090 distinct games
-    166 repeat views of the same game within 60 s
-    248 within 5 minutes
+An earlier read of this data claimed a 94% cache pass-through. That was wrong,
+and the correction matters. `request_log` only ever contains requests that
+reached the Worker, and an edge HIT never does — so page-views vs python-calls
+in that table is ~1:1 by construction and says nothing about cache health.
+Measured directly instead, the cache is fine:
 
-Only 6% of views avoid the 7.7 s recompute. During a live game many people
-watch the *same* game, which is exactly when a short shared cache collapses N
-concurrent viewers into one computation. A 15–30 s shared TTL would cut peak
-python load by roughly the concurrency factor at no correctness cost — the
-data is already at least that stale.
+    /game/401752921  MISS -> HIT -> HIT        (completed game, 1y TTL)
+    /game/401867894  HIT age=73                (live game, short TTL)
+
+The real driver of expensive work is *who* is asking. Over 48h of game-page
+requests:
+
+| requester | requests | distinct games |
+|---|---|---|
+| **bots/crawlers** | **1,963 (59%)** | 1,170 |
+| human desktop | 1,113 | 565 |
+| human mobile | 238 | 124 |
+
+MJ12bot alone walked 400 distinct games from one IP. A distinct game is a cache
+miss by definition, so each one costs a full ~7.5s computation. The 07:39
+burst (34 calls / 34 distinct games in one minute) came from Tor exit nodes
+(185.220.101.x, 192.42.116.x) spoofing an old-Android UA.
+
+`robots.txt` disallowed only `/cfb/` — the pre-Astro URL layout — leaving
+`/game/*` wide open. Fixed in f776a4a.
+
+Duplicate concurrent work on the *same* game is only 204 of 3,071 calls
+(6.6%), and the busy minutes are 34 calls across 34 distinct games. So the
+load is breadth, not a thundering herd, and single-flight coalescing is a
+small win not worth new concurrency primitives mid-season. Revisit if that
+share grows.
 
 ## 5. Database and volume strain
 
@@ -144,11 +165,15 @@ queries remain invisible; that is the highest-value remaining addition.
 
 1. **Fix the uptime probe URL** to `/healthcheck`. Minutes of work; removes 55%
    of logged traffic and restores meaningful alerting.
-2. **Add a short shared cache for processed games** (15–30 s). Biggest latency
-   win available; directly raises the effective ceiling on Saturdays.
-3. **Re-tune gunicorn once host metrics land.** `threads=2` does not help
-   CPU-bound work under the GIL. Prefer `workers = 2×cores + 1` with
-   `preload_app` to share model memory (574 MB per worker today).
+2. ~~Add a short shared cache~~ — **done differently.** The cache already
+   works; the load was crawlers. `robots.txt` now blocks the parasitic ones
+   (f776a4a), which removes most of the 59% bot share of game-page computes.
+3. **Re-tuned gunicorn** (f776a4a): worker count is derived at boot from CPU
+   affinity and clamped by MemTotal at ~600 MB/worker, instead of a hardcoded
+   4 x 2 threads that advertised 8 slots and delivered ~4. Still worth doing:
+   `preload_app` would share model memory via copy-on-write, but it needs
+   `TEL.start()` moved into a `post_fork` hook first — the flush thread does
+   not survive a fork, so preloading today would silently stop telemetry.
 4. **Profile `run_processing_pipeline()`.** The 7.7 s floor sets everything
    else. Halving it doubles the ceiling.
 5. **Install `pg_stat_statements`** for query-level visibility.
