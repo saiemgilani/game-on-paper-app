@@ -4,7 +4,7 @@ import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
-import { legacyCfbTarget } from './utils/legacyCfb';
+import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -16,6 +16,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const legacy = legacyCfbTarget(url.pathname);
   if (legacy) {
     return context.redirect(legacy + url.search, 301);
+  }
+
+  // Browsers cached the OLD broken 301s permanently, so they still resolve
+  // /cfb/ to /index and /cfb/game/<id> to /game/<id>/index.html without ever
+  // asking us again. Those targets have to work or those visitors stay 404'd.
+  const stale = staleRedirectTarget(url.pathname);
+  if (stale) {
+    return context.redirect(stale + url.search, 301);
   }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {

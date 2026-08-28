@@ -41,3 +41,30 @@ export function legacyCfbTarget(pathname: string): string | null {
 
     return rest;
 }
+
+
+/**
+ * Rescue paths that the OLD broken redirects sent people to.
+ *
+ * A 301 is cached by browsers indefinitely and never revalidated, so fixing
+ * the source of a bad permanent redirect does not help anyone who already
+ * followed it -- their browser keeps resolving the old target locally and
+ * never asks us again. The previous config 301'd `/cfb/` to `/index` and
+ * `/cfb/game/<id>` to `/game/<id>/index.html`, neither of which is a route.
+ * Every visitor who hit one of those is pinned to a 404 forever unless those
+ * targets themselves resolve.
+ *
+ * So these are not legacy URLs anyone ever published -- they are the wreckage
+ * of the bug, and they have to keep working essentially forever.
+ */
+export function staleRedirectTarget(pathname: string): string | null {
+    if (pathname === "/index" || pathname === "/index/" || pathname === "/index.html") {
+        return "/";
+    }
+    // "/game/401752921/index.html" -> "/game/401752921"
+    if (pathname.endsWith("/index.html")) {
+        const stripped = pathname.slice(0, -"/index.html".length);
+        return stripped === "" ? "/" : stripped;
+    }
+    return null;
+}

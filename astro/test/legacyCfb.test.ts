@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { legacyCfbTarget } from '../src/utils/legacyCfb';
+import { legacyCfbTarget, staleRedirectTarget } from '../src/utils/legacyCfb';
 
 describe('legacyCfbTarget', () => {
   test('the most-shared URL reaches the scoreboard, not /index', () => {
@@ -33,6 +33,28 @@ describe('legacyCfbTarget', () => {
   test('leaves non-legacy paths alone', () => {
     for (const p of ['/', '/game/1', '/teams/', '/cfbsomething', '/admin']) {
       expect(legacyCfbTarget(p)).toBeNull();
+    }
+  });
+});
+
+// A 301 is cached by the browser forever and never revalidated, so anyone who
+// followed the old broken redirects is pinned to their target locally. Fixing
+// the source does nothing for them; these targets must resolve.
+describe('staleRedirectTarget', () => {
+  test('rescues /index, the old /cfb/ target', () => {
+    for (const p of ['/index', '/index/', '/index.html']) {
+      expect(staleRedirectTarget(p)).toBe('/');
+    }
+  });
+
+  test('rescues /game/<id>/index.html, the old /cfb/game/<id> target', () => {
+    expect(staleRedirectTarget('/game/401752921/index.html')).toBe('/game/401752921');
+    expect(staleRedirectTarget('/year/2015/team/333/index.html')).toBe('/year/2015/team/333');
+  });
+
+  test('leaves real paths alone', () => {
+    for (const p of ['/', '/game/401752921', '/teams/', '/indexed', '/charts/trends']) {
+      expect(staleRedirectTarget(p)).toBeNull();
     }
   });
 });
