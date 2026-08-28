@@ -180,7 +180,7 @@ export interface ESPNTeam {
     abbreviation: string
     displayName: string
     shortDisplayName: string
-    color: string
+    color?: string
     alternateColor?: string
     isActive: boolean
     logo: string

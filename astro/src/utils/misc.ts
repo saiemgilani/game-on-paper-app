@@ -253,6 +253,18 @@ export function getAxisTitleSizeForViewport(viewport: 'xs' | 'sm' | 'md' | 'lg' 
     }
 }
 
+/**
+ * Normalize an ESPN team color into a usable CSS hex.
+ * ESPN omits `color` entirely for some schools (LIU 2341, West Florida 110242,
+ * most non-FBS), which used to throw on `.startsWith` and 500 the team page /
+ * kill DriveChart hydration. Always returns a paintable color.
+ */
+export function teamColorHex(color: string | null | undefined, fallback: string = STANDARD_THEME_COLOR): string {
+    const c = (color ?? "").trim();
+    if (!c) return fallback;
+    return c.startsWith("#") ? c : `#${c}`;
+}
+
 export function adjustTeamColorsForContrast(awayTeam: { color: string, alternateColor: string }, homeTeam: { color: string, alternateColor: string }): RGBColor[] {
     let awayTeamColor = hexToRgb(awayTeam.color) || { r: 0, g: 0, b: 255 }
     let homeTeamColor = hexToRgb(homeTeam.color) || { r: 255, g: 0, b: 0 }

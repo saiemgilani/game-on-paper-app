@@ -3,7 +3,7 @@
 
 import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField, formatRank } from "../../utils/misc";
+import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField, formatRank, teamColorHex } from "../../utils/misc";
 import { retrieveAllTeams, type TeamIndex } from "../../utils/teams";
 import { retrievePercentiles, type SDVSeasonPercentile, retrieveTeamSummaries, type SDVTeamSummary } from "../../resources/sdv";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
@@ -95,7 +95,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
             </div>
         </div>
     </div>
-    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={(team.color.startsWith("#") ? team.color : `#${team.color}`)} teamData={teamData} percentiles={allPctls}>
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData} percentiles={allPctls}>
         <FallbackSpinner slot="fallback" />
     </TeamTrendsChart>
     <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true}>
