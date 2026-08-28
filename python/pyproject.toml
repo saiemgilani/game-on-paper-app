@@ -4,12 +4,20 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "Flask",
-    "sportsdataverse>=0.0.73",
+    "sportsdataverse>=0.1.2",
     "gunicorn",
     "flask-compress>=1.24",
     "orjson>=3.11.9",
     "psycopg[binary]>=3.1",
 ]
+
+# Pinned to sdv-py main rather than PyPI so the CFB passer box-score fix
+# (sportsdataverse-py #405, released as 0.1.2) reaches production without
+# waiting on the PyPI publish to land and propagate. Drop this block once
+# 0.1.2 is installable from PyPI -- the >=0.1.2 floor above is what should
+# hold long term.
+[tool.uv.sources]
+sportsdataverse = { git = "https://github.com/sportsdataverse/sportsdataverse-py", branch = "main" }
 
 [dependency-groups]
 dev = [
