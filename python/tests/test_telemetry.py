@@ -123,3 +123,31 @@ def test_concurrent_flush_failure_counts_all_drops():
         th.join()
     tel.flush()  # drain anything left
     assert tel.stats()["dropped"] == 2
+
+
+def test_host_reporter_is_exclusive_and_sane():
+    """Exactly one worker emits python-host rows, and the values are plausible.
+
+    Guards the election: an earlier pid-based version elected nobody under
+    gunicorn, because the arbiter owns pid 1 and never runs this loop.
+    """
+    import telemetry as tmod
+
+    rows = []
+    tel = tmod.Telemetry.__new__(tmod.Telemetry)
+    tel._host_lock = None
+    tel.push = lambda table, row: rows.append((table, row))
+    assert tel._is_host_reporter() is True
+
+    # a second "worker" (fresh state, same lock file) must not also report
+    other = tmod.Telemetry.__new__(tmod.Telemetry)
+    other._host_lock = None
+    assert other._is_host_reporter() is False
+
+    tel._sample_host()
+    assert rows, "elected worker emitted nothing"
+    table, row = rows[0]
+    assert table == "system_stat"
+    assert row["service"] == "python-host"
+    assert row["heap_mb"] >= 1                      # core count
+    assert row["cpu_pct"] is None or row["cpu_pct"] >= 0

@@ -118,7 +118,9 @@ def _p7(gp):
     return bad[:5]
 
 
-@probe("drive_missing_team", "UGLY", "DriveChart paints '#undefined' for the drive's offense")
+@probe("drive_missing_team", "UGLY",
+       "drive.team carries no color -> markPlay painted the literal '#undefined' "
+       "(guarded by teamColorHex in 96dc160 -- this probe is the regression test)")
 def _p8(gp):
     bad = []
     dr = gp.get("drives") or {}
@@ -140,7 +142,8 @@ def _p9(gp):
 
 
 @probe("duplicate_drive_ids", "UGLY",
-       "same drive rendered twice in the drives table (fixed in b753c32 by dedupe)")
+       "ESPN repeats a drive id mid-game; without dedupe the drives table renders "
+       "it twice (guarded by deduplicateByKey in b753c32 -- this probe is the regression test)")
 def _p10(gp):
     dr = gp.get("drives") or {}
     ids = [d.get("id") for d in (dr.get("previous") or [])]
