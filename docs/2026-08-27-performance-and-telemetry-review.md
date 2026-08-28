@@ -144,11 +144,23 @@ queries remain invisible; that is the highest-value remaining addition.
 
 ## 6. Errors and noise
 
-- **8,637 404s/day are DigitalOcean uptime probes** hitting `/api/v2/healthcheck`
-  and `/cfb/healthcheck`, neither of which exists (the real one is
-  `/healthcheck`). Five probe IPs, one per minute each. Either the monitor has
-  been alerting all along or it is silently green on a 404 — both are bad. This
-  is 55% of all logged traffic and it distorts every status-mix chart.
+- **8,637 404s/day were DigitalOcean uptime probes** hitting `/api/v2/healthcheck`
+  and `/cfb/healthcheck`, neither of which exists. **Fixed 2026-08-27.** DO did
+  treat the 404 as DOWN, so the two `down_global` policies had been emailing
+  continuously — a real outage would have been indistinguishable from the
+  standing false alarm. Both checks were repointed via the DO API, keeping their
+  ids so the three alert policies stayed attached:
+
+  | check | was (404) | now (200) |
+  |---|---|---|
+  | gameonpaper site healthcheck | `gameonpaper.com/cfb/healthcheck` | `gameonpaper.com/health` |
+  | gameonpaper api healthcheck | `gameonpaper.com/api/v2/healthcheck` | `api.gameonpaper.com/healthcheck` |
+
+  This also buys real coverage of both tiers — previously both probes watched
+  the same host, leaving the python droplet (the tier that actually saturates)
+  unmonitored. All six region/check pairs report UP and the old probes have
+  drained; the 404 share of logged traffic fell from 54.7% to ~38%, the
+  remainder being WordPress vulnerability scanners.
 - ~600/day are WordPress vulnerability scanners. Normal internet noise.
 - Real user traffic is ~9,500 requests/day.
 - **104 ESPN pbp failures** (5.9% of astro's fetches) — retry/backoff worth adding.
