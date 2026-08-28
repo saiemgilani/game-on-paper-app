@@ -59,3 +59,36 @@ hypothetical. Two of them are now regression tests for fixes already shipped
 
 The last two are only visible across states, which is the point of capturing a
 timeline rather than a single sample.
+
+## Open finding: ESPN serves regressed payloads mid-game
+
+The most consequential thing the harness has caught. Game 401866532 (ME @ TOW),
+consecutive captured states:
+
+    #5  q4 15:00  TOW 15  138 plays
+    #6  q3 10:26  TOW  8  103 plays     <- 35 plays and a touchdown vanish
+    #7  q3  5:04  TOW 15  123 plays
+    #8  q4 15:00  TOW 15  138 plays     <- recovers
+
+Verified in the raw payloads, not just the manifest: competitor order is stable
+(home first in every sample), so this is not a field-ordering artifact. ESPN
+genuinely served older content to the same client, minutes apart. Across one
+evening of FCS games the `score_decreased` probe fired on **18 of 24 games**,
+so this is routine rather than exotic.
+
+Why it matters: a viewer refreshing a live game can see the score count
+backwards and drives disappear. It also poisons anything derived from the
+payload, and if a regressed response lands in cache it persists for the TTL.
+
+**Mechanism unconfirmed.** The obvious theory is a stale copy on ESPN's CDN,
+and `retrieveGamePage` currently sends no cache-buster (the pre-Astro code did:
+`&${cacheBuster}`). But 12 rapid fetches of two live games returned byte-identical
+responses both with and without a buster, so the theory is unproven and a
+cache-buster would be a speculative fix that also defeats ESPN's caching.
+
+The robust response is a guard on our side rather than a bet on the upstream
+mechanism: reject a payload that regresses against the best state already seen
+for that game (period, play count, score are all monotonic within a game), and
+in particular never cache one. That needs somewhere to keep the high-water mark
+-- the existing `ESPN_API_CACHE` KV is the natural home -- so it is a real
+change and is deliberately not being rushed in mid-season.
