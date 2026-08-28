@@ -28,7 +28,18 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "truTV": "https://www.trutv.com/watchtrutv",
     "TNT": "https://www.tntdrama.com/watchtnt",
     "USA Net": "https://www.usanetwork.com/sports",
-    "Scripps Sports": "https://scrippssportsnetwork.com/"
+    "Scripps Sports": "https://scrippssportsnetwork.com/",
+    "FloSports": "https://www.flocollege.com/sports/12787066-football",
+    "MEAC Network": "https://watch.meacsports.com",
+    "Midco Sports Plus": "https://www.midcosportsplus.com",
+    "Midco Sports Net": "https://sports.midco.com",
+    "NEC Front Row": "https://necfrontrow.com/schedule",
+    "SWAC TV": "https://tv.swac.org",
+    "MNMT": "https://www.monumentalsportsnetwork.com",
+    "CIAA Network": "https://theciaasn.com",
+    "HBCU GO": "https://hbcugo.tv/",
+    "HBCU Go": "https://hbcugo.tv/",
+    "UCONN+": "https://uconnhuskies.com/watch/"
 };
 
 export function isESPNNetwork(networkName?: string | null): boolean {
