@@ -92,3 +92,13 @@ describe('clientIp', () => {
     expect(clientIp(new Headers({ 'cf-connecting-ip': '2001:db8::1' }))).toBe('2001:db8::1');
   });
 });
+
+describe('classifyTarget: sdv data api', () => {
+  test('labels the SDV API rather than lumping it into other', () => {
+    expect(classifyTarget('https://data.sportsdataverse.org/v1/cfb/team_season?year=2025'))
+      .toBe('sdv_api');
+  });
+  test('still falls back to other for genuinely unknown hosts', () => {
+    expect(classifyTarget('https://example.com/thing')).toBe('other');
+  });
+});
