@@ -34,6 +34,9 @@ export function classifyTarget(url: string, pythonBase?: string, summaryBase?: s
   if (pythonBase && url.startsWith(pythonBase)) return 'flask_process';
   if (/\/cfb\/\d+\/process\b/.test(url)) return 'flask_process';
   if (summaryBase && url.startsWith(summaryBase)) return 'summary';
+  // The SDV data API wraps Postgres on the sdv-data droplet, so this bucket is
+  // also our view of the load the site puts on that database.
+  if (url.includes('data.sportsdataverse.org')) return 'sdv_api';
   return 'other';
 }
 

@@ -21,3 +21,7 @@ __pycache__
 astro/dist
 astro/.astro
 .env
+# Captured ESPN game-state fixtures (scripts/capture_game_states.py).
+# Raw timeline snapshots are large and regenerable; keep them local.
+fixtures/game-states/
+logs/

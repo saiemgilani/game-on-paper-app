@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers"
 import { safeCachePut } from "../utils/misc"
+import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
 import { wrappedFetch } from "../utils/telemetry"
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
 
@@ -180,7 +181,7 @@ export interface ESPNTeam {
     abbreviation: string
     displayName: string
     shortDisplayName: string
-    color: string
+    color?: string
     alternateColor?: string
     isActive: boolean
     logo: string
@@ -454,6 +455,63 @@ export async function retrieveGamePage(gameId: string | number): Promise<ESPNPla
     }
     const res: ESPNPlayByPlayResponse = JSON.parse(contentRaw);
     return res
+}
+
+export type GuardedGamePage = {
+    page: ESPNPlayByPlayResponse;
+    /** true when even the retry was older than what we have already served */
+    regressed: boolean;
+    reason: string | null;
+};
+
+const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
+
+/**
+ * retrieveGamePage, but refusing to be walked backwards.
+ *
+ * ESPN intermittently serves an older payload than it served moments earlier
+ * (docs/game-state-fixtures.md). Rendering one shows the score counting down,
+ * drives vanishing, or a pregame page over a game already under way. We keep a
+ * per-game high-water mark of the monotonic signals in KV; if a response comes
+ * back behind it we fetch once more and keep whichever is further along.
+ *
+ * Fail-open throughout: any KV problem degrades to today's behaviour rather
+ * than costing anyone a page.
+ */
+export async function retrieveGamePageGuarded(gameId: string | number): Promise<GuardedGamePage> {
+    const page = await retrieveGamePage(gameId);
+    const key = `gamestate:${gameId}`;
+    let highWater: GameState | null = null;
+    try {
+        highWater = await env.ESPN_API_CACHE.get(key, "json") as GameState | null;
+    } catch (e) {
+        console.error(`game-state guard: KV read failed for ${gameId}: ${e}`);
+        return { page, regressed: false, reason: null };
+    }
+
+    let best = { state: extractGameState(page), payload: page };
+    let verdict = isRegression(best.state, highWater);
+
+    if (verdict.regressed) {
+        console.warn(`game-state guard: stale payload for ${gameId} (${verdict.reason}); refetching`);
+        try {
+            const retryPage = await retrieveGamePage(gameId);
+            best = pickFresher(best, { state: extractGameState(retryPage), payload: retryPage });
+            verdict = isRegression(best.state, highWater);
+        } catch (e) {
+            console.error(`game-state guard: refetch failed for ${gameId}: ${e}`);
+        }
+    }
+
+    // Only write when the mark actually moves: KV allows one write per second
+    // per key, and a live game is read far more often than it advances.
+    const merged = mergeHighWater(highWater, best.state);
+    if (merged && (!highWater || merged.period > highWater.period
+                   || merged.plays > highWater.plays || merged.completed !== highWater.completed)) {
+        await safeCachePut(env.ESPN_API_CACHE, key, JSON.stringify(merged), GAME_STATE_TTL);
+    }
+
+    return { page: best.payload, regressed: verdict.regressed, reason: verdict.reason };
 }
 
 export interface ESPNTeamRequestPayload {

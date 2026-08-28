@@ -108,6 +108,7 @@ class Telemetry:
         self._wake = threading.Event()  # signals worker to flush early at batch_rows
         self.dropped = 0
         self._started = False
+        self._host_lock = None   # None=unknown, False=another worker holds it, int=our fd
 
     def _default_conn(self):
         import psycopg
@@ -192,6 +193,14 @@ class Telemetry:
         )
 
     def _sample_system(self):
+        """Emit one per-worker sample, plus a host-level sample from one worker.
+
+        VmRSS/process_time are per-PROCESS: under gunicorn every worker reports
+        its own numbers as service='python', so those rows alone cannot answer
+        "is the box saturated?". The lowest-PID worker additionally emits a
+        service='python-host' row carrying loadavg and host memory, which is
+        what capacity planning actually needs.
+        """
         try:
             rss_mb = cpu_pct = None
             try:
@@ -216,6 +225,77 @@ class Telemetry:
                     "rss_mb": rss_mb,
                     "heap_mb": None,
                     "cpu_pct": cpu_pct,
+                    "event_loop_lag_ms": None,
+                    "redis_mem_mb": None,
+                },
+            )
+            self._sample_host()
+        except Exception:
+            pass
+
+    def _is_host_reporter(self):
+        """True in exactly one worker, decided by an flock held for the process life.
+
+        Not "lowest pid": under gunicorn the arbiter is pid 1 and it never runs
+        this loop, so a pid comparison would elect nobody. The lock is held on
+        an fd we keep open; if that worker is recycled the kernel drops the lock
+        and the next worker to tick picks the job up.
+        """
+        if self._host_lock is not None:
+            return self._host_lock is not False
+        try:
+            import fcntl
+            fd = os.open("/tmp/.gop-host-reporter.lock", os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                os.close(fd)
+                self._host_lock = False
+                return False
+            self._host_lock = fd       # keep the fd open to hold the lock
+            return True
+        except Exception:
+            self._host_lock = False
+            return False
+
+    def _sample_host(self):
+        """Host-wide load + memory, emitted by a single elected worker.
+
+        Exactly one worker reports, elected as the lowest live pid, so a
+        recycled worker just hands the job to the next one. cpu_pct here is
+        loadavg(1m) normalised to core count, so 100 means 'fully committed'
+        regardless of how many workers are configured.
+        """
+        try:
+            if not self._is_host_reporter():
+                return
+            cores = os.cpu_count() or 1
+            load1 = None
+            try:
+                with open("/proc/loadavg") as f:
+                    load1 = float(f.read().split()[0])
+            except (OSError, ValueError):
+                pass
+            mem_used_mb = None
+            try:
+                info = {}
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        k, _, v = line.partition(":")
+                        info[k] = float(v.split()[0]) / 1024.0
+                total = info.get("MemTotal")
+                avail = info.get("MemAvailable")
+                if total is not None and avail is not None:
+                    mem_used_mb = total - avail
+            except (OSError, ValueError):
+                pass
+            self.push(
+                "system_stat",
+                {
+                    "service": "python-host",
+                    "rss_mb": mem_used_mb,
+                    "heap_mb": float(cores),
+                    "cpu_pct": (100.0 * load1 / cores) if load1 is not None else None,
                     "event_loop_lag_ms": None,
                     "redis_mem_mb": None,
                 },

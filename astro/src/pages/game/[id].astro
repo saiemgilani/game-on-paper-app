@@ -1,7 +1,8 @@
 ---
 import GamePage from '../../components/game/GamePage.astro';
 import PreGamePage from '../../components/game/PreGamePage.astro';
-import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePage, type ESPNPlayByPlayResponse } from '../../resources/espn';
+import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
+import { gopStorage } from '../../utils/telemetry';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import ErrorPage from "../../components/ErrorPage.astro";
 import { getGameCacheConfig } from '../../utils/config';
@@ -14,9 +15,24 @@ if (!id) {
 let espnGame: ESPNPlayByPlayResponse | null = null;
 let game: ProcessedGame | null = null;
 try {
-    espnGame = await retrieveGamePage(id);
+    const guarded = await retrieveGamePageGuarded(id);
+    espnGame = guarded.page;
     if (!espnGame) {
         throw new Error(`Game ID ${id} had no data`);
+    }
+    if (guarded.regressed) {
+        // ESPN served a payload older than one we have already shown. Render it
+        // (there is nothing fresher to render) but never let it be cached, or
+        // the backwards state would persist for the whole TTL.
+        console.warn(`stale ESPN payload for game ${id}: ${guarded.reason}`);
+        const gop = gopStorage.getStore();
+        if (gop) {
+            gop.render_outcome = 'degraded';
+            gop.events.push({ table: 'error_log', row: {
+                service: 'astro', level: 'warn',
+                message: `stale ESPN payload: ${guarded.reason}`.slice(0, 500),
+                stack: null, path: `/game/${id}`, game_id: String(id), context: null } });
+        }
     }
     
     const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
@@ -24,7 +40,7 @@ try {
         game = await retrieveProcessedGame(id, config.maxAge || 30);
     }
 
-    Astro.cache.set(config)
+    Astro.cache.set(guarded.regressed ? false : config)
 } catch (e: any) {
     console.error(`ERROR while retrieving game data: ${e}, ${e.stack}`);
     Astro.cache.set(false);

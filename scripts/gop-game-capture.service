@@ -1,0 +1,20 @@
+[Unit]
+Description=Capture live CFB game-state timelines from ESPN for GOP edge-case fixtures
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/mnt/sdv_repos/game-on-paper-app
+# --live-only: exits within seconds when nothing is under way, so the restart
+# loop below acts as a cheap poller rather than holding a process open all week.
+ExecStart=/usr/bin/python3 -u scripts/capture_game_states.py --auto --live-only --interval 45 --max-hours 6
+Restart=always
+RestartSec=600
+StandardOutput=append:/mnt/sdv_repos/game-on-paper-app/logs/game-capture.log
+StandardError=inherit
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

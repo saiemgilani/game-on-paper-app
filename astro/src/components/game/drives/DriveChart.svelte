@@ -1,6 +1,6 @@
 
 <script>
-import { determineLuminance } from "../../../utils/misc";
+import { determineLuminance, teamColorHex } from "../../../utils/misc";
 const { id, subtitle, result, plays, offense, defense, isNeutralSite } = $props();
 
 let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
@@ -202,9 +202,9 @@ class FootballField {
         };
 
         this.fillEndZones = function () {
-            this.ctx.fillStyle = team1.color.startsWith("#") ? team1.color : `#${team1.color}`;
+            this.ctx.fillStyle = teamColorHex(team1.color);
             this.ctx.fillRect(0, 0, this.fieldSegment, this.fieldHeight);
-            this.ctx.fillStyle = team2.color.startsWith("#") ? team2.color : `#${team2.color}`;
+            this.ctx.fillStyle = teamColorHex(team2.color);
             this.ctx.fillRect(this.fieldWidth - this.fieldSegment, 0, this.fieldSegment, this.fieldHeight);
         };
 
@@ -268,9 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
         endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone
         endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone;
         if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(`#${offense.color}`, play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
         } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(`#${offense.color}`, play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
         }
     }
 });
