@@ -36,14 +36,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
       message: String((err as Error)?.message ?? err).slice(0, 500),
       stack: String((err as Error)?.stack ?? '').slice(0, 4000),
       path: url.pathname.slice(0, 300), game_id: collector.game_id, context: null } });
-    emit(context, collector, url, 500, t0, key);
+    emit(context, collector, url, null, 500, t0, key);
     throw err;
   }
-  emit(context, collector, url, response.status, t0, key);
+  emit(context, collector, url, response, response.status, t0, key);
   return response;
 });
 
-function emit(context: any, c: GopCollector, url: URL, status: number, t0: number, key: string) {
+function emit(context: any, c: GopCollector, url: URL, res: Response | null, status: number, t0: number, key: string) {
   try {
     // skip static asset noise; page/API/upstream signal only
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/_astro/')) return;
@@ -59,8 +59,12 @@ function emit(context: any, c: GopCollector, url: URL, status: number, t0: numbe
       ua: (h.get('user-agent') ?? '').slice(0, 400),
       referrer: (h.get('referer') ?? '').slice(0, 400) || null,
       game_id: c.game_id,
-      bytes_out: null,
-      cache_status: c.cache_status,
+      // content-length is absent on streamed SSR responses; null then, by design
+      bytes_out: parseIntOrNull(res?.headers.get('content-length')),
+      // what the app *asked* the CDN to do. An edge HIT never reaches the
+      // Worker at all, so a true hit/miss verdict is not observable here --
+      // this records caching intent, which is the actionable half.
+      cache_status: c.cache_status ?? res?.headers.get('cache-control')?.slice(0, 80) ?? null,
       render_outcome: c.render_outcome,
       missing_datasets: c.missing_datasets,
     } });
@@ -73,6 +77,11 @@ function emit(context: any, c: GopCollector, url: URL, status: number, t0: numbe
   } catch {
     /* fail-open */
   }
+}
+
+function parseIntOrNull(v: string | null | undefined): number | null {
+  const n = Number(v);
+  return v != null && Number.isFinite(n) ? n : null;
 }
 
 function safeClientAddress(context: any): string | null {
