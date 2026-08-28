@@ -43,3 +43,5 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /cfb/
 Disallow: /game/matchup
+
+Sitemap: https://gameonpaper.com/sitemap.xml

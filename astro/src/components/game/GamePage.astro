@@ -170,7 +170,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta name="twitter:card" content="summary">
         <meta name="title" content={title}>
         <meta name="medium" content="website">
-        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
         <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>

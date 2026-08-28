@@ -28,6 +28,12 @@ if (season) {
 titleParts = titleParts.concat(["College Football", "Game on Paper"])
 
 const titleText = titleParts.join(" | ")
+// Canonical/OG values. Astro.url.pathname is already the served path, so this
+// cannot drift from the real URL the way a hand-built prefix can.
+const canonicalUrl = new URL(Astro.url.pathname, "https://gameonpaper.com").href
+const pageDescription = isScoreboard
+    ? "Live college football scoreboard with EPA, win probability and advanced box scores for every game."
+    : `College football schedule and advanced stats: ${titleText}.`
 let games: ESPNScheduleEvent[] = [];
 try {
     if (isScoreboard) {
@@ -102,10 +108,28 @@ const allTeamIds = games.map(g => {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
         <title>{title || titleText}</title>
+        {/* The scoreboard and week pages are the most-shared URLs on the site but
+            carried no description, canonical or OpenGraph tags at all, so posting
+            gameonpaper.com anywhere rendered a bare link with no title or image.
+            Game pages already ship the full set; this brings these in line. */}
+        <meta name="description" content={pageDescription}>
+        <link rel="canonical" href={canonicalUrl}>
+        <meta property="og:site_name" content="GameOnPaper.com">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content={canonicalUrl}>
+        <meta property="og:title" content={title || titleText}>
+        <meta property="og:description" content={pageDescription}>
+        <meta property="og:image" content="https://gameonpaper.com/assets/img/android-chrome-512x512.png">
+        <meta property="og:image:width" content="512">
+        <meta property="og:image:height" content="512">
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:site" content="Game on Paper">
+        <meta name="twitter:title" content={title || titleText}>
+        <meta name="twitter:description" content={pageDescription}>
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/index.css" rel="stylesheet">
         <link href="/assets/css/dark-index.css" rel="stylesheet">
-        <script defer is:inline data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
         <DarkModeLogos teamIds={allTeamIds} />
     </head>
     <body>
