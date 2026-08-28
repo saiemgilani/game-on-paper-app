@@ -197,6 +197,80 @@ def iter_fixtures():
                         continue
 
 
+TIMELINE_PROBES = []
+
+
+def timeline_probe(pid, severity, why):
+    def deco(fn):
+        TIMELINE_PROBES.append({"id": pid, "severity": severity, "why": why, "fn": fn})
+        return fn
+    return deco
+
+
+@timeline_probe("state_regression", "UGLY",
+                "ESPN served a payload OLDER than the one before it: score/clock/plays "
+                "move backwards. A page rendered from it shows the score going down, "
+                "and any 'latest play' UI flickers to a stale play.")
+def _t1(states):
+    """states: [(seq, ts, state_dict)] in capture order."""
+    bad = []
+    prev = None
+    for seq, ts, st in states:
+        if prev and not st.get("completed"):
+            pn, cn = prev.get("n_plays") or 0, st.get("n_plays") or 0
+            pp, cp = prev.get("period") or 0, st.get("period") or 0
+            if cn < pn or (isinstance(cp, int) and isinstance(pp, int) and cp < pp):
+                bad.append(f"#{prev['_seq']}->{seq}: period {pp}->{cp}, "
+                           f"plays {pn}->{cn}, score {prev.get('score')}->{st.get('score')}")
+        st = dict(st); st["_seq"] = seq
+        prev = st
+    return bad[:4]
+
+
+@timeline_probe("score_decreased", "BREAKS",
+                "a team's score went DOWN between states -- renders as a visibly wrong "
+                "scoreboard and corrupts any win-probability derived from it")
+def _t2(states):
+    bad = []
+    prev = None
+    for seq, ts, st in states:
+        cur = st.get("score") or ""
+        if prev and "-" in cur and "-" in prev:
+            try:
+                a = [int(x) for x in prev.split("-")]
+                b = [int(x) for x in cur.split("-")]
+                if len(a) == len(b) and any(y < x for x, y in zip(a, b)):
+                    bad.append(f"#{seq}: {prev} -> {cur}")
+            except ValueError:
+                pass
+        if "?" not in cur:
+            prev = cur
+    return bad[:4]
+
+
+def scan_timelines():
+    """Run cross-state probes over each captured game's manifest."""
+    out = defaultdict(list)
+    for mf in sorted(glob.glob(os.path.join(ROOT, "*", "manifest.jsonl"))):
+        gid = os.path.basename(os.path.dirname(mf))
+        states = []
+        with open(mf) as f:
+            for line in f:
+                if line.strip():
+                    r = json.loads(line)
+                    states.append((r["seq"], r["ts"], r["state"]))
+        if len(states) < 2:
+            continue
+        for pr in TIMELINE_PROBES:
+            try:
+                found = pr["fn"](states)
+            except Exception as e:
+                found = [f"probe crashed: {type(e).__name__}: {e}"]
+            if found:
+                out[pr["id"]].append((gid, f"{len(states)} states", found))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--live", nargs="*", help="fetch these game ids and scan now")
@@ -233,7 +307,11 @@ def main():
             for h in scan_payload(payload):
                 findings[h["id"]].append((gid, label, h["detail"]))
 
-    by_id = {p["id"]: p for p in PROBES}
+    if not sources:
+        for pid, rows in scan_timelines().items():
+            findings[pid].extend(rows)
+
+    by_id = {p["id"]: p for p in PROBES + TIMELINE_PROBES}
     order = {"BREAKS": 0, "UGLY": 1, "INFO": 2}
     print(f"scanned {scanned} game state(s); {len(findings)} probe(s) fired\n")
     breaks = 0
