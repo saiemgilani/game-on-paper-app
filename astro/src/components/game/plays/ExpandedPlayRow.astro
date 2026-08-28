@@ -50,7 +50,7 @@ if (play.two_pt_recommendation) {
 <div class="ms-sm-auto col-lg-6">
 <p style="text-align: center;"><strong>Play Type:</strong> {play.type.text}</p>
 <p style="text-align: center;"><strong>Yards to End Zone (Before to After):</strong> {play.start.yardsToEndzone} to {play.end.yardsToEndzone}</p>
-<p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation({offense}), cleanAbbreviation(defense), play.type.text)}</p>
+<p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text)}</p>
 <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> {roundNumber(play.expectedPoints.after, 2, 2)} - {roundNumber(play.expectedPoints.before, 2, 2)} = {roundNumber(play.expectedPoints.added, 2, 2)}</p>
 <p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
 <p style="text-align: center;"><strong>Score Difference (End):</strong> {play.end.pos_score_diff} ({roundNumber(play.end.ExpScoreDiff, 2, 2)})</p>
