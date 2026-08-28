@@ -1,2 +1,45 @@
-User-agent: *
+# Game on Paper
+#
+# /game/<id> is expensive: a first view of an uncached game costs several
+# seconds of EPA/WP model work on the API host. Crawlers were 59% of game-page
+# traffic in the 48h to 2026-08-27, most of it parasitic SEO bots walking
+# hundreds of distinct games and forcing a fresh computation for each one.
+#
+# Search engines that send real readers stay welcome; the backlink-farming
+# crawlers do not. NB Disallow only covers /cfb/, the pre-Astro URL layout,
+# which is why /game/ was wide open.
+
+# Bots that crawl heavily and send nothing back.
+User-agent: MJ12bot
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: DotBot
+User-agent: DataForSeoBot
+User-agent: Bytespider
+User-agent: PetalBot
+User-agent: SeekportBot
+User-agent: BLEXBot
+User-agent: serpstatbot
+User-agent: ZoominfoBot
+User-agent: magpie-crawler
+Disallow: /
+
+# Search engines: index us, but pace the expensive routes.
+User-agent: Googlebot
+Crawl-delay: 5
+Disallow: /admin
+Disallow: /api/
 Disallow: /cfb/
+
+User-agent: bingbot
+Crawl-delay: 10
+Disallow: /admin
+Disallow: /api/
+Disallow: /cfb/
+
+User-agent: *
+Crawl-delay: 20
+Disallow: /admin
+Disallow: /api/
+Disallow: /cfb/
+Disallow: /game/matchup
