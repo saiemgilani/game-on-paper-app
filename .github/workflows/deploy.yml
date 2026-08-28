@@ -114,8 +114,13 @@ jobs:
             chmod 600 .env
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
             docker compose pull
-            docker stop $(docker ps -a -q) || true
+            # `docker stop` leaves the stopped container in place, so the next
+            # `up` collides with its name ("container name is already in use").
+            # `compose down` stops AND removes what compose owns, which is also
+            # narrower than stopping every container on the host.
+            docker compose -f docker-compose.yml down --remove-orphans || true
             docker compose -f docker-compose.yml up -d --pull always
+            docker compose -f docker-compose.yml ps
             docker system prune --force
           ENDSSH
 
