@@ -75,6 +75,13 @@ threads per worker buy almost nothing — the GIL serialises them, and only the
 
     ceiling ≈ 4 workers / 7.7 s ≈ 0.52 games/s ≈ **~31 game-processes/minute**
 
+**The API droplet has 4 cores** (confirmed by the new `python-host` telemetry,
+2.0 GB in use, load 14.8% of capacity at current traffic). So the hardcoded
+`workers=4` was already right for this box by coincidence, and 4 cores is a
+*hard* ceiling: with ~7.5 s of CPU per game, no worker-count change can push
+past ~32 games/minute. Only three things move it — less work arriving
+(robots.txt, §4), less work per game (profile the pipeline), or more cores.
+
 The data agrees: the busiest minutes (26–32 calls) show 50 s averages. Above
 ~30/min the queue grows without bound.
 
