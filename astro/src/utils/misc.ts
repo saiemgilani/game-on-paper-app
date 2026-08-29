@@ -454,7 +454,7 @@ export function getPercentileKey(metric: string): string {
 }
 
 export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
-    if (!input) {
+    if (!input && input != 0) {
         return null;
     }
     
