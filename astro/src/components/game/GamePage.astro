@@ -61,9 +61,6 @@ const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = game.header.competitions[0].status;
 
-const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
-const isFavorite = isEventFavorite(favorites, game.header.competitions[0])
-
 let title = "";
 let subtitle = "";
 if (gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0)) {
@@ -150,7 +147,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <link href="/assets/css/dark-game.css" rel="stylesheet">
         <link href="/assets/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
         { (isChampEvent) && (<link href="/assets/css/championship.css" rel="stylesheet" />) }
-        { (isFavorite) && (<link href="/assets/css/favorite.css" rel="stylesheet" />) }
 
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
