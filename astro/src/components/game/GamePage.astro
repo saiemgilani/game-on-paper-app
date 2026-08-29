@@ -233,6 +233,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teamBoxScores={game.advBoxScore.team}
                                     useSuffix={true}
                                     decimalPoints={2}
+                                    caption='Totals may not add up due to plays fitting in multiple categories (e.g. a penalty on a punt).'
                                 />
                                 <TeamMetricsTable 
                                     title="Production"
