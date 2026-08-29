@@ -18,24 +18,32 @@ jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      - name: Purge the Astro pages (Workers Caching, in-worker)
+      # GitHub runners get a Cloudflare bot challenge (cf-mitigated: challenge) on
+      # /admin/*, so the call is made from the API host the deploy already SSHes into.
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.PORT }} ${{ secrets.API_HOST }} >> ~/.ssh/known_hosts
+      - name: Purge the Astro pages (Workers Caching, in-worker, via the API host)
         env:
+          SSH_HOST: ${{ secrets.API_HOST }}
+          SSH_USER: ${{ secrets.API_USERNAME }}
+          SSH_PORT: ${{ secrets.PORT }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
           ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
           GAME_IDS: ${{ inputs.game_ids }}
         run: |
           set -euo pipefail
           ids=$(echo "$GAME_IDS" | tr -d ' ')
-          code=$(curl -sS -o /tmp/body -D /tmp/hdr -w '%{http_code}' -u "$ADMIN_USER:$ADMIN_PASS" \
-            -A "gop-purge-workflow" "https://gameonpaper.com/admin/api/purge-game?ids=$ids")
-          if [ "$code" != "200" ]; then
-            echo "::error::purge endpoint returned HTTP $code"
-            grep -iE '^(cf-mitigated|cf-ray|server|content-type|www-authenticate):' /tmp/hdr || true
-            head -c 400 /tmp/body; echo
-            exit 1
-          fi
-          jq -c . /tmp/body
-          jq -e '.ok' /tmp/body >/dev/null
+          # credentials travel on stdin, never on the remote command line
+          resp=$(printf '%s\n%s\n' "$ADMIN_USER" "$ADMIN_PASS" | ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "read -r u; read -r p; curl -sS -w '\n%{http_code}' -u \"\$u:\$p\" -A gop-purge-workflow 'https://gameonpaper.com/admin/api/purge-game?ids=$ids'")
+          code=$(echo "$resp" | tail -1); body=$(echo "$resp" | sed '$d')
+          if [ "$code" != "200" ]; then echo "::error::purge endpoint returned HTTP $code"; echo "$body" | head -c 400; echo; exit 1; fi
+          echo "$body" | jq -c .
+          echo "$body" | jq -e '.ok' >/dev/null
 
       - name: Purge the cached API responses (zone cache, by URL)
         env:
