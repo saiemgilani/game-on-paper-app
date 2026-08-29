@@ -17,10 +17,20 @@ ENV UV_NO_DEV=1
 # only that one: everything else stays pinned by the lock) makes every build a
 # subscription to main. The resolved SHA is written into the image so
 # /healthcheck can report exactly what is running.
-RUN uv lock --upgrade-package sportsdataverse && \
+#
+# SDV_PY_MAIN_SHA is the cache-buster. The re-resolve layer's inputs are only
+# pyproject.toml, uv.lock and the command, so a warm Docker cache would reuse it
+# and keep the old SHA no matter what main did. The workflow resolves main's SHA
+# (git ls-remote) and passes it in; a new value changes the layer and forces the
+# re-resolve. It is informational otherwise -- uv still resolves main itself.
+ARG SDV_PY_MAIN_SHA=unpinned
+RUN echo "requested sportsdataverse-py main @ ${SDV_PY_MAIN_SHA}" && \
+    uv lock --upgrade-package sportsdataverse && \
     uv sync --locked --all-extras --all-groups && \
-    grep -A2 'name = "sportsdataverse"' uv.lock | grep -oE 'sportsdataverse-py\?branch=main#[0-9a-f]+' | sed 's/.*#//' > /code/sdv_py_sha.txt && \
-    echo "sportsdataverse-py @ $(cat /code/sdv_py_sha.txt)"
+    sha="$(grep -A2 'name = "sportsdataverse"' uv.lock | grep -oE 'sportsdataverse-py\?branch=main#[0-9a-f]+' | sed 's/.*#//')" && \
+    echo "$sha" | grep -qE '^[0-9a-f]{40}$' || { echo "could not extract a 40-hex sportsdataverse SHA from uv.lock (got: '$sha')" >&2; exit 1; } && \
+    printf '%s' "$sha" > /code/sdv_py_sha.txt && \
+    echo "sportsdataverse-py @ $sha"
 
 # RUN uv pip uninstall -y xgboost nvidia-nccl-cu12 && \
 #     uv pip install --no-cache-dir --force-reinstall --no-deps xgboost-cpu==2.1.4
