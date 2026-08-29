@@ -265,5 +265,5 @@ const subtitle = "Operational dashboards for Game on Paper";
     refreshers[active]().catch(() => {});
   });
   refreshOverview().catch(() => {});
-  setInterval(() => refreshers[active]().catch(() => {}), 45000);
+  setInterval(() => refreshers[active]().catch((e) => { console.error(e)}), 45000);
 </script>
