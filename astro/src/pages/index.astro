@@ -1,7 +1,24 @@
 ---
 import SchedulePage from "../components/schedule/SchedulePage.astro";
+import { getCurrentScoreboard, type ESPNScheduleEvent } from "../resources/espn";
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config";
 import { CURRENT_YEAR } from "../utils/constants";
+
+let games: ESPNScheduleEvent[] = [];
+try {
+    games = await getCurrentScoreboard(true, true);
+    Astro.cache.set({
+        maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
+        swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
+        tags: ["favorites-enabled", "scoreboard"],
+    });
+} catch (e) {
+    console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
+    Astro.cache.set(false);
+    // make sure the page still loads
+    games = [];
+}
 
 ---
 
-<SchedulePage title={"College Football | Game on Paper"} season={CURRENT_YEAR} isScoreboard={true} />
+<SchedulePage title={"College Football | Game on Paper"} season={CURRENT_YEAR} isScoreboard={true} games={games} />

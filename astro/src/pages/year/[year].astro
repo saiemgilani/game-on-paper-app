@@ -1,9 +1,24 @@
 ---
 import SchedulePage from "../../components/schedule/SchedulePage.astro";
+import { getRemoteGames, type ESPNScheduleEvent } from "../../resources/espn";
 import { CURRENT_YEAR } from "../../utils/constants";
 
 const { year } = Astro.params;
-const group = Astro.url.searchParams.get("group") || "80";
+let groupRaw = Astro.url.searchParams.get("group") || "80";
+const group = parseInt(groupRaw || "80")
+const seasontype = 2;
+const week = 1;
+const season = parseInt(year || `${CURRENT_YEAR}`)
+
+let games: ESPNScheduleEvent[] = [];
+try {
+    games = await getRemoteGames(season, seasontype, week, group);
+} catch (e) {
+    console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
+    Astro.cache.set(false);
+    // make sure the page still loads
+    games = [];
+}
 ---
 
-<SchedulePage season={parseInt(year || `${CURRENT_YEAR}`)} seasontype={2} week={1} group={parseInt(group || "80")} />
+<SchedulePage season={season} seasontype={seasontype} week={week} group={group} isScoreboard={false} games={games} />

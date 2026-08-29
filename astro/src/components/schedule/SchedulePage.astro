@@ -1,14 +1,11 @@
 ---
-import { getCurrentScoreboard, getRemoteGames, type ESPNScheduleEvent } from "../../resources/espn";
-import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
-import { isEventFavorite } from "../../utils/misc";
+import { type ESPNScheduleEvent } from "../../resources/espn";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
 import GameThumb from "./GameThumb.astro";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
-import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../../utils/config";
 
 interface Props {
   title?: string;
@@ -17,9 +14,12 @@ interface Props {
   week?: number;
   group?: number;
   isScoreboard?: boolean
+  games: ESPNScheduleEvent[]
 }
 
 const { title, season, seasontype, week, group, isScoreboard } = Astro.props;
+let { games } = Astro.props;
+
 let titleParts: string[] = [];
 if (season) {
     titleParts.push(`${season}`)
@@ -34,27 +34,9 @@ const canonicalUrl = new URL(Astro.url.pathname, "https://gameonpaper.com").href
 const pageDescription = isScoreboard
     ? "Live college football scoreboard with EPA, win probability and advanced box scores for every game."
     : `College football schedule and advanced stats: ${titleText}.`
-let games: ESPNScheduleEvent[] = [];
-try {
-    if (isScoreboard) {
-        games = await getCurrentScoreboard(true, true);
-        Astro.cache.set({
-            maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
-            swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
-            tags: ["favorites-enabled", "scoreboard"],
-        });
-    } else {
-        games = await getRemoteGames(season, seasontype, week, group);
-        // each page handles this differently
-    }
-} catch (e) {
-    console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
-    Astro.cache.set(false);
-    // make sure the page still loads
-    games = [];
-}
 
-games.sort((a, b) => {
+
+games.sort((a: ESPNScheduleEvent, b: ESPNScheduleEvent) => {
     if (a.status?.type.name.includes("IN_PROGRESS") && !b.status?.type.name.includes("IN_PROGRESS")) {
         return -1;
     } else if (b.status?.type.name.includes("IN_PROGRESS") && !a.status?.type.name.includes("IN_PROGRESS")) {
