@@ -42,9 +42,9 @@ if (["TURNOVER", "DOWNS", "MISSED FG", "FUMBLE", "SAFETY", "INT"].includes(drive
 }
 
 let maxEPA = drivePlays.reduce((prev: ProcessedPlay, current: ProcessedPlay) => (prev && prev.EPA > current.EPA) ? prev : current, { EPA: Number.NEGATIVE_INFINITY })
-let epaDownText = (maxEPA.penalty_assessed_on_kickoff && maxEPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }`;
+let epaDownText = (maxEPA.penalty_assessed_on_kickoff && maxEPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxEPA.period, maxEPA.start.down, maxEPA.type.text, maxEPA.start.distance, maxEPA.start.yardsToEndzone)} at ${ formatYardline(maxEPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxEPA.type.text) }`;
 let maxWPA = drivePlays.reduce((prev: ProcessedPlay, current: ProcessedPlay) => (prev && prev.wpa > current.wpa) ? prev : current, { wpa: Number.NEGATIVE_INFINITY })
-let wpaDownText = (maxWPA.penalty_assessed_on_kickoff && maxWPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxWPA.type.text) }`;
+let wpaDownText = (maxWPA.penalty_assessed_on_kickoff && maxWPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxWPA.period, maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxWPA.type.text) }`;
 
 let totalEPA = drivePlays.map((p: ProcessedPlay) => p.EPA).reduce((acc: number, val: number) => acc + (val || 0))
 let avgEPA = drivePlays.length == 0 ? 0 : (totalEPA / drivePlays.length)

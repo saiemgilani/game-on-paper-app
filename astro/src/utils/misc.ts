@@ -144,7 +144,10 @@ export function formatYardline(yardsToEndzone: number, offenseAbbreviation: stri
     }
 }
 
-export function formatDistance(down: number, type: string, distance: number, yardline: number): string {
+export function formatDistance(period: number, down: number, type: string, distance: number, yardline: number): string {
+    if (period >= 5 && down == 0) {
+        return "2PT"
+    }
     var dist = (distance == 0 || yardline <= distance) ? "Goal" : distance
     var downForm = formatDown(down, type)
     if (downForm.includes("Kickoff") || downForm.includes("PAT")) {

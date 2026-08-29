@@ -35,7 +35,7 @@ const awayTeam = { id: play.awayTeamId, location: play.awayTeamName, abbreviatio
 const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
 const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
-const downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }`;
+const downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(play.period, play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }`;
 ---
 
 <tr data-bs-toggle={expandable ? "collapse" : ""} href={expandable ? `#play-${prefix}-${play.game_play_number}` : ''} class=`accordion-toggle ${classText}`>
