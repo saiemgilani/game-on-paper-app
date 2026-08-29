@@ -10,6 +10,7 @@ import { getGameCacheConfig } from '../../utils/config';
 const { id } = Astro.params;
 if (!id) {
     Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
     return Astro.redirect("/"); 
 }
 let espnGame: ESPNPlayByPlayResponse | null = null;
@@ -40,10 +41,19 @@ try {
         game = await retrieveProcessedGame(id, config.maxAge || 30);
     }
 
-    Astro.cache.set(guarded.regressed ? false : config)
+    if (guarded.regressed) {
+        // Astro.cache.set(false) emits NO header, and Workers Caching treats a
+        // header-less 200 as cacheable for a heuristic two hours -- longer than any
+        // live TTL here. Opting out has to be explicit.
+        Astro.cache.set(false);
+        Astro.response.headers.set("Cache-Control", "no-store");
+    } else {
+        Astro.cache.set(config);
+    }
 } catch (e: any) {
     console.error(`ERROR while retrieving game data: ${e}, ${e.stack}`);
     Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
 }
 ---
 {

@@ -137,3 +137,21 @@ describe('absent signals are not regressions', () => {
     expect(isRegression(st(3, 103), st(4, 138)).regressed).toBe(true);
   });
 });
+
+describe('extractGameState play count', () => {
+  const payload = (previous: any[], current: any) => ({ gamepackageJSON: {
+    header: { competitions: [{ status: { period: 1, type: { name: 'STATUS_IN_PROGRESS', completed: false } }, competitors: [] }] },
+    drives: { previous, current } } });
+  const drive = (id: string, ids: string[]) => ({ id, plays: ids.map((i) => ({ id: i })) });
+
+  test('does not count the in-progress drive twice when ESPN lists it under previous too', () => {
+    const cur = drive('d3', ['31', '32', '33', '34']);
+    const prev = [drive('d1', ['11', '12']), drive('d2', ['21']), cur];
+    expect(extractGameState(payload(prev, cur))!.plays).toBe(7);
+    expect(extractGameState(payload(prev, null))!.plays).toBe(7);
+  });
+
+  test('plays without ids still count', () => {
+    expect(extractGameState(payload([{ id: 'd1', plays: [{}, {}] }], null))!.plays).toBe(2);
+  });
+});

@@ -47,9 +47,20 @@ export function extractGameState(payload: any): GameState | null {
     const drives = gp.drives;
     let plays: number | null = null;
     if (drives && (drives.previous || drives.current)) {
-        plays = 0;
-        for (const d of drives.previous ?? []) plays += (d?.plays ?? []).length;
-        if (drives.current) plays += (drives.current.plays ?? []).length;
+        // ESPN lists the drive in progress under BOTH `current` and `previous`.
+        // Summing the two counts its plays twice, the high-water mark inflates, and
+        // once the drive ends every honest payload reads as a regression (401864570:
+        // "plays 36 -> 28" on a 29-play game). Count distinct play ids; fall back to
+        // lengths only for plays that carry no id.
+        const seen = new Set<string>();
+        let anonymous = 0;
+        const all = [...(drives.previous ?? []), ...(drives.current ? [drives.current] : [])];
+        for (const d of all) {
+            for (const pl of d?.plays ?? []) {
+                if (pl?.id != null) seen.add(String(pl.id)); else anonymous += 1;
+            }
+        }
+        plays = seen.size + anonymous;
     }
     const rawPeriod = Number(status.period);
     return {

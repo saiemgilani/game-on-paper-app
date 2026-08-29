@@ -46,6 +46,7 @@ if (canDisplayMatchupView) {
     })
 } else {
     Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store"); // see [id].astro: set(false) alone is cached ~2h
 }
 ---
 
