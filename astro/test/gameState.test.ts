@@ -127,6 +127,12 @@ describe('absent signals are not regressions', () => {
     const hw = mergeHighWater(st(4, 150), { period: null, plays: null, scores: [0, 0], completed: true, status: 'STATUS_FINAL' } as any);
     expect(hw).toMatchObject({ period: 4, plays: 150, completed: true });
   });
+  test('a final payload with fewer plays than a final high-water mark is post-game cleanup, not a regression', () => {
+    // 401868073: ESPN trimmed 184 -> 182 plays after the game went final; the
+    // guard flagged it forever and the page never cached again.
+    const hw = st(4, 184, [30, 29], true, 'STATUS_FINAL');
+    expect(isRegression(st(4, 182, [30, 29], true, 'STATUS_FINAL'), hw).regressed).toBe(false);
+  });
   test('real regressions are still caught', () => {
     expect(isRegression(st(3, 103), st(4, 138)).regressed).toBe(true);
   });
