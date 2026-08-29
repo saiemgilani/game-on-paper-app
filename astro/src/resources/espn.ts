@@ -478,7 +478,7 @@ export async function retrieveGamePage(gameId: string | number): Promise<ESPNPla
 }
 
 export type GuardedGamePage = {
-    page: ESPNPlayByPlayResponse;
+    page: ESPNPlayByPlayResponse | null
     /** true when even the retry was older than what we have already served */
     regressed: boolean;
     reason: string | null;
@@ -499,13 +499,35 @@ const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
  * than costing anyone a page.
  */
 export async function retrieveGamePageGuarded(gameId: string | number): Promise<GuardedGamePage> {
-    const page = await retrieveGamePage(gameId);
     const key = `gamestate:${gameId}`;
+    const gameContentKey = `gamecontent:${gameId}`;
+
+    let page: ESPNPlayByPlayResponse | null = null;
+    try {
+        page = await retrieveGamePage(gameId);
+    } catch (e: any) {
+        console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
+    }
+
+    // if we can't pull the page for any reason, check if we have a cached version in KV:
+    if (!page) {
+        try {
+            console.error(`game-content guard: pulling cached content from KV for ${gameId}`);
+            page = await env.ESPN_API_CACHE.get(gameContentKey, "json") as ESPNPlayByPlayResponse;
+            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error" };
+        } catch (e: any) {
+            // if this cache request fails, just return a bad result.
+            console.error(`game-content guard: KV read failed for ${gameId}: ${e}, ${e.stack}`);
+            return { page: null, regressed: false, reason: null };
+        }
+    }
+
+    // if the page exists, then check its freshness
     let highWater: GameState | null = null;
     try {
         highWater = await env.ESPN_API_CACHE.get(key, "json") as GameState | null;
-    } catch (e) {
-        console.error(`game-state guard: KV read failed for ${gameId}: ${e}`);
+    } catch (e: any) {
+        console.error(`game-state guard: KV read failed for ${gameId}: ${e}, ${e.stack}`);
         return { page, regressed: false, reason: null };
     }
 
@@ -518,8 +540,8 @@ export async function retrieveGamePageGuarded(gameId: string | number): Promise<
             const retryPage = await retrieveGamePage(gameId);
             best = pickFresher(best, { state: extractGameState(retryPage), payload: retryPage });
             verdict = isRegression(best.state, highWater);
-        } catch (e) {
-            console.error(`game-state guard: refetch failed for ${gameId}: ${e}`);
+        } catch (e: any) {
+            console.error(`game-state guard: refetch failed for ${gameId}: ${e}, ${e.stack}`);
         }
     }
 
@@ -529,6 +551,7 @@ export async function retrieveGamePageGuarded(gameId: string | number): Promise<
     if (merged && (!highWater || merged.period > highWater.period
                    || merged.plays > highWater.plays || merged.completed !== highWater.completed)) {
         await safeCachePut(env.ESPN_API_CACHE, key, JSON.stringify(merged), GAME_STATE_TTL);
+        await safeCachePut(env.ESPN_API_CACHE, gameContentKey, JSON.stringify(page), GAME_STATE_TTL);
     }
 
     return { page: best.payload, regressed: verdict.regressed, reason: verdict.reason };

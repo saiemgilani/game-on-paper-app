@@ -11,8 +11,9 @@ interface Props {
     teamBoxScores: ProcessedTeamMetricBoxScore[]
     useSuffix: boolean
     decimalPoints: number
+    caption?: string
 }
-const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints } = Astro.props;
+const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption } = Astro.props;
 
 function handleMetricRows(item: string): string {
     const finalDecimalPoints = decimalPoints || 1;
@@ -80,6 +81,9 @@ function handleMetricRows(item: string): string {
 
 <div class="table-responsive">
     <table class="table table-sm table-responsive">
+        {
+            (caption) && (<caption class="text-muted text-small">{caption}</caption>)
+        }
         <thead>
             <tr>
                 <th class="box-heading">{title}</th>
