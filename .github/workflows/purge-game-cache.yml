@@ -1,0 +1,38 @@
+# Purge a completed game's cached render so a parser fix in sportsdataverse-py
+# reaches the page. Completed games are edge-cached for a year on two layers:
+# the Astro page (/game/<id>) and the worker's fetch of the Python API
+# (<PYTHON_HTTP_URL>/cfb/<id>/process, cf.cacheEverything). Both are keyed by
+# URL, so a purge-by-URL on the zone clears them; the next request re-renders
+# against whatever the API container currently runs.
+name: purge-game-cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      game_ids:
+        description: "ESPN game ids, comma-separated"
+        required: true
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge page + API cache for each game
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          API_URL: ${{ secrets.PYTHON_HTTP_URL }}
+          GAME_IDS: ${{ inputs.game_ids }}
+        run: |
+          set -euo pipefail
+          zone=$(curl -sS -H "Authorization: Bearer $CF_TOKEN" \
+            "https://api.cloudflare.com/client/v4/zones?name=gameonpaper.com" | jq -r '.result[0].id')
+          [ -n "$zone" ] && [ "$zone" != "null" ] || { echo "::error::zone lookup failed (token lacks Zone:Read?)"; exit 1; }
+          files=$(echo "$GAME_IDS" | tr ',' '\n' | sed 's/ //g' | grep . | while read -r id; do
+            echo "https://gameonpaper.com/game/$id"
+            echo "${API_URL%/}/cfb/$id/process"
+          done | jq -R . | jq -s .)
+          echo "purging: $(echo "$files" | jq -c 'map(sub("^https?://[^/]+"; "…"))')"
+          resp=$(curl -sS -X POST -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/zones/$zone/purge_cache" --data "{\"files\": $files}")
+          echo "$resp" | jq -c '{success, errors}'
+          echo "$resp" | jq -e '.success' >/dev/null
