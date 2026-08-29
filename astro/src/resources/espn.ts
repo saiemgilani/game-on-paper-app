@@ -330,16 +330,36 @@ export interface ESPNPlayByPlayResponse {
 export const ESPN_IN_PROGRESS_STATUS_NAMES = ["STATUS_IN_PROGRESS", "STATUS_END_PERIOD", "STATUS_HALFTIME", "STATUS_DELAYED"]
 export const ESPN_INVALID_GAME_STATUS_NAMES = ["STATUS_ABANDONED", "STATUS_POSTPONED"]
 
+//: ESPN throttles Cloudflare Worker egress, not us in general. Measured over the
+//: same three hours on 2026-08-28: the Worker saw 29 failures in 280 pbp fetches
+//: (10.4%, spiking to 46% in one 15-minute bucket) while python on the DO
+//: droplet saw 0 in 230 -- same endpoint, same games. Every failure was a 403.
+//: Fetching the identical URL from a non-Cloudflare IP succeeded 24/24
+//: regardless of User-Agent, so this is not the UA and not the URL.
+//:
+//: Without a retry a single 403 throws, the caller nulls the game, and the page
+//: renders "Game Not Found" for a game ESPN would happily serve on the next
+//: attempt. Failures are probabilistic rather than a hard block -- most requests
+//: in the same window succeed -- so a short retry recovers them.
+const ESPN_RETRY_STATUSES = new Set([403, 429, 500, 502, 503, 504]);
+const ESPN_RETRY_DELAYS_MS = [120, 400];
+
 async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
-    return await wrappedFetch(
-        url, 
-        {
-            ...init, 
-            headers: { 
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15"
-            }
+    const options: RequestInit = {
+        ...init,
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15"
         }
-    )
+    };
+
+    let resp = await wrappedFetch(url, options);
+    for (const delay of ESPN_RETRY_DELAYS_MS) {
+        if (!ESPN_RETRY_STATUSES.has(resp.status)) return resp;
+        console.warn(`ESPN ${resp.status} for ${url}; retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        resp = await wrappedFetch(url, options);
+    }
+    return resp;
 }
 
 export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
