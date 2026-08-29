@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
@@ -20,6 +21,10 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
     for (const id of ids) {
         try {
             await context.cache.invalidate({ path: `/game/${id}` });
+            // A forced refresh also resets the regression guard's high-water mark:
+            // a stale or inflated mark makes every honest payload "regress", which
+            // renders the page uncached on every request.
+            await env.ESPN_API_CACHE.delete(`gamestate:${id}`);
             results[id] = 'purged';
         } catch (e: any) {
             results[id] = `error: ${e?.message ?? e}`;
