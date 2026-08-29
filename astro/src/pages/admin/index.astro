@@ -267,6 +267,7 @@ const subtitle = "Operational dashboards for Game on Paper";
 
   // ---- staleness: ESPN live vs KV vs edge, per live game + the home page ----
   const stHistory = [];   // in-memory only; last 40 probes
+  const sameScores = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
   async function edgeProbe(path) {
     // same-origin GET, so cf-cache-status / age are readable; the page is
     // edge-cached so this is an observer, not a render, whenever it HITs.
@@ -282,8 +283,11 @@ const subtitle = "Operational dashboards for Game on Paper";
       const kvV = assess({ espn: g.espn, kvScoreboard: { view: g.kvScoreboard, age: kvAge } });
       const pgV = assess({ espn: g.espn, edge: pg });
       const v = assess({ espn: g.espn, kvScoreboard: { view: g.kvScoreboard, age: kvAge }, edge: pg });
-      const hwDrift = g.highWater?.period != null && g.espn.period != null && g.highWater.period < g.espn.period;
-      return { g, pg, why: v.why, behind: v.behind, drift: v.scoreDrift, kvDrift: kvV.scoreDrift, pgDrift: pgV.scoreDrift, hwDrift };
+      const pbpS = g.pbp?.state;
+      const pbpDrift = !!pbpS && !sameScores(pbpS.scores, g.espn.scores);
+      const hwDrift = g.highWater?.period != null && pbpS?.period != null && g.highWater.period < pbpS.period
+                   || g.highWater?.plays != null && pbpS?.plays != null && g.highWater.plays > pbpS.plays;
+      return { g, pg, why: v.why, behind: v.behind, drift: v.scoreDrift || pbpDrift, kvDrift: kvV.scoreDrift, pgDrift: pgV.scoreDrift, pbpDrift, hwDrift };
     });
     const worst = rows.reduce((m, r) => Math.max(m, r.behind), (home?.age ?? 0) + (kvAge ?? 0));
     stHistory.push({ t: Date.now(), home: (home?.age ?? 0) + (kvAge ?? 0), worst, drift: rows.filter((r) => r.drift).length });
@@ -291,20 +295,22 @@ const subtitle = "Operational dashboards for Game on Paper";
 
     const fmtView = (v) => v ? `${v.scores.join('-')} · Q${v.period ?? '?'} ${esc(v.clock ?? '')}` : '—';
     const pill = (ok, txt) => `<span class="pill ${ok ? 'good' : 'crit'}">${txt}</span>`;
-    const homeRow = { attr: ' style="font-weight:600"', cells: ['<span class="mono">/</span> home', `${d.liveCount} live`,
+    const homeRow = { attr: ' style="font-weight:600"', cells: ['<span class="mono">/</span> home', `${d.liveCount} live`, '—',
       kvAge == null ? pill(false, 'no timestamp') : `${kvAge}s old · ${d.kvScoreboard.games} games`,
       home ? `${esc(home.status ?? '?')} · age ${home.age}s` : '—', '—',
       `${(home?.age ?? 0) + (kvAge ?? 0)}s`, kvAge > d.config.scoreboardRefresh ? pill(false, `KV past refresh (${d.config.scoreboardRefresh}s)`) : '' ] };
-    table('t-stale', ['Game', 'ESPN live', 'KV scoreboard', 'Game page edge', 'Rendered score', 'Behind', 'Why'],
-      [homeRow, ...rows.map(({ g, pg, why, behind, kvDrift, pgDrift, hwDrift }) => ({ cells: [
+    table('t-stale', ['Game', 'ESPN scoreboard', 'ESPN pbp', 'KV scoreboard', 'Game page edge', 'Rendered score', 'Behind', 'Why'],
+      [homeRow, ...rows.map(({ g, pg, why, behind, kvDrift, pgDrift, pbpDrift, hwDrift }) => ({ cells: [
         `<a href="/game/${esc(g.id)}" target="_blank">${esc(g.name)}</a>`,
         fmtView(g.espn),
+        (g.pbp?.state ? `${g.pbp.state.scores.join('-')} · Q${g.pbp.state.period ?? '?'} · ${g.pbp.state.plays ?? '?'} plays · ${g.pbp.ms}ms` : pill(false, esc(g.pbp?.error ?? 'no pbp')))
+          + (pbpDrift ? ' ' + pill(false, 'vs sb') : ''),
         (g.kvScoreboard ? fmtView(g.kvScoreboard) : pill(false, 'not in KV')) + (kvDrift ? ' ' + pill(false, 'drift') : ''),
         pg ? `${esc(pg.status ?? '?')} · age ${pg.age}s` : '—',
         (pg?.scores ? pg.scores.join('-') : '—') + (pgDrift ? ' ' + pill(false, 'drift') : ''),
         `${behind}s`,
         [ ...why.map((w) => `${esc(w.layer)} ${w.seconds}s`),
-          hwDrift ? `hw Q${g.highWater.period} < ESPN Q${g.espn.period}` : '',
+          hwDrift ? `hw Q${g.highWater.period}/${g.highWater.plays} vs pbp Q${g.pbp.state.period}/${g.pbp.state.plays}` : '',
           g.highWater ? `hw ${g.highWater.plays ?? '?'} plays${g.highWater.completed ? ' final' : ''}` : 'no hw' ].filter(Boolean).join(' · ') ] }))]);
     document.getElementById('st-meta').textContent =
       `${new Date(d.at).toLocaleTimeString()} · refresh ${d.config.scoreboardRefresh}s / swr ${d.config.scoreboardRefresh * d.config.ttlMultiplier}s · worst ${worst}s · ${rows.filter((r) => r.drift).length} drifting`;
