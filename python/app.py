@@ -246,8 +246,10 @@ def process(game_id: int):
                 "defTeamTimeouts": record["start.defPosTeamTimeouts"],
                 "ExpScoreDiff": record["start.ExpScoreDiff"],
                 "ExpScoreDiff_Time_Ratio": record["start.ExpScoreDiff_Time_Ratio"],
-                "shortDownDistanceText": record["start.shortDownDistanceText"],
-                "possessionText": record["start.possessionText"],
+                # ESPN omits these on kickoff-only payloads (first ~40s of a live game),
+                # so sdv-py's frame has no such column at all -- not even a null.
+                "shortDownDistanceText": record.get("start.shortDownDistanceText"),
+                "possessionText": record.get("start.possessionText"),
                 "downDistanceText": record["start.downDistanceText"],
                 "posTeamSpread": record["start.pos_team_spread"],
             }
