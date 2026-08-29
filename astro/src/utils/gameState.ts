@@ -78,6 +78,11 @@ export function isRegression(candidate: GameState | null, highWater: GameState |
             : { regressed: false, reason: null };
     }
 
+    // Final vs final is never a regression. ESPN edits completed games after
+    // the fact (401868073 went 184 -> 182 plays post-final); nothing is live to
+    // walk backwards, and flagging it bypasses the cache for the whole TTL.
+    if (candidate.completed && highWater.completed) return { regressed: false, reason: null };
+
     // Compare only signals present on BOTH sides. An unknown is not a regression.
     if (candidate.period != null && highWater.period != null && candidate.period < highWater.period) {
         return { regressed: true, reason: `period ${highWater.period} -> ${candidate.period}` };
