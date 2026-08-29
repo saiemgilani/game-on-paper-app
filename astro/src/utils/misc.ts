@@ -620,9 +620,10 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 	return (z > 0) ? (1 - Prob) : Prob;
 }
 
-export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number): Promise<void> {
+export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number,
+                                   metadata?: Record<string, unknown>): Promise<void> {
     try {
-        await cache.put(key, value, { expirationTtl: ttl })
+        await cache.put(key, value, { expirationTtl: ttl, metadata })
     } catch (e: any) {
         console.error(`ERROR while writing to KV with key ${key}: ${e}, ${e.stack}`)
     }
