@@ -11,8 +11,8 @@ export interface SeasonConfig {
 function retrieveSeasonConfig(): SeasonConfig {
     if (env.SEASON_MODE == "normal") {
         return {
-            liveGameRefreshRate: 60 * 2,
-            scoreboardRefreshRate: 60 * 2,
+            liveGameRefreshRate: 60,
+            scoreboardRefreshRate: 60,
         }
     } else {
         return {
