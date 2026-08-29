@@ -376,7 +376,22 @@ def process(game_id: int):
 
 @app.route("/healthcheck", methods=["GET"])
 def healthcheck():
-    return jsonify({"status": "ok"})
+    # Report exactly which sportsdataverse-py is running. The image resolves
+    # main at build time (see python/Dockerfile), so the version string alone
+    # cannot distinguish two builds; the SHA the builder recorded can.
+    sha = None
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sdv_py_sha.txt")) as fh:
+            sha = fh.read().strip() or None
+    except OSError:
+        pass
+    try:
+        from importlib.metadata import version
+
+        sdv_version = version("sportsdataverse")
+    except Exception:
+        sdv_version = None
+    return jsonify({"status": "ok", "sportsdataverse": {"version": sdv_version, "sha": sha}})
 
 
 if __name__ == "__main__":
