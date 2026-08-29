@@ -458,7 +458,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
         if (cacheWriteEnabled && result) {
             console.info(`ESPN API cache update: scoreboard`)
-            await safeCachePut(env.ESPN_API_CACHE, "scoreboard", JSON.stringify(result), cacheTTL)
+            await safeCachePut(env.ESPN_API_CACHE, "scoreboard", JSON.stringify(result), cacheTTL, { fetchedAt: Date.now() })
         }
         return result;
     } catch (e) {
