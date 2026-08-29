@@ -58,6 +58,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
+      - name: Resolve sportsdataverse-py main
+        id: sdvpy
+        # The image re-resolves sportsdataverse-py main at build time; this SHA is
+        # the cache-buster that makes a new main commit invalidate that layer. A
+        # repository_dispatch from sportsdataverse-py carries it directly.
+        run: |
+          sha="${{ github.event.client_payload.sportsdataverse_py_sha }}"
+          if [ -z "$sha" ]; then
+            sha="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "sportsdataverse-py main @ $sha"
       - name: Publish Python container to GitHub
         uses: mr-smithers-excellent/docker-build-push@v7.0
         with:
@@ -69,6 +81,7 @@ jobs:
           dockerfile: ./python/Dockerfile
           addLatest: true
           tags: ${{ github.sha }}
+          buildArgs: SDV_PY_MAIN_SHA=${{ steps.sdvpy.outputs.sha }}
       - name: Update SHA for docker compose
         run: |
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
