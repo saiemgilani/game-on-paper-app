@@ -15,15 +15,8 @@ const homeSeason = query.get("homeSeason") || "2025";
 const homeTeamId = query.get("homeTeamId") || "59";
 
 let allTeamSeasons = retrieveAllTeams();
-const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
 allTeamSeasons.sort((a, b) => {
-    if (isTeamFavorite(favorites, a.team_id) && !isTeamFavorite(favorites, b.team_id)) {
-        return -1;
-    } else if (!isTeamFavorite(favorites, a.team_id) && isTeamFavorite(favorites, b.team_id)) {
-        return 1;
-    } else {
-        return a.name.localeCompare(b.name)
-    }
+    return a.name.localeCompare(b.name)
 })
 
 let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)

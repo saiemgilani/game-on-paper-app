@@ -25,8 +25,6 @@ if (teamSeason.confRecord) {
 }
 
 const metricSeason = (summary?.season && season != summary?.season) ? `${summary.season} ` : "";
-const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
-const isFavorite = isTeamFavorite(favorites, team.id)
 
 ---
 

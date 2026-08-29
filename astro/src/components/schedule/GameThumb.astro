@@ -93,9 +93,6 @@ const spiceLevel = calculateSpiceLevel(espnGame) || 'none';
 const gameNote = espnGame.competitions[0].notes.length > 0 ? espnGame.competitions[0].notes[0].headline : ""
 const isChamp = isChampionshipEvent(gameNote);
 
-const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
-const isFavorite = isEventFavorite(favorites, game)
-
 function generateThumbTheme(): GameThumbTheme {
     if (isChamp) {
         return {
@@ -103,15 +100,6 @@ function generateThumbTheme(): GameThumbTheme {
             borderClass: (spiceLevel == 'none') ? undefined : `spice-level-${spiceLevel}`,
             outlineClass: "outline-championship",
             textClass: "text-championship"
-        }
-    }
-
-    if (isFavorite) {
-        return {
-            buttonClass: "btn-outline-favorite",
-            borderClass: (spiceLevel == 'none') ? "outline-favorite" : `spice-level-${spiceLevel}`,
-            outlineClass: "outline-favorite",
-            textClass: "text-favorite"
         }
     }
 

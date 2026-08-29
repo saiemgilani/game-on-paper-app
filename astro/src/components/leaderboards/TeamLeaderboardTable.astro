@@ -12,7 +12,6 @@ interface Props {
 }
 
 const { season, category, metric } = Astro.props;
-const favorites = await Astro.session?.get('favorites') || SESSION_FAVORITES_DEFAULT;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
@@ -68,18 +67,6 @@ function generateMetricRow(team: any): string {
     let rankStr = formatRank(parseFloat(retrieveValue(team, metric + '_rank')))
     if ((rankStr == "N/A" && metric == 'net_adj_epa') || (metric == "net_adj_epa" && retrieveValue(team, metric) == "N/A")) {
         rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
-    }
-
-    if (isTeamFavorite(favorites, team.team_id)) {
-        const favoriteColor = `style="background: ${STANDARD_THEME_COLOR} !important; color: white !important;"`
-        return `
-        <tr ${isTeamFavorite(favorites, team.team_id) ? favoriteColor : ''}>
-            <td class="text-right" colspan="1">${rankStr}</td>
-            <td class="text-left" colspan="1">
-                <a href="/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong style="color: white !important;text-decoration-color: white !important;">${cleanField(team, "pos_team")}</strong></a>
-            </td>
-            ${colContent}
-        </tr>`;
     }
 
     return `
