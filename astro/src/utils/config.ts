@@ -1,7 +1,9 @@
 import { env } from "cloudflare:workers"
 import type { CacheOptions } from "astro";
-import { DateTime } from "luxon";
-import type { ESPNStatus } from "../resources/espn";
+import { DateTime, Interval } from "luxon";
+import type { ESPNScheduleEntry, ESPNStatus } from "../resources/espn";
+import { CURRENT_YEAR } from "./constants";
+import { GLOBAL_SCHEDULE_MAP } from "../resources/schedule";
 
 export interface SeasonConfig {
     liveGameRefreshRate: number
@@ -58,3 +60,59 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
         }
     }
 }
+
+export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean): CacheOptions {
+    const espnWeek = GLOBAL_SCHEDULE_MAP[`${season}`].find(s => s.type == `${seasontype}` && s.value == `${week}`)
+    // if we can't validate the week against the schedule, check if it has active games. 
+    // If it does, reload actively. If not, never reload.
+    if (!espnWeek) {
+        if (hasActiveGames) {
+            return {
+                maxAge: 60 * 60 * 24 * 365,
+                tags: ['week-complete'],
+            }
+        } else {
+            // cache N minutes for live games
+            return {
+                maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
+                // use SWR here for performance 
+                swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
+                tags: ['week-in-progress'],
+            }
+        }
+    }
+
+    const gameDate = DateTime.fromJSDate(date);
+    const startDate = DateTime.fromISO(espnWeek.startDate);
+    const endDate = DateTime.fromISO(espnWeek.endDate);
+    const gameWeek = Interval.fromDateTimes(startDate, endDate);
+
+    if (gameWeek.contains(gameDate) && hasActiveGames)  {
+        // cache N minutes for live games
+        return {
+            maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
+            // use SWR here for performance 
+            swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
+            tags: ['week-in-progress'],
+        }
+    } else if (gameWeek.contains(gameDate)) {
+        // cache if we're in a game week with no active games, reload every hour
+        return {
+            maxAge: 60 * 60,
+            tags: ['week-scheduled-current-week'],
+        }
+    } else if (!gameWeek.contains(gameDate) && season == CURRENT_YEAR) {
+        // if we're not in a game week but in the current season, then reload every day
+        return {
+            maxAge: 60 * 60 * 24,
+            tags: ['week-scheduled-current-season'],
+        }
+    } else {
+        // if we're not in a game week or in the current season, then never reload
+        return {
+            maxAge: 60 * 60 * 24 * 365,
+            tags: ['week-complete'],
+        }
+    }
+}
+

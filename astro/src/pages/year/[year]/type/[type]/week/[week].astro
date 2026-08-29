@@ -1,6 +1,7 @@
 ---
 import SchedulePage from "../../../../../../components/schedule/SchedulePage.astro";
 import { type ESPNScheduleEvent, getRemoteGames } from "../../../../../../resources/espn";
+import { getScheduleCacheConfig } from "../../../../../../utils/config";
 import { CURRENT_YEAR } from "../../../../../../utils/constants";
 
 const { year, type, week } = Astro.params;
@@ -13,6 +14,9 @@ const seasontype = parseInt(type || "2")
 let games: ESPNScheduleEvent[] = [];
 try {
     games = await getRemoteGames(season, seasontype, weekCleaned, group);
+    const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(item.status?.type.completed == true || item.status?.type.name.includes("SCHEDULED") || item.status?.type.name.includes("CANCEL") || item.status?.type.name.includes("POSTPONE") || item.status?.type.name.includes("DELAY")))
+    const config = getScheduleCacheConfig(new Date(), season, seasontype, weekCleaned, !!hasActiveGames);
+    Astro.cache.set(config);
 } catch (e) {
     console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
     Astro.cache.set(false);
