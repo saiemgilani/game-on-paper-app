@@ -26,9 +26,16 @@ jobs:
         run: |
           set -euo pipefail
           ids=$(echo "$GAME_IDS" | tr -d ' ')
-          resp=$(curl -sS --fail-with-body -u "$ADMIN_USER:$ADMIN_PASS" "https://gameonpaper.com/admin/api/purge-game?ids=$ids")
-          echo "$resp" | jq -c .
-          echo "$resp" | jq -e '.ok' >/dev/null
+          code=$(curl -sS -o /tmp/body -D /tmp/hdr -w '%{http_code}' -u "$ADMIN_USER:$ADMIN_PASS" \
+            -A "gop-purge-workflow" "https://gameonpaper.com/admin/api/purge-game?ids=$ids")
+          if [ "$code" != "200" ]; then
+            echo "::error::purge endpoint returned HTTP $code"
+            grep -iE '^(cf-mitigated|cf-ray|server|content-type|www-authenticate):' /tmp/hdr || true
+            head -c 400 /tmp/body; echo
+            exit 1
+          fi
+          jq -c . /tmp/body
+          jq -e '.ok' /tmp/body >/dev/null
 
       - name: Purge the cached API responses (zone cache, by URL)
         env:
