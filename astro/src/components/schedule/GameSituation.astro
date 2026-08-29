@@ -22,30 +22,21 @@ function setLastPlayHtml(situation?: ESPNGameSituation): string {
     }
     const isScoringPlay = (situation.lastPlay?.text != null && (situation.lastPlay?.text.toLocaleLowerCase().includes("two-point conversion") || situation.lastPlay?.text.includes("KICK")));
     const isKickoff = (situation.lastPlay?.text != null && situation.lastPlay?.text.toLocaleLowerCase().includes("kickoff"));
-    const isEmpty = (situation.downDistanceText == null || (situation.downDistanceText != null && situation.downDistanceText.length == 0));
+
+    let pieces: string[] = []; 
+    if (situation.lastPlay?.text) {
+        pieces.push(`<p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>`)
+    }
     
     if (isScoringPlay) {
-        return `
-            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
-            <p class="mb-0 text-muted"><strong>Next:</strong> PAT</p>
-        `
+        pieces.push(`<p class="mb-0 text-muted"><strong>Next:</strong> PAT</p>`)
     } else if (isKickoff) {
-        return `
-            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
-            <p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>
-        `
-    } else if (isEmpty && situation.lastPlay?.text) {
-        return `
-            <p class="mb-0 text-muted"><strong>Last Play:</strong> ${situation.lastPlay?.text}</p>
-        `
-    } else if (isEmpty && !situation.lastPlay?.text) {
-        return ``
-    } else {
-        return `
-            <p class="mb-0 text-muted"><strong>Last Play:</strong>${situation.lastPlay?.text}</p>
-            <p class="mb-0 text-muted"><strong>Next:</strong> ${situation.downDistanceText}</p>
-        `
+        pieces.push(`<p class="mb-0 text-muted"><strong>Next:</strong> Kickoff</p>`);
+    } else if (situation.downDistanceText) {
+        pieces.push(`<p class="mb-0 text-muted"><strong>Next:</strong> ${situation.downDistanceText}</p>`)
     }
+
+    return pieces.join("\n")
 }
 
 function setLastPlayWP(situation?: ESPNGameSituation): string {
