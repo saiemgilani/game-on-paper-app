@@ -381,7 +381,9 @@ def healthcheck():
     # cannot distinguish two builds; the SHA the builder recorded can.
     sha = None
     try:
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sdv_py_sha.txt")) as fh:
+        with open(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "sdv_py_sha.txt")
+        ) as fh:
             sha = fh.read().strip() or None
     except OSError:
         pass
@@ -391,7 +393,9 @@ def healthcheck():
         sdv_version = version("sportsdataverse")
     except Exception:
         sdv_version = None
-    return jsonify({"status": "ok", "sportsdataverse": {"version": sdv_version, "sha": sha}})
+    return jsonify(
+        {"status": "ok", "sportsdataverse": {"version": sdv_version, "sha": sha}}
+    )
 
 
 if __name__ == "__main__":
