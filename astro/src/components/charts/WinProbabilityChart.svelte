@@ -429,7 +429,7 @@ if (document.readyState !== 'loading') {
                 | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
                 {#if (lastPlay.winProbability.before < 0.5) }
-                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
+                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
             | <a id="wp-download" download={`game-wp-${id}.jpg`} href="#">Download Chart</a>
