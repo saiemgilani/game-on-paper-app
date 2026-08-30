@@ -332,6 +332,9 @@ export interface ProcessedPlay {
   pass_breakup_player_name?: string
   pass_breakup_team: number
   pass_depth?: string
+  air_yards?: number
+  yards_after_catch?: number
+  air_yardsToEndzone?: number
   pass_direction?: string
   pass_epa?: number
   pass_oe?: number
