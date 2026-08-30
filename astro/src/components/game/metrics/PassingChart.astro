@@ -8,118 +8,68 @@ interface Props {
 
 const { plays } = Astro.props;
 
-let countableAttempts = 0;
-let passMatrix: Record<string, Record<string, Record<string, number>>> = {
-    "short": {
-        "left": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        },
-        "middle": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        },
-        "right": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        }
-    },
-    "deep": {
-        "left": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        },
-        "middle": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        },
-        "right": {
-            "attempts": 0,
-            "completions": 0,
-            "yards": 0,
-            "EPA": 0,
-            "TD": 0
-        }
-    }
-};
+const DEPTHS = ["deep", "short"] as const;
+const DIRECTIONS = ["left", "middle", "right"] as const;
 
-const depthRegex = /\s(short|deep)\s/g;
-const directionRegex = /\s(left|middle|right)\s/g;
+interface Cell {
+    attempts: number
+    completions: number
+    yards: number
+    EPA: number
+    TD: number
+    airYards: number      // summed over attempts that carry air_yards
+    airAttempts: number   // how many attempts carried air_yards (aDOT denominator)
+    yac: number           // summed over completions that carry yards_after_catch
+    yacCatches: number
+}
+
+const emptyCell = (): Cell => ({ attempts: 0, completions: 0, yards: 0, EPA: 0, TD: 0, airYards: 0, airAttempts: 0, yac: 0, yacCatches: 0 });
+
+let countableAttempts = 0;
+const passMatrix: Record<string, Record<string, Cell>> = {};
+for (const d of DEPTHS) {
+    passMatrix[d] = {};
+    for (const dir of DIRECTIONS) passMatrix[d][dir] = emptyCell();
+}
 
 for (const p of plays) {
-    if (Number(p.pass) != 1) {
-        continue
+    if (Number(p.pass) != 1) continue;
+    // sdv-py extracts these from the ESPN text (null for sacks / pre-2025 games)
+    const depth = p.pass_depth;
+    const direction = p.pass_direction;
+    if (!depth || !direction) continue;
+    if (!passMatrix[depth]) passMatrix[depth] = {};
+    if (!passMatrix[depth][direction]) passMatrix[depth][direction] = emptyCell();
+
+    const cell = passMatrix[depth][direction];
+    countableAttempts += 1;
+    cell.attempts += 1;
+    cell.EPA += (p.EPA || 0);
+    cell.TD += Number(p.pass_td || 0);
+    cell.yards += (p.yds_receiving || 0);
+    cell.completions += Number(p.completion || 0);
+    if (p.air_yards != null) {
+        cell.airYards += p.air_yards;
+        cell.airAttempts += 1;
     }
-    //console.log(`${p['text']}: ${p['yds_passing']}`)
-
-    const depthMatches = p["text"]?.match(depthRegex)
-    if (depthMatches && depthMatches.length > 0) {
-        const depth = depthMatches[0].trim()
-        const directionMatches = p["text"]?.match(directionRegex);
-        if (directionMatches && directionMatches.length > 0) {
-            const direction = directionMatches[0].trim()
-            countableAttempts += 1;
-            
-            if (!Object.keys(passMatrix).includes(depth)) {
-                passMatrix[depth] = {
-                    "left": {
-                        "attempts": 0,
-                        "completions": 0,
-                        "yards": 0,
-                        "EPA": 0,
-                        "TD": 0
-                    },
-                    "middle": {
-                        "attempts": 0,
-                        "completions": 0,
-                        "yards": 0,
-                        "EPA": 0,
-                        "TD": 0
-                    },
-                    "right": {
-                        "attempts": 0,
-                        "completions": 0,
-                        "yards": 0,
-                        "EPA": 0,
-                        "TD": 0
-                    }
-                }
-            }
-
-            if (!Object.keys(passMatrix[depth]).includes(direction)) {
-                passMatrix[depth][direction] = {
-                    "attempts": 0,
-                    "completions": 0,
-                    "yards": 0,
-                    "EPA": 0,
-                    "TD": 0
-                }
-            }
-
-
-            passMatrix[depth][direction]["attempts"] += 1
-            passMatrix[depth][direction]["EPA"] += (p.EPA || 0)
-            passMatrix[depth][direction]["TD"] += Number(p.pass_td || 0)
-            passMatrix[depth][direction]["yards"] += (p.yds_receiving || 0)
-            passMatrix[depth][direction]["completions"] += Number(p.completion || 0)
-        }
+    if (p.yards_after_catch != null) {
+        cell.yac += p.yards_after_catch;
+        cell.yacCatches += 1;
     }
 }
+
+const sumRow = (depth: string): Cell =>
+    DIRECTIONS.reduce((acc, dir) => {
+        const c = passMatrix[depth]?.[dir] ?? emptyCell();
+        for (const k of Object.keys(acc) as (keyof Cell)[]) acc[k] += c[k];
+        return acc;
+    }, emptyCell());
+
+const aDOT = (c: Cell): string => c.airAttempts > 0 ? roundNumber(c.airYards / c.airAttempts, 2, 1) : "—";
+const rowLabel: Record<string, { title: string, sub: string }> = {
+    deep: { title: "Deep", sub: "12+ air yards" },
+    short: { title: "Short", sub: "0-12 air yards" },
+};
 ---
 
 
@@ -128,48 +78,35 @@ for (const p of plays) {
     <div class="table table-responsive">
         <table class="table table-sm table-responsive text-center target-matrix">
             <tbody>
-                <tr class="tm-row">
-                    <td class="tm-section-title">
-                        <span class="d-block"><strong>Deep</strong></span>
-                        <span class="text-muted"><small>12+ air yards</small></span>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["deep"]["left"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["left"]["completions"] || 0}/{passMatrix["deep"]["left"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["left"]["yards"] || 0} yds</small></p>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["deep"]["middle"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["middle"]["completions"] || 0}/{passMatrix["deep"]["middle"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["middle"]["yards"] || 0} yds</small></p>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["deep"]["right"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["right"]["completions"] || 0}/{passMatrix["deep"]["right"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["deep"]["right"]["yards"] || 0} yds</small></p>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="tm-section-title">
-                        <span class="d-block"><strong>Short</strong></span>
-                        <span class="text-muted"><small>0-12 air yards</small></span>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["short"]["left"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["short"]["left"]["completions"] || 0}/{passMatrix["short"]["left"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["short"]["left"]["yards"] || 0} yds</small></p>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["short"]["middle"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["short"]["middle"]["completions"] || 0}/{passMatrix["short"]["middle"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["short"]["middle"]["yards"] || 0} yds</small></p>
-                    </td>
-                    <td class="align-middle tm-segment">
-                        <p class="m-0"><strong>{roundNumber((passMatrix["short"]["right"]["EPA"] || 0), 2, 2)} total EPA</strong></p>
-                        <p class="m-0"><small>{passMatrix["short"]["right"]["completions"] || 0}/{passMatrix["short"]["right"]["attempts"] || 0}</small></p>
-                        <p class="m-0"><small>{passMatrix["short"]["right"]["yards"] || 0} yds</small></p>
-                    </td>
-                </tr>
+                {DEPTHS.map((depth) => {
+                    const row = sumRow(depth);
+                    return (
+                        <tr class={depth == "deep" ? "tm-row" : ""}>
+                            <td class="tm-section-title">
+                                <span class="d-block"><strong>{rowLabel[depth].title}</strong></span>
+                                <span class="text-muted"><small>{rowLabel[depth].sub}</small></span>
+                                {row.airAttempts > 0 && (
+                                    <span class="d-block text-muted" title="Average depth of target: mean air yards per attempt"><small>aDOT {aDOT(row)}</small></span>
+                                )}
+                            </td>
+                            {DIRECTIONS.map((dir) => {
+                                const c = passMatrix[depth][dir];
+                                return (
+                                    <td class="align-middle tm-segment">
+                                        <p class="m-0"><strong>{roundNumber(c.EPA, 2, 2)} total EPA</strong></p>
+                                        <p class="m-0"><small>{c.completions}/{c.attempts}</small></p>
+                                        <p class="m-0"><small>{c.yards} yds</small></p>
+                                        {c.airAttempts > 0 && (
+                                            <p class="m-0 text-muted" title="Average depth of target / yards after catch">
+                                                <small>aDOT {aDOT(c)} · {c.yac} YAC</small>
+                                            </p>
+                                        )}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    );
+                })}
                 <tr>
                     <th></th>
                     <th class="align-middle">Left</th>
@@ -177,7 +114,7 @@ for (const p of plays) {
                     <th class="align-middle">Right</th>
                 </tr>
             </tbody>
-            <caption>Built off play-by-play data that started appearing in 2025. Sacks and passes that lack depth and direction information are not included.</caption>
+            <caption>Built off play-by-play data that started appearing in 2025. Sacks and passes that lack depth and direction information are not included. aDOT = average depth of target (air yards per attempt); YAC = yards after catch.</caption>
         </table>
     </div>
 </div>
