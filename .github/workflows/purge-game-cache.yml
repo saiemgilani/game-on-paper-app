@@ -1,61 +1,53 @@
-# Purge a game's cached render so a parser fix in sportsdataverse-py reaches the
-# page. Two layers hold a completed game for up to a year:
-#   1. the Astro page, in Workers Caching -- which NO zone-level purge reaches;
-#      only the Worker itself can purge it, via /admin/api/purge-game;
-#   2. the worker's fetch of <PYTHON_HTTP_URL>/cfb/<id>/process, which lives in
-#      the zone cache (cf.cacheEverything) and is purged by URL. That call needs
-#      "Zone -> Cache Purge" on CLOUDFLARE_API_TOKEN; it is reported, not fatal.
+# Purge rendered game pages from Workers Caching after a parser fix. No zone-level
+# purge reaches Workers Caching; only the Worker can purge itself, so this calls
+# /admin/api/purge-game, from the API host because GitHub runners get a
+# Cloudflare bot challenge on /admin/*. The API-layer response cache is keyed on
+# APP_VERSION and is therefore already invalidated by the deploy that carried
+# the fix -- only the rendered pages need clearing.
+#
+#   tags=game-completed (default)   every final game page
+#   game_ids=401856766,...          specific games (also resets their regression mark)
 name: purge-game-cache
 
 on:
   workflow_dispatch:
     inputs:
+      tags:
+        description: "cache tags to purge (comma-separated); default clears every final game"
+        required: false
+        default: "game-completed"
       game_ids:
-        description: "ESPN game ids, comma-separated"
-        required: true
+        description: "ESPN game ids, comma-separated (optional)"
+        required: false
+        default: ""
 
 jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      # GitHub runners get a Cloudflare bot challenge (cf-mitigated: challenge) on
-      # /admin/*, so the call is made from the API host the deploy already SSHes into.
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.PORT }} ${{ secrets.API_HOST }} >> ~/.ssh/known_hosts
-      - name: Purge the Astro pages (Workers Caching, in-worker, via the API host)
+      - name: Purge via the API host
         env:
           SSH_HOST: ${{ secrets.API_HOST }}
           SSH_USER: ${{ secrets.API_USERNAME }}
           SSH_PORT: ${{ secrets.PORT }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
           ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+          TAGS: ${{ inputs.tags }}
           GAME_IDS: ${{ inputs.game_ids }}
         run: |
           set -euo pipefail
-          ids=$(echo "$GAME_IDS" | tr -d ' ')
+          tags=$(echo "$TAGS" | tr -d ' '); ids=$(echo "$GAME_IDS" | tr -d ' ')
+          url="https://gameonpaper.com/admin/api/purge-game?tags=$tags&ids=$ids"
           # credentials travel on stdin, never on the remote command line
           resp=$(printf '%s\n%s\n' "$ADMIN_USER" "$ADMIN_PASS" | ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "read -r u; read -r p; curl -sS -w '\n%{http_code}' -u \"\$u:\$p\" -A gop-purge-workflow 'https://gameonpaper.com/admin/api/purge-game?ids=$ids'")
+            "read -r u; read -r p; curl -sS -w '\n%{http_code}' -u \"\$u:\$p\" -A gop-purge-workflow '$url'")
           code=$(echo "$resp" | tail -1); body=$(echo "$resp" | sed '$d')
           if [ "$code" != "200" ]; then echo "::error::purge endpoint returned HTTP $code"; echo "$body" | head -c 400; echo; exit 1; fi
           echo "$body" | jq -c .
           echo "$body" | jq -e '.ok' >/dev/null
-
-      - name: Purge the cached API responses (zone cache, by URL)
-        env:
-          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          API_URL: ${{ secrets.PYTHON_HTTP_URL }}
-          GAME_IDS: ${{ inputs.game_ids }}
-        run: |
-          set -uo pipefail
-          zone=$(curl -sS -H "Authorization: Bearer $CF_TOKEN" \
-            "https://api.cloudflare.com/client/v4/zones?name=gameonpaper.com" | jq -r '.result[0].id')
-          files=$(echo "$GAME_IDS" | tr -d ' ' | tr ',' '\n' | grep . | sed "s#^#${API_URL%/}/cfb/#; s#\$#/process#" | jq -R . | jq -s .)
-          resp=$(curl -sS -X POST -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
-            "https://api.cloudflare.com/client/v4/zones/$zone/purge_cache" --data "{\"files\": $files}")
-          echo "$resp" | jq -c '{success, errors}'
-          echo "$resp" | jq -e '.success' >/dev/null || echo "::warning::API-layer purge failed: CLOUDFLARE_API_TOKEN needs Zone -> Cache Purge. The page purge above still applied; the API layer expires on its own TTL."
