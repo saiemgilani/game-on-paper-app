@@ -25,7 +25,6 @@ interface Props {
     recommended?: string | null
     /** Option key the team actually chose, when it can be read off the play. */
     actual?: string | null
-    attribution?: string
     confidenceMeasure?: number | null
 }
 
@@ -35,7 +34,6 @@ const {
     recommended = null,
     actual = null,
     confidenceMeasure = null,
-    attribution = "Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).",
 } = Astro.props;
 
 const withWp = options.filter(o => o.wp != null);
@@ -65,14 +63,14 @@ if (confidenceMeasure) {
 
 <div class="container d-flex justify-content-center mx-auto">
     <div class="p-1 bordered">
-        <div class={`p-2 rounded border`}>
+        <div class="p-2 rounded border">
             <div class="text-center mb-3">
-                <p class="mb-0" title={attribution}><strong>{title}</strong></p>
+                <p class="mb-0"><strong>{title}</strong></p>
                 {recLabel && <p class="mb-0">Bot says: <strong>{recLabel} </strong></p>}
                 {recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(Math.abs(confidenceMeasure), 2, 1)}%)</p>}
                 {disagree && actualLabel && <span class="badge bg-danger rounded">Team chose {actualLabel}</span>}
             </div>
-            <div class="container text-center">
+            <div class="container text-center mb-1">
                 <div class="row gap-2">
                 {options.map((o) => {
                     const isRec = o.key == recommended;
@@ -100,6 +98,9 @@ if (confidenceMeasure) {
                     );
                 })}
             </div>
+            </div>
+            <div class="d-flex justify-content-center text-center">
+                <small class="w-75 m-0 text-muted">From GameOnPaper.com<br>Based on work by Ben Baldwin (<a href="https://bsky.app/profile/rbsdm.com">@rbsdm.com</a>) and Jared Lee (<a href="https://github.com/Kazink36">@Kazink36</a>).</small>
             </div>
         </div>
     </div>
