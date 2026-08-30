@@ -60,8 +60,7 @@ if (confidenceMeasure) {
     <div class="p-1 bordered">
         <div class="p-2 rounded border">
             <div class="text-center mb-3">
-                <p class="mb-0"><strong>{title}</strong></p>
-                {recLabel && <p class="mb-0"><strong>{recLabel}</strong></p>}
+                <p class="mb-0"><strong>{title}{recLabel && <span>: {recLabel}</span>}</strong></p>
                 {confidenceMeasure && recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(Math.abs(confidenceMeasure), 2, 1)}%)</p>}
                 {disagree && actualLabel && <span class="badge bg-danger rounded">Team chose {actualLabel}</span>}
             </div>
