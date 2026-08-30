@@ -53,5 +53,5 @@ ENV PATH="/code/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY app.py gunicorn.conf.py telemetry.py gop_routes.py ./
+COPY *.py ./
 CMD ["gunicorn", "app:app"]
