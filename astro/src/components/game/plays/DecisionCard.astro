@@ -42,11 +42,6 @@ const recLabel = options.find(o => o.key == recommended)?.label ?? null;
 const actualLabel = options.find(o => o.key == actual)?.label ?? null;
 const disagree = recommended != null && actual != null && recommended != actual;
 const pct = (v: number | null | undefined, d = 1) => v == null ? "—" : `${roundNumber(v * 100, 2, d)}%`;
-const delta = (wp: number | null | undefined): string | null => {
-    if (wp == null || bestWp == null) return null;
-    const diff = (wp - bestWp) * 100;
-    return Math.abs(diff) < 0.05 ? "best" : `${roundNumber(diff, 2, 1)}`;
-};
 let recConfidence = null;
 if (confidenceMeasure) {
     if (Math.abs(confidenceMeasure) > 10) {
