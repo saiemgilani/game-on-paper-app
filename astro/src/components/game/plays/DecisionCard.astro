@@ -1,0 +1,142 @@
+---
+/**
+ * Fourth-down / two-point decision card for the expanded play row.
+ *
+ * One tile per option (Go / FG / Punt, or 2PT / XP) showing the model's
+ * expected win probability, the gap to the best option, and the option's
+ * success probability. The recommended tile is outlined; the option the
+ * team actually chose is tagged, and a disagreement is called out in the
+ * header so it reads at a glance in a screenshot.
+ */
+import { roundNumber } from '../../../utils/misc';
+
+export interface DecisionOption {
+    key: string
+    label: string
+    wp?: number | null
+    /** Model probability the option succeeds (first down / FG make / 2PT conversion). */
+    successProb?: number | null
+    successLabel?: string
+}
+
+interface Props {
+    title: string
+    options: DecisionOption[]
+    recommended?: string | null
+    /** Option key the team actually chose, when it can be read off the play. */
+    actual?: string | null
+    attribution?: string
+}
+
+const {
+    title,
+    options,
+    recommended = null,
+    actual = null,
+    attribution = "Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).",
+} = Astro.props;
+
+const withWp = options.filter(o => o.wp != null);
+const bestWp = withWp.length ? Math.max(...withWp.map(o => o.wp as number)) : null;
+const recLabel = options.find(o => o.key == recommended)?.label ?? null;
+const actualLabel = options.find(o => o.key == actual)?.label ?? null;
+const disagree = recommended != null && actual != null && recommended != actual;
+const pct = (v: number | null | undefined, d = 1) => v == null ? "—" : `${roundNumber(v * 100, 2, d)}%`;
+const delta = (wp: number | null | undefined): string | null => {
+    if (wp == null || bestWp == null) return null;
+    const diff = (wp - bestWp) * 100;
+    return Math.abs(diff) < 0.05 ? "best" : `${roundNumber(diff, 2, 1)}`;
+};
+---
+
+<div class={`decision-card ${disagree ? "decision-card--disagree" : ""}`}>
+    <div class="decision-card__header">
+        <span class="decision-card__title" title={attribution}>{title}</span>
+        {recLabel && <span class="decision-card__verdict">Bot says: <strong>{recLabel}</strong></span>}
+        {disagree && actualLabel && <span class="decision-card__flag">Team chose {actualLabel}</span>}
+    </div>
+    <div class="decision-card__tiles">
+        {options.map((o) => {
+            const isRec = o.key == recommended;
+            const isActual = o.key == actual;
+            const d = delta(o.wp);
+            return (
+                <div class={`decision-tile ${isRec ? "decision-tile--rec" : ""} ${isActual ? "decision-tile--actual" : ""}`}>
+                    <div class="decision-tile__label">
+                        {o.label}
+                        {isActual && <span class="decision-tile__tag">chosen</span>}
+                    </div>
+                    <div class="decision-tile__wp">{pct(o.wp)}</div>
+                    <div class="decision-tile__sub">
+                        {d == "best" ? "best option" : d == null ? "" : `${d} vs best`}
+                    </div>
+                    {o.successProb != null && (
+                        <div class="decision-tile__sub decision-tile__success">{o.successLabel ?? "success"} {pct(o.successProb, 0)}</div>
+                    )}
+                </div>
+            );
+        })}
+    </div>
+</div>
+
+<style>
+    .decision-card {
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        margin: 0.5rem auto;
+        max-width: 34rem;
+        background: var(--bs-body-bg, #fff);
+        text-align: center;
+    }
+    .decision-card--disagree { border-color: #d9534f; }
+    .decision-card__header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem 0.75rem;
+        align-items: baseline;
+        margin-bottom: 0.5rem;
+    }
+    .decision-card__title { font-weight: 700; }
+    .decision-card__verdict { font-size: 0.9rem; }
+    .decision-card__flag {
+        font-size: 0.8rem;
+        color: #fff;
+        background: #d9534f;
+        border-radius: 999px;
+        padding: 0.05rem 0.55rem;
+    }
+    .decision-card__tiles {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        gap: 0.5rem;
+    }
+    .decision-tile {
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 0.4rem;
+        padding: 0.4rem 0.25rem;
+        opacity: 0.85;
+    }
+    .decision-tile--rec {
+        border: 2px solid var(--bs-primary, #0d6efd);
+        opacity: 1;
+        font-weight: 600;
+    }
+    .decision-tile--actual { background: var(--bs-tertiary-bg, #f8f9fa); opacity: 1; }
+    .decision-tile__label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .decision-tile__tag {
+        display: inline-block;
+        margin-left: 0.3rem;
+        font-size: 0.65rem;
+        text-transform: none;
+        letter-spacing: 0;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        padding: 0 0.35rem;
+    }
+    .decision-tile__wp { font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .decision-tile__sub { font-size: 0.75rem; color: var(--bs-secondary-color, #6c757d); }
+    .decision-tile__success { font-variant-numeric: tabular-nums; }
+</style>

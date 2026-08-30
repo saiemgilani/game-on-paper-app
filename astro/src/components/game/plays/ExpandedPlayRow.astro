@@ -1,6 +1,7 @@
 ---
 import type { ProcessedPlay } from '../../../resources/python';
 import { formatYardline, roundNumber, cleanAbbreviation, toTitleCase } from '../../../utils/misc';
+import DecisionCard from './DecisionCard.astro';
 
 interface Props {
     play: ProcessedPlay
@@ -45,6 +46,20 @@ if (play.two_pt_recommendation) {
     }
 }
 
+// What the offense actually did, read off the play flags (null when ambiguous,
+// e.g. a penalty-only row).
+const fourthDownActual: string | null =
+    play.punt ? "punt"
+    : play.fg_attempt ? "field_goal"
+    : (play.pass || play.rush || play.sack_vec) ? "go"
+    : null;
+const tryActual: string | null =
+    play.two_point_conv_result != null ? "go_for_2"
+    : play.extra_point_result != null ? "kick_xp"
+    : null;
+const showFourthDown = play.start.down == 4 && !!goRecommendation;
+const showTry = !!xpRecommendation;
+
 ---
 <div class="row p-1">
 <div class="ms-sm-auto col-lg-6">
@@ -55,14 +70,6 @@ if (play.two_pt_recommendation) {
 <p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
 <p style="text-align: center;"><strong>Score Difference (End):</strong> {play.end.pos_score_diff} ({roundNumber(play.end.ExpScoreDiff, 2, 2)})</p>
 <p style="text-align: center;"><strong>Change of Possession:</strong> {play.change_of_poss || "false"}</p>
-{
-    (play.start.down == 4) && (goRecommendation) && (
-        <p class="mb-0" style="text-align: center;">
-            <strong title="Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).">Fourth Down Bot says:</strong> <span>{goRecommendation}</span>
-        </p>
-        <p class="mb-3" style="text-align: center;"><strong>Expected WP:</strong> Go {roundNumber((play.go_wp || 0) * 100, 2, 1)}% / FG {roundNumber((play.fg_wp || 0) * 100, 2, 1)}% / Punt {roundNumber((play.punt_wp || 0) * 100, 2, 1)}%</p>
-    )
-}
 </div>
 <div class="ms-sm-auto col-lg-6">
 <p style="text-align: center;"><strong>Score:</strong> {cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</p>
@@ -72,15 +79,37 @@ if (play.two_pt_recommendation) {
 <p style="text-align: center;"><strong>Away Score:</strong> {play.start.awayScore} ({play.awayScore}) <strong>Home Score:</strong> {play.start.homeScore} ({play.homeScore})</p>
 <p style="text-align: center;"><strong>Pos Team Timeouts:</strong> {play.end.posTeamTimeouts} <strong>Defense Timeouts:</strong> {play.end.defPosTeamTimeouts}</p>
 
+</div>
+</div>
+
 {
-    (xpRecommendation) && (
-        <p class="mb-0" style="text-align: center;">
-            <strong title="Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).">2PT Bot says:</strong> <span>{xpRecommendation}</span>
-        </p>
-        <p class="mb-3" style="text-align: center;"><strong>Expected WP:</strong> 2PT {roundNumber((play.two_pt_wp || 0) * 100, 2, 1)}% / XP {roundNumber((play.xp_wp || 0) * 100, 2, 1)}%</p>
+    (showFourthDown || showTry) && (
+        <div class="row p-1">
+            <div class="col-12">
+                {showFourthDown && (
+                    <DecisionCard
+                        title="Fourth Down Bot"
+                        recommended={play.fourth_down_recommendation}
+                        actual={fourthDownActual}
+                        options={[
+                            { key: "go", label: "Go", wp: play.go_wp, successProb: play.first_down_prob, successLabel: "convert" },
+                            { key: "field_goal", label: "Field Goal", wp: play.fg_wp, successProb: play.fg_make_prob, successLabel: "make" },
+                            { key: "punt", label: "Punt", wp: play.punt_wp },
+                        ]}
+                    />
+                )}
+                {showTry && (
+                    <DecisionCard
+                        title="2PT Bot"
+                        recommended={play.two_pt_recommendation}
+                        actual={tryActual}
+                        options={[
+                            { key: "go_for_2", label: "Go for 2", wp: play.two_pt_wp, successProb: play.prob_2pt, successLabel: "convert" },
+                            { key: "kick_xp", label: "Kick XP", wp: play.xp_wp },
+                        ]}
+                    />
+                )}
+            </div>
+        </div>
     )
 }
-
-</div>
-</div>
-
