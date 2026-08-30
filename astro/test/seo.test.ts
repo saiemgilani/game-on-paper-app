@@ -58,9 +58,9 @@ describe('player leaderboard copy', () => {
 describe('json-ld builders', () => {
     test('breadcrumbs drop url-less crumbs and use absolute items', () => {
         const ld = breadcrumbListJsonLd([
-            { title: 'Seasons' },
-            { title: '2025', url: '/year/2025' },
-            { title: 'Net', url: '/year/2025/teams/differential' },
+            { title: 'Seasons', active: false },
+            { title: '2025', url: '/year/2025', active: false },
+            { title: 'Net', url: '/year/2025/teams/differential', active: true },
         ]);
         expect(ld?.itemListElement).toHaveLength(2);
         expect(ld?.itemListElement[0].position).toBe(1);
@@ -68,7 +68,7 @@ describe('json-ld builders', () => {
     });
 
     test('breadcrumbs with nothing linkable emit nothing', () => {
-        expect(breadcrumbListJsonLd([{ title: 'x' }])).toBeNull();
+        expect(breadcrumbListJsonLd([{ title: 'x', active: false }])).toBeNull();
     });
 
     test('glossary becomes a DefinedTermSet whose terms point back at it', () => {

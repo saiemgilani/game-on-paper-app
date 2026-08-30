@@ -9,11 +9,11 @@
  * visible text. Google cannot match a query to a page that never says it.
  */
 
+import type { PageBreadcrumb } from "../layouts/GenericPage.astro";
+
 export const ORIGIN = 'https://gameonpaper.com';
 
-export interface Crumb { title: string; url?: string }
-
-export function breadcrumbListJsonLd(crumbs: Crumb[]) {
+export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
     const items = crumbs.filter((c) => c.url);
     if (items.length === 0) return null;
     return {
