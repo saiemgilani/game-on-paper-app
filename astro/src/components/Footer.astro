@@ -47,9 +47,11 @@ const APP_VERSION = getSecret("APP_VERSION");
       btn.hidden = window.scrollY < window.innerHeight;
       ticking = false;
     }
-    window.addEventListener('scroll', function () {
+    function schedule() {
       if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
-    }, { passive: true });
+    }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule, { passive: true }); // the threshold is a viewport height
     btn.addEventListener('click', function () {
       var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
