@@ -69,7 +69,7 @@ if (confidenceMeasure) {
             <div class="text-center mb-3">
                 <p class="mb-0" title={attribution}><strong>{title}</strong></p>
                 {recLabel && <p class="mb-0">Bot says: <strong>{recLabel} </strong></p>}
-                {recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(confidenceMeasure, 2, 1)}%)</p>}
+                {recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(Math.abs(confidenceMeasure), 2, 1)}%)</p>}
                 {disagree && actualLabel && <span class="badge bg-danger rounded">Team chose {actualLabel}</span>}
             </div>
             <div class="container text-center">

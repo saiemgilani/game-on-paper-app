@@ -72,7 +72,7 @@ const showTry = !!play.two_pt_recommendation;
                         title="2PT Bot"
                         recommended={play.two_pt_recommendation}
                         actual={tryActual}
-                        confidenceMeasure={play.two_pt_wp_diff}
+                        confidenceMeasure={(play.two_pt_wp_diff || 0) * 100}
                         options={[
                             { key: "go_for_2", label: "Go for 2", wp: play.two_pt_wp, successProb: play.prob_2pt, successLabel: "convert" },
                             { key: "kick_xp", label: "Kick XP", wp: play.xp_wp },
