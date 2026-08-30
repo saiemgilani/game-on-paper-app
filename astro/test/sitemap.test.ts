@@ -42,6 +42,9 @@ describe('sitemap.xml', () => {
       expect(xml).toContain(`<loc>https://gameonpaper.com/year/2025/players/${c}</loc>`);
     }
     expect(xml).not.toContain('/teams/differential/</loc>');
+    // CURRENT_YEAR leaderboards redirect to LAST_YEAR; never list a redirect
+    expect(xml).not.toContain('/year/2026/teams');
+    expect(xml).not.toContain('/year/2026/players');
   });
 
   test('no doubled slashes or undefined leaked into a URL', () => {

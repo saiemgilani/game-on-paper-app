@@ -46,6 +46,9 @@ function buildEntries(): Entry[] {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
         out.push({ loc: `/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
+        // The leaderboard routes 302 CURRENT_YEAR to LAST_YEAR until the season has
+        // data; a sitemap must never advertise a redirect.
+        if (year === CURRENT_YEAR) continue;
         out.push({ loc: `/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
         out.push({ loc: `/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
         // The per-category leaderboards are the pages meant to rank for "epa per
