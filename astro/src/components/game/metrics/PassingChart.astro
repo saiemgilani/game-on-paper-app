@@ -85,9 +85,6 @@ const rowLabel: Record<string, { title: string, sub: string }> = {
                             <td class="tm-section-title">
                                 <span class="d-block"><strong>{rowLabel[depth].title}</strong></span>
                                 <span class="text-muted"><small>{rowLabel[depth].sub}</small></span>
-                                {row.airAttempts > 0 && (
-                                    <span class="d-block text-muted" title="Average depth of target: mean air yards per attempt"><small>aDOT {aDOT(row)}</small></span>
-                                )}
                             </td>
                             {DIRECTIONS.map((dir) => {
                                 const c = passMatrix[depth][dir];
@@ -98,7 +95,7 @@ const rowLabel: Record<string, { title: string, sub: string }> = {
                                         <p class="m-0"><small>{c.yards} yds</small></p>
                                         {c.airAttempts > 0 && (
                                             <p class="m-0 text-muted" title="Average depth of target / yards after catch">
-                                                <small>aDOT {aDOT(c)} · {c.yac} YAC</small>
+                                                <small>aDOT: {aDOT(c)} / {c.yac} YAC</small>
                                             </p>
                                         )}
                                     </td>
