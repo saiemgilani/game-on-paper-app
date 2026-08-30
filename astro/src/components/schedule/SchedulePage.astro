@@ -33,8 +33,8 @@ const titleText = titleParts.join(" | ")
 // cannot drift from the real URL the way a hand-built prefix can.
 const canonicalUrl = new URL(Astro.url.pathname, "https://gameonpaper.com").href
 const pageDescription = isScoreboard
-    ? "Live college football scoreboard with EPA, win probability and advanced box scores for every game."
-    : `College football schedule and advanced stats: ${titleText}.`
+    ? "Live college football scoreboard with EPA per play, success rate, win probability and advanced box scores for every game."
+    : `College football schedule with EPA per play, success rate, win probability and advanced stats for every game: ${titleText}.`
 
 
 games.sort((a: ESPNScheduleEvent, b: ESPNScheduleEvent) => {

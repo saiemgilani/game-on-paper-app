@@ -120,3 +120,24 @@ export const LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title
 };
 
 export const LEADERBOARD_CATEGORIES = Object.keys(LEADERBOARD_COPY);
+
+/** Copy for the three player-leaderboard categories. Same shape as LEADERBOARD_COPY, minus intro. */
+export const PLAYER_LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string }> = {
+    passing: {
+        h1: (s) => `${s} Passing EPA per Play Leaders`,
+        title: (s) => `${s} College Football Passing EPA per Play Leaders | Game on Paper`,
+        description: (s) => `${s} FBS quarterbacks ranked by EPA per play (dropback), with total EPA, success rate, explosiveness and yards per attempt. Sortable, updated after every game.`,
+    },
+    rushing: {
+        h1: (s) => `${s} Rushing EPA per Play Leaders`,
+        title: (s) => `${s} College Football Rushing EPA per Play Leaders | Game on Paper`,
+        description: (s) => `${s} FBS rushers ranked by EPA per play (carry), with total EPA, success rate, explosiveness and yards per carry. Sortable, updated after every game.`,
+    },
+    receiving: {
+        h1: (s) => `${s} Receiving EPA per Play Leaders`,
+        title: (s) => `${s} College Football Receiving EPA per Play Leaders | Game on Paper`,
+        description: (s) => `${s} FBS receivers ranked by EPA per play (target), with total EPA, success rate, explosiveness and yards per target. Sortable, updated after every game.`,
+    },
+};
+
+export const PLAYER_LEADERBOARD_CATEGORIES = Object.keys(PLAYER_LEADERBOARD_COPY);

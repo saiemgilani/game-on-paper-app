@@ -16,9 +16,11 @@ interface Props {
     description?: string
     /** extra schema.org objects; BreadcrumbList is emitted automatically. */
     jsonLd?: (object | null)[]
+    /** visually-hidden h1 for pages whose body has no h1 of its own. Never adds a visible node. */
+    heading?: string
 }
 
-const { title, subtitle, slug, breadcrumbs, description, jsonLd } = Astro.props;
+const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading } = Astro.props;
 const metaDescription = description || subtitle;
 const structuredData = jsonLdScript([
     breadcrumbListJsonLd(breadcrumbs.map((b) => ({ title: b.title, url: b.url }))),
@@ -98,6 +100,7 @@ function generateBreadcrumbsListHtml(): string {
     <body>
         <Header />
         <Fragment set:html={generateBreadcrumbsListHtml()} />
+        {heading && <h1 class="visually-hidden">{heading}</h1>}
         <slot />
         <Footer />
         <Scripts />

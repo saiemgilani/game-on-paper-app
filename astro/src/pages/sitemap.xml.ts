@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
+import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
 // the season list) and costs nothing to serve. Deliberately makes no network
@@ -47,6 +48,11 @@ function buildEntries(): Entry[] {
         out.push({ loc: `/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
         out.push({ loc: `/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
         out.push({ loc: `/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
+        // The per-category leaderboards are the pages meant to rank for "epa per
+        // play"; until now only the bare /teams and /players hubs were listed.
+        // SSR routes, so no trailing slash (the slash rule above is for prerendered ones).
+        for (const c of LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+        for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
     }
 
     for (const team of retrieveAllTeams()) {

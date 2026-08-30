@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 import {
     LEADERBOARD_CATEGORIES,
     LEADERBOARD_COPY,
+    PLAYER_LEADERBOARD_CATEGORIES,
+    PLAYER_LEADERBOARD_COPY,
     breadcrumbListJsonLd,
     datasetJsonLd,
     definedTermSetJsonLd,
@@ -33,6 +35,23 @@ describe('leaderboard copy', () => {
             const descriptive = LEADERBOARD_COPY[c].title(2025).replace(/ \| Game on Paper$/, '');
             expect(descriptive.length, c).toBeLessThanOrEqual(75);
         }
+    });
+});
+
+describe('player leaderboard copy', () => {
+    test('every category names the query terms in title, H1 and description', () => {
+        for (const c of PLAYER_LEADERBOARD_CATEGORIES) {
+            const k = PLAYER_LEADERBOARD_COPY[c];
+            const blob = `${k.title(2025)} ${k.h1(2025)} ${k.description(2025)}`.toLowerCase();
+            expect(blob, c).toContain('epa per play');
+            expect(blob, c).toContain('college football');
+            expect(blob, c).toContain('success rate');
+            expect(k.title(2025).replace(/ \| Game on Paper$/, '').length, c).toBeLessThanOrEqual(75);
+        }
+    });
+
+    test('the three real slugs are the only categories', () => {
+        expect([...PLAYER_LEADERBOARD_CATEGORIES].sort()).toEqual(['passing', 'receiving', 'rushing']);
     });
 });
 

@@ -8,7 +8,7 @@ import DarkModeLogos from "../components/DarkModeLogos.astro";
 import { type TeamIndex, retrieveAllTeams } from "../utils/teams";
 
 const title = `Team Index | College Football | Game on Paper`;
-const subtitle = 'Full team list for college football';
+const subtitle = 'Every FBS college football team with links to season pages of EPA per play, success rate, explosiveness and win probability.';
 const teams: TeamIndex[] = retrieveAllTeams()
 
 function generateTeamRow(team: any): string {
@@ -29,7 +29,7 @@ function generateTeamRow(team: any): string {
 
 ---
 
-<GenericPage title={title} subtitle={subtitle} slug="/teams" breadcrumbs={[]}>
+<GenericPage title={title} subtitle={subtitle} heading="College Football Team Index" slug="/teams" breadcrumbs={[]}>
     <link href="/assets/css/sticky-table.css" rel="stylesheet">
     <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
     <div class="container">

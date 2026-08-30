@@ -67,8 +67,7 @@ const structuredData = jsonLdScript([definedTermSetJsonLd(allTerms, canonical)])
         <Header />
         <GlossaryHeader keys={glossary.keys().toArray()} />
         <div class="container">
-            <h1 class="h3 mt-3">College Football Advanced Stats Glossary</h1>
-            <p class="text-muted">How Game on Paper defines EPA per play, adjusted EPA, success rate, explosiveness, havoc and win probability. Rankings built on these are in the <a href="/teams/">team leaderboards</a>.</p>
+            <h1 class="visually-hidden">College Football Advanced Stats Glossary</h1>
 			{
 				glossary.keys().map((k) => (
 					<GlossarySection letter={k} entries={glossary.get(k)} />

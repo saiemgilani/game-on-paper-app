@@ -33,6 +33,17 @@ describe('sitemap.xml', () => {
     expect(xml).toContain('<changefreq>yearly</changefreq>');
   });
 
+  // The per-category leaderboards are the pages meant to rank; SSR routes, no slash.
+  test('lists every team and player leaderboard category per season', () => {
+    for (const c of ['differential', 'offensive', 'defensive']) {
+      expect(xml).toContain(`<loc>https://gameonpaper.com/year/2025/teams/${c}</loc>`);
+    }
+    for (const c of ['passing', 'rushing', 'receiving']) {
+      expect(xml).toContain(`<loc>https://gameonpaper.com/year/2025/players/${c}</loc>`);
+    }
+    expect(xml).not.toContain('/teams/differential/</loc>');
+  });
+
   test('no doubled slashes or undefined leaked into a URL', () => {
     expect(xml).not.toMatch(/gameonpaper\.com\/\//);
     expect(xml).not.toContain('undefined');

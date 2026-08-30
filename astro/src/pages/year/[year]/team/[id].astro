@@ -104,7 +104,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 ]
 ---
 
-<GenericPage title={`${cleanLocation(team)} | ${year} | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
+<GenericPage title={`${cleanLocation(team)} | ${year} advanced stats | Game on Paper`} subtitle={`${year} season information for ${cleanLocation(team)}`} description={`${cleanLocation(team)} ${year} college football EPA per play, success rate, explosiveness, passing/rushing EPA leaders and win probability.`} heading={`${cleanLocation(team)} ${year} advanced stats`} slug={`/year/${year}/team/${id}`} breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={[team.id]} />
     <div class="container">
         <div class="row my-3">
