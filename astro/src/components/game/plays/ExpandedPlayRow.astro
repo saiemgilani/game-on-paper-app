@@ -30,6 +30,12 @@ if (play.fourth_down_recommendation) {
     }
 }
 
+// "+0.33" / "-2.15": the Added figure reads as a delta, not a level
+const signed = (n: number | null | undefined): string => {
+    const v = roundNumber(n ?? 0, 2, 2);
+    return Number(v) >= 0 ? `+${v}` : v;
+};
+
 let xpRecommendation: string | null = null;
 if (play.two_pt_recommendation) {
     switch (play.two_pt_recommendation) {
@@ -51,7 +57,11 @@ if (play.two_pt_recommendation) {
 <p style="text-align: center;"><strong>Play Type:</strong> {play.type.text}</p>
 <p style="text-align: center;"><strong>Yards to End Zone (Before to After):</strong> {play.start.yardsToEndzone} to {play.end.yardsToEndzone}</p>
 <p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text)}</p>
-<!-- <p style="text-align: center;"><strong>ExpPts (After - Before = Added):</strong> {roundNumber(play.expectedPoints.after, 2, 2)} - {roundNumber(play.expectedPoints.before, 2, 2)} = {roundNumber(play.expectedPoints.added, 2, 2)}</p> -->
+<p style="text-align: center;"><strong>Expected Points (Before → After):</strong> {roundNumber(play.expectedPoints.before, 2, 2)} → {roundNumber(play.expectedPoints.after, 2, 2)}, <strong>Added:</strong> {signed(play.expectedPoints.added)}{
+    (Math.abs(play.EP_between ?? 0) >= 0.005) && (
+        <span title="Expected points that changed between the previous play's end and this play's start (a penalty enforced from the prior spot, an untracked administrative change, a data gap). It is part of Added, so Added is not simply After minus Before here."> · incl. {signed(play.EP_between ?? 0)} between plays</span>
+    )
+}</p>
 <p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
 <p style="text-align: center;"><strong>Score Difference (End):</strong> {play.end.pos_score_diff} ({roundNumber(play.end.ExpScoreDiff, 2, 2)})</p>
 <p style="text-align: center;"><strong>Change of Possession:</strong> {play.change_of_poss || "false"}</p>

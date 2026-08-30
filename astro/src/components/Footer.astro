@@ -15,3 +15,45 @@ const APP_VERSION = getSecret("APP_VERSION");
   </footer>
   </div>
 </div>
+<!-- Floating back-to-top: shared by the game, pre-game and scoreboard pages via
+     this footer. Hidden until the reader has scrolled a screen's worth, bottom-right
+     so it never covers the play table's left-aligned text; 44px touch target. -->
+<button id="back-to-top" class="btn btn-secondary shadow" type="button" aria-label="Back to top" title="Back to top" hidden>
+  <i class="bi bi-arrow-up" aria-hidden="true"></i>
+</button>
+<style>
+  #back-to-top {
+    position: fixed;
+    right: 1rem;
+    bottom: 1.25rem;
+    z-index: 1030;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    line-height: 44px;
+    opacity: 0.85;
+  }
+  #back-to-top:hover, #back-to-top:focus-visible { opacity: 1; }
+  @media print { #back-to-top { display: none; } }
+</style>
+<script is:inline>
+  (function () {
+    var btn = document.getElementById('back-to-top');
+    if (!btn) return;
+    var ticking = false;
+    function update() {
+      btn.hidden = window.scrollY < window.innerHeight;
+      ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+    }, { passive: true });
+    btn.addEventListener('click', function () {
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    });
+    update();
+  })();
+</script>
