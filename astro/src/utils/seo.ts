@@ -101,13 +101,13 @@ export function jsonLdScript(objs: (object | null)[]): string {
 export const LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string; intro: string }> = {
     offensive: {
         h1: (s) => `${s} College Football Offensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Offense Rankings: EPA per Play, Success Rate | Game on Paper`,
+        title: (s) => `${s} College Football Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
         description: (s) => `Every FBS offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
         intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance and field position. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field, so it is the fairest single number for how good an offense really is.',
     },
     defensive: {
         h1: (s) => `${s} College Football Defensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Defense Rankings: EPA per Play Allowed, Success Rate | Game on Paper`,
+        title: (s) => `${s} College Football Defensive Rankings: EPA per Play Allowed, Success Rate | Game on Paper`,
         description: (s) => `Every FBS defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
         intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
     },
