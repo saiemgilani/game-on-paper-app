@@ -13,39 +13,6 @@ const awayTeam = { id: play.awayTeamId, location: play.awayTeamName, abbreviatio
 const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
 const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
-let goRecommendation: string | null = null;
-if (play.fourth_down_recommendation) {
-    switch (play.fourth_down_recommendation) {
-        case "go":
-            goRecommendation = "Go"
-            break;
-        case "field_goal":
-            goRecommendation = "Field Goal";
-            break;
-        case "punt":
-            goRecommendation = "Punt";
-            break;
-        default:
-            goRecommendation = null;
-            break;
-    }
-}
-
-let xpRecommendation: string | null = null;
-if (play.two_pt_recommendation) {
-    switch (play.two_pt_recommendation) {
-        case "kick_xp":
-            xpRecommendation = "XP"
-            break;
-        case "go_for_2":
-            xpRecommendation = "2PT";
-            break;
-        default:
-            xpRecommendation = null;
-            break;
-    }
-}
-
 // What the offense actually did, read off the play flags (null when ambiguous,
 // e.g. a penalty-only row).
 const fourthDownActual: string | null =
@@ -57,8 +24,9 @@ const tryActual: string | null =
     play.two_point_conv_result != null ? "go_for_2"
     : play.extra_point_result != null ? "kick_xp"
     : null;
-const showFourthDown = play.start.down == 4 && !!goRecommendation;
-const showTry = !!xpRecommendation;
+const showFourthDown = play.start.down == 4 && !!play.fourth_down_recommendation;
+const showTry = !!play.two_pt_recommendation;
+
 
 ---
 <div class="row p-1">
@@ -91,9 +59,10 @@ const showTry = !!xpRecommendation;
                         title="Fourth Down Bot"
                         recommended={play.fourth_down_recommendation}
                         actual={fourthDownActual}
+                        confidenceMeasure={play.go_boost}
                         options={[
                             { key: "go", label: "Go", wp: play.go_wp, successProb: play.first_down_prob, successLabel: "convert" },
-                            { key: "field_goal", label: "Field Goal", wp: play.fg_wp, successProb: play.fg_make_prob, successLabel: "make" },
+                            { key: "field_goal", label: "FG", wp: play.fg_wp, successProb: play.fg_make_prob, successLabel: "make" },
                             { key: "punt", label: "Punt", wp: play.punt_wp },
                         ]}
                     />
@@ -103,6 +72,7 @@ const showTry = !!xpRecommendation;
                         title="2PT Bot"
                         recommended={play.two_pt_recommendation}
                         actual={tryActual}
+                        confidenceMeasure={play.two_pt_wp_diff}
                         options={[
                             { key: "go_for_2", label: "Go for 2", wp: play.two_pt_wp, successProb: play.prob_2pt, successLabel: "convert" },
                             { key: "kick_xp", label: "Kick XP", wp: play.xp_wp },

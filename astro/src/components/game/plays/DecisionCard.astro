@@ -8,7 +8,7 @@
  * team actually chose is tagged, and a disagreement is called out in the
  * header so it reads at a glance in a screenshot.
  */
-import { roundNumber } from '../../../utils/misc';
+import { generateMarginalString, roundNumber } from '../../../utils/misc';
 
 export interface DecisionOption {
     key: string
@@ -26,6 +26,7 @@ interface Props {
     /** Option key the team actually chose, when it can be read off the play. */
     actual?: string | null
     attribution?: string
+    confidenceMeasure?: number | null
 }
 
 const {
@@ -33,6 +34,7 @@ const {
     options,
     recommended = null,
     actual = null,
+    confidenceMeasure = null,
     attribution = "Based on work by Ben Baldwin (@rbsdm.com on Bluesky) and Jared Lee (@Kazink36 on Github).",
 } = Astro.props;
 
@@ -47,49 +49,64 @@ const delta = (wp: number | null | undefined): string | null => {
     const diff = (wp - bestWp) * 100;
     return Math.abs(diff) < 0.05 ? "best" : `${roundNumber(diff, 2, 1)}`;
 };
+let recConfidence = null;
+if (confidenceMeasure) {
+    if (Math.abs(confidenceMeasure) > 10) {
+        recConfidence = "VERY STRONG"
+    } else if (Math.abs(confidenceMeasure) > 3 && Math.abs(confidenceMeasure) <= 10) {
+        recConfidence = "STRONG"
+    } else if (Math.abs(confidenceMeasure) >= 1 && Math.abs(confidenceMeasure) <= 3) {
+        recConfidence = "MEDIUM"
+    } else if (Math.abs(confidenceMeasure) < 1) {
+        recConfidence = "LOW"
+    }
+}
 ---
 
-<div class={`decision-card ${disagree ? "decision-card--disagree" : ""}`}>
-    <div class="decision-card__header">
-        <span class="decision-card__title" title={attribution}>{title}</span>
-        {recLabel && <span class="decision-card__verdict">Bot says: <strong>{recLabel}</strong></span>}
-        {disagree && actualLabel && <span class="decision-card__flag">Team chose {actualLabel}</span>}
-    </div>
-    <div class="decision-card__tiles">
-        {options.map((o) => {
-            const isRec = o.key == recommended;
-            const isActual = o.key == actual;
-            const d = delta(o.wp);
-            return (
-                <div class={`decision-tile ${isRec ? "decision-tile--rec" : ""} ${isActual ? "decision-tile--actual" : ""}`}>
-                    <div class="decision-tile__label">
-                        {o.label}
-                        {isActual && <span class="decision-tile__tag">chosen</span>}
-                    </div>
-                    <div class="decision-tile__wp">{pct(o.wp)}</div>
-                    <div class="decision-tile__sub">
-                        {d == "best" ? "best option" : d == null ? "" : `${d} vs best`}
-                    </div>
-                    {o.successProb != null && (
-                        <div class="decision-tile__sub decision-tile__success">{o.successLabel ?? "success"} {pct(o.successProb, 0)}</div>
-                    )}
-                </div>
-            );
-        })}
+<div class="container d-flex justify-content-center mx-auto">
+    <div class="p-1 bordered">
+        <div class={`p-2 rounded border`}>
+            <div class="text-center mb-3">
+                <p class="mb-0" title={attribution}><strong>{title}</strong></p>
+                {recLabel && <p class="mb-0">Bot says: <strong>{recLabel} </strong></p>}
+                {recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(confidenceMeasure, 2, 1)}%)</p>}
+                {disagree && actualLabel && <span class="badge bg-danger rounded">Team chose {actualLabel}</span>}
+            </div>
+            <div class="container text-center">
+                <div class="row gap-2">
+                {options.map((o) => {
+                    const isRec = o.key == recommended;
+                    const isActual = o.key == actual;
+
+                    let tileClass = ""
+                    if (isActual && isRec) {
+                        tileClass = "decision-tile--agree"
+                    } else if (!isActual && isRec) {
+                        tileClass = "decision-tile--rec"
+                    } else if (isActual && !isRec) {
+                        tileClass = "decision-tile--disagree"
+                    }
+
+                    return (
+                        <div class={`col p-2 rounded border text-center ${tileClass}`}>
+                            <div class="decision-tile__label">
+                                {o.label}
+                            </div>
+                            <div class="decision-tile__wp">{pct(o.wp)}</div>
+                            {o.successProb != null && (
+                                <div class="text-small text-muted"><small>{o.successLabel ?? "success"}: {pct(o.successProb, 0)}</small></div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            </div>
+        </div>
     </div>
 </div>
-
 <style>
-    .decision-card {
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 0.5rem;
-        padding: 0.6rem 0.75rem;
-        margin: 0.5rem auto;
-        max-width: 34rem;
-        background: var(--bs-body-bg, #fff);
-        text-align: center;
-    }
-    .decision-card--disagree { border-color: #d9534f; }
+    .decision-tile--disagree { border: 2px solid var(--bs-danger) !important; }
+    .decision-tile--agree { border: 2px solid var(--bs-success) !important; }
     .decision-card__header {
         display: flex;
         flex-wrap: wrap;
@@ -100,32 +117,11 @@ const delta = (wp: number | null | undefined): string | null => {
     }
     .decision-card__title { font-weight: 700; }
     .decision-card__verdict { font-size: 0.9rem; }
-    .decision-card__flag {
-        font-size: 0.8rem;
-        color: #fff;
-        background: #d9534f;
-        border-radius: 999px;
-        padding: 0.05rem 0.55rem;
-    }
-    .decision-card__tiles {
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: 1fr;
-        gap: 0.5rem;
-    }
-    .decision-tile {
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 0.4rem;
-        padding: 0.4rem 0.25rem;
-        opacity: 0.85;
-    }
+
     .decision-tile--rec {
-        border: 2px solid var(--bs-primary, #0d6efd);
-        opacity: 1;
-        font-weight: 600;
+        border: 2px solid var(--bs-primary, #0d6efd) !important;
     }
-    .decision-tile--actual { background: var(--bs-tertiary-bg, #f8f9fa); opacity: 1; }
-    .decision-tile__label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .decision-tile__label { text-transform: uppercase; }
     .decision-tile__tag {
         display: inline-block;
         margin-left: 0.3rem;
@@ -137,6 +133,6 @@ const delta = (wp: number | null | undefined): string | null => {
         padding: 0 0.35rem;
     }
     .decision-tile__wp { font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
-    .decision-tile__sub { font-size: 0.75rem; color: var(--bs-secondary-color, #6c757d); }
-    .decision-tile__success { font-variant-numeric: tabular-nums; }
+    /* .decision-tile__sub { font-size: 0.75rem; color: var(--bs-secondary-color, #6c757d); } */
+    /* .decision-tile__success { font-variant-numeric: tabular-nums; } */
 </style>
