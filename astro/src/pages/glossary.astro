@@ -7,10 +7,19 @@ import GlossarySection from '../components/glossary/GlossarySection.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Scripts from '../components/Scripts.astro';
+import { definedTermSetJsonLd, jsonLdScript } from '../utils/seo';
 
 const glossary = generateGlossaryItems();
-const title = `Glossary | College Football | Game on Paper`;
-const subtitle = 'Advanced stats glossary for college football';
+const title = `College Football Advanced Stats Glossary: EPA, Success Rate, Win Probability | Game on Paper`;
+const subtitle = 'Definitions of EPA (expected points added), EPA per play, adjusted EPA, success rate, explosiveness, havoc rate and win probability as used on Game on Paper.';
+
+// This page prerenders to /glossary/ (see the sitemap test). The canonical
+// previously pointed at /cfb/glossary -- the pre-Astro URL that robots.txt
+// Disallows -- so Google was told the authoritative copy of the site's ONLY
+// ranking page was one it may not crawl. Measured 2026-08-29.
+const canonical = 'https://gameonpaper.com/glossary/';
+const allTerms = [...glossary.values()].flat();
+const structuredData = jsonLdScript([definedTermSetJsonLd(allTerms, canonical)]);
 
 ---
 
@@ -31,12 +40,12 @@ const subtitle = 'Advanced stats glossary for college football';
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="referrer" content="origin-when-cross-origin">
-        <link rel="canonical" href="https://gameonpaper.com/cfb/glossary">
+        <link rel="canonical" href={canonical}>
         <title>{title}</title>
         <meta name="description" content={ subtitle }>
 
         <meta property="og:site_name" content="GameOnPaper.com">
-        <meta property="og:url" content="https://gameonpaper.com/cfb/glossary">
+        <meta property="og:url" content={canonical}>
         <meta property="og:title" content={ title }>
         <meta property="og:description" content={ subtitle }>
         <meta property="og:image" content="https://gameonpaper.com/assets/img/social-card.png">
@@ -44,19 +53,22 @@ const subtitle = 'Advanced stats glossary for college football';
         <meta property="og:image:height" content="630">
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="@gameonpaper">
-        <meta name="twitter:url" content="https://gameonpaper.com/cfb/glossary">
+        <meta name="twitter:url" content={canonical}>
         <meta name="twitter:title" content={ title }>
         <meta name="twitter:description" content={ subtitle }>
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:image" content="https://gameonpaper.com/assets/img/social-card.png">
         <meta name="title" content={ title }>
         <meta name="medium" content="website">
+        <script type="application/ld+json" set:html={structuredData} />
         <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
     </head>
     <body>
         <Header />
         <GlossaryHeader keys={glossary.keys().toArray()} />
         <div class="container">
+            <h1 class="h3 mt-3">College Football Advanced Stats Glossary</h1>
+            <p class="text-muted">How Game on Paper defines EPA per play, adjusted EPA, success rate, explosiveness, havoc and win probability. Rankings built on these are in the <a href="/teams/">team leaderboards</a>.</p>
 			{
 				glossary.keys().map((k) => (
 					<GlossarySection letter={k} entries={glossary.get(k)} />
