@@ -1,0 +1,120 @@
+---
+/**
+ * Fourth-down / two-point decision card for the expanded play row.
+ *
+ * One tile per option (Go / FG / Punt, or 2PT / XP) showing the model's
+ * expected win probability, the gap to the best option, and the option's
+ * success probability. The recommended tile is outlined; the option the
+ * team actually chose is tagged, and a disagreement is called out in the
+ * header so it reads at a glance in a screenshot.
+ */
+import { generateMarginalString, roundNumber } from '../../../utils/misc';
+
+export interface DecisionOption {
+    key: string
+    label: string
+    wp?: number | null
+    /** Model probability the option succeeds (first down / FG make / 2PT conversion). */
+    successProb?: number | null
+    successLabel?: string
+}
+
+interface Props {
+    title: string
+    options: DecisionOption[]
+    recommended?: string | null
+    /** Option key the team actually chose, when it can be read off the play. */
+    actual?: string | null
+    confidenceMeasure?: number | null
+}
+
+const {
+    title,
+    options,
+    recommended = null,
+    actual = null,
+    confidenceMeasure = null,
+} = Astro.props;
+
+const withWp = options.filter(o => o.wp != null);
+const bestWp = withWp.length ? Math.max(...withWp.map(o => o.wp as number)) : null;
+const recLabel = options.find(o => o.key == recommended)?.label ?? null;
+const actualLabel = options.find(o => o.key == actual)?.label ?? null;
+const disagree = recommended != null && actual != null && recommended != actual;
+const pct = (v: number | null | undefined, d = 1) => v == null ? "—" : `${roundNumber(v * 100, 2, d)}%`;
+let recConfidence = null;
+if (confidenceMeasure) {
+    if (Math.abs(confidenceMeasure) > 10) {
+        recConfidence = "VERY STRONG"
+    } else if (Math.abs(confidenceMeasure) > 3 && Math.abs(confidenceMeasure) <= 10) {
+        recConfidence = "STRONG"
+    } else if (Math.abs(confidenceMeasure) >= 1 && Math.abs(confidenceMeasure) <= 3) {
+        recConfidence = "MEDIUM"
+    } else if (Math.abs(confidenceMeasure) < 1) {
+        recConfidence = "LOW"
+    }
+}
+---
+
+<div class="container d-flex justify-content-center mx-auto mb-3">
+    <div class="p-1 bordered">
+        <div class="p-2 rounded border">
+            <div class="text-center mb-3">
+                <p class="mb-0"><strong>{title}{recLabel && <span>: {recLabel}</span>}</strong></p>
+                {confidenceMeasure && recConfidence && <p class="mb-0">({recConfidence} - diff: {generateMarginalString(Math.abs(confidenceMeasure), 2, 1)}%)</p>}
+                {disagree && actualLabel && <span class="badge bg-danger rounded">Team chose {actualLabel}</span>}
+            </div>
+            <div class="container text-center mb-1">
+                <div class="row gap-2">
+                {options.map((o) => {
+                    const isRec = o.key == recommended;
+                    const isActual = o.key == actual;
+
+                    let tileClass = ""
+                    if (isActual && isRec) {
+                        tileClass = "decision-tile--agree"
+                    } else if (!isActual && isRec) {
+                        tileClass = "decision-tile--rec"
+                    } else if (isActual && !isRec) {
+                        tileClass = "decision-tile--disagree"
+                    }
+
+                    return (
+                        <div class={`col p-2 rounded border text-center ${tileClass}`}>
+                            <div class="decision-tile__label">
+                                {o.label}
+                            </div>
+                            <div class="decision-tile__wp">{pct(o.wp)}</div>
+                            {o.successProb != null && (
+                                <div class="text-small text-muted"><small>{o.successLabel ?? "success"}: {pct(o.successProb, 0)}</small></div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            </div>
+            <div class="d-flex justify-content-center text-center">
+                <small class="w-75 m-0 text-muted">From GameOnPaper.com<br>Based on work by Ben Baldwin (<a href="https://bsky.app/profile/rbsdm.com">@rbsdm.com</a>) and Jared Lee (<a href="https://github.com/Kazink36">@Kazink36</a>).</small>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .decision-tile--disagree { border: 2px solid var(--bs-danger) !important; }
+    .decision-tile--agree { border: 2px solid var(--bs-success) !important; }
+    .decision-tile--rec {
+        border: 2px solid var(--bs-primary, #0d6efd) !important;
+    }
+    .decision-tile__label { text-transform: uppercase; }
+    .decision-tile__tag {
+        display: inline-block;
+        margin-left: 0.3rem;
+        font-size: 0.65rem;
+        text-transform: none;
+        letter-spacing: 0;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        padding: 0 0.35rem;
+    }
+    .decision-tile__wp { font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+</style>
