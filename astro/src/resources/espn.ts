@@ -1,3 +1,4 @@
+import { getSecret } from "astro:env/server";
 import { env } from "cloudflare:workers"
 import { safeCachePut } from "../utils/misc"
 import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
@@ -355,11 +356,37 @@ async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
     let resp = await wrappedFetch(url, options);
     for (const delay of ESPN_RETRY_DELAYS_MS) {
         if (!ESPN_RETRY_STATUSES.has(resp.status)) return resp;
+        if (resp.status === 403) break; // an Akamai denial lasts minutes; retrying the same egress IP is pointless
         console.warn(`ESPN ${resp.status} for ${url}; retrying in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
         resp = await wrappedFetch(url, options);
     }
+    if (resp.status === 403) {
+        const relayed = await relayESPN(url);
+        if (relayed) return relayed;
+    }
     return resp;
+}
+
+//: Akamai denies Cloudflare Workers' shared egress IPs in 7-10 minute episodes
+//: (2026-08-29: 24 scoreboard 403s in one hour, in runs of consecutive minutes)
+//: while the same URL from the API host succeeds every time. On a 403 the fetch
+//: is retried through the API host (python/espn_proxy.py). Null = relay
+//: unavailable; the caller keeps the original 403.
+async function relayESPN(url: string): Promise<Response | null> {
+    const base = getSecret("PYTHON_HTTP_URL");
+    const token = getSecret("PYTHON_HTTP_TOKEN");
+    if (!base || !token) return null;
+    try {
+        const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
+            headers: { "Authorization": `Bearer ${btoa(token)}` },
+        });
+        console.warn(`ESPN 403 for ${url}; relayed via API host -> ${resp.status}`);
+        return resp;
+    } catch (e: any) {
+        console.error(`ESPN relay failed for ${url}: ${e}`);
+        return null;
+    }
 }
 
 export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
@@ -451,6 +478,16 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
         const resp = await requestESPN(`https://cdn.espn.com/core/college-football/scoreboard?group=80&limit=1000&xhr=1&${(new Date()).getTime()}`)
 
         if (!resp.ok) {
+            // Serve the last scoreboard we know was good rather than an empty page.
+            // The short-TTL "scoreboard" entry is gone within two refreshes; this
+            // one lives a day, so a multi-minute ESPN denial shows a slightly old
+            // scoreboard instead of none.
+            const lastGood = await env.ESPN_API_CACHE.getWithMetadata("scoreboard:lastgood", "json");
+            if (lastGood?.value) {
+                const ageS = Math.round((Date.now() - Number((lastGood.metadata as any)?.fetchedAt ?? 0)) / 1000);
+                console.warn(`ESPN API: scoreboard ${resp.status}; serving last-good scoreboard from ${ageS}s ago`);
+                return lastGood.value as ESPNScheduleEvent[];
+            }
             throw new Error(`ESPN API: scoreboard request received ${resp.statusText}`)
         }
         let espnContent: ESPNCoreScoreboardResponse = await resp.json();
@@ -459,6 +496,9 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
         if (cacheWriteEnabled && result) {
             console.info(`ESPN API cache update: scoreboard`)
             await safeCachePut(env.ESPN_API_CACHE, "scoreboard", JSON.stringify(result), cacheTTL, { fetchedAt: Date.now() })
+            if (result.length > 0) {
+                await safeCachePut(env.ESPN_API_CACHE, "scoreboard:lastgood", JSON.stringify(result), 60 * 60 * 24, { fetchedAt: Date.now() })
+            }
         }
         return result;
     } catch (e) {

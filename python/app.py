@@ -16,6 +16,7 @@ import base64
 
 from telemetry import TEL, stage, init_flask
 import gop_routes
+import espn_proxy
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
@@ -65,6 +66,7 @@ def after_request(response):
 init_flask(app, TEL)
 TEL.start()
 app.register_blueprint(gop_routes.bp)
+app.register_blueprint(espn_proxy.bp)
 
 
 def require_auth_token(func):

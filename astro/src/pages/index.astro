@@ -15,6 +15,7 @@ try {
 } catch (e) {
     console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
     Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store"); // set(false) alone is cached ~2h by Workers Caching
     // make sure the page still loads
     games = [];
 }
