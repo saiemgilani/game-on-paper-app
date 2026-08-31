@@ -24,7 +24,10 @@ jobs:
           ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
           GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
           TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
-          APP_VERSION: ${{ github.sha }}
+          # sha alone is NOT unique per deploy: repository_dispatch (sdv-py main moved)
+          # re-deploys the same repo sha with a new parser. run_id makes every deploy
+          # bust the API-layer cacheKey in resources/python.ts.
+          APP_VERSION: ${{ github.sha }}-${{ github.run_id }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
