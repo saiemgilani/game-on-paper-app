@@ -12,7 +12,10 @@ export const prerender = false;
 // Both may be combined. The API-layer response cache is keyed on APP_VERSION,
 // so a deploy already invalidates it; this only has to clear the rendered pages.
 const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-scheduled-today',
-    'game-scheduled-future', 'scoreboard', 'matchup', 'favorites-enabled']);
+    'game-scheduled-future', 'scoreboard', 'matchup', 'favorites-enabled',
+    // week/schedule + chart pages (see the tags: lists in utils/config.ts and pages/)
+    'week-complete', 'week-in-progress', 'week-scheduled-current-week',
+    'week-scheduled-current-season', 'chart']);
 
 export const GET: APIRoute = async (context) => purge(context);
 export const POST: APIRoute = async (context) => purge(context);
