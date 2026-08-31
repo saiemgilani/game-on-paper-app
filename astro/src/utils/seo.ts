@@ -107,7 +107,7 @@ export const LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title
     },
     defensive: {
         h1: (s) => `${s} College Football Defensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Defensive Rankings: EPA per Play Allowed, Success Rate | Game on Paper`,
+        title: (s) => `${s} College Football Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
         description: (s) => `Every FBS defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
         intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
     },
