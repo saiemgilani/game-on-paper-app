@@ -51,8 +51,8 @@
     }
 
 </script>
-<form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start" id="dropdown-form">
-    <div class="row flex-lg-nowrap">
+<form class="mb-3 d-flex justify-content-xs-start justify-content-md-end" id="dropdown-form">
+    <div class="row">
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-md" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
