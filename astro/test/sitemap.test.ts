@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { GET } from '../src/pages/sitemap.xml';
+import { CURRENT_YEAR } from '../src/utils/constants';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
 
@@ -43,8 +44,8 @@ describe('sitemap.xml', () => {
     }
     expect(xml).not.toContain('/teams/differential/</loc>');
     // CURRENT_YEAR leaderboards redirect to LAST_YEAR; never list a redirect
-    expect(xml).not.toContain('/year/2026/teams');
-    expect(xml).not.toContain('/year/2026/players');
+    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/teams`);
+    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/players`);
   });
 
   test('no doubled slashes or undefined leaked into a URL', () => {
