@@ -2,6 +2,7 @@
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { AVAILABLE_SEASONS } from "../../utils/constants";
 import { toTitleCase } from "../../utils/misc";
+import { LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
 import TeamLeaderboardTable from "./TeamLeaderboardTable.astro";
 import TeamMetricDropdown from "../dropdowns/TeamMetricDropdown.svelte";
 
@@ -16,7 +17,19 @@ category = category || "differential";
 metric = metric || "net_adj_epa";
 
 const categoryTitle = category == "differential" ? "Net" : toTitleCase(category);
-const pageTitle = `${categoryTitle} Statistics | ${season} | Game on Paper`;
+// Title, H1 and description carry the words people actually search -- "EPA per
+// play", "success rate", "college football" -- because the page previously
+// contained none of them anywhere in visible text (measured 2026-08-29).
+const copy = LEADERBOARD_COPY[category] ?? LEADERBOARD_COPY.differential;
+const pageTitle = copy.title(season);
+const pageUrl = `/year/${season}/teams/${category}`;
+const dataset = datasetJsonLd({
+    name: copy.h1(season),
+    description: copy.description(season),
+    url: pageUrl,
+    season,
+    variables: ["adjusted EPA per play", "EPA per play", "success rate", "explosiveness", "havoc rate"],
+});
 
 const breadcrumbs: PageBreadcrumb[] = [
     { title: "Seasons", active: false },
@@ -26,11 +39,11 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 ---
 
-<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} slug={`/year/${season}/${category}`} breadcrumbs={breadcrumbs}>
+<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} description={copy.description(season)} slug={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={copy.h1(season)}>
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">
-                <h1>{categoryTitle} Statistics</h1>
+                <h3>{season} {categoryTitle} Team Rankings</h3>
                 <p class="m-0 text-muted"><strong>Available Seasons:</strong> {AVAILABLE_SEASONS[0]} to {AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]} - Data shown is from FBS vs FBS games only.</p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
                 <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>

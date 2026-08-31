@@ -2,6 +2,7 @@
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import Scripts from "../components/Scripts.astro";
+import { breadcrumbListJsonLd, jsonLdScript } from "../utils/seo";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 export interface PageBreadcrumb { title: string, url?: string, active: boolean }
@@ -11,9 +12,20 @@ interface Props {
     subtitle: string
     slug: string
     breadcrumbs: PageBreadcrumb[]
+    /** meta description; defaults to subtitle. Pages that rank need a real one. */
+    description?: string
+    /** extra schema.org objects; BreadcrumbList is emitted automatically. */
+    jsonLd?: (object | null)[]
+    /** visually-hidden h1 for pages whose body has no h1 of its own. Never adds a visible node. */
+    heading?: string
 }
 
-const { title, subtitle, slug, breadcrumbs } = Astro.props;
+const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading } = Astro.props;
+const metaDescription = description || subtitle;
+const structuredData = jsonLdScript([
+    breadcrumbListJsonLd(breadcrumbs),
+    ...(jsonLd ?? []),
+]);
 
 // Was `https://gameonpaper.com/cfb/${slug}`, but slug already carries its own
 // leading slash, so every canonical and og:url rendered with a doubled slash
@@ -65,10 +77,11 @@ function generateBreadcrumbsListHtml(): string {
         <meta name="referrer" content="origin-when-cross-origin">
         <link rel="canonical" href={canonicalUrl}>
         <title>{title}</title>
-        <meta name="description" content={subtitle}>
+        <meta name="description" content={metaDescription}>
         <meta property="og:site_name" content="GameOnPaper.com">
         <meta property="og:url" content={canonicalUrl}>
         <meta property="og:title" content={title}>
+        <meta property="og:description" content={metaDescription}>
         <meta property="og:image" content="https://gameonpaper.com/assets/img/social-card.png">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
@@ -76,15 +89,18 @@ function generateBreadcrumbsListHtml(): string {
         <meta name="twitter:site" content="@gameonpaper">
         <meta name="twitter:url" content={canonicalUrl}>
         <meta name="twitter:title" content={title}>
+        <meta name="twitter:description" content={metaDescription}>
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:image" content="https://gameonpaper.com/assets/img/social-card.png">
         <meta name="title" content={title}>
         <meta name="medium" content="website">
+        {structuredData && <script type="application/ld+json" set:html={structuredData} />}
         <script is:inline defer crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
     </head>
     <body>
         <Header />
         <Fragment set:html={generateBreadcrumbsListHtml()} />
+        {heading && <h1 class="visually-hidden">{heading}</h1>}
         <slot />
         <Footer />
         <Scripts />

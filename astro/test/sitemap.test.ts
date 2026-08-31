@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { GET } from '../src/pages/sitemap.xml';
+import { CURRENT_YEAR } from '../src/utils/constants';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
 
@@ -31,6 +32,20 @@ describe('sitemap.xml', () => {
     const m = xml.match(/<loc>https:\/\/gameonpaper\.com\/year\/2015<\/loc><lastmod>([^<]+)</);
     expect(m?.[1]).toBe('2016-01-15');
     expect(xml).toContain('<changefreq>yearly</changefreq>');
+  });
+
+  // The per-category leaderboards are the pages meant to rank; SSR routes, no slash.
+  test('lists every team and player leaderboard category per season', () => {
+    for (const c of ['differential', 'offensive', 'defensive']) {
+      expect(xml).toContain(`<loc>https://gameonpaper.com/year/2025/teams/${c}</loc>`);
+    }
+    for (const c of ['passing', 'rushing', 'receiving']) {
+      expect(xml).toContain(`<loc>https://gameonpaper.com/year/2025/players/${c}</loc>`);
+    }
+    expect(xml).not.toContain('/teams/differential/</loc>');
+    // CURRENT_YEAR leaderboards redirect to LAST_YEAR; never list a redirect
+    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/teams`);
+    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/players`);
   });
 
   test('no doubled slashes or undefined leaked into a URL', () => {

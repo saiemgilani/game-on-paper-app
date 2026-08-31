@@ -52,7 +52,7 @@ if (points.length > 0) {
 
 ---
 
-<GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
+<GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} description={`Plot any two ${season} college football advanced stats against each other: EPA per play, success rate, explosiveness, havoc and win probability for every FBS team.`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={points.map(t => t.team_id)} />
     <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points}>
         <FallbackSpinner slot="fallback" />
