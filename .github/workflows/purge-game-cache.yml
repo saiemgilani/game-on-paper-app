@@ -43,10 +43,13 @@ jobs:
         run: |
           set -euo pipefail
           tags=$(echo "$TAGS" | tr -d ' '); ids=$(echo "$GAME_IDS" | tr -d ' ')
-          url="https://gameonpaper.com/admin/api/purge-game?tags=$tags&ids=$ids"
-          # credentials travel on stdin, never on the remote command line
-          resp=$(printf '%s\n%s\n' "$ADMIN_USER" "$ADMIN_PASS" | ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "read -r u; read -r p; curl -sS -w '\n%{http_code}' -u \"\$u:\$p\" -A gop-purge-workflow '$url'")
+          # empty inputs = the classic "clear every final game"; ids alone stay targeted
+          if [ -z "$tags" ] && [ -z "$ids" ]; then tags=game-completed; fi
+          url="https://gameonpaper.com/admin/api/purge-game"
+          # credentials AND inputs travel on stdin, never on the remote command line;
+          # curl --data-urlencode keeps workflow inputs data, not shell source
+          resp=$(printf '%s\n%s\n%s\n%s\n' "$ADMIN_USER" "$ADMIN_PASS" "$tags" "$ids" | ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "read -r u; read -r p; read -r tags; read -r ids; curl -sS -w '\n%{http_code}' -u \"\$u:\$p\" -A gop-purge-workflow --get --data-urlencode \"tags=\$tags\" --data-urlencode \"ids=\$ids\" '$url'")
           code=$(echo "$resp" | tail -1); body=$(echo "$resp" | sed '$d')
           if [ "$code" != "200" ]; then echo "::error::purge endpoint returned HTTP $code"; echo "$body" | head -c 400; echo; exit 1; fi
           echo "$body" | jq -c .
