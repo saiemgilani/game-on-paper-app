@@ -378,7 +378,7 @@
             <p class="m-0 mb-2 text-muted text-small">Note: this page is best viewed on desktop.</p>
         </div>
         <div class="ms-auto col-lg-6 col-xs-12">
-            <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start">
+            <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-lg-auto mx-sx-0 mx-sm-2">
                     <select class="form-select form-select-md" onchange={onChangeSeason}>
                         <option value="-1" disabled>Choose Season...</option>
@@ -388,7 +388,7 @@
                     </select>
                 </div>
             </form>
-            <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start">
+            <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-auto mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2" onchange={onChangeMetricX}>
                     <select class="form-select form-select-md">
                         <option value="-1" disabled>Choose X-Axis Metric...</option>
@@ -402,7 +402,7 @@
                     </select>
                 </div>
             </form>
-            <form class="mb-3 d-flex justify-content-lg-end justify-content-xs-start">
+            <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-auto mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2" onchange={onChangeMetricY}>
                     <select class="form-select form-select-md">
                         <option value="-1" disabled>Choose Y-Axis Metric...</option>
@@ -416,7 +416,7 @@
                     </select>
                 </div>
             </form>
-            <div class="mb-3 d-flex justify-content-lg-end justify-content-xs-start  mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2">
+            <div class="mb-3 d-flex justify-content-xs-start justify-content-md-end  mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2">
                 <!-- <a href="#" class="btn btn-md btn-secondary me-2" title="Download Chart" download={`chart-${x}-${y}-${season}.jpg`} id="chart-download">Download Chart</a> -->
                 <button onclick={onSubmit} class="btn btn-md btn-primary" title="Generate">Generate</button>
             </div>

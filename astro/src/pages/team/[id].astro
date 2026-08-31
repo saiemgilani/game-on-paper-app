@@ -80,7 +80,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
 // Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 ---
 
-<GenericPage title={`${cleanLocation(team)} | ${yearRange} | Game on Paper`} subtitle={`Team level metric history`} slug={`/team/${team.id}`} breadcrumbs={breadcrumbs}>
+<GenericPage title={`${cleanLocation(team)} | EPA per play & advanced stats, ${yearRange} | Game on Paper`} subtitle={`Team level metric history`} description={`${cleanLocation(team)} college football advanced stats by season: offensive and defensive EPA per play, success rate, explosiveness and win probability, ${yearRange}.`} slug={`/team/${team.id}`} breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={[team.id]} />
     <div class="container">
         <div class="row mb-3">

@@ -332,6 +332,9 @@ export interface ProcessedPlay {
   pass_breakup_player_name?: string
   pass_breakup_team: number
   pass_depth?: string
+  air_yards?: number
+  yards_after_catch?: number
+  air_yardsToEndzone?: number
   pass_direction?: string
   pass_epa?: number
   pass_oe?: number
@@ -834,6 +837,7 @@ export interface ProcessedGame {
 
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
+const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
 export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number): Promise<ProcessedGame> {
     const processed: ProcessedGame = await processPlays(gameId, cacheTTL);
@@ -934,7 +938,15 @@ async function processPlays(gameId: string | number, cacheTTL: number): Promise<
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
         },
-        cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 } }
+        cf: {
+            cacheEverything: true,
+            cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
+            // A completed game's API response is cached for a year. Keying it on the
+            // deployed version means a deploy (a parser fix in sportsdataverse-py
+            // rides in with every build) invalidates it without any zone purge; the
+            // page-side tag purge then re-renders from a fresh API response.
+            cacheKey: `${PYTHON_HTTP_URL}/cfb/${gameId}/process?v=${APP_VERSION}`,
+        }
     })
     const content = await req.text();
 
