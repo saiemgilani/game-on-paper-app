@@ -607,6 +607,11 @@ export interface ProcessedPassingBoxScore {
   CompPct?: number
   xCompPct?: number
   CPOE?: number
+  AirYds?: number | null
+  aDOT?: number | null
+  CompAirYds?: number | null
+  YAC?: number | null
+  AirYdsPct?: number | null
 }
 
 export interface ProcessedReceivingBoxScore {
@@ -623,6 +628,11 @@ export interface ProcessedReceivingBoxScore {
   Yds: number
   pos_team: number
   receiver_player_name: string
+  AirYds?: number | null
+  aDOT?: number | null
+  CompAirYds?: number | null
+  YAC?: number | null
+  AirYdsPct?: number | null
 }
 
 export interface ProcessedRushingBoxScore {

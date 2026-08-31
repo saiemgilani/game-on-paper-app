@@ -9,6 +9,11 @@ interface Props {
 }
 let { pass, rush, receiver } = Astro.props;
 
+// Air-yards tail for a passer / receiver stat line. Null aDOT means ESPN's text
+// carried no catch spot for this game (pre-2025), so print nothing rather than 0.
+const airLine = (p: { aDOT?: number | null, CompAirYds?: number | null, YAC?: number | null }): string =>
+    p.aDOT == null ? "" : `, ${p.CompAirYds ?? 0} air yds / ${p.YAC ?? 0} YAC, ${roundNumber(p.aDOT, 2, 1)} aDOT`;
+
 pass = pass.filter(p => (p.passer_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 rush = rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
@@ -39,7 +44,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (pass.length > 0) && (pass.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.passer_player_name}</td>
-                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR</td>
+                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -79,7 +84,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (receiver.length > 0) && (receiver.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.receiver_player_name}</td>
-                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)</td>
+                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
