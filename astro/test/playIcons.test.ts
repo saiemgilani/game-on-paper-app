@@ -75,10 +75,14 @@ describe('playIcons', () => {
         expect(playIcons(play({ kickoff_play: true, kickoff_onside: true }, 'Kickoff'))).toEqual(['onside']);
     });
 
-    test('defensive 2-pt, 4th-down conversion, long returns', () => {
+    test('defensive 2-pt, late-down conversions, long returns', () => {
         expect(playIcons(play({}, 'Defensive 2pt Conversion'))).toEqual(['def-2pt']);
-        expect(playIcons(play({ firstD_by_yards: true, start: { down: 4 } } as any))).toEqual(['fourth-conv']);
-        expect(playIcons(play({ firstD_by_yards: true, punt: true, start: { down: 4 } } as any))).toEqual([]);
+        // first_down_earned marks the converting play; firstD_by_* are lagged to the next snap
+        expect(playIcons(play({ first_down_earned: true, start: { down: 4 } } as any))).toEqual(['fourth-conv']);
+        expect(playIcons(play({ first_down_created: true, start: { down: 3 } } as any))).toEqual(['third-conv']);
+        expect(playIcons(play({ first_down_earned: true, start: { down: 2 } } as any))).toEqual([]);
+        expect(playIcons(play({ firstD_by_yards: true, start: { down: 1 } } as any))).toEqual([]);
+        expect(playIcons(play({ first_down_earned: true, punt: true, start: { down: 4 } } as any))).toEqual([]);
         expect(playIcons(play({ yds_kickoff_return: 53, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual(['explosive']);
         expect(playIcons(play({ yds_kickoff_return: 36, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual([]);
         expect(playIcons(play({ yds_punt_return: 31, punt: true } as any, 'Punt Return'))).toEqual(['explosive']);

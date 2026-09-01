@@ -83,6 +83,12 @@ describe('GamePage renders a finished game end to end', () => {
         expect(defTd.length).toBeGreaterThan(0);
         for (const p of defTd) expect(rowFor(p.game_play_number), `defensive td ${p.game_play_number}`).toMatch(/class="pi pi-td(-xp|-2pt)?(-miss)? pi-def"/);
         for (const p of game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play !== true)) expect(rowFor(p.game_play_number)).not.toContain('pi-def');
+        // late-down conversions: the converting plays carry the chain-crew marks
+        for (const [dn, icon] of [[3, 'third-conv'], [4, 'fourth-conv']] as const) {
+            const conv = game.plays.filter((p: any) => p.start?.down === dn && (p.first_down_earned === true || p.first_down_created === true) && !p.punt && !p.fg_attempt && !p.kickoff_play);
+            expect(conv.length, `down ${dn} conversions`).toBeGreaterThan(0);
+            for (const p of conv) expect(rowFor(p.game_play_number), `down-${dn} conv ${p.game_play_number}`).toContain(`<use href="#pi-${icon}">`);
+        }
         // the 53-yard kickoff return gets the bolt by yardage
         const bigRet = game.plays.find((p: any) => Number(p.yds_kickoff_return) >= 40);
         if (bigRet) expect(rowFor(bigRet.game_play_number)).toContain('<use href="#pi-explosive">');

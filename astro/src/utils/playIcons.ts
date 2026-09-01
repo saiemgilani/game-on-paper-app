@@ -13,12 +13,12 @@
 export type PlayIconId =
     | 'onside' | 'sack' | 'tfl' | 'stuffed'
     | 'int' | 'fumble' | 'fumble-kept' | 'blocked' | 'fg-miss' | 'downs' | 'goal-line' | 'three-out'
-    | 'fourth-conv' | 'fg' | 'safety' | 'def-2pt' | 'td' | 'td-xp' | 'td-xp-miss' | 'td-2pt' | 'td-2pt-miss'
+    | 'third-conv' | 'fourth-conv' | 'fg' | 'safety' | 'def-2pt' | 'td' | 'td-xp' | 'td-xp-miss' | 'td-2pt' | 'td-2pt-miss'
     | 'penalty' | 'penalty-declined' | 'penalty-offset' | 'explosive';
 
 export const PLAY_ICON_ORDER: readonly PlayIconId[] = [
     'onside', 'sack', 'tfl', 'stuffed', 'int', 'fumble', 'fumble-kept', 'blocked', 'fg-miss', 'downs', 'goal-line', 'three-out',
-    'fourth-conv', 'fg', 'safety', 'def-2pt', 'td', 'td-xp', 'td-xp-miss', 'td-2pt', 'td-2pt-miss',
+    'third-conv', 'fourth-conv', 'fg', 'safety', 'def-2pt', 'td', 'td-xp', 'td-xp-miss', 'td-2pt', 'td-2pt-miss',
     'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
 ];
 
@@ -26,7 +26,7 @@ export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
     onside: 'Onside kick', sack: 'Sack', tfl: 'Tackle for loss', stuffed: 'Stuffed run',
     int: 'Interception', fumble: 'Fumble lost', 'fumble-kept': 'Fumble, recovered', blocked: 'Blocked kick', 'fg-miss': 'Field goal missed',
     downs: 'Turnover on downs', 'goal-line': 'Goal-line stand', 'three-out': 'Three and out',
-    'fourth-conv': '4th down converted', fg: 'Field goal', safety: 'Safety', 'def-2pt': 'Defensive 2-point conversion',
+    'third-conv': '3rd down converted', 'fourth-conv': '4th down converted', fg: 'Field goal', safety: 'Safety', 'def-2pt': 'Defensive 2-point conversion',
     td: 'Touchdown', 'td-xp': 'Touchdown, PAT good', 'td-xp-miss': 'Touchdown, PAT missed',
     'td-2pt': 'Touchdown, 2-point conversion good', 'td-2pt-miss': 'Touchdown, 2-point conversion failed',
     penalty: 'Penalty', 'penalty-declined': 'Penalty declined', 'penalty-offset': 'Offsetting penalties',
@@ -39,7 +39,7 @@ export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK
 /** Marks shown in the table legend, in a reading order that groups families. */
 export const PLAY_ICON_LEGEND: readonly PlayIconId[] = [
     'td', 'td-xp', 'td-2pt', 'fg', 'safety', 'def-2pt', 'int', 'fumble', 'fumble-kept', 'downs', 'blocked', 'fg-miss',
-    'sack', 'tfl', 'stuffed', 'three-out', 'goal-line', 'fourth-conv', 'onside', 'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
+    'sack', 'tfl', 'stuffed', 'three-out', 'goal-line', 'third-conv', 'fourth-conv', 'onside', 'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
 ];
 
 type FlagBag = { type?: { text?: string }; start?: { yardsToEndzone?: number | null; down?: number | null } } & Record<string, unknown>;
@@ -81,9 +81,12 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
         out.push(ytez <= 5 ? 'goal-line' : 'downs');
     }
     if (ctx.threeAndOut || on('three_and_out')) out.push('three-out');
-    // the other side of the 4th-down coin: converted, on a snap (not a kick)
-    if (Number(play.start && (play.start as any).down) === 4 && (on('firstD_by_yards') || on('firstD_by_penalty'))
-        && !on('punt') && !on('fg_attempt') && !on('kickoff_play')) out.push('fourth-conv');
+    // late-down conversions, on a snap (not a kick). NOTE: firstD_by_* are lagged
+    // onto the NEXT play; the converting play carries first_down_earned/created.
+    const converted = (on('first_down_earned') || on('first_down_created')) && !on('punt') && !on('fg_attempt') && !on('kickoff_play');
+    const down = Number(play.start && (play.start as any).down);
+    if (converted && down === 3) out.push('third-conv');
+    if (converted && down === 4) out.push('fourth-conv');
 
     // points
     if (on('fg_made')) out.push('fg');

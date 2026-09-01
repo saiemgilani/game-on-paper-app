@@ -173,7 +173,7 @@ Target Matrix
 .pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
 .pi-td, .pi-td-xp, .pi-td-xp-miss, .pi-td-2pt, .pi-td-2pt-miss, .pi-fg, .pi-safety { --c: var(--mark-score); }
 .pi-def, .pi-def-2pt { --c: var(--mark-turnover); } /* defensive score: same glyph, turnover colour */
-.pi-fourth-conv { --c: var(--mark-score); }
+.pi-third-conv, .pi-fourth-conv { --c: var(--mark-score); }
 .pi-fumble-kept { --c: var(--mark-stop); } /* ball on the ground but kept: neutral, not red */
 .pi-int, .pi-fumble, .pi-downs, .pi-blocked, .pi-fg-miss, .pi-goal-line { --c: var(--mark-turnover); }
 .pi-stuffed, .pi-three-out { --c: var(--mark-stop); }
