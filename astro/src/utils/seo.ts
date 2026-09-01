@@ -42,7 +42,8 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
             name: t.term,
-            description: t.definition,
+            // definitions are authored HTML (links, a table); structured data wants text
+            description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
             inDefinedTermSet: url,
         })),
     };

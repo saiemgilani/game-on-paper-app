@@ -1,5 +1,6 @@
 // import logger from '../../utils/logger.js';
 import glossaryRaw from '../static/glossary.json' with { type: 'json' };
+import { LAST_YEAR } from '../utils/constants';
 
 export interface GlossaryEntry {
 	term: string;
@@ -16,7 +17,9 @@ export function generateGlossaryItems(): Glossary {
         ALPHABET.forEach(letter => {
             let records = (glossaryRaw as Record<string, GlossaryEntry[]>)[letter];
             if (records) {
-                let copyRec = [...records];
+                // Leaderboard links in the copy are written as /year/{season}/... so
+                // the JSON never goes stale; resolve to the latest finished season here.
+                let copyRec = records.map((r) => ({ ...r, definition: r.definition.replaceAll('{season}', String(LAST_YEAR)) }));
                 copyRec.sort((a, b) => {
                     return a.term.localeCompare(b.term)
                 });

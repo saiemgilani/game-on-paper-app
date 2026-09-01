@@ -82,6 +82,11 @@ describe('json-ld builders', () => {
         expect(ld.hasDefinedTerm[0].inDefinedTermSet).toBe(ld.url);
     });
 
+    test('glossary term descriptions are stripped of authored HTML', () => {
+        const ld = definedTermSetJsonLd([{ term: 't', definition: "see <a href='/x'>this</a> and<br>that" }], '/glossary/');
+        expect(ld.hasDefinedTerm[0].description).toBe('see this and that');
+    });
+
     test('dataset carries season, variables and the search keywords', () => {
         const ld = datasetJsonLd({ name: 'n', description: 'd', url: '/year/2025/teams/offensive', season: 2025, variables: ['EPA per play'] });
         expect(ld.temporalCoverage).toBe('2025');

@@ -1,141 +1,160 @@
 {
-    "E": [
-        {
-            "term": "Expected points added (EPA)",
-            "definition": "an estimate of how many points an offense gained or lost based on their performance on a specific play, taking into account scoreline, down, distance, and a few other situational factors. The link provided explains the NFL version of the model, but while the variables are slightly different, the fundamentals are the same.",
-            "source" : "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
-        },
-        {
-            "term": "Expected turnovers",
-            "definition": "(From FootballStudyHall.com) What a team's turnover margin would have been if it had recovered exactly 50 percent of all the fumbles that occurred in its games, and if the INTs-to-PDs for both teams was equal to the national average, which is generally around 21-22 percent.",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term": "Expected QBR (xQBR)",
-            "definition": "an estimated version of <a href=''>ESPN's QBR</a> based on historical data.",
-            "source" : "https://github.com/akeaswaran/cfb_qbr"
-        },
-        {
-            "term": "Explosive play",
-            "definition": "On Game on Paper, a pass play that nets greater than 2.4 EPA OR a rushing play that nets greater than 1.8 EPA. These thresholds represent the 75th percentile of each play type. Other sites may cite this as any play that gains more than 15 yards.",
-            "source" : ""
-        },
-        {
-            "term": "Early down",
-            "definition": "First and second down.",
-            "source" : ""
-        }
-    ],
-    "H": [
-        {
-            "term": "Havoc Rate",
-            "definition": "(From FootballStudyHall.com) plays in which a defense either recorded a tackle for loss, forced a fumble, or defensed a pass (intercepted or broken up)",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term": "Highlight yards",
-            "definition": "(From FootballStudyHall.com) portion of a given run that is credited only to the running back; after a certain number of yards, the line has done its job, and most of the rest of the run will be determined by the running back himself.",
-            "source" : "https://www.footballstudyhall.com/2011/4/13/2102634/the-toolbox-highlight-yards"
-        }
-    ],
-    "W": [
-        {
-            "term": "Win probability (WP%)",
-            "definition": "an instantaneous estimate of a team's chances to win a game given information about scoreline, down, distance, and a few other situational factors. The link provided explains the NFL version of the model, but while the variables are slightly different, the fundamentals are the same.",
-            "source" : "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
-        }
-    ],
-    "P": [
-        {
-            "term": "Power run",
-            "definition": "(From FootballStudyHall.com) runs on third or fourth down, two yards or less to go, that achieved a first down or touchdown",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term": "Passing down",
-            "definition": "(From FootballStudyHall.com) Second-and-8 or more, third-and-5 or more, or fourth-and-5 or more. These are downs in which passing is easily the most likely option for gaining the necessary yardage, and defenses hold the upper hand. Offenses typically throw about two-thirds of the time on passing downs.",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        }
-    ],
-    "L": [
-        {
-            "term": "Late down",
-            "definition": "Third and fourth down.",
-            "source" : ""
-        }
-    ],
-    "R": [
-        {
-            "term": "Rush opportunity",
-            "definition": "(From FootballStudyHall.com) carries in which the offensive line 'does its job' and produces at least four yards of rushing for the runner",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        }
-    ],
-    "O": [
-        {
-            "term": "OL Line Yards",
-            "definition": "Portion of rushes that are credited to the work of the offensive line, rather than the rusher (see: highlight yards for the latter). Typically, line yards are calculated as follows: <table class='table table-sm table-responsive'><thead><tr><th>Yards Gained</th><th>Line Yards</th></tr></thead><tbody><tr><td>&lt;0 yds</td><td>1.2 * yards gained</td></tr><tr><td>0 to 4 yds</td><td>1.0 * yards gained</td></tr><tr><td>5+ yds</td><td>4 + (0.5 * (yards gained - 4))</td></tr></tbody></table>",
-            "source" : ""
-        }
-    ],
-    "S": [
-        {
-            "term": "Successful play / Success Rate",
-            "definition": "On Game on Paper, any play that nets more than 0 EPA. On other sites, successful plays may be dependent on the down and gained yardage as follows: <table class='table table-sm table-responsive'><thead><tr><th>Down</th><th>Success Criteria</th></tr></thead><tbody><tr><td>1</td><td>50%+ of distance </td></tr><tr><td>2</td><td>70+% of distance</td></tr><tr><td>3+</td><td>100% of distance</td></tr></tbody></table>",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term": "Stuffed run",
-            "definition": "(From FootballStudyHall.com) Rushing play where the runner is tackled at or behind the line of scrimmage",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term": "Stopped run",
-            "definition": "Rushing play where the runner gains zero to two yards.",
-            "source" : ""
-        },
-        {
-            "term": "Standard down",
-            "definition": "(From FootballStudyHall.com) First downs, second-and-7 or fewer, third-and-4 or fewer, and fourth-and-4 or fewer. These are the downs in which the offense could conceivably either run or pass and therefore has an overall advantage over the defense. Offenses typically run about 60 percent of the time on standard downs.",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        },
-        {
-            "term" : "Stop Rate",
-            "definition": "(From <i>The Athletic</i>) the percentage of a defense's drives that end in punts, turnovers or a turnover on downs.",
-            "source" : "https://theathletic.com/3926800/2022/11/23/college-football-stop-rate-michigan-ohio-state/"
-        }
-    ],
-    "M": [
-        {
-            "term": "\"Middle 8\"",
-            "definition": "The last four minutes of the first half and the first four minutes of the second half. Conventional thinking posits that if a team controls the game heading into halftime and coming out of halftime (by scoring or holding the ball and preventing the other team from scoring), they create a massive momentum swing that increases their chances of winning. It is unclear whether this holds true based on historical data.",
-            "source" : ""
-        }
-    ],
-    "T": [
-        {
-            "term": "Turnover Luck",
-            "definition": "(From FootballStudyHall.com) the difference between a team's turnover and expected turnover margins and, using the average point value of a turnover (~5.0 points), projects how many points a team gained or lost per game.",
-            "source" : "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
-        }
-    ],
     "A": [
         {
             "term": "Available Yards %",
             "definition": "(From bcftoys.com) Calculated by dividing drive yards earned by available yards measured from starting field position to end zone.",
-            "source" : "https://www.bcftoys.com/2022-ayp/"
+            "source": "https://www.bcftoys.com/2022-ayp/"
         },
         {
             "term": "Adjusted EPA/Play",
-            "definition": "(AKA: Adj EPA/Play) Augments EPA/play by stripping out garbage time plays and applying adjustments for home-field advantage and quality of opponent for FBS vs FBS games. As a result, adjusted EPA/Play and normal EPA/Play numbers may differ <i>significantly</i> until all teams have played multiple FBS vs FBS games, as EPA/Play <i>includes</i> non-FBS games. Methodology adapted from <a href='https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/'>this article</a> by <a href='https://twitter.com/makennnahack'>Makenna Hack</a> and <a href='https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/'>this article</a> from <a href='https://twitter.com/jbuddavis'>Bud Davis</a>.",
-            "source" : "https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/"
+            "definition": "(AKA: Adj EPA/Play) EPA per play corrected for who a team played and when. Game on Paper drops <a href='#glossary-section-G'>garbage-time</a> snaps, keeps only FBS vs FBS games, then fits every offense and defense together so each team's number is what it would have posted against an average opponent on a neutral field, with a home-field term absorbing the home advantage. Because a schedule full of weak defenses inflates raw EPA/play, the adjusted figure is the better single measure of quality, and it is the default sort on every team leaderboard. Early in a season, before teams have several FBS games, adjusted and raw values can differ <i>significantly</i>. Methodology adapted from <a href='https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/'>this article</a> by <a href='https://twitter.com/makennnahack'>Makenna Hack</a> and <a href='https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/'>this article</a> from <a href='https://twitter.com/jbuddavis'>Bud Davis</a>. Rankings: <a href='/year/{season}/teams/differential'>net</a>, <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>.",
+            "source": "https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/"
         }
     ],
     "D": [
         {
             "term": "DETMER",
             "definition": "<b>D</b>ownfield <b>E</b>ventful <b>T</b>hrowing <b>M</b>etric <b>E</b>ncouraging <b>R</b>ippin' it. Measuring how 'sicko' a quarterback's performance is, based on their passing yardage, interceptions, and touchdowns.",
-            "source" : "https://sickoscommittee.substack.com/p/introducing-detmer-the-first-ever"
+            "source": "https://sickoscommittee.substack.com/p/introducing-detmer-the-first-ever"
+        }
+    ],
+    "E": [
+        {
+            "term": "Expected points added (EPA)",
+            "definition": "The change in <i>expected points</i> caused by one play. Before every snap, Game on Paper's model estimates how many points the offense can expect to score next, given down, distance, field position, time remaining and score. After the play it estimates again; the difference is EPA. A 40-yard completion on 3rd-and-10 adds several points of expectation; a sack that forces a punt subtracts. Touchdowns and turnovers swing it hardest. EPA is the unit every other Game on Paper stat is built from \u2014 summed it is a player's total EPA, averaged it is <b>EPA per play</b>. The model is the college version of the nflfastR approach linked here, trained on FBS play-by-play. See the <a href='/year/{season}/players/passing'>passing</a>, <a href='/year/{season}/players/rushing'>rushing</a> and <a href='/year/{season}/players/receiving'>receiving</a> EPA leaders.",
+            "source": "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
+        },
+        {
+            "term": "Expected turnovers",
+            "definition": "(From FootballStudyHall.com) What a team's turnover margin would have been if it had recovered exactly 50 percent of all the fumbles that occurred in its games, and if the INTs-to-PDs for both teams was equal to the national average, which is generally around 21-22 percent.",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Expected QBR (xQBR)",
+            "definition": "an estimated version of <a href=''>ESPN's QBR</a> based on historical data.",
+            "source": "https://github.com/akeaswaran/cfb_qbr"
+        },
+        {
+            "term": "Explosive play / Explosiveness",
+            "definition": "On Game on Paper, a pass play that nets more than 2.4 EPA or a rushing play that nets more than 1.8 EPA \u2014 the 75th percentile of each play type, so roughly one play in four qualifies. Explosiveness (or explosive rate) is the share of a unit's plays that clear the bar. Where <a href='#glossary-section-S'>success rate</a> asks how <i>often</i> an offense stays on schedule, explosiveness asks how often it breaks a game open; the best offenses do both, and a defense that gives up few explosive plays forces long, error-prone drives. Other sites define an explosive play as any gain of 15+ yards, which ignores down, distance and field position. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>.",
+            "source": ""
+        },
+        {
+            "term": "Early down",
+            "definition": "First and second down.",
+            "source": ""
+        },
+        {
+            "term": "EPA per play (EPA/play)",
+            "source": "",
+            "definition": "Total expected points added divided by plays. It is the fairest way to compare units that ran a different number of snaps: a team that adds 30 EPA on 60 plays (+0.50 per play) was far more efficient than one that added 30 on 90. On Game on Paper, offensive EPA/play counts every offensive snap in FBS vs FBS games; defensive EPA/play is what a defense <i>allowed</i>, so lower (more negative) is better. Per-dropback and per-rush versions split it by play type. EPA/play is <b>not</b> adjusted for opponent or garbage time \u2014 for that use <a href='#glossary-section-A'>Adjusted EPA/Play</a>. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>."
+        }
+    ],
+    "G": [
+        {
+            "term": "Garbage time",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary",
+            "definition": "Plays run after a game is effectively decided, when starters sit and play-calling stops resembling a real contest. Game on Paper uses the Bill Connelly thresholds: a play is garbage time when the score margin exceeds 43 points in the first quarter, 37 in the second, 27 in the third or 21 in the fourth quarter and overtime. Those plays are excluded from every <i>adjusted</i> stat \u2014 Adjusted EPA/Play, adjusted success rate, explosiveness and havoc \u2014 because a backup quarterback padding stats against a prevent defense says little about either team. Raw EPA/play and the game-page box scores still include them, which is one reason adjusted and raw numbers differ. See <a href='#glossary-section-A'>Adjusted EPA/Play</a>."
+        }
+    ],
+    "H": [
+        {
+            "term": "Havoc Rate",
+            "definition": "(From FootballStudyHall.com) The share of a defense's plays on which it either recorded a tackle for loss, forced a fumble or defensed a pass (an interception or a break-up). Havoc is the disruption stat: it captures a defense that wins at the line and around the ball even on plays where the offense recovers to gain yards. Because havoc plays carry large negative EPA for the offense, havoc rate tracks closely with defensive <a href='#glossary-section-E'>EPA per play</a>, and a high rate usually means an aggressive front seven and secondary. On Game on Paper it is shown for defenses and, as havoc <i>allowed</i>, for offenses, and it is opponent-adjusted alongside the other advanced stats. Rankings: <a href='/year/{season}/teams/defensive'>defense</a>, <a href='/year/{season}/teams/offensive'>offense (havoc allowed)</a>.",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Highlight yards",
+            "definition": "(From FootballStudyHall.com) portion of a given run that is credited only to the running back; after a certain number of yards, the line has done its job, and most of the rest of the run will be determined by the running back himself.",
+            "source": "https://www.footballstudyhall.com/2011/4/13/2102634/the-toolbox-highlight-yards"
+        }
+    ],
+    "L": [
+        {
+            "term": "Late down",
+            "definition": "Third and fourth down.",
+            "source": ""
+        }
+    ],
+    "M": [
+        {
+            "term": "\"Middle 8\"",
+            "definition": "The last four minutes of the first half and the first four minutes of the second half. Conventional thinking posits that if a team controls the game heading into halftime and coming out of halftime (by scoring or holding the ball and preventing the other team from scoring), they create a massive momentum swing that increases their chances of winning. It is unclear whether this holds true based on historical data.",
+            "source": ""
+        }
+    ],
+    "N": [
+        {
+            "term": "Net EPA per play",
+            "source": "",
+            "definition": "A team's offensive EPA per play minus the EPA per play its defense allows. It is the single best play-by-play summary of how much better a team is than its opponents, because it credits a dominant defense as much as a prolific offense and cannot be inflated by pace. The opponent-adjusted version, <b>net adjusted EPA/play</b>, is the default sort on the <a href='/year/{season}/teams/differential'>net team rankings</a> and the closest thing Game on Paper has to a power rating; the same page shows the success-rate margin and explosiveness margin computed the same way. A positive number means the offense adds more expected points per snap than the defense gives back."
+        }
+    ],
+    "O": [
+        {
+            "term": "OL Line Yards",
+            "definition": "Portion of rushes that are credited to the work of the offensive line, rather than the rusher (see: highlight yards for the latter). Typically, line yards are calculated as follows: <table class='table table-sm table-responsive'><thead><tr><th>Yards Gained</th><th>Line Yards</th></tr></thead><tbody><tr><td>&lt;0 yds</td><td>1.2 * yards gained</td></tr><tr><td>0 to 4 yds</td><td>1.0 * yards gained</td></tr><tr><td>5+ yds</td><td>4 + (0.5 * (yards gained - 4))</td></tr></tbody></table>",
+            "source": ""
+        }
+    ],
+    "P": [
+        {
+            "term": "Power run",
+            "definition": "(From FootballStudyHall.com) runs on third or fourth down, two yards or less to go, that achieved a first down or touchdown",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Passing down",
+            "definition": "(From FootballStudyHall.com) Second-and-8 or more, third-and-5 or more, or fourth-and-5 or more. These are downs in which passing is easily the most likely option for gaining the necessary yardage, and defenses hold the upper hand. Offenses typically throw about two-thirds of the time on passing downs.",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "R": [
+        {
+            "term": "Rush opportunity",
+            "definition": "(From FootballStudyHall.com) carries in which the offensive line 'does its job' and produces at least four yards of rushing for the runner",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "S": [
+        {
+            "term": "Successful play / Success Rate",
+            "definition": "On Game on Paper, a successful play is any play with positive EPA \u2014 the offense left the field in a better scoring position than it started. Success rate is the share of plays that were successful, and it measures <i>consistency</i>: an offense that gains four yards every snap has a high success rate but few explosive plays, and the two together describe how a unit moves the ball. Success rate is shown for offense and defense (where lower is better) and split by passing and rushing on the <a href='/year/{season}/teams/offensive'>offensive</a> and <a href='/year/{season}/teams/defensive'>defensive</a> leaderboards. Other sites define success by yardage instead of EPA, as follows: <table class='table table-sm table-responsive'><thead><tr><th>Down</th><th>Success Criteria</th></tr></thead><tbody><tr><td>1</td><td>50%+ of distance </td></tr><tr><td>2</td><td>70+% of distance</td></tr><tr><td>3+</td><td>100% of distance</td></tr></tbody></table>",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Stuffed run",
+            "definition": "(From FootballStudyHall.com) Rushing play where the runner is tackled at or behind the line of scrimmage",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Stopped run",
+            "definition": "Rushing play where the runner gains zero to two yards.",
+            "source": ""
+        },
+        {
+            "term": "Standard down",
+            "definition": "(From FootballStudyHall.com) First downs, second-and-7 or fewer, third-and-4 or fewer, and fourth-and-4 or fewer. These are the downs in which the offense could conceivably either run or pass and therefore has an overall advantage over the defense. Offenses typically run about 60 percent of the time on standard downs.",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Stop Rate",
+            "definition": "(From <i>The Athletic</i>) the percentage of a defense's drives that end in punts, turnovers or a turnover on downs.",
+            "source": "https://theathletic.com/3926800/2022/11/23/college-football-stop-rate-michigan-ohio-state/"
+        }
+    ],
+    "T": [
+        {
+            "term": "Turnover Luck",
+            "definition": "(From FootballStudyHall.com) the difference between a team's turnover and expected turnover margins and, using the average point value of a turnover (~5.0 points), projects how many points a team gained or lost per game.",
+            "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        }
+    ],
+    "W": [
+        {
+            "term": "Win probability (WP%)",
+            "definition": "An instantaneous estimate of a team's chance of winning, updated after every play from the score, time remaining, down, distance, field position, possession and \u2014 before and during the game \u2014 the pregame point spread, so a favorite starts above 50%. The <b>win probability chart</b> on every game page is this number plotted across the game. <b>Win probability added (WPA)</b> is the change in WP caused by a single play; the \"Most Important Plays\" list on a game page is the plays sorted by absolute WPA, which is why a fourth-quarter fourth-down stop ranks above a first-quarter touchdown. Where <a href='#glossary-section-E'>EPA</a> measures how well a team played a snap, WPA measures how much that snap mattered to the outcome. The model is the college version of the nflfastR approach linked here.",
+            "source": "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
         }
     ]
 }
