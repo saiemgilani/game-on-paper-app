@@ -29,10 +29,10 @@ const ST = 'var(--mark-stop)';
 const chainMarker = (x) => `<circle cx="${x}" cy="4.2" r="2.9" fill="none" stroke="${ST}" stroke-width="1.5"/><circle cx="${x}" cy="4.2" r="1" fill="${ST}"/>`
     + `<path fill="${ST}" d="M${x - 1.9} 8 L${x + 1.9} 8 L${x + 1.1} 27.5 L${x - 1.1} 27.5 Z"/>`;
 const chainLinks = () => Array.from({ length: 8 }, (_, i) => `<ellipse cx="${(8.1 + i * 2.6).toFixed(1)}" cy="26.6" rx="1.6" ry="1" fill="none" stroke="${ST}" stroke-width="1.3"/>`).join('');
-const downBox = (num) => `<g transform="translate(9.5 3)"><rect x=".7" y=".7" width="8.2" height="9" rx="1.2" fill="none" stroke="${ST}" stroke-width="1.5"/>`
+const downBox = (num) => `<g transform="translate(9.5 3)"><rect width="9.6" height="10.4" rx="1.4" fill="var(--c)"/>`
     + (num === 4
-        ? `<path fill="${ST}" transform="translate(1.9 2.2)" d="M4.1 .5 .6 5.5h2.7v2.1h2V5.5h1.3V3.8H5.3V.5Z"/>`
-        : `<path d="M3.1 3.2c.8-1 3.5-1 3.5.6 0 1-1 1.4-1.8 1.4 1 0 2 .5 2 1.5 0 1.7-2.8 1.8-3.9.8" stroke="${ST}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".95"/>`)
+        ? `<path fill="#fff" transform="translate(1.6 1.5)" d="M4.8 .5 .5 6.4h3.3v2.4h2.3V6.4h1.5V4.4H6.1V.5Z"/>`
+        : `<path d="M2.6 2.9c1-1.3 4.3-1.2 4.3.7 0 1.2-1.2 1.7-2.2 1.7 1.2 0 2.5.6 2.5 1.9 0 2.1-3.5 2.2-4.8 1" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`)
     + `</g><path d="M14.2 13.5V27" stroke="${ST}" stroke-width="1.6" stroke-linecap="round"/>`;
 const chainCrew = (num) => chainMarker(4.5) + chainMarker(27.5) + downBox(num) + chainLinks()
     + ball(14.6, 13.6, 17.5) + `<path fill="var(--c)" d="M1 28.4h30v2.4h-30Z"/>`;
