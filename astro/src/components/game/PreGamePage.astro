@@ -12,6 +12,7 @@ import MatchupView from './MatchupView.astro';
 import WatchButton from './WatchButton.astro';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
 
 interface Props {
     id: string | number
@@ -29,8 +30,21 @@ const awayTeam = awayComp.team;
 const gameNote = espnGame.gamepackageJSON.header.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 
-let title = `Game: ${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)} | Game on Paper`;
-let subtitle = `${cleanLocation(awayComp.team)} vs ${cleanLocation(homeComp.team)}`;
+const header = espnGame.gamepackageJSON.header;
+const gameSpec = {
+    id, hasScore: false,
+    away: cleanLocation(awayComp.team), home: cleanLocation(homeComp.team),
+    awayName: awayComp.team.displayName, homeName: homeComp.team.displayName,
+    awayId: awayTeam.id, homeId: homeTeam.id,
+    date: game.date, season: header.season.year, week: header.week,
+    note: gameNote, neutralSite: game.neutralSite,
+};
+const title = gameTitle(gameSpec);
+const subtitle = gameDescription(gameSpec);
+const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
+// Canonical is /game/<id>, the served path; /cfb/game/<id> is Disallowed in
+// robots.txt, so the old value told Google the authoritative URL was one it may not crawl.
+const canonicalUrl = new URL(`/game/${id}`, "https://gameonpaper.com").href;
 const statusDescription = game.status.type.description ?? "Scheduled";
 const metricYear = espnGame.gamepackageJSON.header.season.year == CURRENT_YEAR ? LAST_YEAR : espnGame.gamepackageJSON.header.season.year;
 
@@ -108,26 +122,27 @@ const matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5)
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="referrer" content="origin-when-cross-origin">
-        <link rel="canonical" href={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <link rel="canonical" href={canonicalUrl}>
         <title>{title}</title>
-        <meta name="description" content={`Advanced stats for ${subtitle}`}>
+        <meta name="description" content={subtitle}>
 
         <meta property="og:site_name" content="GameOnPaper.com">
-        <meta property="og:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta property="og:url" content={canonicalUrl}>
         <meta property="og:title" content={title}>
-        <meta property="og:description" content={`Advanced stats for ${subtitle}`}>
+        <meta property="og:description" content={subtitle}>
         <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
         <meta property="og:image:width" content="400">
         <meta property="og:image:height" content="400">
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="@gameonpaper">
-        <meta name="twitter:url" content={`https://gameonpaper.com/cfb/game/${game.id}`}>
+        <meta name="twitter:url" content={canonicalUrl}>
         <meta name="twitter:title" content={title}>
         <meta name="twitter:description" content={subtitle}>
         <meta name="twitter:card" content="summary">
         <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
         <meta name="title" content={title}>
         <meta name="medium" content="website">
+        <script type="application/ld+json" set:html={structuredData} />
         <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
         <DarkModeLogos teamIds={[homeTeam.id, awayTeam.id]} />
     </head>
@@ -140,7 +155,7 @@ const matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5)
                     </div>
                     <div class="col-8 text-center">
                         <div>
-                            <h2 class="mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h2>
+                            <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
                             {
                                 (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                             }

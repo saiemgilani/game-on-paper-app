@@ -73,6 +73,81 @@ export function datasetJsonLd(spec: DatasetSpec) {
     };
 }
 
+export interface GameSpec {
+    id: string | number;
+    /** rendered (lowercased) names, as the site shows them */
+    away: string;
+    home: string;
+    /** schema.org names -- the real display names, never the lowercased slug */
+    awayName?: string;
+    homeName?: string;
+    awayId?: string | number;
+    homeId?: string | number;
+    awayScore?: string | number;
+    homeScore?: string | number;
+    /** ISO kickoff */
+    date: string;
+    season: number;
+    week?: number;
+    /** ESPN gameNote, e.g. "Peach Bowl" -- replaces "Week N" when present */
+    note?: string;
+    neutralSite?: boolean;
+    /** final or in progress: scores are meaningful */
+    hasScore: boolean;
+}
+
+/** "Week 3 2025" or "Peach Bowl 2025" -- what the page is about beyond the two teams. */
+export function gameContext(g: Pick<GameSpec, 'season' | 'week' | 'note'>): string {
+    const label = g.note?.trim() || (g.week ? `Week ${g.week}` : '');
+    return label ? `${label} ${g.season}` : `${g.season}`;
+}
+
+export function gameTitle(g: GameSpec): string {
+    const matchup = g.hasScore ? `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}` : `${g.away} vs ${g.home}`;
+    const what = g.hasScore ? 'EPA & advanced box score' : 'preview: win probability & EPA matchup';
+    return `${matchup} | ${gameContext(g)} ${what} | Game on Paper`;
+}
+
+export function gameDescription(g: GameSpec): string {
+    const when = new Date(g.date);
+    const day = isNaN(when.getTime()) ? '' : ` on ${when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}`;
+    if (g.hasScore) {
+        return `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}${day}: college football advanced box score with EPA per play, success rate, explosiveness, win probability chart, drives and every play.`;
+    }
+    return `${g.away} vs ${g.home}${day}: college football matchup preview with win probability, EPA per play, success rate and explosiveness for both teams, plus series history.`;
+}
+
+/** A game as a SportsEvent -- the only schema.org type Google shows sports rich results for. */
+export function sportsEventJsonLd(g: GameSpec) {
+    const team = (name: string | undefined, fallback: string, id: string | number | undefined) => ({
+        '@type': 'SportsTeam',
+        name: name || fallback,
+        sport: 'American football',
+        ...(id != null ? { url: new URL(`/team/${id}`, ORIGIN).href } : {}),
+    });
+    const url = new URL(`/game/${g.id}`, ORIGIN).href;
+    const home = team(g.homeName, g.home, g.homeId);
+    const away = team(g.awayName, g.away, g.awayId);
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'SportsEvent',
+        '@id': url,
+        url,
+        name: `${away.name} at ${home.name}`,
+        description: gameDescription(g),
+        sport: 'American football',
+        startDate: g.date,
+        eventStatus: 'https://schema.org/EventScheduled',
+        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+        ...(g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
+        homeTeam: home,
+        awayTeam: away,
+        competitor: [away, home],
+        organizer: { '@type': 'SportsOrganization', name: 'NCAA' },
+        ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: ['college football', 'EPA per play', 'success rate', 'win probability'] } } : {}),
+    };
+}
+
 export function websiteJsonLd() {
     return {
         '@context': 'https://schema.org',
