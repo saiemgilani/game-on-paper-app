@@ -46,8 +46,12 @@ const SYMBOLS = {
     'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
     // defensive 2-pt: the safety shield, coloured by .pi-def-2pt
     'def-2pt':  `<use href="#pi-safety" width="32" height="32"/>`,
-    // 4th down converted: the ball driven on through
-    'fourth-conv': ball(0, 9, 20) + g('m:keyboard_double_arrow_right', 14, 5, 20),
+    // 4th down converted: the chain crew -- down box (4) on the left post, the
+    // full-span chain low, the ball spotted in front of it (round 14, FC-B)
+    'fourth-conv': `<g><rect width="12" height="13" rx="1.8" fill="var(--c)"/><path fill="#fff" opacity=".95" transform="translate(1.6 1)" d="M6 1 1 8h4v3.4h2.9V8h2v-2.5h-2V1Z"/></g>`
+        + `<path d="M6 13.5V28M26 8V28" fill="none" stroke="var(--c)" stroke-width="3" stroke-linecap="round"/>`
+        + Array.from({ length: 7 }, (_, i) => `<ellipse cx="${(7.8 + i * 2.8).toFixed(1)}" cy="25.5" rx="1.8" ry="1.1" fill="none" stroke="var(--c)" stroke-width="1.4"/>`).join('')
+        + ball(15.5, 18.5, 15) + `<path fill="var(--c)" d="M1 28h30v2.6h-30Z"/>`,
     // fumble kept: same ball + "!" family as fumble lost, neutral tone via CSS
     'fumble-kept': ball(2, 8, 22) + g('m:priority_high', 20, 1, 14),
     // flags
