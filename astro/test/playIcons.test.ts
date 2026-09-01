@@ -87,6 +87,9 @@ describe('playIcons', () => {
         // return team on a kickoff and the punting team on a punt.
         expect(playIcons(play({ kickoff_play: true, EPA: 1.86 } as any, 'Kickoff Return (Offense)'))).toEqual(['explosive']);
         expect(playIcons(play({ kickoff_play: true, EPA: 0.4 } as any, 'Kickoff Return (Offense)'))).toEqual([]);
+        // just under the 90th-percentile cutoffs -- these cleared the old 80th
+        expect(playIcons(play({ kickoff_play: true, EPA: 0.9 } as any, 'Kickoff Return (Offense)'))).toEqual([]);
+        expect(playIcons(play({ punt_play: true, EPA: -0.9 } as any, 'Punt Return'))).toEqual([]);
         expect(playIcons(play({ punt_play: true, EPA: -1.2 } as any, 'Punt Return'))).toEqual(['explosive']);
         expect(playIcons(play({ punt_play: true, EPA: 1.2 } as any, 'Punt Return'))).toEqual([]);
         // a kick that was never returned is never explosive, whatever its EPA

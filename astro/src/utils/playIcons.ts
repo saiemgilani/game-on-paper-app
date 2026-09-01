@@ -35,14 +35,15 @@ export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
 
 /** Two marks are set as text pills rather than pictograms (decided 2026-09-01 after nine drawing rounds). */
 /**
- * Explosive-return cutoffs: the 80th percentile of return-team EPA over the 15
+ * Explosive-return cutoffs: the 90th percentile of return-team EPA over the 15
  * seasons 2011-2025 of ESPN CFB play-by-play, counting only plays that were
  * actually returned -- no touchback, fair catch, onside kick, out-of-bounds,
- * downed or blocked kick. Kickoffs n=74,593 (p80 +0.68); punts n=43,888
- * (p80 +0.58). Replaces the old fixed yardage rule (40 kickoff / 30 punt yards),
- * which missed return touchdowns entirely -- those carry no return-yards value.
+ * downed or blocked kick. Kickoffs n=74,593 (p90 +1.06); punts n=43,888
+ * (p90 +1.04) -- the two families land within 0.02 of each other. Replaces the
+ * old fixed yardage rule (40 kickoff / 30 punt yards), which missed return
+ * touchdowns entirely -- those carry no return-yards value.
  */
-export const RETURN_EXPLOSIVE_EPA = { kickoff: 0.68, punt: 0.58 } as const;
+export const RETURN_EXPLOSIVE_EPA = { kickoff: 1.06, punt: 1.04 } as const;
 
 export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK', tfl: 'TFL', onside: 'ONSIDE' };
 
