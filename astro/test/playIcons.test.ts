@@ -83,9 +83,19 @@ describe('playIcons', () => {
         expect(playIcons(play({ first_down_earned: true, start: { down: 2 } } as any))).toEqual([]);
         expect(playIcons(play({ firstD_by_yards: true, start: { down: 1 } } as any))).toEqual([]);
         expect(playIcons(play({ first_down_earned: true, punt: true, start: { down: 4 } } as any))).toEqual([]);
-        expect(playIcons(play({ yds_kickoff_return: 53, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual(['explosive']);
-        expect(playIcons(play({ yds_kickoff_return: 36, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual([]);
-        expect(playIcons(play({ yds_punt_return: 31, punt: true } as any, 'Punt Return'))).toEqual(['explosive']);
+        // returns get the bolt on return-team EPA, not yardage. pos_team is the
+        // return team on a kickoff and the punting team on a punt.
+        expect(playIcons(play({ kickoff_play: true, EPA: 1.86 } as any, 'Kickoff Return (Offense)'))).toEqual(['explosive']);
+        expect(playIcons(play({ kickoff_play: true, EPA: 0.4 } as any, 'Kickoff Return (Offense)'))).toEqual([]);
+        expect(playIcons(play({ punt_play: true, EPA: -1.2 } as any, 'Punt Return'))).toEqual(['explosive']);
+        expect(playIcons(play({ punt_play: true, EPA: 1.2 } as any, 'Punt Return'))).toEqual([]);
+        // a kick that was never returned is never explosive, whatever its EPA
+        expect(playIcons(play({ kickoff_play: true, kickoff_tb: true, EPA: 1.86 } as any))).toEqual([]);
+        expect(playIcons(play({ kickoff_play: true, kickoff_fair_catch: true, EPA: 1.86 } as any))).toEqual([]);
+        expect(playIcons(play({ punt_play: true, punt_fair_catch: true, EPA: -1.2 } as any))).toEqual([]);
+        expect(playIcons(play({ punt_play: true, punt_downed: true, EPA: -1.2 } as any))).toEqual([]);
+        // an onside kick keeps its own mark and does not also take the bolt
+        expect(playIcons(play({ kickoff_play: true, kickoff_onside: true, EPA: 1.86 } as any))).toEqual(['onside']);
     });
 
     test('output order always follows PLAY_ICON_ORDER', () => {

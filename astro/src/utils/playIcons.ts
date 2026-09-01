@@ -34,6 +34,16 @@ export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
 };
 
 /** Two marks are set as text pills rather than pictograms (decided 2026-09-01 after nine drawing rounds). */
+/**
+ * Explosive-return cutoffs: the 80th percentile of return-team EPA over the 15
+ * seasons 2011-2025 of ESPN CFB play-by-play, counting only plays that were
+ * actually returned -- no touchback, fair catch, onside kick, out-of-bounds,
+ * downed or blocked kick. Kickoffs n=74,593 (p80 +0.68); punts n=43,888
+ * (p80 +0.58). Replaces the old fixed yardage rule (40 kickoff / 30 punt yards),
+ * which missed return touchdowns entirely -- those carry no return-yards value.
+ */
+export const RETURN_EXPLOSIVE_EPA = { kickoff: 0.68, punt: 0.58 } as const;
+
 export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK', tfl: 'TFL', onside: 'ONSIDE' };
 
 /** Marks shown in the table legend, in a reading order that groups families. */
@@ -108,8 +118,17 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
         else if (on('penalty_declined') || on('penalty_all_declined')) out.push('penalty-declined');
         else out.push('penalty');
     }
-    // EPA_explosive covers pass/rush; long returns get the bolt by yardage
-    const bigReturn = Number(play.yds_kickoff_return ?? 0) >= 40 || Number(play.yds_punt_return ?? 0) >= 30;
+    // EPA_explosive covers scrimmage plays; returns are judged on return-team EPA
+    // against RETURN_EXPLOSIVE_EPA (see that constant for the derivation).
+    // EPA is pos_team-relative, and pos_team is the RETURN team on a kickoff but
+    // the PUNTING team on a punt, so the punt side reads the negated value.
+    const epa = Number(play.EPA);
+    const returned = (kind: 'kickoff' | 'punt') => on(`${kind}_play`)
+        && !on(`${kind}_tb`) && !on(`${kind}_fair_catch`) && !on(`${kind}_oob`)
+        && !on(`${kind}_downed`) && !on(`${kind}_safety`);
+    const bigReturn = Number.isFinite(epa) && (
+        (returned('kickoff') && !on('kickoff_onside') && epa >= RETURN_EXPLOSIVE_EPA.kickoff)
+        || (returned('punt') && !on('punt_blocked') && -epa >= RETURN_EXPLOSIVE_EPA.punt));
     if (on('EPA_explosive') || bigReturn) out.push('explosive');
     return out;
 }
