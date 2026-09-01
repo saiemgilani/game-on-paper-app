@@ -57,6 +57,13 @@ jobs:
 
   deploy-api:
     runs-on: ubuntu-latest
+    # Two merges minutes apart ran this job twice in parallel on 2026-08-31: run A
+    # pulled its image, run B overwrote docker-compose.yml on the host, run A's
+    # down+up then pulled B's image into a full disk and the API stayed down.
+    # Queue deploys to the host; never cancel one mid-compose.
+    concurrency:
+      group: deploy-api-host
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
         with:
@@ -129,15 +136,41 @@ jobs:
             set -e
             chmod 600 .env
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
-            docker compose pull
+            echo "disk before: $(df -h / | tail -1)"
+            # Free space BEFORE pulling, touching nothing that is running: stopped
+            # containers, build cache, and images no container references. The old
+            # trailing `system prune` (no -a) kept every previous deploy's tagged
+            # image, which is how the disk filled on 2026-08-31.
+            docker container prune -f
+            docker image prune -af
+            docker builder prune -af
+            # Pull with the old container still serving. If this fails (disk,
+            # registry, network) `set -e` stops here and nothing goes down.
+            docker compose -f docker-compose.yml pull
             # `docker stop` leaves the stopped container in place, so the next
             # `up` collides with its name ("container name is already in use").
             # `compose down` stops AND removes what compose owns, which is also
             # narrower than stopping every container on the host.
             docker compose -f docker-compose.yml down --remove-orphans || true
-            docker compose -f docker-compose.yml up -d --pull always
+            # No --pull always: the image is already local, and a second pull
+            # could race a compose file rewritten by a later run.
+            docker compose -f docker-compose.yml up -d
             docker compose -f docker-compose.yml ps
-            docker system prune --force
+            # Fail the run if the new container never becomes healthy (compose
+            # healthcheck: 20s start + 60s interval), instead of a green deploy
+            # in front of a red API.
+            cid=$(docker compose -f docker-compose.yml ps -q python)
+            for i in $(seq 1 36); do
+              st=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo missing)
+              echo "health: $st"
+              [ "$st" = healthy ] && break
+              case "$st" in exited|dead|missing) docker compose -f docker-compose.yml logs --tail 50; exit 1 ;; esac
+              [ $i -eq 36 ] && { echo "API not healthy after 180s"; docker compose -f docker-compose.yml logs --tail 50; exit 1; }
+              sleep 5
+            done
+            # The previous image is unreferenced now; drop it too.
+            docker image prune -af
+            echo "disk after: $(df -h / | tail -1)"
           ENDSSH
 
       # - name: Check that API is live
