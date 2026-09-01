@@ -1,0 +1,22 @@
+---
+// One copy per page (PlaysTable emits it). Every mark is a 32-grid solid
+// silhouette painted with the CSS custom property --c, so the same symbol
+// serves both themes; laces and the shield's "2" are true holes (evenodd),
+// never a page-background fill, so they hold on any row tint.
+---
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="pi-ball" viewBox="0 0 32 32"><path fill="var(--c)" fill-rule="evenodd" transform="rotate(-35 16 16)" d="M3 16c0-5 6-9.5 13-9.5S29 11 29 16s-6 9.5-13 9.5S3 21 3 16Zm8.5-1.1h9v2.2h-9Zm1.4-2.2h1.8v6.6h-1.8Zm2.7 0h1.8v6.6h-1.8Zm2.7 0h1.8v6.6h-1.8Z"/></symbol>
+    <symbol id="pi-td" viewBox="0 0 32 32"><use href="#pi-ball" x="4" y="9" width="24" height="24"/><path fill="var(--c)" d="M15 1h2.4v6H15ZM7.2 3.6l2-1.4 3.4 5-2 1.4ZM24.8 3.6l-2-1.4-3.4 5 2 1.4ZM2 12l.8-2.3 5.6 2-.8 2.3ZM30 12l-.8-2.3-5.6 2 .8 2.3Z"/></symbol>
+    <symbol id="pi-fg" viewBox="0 0 32 32"><path fill="var(--c)" d="M6 3h3v12h14V3h3v15H17.5v11h-3V18H6Z"/><use href="#pi-ball" x="8" y="0" width="16" height="16"/></symbol>
+    <symbol id="pi-fg-miss" viewBox="0 0 32 32"><path fill="var(--c)" d="M3 3h3v12h10V3h3v15H11v11H8V18H3Z"/><use href="#pi-ball" x="18" y="1" width="14" height="14"/><path fill="var(--c)" d="m19.5 19 2-2 3 3 3-3 2 2-3 3 3 3-2 2-3-3-3 3-2-2 3-3Z"/></symbol>
+    <symbol id="pi-safety" viewBox="0 0 32 32"><path fill="var(--c)" fill-rule="evenodd" d="M16 2 5 6v9c0 7.5 4.7 12.6 11 15 6.3-2.4 11-7.5 11-15V6Zm-4.5 10.5c.1-1.4.9-2.2 2.1-2.2 1.1 0 1.9.7 1.9 1.7 0 1.1-.8 1.9-2.3 3.3L11 19.7V22h10.2v-2.5H15l2.6-2.3c2-1.7 3.4-3 3.4-5 0-2.5-2-4.2-4.7-4.2-2.6 0-4.8 1.7-4.8 4.5Z"/></symbol>
+    <symbol id="pi-int" viewBox="0 0 32 32"><path fill="var(--c)" d="M4 22c0-4 2.5-6.5 6.5-6.5H21v-5l8 8-8 8v-5H10.5c-2.2 0-3.5 1.3-3.5 3.5V29H4Z"/><use href="#pi-ball" x="1" y="1" width="14" height="14"/></symbol>
+    <symbol id="pi-fumble" viewBox="0 0 32 32"><use href="#pi-ball" x="2" y="8" width="22" height="22"/><path fill="var(--c)" d="M25.5 2h4l-.8 12h-2.4ZM25.3 17h4.4v4.4h-4.4Z"/></symbol>
+    <symbol id="pi-downs" viewBox="0 0 32 32"><use href="#pi-ball" x="0" y="10" width="22" height="22"/><path fill="var(--c)" fill-rule="evenodd" d="m22 2 5.7 2.3L30 10l-2.3 5.7L22 18l-5.7-2.3L14 10l2.3-5.7ZM18.5 9v2h7V9Z"/></symbol>
+    <symbol id="pi-blocked" viewBox="0 0 32 32"><path fill="var(--c)" fill-rule="evenodd" d="M22 3h8v26h-8Zm0 7v1.5h8V10Zm0 6v1.5h8V16Zm0 6v1.5h8V22Zm4-13v3h1.5V9Zm-2 6v3h1.5v-3Zm4 0v3h1.5v-3Zm-2 6v3h1.5v-3Z"/><path fill="var(--c)" d="M2 13h10V7l9 9-9 9v-6H2Z"/></symbol>
+    <symbol id="pi-sack" viewBox="0 0 32 32"><path fill="var(--c)" d="M2 3h28v4H2Z"/><path fill="var(--c)" d="M14 9h4v9h5l-7 8-7-8h5Z"/><path fill="var(--c)" d="M4 28h24v2.5H4Z"/></symbol>
+    <symbol id="pi-penalty" viewBox="0 0 32 32"><path fill="var(--c)" d="M6 2h3v28H6Z"/><path fill="var(--c)" d="M9 4c4-2.5 8-2.5 12 0s8 2.5 10 .5v12c-2 2-6 2-10-.5s-8-2.5-12 0Z"/></symbol>
+    <symbol id="pi-explosive" viewBox="0 0 32 32"><path fill="var(--c)" d="M18.5 2 6 18h8l-2 12 14-16h-8Z"/></symbol>
+  </defs>
+</svg>

@@ -1,0 +1,14 @@
+---
+import { PLAY_ICON_LABEL, playIcons } from '../../../utils/playIcons';
+
+interface Props { play: any; size?: number }
+const { play, size } = Astro.props;
+const ids = playIcons(play);
+---
+{ids.length > 0 && (
+    <span class="play-marks" style={size ? `font-size:${size}px` : undefined}>
+        {ids.map((id) => (
+            <svg class={`pi pi-${id}`} role="img" aria-label={PLAY_ICON_LABEL[id]}><title>{PLAY_ICON_LABEL[id]}</title><use href={`#pi-${id}`} /></svg>
+        ))}
+    </span>
+)}

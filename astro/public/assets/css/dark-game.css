@@ -2608,3 +2608,13 @@ p.box-heading {
 }
 
 }
+/* Play marks on dark rows: lifted a step so they hold on the dark tints. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mark-score: #3fb37a;
+    --mark-turnover: #ef5b6b;
+    --mark-sack: #f28b3b;
+    --mark-flag: #f7c62b;
+    --mark-explosive: #38c5e0;
+  }
+}

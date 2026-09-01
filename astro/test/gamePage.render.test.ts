@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
@@ -49,6 +49,8 @@ describe('GamePage renders a finished game end to end', () => {
             props: { id: GAME_ID, game },
             request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
         });
+        // DUMP_HTML=/path/file.html npx vitest run test/gamePage.render.test.ts -- for eyeballing the render
+        if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);
 
     test('the whole document arrives, not an empty stream', () => {
@@ -60,6 +62,19 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/<title>[^<]*EPA &(amp;)? advanced box score \| Game on Paper<\/title>/);
         expect(html).toMatch(/<meta name="description" content="[^"]*EPA per play/);
         expect(html).toContain(`<link rel="canonical" href="https://gameonpaper.com/game/${GAME_ID}">`);
+    });
+
+    test('play marks: one sprite, and every touchdown/penalty row carries its mark', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const tds = game.plays.filter((p: any) => p.touchdown === true).length;
+        const flags = game.plays.filter((p: any) => p.penalty_flag === true).length;
+        expect(tds).toBeGreaterThan(0);
+        // the "All plays" table lists every play once; big/important/scoring tables repeat some, so >=
+        expect((html.match(/<symbol id="pi-td"/g) ?? []).length).toBe(1);
+        expect((html.match(/<use href="#pi-td">/g) ?? []).length).toBeGreaterThanOrEqual(tds);
+        expect((html.match(/<use href="#pi-penalty">/g) ?? []).length).toBeGreaterThanOrEqual(flags);
+        expect(html).not.toContain('#pi-kickoff');
     });
 
     test('exactly one h1 and a SportsEvent that parses', () => {

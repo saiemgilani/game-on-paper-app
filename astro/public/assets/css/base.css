@@ -155,3 +155,21 @@ Target Matrix
   border-inline-end: 1px solid !important;
   border-inline-end-color: #e5e5e5 !important; 
 }
+/* Play marks: solid pictograms trailing the play text (see utils/playIcons.ts). One flat colour
+   per family, derived from the row palette; the dark-mode values live in dark-game.css. */
+:root {
+  --mark-score: #178a4f;
+  --mark-turnover: #d1293b;
+  --mark-sack: #e26a12;
+  --mark-flag: #e6a800;
+  --mark-explosive: #0b98b5;
+}
+.play-marks { white-space: nowrap; margin-left: .5rem; font-size: 15px; line-height: 1; vertical-align: -1px; }
+.play-marks .pi + .pi { margin-left: 4px; }
+.pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
+.pi-td, .pi-fg, .pi-safety { --c: var(--mark-score); }
+.pi-int, .pi-fumble, .pi-downs, .pi-blocked, .pi-fg-miss { --c: var(--mark-turnover); }
+.pi-sack { --c: var(--mark-sack); }
+.pi-penalty { --c: var(--mark-flag); }
+.pi-explosive { --c: var(--mark-explosive); }
+.play-marks-legend .pi { font-size: 15px; }
