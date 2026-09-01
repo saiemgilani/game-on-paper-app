@@ -74,6 +74,7 @@ const gameSpec = {
     awayScore: awayComp.score, homeScore: homeComp.score,
     date: game.header.competitions[0].date, season: game.season.year, week: game.header.week,
     note: game.header?.gameNote, neutralSite: game.header.competitions[0].neutralSite,
+    statusDescription,
 };
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription(gameSpec);

@@ -94,12 +94,27 @@ export interface GameSpec {
     neutralSite?: boolean;
     /** final or in progress: scores are meaningful */
     hasScore: boolean;
+    /** ESPN status description ("Final", "Postponed", "Canceled") */
+    statusDescription?: string;
+}
+
+/**
+ * schema.org EventStatusType has no "completed" or "in progress" value -- a played
+ * game is still EventScheduled. Only cancellations and postponements differ.
+ */
+export function eventStatus(statusDescription?: string): string {
+    const s = (statusDescription ?? '').toLowerCase();
+    if (s.includes('cancel')) return 'https://schema.org/EventCancelled';
+    if (s.includes('postpone')) return 'https://schema.org/EventPostponed';
+    return 'https://schema.org/EventScheduled';
 }
 
 /** "Week 3 2025" or "Peach Bowl 2025" -- what the page is about beyond the two teams. */
 export function gameContext(g: Pick<GameSpec, 'season' | 'week' | 'note'>): string {
     const label = g.note?.trim() || (g.week ? `Week ${g.week}` : '');
-    return label ? `${label} ${g.season}` : `${g.season}`;
+    if (!label) return `${g.season}`;
+    // an ESPN note can already carry the year ("2025 CFP Semifinal"); don't say it twice
+    return label.includes(`${g.season}`) ? label : `${label} ${g.season}`;
 }
 
 export function gameTitle(g: GameSpec): string {
@@ -137,7 +152,7 @@ export function sportsEventJsonLd(g: GameSpec) {
         description: gameDescription(g),
         sport: 'American football',
         startDate: g.date,
-        eventStatus: 'https://schema.org/EventScheduled',
+        eventStatus: eventStatus(g.statusDescription),
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
         ...(g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
         homeTeam: home,

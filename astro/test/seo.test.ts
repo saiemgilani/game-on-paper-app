@@ -116,6 +116,7 @@ describe('game copy + SportsEvent', () => {
         expect(gameTitle(pre)).toBe('north carolina vs tcu | Week 1 2025 preview: win probability & EPA matchup | Game on Paper');
         expect(gameContext({ season: 2024, week: 17, note: 'Peach Bowl' })).toBe('Peach Bowl 2024');
         expect(gameContext({ season: 2024 })).toBe('2024');
+        expect(gameContext({ season: 2024, week: 17, note: '2024 CFP Semifinal' })).toBe('2024 CFP Semifinal');
     });
 
     test('SportsEvent uses real display names, team urls and the served game url', () => {
@@ -128,6 +129,10 @@ describe('game copy + SportsEvent', () => {
         expect(ld.subjectOf?.['@type']).toBe('Dataset');
         expect(sportsEventJsonLd(pre).subjectOf).toBeUndefined();
         expect(sportsEventJsonLd({ ...final, neutralSite: true }).location).toBeUndefined();
+        // schema.org has no completed/in-progress status; only cancel/postpone differ
+        expect(sportsEventJsonLd({ ...final, statusDescription: 'Final' }).eventStatus).toBe('https://schema.org/EventScheduled');
+        expect(sportsEventJsonLd({ ...pre, statusDescription: 'Postponed' }).eventStatus).toBe('https://schema.org/EventPostponed');
+        expect(sportsEventJsonLd({ ...pre, statusDescription: 'Canceled' }).eventStatus).toBe('https://schema.org/EventCancelled');
     });
 });
 
