@@ -11,9 +11,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: astro/package-lock.json
-      - run: npm ci
+      # No lockfile is tracked for astro/ (it is gitignored), so npm ci and the
+      # setup-node lock cache are both unavailable; install resolves fresh.
+      - run: npm install --no-audit --no-fund
         working-directory: astro
       # Renders a real game page through the Astro Container API (see
       # test/gamePage.render.test.ts). A frontmatter throw fails here instead of
