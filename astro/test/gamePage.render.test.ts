@@ -72,7 +72,7 @@ describe('GamePage renders a finished game end to end', () => {
         // per row: the "All plays" table renders every play once, keyed by game_play_number
         const rowFor = (n: number) => html.split('<tr').find((r) => r.includes(`href="#play-all-${n}"`)) ?? '';
         // a family may render as a variant (td-xp, penalty-declined, ...), so match the id prefix
-        const checks: Array<[string, RegExp]> = [['touchdown', /<use href="#pi-td(-xp|-2pt)?(-miss)?">/], ['penalty_flag', /<use href="#pi-penalty(-declined|-offset)?">/], ['sack', /<use href="#pi-sack">/], ['int', /<use href="#pi-int">/], ['stuffed_run', /<use href="#pi-(sack|tfl|stuffed)">/]];
+        const checks: Array<[string, RegExp]> = [['touchdown', /<use href="#pi-td(-xp|-2pt)?(-miss)?">/], ['penalty_flag', /<use href="#pi-penalty(-declined|-offset)?">/], ['sack', /class="pi-pill pi-sack"[^>]*>SACK</], ['int', /<use href="#pi-int">/], ['stuffed_run', /(class="pi-pill pi-(sack|tfl)"|<use href="#pi-stuffed">)/]];
         for (const [flag, re] of checks) {
             const plays = game.plays.filter((p: any) => p[flag] === true);
             expect(plays.length, flag).toBeGreaterThan(0);

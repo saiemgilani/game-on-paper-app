@@ -33,6 +33,9 @@ export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
     explosive: 'Explosive play',
 };
 
+/** Two marks are set as text pills rather than pictograms (decided 2026-09-01 after nine drawing rounds). */
+export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK', tfl: 'TFL' };
+
 /** Marks shown in the table legend, in a reading order that groups families. */
 export const PLAY_ICON_LEGEND: readonly PlayIconId[] = [
     'td', 'td-xp', 'td-2pt', 'fg', 'safety', 'int', 'fumble', 'downs', 'blocked', 'fg-miss',

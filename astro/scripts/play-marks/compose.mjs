@@ -40,8 +40,7 @@ const SYMBOLS = {
     fg:         posts(6, 14) + ball(8, -1, 16),
     safety:     `<mask id="pi-safety-m"><rect width="32" height="32" fill="#fff"/><path d="M11.5 12.5c0-2.8 2.2-4.5 4.8-4.5 2.7 0 4.7 1.7 4.7 4.2 0 2-1.4 3.3-3.4 5L15 19.5h6.2V22H11v-2.3l4.6-4.4c1.5-1.4 2.3-2.2 2.3-3.3 0-1-.8-1.7-1.9-1.7-1.2 0-2 .8-2.1 2.2Z" fill="#000"/></mask><g mask="url(#pi-safety-m)">${g('m:shield', 1, 1, 30)}</g>`,
     // defensive events
-    sack:       g('p:person-simple-throw', 0, 2, 26) + g('m:emergency', 18, 0, 14),
-    tfl:        g('p:person-simple-run', 0, 2, 26) + g('m:emergency', 18, 0, 14),
+    // sack and tfl are text pills (PlayMarks.astro), not symbols
     stuffed:    g('p:person-simple-run', -2, 3, 24) + g('b:bricks', 19, 4, 13) + g('m:emergency', 13, 0, 9),
     'three-out': `<circle cx="3.5" cy="16" r="2.6" ${F}/><circle cx="10" cy="16" r="2.6" ${F}/><circle cx="16.5" cy="16" r="2.6" ${F}/>` + g('b:bricks', 19, 8, 13),
     'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
