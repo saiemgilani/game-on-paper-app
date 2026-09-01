@@ -71,12 +71,15 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).not.toContain('#pi-kickoff');
         // per row: the "All plays" table renders every play once, keyed by game_play_number
         const rowFor = (n: number) => html.split('<tr').find((r) => r.includes(`href="#play-all-${n}"`)) ?? '';
-        const checks: Array<[string, string]> = [['touchdown', 'pi-td'], ['penalty_flag', 'pi-penalty'], ['sack', 'pi-sack'], ['int', 'pi-int']];
-        for (const [flag, icon] of checks) {
+        // a family may render as a variant (td-xp, penalty-declined, ...), so match the id prefix
+        const checks: Array<[string, RegExp]> = [['touchdown', /<use href="#pi-td(-xp|-2pt)?(-miss)?">/], ['penalty_flag', /<use href="#pi-penalty(-declined|-offset)?">/], ['sack', /<use href="#pi-sack">/], ['int', /<use href="#pi-int">/], ['stuffed_run', /<use href="#pi-(sack|tfl|stuffed)">/]];
+        for (const [flag, re] of checks) {
             const plays = game.plays.filter((p: any) => p[flag] === true);
             expect(plays.length, flag).toBeGreaterThan(0);
-            for (const p of plays) expect(rowFor(p.game_play_number), `${flag} play ${p.game_play_number}`).toContain(`<use href="#${icon}">`);
+            for (const p of plays) expect(rowFor(p.game_play_number), `${flag} play ${p.game_play_number}`).toMatch(re);
         }
+        // every touchdown in this game had a good PAT -> the conversion rides on the mark
+        expect((html.match(/<use href="#pi-td-xp">/g) ?? []).length).toBeGreaterThanOrEqual(game.plays.filter((p: any) => p.touchdown === true && p.xp_made === true).length);
         // routine kicks carry no mark at all; a kick returned for a score still carries the touchdown
         const { playIcons } = await import('../src/utils/playIcons');
         const kicks = game.plays.filter((p: any) => p.kickoff_play === true || p.punt === true);
@@ -84,7 +87,7 @@ describe('GamePage renders a finished game end to end', () => {
         expect(plain.length).toBeGreaterThan(0);
         for (const p of plain) expect(rowFor(p.game_play_number), `plain kick ${p.game_play_number}`).not.toContain('class="play-marks"');
         const returnTd = kicks.find((p: any) => p.touchdown === true);
-        if (returnTd) expect(rowFor(returnTd.game_play_number)).toContain('<use href="#pi-td">');
+        if (returnTd) expect(rowFor(returnTd.game_play_number)).toMatch(/<use href="#pi-td(-xp|-2pt)?(-miss)?">/);
     });
 
     test('exactly one h1 and a SportsEvent that parses', () => {

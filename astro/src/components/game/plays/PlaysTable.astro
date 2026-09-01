@@ -2,7 +2,7 @@
 import type { ProcessedPlay } from '../../../resources/python'
 import ExpandedPlayRow from './ExpandedPlayRow.astro'
 import PlayRow from './PlayRow.astro'
-import { PLAY_ICON_LABEL, PLAY_ICON_ORDER } from '../../../utils/playIcons'
+import { PLAY_ICON_LABEL, PLAY_ICON_LEGEND } from '../../../utils/playIcons'
 
 
 interface Props {
@@ -34,7 +34,7 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                         <li><strong class="text-warning">Yellow</strong> - penalty</li>
                         <li><strong class="text-danger">Red</strong> - turnover</li>
                         <li><strong class="text-success">Green</strong> - scoring play</li>
-                        <li class="play-marks-legend">Marks - {PLAY_ICON_ORDER.map((id) => (<span class="me-2 text-nowrap"><svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg> {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
+                        <li class="play-marks-legend">Marks - {PLAY_ICON_LEGEND.map((id) => (<span class="me-2 text-nowrap"><svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg> {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
                     </ul>
                 </div>
                 </caption>
@@ -49,7 +49,7 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                         <li><strong class="text-warning">Yellow</strong> - penalty</li>
                         <li><strong class="text-danger">Red</strong> - turnover</li>
                         <li><strong class="text-success">Green</strong> - scoring play</li>
-                        <li class="play-marks-legend">Marks - {PLAY_ICON_ORDER.map((id) => (<span class="me-2 text-nowrap"><svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg> {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
+                        <li class="play-marks-legend">Marks - {PLAY_ICON_LEGEND.map((id) => (<span class="me-2 text-nowrap"><svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg> {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
                     </ul>
                 </div>
                 </caption>

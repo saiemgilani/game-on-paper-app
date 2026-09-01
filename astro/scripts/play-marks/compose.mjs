@@ -1,7 +1,8 @@
-// Composes the play-mark sprite from vendored pro glyphs (see glyphs.json for
-// sources + licenses) plus a few drawn primitives (goalposts, rays, bars).
-//   node scripts/play-marks/compose.mjs            -> writes src/components/game/plays/PlayMarkSprite.astro
-//   node scripts/play-marks/compose.mjs --print    -> prints the <defs> only (for previews)
+// Composes the play-mark sprite from vendored pro glyphs (glyphs.json carries sources + licenses;
+// Font Awesome's burst is CC BY 4.0 -- keep the credit line public) plus a few drawn primitives
+// (goalposts, scrimmage bars, dots).
+//   node scripts/play-marks/compose.mjs          -> writes src/components/game/plays/PlayMarkSprite.astro
+//   node scripts/play-marks/compose.mjs --print  -> prints the sprite only (for previews)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -9,40 +10,54 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const { glyphs } = JSON.parse(readFileSync(join(here, 'glyphs.json'), 'utf8'));
 
-// Place a glyph inside the 32-grid: x,y = top-left, s = rendered size (grid units).
-function g(name, x, y, s) {
+/** Place a glyph in the 32-grid: x,y top-left, s rendered size. `tone` overrides --c (e.g. a red x on a green mark). */
+function g(name, x, y, s, tone) {
     const { vb, d, evenodd } = glyphs[name];
-    const [vx, vy, vw, vh] = vb.split(' ').map(Number);
+    const [vx, vy, vw] = vb.split(' ').map(Number);
     const k = s / vw;
-    const fr = evenodd ? ' fill-rule="evenodd"' : '';
-    return `<path fill="var(--c)"${fr} transform="translate(${x} ${y}) scale(${k}) translate(${-vx} ${-vy})" d="${d}"/>`;
+    const fill = tone ? `var(--mark-${tone})` : 'var(--c)';
+    return `<path fill="${fill}"${evenodd ? ' fill-rule="evenodd"' : ''} transform="translate(${x} ${y}) scale(${k}) translate(${-vx} ${-vy})" d="${d}"/>`;
 }
 const F = 'fill="var(--c)"';
-const posts = (x, w, h = 10) => `<path ${F} d="M${x} 3h3v${h}h${w}V3h3v${h + 3}h-${(w + 6) / 2 - 1.5}v${29 - (h + 3) - 3}h-3v-${29 - (h + 3) - 3}h-${(w + 6) / 2 - 1.5}Z"/>`; // uprights + crossbar + post
+const posts = (x, w, h = 10) => `<path ${F} d="M${x} 3h3v${h}h${w}V3h3v${h + 3}h-${(w + 6) / 2 - 1.5}v${29 - (h + 3) - 3}h-3v-${29 - (h + 3) - 3}h-${(w + 6) / 2 - 1.5}Z"/>`;
+const ball = (x, y, s) => g('m:sports_football', x, y, s);
+const ok = g('m:check_circle', 21, 20, 11);
+const bad = g('m:cancel', 21, 20, 11, 'turnover');
 
 const SYMBOLS = {
-    ball: null,
-    td:        g('m:sports_football', 5, 8, 22) + `<path ${F} d="M15 1h2.4v6H15ZM7.2 3.6l2-1.4 3.4 5-2 1.4ZM24.8 3.6l-2-1.4-3.4 5 2 1.4ZM2 12l.8-2.3 5.6 2-.8 2.3ZM30 12l-.8-2.3-5.6 2 .8 2.3Z"/>`,
-    fg:        posts(6, 14) + g('m:sports_football', 8, -1, 16),
-    'fg-miss': posts(3, 8) + g('m:sports_football', 17, 0, 14) + g('m:close', 18, 15, 12),
-    safety:    `<mask id="pi-safety-m"><rect width="32" height="32" fill="#fff"/><path d="M11.5 12.5c0-2.8 2.2-4.5 4.8-4.5 2.7 0 4.7 1.7 4.7 4.2 0 2-1.4 3.3-3.4 5L15 19.5h6.2V22H11v-2.3l4.6-4.4c1.5-1.4 2.3-2.2 2.3-3.3 0-1-.8-1.7-1.9-1.7-1.2 0-2 .8-2.1 2.2Z" fill="#000"/></mask>`
-               + `<g mask="url(#pi-safety-m)">${g('m:shield', 1, 1, 30)}</g>`,
-    int:       g('m:sports_football', 1, 0, 14) + g('m:keyboard_return', 8, 8, 24),
-    fumble:    g('m:sports_football', 1, 6, 22) + g('m:priority_high', 19, 1, 14),
-    downs:     g('m:sports_football', 0, 9, 22) + g('b:sign-stop-fill', 15, 1, 16),
-    blocked:   g('b:bricks', 19, 6, 13) + g('m:arrow_forward', 0, 4, 22),
-    sack:      `<path ${F} d="M2 3h28v4H2Z"/>` + g('m:arrow_downward', 5, 6, 22) + `<path ${F} d="M4 28h24v2.5H4Z"/>`,
-    penalty:   g('m:flag', 2, 2, 28),
-    explosive: g('m:bolt', 2, 2, 28),
+    // turnovers
+    int:        ball(12, 0, 20) + g('m:undo', 0, 12, 20),
+    fumble:     ball(1, 6, 22) + g('m:priority_high', 19, 1, 14),
+    downs:      ball(0, 10, 20) + g('m:block', 13, 0, 19),
+    blocked:    g('m:pan_tool', 13, 1, 20) + ball(0, 12, 17),
+    'fg-miss':  posts(3, 8) + ball(17, 0, 14) + g('m:close', 18, 15, 12),
+    // scores; the conversion result rides on the touchdown mark
+    td:         ball(0, 8, 22),
+    'td-xp':    ball(0, 8, 22) + g('m:exposure_plus_1', 16, -1, 16) + ok,
+    'td-xp-miss': ball(0, 8, 22) + g('m:exposure_plus_1', 16, -1, 16) + bad,
+    'td-2pt':   ball(0, 8, 22) + g('m:exposure_plus_2', 16, -1, 16) + ok,
+    'td-2pt-miss': ball(0, 8, 22) + g('m:exposure_plus_2', 16, -1, 16) + bad,
+    fg:         posts(6, 14) + ball(8, -1, 16),
+    safety:     `<mask id="pi-safety-m"><rect width="32" height="32" fill="#fff"/><path d="M11.5 12.5c0-2.8 2.2-4.5 4.8-4.5 2.7 0 4.7 1.7 4.7 4.2 0 2-1.4 3.3-3.4 5L15 19.5h6.2V22H11v-2.3l4.6-4.4c1.5-1.4 2.3-2.2 2.3-3.3 0-1-.8-1.7-1.9-1.7-1.2 0-2 .8-2.1 2.2Z" fill="#000"/></mask><g mask="url(#pi-safety-m)">${g('m:shield', 1, 1, 30)}</g>`,
+    // defensive events
+    sack:       g('p:person-simple-throw', 0, 2, 26) + g('f:burst', 18, 0, 14),
+    tfl:        g('p:person-simple-run', 0, 2, 26) + g('f:burst', 18, 0, 14),
+    stuffed:    g('p:person-simple-run', -2, 4, 22) + g('b:bricks', 18, 5, 14),
+    'three-out': `<circle cx="3.5" cy="16" r="2.6" ${F}/><circle cx="10" cy="16" r="2.6" ${F}/><circle cx="16.5" cy="16" r="2.6" ${F}/>` + g('b:bricks', 19, 8, 13),
+    'goal-line': posts(11, 10, 8).replace(F, 'fill="var(--c)" opacity=".55"') + g('b:sign-stop-fill', 0, 8, 18) + g('b:bricks', 17, 15, 14),
+    // flags
+    penalty:    g('b:flag-fill', 2, 2, 28),
+    'penalty-declined': g('b:flag-fill', 0, 1, 24) + g('m:block', 17, 15, 15),
+    'penalty-offset':   g('b:flag-fill', 0, 0, 22) + g('m:sync_alt', 15, 14, 17),
+    explosive:  g('m:bolt', 2, 2, 28),
 };
-delete SYMBOLS.ball;
 
 const defs = Object.entries(SYMBOLS).map(([id, body]) => `    <symbol id="pi-${id}" viewBox="0 0 32 32">${body}</symbol>`).join('\n');
 const astro = `---
 // GENERATED by scripts/play-marks/compose.mjs -- edit the composition there, not this file.
 // One copy per page (GamePage emits it; every PlaysTable shares it). Glyph sources and licenses:
-// scripts/play-marks/glyphs.json (Material Symbols, Apache-2.0; Bootstrap Icons, MIT). Every mark is
-// a solid silhouette painted with --c, so the same symbol serves both themes; holes are real holes.
+// scripts/play-marks/glyphs.json (Material Symbols Apache-2.0; Bootstrap Icons MIT; Phosphor MIT;
+// Font Awesome Free CC BY 4.0 -- attribution required). Marks are solid silhouettes painted with --c.
 ---
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -50,5 +65,5 @@ ${defs}
   </defs>
 </svg>
 `;
-if (process.argv.includes('--print')) { process.stdout.write(`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>\n${defs}\n</defs></svg>`); }
+if (process.argv.includes('--print')) process.stdout.write(`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>\n${defs}\n</defs></svg>`);
 else { writeFileSync(join(here, '../../src/components/game/plays/PlayMarkSprite.astro'), astro); console.log('wrote PlayMarkSprite.astro with', Object.keys(SYMBOLS).length, 'symbols'); }

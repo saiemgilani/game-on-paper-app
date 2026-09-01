@@ -12,6 +12,7 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
 import PlayMarkSprite from './plays/PlayMarkSprite.astro';
+import { threeAndOutPlays } from '../../utils/playIcons';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import PassingChart from './metrics/PassingChart.astro';
@@ -53,6 +54,8 @@ if (verdict.requiredMissing.length) {
     return Astro.rewrite("/404")
 }
 salvageGame(game);
+// drive-shaped mark: flag the punt that ends a three-and-out so PlayMarks can render it per row
+for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: any) => x.game_play_number === n); if (p) (p as any).three_and_out = true; }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
