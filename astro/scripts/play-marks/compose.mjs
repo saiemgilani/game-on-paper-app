@@ -44,7 +44,7 @@ const SYMBOLS = {
     tfl:        g('p:person-simple-run', 0, 2, 26) + g('m:emergency', 18, 0, 14),
     stuffed:    g('p:person-simple-run', -2, 3, 24) + g('b:bricks', 19, 4, 13) + g('m:emergency', 13, 0, 9),
     'three-out': `<circle cx="3.5" cy="16" r="2.6" ${F}/><circle cx="10" cy="16" r="2.6" ${F}/><circle cx="16.5" cy="16" r="2.6" ${F}/>` + g('b:bricks', 19, 8, 13),
-    'goal-line': posts(11, 10, 8).replace(F, 'fill="var(--c)" opacity=".55"') + g('b:sign-stop-fill', 0, 8, 18) + g('b:bricks', 17, 15, 14),
+    'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
     // flags
     penalty:    g('b:flag-fill', 2, 2, 28),
     'penalty-declined': g('b:flag-fill', 0, 1, 24) + g('m:block', 17, 15, 15),
