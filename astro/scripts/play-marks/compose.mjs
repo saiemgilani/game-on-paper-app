@@ -44,6 +44,12 @@ const SYMBOLS = {
     stuffed:    g('p:person-simple-run', -2, 3, 24) + g('b:bricks', 19, 4, 13) + g('m:emergency', 13, 0, 9),
     'three-out': `<circle cx="3.5" cy="16" r="2.6" ${F}/><circle cx="10" cy="16" r="2.6" ${F}/><circle cx="16.5" cy="16" r="2.6" ${F}/>` + g('b:bricks', 19, 8, 13),
     'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
+    // defensive 2-pt: the safety shield, coloured by .pi-def-2pt
+    'def-2pt':  `<use href="#pi-safety" width="32" height="32"/>`,
+    // 4th down converted: the ball driven on through
+    'fourth-conv': ball(0, 9, 20) + g('m:keyboard_double_arrow_right', 14, 5, 20),
+    // fumble kept: same ball + "!" family as fumble lost, neutral tone via CSS
+    'fumble-kept': ball(2, 8, 22) + g('m:priority_high', 20, 1, 14),
     // flags
     penalty:    g('b:flag-fill', 2, 2, 28),
     'penalty-declined': g('b:flag-fill', 0, 1, 24) + g('m:block', 17, 15, 15),

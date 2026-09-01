@@ -11,22 +11,22 @@
  * drive-shaped marks (3-and-out, goal-line stand) are the only derived ones.
  */
 export type PlayIconId =
-    | 'sack' | 'tfl' | 'stuffed'
-    | 'int' | 'fumble' | 'blocked' | 'fg-miss' | 'downs' | 'goal-line' | 'three-out'
-    | 'fg' | 'safety' | 'td' | 'td-xp' | 'td-xp-miss' | 'td-2pt' | 'td-2pt-miss'
+    | 'onside' | 'sack' | 'tfl' | 'stuffed'
+    | 'int' | 'fumble' | 'fumble-kept' | 'blocked' | 'fg-miss' | 'downs' | 'goal-line' | 'three-out'
+    | 'fourth-conv' | 'fg' | 'safety' | 'def-2pt' | 'td' | 'td-xp' | 'td-xp-miss' | 'td-2pt' | 'td-2pt-miss'
     | 'penalty' | 'penalty-declined' | 'penalty-offset' | 'explosive';
 
 export const PLAY_ICON_ORDER: readonly PlayIconId[] = [
-    'sack', 'tfl', 'stuffed', 'int', 'fumble', 'blocked', 'fg-miss', 'downs', 'goal-line', 'three-out',
-    'fg', 'safety', 'td', 'td-xp', 'td-xp-miss', 'td-2pt', 'td-2pt-miss',
+    'onside', 'sack', 'tfl', 'stuffed', 'int', 'fumble', 'fumble-kept', 'blocked', 'fg-miss', 'downs', 'goal-line', 'three-out',
+    'fourth-conv', 'fg', 'safety', 'def-2pt', 'td', 'td-xp', 'td-xp-miss', 'td-2pt', 'td-2pt-miss',
     'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
 ];
 
 export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
-    sack: 'Sack', tfl: 'Tackle for loss', stuffed: 'Stuffed run',
-    int: 'Interception', fumble: 'Fumble lost', blocked: 'Blocked kick', 'fg-miss': 'Field goal missed',
+    onside: 'Onside kick', sack: 'Sack', tfl: 'Tackle for loss', stuffed: 'Stuffed run',
+    int: 'Interception', fumble: 'Fumble lost', 'fumble-kept': 'Fumble, recovered', blocked: 'Blocked kick', 'fg-miss': 'Field goal missed',
     downs: 'Turnover on downs', 'goal-line': 'Goal-line stand', 'three-out': 'Three and out',
-    fg: 'Field goal', safety: 'Safety',
+    'fourth-conv': '4th down converted', fg: 'Field goal', safety: 'Safety', 'def-2pt': 'Defensive 2-point conversion',
     td: 'Touchdown', 'td-xp': 'Touchdown, PAT good', 'td-xp-miss': 'Touchdown, PAT missed',
     'td-2pt': 'Touchdown, 2-point conversion good', 'td-2pt-miss': 'Touchdown, 2-point conversion failed',
     penalty: 'Penalty', 'penalty-declined': 'Penalty declined', 'penalty-offset': 'Offsetting penalties',
@@ -34,15 +34,15 @@ export const PLAY_ICON_LABEL: Record<PlayIconId, string> = {
 };
 
 /** Two marks are set as text pills rather than pictograms (decided 2026-09-01 after nine drawing rounds). */
-export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK', tfl: 'TFL' };
+export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK', tfl: 'TFL', onside: 'ONSIDE' };
 
 /** Marks shown in the table legend, in a reading order that groups families. */
 export const PLAY_ICON_LEGEND: readonly PlayIconId[] = [
-    'td', 'td-xp', 'td-2pt', 'fg', 'safety', 'int', 'fumble', 'downs', 'blocked', 'fg-miss',
-    'sack', 'tfl', 'stuffed', 'three-out', 'goal-line', 'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
+    'td', 'td-xp', 'td-2pt', 'fg', 'safety', 'def-2pt', 'int', 'fumble', 'fumble-kept', 'downs', 'blocked', 'fg-miss',
+    'sack', 'tfl', 'stuffed', 'three-out', 'goal-line', 'fourth-conv', 'onside', 'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
 ];
 
-type FlagBag = { type?: { text?: string }; start?: { yardsToEndzone?: number | null } } & Record<string, unknown>;
+type FlagBag = { type?: { text?: string }; start?: { yardsToEndzone?: number | null; down?: number | null } } & Record<string, unknown>;
 
 /**
  * Optional drive context the caller can pass (GamePage has all plays; the
@@ -57,6 +57,9 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
     const typeText = String(play.type?.text ?? '');
     const out: PlayIconId[] = [];
 
+    // special-teams gambits
+    if (on('kickoff_onside')) out.push('onside');
+
     // behind the line
     if (on('sack')) out.push('sack');
     else if (on('TFL') || on('TFL_rush') || on('TFL_pass')) out.push('tfl');
@@ -64,7 +67,11 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
 
     // possession
     if (on('int')) out.push('int');
-    if (on('fumble_lost') || (on('fumble_vec') && on('change_of_pos_team'))) out.push('fumble');
+    // fumble_lost / fumble_vec cover scrimmage fumbles; muffed kicks carry only
+    // fumble_or_muff (and the kicking-team-recovery types in turnover_vec)
+    const muffedAway = (on('fumble_or_muff') && on('change_of_pos_team')) || (on('turnover_vec') && /fumble/i.test(typeText));
+    if (on('fumble_lost') || (on('fumble_vec') && on('change_of_pos_team')) || muffedAway) out.push('fumble');
+    else if ((on('fumble_vec') || on('fumble_or_muff')) && !on('change_of_pos_team')) out.push('fumble-kept');
     const blocked = on('is_blocked_punt_turnover') || on('is_blocked_fg_turnover') || on('punt_blocked')
         || (on('turnover_vec') && /blocked/i.test(typeText));
     if (blocked) out.push('blocked');
@@ -74,10 +81,14 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
         out.push(ytez <= 5 ? 'goal-line' : 'downs');
     }
     if (ctx.threeAndOut || on('three_and_out')) out.push('three-out');
+    // the other side of the 4th-down coin: converted, on a snap (not a kick)
+    if (Number(play.start && (play.start as any).down) === 4 && (on('firstD_by_yards') || on('firstD_by_penalty'))
+        && !on('punt') && !on('fg_attempt') && !on('kickoff_play')) out.push('fourth-conv');
 
     // points
     if (on('fg_made')) out.push('fg');
     if (on('safety')) out.push('safety');
+    if (typeText === 'Defensive 2pt Conversion') out.push('def-2pt');
     if (on('touchdown')) {
         const two = String(play.two_point_conv_result ?? '').toLowerCase();
         const xp = String(play.extra_point_result ?? '').toLowerCase();
@@ -94,7 +105,9 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
         else if (on('penalty_declined') || on('penalty_all_declined')) out.push('penalty-declined');
         else out.push('penalty');
     }
-    if (on('EPA_explosive')) out.push('explosive');
+    // EPA_explosive covers pass/rush; long returns get the bolt by yardage
+    const bigReturn = Number(play.yds_kickoff_return ?? 0) >= 40 || Number(play.yds_punt_return ?? 0) >= 30;
+    if (on('EPA_explosive') || bigReturn) out.push('explosive');
     return out;
 }
 

@@ -83,6 +83,9 @@ describe('GamePage renders a finished game end to end', () => {
         expect(defTd.length).toBeGreaterThan(0);
         for (const p of defTd) expect(rowFor(p.game_play_number), `defensive td ${p.game_play_number}`).toMatch(/class="pi pi-td(-xp|-2pt)?(-miss)? pi-def"/);
         for (const p of game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play !== true)) expect(rowFor(p.game_play_number)).not.toContain('pi-def');
+        // the 53-yard kickoff return gets the bolt by yardage
+        const bigRet = game.plays.find((p: any) => Number(p.yds_kickoff_return) >= 40);
+        if (bigRet) expect(rowFor(bigRet.game_play_number)).toContain('<use href="#pi-explosive">');
         // every touchdown in this game had a good PAT -> the conversion rides on the mark
         expect((html.match(/<use href="#pi-td-xp">/g) ?? []).length).toBeGreaterThanOrEqual(game.plays.filter((p: any) => p.touchdown === true && p.xp_made === true).length);
         // routine kicks carry no mark at all; a kick returned for a score still carries the touchdown

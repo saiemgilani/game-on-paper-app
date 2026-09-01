@@ -172,7 +172,9 @@ Target Matrix
 .pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 1px; height: 14px; padding: 0 4px; border: 1.5px solid var(--mark-stop); border-radius: 3px; color: var(--mark-stop); background: transparent; font: 700 9.5px/11px "Chivo", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
 .pi-td, .pi-td-xp, .pi-td-xp-miss, .pi-td-2pt, .pi-td-2pt-miss, .pi-fg, .pi-safety { --c: var(--mark-score); }
-.pi-def { --c: var(--mark-turnover); } /* defensive touchdown: same glyph, turnover colour */
+.pi-def, .pi-def-2pt { --c: var(--mark-turnover); } /* defensive score: same glyph, turnover colour */
+.pi-fourth-conv { --c: var(--mark-score); }
+.pi-fumble-kept { --c: var(--mark-stop); } /* ball on the ground but kept: neutral, not red */
 .pi-int, .pi-fumble, .pi-downs, .pi-blocked, .pi-fg-miss, .pi-goal-line { --c: var(--mark-turnover); }
 .pi-stuffed, .pi-three-out { --c: var(--mark-stop); }
 .pi-penalty, .pi-penalty-declined, .pi-penalty-offset { --c: var(--mark-flag); }

@@ -44,7 +44,7 @@ describe('playIcons', () => {
     });
 
     test('fumble needs a change of possession unless the pipeline says fumble_lost', () => {
-        expect(playIcons(play({ fumble_vec: true }))).toEqual([]);
+        expect(playIcons(play({ fumble_vec: true }))).toEqual(['fumble-kept']);
         expect(playIcons(play({ fumble_vec: true, change_of_pos_team: true }))).toEqual(['fumble']);
         expect(playIcons(play({ fumble_lost: true }))).toEqual(['fumble']);
     });
@@ -66,6 +66,22 @@ describe('playIcons', () => {
         ];
         const plays = [...drive(1, 3), ...drive(2, 5), ...drive(3, 3, true)];
         expect([...threeAndOutPlays(plays as any)]).toEqual([19]);
+    });
+
+    test('muffed kicks, kept fumbles, onside kicks', () => {
+        expect(playIcons(play({ punt: true, fumble_or_muff: true, change_of_pos_team: true }, 'Punt'))).toEqual(['fumble']);
+        expect(playIcons(play({ turnover_vec: true, change_of_pos_team: true }, 'Kickoff Team Fumble Recovery'))).toEqual(['fumble']);
+        expect(playIcons(play({ fumble_vec: true }))).toEqual(['fumble-kept']);
+        expect(playIcons(play({ kickoff_play: true, kickoff_onside: true }, 'Kickoff'))).toEqual(['onside']);
+    });
+
+    test('defensive 2-pt, 4th-down conversion, long returns', () => {
+        expect(playIcons(play({}, 'Defensive 2pt Conversion'))).toEqual(['def-2pt']);
+        expect(playIcons(play({ firstD_by_yards: true, start: { down: 4 } } as any))).toEqual(['fourth-conv']);
+        expect(playIcons(play({ firstD_by_yards: true, punt: true, start: { down: 4 } } as any))).toEqual([]);
+        expect(playIcons(play({ yds_kickoff_return: 53, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual(['explosive']);
+        expect(playIcons(play({ yds_kickoff_return: 36, kickoff_play: true } as any, 'Kickoff Return (Offense)'))).toEqual([]);
+        expect(playIcons(play({ yds_punt_return: 31, punt: true } as any, 'Punt Return'))).toEqual(['explosive']);
     });
 
     test('output order always follows PLAY_ICON_ORDER', () => {
