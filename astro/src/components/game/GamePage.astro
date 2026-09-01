@@ -66,6 +66,8 @@ const gameStatus = game.header.competitions[0].status;
 // "win probability") -- "Game: X, Y" and "Advanced stats for X vs Y" gave Google
 // nothing to match a query against. Rendered names stay lowercased.
 const hasScore = gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0);
+const statusDetail = gameStatus.type.detail;
+const statusDescription = gameStatus.type.description ?? "Scheduled";
 const gameSpec = {
     id, hasScore,
     away: cleanLocation(awayComp.team), home: cleanLocation(homeComp.team),
@@ -80,8 +82,6 @@ const title = gameTitle(gameSpec);
 const subtitle = gameDescription(gameSpec);
 const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
 
-const statusDetail = gameStatus.type.detail;
-const statusDescription = gameStatus.type.description ?? "Scheduled";
 const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
 
 const previewUrlParams = new URLSearchParams({
