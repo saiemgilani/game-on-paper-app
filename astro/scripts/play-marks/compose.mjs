@@ -46,18 +46,18 @@ const SYMBOLS = {
     'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
     // defensive 2-pt: the safety shield, coloured by .pi-def-2pt
     'def-2pt':  `<use href="#pi-safety" width="32" height="32"/>`,
-    // 3rd down converted: the chain crew with a 3 in the down box; the chain
-    // equipment (posts, links, turf) is neutral slate, box + ball carry the tone
+    // 3rd down converted: the chain crew with a 3 in the down box; only the chain
+    // links are neutral slate; posts are hollow outlines in the tone
     'third-conv': `<g><rect width="12" height="13" rx="1.8" fill="var(--c)"/><path d="M3.3 3.6c1.2-1.6 5.4-1.5 5.4.9 0 1.5-1.5 2.1-2.7 2.1 1.4 0 3 .7 3 2.4 0 2.6-4.4 2.8-5.9 1.3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".95"/></g>`
-        + `<path d="M6 13.5V28M26 8V28" fill="none" stroke="var(--mark-stop)" stroke-width="3" stroke-linecap="round"/>`
+        + `<rect x="4.6" y="13.5" width="2.8" height="14.5" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/><rect x="24.6" y="8" width="2.8" height="20" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/>`
         + Array.from({ length: 7 }, (_, i) => `<ellipse cx="${(7.8 + i * 2.8).toFixed(1)}" cy="25.5" rx="1.8" ry="1.1" fill="none" stroke="var(--mark-stop)" stroke-width="1.4"/>`).join('')
-        + ball(15.5, 18.5, 15) + `<path fill="var(--mark-stop)" d="M1 28h30v2.6h-30Z"/>`,
+        + ball(15.5, 18.5, 15) + `<path fill="var(--c)" d="M1 28h30v2.6h-30Z"/>`,
     // 4th down converted: the chain crew -- down box (4) on the left post, the
     // full-span chain low, the ball spotted in front of it (round 14, FC-B)
     'fourth-conv': `<g><rect width="12" height="13" rx="1.8" fill="var(--c)"/><path fill="#fff" opacity=".95" transform="translate(1.6 1)" d="M6 1 1 8h4v3.4h2.9V8h2v-2.5h-2V1Z"/></g>`
-        + `<path d="M6 13.5V28M26 8V28" fill="none" stroke="var(--mark-stop)" stroke-width="3" stroke-linecap="round"/>`
+        + `<rect x="4.6" y="13.5" width="2.8" height="14.5" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/><rect x="24.6" y="8" width="2.8" height="20" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/>`
         + Array.from({ length: 7 }, (_, i) => `<ellipse cx="${(7.8 + i * 2.8).toFixed(1)}" cy="25.5" rx="1.8" ry="1.1" fill="none" stroke="var(--mark-stop)" stroke-width="1.4"/>`).join('')
-        + ball(15.5, 18.5, 15) + `<path fill="var(--mark-stop)" d="M1 28h30v2.6h-30Z"/>`,
+        + ball(15.5, 18.5, 15) + `<path fill="var(--c)" d="M1 28h30v2.6h-30Z"/>`,
     // fumble kept: same ball + "!" family as fumble lost, neutral tone via CSS
     'fumble-kept': ball(2, 8, 22) + g('m:priority_high', 20, 1, 14),
     // flags
