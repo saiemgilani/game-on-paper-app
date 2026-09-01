@@ -21,6 +21,21 @@ function g(name, x, y, s, tone) {
 const F = 'fill="var(--c)"';
 const posts = (x, w, h = 10) => `<path ${F} d="M${x} 3h3v${h}h${w}V3h3v${h + 3}h-${(w + 6) / 2 - 1.5}v${29 - (h + 3) - 3}h-3v-${29 - (h + 3) - 3}h-${(w + 6) / 2 - 1.5}Z"/>`;
 const ball = (x, y, s) => g('m:sports_football', x, y, s);
+// chain crew (round 15, drawn from a real sideline photo): the two 10-yard
+// markers with their target tops, the down box on its stick where the play
+// started, the chain lying on the ground between them. Equipment is neutral
+// slate; only the ball and the ground strip carry the mark tone.
+const ST = 'var(--mark-stop)';
+const chainMarker = (x) => `<circle cx="${x}" cy="4.2" r="2.9" fill="none" stroke="${ST}" stroke-width="1.5"/><circle cx="${x}" cy="4.2" r="1" fill="${ST}"/>`
+    + `<path fill="${ST}" d="M${x - 1.9} 8 L${x + 1.9} 8 L${x + 1.1} 27.5 L${x - 1.1} 27.5 Z"/>`;
+const chainLinks = () => Array.from({ length: 8 }, (_, i) => `<ellipse cx="${(8.1 + i * 2.6).toFixed(1)}" cy="26.6" rx="1.6" ry="1" fill="none" stroke="${ST}" stroke-width="1.3"/>`).join('');
+const downBox = (num) => `<g transform="translate(9.5 3)"><rect x=".7" y=".7" width="8.2" height="9" rx="1.2" fill="none" stroke="${ST}" stroke-width="1.5"/>`
+    + (num === 4
+        ? `<path fill="${ST}" transform="translate(1.9 2.2)" d="M4.1 .5 .6 5.5h2.7v2.1h2V5.5h1.3V3.8H5.3V.5Z"/>`
+        : `<path d="M3.1 3.2c.8-1 3.5-1 3.5.6 0 1-1 1.4-1.8 1.4 1 0 2 .5 2 1.5 0 1.7-2.8 1.8-3.9.8" stroke="${ST}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".95"/>`)
+    + `</g><path d="M14.2 13.5V27" stroke="${ST}" stroke-width="1.6" stroke-linecap="round"/>`;
+const chainCrew = (num) => chainMarker(4.5) + chainMarker(27.5) + downBox(num) + chainLinks()
+    + ball(14.6, 13.6, 17.5) + `<path fill="var(--c)" d="M1 28.4h30v2.4h-30Z"/>`;
 const ok = g('m:check_circle', 21, 20, 11);
 const bad = g('m:cancel', 21, 20, 11, 'turnover');
 
@@ -46,18 +61,9 @@ const SYMBOLS = {
     'goal-line': posts(9, 14, 9).replace(F, 'fill="var(--c)" opacity=".45"') + g('b:bricks', 3, 17, 13) + g('b:bricks', 16, 17, 13) + g('b:sign-stop-fill', 2, 2, 12),
     // defensive 2-pt: the safety shield, coloured by .pi-def-2pt
     'def-2pt':  `<use href="#pi-safety" width="32" height="32"/>`,
-    // 3rd down converted: the chain crew with a 3 in the down box; only the chain
-    // links are neutral slate; posts are hollow outlines in the tone
-    'third-conv': `<g><rect width="12" height="13" rx="1.8" fill="var(--c)"/><path d="M3.3 3.6c1.2-1.6 5.4-1.5 5.4.9 0 1.5-1.5 2.1-2.7 2.1 1.4 0 3 .7 3 2.4 0 2.6-4.4 2.8-5.9 1.3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".95"/></g>`
-        + `<rect x="4.6" y="13.5" width="2.8" height="14.5" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/><rect x="24.6" y="8" width="2.8" height="20" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/>`
-        + Array.from({ length: 7 }, (_, i) => `<ellipse cx="${(7.8 + i * 2.8).toFixed(1)}" cy="25.5" rx="1.8" ry="1.1" fill="none" stroke="var(--mark-stop)" stroke-width="1.4"/>`).join('')
-        + ball(15.5, 18.5, 15) + `<path fill="var(--c)" d="M1 28h30v2.6h-30Z"/>`,
-    // 4th down converted: the chain crew -- down box (4) on the left post, the
-    // full-span chain low, the ball spotted in front of it (round 14, FC-B)
-    'fourth-conv': `<g><rect width="12" height="13" rx="1.8" fill="var(--c)"/><path fill="#fff" opacity=".95" transform="translate(1.6 1)" d="M6 1 1 8h4v3.4h2.9V8h2v-2.5h-2V1Z"/></g>`
-        + `<rect x="4.6" y="13.5" width="2.8" height="14.5" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/><rect x="24.6" y="8" width="2.8" height="20" rx="1.2" fill="none" stroke="var(--c)" stroke-width="1.4"/>`
-        + Array.from({ length: 7 }, (_, i) => `<ellipse cx="${(7.8 + i * 2.8).toFixed(1)}" cy="25.5" rx="1.8" ry="1.1" fill="none" stroke="var(--mark-stop)" stroke-width="1.4"/>`).join('')
-        + ball(15.5, 18.5, 15) + `<path fill="var(--c)" d="M1 28h30v2.6h-30Z"/>`,
+    // 3rd/4th down converted: the chain crew, slate equipment + tone ball/ground
+    'third-conv': chainCrew(3),
+    'fourth-conv': chainCrew(4),
     // fumble kept: same ball + "!" family as fumble lost, neutral tone via CSS
     'fumble-kept': ball(2, 8, 22) + g('m:priority_high', 20, 1, 14),
     // flags
