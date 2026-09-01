@@ -1,0 +1,22 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No lockfile is tracked for astro/ (it is gitignored), so npm ci and the
+      # setup-node lock cache are both unavailable; install resolves fresh.
+      - run: npm install --no-audit --no-fund
+        working-directory: astro
+      # Renders a real game page through the Astro Container API (see
+      # test/gamePage.render.test.ts). A frontmatter throw fails here instead of
+      # shipping as an empty 200 -- which is exactly what happened on 2026-08-31.
+      - run: npx vitest run
+        working-directory: astro
