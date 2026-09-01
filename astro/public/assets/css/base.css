@@ -158,12 +158,12 @@ Target Matrix
 /* Play marks: solid pictograms trailing the play text (see utils/playIcons.ts). One flat colour
    per family, derived from the row palette; the dark-mode values live in dark-game.css. */
 :root {
-  --mark-score: #178a4f;
-  --mark-turnover: #d1293b;
-  --mark-sack: #e26a12;
-  --mark-flag: #e6a800;
-  --mark-explosive: #0b98b5;
-  --mark-stop: #5b6573;
+  /* Bootstrap 5 theme colours (the site ships 5.0.2: --bs-success/-danger/-warning/-secondary/-info) */
+  --mark-score: #198754;
+  --mark-turnover: #dc3545;
+  --mark-flag: #ffc107;
+  --mark-stop: #6c757d;
+  --mark-explosive: #0dcaf0;
 }
 .play-marks { white-space: nowrap; margin-left: .5rem; font-size: 15px; line-height: 1; vertical-align: -1px; }
 .play-marks .pi + .pi, .play-marks .pi + .pi-pill, .play-marks .pi-pill + .pi, .play-marks .pi-pill + .pi-pill { margin-left: 4px; }
@@ -172,6 +172,7 @@ Target Matrix
 .pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 1px; height: 14px; padding: 0 4px; border: 1.5px solid var(--mark-stop); border-radius: 3px; color: var(--mark-stop); background: transparent; font: 700 9.5px/11px "Chivo", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
 .pi-td, .pi-td-xp, .pi-td-xp-miss, .pi-td-2pt, .pi-td-2pt-miss, .pi-fg, .pi-safety { --c: var(--mark-score); }
+.pi-def { --c: var(--mark-turnover); } /* defensive touchdown: same glyph, turnover colour */
 .pi-int, .pi-fumble, .pi-downs, .pi-blocked, .pi-fg-miss, .pi-goal-line { --c: var(--mark-turnover); }
 .pi-stuffed, .pi-three-out { --c: var(--mark-stop); }
 .pi-penalty, .pi-penalty-declined, .pi-penalty-offset { --c: var(--mark-flag); }

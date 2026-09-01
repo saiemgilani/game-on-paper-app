@@ -78,6 +78,11 @@ describe('GamePage renders a finished game end to end', () => {
             expect(plays.length, flag).toBeGreaterThan(0);
             for (const p of plays) expect(rowFor(p.game_play_number), `${flag} play ${p.game_play_number}`).toMatch(re);
         }
+        // defensive scores keep the touchdown glyph in the turnover colour
+        const defTd = game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play === true);
+        expect(defTd.length).toBeGreaterThan(0);
+        for (const p of defTd) expect(rowFor(p.game_play_number), `defensive td ${p.game_play_number}`).toMatch(/class="pi pi-td(-xp|-2pt)?(-miss)? pi-def"/);
+        for (const p of game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play !== true)) expect(rowFor(p.game_play_number)).not.toContain('pi-def');
         // every touchdown in this game had a good PAT -> the conversion rides on the mark
         expect((html.match(/<use href="#pi-td-xp">/g) ?? []).length).toBeGreaterThanOrEqual(game.plays.filter((p: any) => p.touchdown === true && p.xp_made === true).length);
         // routine kicks carry no mark at all; a kick returned for a score still carries the touchdown

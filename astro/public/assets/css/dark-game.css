@@ -2611,11 +2611,11 @@ p.box-heading {
 /* Play marks on dark rows: lifted a step so they hold on the dark tints. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --mark-score: #3fb37a;
-    --mark-turnover: #ef5b6b;
-    --mark-sack: #f28b3b;
-    --mark-flag: #f7c62b;
-    --mark-explosive: #38c5e0;
-    --mark-stop: #94a3b8;
+    /* Bootstrap 5.3 dark-theme text-emphasis colours for the same five tokens */
+    --mark-score: #75b798;
+    --mark-turnover: #ea868f;
+    --mark-flag: #ffda6a;
+    --mark-stop: #a7acb1;
+    --mark-explosive: #6edff6;
   }
 }
