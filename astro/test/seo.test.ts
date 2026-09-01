@@ -9,6 +9,10 @@ import {
     definedTermSetJsonLd,
     jsonLdScript,
     websiteJsonLd,
+    gameContext,
+    gameDescription,
+    gameTitle,
+    sportsEventJsonLd,
 } from '../src/utils/seo';
 
 describe('leaderboard copy', () => {
@@ -92,6 +96,43 @@ describe('json-ld builders', () => {
 
     test('website ld names the site', () => {
         expect(websiteJsonLd().url).toBe('https://gameonpaper.com');
+    });
+});
+
+describe('game copy + SportsEvent', () => {
+    const final = { id: 401856766, hasScore: true, away: 'north carolina', home: 'tcu', awayName: 'North Carolina Tar Heels', homeName: 'TCU Horned Frogs', awayId: 153, homeId: 2628, awayScore: '15', homeScore: '10', date: '2025-09-02T00:00Z', season: 2025, week: 1 };
+    const pre = { ...final, hasScore: false, awayScore: undefined, homeScore: undefined };
+
+    test('final title carries score, week and the metric words; rendered names stay lowercase', () => {
+        const t = gameTitle(final);
+        expect(t).toBe('north carolina 15, tcu 10 | Week 1 2025 EPA & advanced box score | Game on Paper');
+        expect(gameDescription(final)).toContain('EPA per play');
+        expect(gameDescription(final)).toContain('win probability');
+        expect(gameDescription(final)).toContain('Sep 1, 2025');
+        expect(t).not.toContain('Tar Heels');
+    });
+
+    test('preview title says preview; bowl note replaces the week', () => {
+        expect(gameTitle(pre)).toBe('north carolina vs tcu | Week 1 2025 preview: win probability & EPA matchup | Game on Paper');
+        expect(gameContext({ season: 2024, week: 17, note: 'Peach Bowl' })).toBe('Peach Bowl 2024');
+        expect(gameContext({ season: 2024 })).toBe('2024');
+        expect(gameContext({ season: 2024, week: 17, note: '2024 CFP Semifinal' })).toBe('2024 CFP Semifinal');
+    });
+
+    test('SportsEvent uses real display names, team urls and the served game url', () => {
+        const ld = sportsEventJsonLd(final);
+        expect(ld['@type']).toBe('SportsEvent');
+        expect(ld.url).toBe('https://gameonpaper.com/game/401856766');
+        expect(ld.homeTeam.name).toBe('TCU Horned Frogs');
+        expect(ld.awayTeam.url).toBe('https://gameonpaper.com/team/153');
+        expect(ld.startDate).toBe('2025-09-02T00:00Z');
+        expect(ld.subjectOf?.['@type']).toBe('Dataset');
+        expect(sportsEventJsonLd(pre).subjectOf).toBeUndefined();
+        expect(sportsEventJsonLd({ ...final, neutralSite: true }).location).toBeUndefined();
+        // schema.org has no completed/in-progress status; only cancel/postpone differ
+        expect(sportsEventJsonLd({ ...final, statusDescription: 'Final' }).eventStatus).toBe('https://schema.org/EventScheduled');
+        expect(sportsEventJsonLd({ ...pre, statusDescription: 'Postponed' }).eventStatus).toBe('https://schema.org/EventPostponed');
+        expect(sportsEventJsonLd({ ...pre, statusDescription: 'Canceled' }).eventStatus).toBe('https://schema.org/EventCancelled');
     });
 });
 
