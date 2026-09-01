@@ -22,10 +22,11 @@ interface Props {
 
 const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading } = Astro.props;
 const metaDescription = description || subtitle;
-const structuredData = jsonLdScript([
-    breadcrumbListJsonLd(breadcrumbs),
-    ...(jsonLd ?? []),
-]);
+// One <script> per object: a single tag holding an array is valid JSON-LD, but
+// some validators/extensions read r['@context'] per tag and throw on arrays.
+const structuredData = [breadcrumbListJsonLd(breadcrumbs), ...(jsonLd ?? [])]
+    .map((o) => jsonLdScript([o]))
+    .filter(Boolean);
 
 // Was `https://gameonpaper.com/cfb/${slug}`, but slug already carries its own
 // leading slash, so every canonical and og:url rendered with a doubled slash
@@ -94,7 +95,7 @@ function generateBreadcrumbsListHtml(): string {
         <meta name="twitter:image" content="https://gameonpaper.com/assets/img/social-card.png">
         <meta name="title" content={title}>
         <meta name="medium" content="website">
-        {structuredData && <script type="application/ld+json" set:html={structuredData} />}
+        {structuredData.map((s) => <script type="application/ld+json" set:html={s} />)}
         <script is:inline defer crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
     </head>
     <body>
