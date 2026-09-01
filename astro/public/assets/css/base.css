@@ -167,6 +167,11 @@ Target Matrix
 }
 .play-marks { white-space: nowrap; margin-left: .5rem; font-size: 15px; line-height: 1; vertical-align: -1px; }
 .play-marks .pi + .pi, .play-marks .pi + .pi-pill, .play-marks .pi-pill + .pi, .play-marks .pi-pill + .pi-pill { margin-left: 4px; }
+/* Stacked placement: the marks sit under the game clock rather than trailing the
+   description, so they line up in their own column instead of drifting with the
+   text. The clock column is narrow, so they wrap rather than overflow it. */
+.play-marks-stacked { display: block; margin: 3px 0 0; white-space: normal; }
+.play-marks-stacked .pi, .play-marks-stacked .pi-pill { margin-top: 2px; }
 /* SACK / TFL are text tags: fixed 14px so they sit inside the text line and never scale with the slot;
    neutral outline (chosen 2026-09-01 over red/solid) in the stop tone. */
 .pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 1px; height: 14px; padding: 0 4px; border: 1.5px solid var(--mark-stop); border-radius: 3px; color: var(--mark-stop); background: transparent; font: 700 9.5px/11px Chivo, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
