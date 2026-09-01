@@ -7,8 +7,8 @@
  * kickoffs carry no mark by design (2026-09-01); only their failures do.
  *
  * Flags come straight from the processed play (sportsdataverse-py):
- * `downs_turnover` and `fumble_lost` are emitted by the pipeline, so nothing
- * here re-derives possession logic.
+ * `downs_turnover`, `fumble_lost`, `is_blocked_*_turnover` and `punt_blocked`
+ * are emitted by the pipeline, so nothing here re-derives possession logic.
  */
 export type PlayIconId =
     | 'sack' | 'int' | 'fumble' | 'blocked' | 'fg-miss' | 'downs'
@@ -41,7 +41,10 @@ export function playIcons(play: FlagBag | null | undefined): PlayIconId[] {
     if (on('sack')) out.push('sack');
     if (on('int')) out.push('int');
     if (on('fumble_lost') || (on('fumble_vec') && on('change_of_pos_team'))) out.push('fumble');
-    const blocked = on('turnover_vec') && /blocked/i.test(String(play.type?.text ?? ''));
+    // The pipeline flags blocks directly; the type-text check is a fallback for
+    // older payloads that carried only turnover_vec.
+    const blocked = on('is_blocked_punt_turnover') || on('is_blocked_fg_turnover') || on('punt_blocked')
+        || (on('turnover_vec') && /blocked/i.test(String(play.type?.text ?? '')));
     if (blocked) out.push('blocked');
     else if (on('fg_attempt') && !on('fg_made')) out.push('fg-miss');
     if (on('downs_turnover')) out.push('downs');

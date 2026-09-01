@@ -24,6 +24,9 @@ describe('playIcons', () => {
     });
 
     test('a blocked field goal is a block, not a miss', () => {
+        expect(playIcons(play({ fg_attempt: true, fg_made: false, is_blocked_fg_turnover: true }))).toEqual(['blocked']);
+        expect(playIcons(play({ punt: true, punt_blocked: true }, 'Blocked Punt'))).toEqual(['blocked']);
+        // fallback for payloads that only carry turnover_vec + the type text
         expect(playIcons(play({ fg_attempt: true, fg_made: false, turnover_vec: true }, 'Blocked Field Goal'))).toEqual(['blocked']);
         expect(playIcons(play({ fg_attempt: true, fg_made: false }, 'Field Goal Missed'))).toEqual(['fg-miss']);
         expect(playIcons(play({ fg_attempt: true, fg_made: true }, 'Field Goal Good'))).toEqual(['fg']);
