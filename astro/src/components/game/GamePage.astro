@@ -15,6 +15,7 @@ import PlayFilters from './plays/PlayFilters.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
+import SituationalSplits from './metrics/SituationalSplits.astro';
 import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
@@ -319,6 +320,12 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teamBoxScores={game.advBoxScore.team}
                                     useSuffix={true}
                                     decimalPoints={2}
+                                />
+                                <SituationalSplits
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                    caption="Plays from scrimmage only, the same population the whole-game situational table below counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Situational"

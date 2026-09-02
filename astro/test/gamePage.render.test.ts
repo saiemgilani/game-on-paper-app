@@ -78,6 +78,20 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/Final\. Last drive: [^<]+, [^<]+\./);
     });
 
+    test('situational splits render one panel per period, all but the first hidden', () => {
+        expect(html).toContain('data-situational-splits');
+        for (const key of ['all', 'h1', 'h2', 'q1', 'q2', 'q3', 'q4']) {
+            expect(html).toContain(`data-split-panel="${key}"`);
+        }
+        expect(html).not.toContain('data-split-panel="ot"');
+        // exactly one visible on load: the others carry the hidden attribute
+        const panels = [...html.matchAll(/data-split-panel="(\w+)"([^>]*)>/g)];
+        expect(panels).toHaveLength(7);
+        expect(panels.filter((m) => !m[2].includes('hidden'))).toHaveLength(1);
+        expect(panels[0][1]).toBe('all');
+        expect(html).toMatch(/-?\d+\.\d\d EPA\/play/);
+    });
+
     test('the book rows render with their EPA beside them', () => {
         for (const label of ['Third down', 'Fourth down', 'Red zone scoring', 'Turnovers', 'Sacks taken', 'Time of possession']) {
             expect(html).toContain(`>${label}<`);
@@ -148,6 +162,25 @@ describe('GamePage renders a finished game end to end', () => {
         expect(bar).toBeLessThan(tbody);
     });
 
+    test('the drives table surfaces its calculated metrics, columns aligned', () => {
+        const table = html.slice(html.indexOf('id="drives"'));
+        const head = table.slice(table.indexOf('<thead>'), table.indexOf('</thead>'));
+        const headers = (head.match(/<th[\s>]/g) ?? []).length;
+        expect(headers).toBe(10);
+
+        // A summary row must carry exactly one cell per header, and the expanded
+        // row must span all of them, or the table shears sideways.
+        const body = table.slice(table.indexOf('<tbody>'), table.indexOf('</tbody>'));
+        const summaryRows = body.split('<tr').filter((r) => r.includes('accordion-toggle'));
+        expect(summaryRows.length).toBeGreaterThan(20);
+        for (const row of summaryRows) expect((row.match(/<td[\s>]/g) ?? []).length).toBe(headers);
+        expect(body).toContain(`colspan="${headers}"`);
+
+        // plays / yards / clock, success rate, EPA per play and the best play
+        expect(body).toMatch(/\d+ pl, -?\d+ yd/);
+        expect(body).toMatch(/-?\d+\.\d\d\/play/);
+    });
+
     test('every nav link points at an anchor that exists', () => {
         // #wpChart, #epChart and #most-imp-plays were all dead: the nav offered
         // them and nothing on the page carried the id.
@@ -190,5 +223,33 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
         expect(html).toContain('1 PBU');
         // the rusher's stat line picks up his longest carry and his best play
         expect(html).toContain('11 LNG, 0.80 best EPA, 1.2% best WPA');
+    });
+});
+
+describe('DrivesTable survives a drive with no processed plays', () => {
+    test('a live drives.current renders the rest of the table instead of throwing', async () => {
+        // firstPlay was dereferenced unguarded and the EPA reduce had no seed, so
+        // an open drive with no plays yet took the whole page down -- and the
+        // `drivePlays.length == 0` guard below it could never be reached.
+        const { gunzipSync: gz } = await import('node:zlib');
+        const g = JSON.parse(gz(readFileSync(new URL('./fixtures/game-401729745.json.gz', import.meta.url))).toString());
+        const drives = [...g.drives.previous, { ...g.drives.previous[0], id: 'not-yet-played', plays: [] }];
+        const { default: DrivesTable } = await import('../src/components/game/drives/DrivesTable.astro');
+        const html = await container.renderToString(DrivesTable, {
+            props: {
+                drives,
+                gamePlays: g.plays,
+                prefix: 'drives',
+                expandable: true,
+                showGuide: false,
+                homeTeam: g.teamInfo.home,
+                awayTeam: g.teamInfo.away,
+                isNeutralSite: false,
+            },
+        });
+        expect(html).toContain('<tbody>');
+        expect(html).not.toContain('not-yet-played');
+        // the real drives all still render
+        expect((html.match(/accordion-toggle/g) ?? []).length).toBe(g.drives.previous.length);
     });
 });
