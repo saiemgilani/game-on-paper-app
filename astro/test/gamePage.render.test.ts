@@ -109,6 +109,27 @@ describe('GamePage renders a finished game end to end', () => {
         if (returnTd) expect(rowFor(returnTd.game_play_number)).toMatch(/<use href="#pi-td(-xp|-2pt)?(-miss)?">/);
     });
 
+    test('marks sit beside the logo, inside the offense cell', () => {
+        // Measured on the rendered page at 1440px: a play row is 47px and that
+        // height comes from the 35px logo -- every other cell is one ~17px line,
+        // so there is no vertical slack. A marks group is 17px tall and at most
+        // 55px wide, so BESIDE the logo it costs nothing, while BELOW it took
+        // rows from 45px to 64px. Pin the structure that makes that true.
+        const cells = [...html.matchAll(/<td class="play-offense-cell"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+        expect(cells.length).toBeGreaterThan(100);
+        const withMarks = cells.filter((c) => c.includes('play-marks'));
+        expect(withMarks.length).toBeGreaterThan(10);
+        for (const cell of withMarks) {
+            // beside, never the old stacked block
+            expect(cell).toContain('play-marks-beside');
+            expect(cell).not.toContain('play-marks-stacked');
+            // and after the logo anchor, in the same cell
+            expect(cell.indexOf('</a>')).toBeLessThan(cell.indexOf('play-marks'));
+        }
+        // the column reserves room for logo + marks so nothing wraps
+        expect(html).toContain('class="play-offense-col"');
+    });
+
     test('exactly one h1 and a SportsEvent that parses', () => {
         expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
         const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));

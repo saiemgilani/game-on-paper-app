@@ -167,11 +167,37 @@ Target Matrix
 }
 .play-marks { white-space: nowrap; margin-left: .5rem; font-size: 15px; line-height: 1; vertical-align: -1px; }
 .play-marks .pi + .pi, .play-marks .pi + .pi-pill, .play-marks .pi-pill + .pi, .play-marks .pi-pill + .pi-pill { margin-left: 4px; }
-/* Stacked placement: the marks sit under the game clock rather than trailing the
-   description, so they line up in their own column instead of drifting with the
-   text. The clock column is narrow, so they wrap rather than overflow it. */
-.play-marks-stacked { display: block; margin: 3px 0 0; white-space: normal; }
-.play-marks-stacked .pi, .play-marks-stacked .pi-pill { margin-top: 2px; }
+/* Placement: beside the team logo, never under it.
+   Measured on a real game page at 1440px: a play row is 45px tall and that
+   height is set by the 35px logo -- every other cell is a single ~17px line, so
+   there is no vertical slack anywhere in the row. Putting a 17px marks group
+   BELOW anything therefore grows the row, which is what the earlier stacked
+   placement cost: 45px -> 64px on the third of rows that carry marks.
+   A marks group is 17px tall and at most 55px wide (max two marks per play), so
+   set beside the logo it wraps to two 17px lines and still fits inside the
+   logo's 35px. The width comes out of the description cell, which measured
+   192-700px of unused trailing space at every desktop width. */
+.play-offense-cell { text-align: center; }
+@media (min-width: 768px) {
+    /* logo 35 + gap 4 + a two-mark group 55 = 94 */
+    .play-offense-col, .play-offense-cell { min-width: 96px; }
+    /* the header follows the logos, which now sit at a fixed left offset */
+    .play-offense-col { text-align: left !important; padding-left: 6px; }
+    /* Left-aligned, not centred: centring the logo+marks pair moves the logo
+       whenever a play happens to carry a mark, so the column visibly wobbles
+       row to row. A fixed slot keeps every logo on the same x. */
+    .play-offense-cell { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding-left: 6px; }
+    .play-offense-cell > a { flex: 0 0 35px; }
+    .play-marks-beside { display: flex; flex-wrap: wrap; align-content: center; gap: 2px; margin-left: 0; max-width: 55px; max-height: 35px; }
+    .play-marks-beside .pi + .pi, .play-marks-beside .pi + .pi-pill,
+    .play-marks-beside .pi-pill + .pi, .play-marks-beside .pi-pill + .pi-pill { margin-left: 0; }
+}
+/* On a phone the description column is only ~155px and cannot spare the width,
+   and the row is already ~97px tall, so the marks go under the logo there. */
+@media (max-width: 767.98px) {
+    .play-marks-beside { display: block; margin: 3px 0 0; white-space: normal; }
+    .play-marks-beside .pi, .play-marks-beside .pi-pill { margin-top: 2px; }
+}
 /* SACK / TFL are text tags: fixed 14px so they sit inside the text line and never scale with the slot;
    neutral outline (chosen 2026-09-01 over red/solid) in the stop tone. */
 .pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 1px; height: 14px; padding: 0 4px; border: 1.5px solid var(--mark-stop); border-radius: 3px; color: var(--mark-stop); background: transparent; font: 700 9.5px/11px Chivo, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
