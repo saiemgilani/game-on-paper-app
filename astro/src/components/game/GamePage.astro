@@ -19,6 +19,7 @@ import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
@@ -466,6 +467,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="scoring-plays" title="Scoring Plays">
                         <div class="row" slot="panel-body">
+                            <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }

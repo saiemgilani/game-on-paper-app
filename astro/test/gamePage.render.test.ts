@@ -90,6 +90,22 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).not.toContain('>Defense<');
     });
 
+    test('the linescore prints each quarter and adds up to the final score', () => {
+        const table = html.slice(html.indexOf('Linescore</th>'));
+        const body = table.slice(table.indexOf('<tbody>'), table.indexOf('</tbody>'));
+        const rows = body.split('<tr>').filter((r) => r.includes('numeral'));
+        expect(rows).toHaveLength(2);
+        for (const row of rows) {
+            const nums = [...row.matchAll(/class="numeral"[^>]*>\s*(?:<strong>)?\s*(\d+)/g)].map((m) => Number(m[1]));
+            const total = nums.pop()!;
+            expect(nums).toHaveLength(4);
+            expect(nums.reduce((a, b) => a + b, 0)).toBe(total);
+        }
+        // away team leads the table, the way a scoreboard is read
+        expect(rows[0]).toContain('ACU');
+        expect(rows[1]).toContain('NDSU');
+    });
+
     test('All Plays offers a quarter filter, and the markup its script needs is there', () => {
         // The filter script finds rows by these hooks. If PlayRow or PlaysTable
         // stops emitting them the buttons silently do nothing, so pin the contract.
