@@ -67,6 +67,13 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/\d+ LNG, -?\d+\.\d+ best EPA, -?\d+\.\d+% best WPA/);
     });
 
+    test('the Latest strip leads the page, newest play first', () => {
+        expect(html).toContain('id="latest"');
+        // it must sit above the win probability chart, which was the old first panel
+        expect(html.indexOf('id="latest"')).toBeLessThan(html.indexOf('id="wpChart"'));
+        expect(html).toMatch(/Final\. Last drive: [^<]+, [^<]+\./);
+    });
+
     test('the book rows render with their EPA beside them', () => {
         for (const label of ['Third down', 'Fourth down', 'Red zone scoring', 'Turnovers', 'Sacks taken', 'Time of possession']) {
             expect(html).toContain(`>${label}<`);
@@ -81,6 +88,16 @@ describe('GamePage renders a finished game end to end', () => {
         // 401729745 predates ESPN's LiveStats tackler parentheticals; the section
         // has to disappear rather than render an empty table.
         expect(html).not.toContain('>Defense<');
+    });
+
+    test('every nav link points at an anchor that exists', () => {
+        // #wpChart, #epChart and #most-imp-plays were all dead: the nav offered
+        // them and nothing on the page carried the id.
+        const hrefs = [...html.matchAll(/href="#([\w-]+)"/g)].map((m) => m[1]);
+        expect(hrefs.length).toBeGreaterThan(5);
+        for (const anchor of new Set(hrefs)) {
+            expect(html, `nav points at #${anchor} but no element has that id`).toContain(`id="${anchor}"`);
+        }
     });
 
     test('exactly one h1 and a SportsEvent that parses', () => {
