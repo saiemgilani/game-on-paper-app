@@ -374,6 +374,8 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                plays={game.plays}
+                                teamId={parseInt(awayTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
@@ -387,6 +389,8 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                plays={game.plays}
+                                teamId={parseInt(homeTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />

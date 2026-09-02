@@ -62,11 +62,48 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toContain(`<link rel="canonical" href="https://gameonpaper.com/game/${GAME_ID}">`);
     });
 
+    test('stat lines carry the longest gain and the best single play', () => {
+        // Extremes come off the plays, so they work on any game, old text or new.
+        expect(html).toMatch(/\d+ LNG, -?\d+\.\d+ best EPA, -?\d+\.\d+% best WPA/);
+    });
+
+    test('a game whose text names no tacklers shows no defensive box', () => {
+        // 401729745 predates ESPN's LiveStats tackler parentheticals; the section
+        // has to disappear rather than render an empty table.
+        expect(html).not.toContain('>Defense<');
+    });
+
     test('exactly one h1 and a SportsEvent that parses', () => {
         expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
         const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
         const ev = ld.find((o) => o['@type'] === 'SportsEvent');
         expect(ev?.url).toBe(`https://gameonpaper.com/game/${GAME_ID}`);
         expect(ev?.homeTeam?.name).toBeTruthy();
+    });
+});
+
+describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
+    test('the tacklers ESPN names become rows', async () => {
+        const play = (text: string, extra = {}) => ({ text, pos_team: 2, def_pos_team: 1, ...extra });
+        const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');
+        const html = await container.renderToString(PlayerBoxScore, {
+            props: {
+                pass: [],
+                rush: [{ rusher_player_name: 'J.Payne', Car: 2, Yds: 9, Rush_TD: 0, Fum: 0, Fum_Lost: 0, YPC: 4.5, EPA: 0.3, EPA_per_Play: 0.15, SR: 0.5, WPA: 0.004 }],
+                receiver: [],
+                teamId: 1,
+                plays: [
+                    play('#26 J.Payne rush middle for 11 yards gain to the FSU42 (#16 G.Peterson; #8 B.Vislisel)', { rusher_player_name: 'J.Payne', yds_rushed: 11, EPA: 0.8, wpa: 0.012 }),
+                    play('#26 J.Payne rush left for 2 yards loss to the FSU40 (#16 G.Peterson)', { rusher_player_name: 'J.Payne', yds_rushed: -2, EPA: -0.5, wpa: -0.008 }),
+                    play('#3 T.Hedden pass incomplete short right broken up by #13 D.Diggs'),
+                ],
+            },
+        });
+        expect(html).toContain('>Defense<');
+        expect(html).toContain('G.Peterson');
+        expect(html).toContain('2 tackles (1 solo, 1 ast), 1 TFL');
+        expect(html).toContain('1 PBU');
+        // the rusher's stat line picks up his longest carry and his best play
+        expect(html).toContain('11 LNG, 0.80 best EPA, 1.2% best WPA');
     });
 });
