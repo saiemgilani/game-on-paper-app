@@ -1,0 +1,53 @@
+---
+import { traditionalTeamStats } from '../../../utils/traditionalStats';
+import { roundNumber } from '../../../utils/misc';
+
+interface Props {
+    title?: string;
+    season: number;
+    /** Team ids in the column order the rest of the panel uses. */
+    teams: (number | string)[];
+    plays: any[];
+    caption?: string;
+}
+const { title = 'The Book', season, teams, plays, caption } = Astro.props;
+
+// One column per team, so the rows line up with the EPA tables above.
+const columns = teams.map((id) => traditionalTeamStats(plays, id));
+const labels = columns[0]?.map((r) => r.label) ?? [];
+---
+
+<div class="table-responsive">
+    <table class="table table-sm table-responsive">
+        {caption && <caption class="text-muted text-small">{caption}</caption>}
+        <thead>
+            <tr>
+                <th class="box-heading">{title}</th>
+                {teams.map((value) => (
+                    <th style="text-align: center;">
+                        <a href={`/year/${season}/team/${value}`}>
+                            <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
+                        </a>
+                    </th>
+                ))}
+            </tr>
+        </thead>
+        <tbody>
+            {labels.map((label, i) => (
+                <tr>
+                    <td style="text-align: left;" title={columns[0][i].title}>{label}</td>
+                    {columns.map((rows) => (
+                        <td class="numeral" style="text-align: center;">
+                            {rows[i].value}
+                            {rows[i].epa != null && (
+                                <span class="text-muted text-small" style="display: block;" title="Expected points added over the plays this row counts">
+                                    {roundNumber(rows[i].epa as number, 2, 2)} EPA
+                                </span>
+                            )}
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>

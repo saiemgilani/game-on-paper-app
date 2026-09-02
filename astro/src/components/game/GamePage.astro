@@ -13,6 +13,7 @@ import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
+import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
 import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
@@ -233,6 +234,12 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
+                                <TraditionalTeamStats
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                    caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
+                                />
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'

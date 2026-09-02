@@ -67,6 +67,16 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/\d+ LNG, -?\d+\.\d+ best EPA, -?\d+\.\d+% best WPA/);
     });
 
+    test('the book rows render with their EPA beside them', () => {
+        for (const label of ['Third down', 'Fourth down', 'Red zone scoring', 'Turnovers', 'Sacks taken', 'Time of possession']) {
+            expect(html).toContain(`>${label}<`);
+        }
+        expect(html).toMatch(/\d+-\d+ \(\d+%\)/);
+        expect(html).toMatch(/-?\d+\.\d\d EPA/);
+        // the clock lives in the possession row itself, not just anywhere on the page
+        expect(html).toMatch(/Time of possession<\/td>[\s\S]{0,600}?\d+:\d\d/);
+    });
+
     test('a game whose text names no tacklers shows no defensive box', () => {
         // 401729745 predates ESPN's LiveStats tackler parentheticals; the section
         // has to disappear rather than render an empty table.
