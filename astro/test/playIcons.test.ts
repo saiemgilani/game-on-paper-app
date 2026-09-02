@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { PLAY_ICON_ORDER, playIcons, threeAndOutPlays } from '../src/utils/playIcons';
+import { PLAY_ICON_LABEL, PLAY_ICON_LEGEND, PLAY_ICON_ORDER, playIcons, threeAndOutPlays } from '../src/utils/playIcons';
 
 const play = (flags: Record<string, unknown>, typeText = 'Rush') => ({ type: { text: typeText }, ...flags });
 
@@ -107,5 +107,13 @@ describe('playIcons', () => {
         const all = playIcons(play({ sack: true, int: true, fumble_lost: true, downs_turnover: true, fg_made: true, safety: true, touchdown: true, penalty_flag: true, EPA_explosive: true, start: { yardsToEndzone: 50 } }));
         const idx = all.map((id) => PLAY_ICON_ORDER.indexOf(id));
         expect(idx).toEqual([...idx].sort((a, b) => a - b));
+    });
+
+    test('the legend names every mark the table can draw', () => {
+        // td-xp-miss and td-2pt-miss were emitted and labelled but missing from
+        // the legend, so a reader saw a mark the key never explained. Compare
+        // the whole lists rather than spot-checking the two that were wrong.
+        expect([...PLAY_ICON_ORDER].sort()).toEqual([...PLAY_ICON_LEGEND].sort());
+        for (const id of PLAY_ICON_ORDER) expect(PLAY_ICON_LABEL[id], id).toBeTruthy();
     });
 });

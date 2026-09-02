@@ -93,7 +93,8 @@ describe('GamePage renders a finished game end to end', () => {
         // clears it, and so does the 100-yard return touchdown, which carries no
         // yds_kickoff_return value at all and so never fired under the old rule
         const bigRet = game.plays.find((p: any) => Number(p.yds_kickoff_return) >= 40);
-        if (bigRet) expect(rowFor(bigRet.game_play_number)).toContain('<use href="#pi-explosive">');
+        expect(bigRet, 'fixture has a kickoff return of 40+ yards').toBeTruthy();
+        expect(rowFor(bigRet.game_play_number)).toContain('<use href="#pi-explosive">');
         const koTd = game.plays.find((p: any) => p.kickoff_play === true && p.touchdown === true);
         expect(koTd, 'fixture has a kickoff return touchdown').toBeTruthy();
         expect(rowFor(koTd.game_play_number), 'kickoff return td').toContain('<use href="#pi-explosive">');

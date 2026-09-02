@@ -50,7 +50,7 @@ export const PLAY_PILL_TEXT: Partial<Record<PlayIconId, string>> = { sack: 'SACK
 
 /** Marks shown in the table legend, in a reading order that groups families. */
 export const PLAY_ICON_LEGEND: readonly PlayIconId[] = [
-    'td', 'td-xp', 'td-2pt', 'fg', 'safety', 'def-2pt', 'int', 'fumble', 'fumble-kept', 'downs', 'blocked', 'fg-miss',
+    'td', 'td-xp', 'td-xp-miss', 'td-2pt', 'td-2pt-miss', 'fg', 'safety', 'def-2pt', 'int', 'fumble', 'fumble-kept', 'downs', 'blocked', 'fg-miss',
     'sack', 'tfl', 'stuffed', 'three-out', 'goal-line', 'third-conv', 'fourth-conv', 'onside', 'penalty', 'penalty-declined', 'penalty-offset', 'explosive',
 ];
 
@@ -130,7 +130,10 @@ export function playIcons(play: FlagBag | null | undefined, ctx: PlayIconContext
         && !on(`${kind}_downed`) && !on(`${kind}_safety`);
     const bigReturn = Number.isFinite(epa) && (
         (returned('kickoff') && !on('kickoff_onside') && epa >= RETURN_EXPLOSIVE_EPA)
-        || (returned('punt') && !on('punt_blocked') && -epa >= RETURN_EXPLOSIVE_EPA));
+        // `blocked` above, not a bare punt_blocked: a block also arrives as
+        // is_blocked_punt_turnover or through turnover_vec, and a blocked punt
+        // is never a return however the feed happens to flag it.
+        || (returned('punt') && !blocked && -epa >= RETURN_EXPLOSIVE_EPA));
     if (on('EPA_explosive') || bigReturn) out.push('explosive');
     return out;
 }
