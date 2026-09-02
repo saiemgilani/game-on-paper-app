@@ -65,9 +65,30 @@ describe('periodSplits', () => {
         expect(periodSplits(firstHalfOnly).map((s) => s.key)).toEqual(['all', 'h1', 'q1', 'q2']);
     });
 
+    test('a period holding plays but no snaps from scrimmage gets no button either', () => {
+        // A quarter with only a kickoff -- a suspended game, say -- would
+        // otherwise offer a button onto a table of zeroes.
+        const kickoffOnly = plays.find((p) => p.EPA_scrimmage == null)!;
+        const firstHalf = plays.filter((p) => Number(p.period) <= 2);
+        const withDeadQ3 = [...firstHalf, { ...kickoffOnly, period: 3 }];
+        const keys = periodSplits(withDeadQ3).map((s) => s.key);
+        expect(keys).not.toContain('q3');
+        expect(keys).not.toContain('h2');
+        expect(keys).toEqual(['all', 'h1', 'q1', 'q2']);
+    });
+
+    test('a game with no scrimmage plays at all offers nothing', () => {
+        expect(periodSplits(plays.filter((p) => p.EPA_scrimmage == null))).toEqual([]);
+    });
+
     test('overtime is offered only when it happened', () => {
         expect(splits.some((s) => s.key === 'ot')).toBe(false);
-        const withOt = [...plays, { ...plays[0], period: 5 }];
+        // A real overtime opens on a snap from the 25, so seed it with a
+        // scrimmage play -- copying plays[0], the opening kickoff, would be
+        // rejected as a period with no snaps, which is correct but not the case
+        // this test is about.
+        const snap = plays.find((p) => p.EPA_scrimmage != null)!;
+        const withOt = [...plays, { ...snap, period: 5 }];
         expect(periodSplits(withOt).some((s) => s.key === 'ot')).toBe(true);
     });
 

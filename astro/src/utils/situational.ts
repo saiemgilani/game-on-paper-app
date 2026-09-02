@@ -63,8 +63,11 @@ export function periodSplits(plays: PlayLike[]): { key: string; label: string; p
     ];
     const ot = periods.filter((n) => n > 4);
     if (ot.length) splits.push({ key: "ot", label: "OT", plays: plays.filter((p) => Number(p.period) > 4) });
-    // A half with no snaps is not worth a button.
-    return splits.filter((s) => s.plays.length > 0);
+    // A period with no snaps is not worth a button. It has to be scrimmage
+    // snaps, not merely plays: a quarter holding only a kickoff, a punt or a
+    // penalty would otherwise offer a button onto a table of zeroes, since
+    // every metric below counts from-scrimmage plays only.
+    return splits.filter((s) => s.plays.some(isScrimmage));
 }
 
 /** The situational picture for one team over one set of plays. */
