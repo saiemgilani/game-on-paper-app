@@ -38,7 +38,7 @@ const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 const downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(play.period, play.start.down, play.type.text, play.start.distance, play.start.yardsToEndzone)} at ${ formatYardline(play.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text) }`;
 ---
 
-<tr data-bs-toggle={expandable ? "collapse" : ""} href={expandable ? `#play-${prefix}-${play.game_play_number}` : ''} class=`accordion-toggle ${classText}`>
+<tr data-period={play.period} data-play-row="1" data-bs-toggle={expandable ? "collapse" : ""} href={expandable ? `#play-${prefix}-${play.game_play_number}` : ''} class=`accordion-toggle ${classText}`>
     <td style="text-align: left;">{gameClock}</td>
     <td style="text-align: center;"><a href={`/year/${play.season}/team/${play.start.pos_team.id}`}><img class={`img-fluid team-logo-${play.start.pos_team.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${play.pos_team}.png`} alt={`ESPN team id ${play.start.pos_team.id}`}/></a></td>
     <td style="text-align: left;">({downText}) {play.text} - {play.scoringPlay ? (<strong>{cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</strong>) : (<span>{cleanAbbreviation(awayTeam)} {play.awayScore}, {cleanAbbreviation(homeTeam)} {play.homeScore}</span>)}</td>
@@ -48,7 +48,7 @@ const downText = (play.penalty_assessed_on_kickoff && play.penalty_assessed_on_k
 </tr>
 {
     (expandable) && (
-        <tr class="accordion-body collapse" id={`play-${prefix}-${play.game_play_number}`}>
+        <tr data-period={play.period} data-play-row="1" class="accordion-body collapse" id={`play-${prefix}-${play.game_play_number}`}>
             <td colspan="6" class="hiddenRow">
                 <slot name="expandable-row-content" />
             </td>

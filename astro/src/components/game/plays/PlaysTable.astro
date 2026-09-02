@@ -62,7 +62,7 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                 <th style="text-align: right;">WPA</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody data-plays-body={prefix}>
             {
                 (plays.map(p => (
                     <PlayRow play={p} expandable={expandable} prefix={prefix}>

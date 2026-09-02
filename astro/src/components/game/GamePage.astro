@@ -11,6 +11,7 @@ import type { ESPNCompetition } from '../../resources/espn';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
+import PlayFilters from './plays/PlayFilters.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
@@ -95,6 +96,8 @@ const previewUrlParams = new URLSearchParams({
 // The top of the page answers "what just happened" before any chart does.
 // Newest first here -- this strip is read downward as a feed, unlike All Plays.
 const latestPlays = game.plays.slice(-5).toReversed();
+// Quarters actually played, so overtime only offers a button when it happened.
+const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const driveTeam = lastPlay?.["drive.team.shortDisplayName"];
@@ -494,6 +497,11 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             {
                                 (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
+                            }
+                            {
+                                (game.plays.length > 0) && (
+                                    <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                )
                             }
                             {
                                 (game.plays.length > 0) && (gameStatus.type.completed != true) && (

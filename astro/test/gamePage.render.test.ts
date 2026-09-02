@@ -90,6 +90,28 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).not.toContain('>Defense<');
     });
 
+    test('All Plays offers a quarter filter, and the markup its script needs is there', () => {
+        // The filter script finds rows by these hooks. If PlayRow or PlaysTable
+        // stops emitting them the buttons silently do nothing, so pin the contract.
+        expect(html).toContain('data-plays-body="all"');
+        expect(html).toContain('data-play-filters="all"');
+        expect(html).toMatch(/data-period-filter="all"/);
+        for (const q of [1, 2, 3, 4]) expect(html).toContain(`data-period-filter="${q}"`);
+        // no overtime in this game, so no overtime button
+        expect(html).not.toContain('data-period-filter="5"');
+        expect(html).toContain('data-order-toggle');
+
+        // Every play row carries its period, and a detail row always follows its
+        // summary -- that adjacency is what keeps the two moving together.
+        const rows = [...html.matchAll(/<tr ([^>]*data-play-row[^>]*)>/g)].map((m) => m[1]);
+        expect(rows.length).toBeGreaterThan(100);
+        expect(rows.every((r) => /data-period="\d+"/.test(r))).toBe(true);
+        const isDetail = rows.map((r) => r.includes('accordion-body'));
+        // details never lead, and never follow another detail
+        expect(isDetail[0]).toBe(false);
+        for (let i = 1; i < isDetail.length; i++) if (isDetail[i]) expect(isDetail[i - 1]).toBe(false);
+    });
+
     test('every nav link points at an anchor that exists', () => {
         // #wpChart, #epChart and #most-imp-plays were all dead: the nav offered
         // them and nothing on the page carried the id.
