@@ -166,7 +166,7 @@ describe('GamePage renders a finished game end to end', () => {
         const table = html.slice(html.indexOf('id="drives"'));
         const head = table.slice(table.indexOf('<thead>'), table.indexOf('</thead>'));
         const headers = (head.match(/<th[\s>]/g) ?? []).length;
-        expect(headers).toBe(10);
+        expect(headers).toBe(9);
 
         // A summary row must carry exactly one cell per header, and the expanded
         // row must span all of them, or the table shears sideways.
@@ -176,9 +176,10 @@ describe('GamePage renders a finished game end to end', () => {
         for (const row of summaryRows) expect((row.match(/<td[\s>]/g) ?? []).length).toBe(headers);
         expect(body).toContain(`colspan="${headers}"`);
 
-        // plays / yards / clock, success rate, EPA per play and the best play
-        expect(body).toMatch(/\d+ pl, -?\d+ yd/);
+        // success rate, EPA per play and the best play. Plays/yards/clock are not
+        // repeated here: drive.description already reads "12 plays, 72 yards, 6:08".
         expect(body).toMatch(/-?\d+\.\d\d\/play/);
+        expect(body).toMatch(/\d+ plays, -?\d+ yards/);
     });
 
     test('every nav link points at an anchor that exists', () => {
