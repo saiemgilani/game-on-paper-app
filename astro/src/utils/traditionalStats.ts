@@ -8,6 +8,15 @@
  * beside the EPA rather than in a separate traditional table.
  */
 
+interface DriveLike {
+    id?: string | null;
+    /** The offense. This is the drive-level convention -- plays use pos_team. */
+    team?: { id?: string | number | null } | null;
+    isScore?: boolean | null;
+    timeElapsed?: { displayValue?: string | null } | null;
+    [k: string]: unknown;
+}
+
 interface PlayLike {
     pos_team?: number | string | null;
     down?: number | null;
@@ -22,7 +31,6 @@ interface PlayLike {
     td_play?: boolean | null;
     "drive.id"?: string | null;
     "drive.result"?: string | null;
-    "drive.timeElapsed.displayValue"?: string | null;
     [k: string]: unknown;
 }
 
@@ -52,27 +60,31 @@ const mmss = (secs: number) => `${Math.floor(secs / 60)}:${String(Math.round(sec
 /**
  * Time of possession for one team, summed over its drives.
  *
- * This counts the whole drive including its punt or field goal, which is what
- * the official book does -- a punt is charged to the punting team's clock.
+ * Reads the drives grouping rather than the plays: `drive.team` is the offense,
+ * which is the drive-level convention here, so ownership needs no inferring.
+ * That matters because a `drive.id` is NOT exclusive to one offense -- ESPN
+ * files the play after a turnover, and the ensuing kickoff, under the drive
+ * that just ended (this fixture's first drive reports 12 offensivePlays and
+ * carries 14). Grouping plays by drive id and then filtering them by pos_team
+ * would charge those drives to both teams.
+ *
+ * Counts the whole drive including the punt or field goal that ended it, which
+ * is what the official book does.
  */
-export function timeOfPossession(plays: PlayLike[], teamId: number | string): number {
-    // A drive is owned by whoever snapped its first play. ESPN files the play
-    // after a turnover, and the ensuing kickoff, under the SAME drive id, so a
-    // per-play team filter charges those drives to both teams and the two
-    // clocks come to nearly 79 minutes of a 60-minute game.
-    const owner = new Map<string, { team: string; elapsed: number }>();
-    for (const p of plays) {
-        const id = p["drive.id"];
-        if (!id || owner.has(id)) continue;
-        owner.set(id, { team: String(p.pos_team ?? ""), elapsed: toSeconds(p["drive.timeElapsed.displayValue"]) });
-    }
+export function timeOfPossession(drives: DriveLike[], teamId: number | string): number {
     let total = 0;
-    for (const d of owner.values()) if (same(d.team, teamId)) total += d.elapsed;
+    for (const d of drives) if (same(d.team?.id, teamId)) total += toSeconds(d.timeElapsed?.displayValue);
     return total;
 }
 
-/** The book's counting stats for one team, each carrying its own EPA. */
-export function traditionalTeamStats(plays: PlayLike[], teamId: number | string): TraditionalRow[] {
+/**
+ * The book's counting stats for one team, each carrying its own EPA.
+ *
+ * Down, turnover and sack rows come from plays filtered by `pos_team`; the
+ * possession and red-zone rows come from the drives grouping, since those are
+ * drive-level questions and `drive.team` already names the offense.
+ */
+export function traditionalTeamStats(plays: PlayLike[], teamId: number | string, drives: DriveLike[] = []): TraditionalRow[] {
     const own = plays.filter((p) => same(p.pos_team, teamId));
 
     const onDown = (d: number) => own.filter((p) => Number(p.down) === d);
@@ -88,14 +100,12 @@ export function traditionalTeamStats(plays: PlayLike[], teamId: number | string)
     };
 
     // A red-zone trip is a drive, not a play: a drive that reached the 20 counts
-    // once however many snaps it took.
-    const trips = new Map<string, boolean>();
-    for (const p of own) {
-        const id = p["drive.id"];
-        if (!id || p.rz_play !== true) continue;
-        trips.set(id, trips.get(id) || p.td_play === true || p.scoring_play === true);
-    }
-    const rzScores = [...trips.values()].filter(Boolean).length;
+    // once however many snaps it took. The drive says whether it scored
+    // (`isScore`) and who had it; the plays say whether it reached the 20,
+    // since the drive's own play list is the raw feed and carries no rz_play.
+    const rzDriveIds = new Set(own.filter((p) => p.rz_play === true).map((p) => p["drive.id"]).filter(Boolean));
+    const rzDrives = drives.filter((d) => same(d.team?.id, teamId) && rzDriveIds.has(d.id ?? ""));
+    const rzScores = rzDrives.filter((d) => d.isScore === true).length;
     const rzPlays = own.filter((p) => p.rz_play === true);
 
     const ints = own.filter((p) => p.int_turnover === true).length;
@@ -107,7 +117,7 @@ export function traditionalTeamStats(plays: PlayLike[], teamId: number | string)
         conv(4),
         {
             label: "Red zone scoring",
-            value: `${rzScores}-${trips.size}${pct(rzScores, trips.size)}`,
+            value: `${rzScores}-${rzDrives.length}${pct(rzScores, rzDrives.length)}`,
             epa: rzPlays.length ? sum(rzPlays) : null,
             title: "Drives that reached the opponent 20 and scored on them, and the EPA of the snaps inside the 20.",
         },
@@ -125,7 +135,7 @@ export function traditionalTeamStats(plays: PlayLike[], teamId: number | string)
         },
         {
             label: "Time of possession",
-            value: mmss(timeOfPossession(plays, teamId)),
+            value: mmss(timeOfPossession(drives, teamId)),
             epa: null,
             title: "Summed over this team's drives, including the punt or field goal that ended them -- the same convention the official book uses.",
         },

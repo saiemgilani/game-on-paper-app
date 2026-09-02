@@ -270,6 +270,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     season={game.season.year}
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                     plays={game.plays}
+                                    drives={gameDrives}
                                     caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
                                 />
                                 <TeamMetricsTable 
