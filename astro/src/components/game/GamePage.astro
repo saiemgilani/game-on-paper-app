@@ -110,7 +110,9 @@ const latestSubtitle = !lastPlay
       : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
 
 const scrollerItems: ScrollerItem[] = [
-    { href: "#latest", title: "Latest" },
+    // The Latest panel only renders when there are plays, so a game with none
+    // must not advertise an anchor that isn't on the page.
+    ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wpChart", title: "WP Chart" },
     { href: "#epChart", title: "EPA Chart" },
     { href: "#team-stats", title: "Team Stats" },

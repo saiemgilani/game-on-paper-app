@@ -65,6 +65,10 @@ describe('GamePage renders a finished game end to end', () => {
     test('stat lines carry the longest gain and the best single play', () => {
         // Extremes come off the plays, so they work on any game, old text or new.
         expect(html).toMatch(/\d+ LNG, -?\d+\.\d+ best EPA, -?\d+\.\d+% best WPA/);
+        // a passer's longest is his longest COMPLETION: Cam Miller went 20/29 for
+        // 274 with a long of 36, McIvor 20/32 for 153 with a long of 18
+        expect(html).toMatch(/Cam Miller[\s\S]{0,400}?36 LNG/);
+        expect(html).toMatch(/Maverick McIvor[\s\S]{0,400}?18 LNG/);
     });
 
     test('the Latest strip leads the page, newest play first', () => {
@@ -116,16 +120,32 @@ describe('GamePage renders a finished game end to end', () => {
         // no overtime in this game, so no overtime button
         expect(html).not.toContain('data-period-filter="5"');
         expect(html).toContain('data-order-toggle');
+    });
 
-        // Every play row carries its period, and a detail row always follows its
-        // summary -- that adjacency is what keeps the two moving together.
-        const rows = [...html.matchAll(/<tr ([^>]*data-play-row[^>]*)>/g)].map((m) => m[1]);
+    test('inside All Plays every summary row is followed by exactly one detail row', () => {
+        // Scoped to the All Plays tbody on purpose: the Latest strip is not
+        // expandable, so its rows are unpaired and a whole-page count would be odd.
+        const body = html.slice(html.indexOf('data-plays-body="all"'));
+        const rows = [...body.slice(0, body.indexOf('</tbody>')).matchAll(/<tr ([^>]*data-play-row[^>]*)>/g)].map((m) => m[1]);
         expect(rows.length).toBeGreaterThan(100);
         expect(rows.every((r) => /data-period="\d+"/.test(r))).toBe(true);
+
         const isDetail = rows.map((r) => r.includes('accordion-body'));
-        // details never lead, and never follow another detail
-        expect(isDetail[0]).toBe(false);
-        for (let i = 1; i < isDetail.length; i++) if (isDetail[i]) expect(isDetail[i - 1]).toBe(false);
+        expect(isDetail.length % 2).toBe(0);
+        for (let i = 0; i < isDetail.length; i += 2) {
+            expect(isDetail[i]).toBe(false);
+            expect(isDetail[i + 1]).toBe(true);
+        }
+    });
+
+    test('the filter script is deferred, not run where it sits', () => {
+        // It renders BEFORE the table it drives, so an inline script would look
+        // up a tbody that has not been parsed yet and wire up nothing at all.
+        const inline = html.indexOf('data-plays-body="${target}"');
+        expect(inline).toBe(-1);
+        const bar = html.indexOf('data-play-filters="all"');
+        const tbody = html.indexOf('data-plays-body="all"');
+        expect(bar).toBeLessThan(tbody);
     });
 
     test('every nav link points at an anchor that exists', () => {

@@ -18,7 +18,9 @@ let { pass, rush, receiver, plays = [], teamId } = Astro.props;
 // totals and rates, not extremes.
 // Keyed on the player name: the advanced box rows carry no player id, and the name is
 // the only field the two shapes share.
-const passBest = playerExtremes(plays, "passer_player_name");
+// A passer's longest is his longest COMPLETION, which is the receiving yardage
+// on the play -- the same number the official book prints.
+const passBest = playerExtremes(plays, "passer_player_name", "yds_receiving");
 const rushBest = playerExtremes(plays, "rusher_player_name", "yds_rushed");
 const recvBest = playerExtremes(plays, "receiver_player_name", "yds_receiving");
 const defense = teamId == null ? [] : defensiveBox(plays, teamId);
@@ -69,7 +71,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (pass.length > 0) && (pass.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.passer_player_name}</td>
-                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest gain, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name, false)}</span></td>
+                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
