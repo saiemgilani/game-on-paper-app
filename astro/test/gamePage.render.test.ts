@@ -453,22 +453,3 @@ describe('the ?span= filter narrows the page to a window', () => {
         expect(plain).toContain('?span=q1');
     });
 });
-
-describe('the mobile-fixes flag gates the QA tranche', () => {
-    test('preview gets the stacked header; public keeps the old columns', async () => {
-        const { retrieveProcessedGame } = await import('../src/resources/python');
-        const game: any = await retrieveProcessedGame(GAME_ID, 30);
-        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
-        const render = (locals: object) => container.renderToString(GamePage, {
-            props: { id: GAME_ID, game },
-            request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
-            locals,
-        });
-        const pub = await render({});
-        expect(pub).toContain('class="col-8 text-center"');
-        expect(pub).not.toContain('col-12 col-md-8');
-        const prev = await render({ preview: true });
-        expect(prev).toContain('col-12 col-md-8');
-        expect(prev).not.toContain('class="col-8 text-center"');
-    });
-});

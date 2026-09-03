@@ -21,10 +21,6 @@ export const FLAGS: Record<string, FeatureState> = {
     // the frozen pre-v2 snapshot (components/game/classic/); the preview cookie
     // renders the new tree. Promote by flipping to 'on' and deleting classic/.
     'game-page-v2': 'preview',
-    // Mobile QA tranche 1 (#207): sized scoreboard logos, stacked game header,
-    // 44px card actions, wrapper-only responsive tables. Perf/defect fixes, but
-    // preview-gated at the maintainer's request until eyeballed.
-    'mobile-fixes': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {

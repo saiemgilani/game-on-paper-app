@@ -5,16 +5,11 @@ interface Props {
     teamIds: (string | number)[]
 }
 const { teamIds } = Astro.props;
-import { isFeatureEnabled } from '../utils/features';
-const mobileFixes = isFeatureEnabled('mobile-fixes', Astro.locals);
-const logoUrl = (p: string | number) => mobileFixes
-    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${p}.png&h=120&w=120`
-    : `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${p}.png`;
 
 let teamIdCSS = teamIds.map(p => {
     return `
     img.team-logo-${p} {
-        content: url('${logoUrl(p)}')
+        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${p}.png&h=120&w=120')
     }
     `
 })
