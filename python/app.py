@@ -15,6 +15,7 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
+import span_box
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, "HTTP_TOKEN not provided, can not start server"
@@ -325,6 +326,18 @@ def process(game_id: int):
         response.headers["X-Result-Cache"] = "MISS"
         # _emit_metrics(timings, gameId, 200)
         return response, 200
+        raw_span = request.args.get("span")
+        if raw_span:
+            try:
+                box, span_key = span_box.spanned_box(game, raw_span)
+                if box is not None:
+                    processed_game["advBoxScore"] = box
+                    processed_game["advBoxScoreSpan"] = span_key
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"span box failed for {game_id} span={raw_span}: {e}"
+                )
+
         try:
             _emit_dq(game_id, game, processed_game)
         except Exception as e:  # observability must never cost a render

@@ -822,6 +822,7 @@ export interface ProcessedGame {
     id: number
     count: number
     advBoxScore: ProcessedBoxScore
+    advBoxScoreSpan?: string | null
     plays: ProcessedPlay[]
     drives: { previous?: ProcessedDrive[], current?: ProcessedDrive }
     scoringPlays: ProcessedPlay[]
@@ -839,8 +840,8 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, span?: string | null): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, span);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -927,13 +928,14 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number): Promise<ProcessedGame> {
+async function processPlays(gameId: string | number, cacheTTL: number, span?: string | null): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
 
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/${gameId}/process`, {
+    const spanQ = span ? `?span=${encodeURIComponent(span)}` : '';
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/${gameId}/process${spanQ}`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
@@ -945,7 +947,7 @@ async function processPlays(gameId: string | number, cacheTTL: number): Promise<
             // deployed version means a deploy (a parser fix in sportsdataverse-py
             // rides in with every build) invalidates it without any zone purge; the
             // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/cfb/${gameId}/process?v=${APP_VERSION}`,
+            cacheKey: `${PYTHON_HTTP_URL}/cfb/${gameId}/process?v=${APP_VERSION}${span ? `&span=${span}` : ''}`,
         }
     })
     const content = await req.text();

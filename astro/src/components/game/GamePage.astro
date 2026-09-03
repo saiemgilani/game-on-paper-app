@@ -269,8 +269,9 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             </div>
             {activeSpan && (
                 <div class="alert alert-info py-1 px-3 mb-2 small">
-                    Showing <strong>{activeSpan.label}</strong> only. Play-by-play, drives, situational, defensive, traditional and penalty
-                    sections are filtered; the charts and advanced box scores still show the full game.
+                    Showing <strong>{activeSpan.label}</strong> only. Every play-derived table is recomputed for this window
+                    {game.advBoxScoreSpan ? '' : ' (advanced boxes fell back to full-game for this window)'};
+                    the charts, ESPN's official stat lines and season percentiles always describe the full game.
                 </div>
             )}
             {latestPlays.length > 0 && (
@@ -307,7 +308,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="team-stats" title="Team Stats">
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
-                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
+                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={activeSpan ? [] : percentiles} />
                                 <TraditionalTeamStats
                                     season={game.season.year}
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}

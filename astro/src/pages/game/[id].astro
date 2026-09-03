@@ -2,6 +2,7 @@
 import GamePage from '../../components/game/GamePage.astro';
 import GamePageClassic from '../../components/game/classic/GamePage.astro';
 import { isFeatureEnabled } from '../../utils/features';
+import { parseSpan } from '../../utils/span';
 import PreGamePage from '../../components/game/PreGamePage.astro';
 import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { gopStorage } from '../../utils/telemetry';
@@ -40,7 +41,10 @@ try {
     
     const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
     if (espnGame && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-        game = await retrieveProcessedGame(id, config.maxAge || 30);
+        // a valid ?span= also windows the python-computed advanced boxes; the
+        // API keys its cache on it, and falls back to full-game when the window
+        // is invalid or empty
+        game = await retrieveProcessedGame(id, config.maxAge || 30, parseSpan(Astro.url.searchParams.get('span'))?.key ?? null);
     }
 
     if (guarded.regressed) {
