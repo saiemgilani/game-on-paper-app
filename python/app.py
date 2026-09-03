@@ -15,6 +15,7 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
+import span_box
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, "HTTP_TOKEN not provided, can not start server"
@@ -314,6 +315,28 @@ def process(game_id: int):
                 if isinstance(v, float) and not math.isfinite(v):
                     record[k] = None
 
+        # Both of these must precede serialization: the span swap mutates
+        # processed_game, and everything after `return` is dead code -- which is
+        # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
+        # ordering (gop.dq_boxscore had zero rows since #192 merged).
+        raw_span = request.args.get("span")
+        if raw_span:
+            try:
+                box, span_key = span_box.spanned_box(game, raw_span)
+                if box is not None:
+                    processed_game["advBoxScore"] = box
+                    processed_game["advBoxScoreSpan"] = span_key
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"span box failed for {game_id} span={raw_span}: {e}"
+                )
+
+        if not raw_span:  # a windowed request is not the game's canonical box
+            try:
+                _emit_dq(game_id, game, processed_game)
+            except Exception as e:  # observability must never cost a render
+                logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
+
         body_bytes = orjson.dumps(
             processed_game,
             default=_orjson_default,
@@ -325,12 +348,6 @@ def process(game_id: int):
         response.headers["X-Result-Cache"] = "MISS"
         # _emit_metrics(timings, gameId, 200)
         return response, 200
-        try:
-            _emit_dq(game_id, game, processed_game)
-        except Exception as e:  # observability must never cost a render
-            logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
-
-        return jsonify(processed_game), 200
     except KeyError as e:
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)

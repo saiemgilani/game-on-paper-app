@@ -22,6 +22,7 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string) => {
         if (!String(url).includes(`/cfb/${GAME_ID}/process`)) throw new Error(`unexpected fetch in test: ${url}`);
+        (globalThis as any).__lastProcessUrl = String(url);
         return new Response(apiPayload, { status: 200, headers: { 'content-type': 'application/json' } });
     },
 }));
@@ -439,6 +440,14 @@ describe('the ?span= filter narrows the page to a window', () => {
         expect(spanned).toMatch(/Showing <strong>Q3<\/strong> only/);
         // the charts keep the whole game: the WP chart island still carries all four periods
         expect(spanned).toMatch(/astro-island[^>]+WinProbabilityChart/);
+    });
+
+    test('the span is forwarded to the python API so the boxes recompute server-side', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        await retrieveProcessedGame(GAME_ID, 30, 'q3');
+        expect((globalThis as any).__lastProcessUrl).toContain(`/cfb/${GAME_ID}/process?span=q3`);
+        await retrieveProcessedGame(GAME_ID, 30, null);
+        expect((globalThis as any).__lastProcessUrl).not.toContain('span=');
     });
 
     test('no span means no banner, and the pills are still offered', async () => {
