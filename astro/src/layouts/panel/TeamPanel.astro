@@ -1,4 +1,5 @@
 ---
+import { isFeatureEnabled } from '../../utils/features';
 import type { ESPNTeam } from '../../resources/espn';
 import { cleanLocation } from '../../utils/misc';
 
@@ -19,7 +20,7 @@ const { id, season, team } = Astro.props;
                     <h2 class="d-inline">
                         {cleanLocation(team)}
                         <span class="d-inline text-small h6 ms-1">
-                            <a class="toggle-link" data-bs-toggle="collapse"
+                            <a class={isFeatureEnabled("mobile-fixes", Astro.locals) ? "toggle-link" : ""} data-bs-toggle="collapse"
                                 href={`#${id}`}
                                 style="text-decoration: none;"
                                 role="button"

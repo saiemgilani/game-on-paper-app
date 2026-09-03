@@ -1,4 +1,5 @@
 ---
+import { isFeatureEnabled } from '../../utils/features';
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
 import { cleanScore, getRecordString, cleanAbbreviation } from "../../utils/misc";
 
@@ -30,10 +31,13 @@ const status = (espnStatus as ESPNStatus);
 const rank = comp.curatedRank?.current || 99;
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
+const mobileFixes = isFeatureEnabled('mobile-fixes', Astro.locals);
 ---
 <div class={`m-0 d-flex ${spacer}`}>
     <div class="d-flex me-auto">
-        <img class=`float-start align-self-center me-2 team-logo-${comp.id}` width="30" height="30" loading="lazy" decoding="async" src=`https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${comp.id}.png&h=80&w=80` />
+        {mobileFixes
+            ? <img class=`float-start align-self-center me-2 team-logo-${comp.id}` width="30" height="30" loading="lazy" decoding="async" src=`https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${comp.id}.png&h=80&w=80` />
+            : <img class=`float-start align-self-center me-2 team-logo-${comp.id}` height="30px" src=`https://a.espncdn.com/i/teamlogos/ncaa/500/${comp.id}.png` />}
         <div class="d-flex flex-column me-3 align-self-center">
             <div class="d-flex align-items-center">
                 <span class=`small text-muted ${(rank != 99) ? "me-1" : ""}`>{(rank != 99) ? ("#" + rank) : ""}</span>

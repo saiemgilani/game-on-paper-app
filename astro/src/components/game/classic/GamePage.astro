@@ -1,4 +1,5 @@
 ---
+import { isFeatureEnabled } from '../../../utils/features';
 // FROZEN SNAPSHOT of the pre-v2 game page (origin/main), served to the public
 // while the rebuilt page + play marks sit behind the 'game-page-v2' preview
 // flag. Do not develop here: promotion deletes this directory. Only the four
@@ -66,6 +67,7 @@ const awayTeam = awayComp.team;
 const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = game.header.competitions[0].status;
+const mobileFixes = isFeatureEnabled('mobile-fixes', Astro.locals);
 
 // Title/description/JSON-LD say what the page is (final, week, "EPA per play",
 // "win probability") -- "Game: X, Y" and "Advanced stats for X vs Y" gave Google
@@ -197,7 +199,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <div class="col-2 pt-1">
                         <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
                     </div>
-                    <div class="col-12 col-md-8 text-center order-1 order-md-0">
+                    <div class={mobileFixes ? "col-12 col-md-8 text-center order-1 order-md-0" : "col-8 text-center"}>
                         <div>
                             <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
                             {
@@ -211,7 +213,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                             }
                         </div>
                     </div>
-                    <div class="col-10 col-md-2 d-flex justify-content-end align-items-center">
+                    <div class={mobileFixes ? "col-10 col-md-2 d-flex justify-content-end align-items-center" : "col-2 d-flex justify-content-end align-items-center"}>
                         <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
                     </div>
                 </div>

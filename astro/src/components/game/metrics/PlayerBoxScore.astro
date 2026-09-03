@@ -1,4 +1,5 @@
 ---
+import { isFeatureEnabled } from '../../../utils/features';
 import type { ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore } from '../../../resources/python';
 import { roundNumber } from "../../../utils/misc";
 import { defensiveBox, playerExtremes } from "../../../utils/defensiveBox";
@@ -45,9 +46,10 @@ pass = pass.filter(p => (p.passer_player_name?.length ?? 0) > 0).toSorted((a, b)
 rush = rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 
+const mobileFixes = isFeatureEnabled('mobile-fixes', Astro.locals);
 ---
 <div class="table-responsive">
-    <table class="table table-sm">
+    <table class={mobileFixes ? "table table-sm" : "table table-sm table-responsive"}>
         <thead>
             <tr>
             <th rowspan="1" colspan="1"></th>
