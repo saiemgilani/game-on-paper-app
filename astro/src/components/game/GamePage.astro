@@ -15,6 +15,7 @@ import PlayFilters from './plays/PlayFilters.astro';
 import PlayFocus from './plays/PlayFocus.astro';
 import PlayMarkSprite from './plays/PlayMarkSprite.astro';
 import { threeAndOutPlays } from '../../utils/playIcons';
+import { availableSpans, parseSpan } from '../../utils/span';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
@@ -63,6 +64,20 @@ salvageGame(game);
 // drive-shaped mark: flag the punt that ends a three-and-out so PlayMarks can render it per row
 for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: any) => x.game_play_number === n); if (p) (p as any).three_and_out = true; }
 
+// ?span= filters the whole page to a time window (utils/span.ts). game.plays is
+// filtered ONCE here, before any derivation, so every astro-computed section --
+// play tables, drives, situational, defensive box, traditional stats, penalties
+// -- recomputes for free. The charts and the Latest strip deliberately keep the
+// full game (fullGamePlays); the python-computed advanced boxes stay full-game
+// until the API grows the same parameter, and the banner below says so.
+const fullGamePlays = game.plays;
+const activeSpan = parseSpan(Astro.url.searchParams.get('span'));
+if (activeSpan) {
+    game.plays = fullGamePlays.filter((p: any) => activeSpan.test(p));
+    game.scoringPlays = game.scoringPlays.filter((p: any) => activeSpan.test(p));
+}
+const spanPills = availableSpans(fullGamePlays);
+
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
@@ -105,7 +120,7 @@ const previewUrlParams = new URLSearchParams({
 // Newest first here -- this strip is read downward as a feed, unlike All Plays.
 // Live and halftime only: once the game is final the whole page is the recap,
 // and a "Latest" strip repeating the last five plays is noise.
-const latestPlays = gameStatus.type.completed === true ? [] : game.plays.slice(-5).toReversed();
+const latestPlays = gameStatus.type.completed === true ? [] : fullGamePlays.slice(-5).toReversed();
 // Quarters actually played, so overtime only offers a button when it happened.
 const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
 const lastPlay: any = game.plays.at(-1);
@@ -160,13 +175,15 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
 
 let gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
 gameDrives = deduplicateByKey(gameDrives, "id");
-const epPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
+// under a span, only drives that intersect the window
+const spanDrives = activeSpan ? gameDrives.filter((d: any) => (d.plays ?? []).some((p: any) => activeSpan.test(p))) : gameDrives;
+const epPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     return {
         pos_team: p.pos_team, 
         expectedPoints: p.expectedPoints
     }
 });
-const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
+const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     return {
         pos_team: p.pos_team, 
         period: p.period,
@@ -244,6 +261,18 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </header>
 
             <NavScroller items={scrollerItems} />
+            <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
+                <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
+                {spanPills.map((sp) => (
+                    <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
+                ))}
+            </div>
+            {activeSpan && (
+                <div class="alert alert-info py-1 px-3 mb-2 small">
+                    Showing <strong>{activeSpan.label}</strong> only. Play-by-play, drives, situational, defensive, traditional and penalty
+                    sections are filtered; the charts and advanced box scores still show the full game.
+                </div>
+            )}
             {latestPlays.length > 0 && (
                 <div class="row mb-3">
                     <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
@@ -508,10 +537,10 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="drives" title="Drives">
                         <div class="row" slot="panel-body">
                             {
-                                (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
+                                (spanDrives.length == 0) && (<p class="text-center text-muted">{activeSpan ? `No drives in ${activeSpan.label}` : "No drives in this game"}</p>)
                             }
                             {
-                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} />
+                                (spanDrives.length > 0) && <DrivesTable drives={spanDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} />
                             }
                         </div>
                     </Panel>
