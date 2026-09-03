@@ -1,13 +1,40 @@
 ---
 import type { ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore } from '../../../resources/python';
 import { roundNumber } from "../../../utils/misc";
+import { defensiveBox, playerExtremes } from "../../../utils/defensiveBox";
 
 interface Props {
     pass: ProcessedPassingBoxScore[],
     rush: ProcessedRushingBoxScore[],
-    receiver: ProcessedReceivingBoxScore[]
+    receiver: ProcessedReceivingBoxScore[],
+    /** Every play in the game, for the longest gain, the best play, and the defence. */
+    plays?: any[],
+    /** The team whose defenders to credit; omit to leave the defensive table out. */
+    teamId?: string | number,
 }
-let { pass, rush, receiver } = Astro.props;
+let { pass, rush, receiver, plays = [], teamId } = Astro.props;
+
+// LNG and the single best play come off the plays themselves: the advanced box carries
+// totals and rates, not extremes.
+// Keyed on the player name: the advanced box rows carry no player id, and the name is
+// the only field the two shapes share.
+// A passer's longest is his longest COMPLETION, which is the receiving yardage
+// on the play -- the same number the official book prints.
+const passBest = playerExtremes(plays, "passer_player_name", "yds_receiving");
+const rushBest = playerExtremes(plays, "rusher_player_name", "yds_rushed");
+const recvBest = playerExtremes(plays, "receiver_player_name", "yds_receiving");
+const defense = teamId == null ? [] : defensiveBox(plays, teamId);
+
+/** "22 LNG · 2.10 best · 1.4% best" — the extremes tail on a stat line. */
+const bestTail = (m: Map<string, any>, id: unknown, showLng = true): string => {
+    const e = id == null ? null : m.get(String(id));
+    if (!e) return "";
+    const bits: string[] = [];
+    if (showLng && e.LNG != null) bits.push(`${e.LNG} LNG`);
+    if (e.EPA_MAX != null) bits.push(`${roundNumber(e.EPA_MAX, 2, 2)} best EPA`);
+    if (e.WPA_MAX != null) bits.push(`${roundNumber(e.WPA_MAX * 100, 2, 1)}% best WPA`);
+    return bits.length ? `, ${bits.join(", ")}` : "";
+};
 
 // Air-yards tail for a passer / receiver stat line. Null aDOT means ESPN's text
 // carried no catch spot for this game (pre-2025), so print nothing rather than 0.
@@ -44,7 +71,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (pass.length > 0) && (pass.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.passer_player_name}</td>
-                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span></td>
+                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -64,7 +91,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (rush.length > 0) && (rush.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.rusher_player_name}</td>
-                        <td style="text-align: left;">{p.Car} carr{(Math.abs(p.Car) == 1) ? "y" : "ies"}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rush_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)</td>
+                        <td style="text-align: left;">{p.Car} carr{(Math.abs(p.Car) == 1) ? "y" : "ies"}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rush_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPC || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -84,12 +111,32 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (receiver.length > 0) && (receiver.map((p) => (
                     <tr>
                         <td style="text-align: left;">{p.receiver_player_name}</td>
-                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span></td>
+                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
+                    </tr>
+                )))
+            }
+            {
+                (defense.length > 0) && (
+                    <tr>
+                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;" title="Read from the tacklers ESPN names in the play text. Older games carry no tacklers and show nothing here.">Defense</td>
+                    </tr>
+                )
+            }
+            {
+                (defense.length > 0) && (defense.map((d) => (
+                    <tr>
+                        <td style="text-align: left;">{d.name}</td>
+                        <td style="text-align: left;">{d.TOT} tackle{(d.TOT == 1) ? "" : "s"} ({d.SOLO} solo, {d.AST} ast){(d.TFL > 0) ? `, ${d.TFL} TFL` : ""}{(d.SACK > 0) ? `, ${d.SACK} sack` : ""}{(d.INT > 0) ? `, ${d.INT} INT` : ""}{(d.PBU > 0) ? `, ${d.PBU} PBU` : ""}{(d.QBH > 0) ? `, ${d.QBH} QB hurr` : ""}</td>
+                        <td class="numeral" style="text-align: center;">&mdash;</td>
+                        <td class="numeral" style="text-align: center;">&mdash;</td>
+                        <td class="numeral" style="text-align: center;">&mdash;</td>
+                        <td class="numeral" style="text-align: center;">&mdash;</td>
+                        <td class="numeral" style="text-align: center;">&mdash;</td>
                     </tr>
                 )))
             }

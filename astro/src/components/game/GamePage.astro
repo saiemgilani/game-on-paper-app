@@ -11,12 +11,15 @@ import type { ESPNCompetition } from '../../resources/espn';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
+import PlayFilters from './plays/PlayFilters.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
+import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
 import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
@@ -91,13 +94,31 @@ const previewUrlParams = new URLSearchParams({
     awayTeamId: awayTeam.id
 })
 
+// The top of the page answers "what just happened" before any chart does.
+// Newest first here -- this strip is read downward as a feed, unlike All Plays.
+const latestPlays = game.plays.slice(-5).toReversed();
+// Quarters actually played, so overtime only offers a button when it happened.
+const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
+const lastPlay: any = game.plays.at(-1);
+const gameState = game.header.competitions[0].status?.type?.state;
+const driveTeam = lastPlay?.["drive.team.shortDisplayName"];
+const driveResult = lastPlay?.["drive.displayResult"] ?? lastPlay?.["drive.result"];
+const latestSubtitle = !lastPlay
+    ? "No plays yet."
+    : gameState === "post"
+      ? `Final. Last drive: ${driveTeam ?? "unknown"}, ${driveResult ?? "no result"}.`
+      : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
+
 const scrollerItems: ScrollerItem[] = [
+    // The Latest panel only renders when there are plays, so a game with none
+    // must not advertise an anchor that isn't on the page.
+    ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wpChart", title: "WP Chart" },
     { href: "#epChart", title: "EPA Chart" },
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
-    { href: "#most-imp-plays", title: "Most Important Plays" },
+    { href: "#most-important-plays", title: "Most Important Plays" },
     { href: "#scoring-plays", title: "Scoring Plays" },
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
@@ -213,15 +234,27 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </header>
 
             <NavScroller items={scrollerItems} />
+            {latestPlays.length > 0 && (
+                <div class="row mb-3">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <Panel id="latest" title="Latest">
+                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
+                            <div class="row" slot="panel-body">
+                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
+                            </div>
+                        </Panel>
+                    </div>
+                </div>
+            )}
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
-                <div class="col-lg-6 ms-sm-auto px-md-4">
+                <div id="wpChart" class="col-lg-6 ms-sm-auto px-md-4">
                     <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
-                <div class="col-lg-6 ms-sm-auto px-md-4">
+                <div id="epChart" class="col-lg-6 ms-sm-auto px-md-4">
                     <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>
@@ -233,6 +266,13 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
+                                <TraditionalTeamStats
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                    drives={gameDrives}
+                                    caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
+                                />
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'
@@ -374,6 +414,8 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                plays={game.plays}
+                                teamId={parseInt(awayTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
@@ -387,6 +429,8 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                plays={game.plays}
+                                teamId={parseInt(homeTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
@@ -426,6 +470,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="scoring-plays" title="Scoring Plays">
                         <div class="row" slot="panel-body">
+                            <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }
@@ -457,6 +502,11 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             {
                                 (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
+                            }
+                            {
+                                (game.plays.length > 0) && (
+                                    <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                )
                             }
                             {
                                 (game.plays.length > 0) && (gameStatus.type.completed != true) && (

@@ -1,0 +1,80 @@
+---
+/**
+ * Quarter filter and reading-order toggle for a PlaysTable.
+ *
+ * Every play row carries `data-period`, and an expandable play is TWO rows --
+ * the summary and its collapsed detail. Both are marked `data-play-row`, so
+ * filtering and reordering move them together and a detail row can never end
+ * up separated from the play it belongs to.
+ */
+interface Props {
+    /** The `prefix` of the PlaysTable this drives. */
+    target: string;
+    /** Periods present in the game, in ascending order. */
+    periods: number[];
+    /** Live games read newest first; finished games read in order. */
+    newestFirst: boolean;
+}
+const { target, periods, newestFirst } = Astro.props;
+
+const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
+---
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-filters={target}>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Filter plays by quarter">
+        <button type="button" class="btn btn-outline-secondary active" data-period-filter="all" aria-pressed="true">All</button>
+        {periods.map((p) => (
+            <button type="button" class="btn btn-outline-secondary" data-period-filter={p} aria-pressed="false">{label(p)}</button>
+        ))}
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-order-toggle="1" aria-pressed={newestFirst}>
+        {newestFirst ? "Newest first" : "Oldest first"}
+    </button>
+</div>
+
+<script>
+    // Deliberately NOT `is:inline`: an inline script executes where it sits in
+    // the document, and this component renders BEFORE the table it drives, so
+    // the tbody does not exist yet and every lookup returns null. Astro bundles
+    // this as a deferred module instead, which runs once the page is parsed.
+    import { pairRows } from "../../../utils/playFilters";
+
+    for (const bar of document.querySelectorAll<HTMLElement>("[data-play-filters]")) {
+        const target = bar.dataset.playFilters;
+        const body = document.querySelector<HTMLElement>(`[data-plays-body="${target}"]`);
+        if (!body) continue;
+
+        const isDetail = (row: Element) => row.classList.contains("accordion-body");
+        const pairs = pairRows([...body.children], isDetail);
+
+        let period = "all";
+        const apply = () => {
+            for (const pair of pairs) {
+                const match = period === "all" || String((pair[0] as HTMLElement).dataset.period) === period;
+                // A filtered-in detail row is un-hidden but stays collapsed:
+                // Bootstrap's .collapse still governs whether it is on screen.
+                for (const row of pair) (row as HTMLElement).hidden = !match;
+            }
+        };
+
+        bar.addEventListener("click", (ev) => {
+            const btn = (ev.target as Element)?.closest<HTMLElement>("button");
+            if (!btn || !bar.contains(btn)) return;
+            if (btn.dataset.periodFilter !== undefined) {
+                period = btn.dataset.periodFilter;
+                for (const other of bar.querySelectorAll<HTMLElement>("[data-period-filter]")) {
+                    const on = other === btn;
+                    other.classList.toggle("active", on);
+                    other.setAttribute("aria-pressed", String(on));
+                }
+                apply();
+            } else if (btn.dataset.orderToggle !== undefined) {
+                pairs.reverse();
+                for (const pair of pairs) for (const row of pair) body.appendChild(row);
+                const newestFirstNow = btn.getAttribute("aria-pressed") !== "true";
+                btn.setAttribute("aria-pressed", String(newestFirstNow));
+                btn.textContent = newestFirstNow ? "Newest first" : "Oldest first";
+            }
+        });
+    }
+</script>
