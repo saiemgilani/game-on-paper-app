@@ -16,8 +16,11 @@ export const GET: APIRoute = async ({ request }) => {
 export const POST: APIRoute = async ({ request }) => {
     const secret = getSecret('ADMIN_PASS');
     if (!secret) return Response.json({ ok: false, error: 'ADMIN_PASS not set' }, { status: 500 });
-    let on = false;
-    try { on = Boolean(((await request.json()) as { on?: unknown })?.on); } catch { /* default off */ }
+    let on: unknown;
+    try { on = ((await request.json()) as { on?: unknown })?.on; } catch { on = undefined; }
+    if (typeof on !== 'boolean') {
+        return Response.json({ ok: false, error: 'body must be {"on": true|false}' }, { status: 400 });
+    }
     const cookie = on
         ? `${PREVIEW_COOKIE}=${await mintPreviewCookie(secret)}; Path=/; Max-Age=${PREVIEW_TTL_S}; HttpOnly; Secure; SameSite=Lax`
         : `${PREVIEW_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;

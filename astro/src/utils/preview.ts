@@ -27,7 +27,7 @@ export async function verifyPreviewCookie(value: string | undefined | null, secr
     if (!value || !secret) return false;
     const [v, expiryRaw, sig] = value.split('.');
     const expiry = Number(expiryRaw);
-    if (v !== 'v1' || !Number.isFinite(expiry) || expiry < nowS || !sig) return false;
+    if (v !== 'v1' || !Number.isFinite(expiry) || expiry <= nowS || !sig) return false;
     const expected = await hmacHex(secret, `gop-preview:${expiry}`);
     if (sig.length !== expected.length) return false;
     let diff = 0;
