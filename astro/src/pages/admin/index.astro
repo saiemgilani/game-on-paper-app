@@ -15,6 +15,7 @@ const subtitle = "Operational dashboards for Game on Paper";
     <h2 class="mb-0">Admin</h2>
     <span class="badge text-bg-danger text-uppercase">ops</span>
     <button class="btn btn-sm btn-outline-warning ms-3" id="preview-toggle" disabled title="Render 'preview'-state features (utils/features.ts) on the public site for this browser only. Responses are never cached while previewing.">Preview: …</button>
+    <form method="post" action="/admin/api/logout" class="ms-2 mb-0"><button class="btn btn-sm btn-outline-secondary" type="submit" title="End this admin session">Sign out</button></form>
     <span class="ms-auto small admin-muted" id="asof"></span>
   </div>
   <ul class="nav nav-tabs admin-tabs mb-3" id="tabs">
