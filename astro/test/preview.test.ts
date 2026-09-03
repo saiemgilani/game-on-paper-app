@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mintPreviewCookie, verifyPreviewCookie, readCookie, PREVIEW_COOKIE } from '../src/utils/preview';
+import { mintPreviewCookie, verifyPreviewCookie, readCookie, PREVIEW_COOKIE, PREVIEW_TTL_S } from '../src/utils/preview';
 import { isFeatureEnabled, FLAGS } from '../src/utils/features';
 
 describe('preview cookie', () => {
@@ -12,7 +12,7 @@ describe('preview cookie', () => {
     expect(await verifyPreviewCookie(c, 'other')).toBe(false);
     const [v, exp, sig] = c.split('.');
     expect(await verifyPreviewCookie(`${v}.${Number(exp) + 1}.${sig}`, 's3cret')).toBe(false);
-    const expired = await mintPreviewCookie('s3cret', Math.floor(Date.now() / 1000) - 100000);
+    const expired = await mintPreviewCookie('s3cret', Math.floor(Date.now() / 1000) - (PREVIEW_TTL_S + 3600));
     expect(await verifyPreviewCookie(expired, 's3cret')).toBe(false);
     const atBoundary = await mintPreviewCookie('s3cret');
     const boundary = Number(atBoundary.split('.')[1]);
