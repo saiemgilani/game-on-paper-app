@@ -38,7 +38,9 @@ def parse_span(raw):
         return "ot", pl.col("period") > 4
     parts = key.split("-")
     if len(parts) == 2 and all(p.isdigit() for p in parts):
-        bucket = lambda n: round(n / 30) * 30  # noqa: E731
+        # half-up like JS Math.round -- Python's round() is half-even, and a direct
+        # API caller sending 45 must land in the same bucket the worker computes
+        bucket = lambda n: int(n / 30 + 0.5) * 30  # noqa: E731
         frm, to = bucket(min(int(parts[0]), 3600)), bucket(max(int(parts[1]), 0))
         if frm > to:
             return f"{frm}-{to}", (

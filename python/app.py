@@ -315,17 +315,10 @@ def process(game_id: int):
                 if isinstance(v, float) and not math.isfinite(v):
                     record[k] = None
 
-        body_bytes = orjson.dumps(
-            processed_game,
-            default=_orjson_default,
-            option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS,
-        )
-        response = Response(body_bytes, mimetype="application/json")
-        # timings["total"] = time.perf_counter() - request_start
-        # response.headers["Server-Timing"] = _server_timing_header(timings)
-        response.headers["X-Result-Cache"] = "MISS"
-        # _emit_metrics(timings, gameId, 200)
-        return response, 200
+        # Both of these must precede serialization: the span swap mutates
+        # processed_game, and everything after `return` is dead code -- which is
+        # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
+        # ordering (gop.dq_boxscore had zero rows since #192 merged).
         raw_span = request.args.get("span")
         if raw_span:
             try:
@@ -338,12 +331,23 @@ def process(game_id: int):
                     f"span box failed for {game_id} span={raw_span}: {e}"
                 )
 
-        try:
-            _emit_dq(game_id, game, processed_game)
-        except Exception as e:  # observability must never cost a render
-            logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
+        if not raw_span:  # a windowed request is not the game's canonical box
+            try:
+                _emit_dq(game_id, game, processed_game)
+            except Exception as e:  # observability must never cost a render
+                logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
 
-        return jsonify(processed_game), 200
+        body_bytes = orjson.dumps(
+            processed_game,
+            default=_orjson_default,
+            option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS,
+        )
+        response = Response(body_bytes, mimetype="application/json")
+        # timings["total"] = time.perf_counter() - request_start
+        # response.headers["Server-Timing"] = _server_timing_header(timings)
+        response.headers["X-Result-Cache"] = "MISS"
+        # _emit_metrics(timings, gameId, 200)
+        return response, 200
     except KeyError as e:
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 404: %r (%s)" % (e, e)
