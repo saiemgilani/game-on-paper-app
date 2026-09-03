@@ -5,14 +5,24 @@ def header(completed=True):
     return {
         "season": {"year": 2026},
         "week": 1,
-        "competitions": [{
-            "date": "2026-08-30T00:00Z",
-            "status": {"type": {"name": "STATUS_FINAL", "completed": completed}},
-            "competitors": [
-                {"homeAway": "home", "score": "10", "team": {"abbreviation": "TCU"}},
-                {"homeAway": "away", "score": "15", "team": {"abbreviation": "UNC"}},
-            ],
-        }],
+        "competitions": [
+            {
+                "date": "2026-08-30T00:00Z",
+                "status": {"type": {"name": "STATUS_FINAL", "completed": completed}},
+                "competitors": [
+                    {
+                        "homeAway": "home",
+                        "score": "10",
+                        "team": {"abbreviation": "TCU"},
+                    },
+                    {
+                        "homeAway": "away",
+                        "score": "15",
+                        "team": {"abbreviation": "UNC"},
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -33,25 +43,56 @@ def test_dq_rows_pair_teams_and_compute_deltas():
     game = {
         "advBoxScore": {
             "team": [
-                {"pos_team": 2628, "rushes": 30, "rush_yards": 120, "passes": 25, "pass_yards": 210,
-                 "penalties": 5, "penalty_yards": -40,
-                 "passing_first_downs_created": 8, "rushing_first_downs_created": 6},
+                {
+                    "pos_team": 2628,
+                    "rushes": 30,
+                    "rush_yards": 120,
+                    "passes": 25,
+                    "pass_yards": 210,
+                    "penalties": 5,
+                    "penalty_yards": -40,
+                    "passing_first_downs_created": 8,
+                    "rushing_first_downs_created": 6,
+                },
             ],
             "espn_team": [
-                {"team_id": 2628, "rushingAttempts": 30, "rushingYards": 118, "pass_attempts": 24,
-                 "netPassingYards": 200, "penalties": 5, "penalty_yards": 40, "firstDowns": 16},
+                {
+                    "team_id": 2628,
+                    "rushingAttempts": 30,
+                    "rushingYards": 118,
+                    "pass_attempts": 24,
+                    "netPassingYards": 200,
+                    "penalties": 5,
+                    "penalty_yards": 40,
+                    "firstDowns": 16,
+                },
             ],
         },
         "plays": [
-            {"scrimmage_play": True, "EPA": None, "wp_before": 0.5, "wp_after": 1.2, "EP_between": -4.0},
-            {"scrimmage_play": True, "EPA": 0.3, "wp_before": 0.6, "wp_after": 0.61, "EP_between": 0.0},
+            {
+                "scrimmage_play": True,
+                "EPA": None,
+                "wp_before": 0.5,
+                "wp_after": 1.2,
+                "EP_between": -4.0,
+            },
+            {
+                "scrimmage_play": True,
+                "EPA": 0.3,
+                "wp_before": 0.6,
+                "wp_after": 0.61,
+                "EP_between": 0.0,
+            },
         ],
     }
     rows = dq.build_dq_rows(game, 401856766, "0.1.3", "abc123")
     by = {(r["team_id"], r["stat"]): r for r in rows}
     assert by[(2628, "rush_yards")]["delta"] == 2.0
     assert by[(2628, "pass_attempts")]["delta"] == 1.0
-    assert by[(2628, "first_downs_created")]["ours"] == 14.0 and by[(2628, "first_downs_created")]["delta"] == -2.0
+    assert (
+        by[(2628, "first_downs_created")]["ours"] == 14.0
+        and by[(2628, "first_downs_created")]["delta"] == -2.0
+    )
     assert by[(None, "lint:epa_null")]["delta"] == 1.0
     assert by[(None, "lint:wp_oob")]["delta"] == 1.0
     assert by[(None, "lint:ep_between_big")]["delta"] == 1.0
