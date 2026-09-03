@@ -1,0 +1,94 @@
+---
+import { buildPlayIndex, ROLE_LABEL, PLAY_TAGS } from '../../../utils/playFilterIndex';
+
+interface Props {
+    /** The `prefix` of the PlaysTable this drives. */
+    target: string;
+    plays: any[];
+    /** Team ids, for grouping the player menu by side. */
+    teams: (number | string)[];
+    teamNames?: Record<string, string>;
+}
+const { target, plays, teams, teamNames = {} } = Astro.props;
+const ix = buildPlayIndex(plays);
+const nameOf = (id: string) => teamNames[String(id)] ?? `Team ${id}`;
+
+// One option per player-role, so "Cam Miller — dropbacks (63)" and "Cam Miller —
+// carries (5)" are separate picks rather than one lump of everything he touched.
+const options = ix.players.flatMap((p) =>
+    (Object.keys(p.roles) as (keyof typeof ROLE_LABEL)[])
+        .filter((r) => (p.roles[r] ?? 0) > 0)
+        .map((r) => ({
+            value: `r:${r}:${p.id}`,
+            team: p.teamId,
+            label: `${p.name} — ${ROLE_LABEL[r].toLowerCase()} (${p.roles[r]})`,
+            n: p.roles[r] ?? 0,
+        })))
+    .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+const byTeam = teams.map((t) => ({ id: String(t), opts: options.filter((o) => o.team === String(t)) }));
+const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
+    .filter((t) => (ix.tagCounts[t] ?? 0) > 0);
+---
+
+{options.length > 0 && (
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-focus={target}
+         data-index={JSON.stringify(ix.byPlay)}>
+        <label class="text-small text-muted" for={`focus-${target}`}>Show only</label>
+        <select id={`focus-${target}`} class="form-select form-select-sm" style="width:auto;min-width:250px">
+            <option value="">Every play</option>
+            <optgroup label="Play type">
+                {tags.map((t) => <option value={`t:${t}`}>{PLAY_TAGS[t]} ({ix.tagCounts[t]})</option>)}
+            </optgroup>
+            {byTeam.filter((g) => g.opts.length).map((g) => (
+                <optgroup label={nameOf(g.id)}>
+                    {g.opts.map((o) => <option value={o.value}>{o.label}</option>)}
+                </optgroup>
+            ))}
+        </select>
+        <span class="text-small text-muted" data-focus-count={target}></span>
+    </div>
+)}
+
+<script>
+    // Deferred module, not `is:inline`: this renders above the table it drives, so an
+    // inline script would look up a tbody that has not been parsed yet.
+    for (const bar of document.querySelectorAll<HTMLElement>('[data-play-focus]')) {
+        const target = bar.dataset.playFocus;
+        const body = document.querySelector<HTMLElement>(`[data-plays-body="${target}"]`);
+        const sel = bar.querySelector('select');
+        const out = document.querySelector<HTMLElement>(`[data-focus-count="${target}"]`);
+        if (!body || !sel) continue;
+
+        let index: Record<string, string[]> = {};
+        try { index = JSON.parse(bar.dataset.index || '{}'); } catch { index = {}; }
+
+        // Rows come in [summary, detail] pairs; both must move together or a detail
+        // row ends up under a play it does not belong to.
+        const pairs: HTMLElement[][] = [];
+        for (const row of [...body.children] as HTMLElement[]) {
+            if (row.classList.contains('accordion-body') && pairs.length) pairs[pairs.length - 1].push(row);
+            else pairs.push([row]);
+        }
+        const keyOf = (pair: HTMLElement[]) => {
+            const href = pair[0].getAttribute('href') || '';
+            const m = href.match(/-(\d+)$/);
+            return m ? m[1] : '';
+        };
+
+        sel.addEventListener('change', () => {
+            const want = sel.value;
+            let shown = 0;
+            for (const pair of pairs) {
+                const ok = !want || (index[keyOf(pair)] || []).includes(want);
+                if (ok) shown++;
+                // Inline display, not a class or attribute needing a stylesheet: if the
+                // CSS failed to load the filter would silently do nothing. The quarter
+                // filter hides with the `hidden` property, so the two compose without
+                // either having to know about the other -- whichever wants a row gone
+                // wins, and clearing one does not reveal a row the other still hides.
+                for (const row of pair) row.style.display = ok ? '' : 'none';
+            }
+            if (out) out.textContent = want ? `${shown} of ${pairs.length} plays` : '';
+        });
+    }
+</script>

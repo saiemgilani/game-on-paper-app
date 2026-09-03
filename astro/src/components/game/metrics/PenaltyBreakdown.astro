@@ -1,0 +1,89 @@
+---
+import { penaltiesFor } from '../../../utils/penalties';
+
+interface Props {
+    season: number;
+    /** Team ids in the column order the rest of the panel uses. */
+    teams: (number | string)[];
+    plays: any[];
+}
+const { season, teams, plays } = Astro.props;
+const cols = teams.map((id) => penaltiesFor(plays, id));
+const UNITS = [
+    ['offense', 'Offense', 'Flagged with the ball'],
+    ['defense', 'Defense', 'Flagged without it'],
+    ['specialTeams', 'Special teams', 'Flagged on a kick, punt or field goal'],
+] as const;
+const any = cols.some((c) => c.counts.total.n > 0 || c.declined > 0 || c.offsetting > 0);
+---
+
+{any && (
+    <div class="table-responsive mb-2">
+        <table class="table table-sm table-responsive">
+            <caption class="text-muted text-small">
+                Accepted penalties only. A flag on a kick counts as special teams whichever side it fell on;
+                otherwise the unit is whether the penalised team had the ball.
+            </caption>
+            <thead>
+                <tr>
+                    <th class="box-heading">Penalties</th>
+                    {teams.map((value) => (
+                        <th style="text-align: center;">
+                            <a href={`/year/${season}/team/${value}`}>
+                                <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
+                            </a>
+                        </th>
+                    ))}
+                </tr>
+            </thead>
+            <tbody>
+                {UNITS.map(([key, label, title]) => (
+                    <tr>
+                        <td style="text-align: left;" title={title}>{label}</td>
+                        {cols.map((c) => (
+                            <td class="numeral" style="text-align: center;">
+                                {c.counts[key].n}&ndash;{c.counts[key].yards}
+                                {c.counts[key].n > 0 && (
+                                    <span class="text-muted text-small" style="display:block">
+                                        {[...new Set(c[key].filter((p) => !p.declined && !p.offsetting).map((p) => p.detail))].slice(0, 3).join(', ')}
+                                    </span>
+                                )}
+                            </td>
+                        ))}
+                    </tr>
+                ))}
+                <tr>
+                    <td style="text-align: left;"><strong>Total</strong></td>
+                    {cols.map((c) => (
+                        <td class="numeral" style="text-align: center;">
+                            <strong>{c.counts.total.n}&ndash;{c.counts.total.yards}</strong>
+                            {(c.declined > 0 || c.offsetting > 0) && (
+                                <span class="text-muted text-small" style="display:block">
+                                    {c.declined > 0 && `${c.declined} declined`}
+                                    {c.declined > 0 && c.offsetting > 0 && ', '}
+                                    {c.offsetting > 0 && `${c.offsetting} offsetting`}
+                                </span>
+                            )}
+                        </td>
+                    ))}
+                </tr>
+                <tr>
+                    <td style="text-align: left;" title="Penalties that handed the other side an automatic first down">First downs given up</td>
+                    {cols.map((c) => (
+                        <td class="numeral" style="text-align: center;">
+                            {[...c.offense, ...c.defense, ...c.specialTeams].filter((p) => p.firstDown && !p.declined && !p.offsetting).length}
+                        </td>
+                    ))}
+                </tr>
+                <tr>
+                    <td style="text-align: left;" title="Flags that wiped a play out entirely">Plays nullified</td>
+                    {cols.map((c) => (
+                        <td class="numeral" style="text-align: center;">
+                            {[...c.offense, ...c.defense, ...c.specialTeams].filter((p) => p.negated && !p.declined && !p.offsetting).length}
+                        </td>
+                    ))}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+)}

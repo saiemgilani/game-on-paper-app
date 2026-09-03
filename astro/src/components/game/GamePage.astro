@@ -12,9 +12,11 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
 import PlayFilters from './plays/PlayFilters.astro';
+import PlayFocus from './plays/PlayFocus.astro';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
+import PenaltyBreakdown from './metrics/PenaltyBreakdown.astro';
 import SituationalSplits from './metrics/SituationalSplits.astro';
 import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
@@ -321,6 +323,11 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     useSuffix={true}
                                     decimalPoints={2}
                                 />
+                                <PenaltyBreakdown
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                />
                                 <SituationalSplits
                                     season={game.season.year}
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
@@ -513,6 +520,13 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                             {
                                 (game.plays.length > 0) && (
                                     <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                )
+                            }
+                            {
+                                (game.plays.length > 0) && (
+                                    <PlayFocus target="all" plays={game.plays}
+                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                        teamNames={{ [String(homeTeam.id)]: homeTeam.location, [String(awayTeam.id)]: awayTeam.location }} />
                                 )
                             }
                             {
