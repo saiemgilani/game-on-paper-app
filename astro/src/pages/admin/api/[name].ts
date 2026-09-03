@@ -3,7 +3,7 @@ import { getSecret } from 'astro:env/server';
 
 export const prerender = false;
 
-const ALLOWED = ['overview', 'games', 'upstream', 'errors', 'traffic', 'system', 'page'];
+const ALLOWED = ['overview', 'games', 'upstream', 'errors', 'traffic', 'system', 'page', 'dq'];
 
 export const GET: APIRoute = async ({ params, url }) => {
   const name = params.name ?? '';
