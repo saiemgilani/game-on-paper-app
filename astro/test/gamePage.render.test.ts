@@ -462,3 +462,12 @@ describe('the ?span= filter narrows the page to a window', () => {
         expect(plain).toContain('?span=q1');
     });
 });
+
+test('a shared ?span= link never windows the data for a public render', async () => {
+    // classic has no pills and no banner, so windowed boxes there would be
+    // silently wrong numbers -- the span must ride only with the v2 page
+    const mod = await import('../src/pages/game/[id].astro');
+    expect(mod).toBeTruthy();
+    const src = readFileSync(new URL('../src/pages/game/[id].astro', import.meta.url), 'utf-8');
+    expect(src).toMatch(/isFeatureEnabled\('game-page-v2', Astro\.locals\)\s*\n?\s*\? parseSpan/);
+});
