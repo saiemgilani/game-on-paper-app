@@ -420,3 +420,36 @@ describe('box-score names jump into the play filter', () => {
         expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass" data-team="[^"]+">`));
     });
 });
+
+describe('the ?span= filter narrows the page to a window', () => {
+    test('a Q3 span keeps only third-quarter rows in the All Plays table', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const spanned = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game },
+            request: new Request(`https://gameonpaper.com/game/${GAME_ID}?span=q3`),
+        });
+        const body = spanned.slice(spanned.indexOf('data-plays-body="all"'));
+        const rows = [...body.slice(0, body.indexOf('</tbody>')).matchAll(/data-period="(\d+)"/g)].map((m) => m[1]);
+        expect(rows.length).toBeGreaterThan(10);
+        expect(new Set(rows)).toEqual(new Set(['3']));
+        // the pills and the banner are on
+        expect(spanned).toContain('?span=q1');
+        expect(spanned).toMatch(/Showing <strong>Q3<\/strong> only/);
+        // the charts keep the whole game: the WP chart island still carries all four periods
+        expect(spanned).toMatch(/astro-island[^>]+WinProbabilityChart/);
+    });
+
+    test('no span means no banner, and the pills are still offered', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const plain = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game },
+            request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+        });
+        expect(plain).not.toContain('Showing <strong>');
+        expect(plain).toContain('?span=q1');
+    });
+});
