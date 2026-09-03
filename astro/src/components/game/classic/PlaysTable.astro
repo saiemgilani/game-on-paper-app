@@ -1,8 +1,12 @@
 ---
+// FROZEN SNAPSHOT of the pre-v2 game page (origin/main), served to the public
+// while the rebuilt page + play marks sit behind the 'game-page-v2' preview
+// flag. Do not develop here: promotion deletes this directory. Only the four
+// files both PRs MODIFIED are frozen; unmodified components are imported from
+// the live tree.
 import type { ProcessedPlay } from '../../../resources/python'
-import ExpandedPlayRow from './ExpandedPlayRow.astro'
+import ExpandedPlayRow from '../plays/ExpandedPlayRow.astro'
 import PlayRow from './PlayRow.astro'
-import { PLAY_ICON_LABEL, PLAY_ICON_LEGEND, PLAY_PILL_TEXT } from '../../../utils/playIcons'
 
 
 interface Props {
@@ -34,7 +38,6 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                         <li><strong class="text-warning">Yellow</strong> - penalty</li>
                         <li><strong class="text-danger">Red</strong> - turnover</li>
                         <li><strong class="text-success">Green</strong> - scoring play</li>
-                        <li class="play-marks-legend">Marks - {PLAY_ICON_LEGEND.map((id) => (<span class="me-2 text-nowrap">{PLAY_PILL_TEXT[id] ? <span class={`pi-pill pi-${id}`} aria-hidden="true">{PLAY_PILL_TEXT[id]}</span> : <svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg>} {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
                     </ul>
                 </div>
                 </caption>
@@ -49,7 +52,6 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                         <li><strong class="text-warning">Yellow</strong> - penalty</li>
                         <li><strong class="text-danger">Red</strong> - turnover</li>
                         <li><strong class="text-success">Green</strong> - scoring play</li>
-                        <li class="play-marks-legend">Marks - {PLAY_ICON_LEGEND.map((id) => (<span class="me-2 text-nowrap">{PLAY_PILL_TEXT[id] ? <span class={`pi-pill pi-${id}`} aria-hidden="true">{PLAY_PILL_TEXT[id]}</span> : <svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg>} {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
                     </ul>
                 </div>
                 </caption>
@@ -58,14 +60,14 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
         <thead>
             <tr>
                 <th style="text-align: left;">Time</th>
-                <th class="play-offense-col" style="text-align: center;">Offense</th>
+                <th style="text-align: center;">Offense</th>
                 <th style="text-align: left;">Play Description</th>
                 <th style="text-align: center;">EPA</th>
                 <th style="text-align: center;">WP%</th>
                 <th style="text-align: right;">WPA</th>
             </tr>
         </thead>
-        <tbody data-plays-body={prefix}>
+        <tbody>
             {
                 (plays.map(p => (
                     <PlayRow play={p} expandable={expandable} prefix={prefix}>

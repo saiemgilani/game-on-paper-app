@@ -2608,3 +2608,14 @@ p.box-heading {
 }
 
 }
+/* Play marks on dark rows: lifted a step so they hold on the dark tints. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Bootstrap 5.3 dark-theme text-emphasis colours for the same five tokens */
+    --mark-score: #75b798;
+    --mark-turnover: #ea868f;
+    --mark-flag: #ffda6a;
+    --mark-stop: #a7acb1;
+    --mark-explosive: #6edff6;
+  }
+}
