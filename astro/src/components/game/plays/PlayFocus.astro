@@ -81,9 +81,18 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
     // dead button; strip the affordance so nothing advertises a click it cannot honor.
     {
         const sel = document.querySelector<HTMLElement>('[data-play-focus="all"]')?.querySelector('select');
-        const known = new Set([...(sel?.options ?? [])].map((o) => `${(o as HTMLOptionElement).dataset.name}|${(o as HTMLOptionElement).dataset.role}`));
-        for (const btn of document.querySelectorAll<HTMLElement>('[data-focus-jump]')) {
-            if (!known.has(`${btn.dataset.name}|${btn.dataset.role}`)) btn.classList.add('focus-jump-dead');
+        const opts = [...(sel?.options ?? [])] as HTMLOptionElement[];
+        for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-focus-jump]')) {
+            // same tolerant team semantics as the click matcher, or a name that
+            // exists only on the other team would look alive and do nothing
+            const alive = opts.some((o) =>
+                o.dataset.name === btn.dataset.name && o.dataset.role === btn.dataset.role
+                && (!btn.dataset.team || !o.dataset.team || o.dataset.team === btn.dataset.team));
+            if (!alive) {
+                btn.classList.add('focus-jump-dead');
+                btn.disabled = true;
+                btn.removeAttribute('title');
+            }
         }
     }
 
