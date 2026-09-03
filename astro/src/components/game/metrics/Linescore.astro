@@ -1,0 +1,55 @@
+---
+/**
+ * Period-by-period scoring, from the header's linescores.
+ *
+ * Tucked into the Scoring Plays panel rather than given a panel of its own:
+ * it is a summary of exactly what that panel lists, and the page has no room
+ * near the top for something this small.
+ */
+interface Props {
+    /** ESPN competitors, away and home, each with `linescores`. */
+    competitors: any[];
+    season: number;
+}
+const { competitors, season } = Astro.props;
+
+// Away first, the way a scoreboard is read. Picked by side rather than sorted:
+// a comparator on a two-element array hides its own ordering bug.
+const rows = [competitors?.find((c) => c.homeAway === "away"), competitors?.find((c) => c.homeAway === "home")].filter(Boolean);
+const periods = Math.max(0, ...rows.map((t) => t.linescores?.length ?? 0));
+const label = (i: number) => (i < 4 ? String(i + 1) : i === 4 ? "OT" : `${i - 3}OT`);
+const cell = (t: any, i: number) => t.linescores?.[i]?.displayValue ?? "-";
+const show = periods > 0 && rows.length === 2;
+---
+
+{show && (
+    <div class="table-responsive mb-2">
+        <table class="table table-sm" style="width: auto;">
+            <thead>
+                <tr>
+                    <th class="box-heading">Linescore</th>
+                    {Array.from({ length: periods }, (_, i) => (
+                        <th class="numeral" style="text-align: center; min-width: 2.2rem;">{label(i)}</th>
+                    ))}
+                    <th class="numeral" style="text-align: center; min-width: 2.6rem;">T</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.map((t) => (
+                    <tr>
+                        <td style="text-align: left;">
+                            <a href={`/year/${season}/team/${t.team?.id}`}>
+                                <img class={`img-fluid team-logo-${t.team?.id}`} width="22px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${t.team?.id}.png`} alt={`ESPN team id ${t.team?.id}`} />
+                            </a>
+                            <span class="ms-1">{t.team?.abbreviation ?? t.team?.shortDisplayName}</span>
+                        </td>
+                        {Array.from({ length: periods }, (_, i) => (
+                            <td class="numeral" style="text-align: center;">{cell(t, i)}</td>
+                        ))}
+                        <td class="numeral" style="text-align: center;"><strong>{t.score}</strong></td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+)}

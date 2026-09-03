@@ -1,5 +1,6 @@
 ---
 import SchedulePage from "../components/schedule/SchedulePage.astro";
+import { gopStorage } from "../utils/telemetry";
 import { getCurrentScoreboard, type ESPNScheduleEvent } from "../resources/espn";
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config";
 import { CURRENT_YEAR } from "../utils/constants";
@@ -7,6 +8,30 @@ import { CURRENT_YEAR } from "../utils/constants";
 let games: ESPNScheduleEvent[] = [];
 try {
     games = await getCurrentScoreboard(true, true);
+    // Feed the matchup dimension: one upserted gop.game_meta row per event, so
+    // admin views can name a game instead of showing a bare id. The ingest path
+    // batches these; the write is an ON CONFLICT upsert.
+    const gop = gopStorage.getStore();
+    if (gop) {
+        for (const ev of games) {
+            const comp = ev.competitions?.[0];
+            const side = (ha: string) => comp?.competitors?.find((c: any) => c.homeAway === ha);
+            const home = side("home"), away = side("away");
+            if (!ev.id || !comp) continue;
+            gop.events.push({ table: "game_meta", row: {
+                game_id: Number(ev.id),
+                season: (ev as any).season?.year ?? null,
+                week: (ev as any).week?.number ?? null,
+                away_abbr: away?.team?.abbreviation ?? null,
+                home_abbr: home?.team?.abbreviation ?? null,
+                away_score: away?.score != null ? Number(away.score) : null,
+                home_score: home?.score != null ? Number(home.score) : null,
+                status: comp.status?.type?.name ?? null,
+                kickoff_ts: comp.date ?? null,
+                last_seen: new Date().toISOString(),
+            } });
+        }
+    }
     Astro.cache.set({
         maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
         swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,

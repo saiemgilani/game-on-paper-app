@@ -1,0 +1,35 @@
+---
+export const prerender = false;
+
+import GenericPage from "../../layouts/GenericPage.astro";
+
+// The one /admin path the middleware leaves open (along with its POST target),
+// so the browser gets a real page instead of a basic-auth popup. Never cached.
+Astro.cache.set(false);
+Astro.response.headers.set("Cache-Control", "no-store");
+const failed = Astro.url.searchParams.get("err") === "1";
+---
+<GenericPage title={`Sign in | Admin | Game on Paper`} subtitle="Admin sign-in" slug="admin-login" breadcrumbs={[
+    { title: "Home", url: "/", active: false },
+    { title: "Admin", active: true },
+]}>
+  <div class="container" style="max-width: 380px;">
+    <div class="card p-4 mt-5">
+      <h4 class="mb-1">Admin</h4>
+      <p class="text-body-secondary small mb-3">Operational dashboards for Game on Paper</p>
+      {failed && <div class="alert alert-danger py-2 small" role="alert">Sign-in failed. Check the username and password.</div>}
+      <form method="post" action="/admin/api/login">
+        <div class="mb-2">
+          <label class="form-label small" for="username">Username</label>
+          <input class="form-control" id="username" name="username" autocomplete="username" required autofocus />
+        </div>
+        <div class="mb-3">
+          <label class="form-label small" for="password">Password</label>
+          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Sign in</button>
+      </form>
+      <p class="text-body-secondary small mt-3 mb-0">Sessions last 12 hours. Scripted callers can keep using HTTP basic auth.</p>
+    </div>
+  </div>
+</GenericPage>

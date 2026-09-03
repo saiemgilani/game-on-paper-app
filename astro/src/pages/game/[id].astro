@@ -1,5 +1,7 @@
 ---
 import GamePage from '../../components/game/GamePage.astro';
+import GamePageClassic from '../../components/game/classic/GamePage.astro';
+import { isFeatureEnabled } from '../../utils/features';
 import PreGamePage from '../../components/game/PreGamePage.astro';
 import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { gopStorage } from '../../utils/telemetry';
@@ -82,5 +84,7 @@ try {
     )
 }
 {
-    (espnGame && game) && <GamePage id={id} game={game} />
+    (espnGame && game) && (isFeatureEnabled('game-page-v2', Astro.locals)
+        ? <GamePage id={id} game={game} />
+        : <GamePageClassic id={id} game={game} />)
 }

@@ -138,19 +138,95 @@ def _upstream(args):
                 count(*) FILTER (WHERE status >= 500)::int AS s5xx,
                 count(*) FILTER (WHERE status IS NULL AND ok = false)::int AS timeouts
             FROM gop.upstream_log WHERE ts > now() - interval '24 hours' GROUP BY 1 ORDER BY 1"""),
-        "slowest": _q("""SELECT ts, target, game_id, duration_ms, status FROM gop.upstream_log
+        "slowest": _q("""SELECT u.ts, u.target, u.game_id, u.duration_ms, u.status,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup FROM gop.upstream_log u LEFT JOIN gop.game_meta gm ON gm.game_id::text = u.game_id
             WHERE ts > now() - interval '1 hour' ORDER BY duration_ms DESC NULLS LAST LIMIT 10"""),
     }
 
 
 def _errors(args):
     return {
-        "groups": _q("""SELECT service, left(message, 120) AS signature, count(*)::int AS n,
-                max(ts) AS last_seen, max(game_id) AS game_id
-            FROM gop.error_log WHERE ts > now() - interval '24 hours'
+        "groups": _q("""SELECT e.service, left(e.message, 120) AS signature, count(*)::int AS n,
+                max(e.ts) AS last_seen,
+                -- game_id and matchup must come from the SAME row (the latest
+                -- error), or a multi-game signature links one game while
+                -- naming another; both arrays share one deterministic order
+                (array_agg(e.game_id ORDER BY e.ts DESC, e.game_id DESC))[1] AS game_id,
+                (array_agg(gm.away_abbr || ' @ ' || gm.home_abbr
+                           ORDER BY e.ts DESC, e.game_id DESC))[1] AS matchup
+            FROM gop.error_log e
+            LEFT JOIN gop.game_meta gm ON gm.game_id::text = e.game_id
+            WHERE e.ts > now() - interval '24 hours'
             GROUP BY 1, 2 ORDER BY last_seen DESC LIMIT 50"""),
-        "recent": _q("""SELECT ts, service, level, message, stack, path, game_id
-            FROM gop.error_log ORDER BY ts DESC LIMIT 20"""),
+        "recent": _q("""SELECT e.ts, e.service, e.level, e.message, e.stack, e.path, e.game_id,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup
+            FROM gop.error_log e
+            LEFT JOIN gop.game_meta gm ON gm.game_id::text = e.game_id
+            ORDER BY e.ts DESC LIMIT 20"""),
+    }
+
+
+def _dq(args):
+    """Box-vs-official deltas and lints. Stability across sdv_py_sha is the
+    signal; a version-aligned shift in a stat's delta distribution is a parser
+    regression."""
+    days = min(int(args.get("days", 14)), 90)
+    return {
+        "scorecard": _q(
+            """SELECT stat,
+                count(*)::int AS n,
+                count(*) FILTER (WHERE delta = 0)::int AS exact,
+                count(*) FILTER (WHERE abs(delta) <= 2)::int AS close,
+                round(avg(delta)::numeric, 2)::float AS mean_delta,
+                round(percentile_cont(0.5) WITHIN GROUP (ORDER BY delta)::numeric, 2)::float AS median_delta,
+                round(max(abs(delta))::numeric, 1)::float AS worst
+            FROM gop.dq_boxscore
+            WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
+                AND stat NOT LIKE 'lint:%%'
+            GROUP BY 1 ORDER BY 1""",
+            (days,),
+        ),
+        "by_version": _q(
+            """SELECT sdv_py_version, sdv_py_sha, stat,
+                count(*)::int AS n, round(avg(delta)::numeric, 2)::float AS mean_delta
+            FROM gop.dq_boxscore
+            WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
+                AND stat NOT LIKE 'lint:%%'
+            GROUP BY 1, 2, 3 ORDER BY max(ts) DESC, 3 LIMIT 60""",
+            (days,),
+        ),
+        "worst_games": _q(
+            """SELECT d.game_id,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup,
+                max(d.ts) AS checked_at, max(d.sdv_py_sha) AS sdv_py_sha,
+                round(sum(abs(d.delta))::numeric, 1)::float AS total_abs_delta,
+                count(*) FILTER (WHERE d.delta <> 0)::int AS stats_off
+            FROM gop.dq_boxscore d
+            LEFT JOIN gop.game_meta gm ON gm.game_id = d.game_id
+            WHERE d.ts > now() - make_interval(days => %s)
+                AND d.delta IS NOT NULL AND d.stat NOT LIKE 'lint:%%'
+                -- a reprocessed game writes a fresh batch; only its latest counts
+                AND d.ts = (SELECT max(ts) FROM gop.dq_boxscore WHERE game_id = d.game_id)
+            GROUP BY 1, 2 ORDER BY total_abs_delta DESC LIMIT 25""",
+            (days,),
+        ),
+        "lints": _q(
+            """SELECT stat, count(*) FILTER (WHERE delta > 0)::int AS games_flagged,
+                sum(delta)::int AS total, max(ts) AS last_seen
+            FROM gop.dq_boxscore
+            WHERE ts > now() - make_interval(days => %s) AND stat LIKE 'lint:%%'
+            GROUP BY 1 ORDER BY 1""",
+            (days,),
+        ),
+        "game": _q(
+            """SELECT d.stat, d.team_id, d.ours, d.espn, d.delta
+            FROM gop.dq_boxscore d WHERE d.game_id = %s
+                AND d.ts = (SELECT max(ts) FROM gop.dq_boxscore WHERE game_id = %s)
+            ORDER BY d.team_id NULLS LAST, d.stat""",
+            (args.get("game_id", 0), args.get("game_id", 0)),
+        )
+        if args.get("game_id")
+        else [],
     }
 
 
@@ -223,6 +299,7 @@ _ADMIN = {
     "games": _games,
     "upstream": _upstream,
     "errors": _errors,
+    "dq": _dq,
     "traffic": _traffic,
     "system": _system,
     "page": _page,
