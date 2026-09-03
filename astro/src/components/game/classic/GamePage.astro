@@ -1,40 +1,37 @@
 ---
-import WatchButton from '../../components/game/WatchButton.astro';
-import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
-import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
-import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/manifest';
-import { gopStorage } from '../../utils/telemetry';
-import { cleanLocation, isEventFavorite, isChampionshipEvent, deduplicateByKey } from '../../utils/misc';
+// FROZEN SNAPSHOT of the pre-v2 game page (origin/main), served to the public
+// while the rebuilt page + play marks sit behind the 'game-page-v2' preview
+// flag. Do not develop here: promotion deletes this directory. Only the four
+// files both PRs MODIFIED are frozen; unmodified components are imported from
+// the live tree.
+import WatchButton from '../../../components/game/WatchButton.astro';
+import NavScroller, { type ScrollerItem } from '../../../components/NavScroller.astro';
+import { retrieveProcessedGame, type ProcessedGame } from '../../../resources/python';
+import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../../utils/manifest';
+import { gopStorage } from '../../../utils/telemetry';
+import { cleanLocation, isEventFavorite, isChampionshipEvent, deduplicateByKey } from '../../../utils/misc';
 import { DateTime } from 'luxon';
-import LocalDate from '../LocalDate.svelte';
-import type { ESPNCompetition } from '../../resources/espn';
-import Panel from '../../layouts/panel/GenericPanel.astro';
-import Scripts from '../Scripts.astro';
-import PlaysTable from './plays/PlaysTable.astro';
-import PlayFilters from './plays/PlayFilters.astro';
-import PlayFocus from './plays/PlayFocus.astro';
-import PlayMarkSprite from './plays/PlayMarkSprite.astro';
-import { threeAndOutPlays } from '../../utils/playIcons';
-import TeamPanel from '../../layouts/panel/TeamPanel.astro';
-import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
-import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
-import PenaltyBreakdown from './metrics/PenaltyBreakdown.astro';
-import SituationalSplits from './metrics/SituationalSplits.astro';
-import PassingChart from './metrics/PassingChart.astro';
-import RushingChart from './metrics/RushingChart.astro';
-import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
-import BinionBoxScore from './metrics/BinionBoxScore.astro';
-import Linescore from './metrics/Linescore.astro';
-import DrivesTable from './drives/DrivesTable.astro';
-import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
-import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
-import { retrievePercentiles } from '../../resources/sdv';
-import DarkModeLogos from '../DarkModeLogos.astro';
-import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
-import Footer from '../Footer.astro';
+import LocalDate from '../../LocalDate.svelte';
+import type { ESPNCompetition } from '../../../resources/espn';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import Scripts from '../../Scripts.astro';
+import PlaysTable from './PlaysTable.astro';
+import TeamPanel from '../../../layouts/panel/TeamPanel.astro';
+import PlayerBoxScore from './PlayerBoxScore.astro';
+import PassingChart from '../metrics/PassingChart.astro';
+import RushingChart from '../metrics/RushingChart.astro';
+import TeamMetricsTable from '../metrics/TeamMetricsTable.astro';
+import BinionBoxScore from '../metrics/BinionBoxScore.astro';
+import DrivesTable from '../drives/DrivesTable.astro';
+import ExpectedPointsChart from '../../charts/ExpectedPointsChart.svelte';
+import WinProbabilityChart from '../../charts/WinProbabilityChart.svelte';
+import { retrievePercentiles } from '../../../resources/sdv';
+import DarkModeLogos from '../../DarkModeLogos.astro';
+import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../../utils/constants';
+import Footer from '../../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
-import FallbackSpinner from '../FallbackSpinner.astro';
-import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
+import FallbackSpinner from '../../FallbackSpinner.astro';
+import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../../utils/seo';
 
 interface Props {
    id: string | number
@@ -60,8 +57,6 @@ if (verdict.requiredMissing.length) {
     return Astro.rewrite("/404")
 }
 salvageGame(game);
-// drive-shaped mark: flag the punt that ends a three-and-out so PlayMarks can render it per row
-for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: any) => x.game_play_number === n); if (p) (p as any).three_and_out = true; }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
@@ -101,33 +96,13 @@ const previewUrlParams = new URLSearchParams({
     awayTeamId: awayTeam.id
 })
 
-// The top of the page answers "what just happened" before any chart does.
-// Newest first here -- this strip is read downward as a feed, unlike All Plays.
-// Live and halftime only: once the game is final the whole page is the recap,
-// and a "Latest" strip repeating the last five plays is noise.
-const latestPlays = gameStatus.type.completed === true ? [] : game.plays.slice(-5).toReversed();
-// Quarters actually played, so overtime only offers a button when it happened.
-const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
-const lastPlay: any = game.plays.at(-1);
-const gameState = game.header.competitions[0].status?.type?.state;
-const driveTeam = lastPlay?.["drive.team.shortDisplayName"];
-const driveResult = lastPlay?.["drive.displayResult"] ?? lastPlay?.["drive.result"];
-const latestSubtitle = !lastPlay
-    ? "No plays yet."
-    : gameState === "post"
-      ? `Final. Last drive: ${driveTeam ?? "unknown"}, ${driveResult ?? "no result"}.`
-      : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
-
 const scrollerItems: ScrollerItem[] = [
-    // The Latest panel only renders when there are plays, so a game with none
-    // must not advertise an anchor that isn't on the page.
-    ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
-    { href: "#wp-section", title: "WP Chart" },
-    { href: "#ep-section", title: "EPA Chart" },
+    { href: "#wpChart", title: "WP Chart" },
+    { href: "#epChart", title: "EPA Chart" },
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
-    { href: "#most-important-plays", title: "Most Important Plays" },
+    { href: "#most-imp-plays", title: "Most Important Plays" },
     { href: "#scoring-plays", title: "Scoring Plays" },
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
@@ -216,7 +191,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>
-        <PlayMarkSprite />
         <div class="container-fluid">
             <header class="blog-header py-3">
                 <div class="row flex-nowrap justify-content-between align-items-center">
@@ -244,30 +218,15 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </header>
 
             <NavScroller items={scrollerItems} />
-            {latestPlays.length > 0 && (
-                <div class="row mb-3">
-                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                        <Panel id="latest" title="Latest">
-                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
-                            <div class="row" slot="panel-body">
-                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
-                            </div>
-                        </Panel>
-                    </div>
-                </div>
-            )}
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
-                <!-- The nav anchor must NOT be wpChart/epChart: those ids belong to the canvases
-     inside the Svelte charts, and a duplicate id makes getElementById hand
-     Chart.js the wrapper div -- both charts then silently never draw. -->
-                <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
                     <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
-                <div id="ep-section" class="col-lg-6 ms-sm-auto px-md-4">
+                <div class="col-lg-6 ms-sm-auto px-md-4">
                     <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>
@@ -279,13 +238,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
-                                <TraditionalTeamStats
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                    drives={gameDrives}
-                                    caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
-                                />
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'
@@ -332,17 +284,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teamBoxScores={game.advBoxScore.team}
                                     useSuffix={true}
                                     decimalPoints={2}
-                                />
-                                <PenaltyBreakdown
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                />
-                                <SituationalSplits
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                    caption="Plays from scrimmage only, the same population the whole-game situational table below counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Situational"
@@ -438,8 +379,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
-                                plays={game.plays}
-                                teamId={parseInt(awayTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
@@ -453,8 +392,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
-                                plays={game.plays}
-                                teamId={parseInt(homeTeam.id)}
                             />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
@@ -494,7 +431,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <Panel id="scoring-plays" title="Scoring Plays">
                         <div class="row" slot="panel-body">
-                            <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }
@@ -526,18 +462,6 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                         <div class="row" slot="panel-body">
                             {
                                 (game.plays.length == 0) && <p class="text-center text-muted">No plays in this game.</p>
-                            }
-                            {
-                                (game.plays.length > 0) && (
-                                    <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
-                                )
-                            }
-                            {
-                                (game.plays.length > 0) && (
-                                    <PlayFocus target="all" plays={game.plays}
-                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                        teamNames={{ [String(homeTeam.id)]: homeTeam.location, [String(awayTeam.id)]: awayTeam.location }} />
-                                )
                             }
                             {
                                 (game.plays.length > 0) && (gameStatus.type.completed != true) && (

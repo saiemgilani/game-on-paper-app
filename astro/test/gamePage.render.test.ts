@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
@@ -49,6 +49,8 @@ describe('GamePage renders a finished game end to end', () => {
             props: { id: GAME_ID, game },
             request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
         });
+        // DUMP_HTML=/path/file.html npx vitest run test/gamePage.render.test.ts -- for eyeballing the render
+        if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);
 
     test('the whole document arrives, not an empty stream', () => {
@@ -71,11 +73,28 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/Maverick McIvor[\s\S]{0,400}?18 LNG/);
     });
 
-    test('the Latest strip leads the page, newest play first', () => {
-        expect(html).toContain('id="latest"');
-        // it must sit above the win probability chart, which was the old first panel
-        expect(html.indexOf('id="latest"')).toBeLessThan(html.indexOf('id="wpChart"'));
-        expect(html).toMatch(/Final\. Last drive: [^<]+, [^<]+\./);
+    test('a final game has no Latest strip -- the page IS the recap', () => {
+        // the fixture game is completed; the strip (and its nav entry) only
+        // renders while the game is live
+        expect(html).not.toContain('id="latest"');
+        expect(html).not.toContain('href="#latest"');
+    });
+
+    test('the chart canvas ids are unique -- Chart.js finds the canvas, not a wrapper', () => {
+        // a wrapper div carrying id="wpChart" shadowed the canvas and both
+        // charts silently never drew (the Svelte components getElementById
+        // their own canvases)
+        // client:only means the canvases are NOT in the SSR output at all --
+        // they arrive at hydration. So the exact SSR invariant is zero
+        // claimants on those ids: any server-rendered element carrying them
+        // would shadow the canvas when it mounts.
+        expect((html.match(/id="wpChart"/g) ?? []).length).toBe(0);
+        expect((html.match(/id="epChart"/g) ?? []).length).toBe(0);
+        expect(html).toContain('id="wp-section"');
+        expect(html).toContain('id="ep-section"');
+        // and the islands that will mount them are present
+        expect(html).toMatch(/astro-island[^>]+WinProbabilityChart/);
+        expect(html).toMatch(/astro-island[^>]+ExpectedPointsChart/);
     });
 
     test('situational splits render one panel per period, all but the first hidden', () => {
@@ -226,6 +245,73 @@ describe('GamePage renders a finished game end to end', () => {
         }
     });
 
+    test('play marks: one sprite, and every touchdown/penalty row carries its mark', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        expect((html.match(/<symbol id="pi-td"/g) ?? []).length).toBe(1);
+        expect(html).not.toContain('#pi-kickoff');
+        // per row: the "All plays" table renders every play once, keyed by game_play_number
+        const rowFor = (n: number) => html.split('<tr').find((r) => r.includes(`href="#play-all-${n}"`)) ?? '';
+        // a family may render as a variant (td-xp, penalty-declined, ...), so match the id prefix
+        const checks: Array<[string, RegExp]> = [['touchdown', /<use href="#pi-td(-xp|-2pt)?(-miss)?">/], ['penalty_flag', /<use href="#pi-penalty(-declined|-offset)?">/], ['sack', /class="pi-pill pi-sack"[^>]*>SACK</], ['int', /<use href="#pi-int">/], ['stuffed_run', /(class="pi-pill pi-(sack|tfl)"|<use href="#pi-stuffed">)/]];
+        for (const [flag, re] of checks) {
+            const plays = game.plays.filter((p: any) => p[flag] === true);
+            expect(plays.length, flag).toBeGreaterThan(0);
+            for (const p of plays) expect(rowFor(p.game_play_number), `${flag} play ${p.game_play_number}`).toMatch(re);
+        }
+        // defensive scores keep the touchdown glyph in the turnover colour
+        const defTd = game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play === true);
+        expect(defTd.length).toBeGreaterThan(0);
+        for (const p of defTd) expect(rowFor(p.game_play_number), `defensive td ${p.game_play_number}`).toMatch(/class="pi pi-td(-xp|-2pt)?(-miss)? pi-def"/);
+        for (const p of game.plays.filter((p: any) => p.touchdown === true && p.defense_score_play !== true)) expect(rowFor(p.game_play_number)).not.toContain('pi-def');
+        // late-down conversions: the converting plays carry the chain-crew marks
+        for (const [dn, icon] of [[3, 'third-conv'], [4, 'fourth-conv']] as const) {
+            const conv = game.plays.filter((p: any) => p.start?.down === dn && (p.first_down_earned === true || p.first_down_created === true) && !p.punt && !p.fg_attempt && !p.kickoff_play);
+            expect(conv.length, `down ${dn} conversions`).toBeGreaterThan(0);
+            for (const p of conv) expect(rowFor(p.game_play_number), `down-${dn} conv ${p.game_play_number}`).toContain(`<use href="#pi-${icon}">`);
+        }
+        // returns take the bolt on return-team EPA: the 53-yard kickoff return
+        // clears it, and so does the 100-yard return touchdown, which carries no
+        // yds_kickoff_return value at all and so never fired under the old rule
+        const bigRet = game.plays.find((p: any) => Number(p.yds_kickoff_return) >= 40);
+        expect(bigRet, 'fixture has a kickoff return of 40+ yards').toBeTruthy();
+        expect(rowFor(bigRet.game_play_number)).toContain('<use href="#pi-explosive">');
+        const koTd = game.plays.find((p: any) => p.kickoff_play === true && p.touchdown === true);
+        expect(koTd, 'fixture has a kickoff return touchdown').toBeTruthy();
+        expect(rowFor(koTd.game_play_number), 'kickoff return td').toContain('<use href="#pi-explosive">');
+        // every touchdown in this game had a good PAT -> the conversion rides on the mark
+        expect((html.match(/<use href="#pi-td-xp">/g) ?? []).length).toBeGreaterThanOrEqual(game.plays.filter((p: any) => p.touchdown === true && p.xp_made === true).length);
+        // routine kicks carry no mark at all; a kick returned for a score still carries the touchdown
+        const { playIcons } = await import('../src/utils/playIcons');
+        const kicks = game.plays.filter((p: any) => p.kickoff_play === true || p.punt === true);
+        const plain = kicks.filter((p: any) => playIcons(p).length === 0);
+        expect(plain.length).toBeGreaterThan(0);
+        for (const p of plain) expect(rowFor(p.game_play_number), `plain kick ${p.game_play_number}`).not.toContain('class="play-marks"');
+        const returnTd = kicks.find((p: any) => p.touchdown === true);
+        if (returnTd) expect(rowFor(returnTd.game_play_number)).toMatch(/<use href="#pi-td(-xp|-2pt)?(-miss)?">/);
+    });
+
+    test('marks sit beside the logo, inside the offense cell', () => {
+        // Measured on the rendered page at 1440px: a play row is 47px and that
+        // height comes from the 35px logo -- every other cell is one ~17px line,
+        // so there is no vertical slack. A marks group is 17px tall and at most
+        // 55px wide, so BESIDE the logo it costs nothing, while BELOW it took
+        // rows from 45px to 64px. Pin the structure that makes that true.
+        const cells = [...html.matchAll(/<td class="play-offense-cell"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+        expect(cells.length).toBeGreaterThan(100);
+        const withMarks = cells.filter((c) => c.includes('play-marks'));
+        expect(withMarks.length).toBeGreaterThan(10);
+        for (const cell of withMarks) {
+            // beside, never the old stacked block
+            expect(cell).toContain('play-marks-beside');
+            expect(cell).not.toContain('play-marks-stacked');
+            // and after the logo anchor, in the same cell
+            expect(cell.indexOf('</a>')).toBeLessThan(cell.indexOf('play-marks'));
+        }
+        // the column reserves room for logo + marks so nothing wraps
+        expect(html).toContain('class="play-offense-col"');
+    });
+
     test('exactly one h1 and a SportsEvent that parses', () => {
         expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
         const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
@@ -286,5 +372,31 @@ describe('DrivesTable survives a drive with no processed plays', () => {
         expect(html).not.toContain('not-yet-played');
         // the real drives all still render
         expect((html.match(/accordion-toggle/g) ?? []).length).toBe(g.drives.previous.length);
+    });
+});
+
+describe('the classic snapshot serves the public while v2 is in preview', () => {
+    let html = '';
+    beforeAll(async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = await retrieveProcessedGame(GAME_ID, 30);
+        const GamePageClassic = (await import('../src/components/game/classic/GamePage.astro')).default;
+        html = await container.renderToString(GamePageClassic, { props: { id: String(GAME_ID), game } });
+    }, 30000);
+
+    test('renders the pre-v2 page: plays table present, v2 surfaces absent', () => {
+        expect(html.length).toBeGreaterThan(50_000);
+        expect(html).toContain('<html');
+        // v2-only surfaces must not leak into the public variant
+        expect(html).not.toContain('data-play-filters');
+        expect(html).not.toContain('<symbol id="pi-td"');
+        expect(html).not.toContain('pi-pill');
+    });
+
+    test('the flag gates it: preview renders v2, public renders classic', async () => {
+        const { isFeatureEnabled, FLAGS } = await import('../src/utils/features');
+        expect(FLAGS['game-page-v2']).toBe('preview');
+        expect(isFeatureEnabled('game-page-v2', { preview: true })).toBe(true);
+        expect(isFeatureEnabled('game-page-v2', {})).toBe(false);
     });
 });

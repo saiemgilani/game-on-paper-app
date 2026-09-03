@@ -1,5 +1,14 @@
 name: deploy
 
+# One deploy per burst: every job shares one concurrency group, queued not
+# cancelled (cancelling mid-compose is how the 2026-08-31 outage happened).
+# GitHub keeps at most one running + one pending run per group and supersedes
+# anything between, so N rapid merges collapse to at most two deploys -- and
+# with the merge queue batching PRs into a single push, exactly one.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 on:
   push:
     branches:

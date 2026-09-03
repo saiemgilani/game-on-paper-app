@@ -14,6 +14,8 @@ const subtitle = "Operational dashboards for Game on Paper";
   <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
     <h2 class="mb-0">Admin</h2>
     <span class="badge text-bg-danger text-uppercase">ops</span>
+    <button class="btn btn-sm btn-outline-warning ms-3" id="preview-toggle" disabled title="Render 'preview'-state features (utils/features.ts) on the public site for this browser only. Responses are never cached while previewing.">Preview: …</button>
+    <form method="post" action="/admin/api/logout" class="ms-2 mb-0"><button class="btn btn-sm btn-outline-secondary" type="submit" title="End this admin session">Sign out</button></form>
     <span class="ms-auto small admin-muted" id="asof"></span>
   </div>
   <ul class="nav nav-tabs admin-tabs mb-3" id="tabs">
@@ -21,12 +23,32 @@ const subtitle = "Operational dashboards for Game on Paper";
     <li class="nav-item"><button class="nav-link" data-t="games">Live games</button></li>
     <li class="nav-item"><button class="nav-link" data-t="upstream">ESPN / upstream</button></li>
     <li class="nav-item"><button class="nav-link" data-t="errors">Errors</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="dq">Data quality</button></li>
     <li class="nav-item"><button class="nav-link" data-t="traffic">Traffic</button></li>
     <li class="nav-item"><button class="nav-link" data-t="system">System</button></li>
     <li class="nav-item"><button class="nav-link" data-t="staleness">Staleness</button></li>
   </ul>
   <section id="overview" class="on">
     <div class="tiles" id="ov-tiles"></div>
+    <div class="grid2 mb-2">
+      <div class="card"><h6 class="admin-label mt-0">Deployed versions</h6><div id="ops-version" class="admin-muted">loading…</div></div>
+      <div class="card"><h6 class="admin-label mt-0">Purge cached game pages</h6>
+        <form id="ops-purge" class="d-flex flex-wrap gap-2 align-items-center">
+          <select class="form-select form-select-sm w-auto" id="purge-tag">
+            <option value="">no tag</option>
+            <option value="game-completed" selected>game-completed</option>
+            <option value="game-in-progress">game-in-progress</option>
+            <option value="game-scheduled-today">game-scheduled-today</option>
+            <option value="scoreboard">scoreboard</option>
+            <option value="matchup">matchup</option>
+          </select>
+          <input class="form-control form-control-sm w-auto" id="purge-ids" placeholder="game ids, comma-separated (optional)" size="34" />
+          <button class="btn btn-sm btn-outline-danger" type="submit">Purge</button>
+          <span class="small admin-muted" id="purge-result"></span>
+        </form>
+        <p class="small admin-muted mb-0 mt-1">Purging ids also resets each game's regression-guard mark. The API-layer cache is keyed on the deploy and needs no purge.</p>
+      </div>
+    </div>
     <h6 class="admin-label">Last 60 minutes</h6>
     <div class="grid2">
       <div class="card"><h6 class="admin-label mt-0">Requests / min (astro)</h6><canvas id="c-reqs" height="150"></canvas></div>
@@ -52,6 +74,21 @@ const subtitle = "Operational dashboards for Game on Paper";
     <div class="card twrap"><table class="table table-sm mb-0" id="t-errgroups"></table></div>
     <h6 class="admin-label">Most recent</h6>
     <div id="err-recent"></div>
+  </section>
+  <section id="dq">
+    <div class="card"><p class="admin-muted m-0">Play-flag box score vs ESPN's official team box, per completed game.
+      Zero is not the target for every stat (our pass flag counts sacks; ESPN's net passing subtracts sack yardage;
+      penalty yards differ in sign) &mdash; the signal is a <b>stable</b> delta distribution. A shift aligned with an
+      sdv-py version is a parser regression.</p></div>
+    <h6 class="admin-label">Scorecard · <span id="dq-days">14</span>d</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-dqscore"></table></div>
+    <div class="grid2 mt-2">
+      <div class="card twrap"><h6 class="admin-label mt-0">Lints (expectation: 0)</h6><table class="table table-sm mb-0" id="t-dqlints"></table></div>
+      <div class="card twrap"><h6 class="admin-label mt-0">Mean delta by sdv-py version</h6><table class="table table-sm mb-0" id="t-dqver"></table></div>
+    </div>
+    <h6 class="admin-label">Worst games (click a row for per-stat detail)</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-dqgames"></table></div>
+    <div id="dq-detail"></div>
   </section>
   <section id="traffic">
     <div class="card"><p class="admin-muted m-0">Visitor analytics live in
@@ -151,6 +188,27 @@ const subtitle = "Operational dashboards for Game on Paper";
   const hhmm = (t) => new Date(t).toTimeString().slice(0, 5);
   const api = (name, qs = '') => fetch(`/admin/api/${name}${qs}`).then((r) => r.json());
 
+  // ---- preview mode toggle ----
+  const pvBtn = document.getElementById('preview-toggle');
+  // the button stays disabled until the state it would toggle is known, and
+  // during a toggle, so a quick click cannot race the initial GET
+  function pvRender(enabled) {
+    pvBtn.textContent = `Preview: ${enabled ? 'ON' : 'off'}`;
+    pvBtn.classList.toggle('btn-warning', enabled);
+    pvBtn.classList.toggle('btn-outline-warning', !enabled);
+    pvBtn.dataset.on = enabled ? '1' : '';
+    pvBtn.disabled = false;
+  }
+  fetch('/admin/api/preview').then((r) => r.json()).then((d) => pvRender(d.enabled)).catch(() => { pvBtn.textContent = 'Preview: ?'; });
+  pvBtn.addEventListener('click', async () => {
+    pvBtn.disabled = true;
+    try {
+      const on = !pvBtn.dataset.on;
+      const d = await fetch('/admin/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).then((r) => r.json());
+      pvRender(d.enabled);
+    } catch { pvBtn.disabled = false; }
+  });
+
   function line(id, labels, datasets) {
     charts[id]?.destroy();
     charts[id] = new Chart(document.getElementById(id), {
@@ -171,6 +229,32 @@ const subtitle = "Operational dashboards for Game on Paper";
     document.getElementById(el).innerHTML = parts.map((p) => `<div style="flex:${Math.max(p.v, 0.001)};background:${p.c}" title="${p.n}: ${p.v}"></div>`).join('');
     document.getElementById(legEl).innerHTML = parts.map((p) => `<span><i style="background:${p.c}"></i>${p.n} ${(100 * p.v / total).toFixed(1)}%</span>`).join('');
   }
+
+  // ---- ops: versions + purge (Overview tab) ----
+  async function loadVersions() {
+    try {
+      const v = await fetch('/admin/api/version').then((r) => r.json());
+      const sha = (v.app_version ?? '').slice(0, 8);
+      const py = v.python?.sportsdataverse ?? {};
+      document.getElementById('ops-version').innerHTML =
+        `<div class="kv"><span>worker / api build</span><b class="mono">${sha ? `<a href="https://github.com/saiemgilani/game-on-paper-app/commit/${esc(v.app_version)}">${esc(sha)}</a>` : '?'}</b></div>` +
+        `<div class="kv"><span>sportsdataverse-py</span><b class="mono">${esc(py.version ?? '?')} @ ${py.sha ? `<a href="https://github.com/sportsdataverse/sportsdataverse-py/commit/${esc(py.sha)}">${esc(py.sha.slice(0, 8))}</a>` : '?'}</b></div>` +
+        `<div class="kv"><span>python api</span><b class="mono">${esc(v.python?.status ?? 'ok')}</b></div>`;
+    } catch { document.getElementById('ops-version').textContent = 'version lookup failed'; }
+  }
+  loadVersions();
+  document.getElementById('ops-purge').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tag = document.getElementById('purge-tag').value;
+    const ids = document.getElementById('purge-ids').value.replace(/\s/g, '');
+    const out = document.getElementById('purge-result');
+    if (!tag && !ids) { out.textContent = 'pick a tag or give ids'; return; }
+    out.textContent = 'purging…';
+    try {
+      const d = await fetch(`/admin/api/purge-game?tags=${encodeURIComponent(tag)}&ids=${encodeURIComponent(ids)}`, { method: 'POST' }).then((r) => r.json());
+      out.textContent = d.ok ? `purged: ${Object.keys(d.results).join(', ')}` : `failed: ${JSON.stringify(d.results ?? d.error).slice(0, 120)}`;
+    } catch (err) { out.textContent = `error: ${err}`; }
+  });
 
   async function refreshOverview() {
     const d = await api('overview');
@@ -236,15 +320,45 @@ const subtitle = "Operational dashboards for Game on Paper";
       { label: '5xx', data: d.failures.map((f) => f.s5xx), borderColor: S[1] },
       { label: 'timeout', data: d.failures.map((f) => f.timeouts), borderColor: S[3] }]);
     table('t-slowest', ['When', 'Target', 'Game', 'ms', 'Status'],
-      d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`, esc(s.game_id ?? '—'), fmt(s.duration_ms), s.status ?? '—'] })));
+      d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`,
+        s.game_id ? `<a href="/game/${esc(s.game_id)}" target="_blank">${esc(s.matchup ?? s.game_id)}</a>` : '—',
+        fmt(s.duration_ms), s.status ?? '—'] })));
   }
 
   async function refreshErrors() {
     const d = await api('errors');
-    table('t-errgroups', ['Signature', 'Service', 'Count', 'Last seen'],
-      d.groups.map((g) => ({ cells: [esc(g.signature), esc(g.service), g.n, `<span class="mono">${hhmm(g.last_seen)}</span>`] })));
+    table('t-errgroups', ['Signature', 'Service', 'Game', 'Count', 'Last seen'],
+      d.groups.map((g) => ({ cells: [esc(g.signature), esc(g.service),
+        g.game_id ? `<a href="/game/${esc(g.game_id)}" target="_blank">${esc(g.matchup ?? g.game_id)}</a>` : '—',
+        g.n, `<span class="mono">${hhmm(g.last_seen)}</span>`] })));
     document.getElementById('err-recent').innerHTML = d.recent.slice(0, 5).map((e) =>
-      `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>[${esc(e.service)}] ${esc(e.message).slice(0, 120)}</span><b class="mono">${hhmm(e.ts)}</b></div>${e.stack ? `<pre>${esc(e.stack).slice(0, 1200)}</pre>` : ''}</div>`).join('');
+      `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>[${esc(e.service)}] ${esc(e.message).slice(0, 120)}</span><b class="mono">${e.game_id ? `<a href="/game/${esc(e.game_id)}" target="_blank">${esc(e.matchup ?? e.game_id)}</a> · ` : ''}${hhmm(e.ts)}</b></div>${e.stack ? `<pre>${esc(e.stack).slice(0, 1200)}</pre>` : ''}</div>`).join('');
+  }
+
+  async function refreshDq() {
+    const d = await api('dq');
+    table('t-dqscore', ['Stat', 'Rows', 'Exact', '|Δ| ≤ 2', 'Mean Δ', 'Median Δ', 'Worst |Δ|'],
+      d.scorecard.map((r) => ({ cells: [`<span class="mono">${esc(r.stat)}</span>`, r.n,
+        fmt(100 * r.exact / r.n, 0) + '%', fmt(100 * r.close / r.n, 0) + '%', r.mean_delta, r.median_delta, r.worst] })));
+    table('t-dqlints', ['Lint', 'Games flagged', 'Total', 'Last seen'],
+      d.lints.map((r) => ({ cells: [`<span class="mono">${esc(r.stat)}</span>`, r.games_flagged, r.total, `<span class="mono">${hhmm(r.last_seen)}</span>`] })));
+    table('t-dqver', ['sdv-py', 'Stat', 'Games', 'Mean Δ'],
+      d.by_version.map((r) => ({ cells: [`<span class="mono">${esc(r.sdv_py_version ?? '?')} @ ${esc((r.sdv_py_sha || '?').slice(0, 8))}</span>`, `<span class="mono">${esc(r.stat)}</span>`, r.n, r.mean_delta] })));
+    table('t-dqgames', ['Game', 'Σ|Δ|', 'Stats off', 'Checked', 'sdv-py'],
+      d.worst_games.map((g) => ({ attr: ` data-game="${esc(g.game_id)}" style="cursor:pointer"`, cells: [
+        `<a href="/game/${g.game_id}" target="_blank">${esc(g.matchup ?? g.game_id)}</a>`,
+        g.total_abs_delta, g.stats_off, `<span class="mono">${hhmm(g.checked_at)}</span>`,
+        `<span class="mono">${esc((g.sdv_py_sha || '?').slice(0, 8))}</span>`] })));
+    [...document.querySelectorAll('#t-dqgames tr[data-game]')].forEach((tr) =>
+      tr.addEventListener('click', () => loadDqDetail(tr.dataset.game).catch(() => {})));
+  }
+
+  async function loadDqDetail(gameId) {
+    const d = await api('dq', `?game_id=${gameId}`);
+    const el = document.getElementById('dq-detail');
+    el.innerHTML = `<h6 class="admin-label">Game ${esc(gameId)}</h6><div class="card twrap"><table class="table table-sm mb-0" id="t-dqdetail"></table></div>`;
+    table('t-dqdetail', ['Team', 'Stat', 'Ours', 'ESPN', 'Δ'],
+      d.game.map((r) => ({ cells: [r.team_id ?? '—', `<span class="mono">${esc(r.stat)}</span>`, r.ours, r.espn ?? '—', r.delta ?? '—'] })));
   }
 
   async function refreshTraffic() {
@@ -326,7 +440,7 @@ const subtitle = "Operational dashboards for Game on Paper";
   }
   document.getElementById('st-probe').addEventListener('click', () => probeStaleness().catch((e) => console.error(e)));
 
-  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
+  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
   let active = 'overview';
   document.getElementById('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('button');

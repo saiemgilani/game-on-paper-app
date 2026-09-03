@@ -2,24 +2,22 @@ from functools import wraps
 import math
 
 from flask import Flask, request, jsonify, Response, g
-import numpy as np
 from datetime import datetime as dt, timezone as tz
-import polars as pl
 from sportsdataverse.cfb import CFBPlayProcess
 from flask_compress import Compress
 import orjson
 
 import os
 import logging
-import json
 import base64
 
 from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
+import dq
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
-assert HTTP_TOKEN, f"HTTP_TOKEN not provided, can not start server"
+assert HTTP_TOKEN, "HTTP_TOKEN not provided, can not start server"
 
 app = Flask(__name__)
 app.config["LOG_TYPE"] = os.environ.get("LOG_TYPE", "stream")
@@ -327,6 +325,11 @@ def process(game_id: int):
         response.headers["X-Result-Cache"] = "MISS"
         # _emit_metrics(timings, gameId, 200)
         return response, 200
+        try:
+            _emit_dq(game_id, game, processed_game)
+        except Exception as e:  # observability must never cost a render
+            logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
+
         return jsonify(processed_game), 200
     except KeyError as e:
         logging.getLogger("root").error(
@@ -374,6 +377,41 @@ def process(game_id: int):
         return jsonify(
             {"status": "bad", "message": "Unknown error occurred, check logs."}
         ), 500
+
+
+def _sdv_identity():
+    try:
+        with open(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "sdv_py_sha.txt")
+        ) as f:
+            sha = f.read().strip() or None
+    except Exception:
+        sha = None
+    try:
+        from importlib.metadata import version
+
+        ver = version("sportsdataverse")
+    except Exception:
+        ver = None
+    return ver, sha
+
+
+_SDV_VERSION, _SDV_SHA = _sdv_identity()
+
+
+def _emit_dq(game_id, game, processed_game):
+    header = (
+        (getattr(game, "json", None) or {}).get("header")
+        or processed_game.get("header")
+        or {}
+    )
+    TEL.push("game_meta", dq.build_game_meta_row(header, game_id))
+    status = ((header.get("competitions") or [{}])[0].get("status") or {}).get(
+        "type"
+    ) or {}
+    if status.get("completed") is True:
+        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA):
+            TEL.push("dq_boxscore", row)
 
 
 @app.route("/healthcheck", methods=["GET"])

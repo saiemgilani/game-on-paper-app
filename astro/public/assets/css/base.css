@@ -155,3 +155,59 @@ Target Matrix
   border-inline-end: 1px solid !important;
   border-inline-end-color: #e5e5e5 !important; 
 }
+/* Play marks: solid pictograms trailing the play text (see utils/playIcons.ts). One flat colour
+   per family, derived from the row palette; the dark-mode values live in dark-game.css. */
+:root {
+  /* Bootstrap 5 theme colours (the site ships 5.0.2: --bs-success/-danger/-warning/-secondary/-info) */
+  --mark-score: #198754;
+  --mark-turnover: #dc3545;
+  --mark-flag: #ffc107;
+  --mark-stop: #6c757d;
+  --mark-explosive: #0dcaf0;
+}
+.play-marks { white-space: nowrap; margin-left: .5rem; font-size: 26px; line-height: 1; vertical-align: -4px; } /* ~3/4 of the 35px team logo */
+.play-marks .pi + .pi, .play-marks .pi + .pi-pill, .play-marks .pi-pill + .pi, .play-marks .pi-pill + .pi-pill { margin-left: 4px; }
+/* Placement: beside the team logo, never under it.
+   Measured on a real game page at 1440px: a play row is 45px tall and that
+   height is set by the 35px logo -- every other cell is a single ~17px line, so
+   there is no vertical slack anywhere in the row. Putting a 17px marks group
+   BELOW anything therefore grows the row, which is what the earlier stacked
+   placement cost: 45px -> 64px on the third of rows that carry marks.
+   A marks group is 17px tall and at most 55px wide (max two marks per play), so
+   set beside the logo it wraps to two 17px lines and still fits inside the
+   logo's 35px. The width comes out of the description cell, which measured
+   192-700px of unused trailing space at every desktop width. */
+.play-offense-cell { text-align: center; }
+@media (min-width: 768px) {
+    /* logo 35 + gap 4 + a two-mark group 55 = 94 */
+    .play-offense-col, .play-offense-cell { min-width: 96px; }
+    /* the header follows the logos, which now sit at a fixed left offset */
+    .play-offense-col { text-align: left !important; padding-left: 6px; }
+    /* Left-aligned, not centred: centring the logo+marks pair moves the logo
+       whenever a play happens to carry a mark, so the column visibly wobbles
+       row to row. A fixed slot keeps every logo on the same x. */
+    .play-offense-cell { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding-left: 6px; }
+    .play-offense-cell > a { flex: 0 0 35px; }
+    .play-marks-beside { display: flex; flex-wrap: wrap; align-content: center; gap: 2px; margin-left: 0; max-width: 56px; max-height: 56px; }
+    .play-marks-beside .pi + .pi, .play-marks-beside .pi + .pi-pill,
+    .play-marks-beside .pi-pill + .pi, .play-marks-beside .pi-pill + .pi-pill { margin-left: 0; }
+}
+/* On a phone the description column is only ~155px and cannot spare the width,
+   and the row is already ~97px tall, so the marks go under the logo there. */
+@media (max-width: 767.98px) {
+    .play-marks-beside { display: block; margin: 3px 0 0; white-space: normal; }
+    .play-marks-beside .pi, .play-marks-beside .pi-pill { margin-top: 2px; }
+}
+/* SACK / TFL are text tags: fixed 14px so they sit inside the text line and never scale with the slot;
+   neutral outline (chosen 2026-09-01 over red/solid) in the stop tone. */
+.pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 4px; height: 19px; padding: 0 5px; border: 2px solid var(--mark-stop); border-radius: 4px; color: var(--mark-stop); background: transparent; font: 700 12.5px/15px Chivo, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
+.pi-td, .pi-td-xp, .pi-td-xp-miss, .pi-td-2pt, .pi-td-2pt-miss, .pi-fg, .pi-safety { --c: var(--mark-score); }
+.pi-def, .pi-def-2pt { --c: var(--mark-turnover); } /* defensive score: same glyph, turnover colour */
+.pi-third-conv, .pi-fourth-conv { --c: var(--mark-score); }
+.pi-fumble-kept { --c: var(--mark-stop); } /* ball on the ground but kept: neutral, not red */
+.pi-int, .pi-fumble, .pi-downs, .pi-blocked, .pi-fg-miss, .pi-goal-line { --c: var(--mark-turnover); }
+.pi-stuffed, .pi-three-out { --c: var(--mark-stop); }
+.pi-penalty, .pi-penalty-declined, .pi-penalty-offset { --c: var(--mark-flag); }
+.pi-explosive { --c: var(--mark-explosive); }
+.play-marks-legend .pi { font-size: 15px; }
