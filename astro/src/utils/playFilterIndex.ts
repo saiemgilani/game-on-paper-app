@@ -2,7 +2,7 @@
  * A per-play index of who did what, so the play-by-play can be narrowed to one
  * player's work or one kind of play.
  *
- * The play-by-play links eighteen player roles by id, and those ids share the box
+ * The play-by-play links fourteen player roles by id, and those ids share the box
  * score's `athlete_id` space, so a filter keyed on the id needs no name matching and
  * cannot confuse two players who share a name.
  */

@@ -30,16 +30,20 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
     .filter((t) => (ix.tagCounts[t] ?? 0) > 0);
 ---
 
-{options.length > 0 && (
+{/* Either half is enough to be useful: an early-season game can carry no player ids
+    at all yet still have penalties, scoring plays and turnovers worth isolating. */}
+{(options.length > 0 || tags.length > 0) && (
     <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-focus={target}
          data-index={JSON.stringify(ix.byPlay)}>
         <label class="text-small text-muted" for={`focus-${target}`}>Show only</label>
         <select id={`focus-${target}`} class="form-select form-select-sm" style="width:auto;min-width:250px">
             <option value="">Every play</option>
-            <optgroup label="Play type">
-                {tags.map((t) => <option value={`t:${t}`}>{PLAY_TAGS[t]} ({ix.tagCounts[t]})</option>)}
-            </optgroup>
-            {byTeam.filter((g) => g.opts.length).map((g) => (
+            {tags.length > 0 && (
+                <optgroup label="Play type">
+                    {tags.map((t) => <option value={`t:${t}`}>{PLAY_TAGS[t]} ({ix.tagCounts[t]})</option>)}
+                </optgroup>
+            )}
+            {options.length > 0 && byTeam.filter((g) => g.opts.length).map((g) => (
                 <optgroup label={nameOf(g.id)}>
                     {g.opts.map((o) => <option value={o.value}>{o.label}</option>)}
                 </optgroup>

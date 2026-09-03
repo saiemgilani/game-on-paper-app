@@ -65,6 +65,20 @@ describe('buildPlayIndex', () => {
         expect(keyed).toBeLessThan(plays.length);
     });
 
+    test('plays with no player ids still index their play types', () => {
+        // An early-season game can carry no player ids at all. The tags are still
+        // worth offering, which is why the control renders on either half alone.
+        const stripped = plays.map((p) => {
+            const q: any = { ...p };
+            for (const k of Object.keys(q)) if (/_player_id$/.test(k)) q[k] = null;
+            return q;
+        });
+        const ix2 = buildPlayIndex(stripped);
+        expect(ix2.players).toEqual([]);
+        expect(ix2.tagCounts.penalty).toBe(plays.filter((p) => p.penalty_flag === true).length);
+        expect(Object.keys(ix2.byPlay).length).toBeGreaterThan(0);
+    });
+
     test('an empty game indexes to nothing rather than throwing', () => {
         const e = buildPlayIndex([]);
         expect(e.players).toEqual([]);
