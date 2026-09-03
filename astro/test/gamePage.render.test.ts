@@ -410,13 +410,13 @@ describe('box-score names jump into the play filter', () => {
             props: { id: GAME_ID, game },
             request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
         });
-        expect(page).toMatch(/<button type="button" class="focus-jump" data-focus-jump data-name="[^"]+" data-role="pass"/);
+        expect(page).toMatch(/<button type="button" class="focus-jump" data-focus-jump data-name="[^"]+" data-team="[^"]+" data-role="pass"/);
         expect(page).toMatch(/data-role="rush"/);
         expect(page).toMatch(/data-role="recv"/);
         // the same (name, role) pair exists on a select option, so the click can match
-        const btn = page.match(/data-focus-jump data-name="([^"]+)" data-role="pass"/);
+        const btn = page.match(/data-focus-jump data-name="([^"]+)" data-team="[^"]+" data-role="pass"/);
         expect(btn).toBeTruthy();
         expect(page).toContain(`<option value="r:pass:`);
-        expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass">`));
+        expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass" data-team="[^"]+">`));
     });
 });

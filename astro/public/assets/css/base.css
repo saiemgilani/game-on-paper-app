@@ -215,4 +215,5 @@ Target Matrix
 /* Box-score player names double as play-by-play filters (PlayFocus). */
 .focus-jump { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .focus-jump:hover, .focus-jump:focus-visible { text-decoration-style: solid; }
+.focus-jump-dead { text-decoration: none; cursor: default; }
 

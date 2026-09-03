@@ -47,7 +47,7 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
             )}
             {options.length > 0 && byTeam.filter((g) => g.opts.length).map((g) => (
                 <optgroup label={nameOf(g.id)}>
-                    {g.opts.map((o) => <option value={o.value} data-name={o.name} data-role={o.role}>{o.label}</option>)}
+                    {g.opts.map((o) => <option value={o.value} data-name={o.name} data-role={o.role} data-team={o.team}>{o.label}</option>)}
                 </optgroup>
             ))}
         </select>
@@ -67,13 +67,25 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
         const bar = document.querySelector<HTMLElement>('[data-play-focus="all"]');
         const sel = bar?.querySelector('select');
         if (!sel) return;
-        const want = [...sel.options].find((o) =>
-            o.dataset.name === btn.dataset.name && o.dataset.role === btn.dataset.role);
+        const match = (o: HTMLOptionElement) =>
+            o.dataset.name === btn.dataset.name && o.dataset.role === btn.dataset.role
+            && (!btn.dataset.team || !o.dataset.team || o.dataset.team === btn.dataset.team);
+        const want = [...sel.options].find(match);
         if (!want) return;
         sel.value = want.value;
         sel.dispatchEvent(new Event('change'));
         document.querySelector('[data-plays-body="all"]')?.closest('table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+
+    // A name the play index never saw (missing player ids in the pbp) would be a
+    // dead button; strip the affordance so nothing advertises a click it cannot honor.
+    {
+        const sel = document.querySelector<HTMLElement>('[data-play-focus="all"]')?.querySelector('select');
+        const known = new Set([...(sel?.options ?? [])].map((o) => `${(o as HTMLOptionElement).dataset.name}|${(o as HTMLOptionElement).dataset.role}`));
+        for (const btn of document.querySelectorAll<HTMLElement>('[data-focus-jump]')) {
+            if (!known.has(`${btn.dataset.name}|${btn.dataset.role}`)) btn.classList.add('focus-jump-dead');
+        }
+    }
 
     for (const bar of document.querySelectorAll<HTMLElement>('[data-play-focus]')) {
         const target = bar.dataset.playFocus;

@@ -70,7 +70,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
             {
                 (pass.length > 0) && (pass.map((p) => (
                     <tr>
-                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.passer_player_name} data-role="pass" title="Filter the play-by-play to this player">{p.passer_player_name}</button></td>
+                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.passer_player_name} data-team={teamId} data-role="pass" title="Filter the play-by-play to this player">{p.passer_player_name}</button></td>
                         <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
@@ -90,7 +90,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
             {
                 (rush.length > 0) && (rush.map((p) => (
                     <tr>
-                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.rusher_player_name} data-role="rush" title="Filter the play-by-play to this player">{p.rusher_player_name}</button></td>
+                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.rusher_player_name} data-team={teamId} data-role="rush" title="Filter the play-by-play to this player">{p.rusher_player_name}</button></td>
                         <td style="text-align: left;">{p.Car} carr{(Math.abs(p.Car) == 1) ? "y" : "ies"}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rush_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPC || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
@@ -110,7 +110,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
             {
                 (receiver.length > 0) && (receiver.map((p) => (
                     <tr>
-                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.receiver_player_name} data-role="recv" title="Filter the play-by-play to this player">{p.receiver_player_name}</button></td>
+                        <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.receiver_player_name} data-team={teamId} data-role="recv" title="Filter the play-by-play to this player">{p.receiver_player_name}</button></td>
                         <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
