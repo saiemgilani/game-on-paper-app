@@ -4,6 +4,7 @@ import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
+import { PREVIEW_COOKIE, readCookie, verifyPreviewCookie } from './utils/preview';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
@@ -26,6 +27,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(stale + url.search, 301);
   }
 
+  // Admin preview mode: a valid signed cookie renders 'preview'-state features
+  // (utils/features.ts) on public pages. Verified once here; pages read
+  // locals.preview. The response is then forced uncacheable below -- a preview
+  // variant in Workers Caching would be served to everyone.
+  const previewCookie = readCookie(context.request.headers.get('cookie'), PREVIEW_COOKIE);
+  if (previewCookie) {
+    context.locals.preview = await verifyPreviewCookie(previewCookie, getSecret('ADMIN_PASS'));
+  }
+
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
     const ok = checkBasicAuth(context.request.headers.get('authorization'),
       getSecret('ADMIN_USER'), getSecret('ADMIN_PASS'));
@@ -37,7 +47,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const key = getSecret('GOP_INGEST_KEY') ?? '';
   const enabled = (getSecret('TELEMETRY_ENABLED') ?? '1') !== '0' && !!key;
-  if (!enabled || url.pathname.startsWith('/api/client-log')) return next();
+  if (!enabled || url.pathname.startsWith('/api/client-log')) {
+    return withPreviewCacheGuard(context, await next());
+  }
 
   const collector = createCollector();
   collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
@@ -56,7 +68,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     throw err;
   }
   emit(context, collector, url, response, response.status, t0, key);
-  return response;
+  return withPreviewCacheGuard(context, response);
 });
 
 function emit(context: any, c: GopCollector, url: URL, res: Response | null, status: number, t0: number, key: string) {
@@ -102,4 +114,16 @@ function parseIntOrNull(v: string | null | undefined): number | null {
 
 function safeClientAddress(context: any): string | null {
   try { return context.clientAddress ?? null; } catch { return null; }
+}
+
+// A previewing admin's render must never enter Workers Caching. set(false)
+// alone emits no header (heuristic 2h cache -- see 311d80e); no-store is the
+// explicit opt-out, and cache.set(false) after render wins over any options
+// the page itself accumulated.
+function withPreviewCacheGuard(context: any, response: Response): Response {
+  if (context.locals?.preview === true) {
+    try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
+    response.headers.set('Cache-Control', 'no-store');
+  }
+  return response;
 }
