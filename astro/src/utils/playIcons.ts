@@ -150,7 +150,12 @@ export function threeAndOutPlays(plays: FlagBag[]): Set<unknown> {
     for (const drive of byDrive.values()) {
         const scrimmage = drive.filter((p) => p.scrimmage_play === true && p.punt !== true);
         const punt = drive.find((p) => p.punt === true);
-        const firstDown = drive.some((p) => p.firstD_by_yards === true || p.firstD_by_penalty === true || p.first_by_penalty === true || p.firstD_by_poss === true);
+        // firstD_by_* are lagged onto the NEXT play (usually still inside the
+        // drive); first_down_earned/created sit on the converting play itself,
+        // so checking both makes the drive-level "any first down?" test robust
+        // to where the lag lands.
+        const firstDown = drive.some((p) => p.first_down_created === true || (p as any).first_down_earned === true
+            || p.firstD_by_yards === true || p.firstD_by_penalty === true || p.first_by_penalty === true || p.firstD_by_poss === true);
         if (punt && scrimmage.length <= 3 && scrimmage.length > 0 && !firstDown) out.add(punt.game_play_number);
     }
     return out;
