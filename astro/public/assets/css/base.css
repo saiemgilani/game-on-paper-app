@@ -165,7 +165,7 @@ Target Matrix
   --mark-stop: #6c757d;
   --mark-explosive: #0dcaf0;
 }
-.play-marks { white-space: nowrap; margin-left: .5rem; font-size: 15px; line-height: 1; vertical-align: -1px; }
+.play-marks { white-space: nowrap; margin-left: .5rem; font-size: 26px; line-height: 1; vertical-align: -4px; } /* ~3/4 of the 35px team logo */
 .play-marks .pi + .pi, .play-marks .pi + .pi-pill, .play-marks .pi-pill + .pi, .play-marks .pi-pill + .pi-pill { margin-left: 4px; }
 /* Placement: beside the team logo, never under it.
    Measured on a real game page at 1440px: a play row is 45px tall and that
@@ -188,7 +188,7 @@ Target Matrix
        row to row. A fixed slot keeps every logo on the same x. */
     .play-offense-cell { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding-left: 6px; }
     .play-offense-cell > a { flex: 0 0 35px; }
-    .play-marks-beside { display: flex; flex-wrap: wrap; align-content: center; gap: 2px; margin-left: 0; max-width: 55px; max-height: 35px; }
+    .play-marks-beside { display: flex; flex-wrap: wrap; align-content: center; gap: 2px; margin-left: 0; max-width: 56px; max-height: 56px; }
     .play-marks-beside .pi + .pi, .play-marks-beside .pi + .pi-pill,
     .play-marks-beside .pi-pill + .pi, .play-marks-beside .pi-pill + .pi-pill { margin-left: 0; }
 }
@@ -200,7 +200,7 @@ Target Matrix
 }
 /* SACK / TFL are text tags: fixed 14px so they sit inside the text line and never scale with the slot;
    neutral outline (chosen 2026-09-01 over red/solid) in the stop tone. */
-.pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 1px; height: 14px; padding: 0 4px; border: 1.5px solid var(--mark-stop); border-radius: 3px; color: var(--mark-stop); background: transparent; font: 700 9.5px/11px Chivo, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.pi-pill { display: inline-block; box-sizing: border-box; vertical-align: 4px; height: 19px; padding: 0 5px; border: 2px solid var(--mark-stop); border-radius: 4px; color: var(--mark-stop); background: transparent; font: 700 12.5px/15px Chivo, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .pi { width: 1em; height: 1em; display: inline-block; vertical-align: -.15em; }
 .pi-td, .pi-td-xp, .pi-td-xp-miss, .pi-td-2pt, .pi-td-2pt-miss, .pi-fg, .pi-safety { --c: var(--mark-score); }
 .pi-def, .pi-def-2pt { --c: var(--mark-turnover); } /* defensive score: same glyph, turnover colour */
