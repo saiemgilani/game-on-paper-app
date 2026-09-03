@@ -275,7 +275,7 @@ const subtitle = "Operational dashboards for Game on Paper";
     table('t-dqlints', ['Lint', 'Games flagged', 'Total', 'Last seen'],
       d.lints.map((r) => ({ cells: [`<span class="mono">${esc(r.stat)}</span>`, r.games_flagged, r.total, `<span class="mono">${hhmm(r.last_seen)}</span>`] })));
     table('t-dqver', ['sdv-py', 'Stat', 'Games', 'Mean Δ'],
-      d.by_version.map((r) => ({ cells: [`<span class="mono">${esc((r.sdv_py_sha || '?').slice(0, 8))}</span>`, `<span class="mono">${esc(r.stat)}</span>`, r.n, r.mean_delta] })));
+      d.by_version.map((r) => ({ cells: [`<span class="mono">${esc(r.sdv_py_version ?? '?')} @ ${esc((r.sdv_py_sha || '?').slice(0, 8))}</span>`, `<span class="mono">${esc(r.stat)}</span>`, r.n, r.mean_delta] })));
     table('t-dqgames', ['Game', 'Σ|Δ|', 'Stats off', 'Checked', 'sdv-py'],
       d.worst_games.map((g) => ({ attr: ` data-game="${esc(g.game_id)}" style="cursor:pointer"`, cells: [
         `<a href="/game/${g.game_id}" target="_blank">${esc(g.matchup ?? g.game_id)}</a>`,

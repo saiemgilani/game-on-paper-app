@@ -147,8 +147,13 @@ def _upstream(args):
 def _errors(args):
     return {
         "groups": _q("""SELECT e.service, left(e.message, 120) AS signature, count(*)::int AS n,
-                max(e.ts) AS last_seen, max(e.game_id) AS game_id,
-                max(gm.away_abbr || ' @ ' || gm.home_abbr) AS matchup
+                max(e.ts) AS last_seen,
+                -- game_id and matchup must come from the SAME row (the latest
+                -- error), or a multi-game signature links one game while
+                -- naming another; both arrays share one deterministic order
+                (array_agg(e.game_id ORDER BY e.ts DESC, e.game_id DESC))[1] AS game_id,
+                (array_agg(gm.away_abbr || ' @ ' || gm.home_abbr
+                           ORDER BY e.ts DESC, e.game_id DESC))[1] AS matchup
             FROM gop.error_log e
             LEFT JOIN gop.game_meta gm ON gm.game_id::text = e.game_id
             WHERE e.ts > now() - interval '24 hours'
@@ -181,12 +186,12 @@ def _dq(args):
             (days,),
         ),
         "by_version": _q(
-            """SELECT sdv_py_sha, stat,
+            """SELECT sdv_py_version, sdv_py_sha, stat,
                 count(*)::int AS n, round(avg(delta)::numeric, 2)::float AS mean_delta
             FROM gop.dq_boxscore
             WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
                 AND stat NOT LIKE 'lint:%%'
-            GROUP BY 1, 2 ORDER BY max(ts) DESC, 2 LIMIT 60""",
+            GROUP BY 1, 2, 3 ORDER BY max(ts) DESC, 3 LIMIT 60""",
             (days,),
         ),
         "worst_games": _q(
