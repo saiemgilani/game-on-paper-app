@@ -260,7 +260,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                 </div>
             </header>
 
-            <NavScroller items={scrollerItems} />
+            <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
             <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
                 <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
                 {spanPills.map((sp) => (

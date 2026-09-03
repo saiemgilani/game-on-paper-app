@@ -222,3 +222,18 @@ Target Matrix
 .game-thumb-actions .btn { min-height: 44px; display: inline-flex; align-items: center; }
 .toggle-link { display: inline-block; padding: 12px 6px; margin: -10px 0; }
 
+/* Mobile QA tranche 2: the play-row decision badges computed to 10.5px. */
+.badge.rounded { font-size: 12px; }
+/* v2 game page: the section nav sticks on phones so a 4,000px page keeps its
+   wayfinding; desktop keeps the in-flow bar. */
+@media (max-width: 768px) {
+  .game-nav-sticky { position: sticky; top: 0; z-index: 1020; background: var(--bs-body-bg, #fff); }
+}
+/* On phones the seven nav items stacked three rows deep and pushed content
+   below the fold; one swipeable row costs no JS and keeps every link. */
+@media (max-width: 768px) {
+  .site-nav-row { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .site-nav-row::-webkit-scrollbar { display: none; }
+  .site-nav-row .nav-link { white-space: nowrap; }
+}
+

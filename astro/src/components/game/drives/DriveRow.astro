@@ -17,6 +17,16 @@ interface Props {
 }
 
 const { drive, prefix, expandable, drivePlays, isNeutralSite, homeTeam, awayTeam } = Astro.props;
+// The chart island serializes its plays prop into the HTML. A full
+// ProcessedPlay is ~25KB x ~10 plays x every drive = 4.4MB of the page (84%
+// measured 2026-09-03); the chart reads exactly seven fields.
+const slimPlay = (p: ProcessedPlay) => ({
+    rush: p.rush, pass: p.pass,
+    type: { text: p.type?.text },
+    start: { yardsToEndzone: p.start?.yardsToEndzone, team: { id: p.start?.team?.id } },
+    end: { yardsToEndzone: p.end?.yardsToEndzone, team: { id: p.end?.team?.id } },
+});
+const chartPlays = drivePlays.map(slimPlay);
 
 // let drivePlays = gameData.plays.filter((p) => (p['drive.id'] == drive.id))
 const firstPlay = drivePlays[0]
@@ -84,7 +94,7 @@ const endWP = endWPPlays[endWPPlays.length - 1];
             <div class="row p-1">
                 <div class="ms-sm-auto col-12 mb-3">
                 <p class="m-0 mb-1"><strong>Drive Chart</strong> <span>(Direction of play - left to right)</span>:</p>
-                <DriveChart client:only id={drive.id} subtitle={`${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`} plays={drivePlays} offense={offense} defense={defense} isNeutralSite={isNeutralSite} result={drive.result}>
+                <DriveChart client:only id={drive.id} subtitle={`${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`} plays={chartPlays} offense={offense} defense={defense} isNeutralSite={isNeutralSite} result={drive.result}>
                     <FallbackSpinner slot="fallback" />
                 </DriveChart>
                 <p class="m-0 text-muted"><small>Note: vertical position of plays on chart does not indicate actual vertical position on field.</small></p>
