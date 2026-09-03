@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: astro/package-lock.json
       # astro/package-lock.json is tracked (see .gitignore note); ci installs the
       # locked tree and cannot drift with the registry.
       - run: npm ci --no-audit --no-fund
