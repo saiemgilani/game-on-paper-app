@@ -100,7 +100,9 @@ const previewUrlParams = new URLSearchParams({
 
 // The top of the page answers "what just happened" before any chart does.
 // Newest first here -- this strip is read downward as a feed, unlike All Plays.
-const latestPlays = game.plays.slice(-5).toReversed();
+// Live and halftime only: once the game is final the whole page is the recap,
+// and a "Latest" strip repeating the last five plays is noise.
+const latestPlays = gameStatus.type.completed === true ? [] : game.plays.slice(-5).toReversed();
 // Quarters actually played, so overtime only offers a button when it happened.
 const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
 const lastPlay: any = game.plays.at(-1);
@@ -117,8 +119,8 @@ const scrollerItems: ScrollerItem[] = [
     // The Latest panel only renders when there are plays, so a game with none
     // must not advertise an anchor that isn't on the page.
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
-    { href: "#wpChart", title: "WP Chart" },
-    { href: "#epChart", title: "EPA Chart" },
+    { href: "#wp-section", title: "WP Chart" },
+    { href: "#ep-section", title: "EPA Chart" },
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
@@ -254,12 +256,15 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
-                <div id="wpChart" class="col-lg-6 ms-sm-auto px-md-4">
+                <!-- The nav anchor must NOT be wpChart/epChart: those ids belong to the canvases
+     inside the Svelte charts, and a duplicate id makes getElementById hand
+     Chart.js the wrapper div -- both charts then silently never draw. -->
+                <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
                     <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
-                <div id="epChart" class="col-lg-6 ms-sm-auto px-md-4">
+                <div id="ep-section" class="col-lg-6 ms-sm-auto px-md-4">
                     <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>

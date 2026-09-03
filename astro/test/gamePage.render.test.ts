@@ -73,11 +73,28 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/Maverick McIvor[\s\S]{0,400}?18 LNG/);
     });
 
-    test('the Latest strip leads the page, newest play first', () => {
-        expect(html).toContain('id="latest"');
-        // it must sit above the win probability chart, which was the old first panel
-        expect(html.indexOf('id="latest"')).toBeLessThan(html.indexOf('id="wpChart"'));
-        expect(html).toMatch(/Final\. Last drive: [^<]+, [^<]+\./);
+    test('a final game has no Latest strip -- the page IS the recap', () => {
+        // the fixture game is completed; the strip (and its nav entry) only
+        // renders while the game is live
+        expect(html).not.toContain('id="latest"');
+        expect(html).not.toContain('href="#latest"');
+    });
+
+    test('the chart canvas ids are unique -- Chart.js finds the canvas, not a wrapper', () => {
+        // a wrapper div carrying id="wpChart" shadowed the canvas and both
+        // charts silently never drew (the Svelte components getElementById
+        // their own canvases)
+        // client:only means the canvases are NOT in the SSR output at all --
+        // they arrive at hydration. So the exact SSR invariant is zero
+        // claimants on those ids: any server-rendered element carrying them
+        // would shadow the canvas when it mounts.
+        expect((html.match(/id="wpChart"/g) ?? []).length).toBe(0);
+        expect((html.match(/id="epChart"/g) ?? []).length).toBe(0);
+        expect(html).toContain('id="wp-section"');
+        expect(html).toContain('id="ep-section"');
+        // and the islands that will mount them are present
+        expect(html).toMatch(/astro-island[^>]+WinProbabilityChart/);
+        expect(html).toMatch(/astro-island[^>]+ExpectedPointsChart/);
     });
 
     test('the book rows render with their EPA beside them', () => {
