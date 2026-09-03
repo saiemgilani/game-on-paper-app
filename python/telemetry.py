@@ -42,6 +42,29 @@ _TABLES = {
         "game_id",
         "error",
     ],
+    "game_meta": [
+        "game_id",
+        "season",
+        "week",
+        "away_abbr",
+        "home_abbr",
+        "away_score",
+        "home_score",
+        "status",
+        "kickoff_ts",
+        "last_seen",
+    ],
+    "dq_boxscore": [
+        "ts",
+        "game_id",
+        "team_id",
+        "stat",
+        "ours",
+        "espn",
+        "delta",
+        "sdv_py_version",
+        "sdv_py_sha",
+    ],
     "error_log": [
         "ts",
         "service",
@@ -66,13 +89,25 @@ _TABLES = {
 
 # Columns whose values arrive as strings but need an explicit cast in the
 # INSERT (psycopg sends str as text; PG won't implicitly cast text->inet/jsonb).
-_CASTS = {"ip": "::inet", "context": "::jsonb"}
+_CASTS = {"ip": "::inet", "context": "::jsonb", "kickoff_ts": "::timestamptz"}
 
 _SQL = {
     table: "INSERT INTO gop.%s (%s) VALUES (%s)"
     % (table, ",".join(cols), ",".join("%s" + _CASTS.get(c, "") for c in cols))
     for table, cols in _TABLES.items()
 }
+
+# game_meta is a live-updated dimension, not an append log: the same game is
+# seen by every render, so the insert must be an upsert on game_id.
+_SQL["game_meta"] = (
+    _SQL["game_meta"].rstrip()
+    + " ON CONFLICT (game_id) DO UPDATE SET "
+    + ", ".join(
+        f"{c} = COALESCE(EXCLUDED.{c}, gop.game_meta.{c})"
+        for c in _TABLES["game_meta"]
+        if c != "game_id"
+    )
+)
 
 log = logging.getLogger("app.telemetry")
 
@@ -108,7 +143,9 @@ class Telemetry:
         self._wake = threading.Event()  # signals worker to flush early at batch_rows
         self.dropped = 0
         self._started = False
-        self._host_lock = None   # None=unknown, False=another worker holds it, int=our fd
+        self._host_lock = (
+            None  # None=unknown, False=another worker holds it, int=our fd
+        )
 
     def _default_conn(self):
         import psycopg
@@ -245,6 +282,7 @@ class Telemetry:
             return self._host_lock is not False
         try:
             import fcntl
+
             fd = os.open("/tmp/.gop-host-reporter.lock", os.O_CREAT | os.O_RDWR, 0o600)
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -252,7 +290,7 @@ class Telemetry:
                 os.close(fd)
                 self._host_lock = False
                 return False
-            self._host_lock = fd       # keep the fd open to hold the lock
+            self._host_lock = fd  # keep the fd open to hold the lock
             return True
         except Exception:
             self._host_lock = False

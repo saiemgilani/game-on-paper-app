@@ -21,6 +21,7 @@ const subtitle = "Operational dashboards for Game on Paper";
     <li class="nav-item"><button class="nav-link" data-t="games">Live games</button></li>
     <li class="nav-item"><button class="nav-link" data-t="upstream">ESPN / upstream</button></li>
     <li class="nav-item"><button class="nav-link" data-t="errors">Errors</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="dq">Data quality</button></li>
     <li class="nav-item"><button class="nav-link" data-t="traffic">Traffic</button></li>
     <li class="nav-item"><button class="nav-link" data-t="system">System</button></li>
     <li class="nav-item"><button class="nav-link" data-t="staleness">Staleness</button></li>
@@ -52,6 +53,21 @@ const subtitle = "Operational dashboards for Game on Paper";
     <div class="card twrap"><table class="table table-sm mb-0" id="t-errgroups"></table></div>
     <h6 class="admin-label">Most recent</h6>
     <div id="err-recent"></div>
+  </section>
+  <section id="dq">
+    <div class="card"><p class="admin-muted m-0">Play-flag box score vs ESPN's official team box, per completed game.
+      Zero is not the target for every stat (our pass flag counts sacks; ESPN's net passing subtracts sack yardage;
+      penalty yards differ in sign) &mdash; the signal is a <b>stable</b> delta distribution. A shift aligned with an
+      sdv-py version is a parser regression.</p></div>
+    <h6 class="admin-label">Scorecard · <span id="dq-days">14</span>d</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-dqscore"></table></div>
+    <div class="grid2 mt-2">
+      <div class="card twrap"><h6 class="admin-label mt-0">Lints (expectation: 0)</h6><table class="table table-sm mb-0" id="t-dqlints"></table></div>
+      <div class="card twrap"><h6 class="admin-label mt-0">Mean delta by sdv-py version</h6><table class="table table-sm mb-0" id="t-dqver"></table></div>
+    </div>
+    <h6 class="admin-label">Worst games (click a row for per-stat detail)</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-dqgames"></table></div>
+    <div id="dq-detail"></div>
   </section>
   <section id="traffic">
     <div class="card"><p class="admin-muted m-0">Visitor analytics live in
@@ -236,15 +252,45 @@ const subtitle = "Operational dashboards for Game on Paper";
       { label: '5xx', data: d.failures.map((f) => f.s5xx), borderColor: S[1] },
       { label: 'timeout', data: d.failures.map((f) => f.timeouts), borderColor: S[3] }]);
     table('t-slowest', ['When', 'Target', 'Game', 'ms', 'Status'],
-      d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`, esc(s.game_id ?? '—'), fmt(s.duration_ms), s.status ?? '—'] })));
+      d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`,
+        s.game_id ? `<a href="/game/${esc(s.game_id)}" target="_blank">${esc(s.matchup ?? s.game_id)}</a>` : '—',
+        fmt(s.duration_ms), s.status ?? '—'] })));
   }
 
   async function refreshErrors() {
     const d = await api('errors');
-    table('t-errgroups', ['Signature', 'Service', 'Count', 'Last seen'],
-      d.groups.map((g) => ({ cells: [esc(g.signature), esc(g.service), g.n, `<span class="mono">${hhmm(g.last_seen)}</span>`] })));
+    table('t-errgroups', ['Signature', 'Service', 'Game', 'Count', 'Last seen'],
+      d.groups.map((g) => ({ cells: [esc(g.signature), esc(g.service),
+        g.game_id ? `<a href="/game/${esc(g.game_id)}" target="_blank">${esc(g.matchup ?? g.game_id)}</a>` : '—',
+        g.n, `<span class="mono">${hhmm(g.last_seen)}</span>`] })));
     document.getElementById('err-recent').innerHTML = d.recent.slice(0, 5).map((e) =>
-      `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>[${esc(e.service)}] ${esc(e.message).slice(0, 120)}</span><b class="mono">${hhmm(e.ts)}</b></div>${e.stack ? `<pre>${esc(e.stack).slice(0, 1200)}</pre>` : ''}</div>`).join('');
+      `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>[${esc(e.service)}] ${esc(e.message).slice(0, 120)}</span><b class="mono">${e.game_id ? `<a href="/game/${esc(e.game_id)}" target="_blank">${esc(e.matchup ?? e.game_id)}</a> · ` : ''}${hhmm(e.ts)}</b></div>${e.stack ? `<pre>${esc(e.stack).slice(0, 1200)}</pre>` : ''}</div>`).join('');
+  }
+
+  async function refreshDq() {
+    const d = await api('dq');
+    table('t-dqscore', ['Stat', 'Rows', 'Exact', '|Δ| ≤ 2', 'Mean Δ', 'Median Δ', 'Worst |Δ|'],
+      d.scorecard.map((r) => ({ cells: [`<span class="mono">${esc(r.stat)}</span>`, r.n,
+        fmt(100 * r.exact / r.n, 0) + '%', fmt(100 * r.close / r.n, 0) + '%', r.mean_delta, r.median_delta, r.worst] })));
+    table('t-dqlints', ['Lint', 'Games flagged', 'Total', 'Last seen'],
+      d.lints.map((r) => ({ cells: [`<span class="mono">${esc(r.stat)}</span>`, r.games_flagged, r.total, `<span class="mono">${hhmm(r.last_seen)}</span>`] })));
+    table('t-dqver', ['sdv-py', 'Stat', 'Games', 'Mean Δ'],
+      d.by_version.map((r) => ({ cells: [`<span class="mono">${esc((r.sdv_py_sha || '?').slice(0, 8))}</span>`, `<span class="mono">${esc(r.stat)}</span>`, r.n, r.mean_delta] })));
+    table('t-dqgames', ['Game', 'Σ|Δ|', 'Stats off', 'Checked', 'sdv-py'],
+      d.worst_games.map((g) => ({ attr: ` data-game="${esc(g.game_id)}" style="cursor:pointer"`, cells: [
+        `<a href="/game/${g.game_id}" target="_blank">${esc(g.matchup ?? g.game_id)}</a>`,
+        g.total_abs_delta, g.stats_off, `<span class="mono">${hhmm(g.checked_at)}</span>`,
+        `<span class="mono">${esc((g.sdv_py_sha || '?').slice(0, 8))}</span>`] })));
+    [...document.querySelectorAll('#t-dqgames tr[data-game]')].forEach((tr) =>
+      tr.addEventListener('click', () => loadDqDetail(tr.dataset.game).catch(() => {})));
+  }
+
+  async function loadDqDetail(gameId) {
+    const d = await api('dq', `?game_id=${gameId}`);
+    const el = document.getElementById('dq-detail');
+    el.innerHTML = `<h6 class="admin-label">Game ${esc(gameId)}</h6><div class="card twrap"><table class="table table-sm mb-0" id="t-dqdetail"></table></div>`;
+    table('t-dqdetail', ['Team', 'Stat', 'Ours', 'ESPN', 'Δ'],
+      d.game.map((r) => ({ cells: [r.team_id ?? '—', `<span class="mono">${esc(r.stat)}</span>`, r.ours, r.espn ?? '—', r.delta ?? '—'] })));
   }
 
   async function refreshTraffic() {
@@ -326,7 +372,7 @@ const subtitle = "Operational dashboards for Game on Paper";
   }
   document.getElementById('st-probe').addEventListener('click', () => probeStaleness().catch((e) => console.error(e)));
 
-  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
+  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
   let active = 'overview';
   document.getElementById('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('button');
