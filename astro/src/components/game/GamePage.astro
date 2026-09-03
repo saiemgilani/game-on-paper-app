@@ -240,7 +240,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <div class="col-2 pt-1">
                         <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
                     </div>
-                    <div class="col-8 text-center">
+                    <div class="col-12 col-md-8 text-center order-1 order-md-0">
                         <div>
                             <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
                             {
@@ -254,7 +254,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                             }
                         </div>
                     </div>
-                    <div class="col-2 d-flex justify-content-end align-items-center">
+                    <div class="col-10 col-md-2 d-flex justify-content-end align-items-center">
                         <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
                     </div>
                 </div>
