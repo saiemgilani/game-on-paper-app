@@ -8,7 +8,11 @@
 // signed with ADMIN_PASS so it cannot be minted client-side, and it expires.
 
 export const PREVIEW_COOKIE = 'gop_preview';
-export const PREVIEW_TTL_S = 12 * 60 * 60;
+// Seven days, not twelve hours: the cookie expires SILENTLY -- pages just
+// revert to the public variant with no signal -- and a solo admin re-toggling
+// mid-season twice a day is worse than a longer-lived, HMAC-signed, view-only
+// cookie. The /admin button always shows the live state.
+export const PREVIEW_TTL_S = 7 * 24 * 60 * 60;
 
 async function hmacHex(secret: string, msg: string): Promise<string> {
     const key = await crypto.subtle.importKey(
