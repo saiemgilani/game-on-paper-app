@@ -217,3 +217,8 @@ Target Matrix
 .focus-jump:hover, .focus-jump:focus-visible { text-decoration-style: solid; }
 .focus-jump-dead { text-decoration: none; cursor: default; }
 
+/* Mobile QA (2026-09-03): 44px touch targets on the scoreboard card actions,
+   and a grown hit area for the box-score show/hide toggles without moving text. */
+.game-thumb-actions .btn { min-height: 44px; display: inline-flex; align-items: center; }
+.toggle-link { display: inline-block; padding: 12px 6px; margin: -10px 0; }
+

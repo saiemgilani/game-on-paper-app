@@ -9,7 +9,7 @@ const { teamIds } = Astro.props;
 let teamIdCSS = teamIds.map(p => {
     return `
     img.team-logo-${p} {
-        content: url('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${p}.png')
+        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${p}.png&h=120&w=120')
     }
     `
 })
