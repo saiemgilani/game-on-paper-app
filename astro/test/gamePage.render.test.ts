@@ -158,6 +158,8 @@ describe('GamePage renders a finished game end to end', () => {
         for (const anchor of new Set(hrefs)) {
             expect(html, `nav points at #${anchor} but no element has that id`).toContain(`id="${anchor}"`);
         }
+    });
+
     test('play marks: one sprite, and every touchdown/penalty row carries its mark', async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game: any = await retrieveProcessedGame(GAME_ID, 30);
