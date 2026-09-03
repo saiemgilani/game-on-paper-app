@@ -20,6 +20,8 @@ const options = ix.players.flatMap((p) =>
         .filter((r) => (p.roles[r] ?? 0) > 0)
         .map((r) => ({
             value: `r:${r}:${p.id}`,
+            name: p.name,
+            role: r,
             team: p.teamId,
             label: `${p.name} — ${ROLE_LABEL[r].toLowerCase()} (${p.roles[r]})`,
             n: p.roles[r] ?? 0,
@@ -45,7 +47,7 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
             )}
             {options.length > 0 && byTeam.filter((g) => g.opts.length).map((g) => (
                 <optgroup label={nameOf(g.id)}>
-                    {g.opts.map((o) => <option value={o.value}>{o.label}</option>)}
+                    {g.opts.map((o) => <option value={o.value} data-name={o.name} data-role={o.role} data-team={o.team}>{o.label}</option>)}
                 </optgroup>
             ))}
         </select>
@@ -56,6 +58,44 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
 <script>
     // Deferred module, not `is:inline`: this renders above the table it drives, so an
     // inline script would look up a tbody that has not been parsed yet.
+    // Box-score names carry data-focus-jump: clicking one selects that player's
+    // matching role in the "all" focus select and jumps to the table. The match
+    // is by (name, role) because the advanced box rows carry no player id.
+    document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement)?.closest?.('[data-focus-jump]') as HTMLElement | null;
+        if (!btn) return;
+        const bar = document.querySelector<HTMLElement>('[data-play-focus="all"]');
+        const sel = bar?.querySelector('select');
+        if (!sel) return;
+        const match = (o: HTMLOptionElement) =>
+            o.dataset.name === btn.dataset.name && o.dataset.role === btn.dataset.role
+            && (!btn.dataset.team || !o.dataset.team || o.dataset.team === btn.dataset.team);
+        const want = [...sel.options].find(match);
+        if (!want) return;
+        sel.value = want.value;
+        sel.dispatchEvent(new Event('change'));
+        document.querySelector('[data-plays-body="all"]')?.closest('table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // A name the play index never saw (missing player ids in the pbp) would be a
+    // dead button; strip the affordance so nothing advertises a click it cannot honor.
+    {
+        const sel = document.querySelector<HTMLElement>('[data-play-focus="all"]')?.querySelector('select');
+        const opts = [...(sel?.options ?? [])] as HTMLOptionElement[];
+        for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-focus-jump]')) {
+            // same tolerant team semantics as the click matcher, or a name that
+            // exists only on the other team would look alive and do nothing
+            const alive = opts.some((o) =>
+                o.dataset.name === btn.dataset.name && o.dataset.role === btn.dataset.role
+                && (!btn.dataset.team || !o.dataset.team || o.dataset.team === btn.dataset.team));
+            if (!alive) {
+                btn.classList.add('focus-jump-dead');
+                btn.disabled = true;
+                btn.removeAttribute('title');
+            }
+        }
+    }
+
     for (const bar of document.querySelectorAll<HTMLElement>('[data-play-focus]')) {
         const target = bar.dataset.playFocus;
         const body = document.querySelector<HTMLElement>(`[data-plays-body="${target}"]`);
