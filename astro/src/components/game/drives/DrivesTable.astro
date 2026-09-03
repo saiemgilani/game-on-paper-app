@@ -17,7 +17,11 @@ interface Props {
 let { drives, gamePlays, prefix, expandable, showGuide, homeTeam, awayTeam, isNeutralSite } = Astro.props;
 
 
-const adjDrives = drives.toSorted((a, b) => {
+// A drive with no processed plays -- `drives.current` the moment a live drive
+// opens -- has no first play to sort on or render from, and would throw.
+const playableDrives = drives.filter((d) => gamePlays.some((p) => p['drive.id'] == d.id))
+
+const adjDrives = playableDrives.toSorted((a, b) => {
     let aPlays = gamePlays.filter(p => p['drive.id'] == a.id)
     let aFirstPlay = aPlays[0]
 
@@ -55,7 +59,9 @@ const adjDrives = drives.toSorted((a, b) => {
             <th style="text-align: center;vertical-align:center;">Offense</th>
             <th style="text-align: left;vertical-align:center;">Result</th>
             <th style="text-align: left;vertical-align:center;">Description</th>
+            <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title="Success rate over plays from scrimmage">SR</th>
             <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">EPA</th>
+            <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title="Best single play on the drive by EPA">Best</th>
             <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">Start WP%</th>
             <th class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">End WP%</th>
         </tr>

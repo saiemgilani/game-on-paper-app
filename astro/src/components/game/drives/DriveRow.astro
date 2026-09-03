@@ -2,6 +2,7 @@
 import type { ESPNTeam } from "../../../resources/espn"
 import type { ProcessedDrive, ProcessedPlay } from "../../../resources/python"
 import { formatDistance, formatYardline, roundNumber, cleanAbbreviation } from "../../../utils/misc"
+import { isScrimmage } from "../../../utils/situational"
 import FallbackSpinner from "../../FallbackSpinner.astro"
 import DriveChart from "./DriveChart.svelte"
 
@@ -46,11 +47,17 @@ let epaDownText = (maxEPA.penalty_assessed_on_kickoff && maxEPA.penalty_assessed
 let maxWPA = drivePlays.reduce((prev: ProcessedPlay, current: ProcessedPlay) => (prev && prev.wpa > current.wpa) ? prev : current, { wpa: Number.NEGATIVE_INFINITY })
 let wpaDownText = (maxWPA.penalty_assessed_on_kickoff && maxWPA.penalty_assessed_on_kickoff == true) ? "Assessed on Kickoff" : `${formatDistance(maxWPA.period, maxWPA.start.down, maxWPA.type.text, maxWPA.start.distance, maxWPA.start.yardsToEndzone)} at ${ formatYardline(maxWPA.start.yardsToEndzone, cleanAbbreviation(offense), cleanAbbreviation(defense), maxWPA.type.text) }`;
 
-let totalEPA = drivePlays.map((p: ProcessedPlay) => p.EPA).reduce((acc: number, val: number) => acc + (val || 0))
-let avgEPA = drivePlays.length == 0 ? 0 : (totalEPA / drivePlays.length)
+// Seeded with 0: an unseeded reduce throws outright on a drive with no plays,
+// which is what `drives.current` looks like the moment a live drive opens.
+let totalEPA = drivePlays.map((p: ProcessedPlay) => p.EPA).reduce((acc: number, val: number) => acc + (val || 0), 0)
 
-let totalSuccess = drivePlays.map((p: ProcessedPlay) => Number(p.EPA_success)).reduce((acc: number, val: number) => acc + (val || 0))
-let avgSR = drivePlays.length == 0 ? 0 : (totalSuccess / drivePlays.length)
+// Rates are per play from scrimmage. Dividing by every play on the drive counts
+// the kickoff and the punt against the offence and understates both numbers.
+const scrimmagePlays = drivePlays.filter(isScrimmage)
+let avgEPA = scrimmagePlays.length == 0 ? 0 : (scrimmagePlays.reduce((acc: number, p: ProcessedPlay) => acc + (p.EPA || 0), 0) / scrimmagePlays.length)
+
+let totalSuccess = scrimmagePlays.map((p: ProcessedPlay) => Number(p.EPA_success)).reduce((acc: number, val: number) => acc + (val || 0), 0)
+let avgSR = scrimmagePlays.length == 0 ? 0 : (totalSuccess / scrimmagePlays.length)
 
 let startWP = drivePlays.map((p: ProcessedPlay) => p.winProbability.before)[0]
 let endWPPlays = drivePlays.map((p: ProcessedPlay) => p.winProbability.after)
@@ -62,12 +69,17 @@ const endWP = endWPPlays[endWPPlays.length - 1];
     <td style="text-align: center;vertical-align:center;"><img class={`img-fluid team-logo-${offense.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png`} alt={`ESPN team id ${offense.id}`}/></td>
     <td style="text-align: left;vertical-align:center;">{drive.displayResult || 'In Progress'}</td>
     <td style="text-align: left;vertical-align:center;">{drive.description}</td>
-    <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(totalEPA, 2, 2)}</td>
+    <td class="numeral d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title="Share of this drive's plays from scrimmage that gained enough for their down">{roundNumber(avgSR * 100, 3, 0)}%</td>
+    <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title="Total expected points added on the drive, and the average per play from scrimmage">
+        {roundNumber(totalEPA, 2, 2)}
+        <span class="text-muted text-small" style="display: block;">{roundNumber(avgEPA, 2, 2)}/play</span>
+    </td>
+    <td class="numeral d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title={`Best play on the drive by EPA: ${epaDownText}`}>{Number.isFinite(maxEPA.EPA) ? roundNumber(maxEPA.EPA, 2, 2) : "-"}</td>
     <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(startWP * 100, 3, 1)}%</td>
     <td class="d-none d-xl-table-cell" style="text-align: center;vertical-align:center;">{roundNumber(endWP * 100, 3, 1)}%</td>
 </tr>
 <tr>
-    <td colspan="7" class="hiddenRow">
+    <td colspan="9" class="hiddenRow">
         <div class="accordion-body collapse" id={`drive-${prefix}-${drive.id}`}>
             <div class="row p-1">
                 <div class="ms-sm-auto col-12 mb-3">

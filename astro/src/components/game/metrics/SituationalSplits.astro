@@ -1,0 +1,88 @@
+---
+import { periodSplits, situationalRows } from '../../../utils/situational';
+import { roundNumber } from '../../../utils/misc';
+
+interface Props {
+    title?: string;
+    season: number;
+    /** Team ids in the column order the rest of the panel uses. */
+    teams: (number | string)[];
+    plays: any[];
+    caption?: string;
+}
+const { title = 'Situational by period', season, teams, plays, caption } = Astro.props;
+
+// Every split is rendered and all but one hidden: the numbers are small, and
+// shipping them as markup keeps the script to a class toggle with no data in it.
+const splits = periodSplits(plays).map((s) => ({
+    ...s,
+    columns: teams.map((id) => situationalRows(s.plays, id)),
+}));
+const labels = splits[0]?.columns[0]?.map((r) => r.label) ?? [];
+---
+
+{splits.length > 0 && (
+    <div data-situational-splits>
+        <div class="btn-group btn-group-sm flex-wrap mb-2" role="group" aria-label="Situational split">
+            {splits.map((s, i) => (
+                <button type="button" class={`btn btn-outline-secondary${i === 0 ? " active" : ""}`} data-split={s.key} aria-pressed={i === 0}>{s.label}</button>
+            ))}
+        </div>
+        {splits.map((s, i) => (
+            <div class="table-responsive" data-split-panel={s.key} hidden={i !== 0}>
+                <table class="table table-sm table-responsive">
+                    {caption && <caption class="text-muted text-small">{caption}</caption>}
+                    <thead>
+                        <tr>
+                            <th class="box-heading">{title} &mdash; {s.label}</th>
+                            {teams.map((value) => (
+                                <th style="text-align: center;">
+                                    <a href={`/year/${season}/team/${value}`}>
+                                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
+                                    </a>
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {labels.map((label, r) => (
+                            <tr>
+                                <td style="text-align: left;" title={s.columns[0][r].title}>{label}</td>
+                                {s.columns.map((rows) => (
+                                    <td class="numeral" style="text-align: center;">
+                                        {rows[r].value}
+                                        {rows[r].epa != null && (
+                                            <span class="text-muted text-small" style="display: block;" title="Expected points added per play over the plays this row counts">
+                                                {roundNumber(rows[r].epa as number, 2, 2)} EPA/play
+                                            </span>
+                                        )}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        ))}
+    </div>
+)}
+
+<script>
+    // A bundled module, not `is:inline`: a deferred script does not care where
+    // in the document it sits, which is the bug that made the play filters inert.
+    for (const root of document.querySelectorAll<HTMLElement>("[data-situational-splits]")) {
+        root.addEventListener("click", (ev) => {
+            const btn = (ev.target as Element)?.closest<HTMLElement>("[data-split]");
+            if (!btn || !root.contains(btn)) return;
+            const key = btn.dataset.split;
+            for (const other of root.querySelectorAll<HTMLElement>("[data-split]")) {
+                const on = other === btn;
+                other.classList.toggle("active", on);
+                other.setAttribute("aria-pressed", String(on));
+            }
+            for (const panel of root.querySelectorAll<HTMLElement>("[data-split-panel]")) {
+                panel.hidden = panel.dataset.splitPanel !== key;
+            }
+        });
+    }
+</script>
