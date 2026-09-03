@@ -84,10 +84,17 @@ describe('GamePage renders a finished game end to end', () => {
         // a wrapper div carrying id="wpChart" shadowed the canvas and both
         // charts silently never drew (the Svelte components getElementById
         // their own canvases)
-        expect((html.match(/id="wpChart"/g) ?? []).length).toBeLessThanOrEqual(1);
-        expect((html.match(/id="epChart"/g) ?? []).length).toBeLessThanOrEqual(1);
+        // client:only means the canvases are NOT in the SSR output at all --
+        // they arrive at hydration. So the exact SSR invariant is zero
+        // claimants on those ids: any server-rendered element carrying them
+        // would shadow the canvas when it mounts.
+        expect((html.match(/id="wpChart"/g) ?? []).length).toBe(0);
+        expect((html.match(/id="epChart"/g) ?? []).length).toBe(0);
         expect(html).toContain('id="wp-section"');
         expect(html).toContain('id="ep-section"');
+        // and the islands that will mount them are present
+        expect(html).toMatch(/astro-island[^>]+WinProbabilityChart/);
+        expect(html).toMatch(/astro-island[^>]+ExpectedPointsChart/);
     });
 
     test('the book rows render with their EPA beside them', () => {
