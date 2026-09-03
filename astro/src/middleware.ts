@@ -133,7 +133,11 @@ function safeClientAddress(context: any): string | null {
 // explicit opt-out, and cache.set(false) after render wins over any options
 // the page itself accumulated.
 function withPreviewCacheGuard(context: any, response: Response): Response {
-  if (context.locals?.preview === true) {
+  const isAdmin = new URL(context.request.url).pathname.startsWith('/admin');
+  // Preview renders are per-viewer; /admin responses are authenticated. Either
+  // way a cached copy would be served to the wrong audience on a HIT -- and a
+  // HIT never runs the Worker, so the auth check would be skipped entirely.
+  if (context.locals?.preview === true || isAdmin) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
   }

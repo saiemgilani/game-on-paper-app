@@ -32,9 +32,16 @@ export async function verifyAdminCookie(value: string | undefined | null, secret
     return diff === 0;
 }
 
-export function timingSafeEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
+// Length-independent constant-time comparison: both sides are hashed to a
+// fixed width first, so neither the content nor the LENGTH of the secret
+// leaks through response timing (an early length check would reveal it).
+export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+    const [da, db] = await Promise.all([
+        crypto.subtle.digest('SHA-256', new TextEncoder().encode(a)),
+        crypto.subtle.digest('SHA-256', new TextEncoder().encode(b)),
+    ]);
+    const ua = new Uint8Array(da), ub = new Uint8Array(db);
     let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    for (let i = 0; i < ua.length; i++) diff |= ua[i] ^ ub[i];
     return diff === 0;
 }

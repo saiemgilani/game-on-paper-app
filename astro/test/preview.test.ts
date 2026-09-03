@@ -52,10 +52,12 @@ describe('admin session cookie', () => {
     // purpose separation: an admin cookie must not open preview mode, nor vice versa
     expect(await verifyPreviewCookie(c, 's3cret')).toBe(false);
   });
-  test('timingSafeEqual compares correctly', async () => {
+  test('timingSafeEqual compares correctly regardless of length', async () => {
     const { timingSafeEqual } = await import('../src/utils/adminSession');
-    expect(timingSafeEqual('abc', 'abc')).toBe(true);
-    expect(timingSafeEqual('abc', 'abd')).toBe(false);
-    expect(timingSafeEqual('abc', 'ab')).toBe(false);
+    expect(await timingSafeEqual('abc', 'abc')).toBe(true);
+    expect(await timingSafeEqual('abc', 'abd')).toBe(false);
+    expect(await timingSafeEqual('abc', 'ab')).toBe(false);
+    expect(await timingSafeEqual('', '')).toBe(true);
+    expect(await timingSafeEqual('a'.repeat(200), 'a')).toBe(false);
   });
 });

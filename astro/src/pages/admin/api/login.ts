@@ -16,7 +16,8 @@ export const POST: APIRoute = async ({ request }) => {
         u = String(form.get('username') ?? '');
         p = String(form.get('password') ?? '');
     } catch { /* fall through to failure */ }
-    const ok = Boolean(user && pass) && timingSafeEqual(u, user!) && timingSafeEqual(p, pass!);
+    const [uOk, pOk] = await Promise.all([timingSafeEqual(u, user ?? ''), timingSafeEqual(p, pass ?? '')]);
+    const ok = Boolean(user && pass) && uOk && pOk;
     if (!ok) {
         return new Response(null, { status: 303, headers: { Location: '/admin/login?err=1' } });
     }
