@@ -228,6 +228,14 @@ Target Matrix
    wayfinding; desktop keeps the in-flow bar. */
 @media (max-width: 768px) {
   .game-nav-sticky { position: sticky; top: 0; z-index: 1020; background: var(--bs-body-bg, #fff); }
+  /* anchor jumps must land below the stuck bar, not underneath it */
+  html { scroll-padding-top: 56px; }
+  /* dropdowns inside the horizontal nav scroller would be clipped by the
+     scroll container; on phones they open in-flow instead */
+  /* !important because Popper writes position:absolute as an INLINE style on
+     open; important author CSS is the one thing that outranks it, and
+     data-bs-display="static" on the toggles stops Popper positioning at all */
+  .site-nav-row .dropdown-menu { position: static !important; float: none; transform: none !important; }
 }
 /* On phones the seven nav items stacked three rows deep and pushed content
    below the fold; one swipeable row costs no JS and keeps every link. */

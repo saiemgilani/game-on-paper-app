@@ -259,8 +259,13 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </div>
                 </div>
             </header>
-
-            <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
+        </div>
+        {/* Outside the header container on purpose: position sticky only works
+            while the PARENT is in view; inside the small header container the
+            nav released after a single scroll (CodeRabbit, #208). At body
+            level it sticks for the whole page. */}
+        <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
+        <div class="container-fluid">
             <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
                 <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
                 {spanPills.map((sp) => (
