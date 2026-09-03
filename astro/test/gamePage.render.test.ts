@@ -400,3 +400,23 @@ describe('the classic snapshot serves the public while v2 is in preview', () => 
         expect(isFeatureEnabled('game-page-v2', {})).toBe(false);
     });
 });
+
+describe('box-score names jump into the play filter', () => {
+    test('name cells carry the jump wiring and the select options carry the match keys', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const page = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game },
+            request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+        });
+        expect(page).toMatch(/<button type="button" class="focus-jump" data-focus-jump data-name="[^"]+" data-role="pass"/);
+        expect(page).toMatch(/data-role="rush"/);
+        expect(page).toMatch(/data-role="recv"/);
+        // the same (name, role) pair exists on a select option, so the click can match
+        const btn = page.match(/data-focus-jump data-name="([^"]+)" data-role="pass"/);
+        expect(btn).toBeTruthy();
+        expect(page).toContain(`<option value="r:pass:`);
+        expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass">`));
+    });
+});
