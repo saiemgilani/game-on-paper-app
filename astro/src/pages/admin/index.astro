@@ -14,6 +14,7 @@ const subtitle = "Operational dashboards for Game on Paper";
   <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
     <h2 class="mb-0">Admin</h2>
     <span class="badge text-bg-danger text-uppercase">ops</span>
+    <button class="btn btn-sm btn-outline-warning ms-3" id="preview-toggle" disabled title="Render 'preview'-state features (utils/features.ts) on the public site for this browser only. Responses are never cached while previewing.">Preview: …</button>
     <span class="ms-auto small admin-muted" id="asof"></span>
   </div>
   <ul class="nav nav-tabs admin-tabs mb-3" id="tabs">
@@ -185,6 +186,27 @@ const subtitle = "Operational dashboards for Game on Paper";
   const fmt = (x, d = 0) => (x == null ? '—' : Number(x).toFixed(d));
   const hhmm = (t) => new Date(t).toTimeString().slice(0, 5);
   const api = (name, qs = '') => fetch(`/admin/api/${name}${qs}`).then((r) => r.json());
+
+  // ---- preview mode toggle ----
+  const pvBtn = document.getElementById('preview-toggle');
+  // the button stays disabled until the state it would toggle is known, and
+  // during a toggle, so a quick click cannot race the initial GET
+  function pvRender(enabled) {
+    pvBtn.textContent = `Preview: ${enabled ? 'ON' : 'off'}`;
+    pvBtn.classList.toggle('btn-warning', enabled);
+    pvBtn.classList.toggle('btn-outline-warning', !enabled);
+    pvBtn.dataset.on = enabled ? '1' : '';
+    pvBtn.disabled = false;
+  }
+  fetch('/admin/api/preview').then((r) => r.json()).then((d) => pvRender(d.enabled)).catch(() => { pvBtn.textContent = 'Preview: ?'; });
+  pvBtn.addEventListener('click', async () => {
+    pvBtn.disabled = true;
+    try {
+      const on = !pvBtn.dataset.on;
+      const d = await fetch('/admin/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).then((r) => r.json());
+      pvRender(d.enabled);
+    } catch { pvBtn.disabled = false; }
+  });
 
   function line(id, labels, datasets) {
     charts[id]?.destroy();
