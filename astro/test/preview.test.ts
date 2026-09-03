@@ -15,9 +15,9 @@ describe('preview cookie', () => {
     const expired = await mintPreviewCookie('s3cret', Math.floor(Date.now() / 1000) - 100000);
     expect(await verifyPreviewCookie(expired, 's3cret')).toBe(false);
     const atBoundary = await mintPreviewCookie('s3cret');
-    const exp = Number(atBoundary.split('.')[1]);
-    expect(await verifyPreviewCookie(atBoundary, 's3cret', exp)).toBe(false); // expiry is exclusive
-    expect(await verifyPreviewCookie(atBoundary, 's3cret', exp - 1)).toBe(true);
+    const boundary = Number(atBoundary.split('.')[1]);
+    expect(await verifyPreviewCookie(atBoundary, 's3cret', boundary)).toBe(false); // expiry is exclusive
+    expect(await verifyPreviewCookie(atBoundary, 's3cret', boundary - 1)).toBe(true);
     expect(await verifyPreviewCookie(undefined, 's3cret')).toBe(false);
     expect(await verifyPreviewCookie(c, undefined)).toBe(false);
   });
