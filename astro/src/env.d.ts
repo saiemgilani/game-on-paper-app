@@ -13,6 +13,7 @@ interface ImportMeta {
 declare namespace App {
     interface Locals {
         preview?: boolean;
+        adminAuthed?: boolean;
     }
   interface SessionData {
     favorites?: {

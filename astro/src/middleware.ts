@@ -5,6 +5,7 @@ import {
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
 import { PREVIEW_COOKIE, readCookie, verifyPreviewCookie } from './utils/preview';
+import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
@@ -37,12 +38,23 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
-    const ok = checkBasicAuth(context.request.headers.get('authorization'),
+    // Two ways in: the signed session cookie a browser gets from /admin/login,
+    // or basic auth for scripted callers (the purge workflow curls with -u,
+    // which sends its Authorization header proactively -- no 401 challenge
+    // needed, so the browser popup is gone for good).
+    const open = url.pathname === '/admin/login' || url.pathname === '/admin/api/login';
+    const cookieOk = await verifyAdminCookie(
+      readCookie(context.request.headers.get('cookie'), ADMIN_COOKIE), getSecret('ADMIN_PASS'));
+    const basicOk = checkBasicAuth(context.request.headers.get('authorization'),
       getSecret('ADMIN_USER'), getSecret('ADMIN_PASS'));
-    if (!ok) {
-      return new Response('auth required', {
-        status: 401, headers: { 'WWW-Authenticate': 'Basic realm="gop-admin"' } });
+    if (!open && !cookieOk && !basicOk) {
+      if (url.pathname.startsWith('/admin/api/')) {
+        return Response.json({ ok: false, error: 'auth required' },
+          { status: 401, headers: { 'Cache-Control': 'no-store' } });
+      }
+      return context.redirect('/admin/login', 302);
     }
+    if (cookieOk || basicOk) context.locals.adminAuthed = true;
   }
 
   const key = getSecret('GOP_INGEST_KEY') ?? '';
@@ -121,7 +133,11 @@ function safeClientAddress(context: any): string | null {
 // explicit opt-out, and cache.set(false) after render wins over any options
 // the page itself accumulated.
 function withPreviewCacheGuard(context: any, response: Response): Response {
-  if (context.locals?.preview === true) {
+  const isAdmin = new URL(context.request.url).pathname.startsWith('/admin');
+  // Preview renders are per-viewer; /admin responses are authenticated. Either
+  // way a cached copy would be served to the wrong audience on a HIT -- and a
+  // HIT never runs the Worker, so the auth check would be skipped entirely.
+  if (context.locals?.preview === true || isAdmin) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
   }

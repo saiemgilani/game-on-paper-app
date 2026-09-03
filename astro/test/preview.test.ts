@@ -39,3 +39,25 @@ describe('feature flags', () => {
     expect(isFeatureEnabled('__test', { preview: true })).toBe(false);
   });
 });
+
+describe('admin session cookie', () => {
+  test('round-trips, rejects tamper/expiry/other secret, and differs from the preview cookie', async () => {
+    const { mintAdminCookie, verifyAdminCookie } = await import('../src/utils/adminSession');
+    const { verifyPreviewCookie } = await import('../src/utils/preview');
+    const c = await mintAdminCookie('s3cret');
+    expect(await verifyAdminCookie(c, 's3cret')).toBe(true);
+    expect(await verifyAdminCookie(c, 'other')).toBe(false);
+    const [v, exp, sig] = c.split('.');
+    expect(await verifyAdminCookie(`${v}.${Number(exp) + 9}.${sig}`, 's3cret')).toBe(false);
+    // purpose separation: an admin cookie must not open preview mode, nor vice versa
+    expect(await verifyPreviewCookie(c, 's3cret')).toBe(false);
+  });
+  test('timingSafeEqual compares correctly regardless of length', async () => {
+    const { timingSafeEqual } = await import('../src/utils/adminSession');
+    expect(await timingSafeEqual('abc', 'abc')).toBe(true);
+    expect(await timingSafeEqual('abc', 'abd')).toBe(false);
+    expect(await timingSafeEqual('abc', 'ab')).toBe(false);
+    expect(await timingSafeEqual('', '')).toBe(true);
+    expect(await timingSafeEqual('a'.repeat(200), 'a')).toBe(false);
+  });
+});
