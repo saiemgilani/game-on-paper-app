@@ -537,7 +537,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="drives" title="Drives">
                         <div class="row" slot="panel-body">
                             {
-                                (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game</p>)
+                                (spanDrives.length == 0) && (<p class="text-center text-muted">{activeSpan ? `No drives in ${activeSpan.label}` : "No drives in this game"}</p>)
                             }
                             {
                                 (spanDrives.length > 0) && <DrivesTable drives={spanDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} />
