@@ -111,6 +111,20 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/-?\d+\.\d\d EPA\/play/);
     });
 
+    test('penalties split by unit, and the totals are accepted flags only', () => {
+        expect(html).toContain('>Penalties<');
+        for (const u of ['Offense', 'Defense', 'Special teams', 'Total', 'First downs given up', 'Plays nullified']) {
+            expect(html).toContain(`>${u}<`);
+        }
+        // this game has 11 flags, none on a kick
+        const pen = html.slice(html.indexOf('>Penalties<'));
+        const st = pen.slice(pen.indexOf('>Special teams<'), pen.indexOf('>Total<'));
+        expect(st).toMatch(/0&ndash;0/);
+        const totals = [...pen.slice(pen.indexOf('>Total<')).matchAll(/<strong>(\d+)&ndash;(\d+)<\/strong>/g)];
+        expect(totals).toHaveLength(2);
+        expect(Number(totals[0][1]) + Number(totals[1][1])).toBe(11);
+    });
+
     test('the book rows render with their EPA beside them', () => {
         for (const label of ['Third down', 'Fourth down', 'Red zone scoring', 'Turnovers', 'Sacks taken', 'Time of possession']) {
             expect(html).toContain(`>${label}<`);
@@ -123,8 +137,10 @@ describe('GamePage renders a finished game end to end', () => {
 
     test('a game whose text names no tacklers shows no defensive box', () => {
         // 401729745 predates ESPN's LiveStats tackler parentheticals; the section
-        // has to disappear rather than render an empty table.
-        expect(html).not.toContain('>Defense<');
+        // has to disappear rather than render an empty table. Scoped to the player
+        // box: the penalty table legitimately has a row labelled "Defense".
+        const box = html.slice(html.indexOf('id="player-stats"'), html.indexOf('id="big-plays"'));
+        expect(box).not.toContain('>Defense<');
     });
 
     test('the linescore prints each quarter and adds up to the final score', () => {
@@ -199,6 +215,24 @@ describe('GamePage renders a finished game end to end', () => {
         // repeated here: drive.description already reads "12 plays, 72 yards, 6:08".
         expect(body).toMatch(/-?\d+\.\d\d\/play/);
         expect(body).toMatch(/\d+ plays, -?\d+ yards/);
+    });
+
+    test('the play focus selector ships the index its script needs', () => {
+        expect(html).toContain('data-play-focus="all"');
+        // the index is embedded, keyed by the same play number the row href carries
+        const m = html.match(/data-index="([^"]*)"/);
+        expect(m).toBeTruthy();
+        const index = JSON.parse(m![1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+        const keys = Object.keys(index);
+        expect(keys.length).toBeGreaterThan(100);
+        // every selector the menu offers must actually match at least one play
+        const offered = [...html.matchAll(/<option value="((?:r|t):[^"]+)"/g)].map((x) => x[1]);
+        expect(offered.length).toBeGreaterThan(20);
+        const all = new Set(Object.values(index).flat() as string[]);
+        for (const o of offered) expect(all.has(o), `menu offers ${o} but no play carries it`).toBe(true);
+        // and every indexed key resolves to a row in the All Plays table
+        const body = html.slice(html.indexOf('data-plays-body="all"'));
+        for (const k of keys.slice(0, 25)) expect(body).toContain(`#play-all-${k}"`);
     });
 
     test('every nav link points at an anchor that exists', () => {
