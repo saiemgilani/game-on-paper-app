@@ -28,6 +28,25 @@ const subtitle = "Operational dashboards for Game on Paper";
   </ul>
   <section id="overview" class="on">
     <div class="tiles" id="ov-tiles"></div>
+    <div class="grid2 mb-2">
+      <div class="card"><h6 class="admin-label mt-0">Deployed versions</h6><div id="ops-version" class="admin-muted">loading…</div></div>
+      <div class="card"><h6 class="admin-label mt-0">Purge cached game pages</h6>
+        <form id="ops-purge" class="d-flex flex-wrap gap-2 align-items-center">
+          <select class="form-select form-select-sm w-auto" id="purge-tag">
+            <option value="">no tag</option>
+            <option value="game-completed" selected>game-completed</option>
+            <option value="game-in-progress">game-in-progress</option>
+            <option value="game-scheduled-today">game-scheduled-today</option>
+            <option value="scoreboard">scoreboard</option>
+            <option value="matchup">matchup</option>
+          </select>
+          <input class="form-control form-control-sm w-auto" id="purge-ids" placeholder="game ids, comma-separated (optional)" size="34" />
+          <button class="btn btn-sm btn-outline-danger" type="submit">Purge</button>
+          <span class="small admin-muted" id="purge-result"></span>
+        </form>
+        <p class="small admin-muted mb-0 mt-1">Purging ids also resets each game's regression-guard mark. The API-layer cache is keyed on the deploy and needs no purge.</p>
+      </div>
+    </div>
     <h6 class="admin-label">Last 60 minutes</h6>
     <div class="grid2">
       <div class="card"><h6 class="admin-label mt-0">Requests / min (astro)</h6><canvas id="c-reqs" height="150"></canvas></div>
@@ -187,6 +206,32 @@ const subtitle = "Operational dashboards for Game on Paper";
     document.getElementById(el).innerHTML = parts.map((p) => `<div style="flex:${Math.max(p.v, 0.001)};background:${p.c}" title="${p.n}: ${p.v}"></div>`).join('');
     document.getElementById(legEl).innerHTML = parts.map((p) => `<span><i style="background:${p.c}"></i>${p.n} ${(100 * p.v / total).toFixed(1)}%</span>`).join('');
   }
+
+  // ---- ops: versions + purge (Overview tab) ----
+  async function loadVersions() {
+    try {
+      const v = await fetch('/admin/api/version').then((r) => r.json());
+      const sha = (v.app_version ?? '').slice(0, 8);
+      const py = v.python?.sportsdataverse ?? {};
+      document.getElementById('ops-version').innerHTML =
+        `<div class="kv"><span>worker / api build</span><b class="mono">${sha ? `<a href="https://github.com/saiemgilani/game-on-paper-app/commit/${esc(v.app_version)}">${esc(sha)}</a>` : '?'}</b></div>` +
+        `<div class="kv"><span>sportsdataverse-py</span><b class="mono">${esc(py.version ?? '?')} @ ${py.sha ? `<a href="https://github.com/sportsdataverse/sportsdataverse-py/commit/${esc(py.sha)}">${esc(py.sha.slice(0, 8))}</a>` : '?'}</b></div>` +
+        `<div class="kv"><span>python api</span><b class="mono">${esc(v.python?.status ?? 'ok')}</b></div>`;
+    } catch { document.getElementById('ops-version').textContent = 'version lookup failed'; }
+  }
+  loadVersions();
+  document.getElementById('ops-purge').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tag = document.getElementById('purge-tag').value;
+    const ids = document.getElementById('purge-ids').value.replace(/\s/g, '');
+    const out = document.getElementById('purge-result');
+    if (!tag && !ids) { out.textContent = 'pick a tag or give ids'; return; }
+    out.textContent = 'purging…';
+    try {
+      const d = await fetch(`/admin/api/purge-game?tags=${encodeURIComponent(tag)}&ids=${encodeURIComponent(ids)}`, { method: 'POST' }).then((r) => r.json());
+      out.textContent = d.ok ? `purged: ${Object.keys(d.results).join(', ')}` : `failed: ${JSON.stringify(d.results ?? d.error).slice(0, 120)}`;
+    } catch (err) { out.textContent = `error: ${err}`; }
+  });
 
   async function refreshOverview() {
     const d = await api('overview');
