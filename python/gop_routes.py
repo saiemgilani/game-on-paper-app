@@ -182,6 +182,7 @@ def _dq(args):
                 round(max(abs(delta))::numeric, 1)::float AS worst
             FROM gop.dq_boxscore
             WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
+                AND stat NOT LIKE 'lint:%%'
             GROUP BY 1 ORDER BY 1""",
             (days,),
         ),
@@ -204,6 +205,8 @@ def _dq(args):
             LEFT JOIN gop.game_meta gm ON gm.game_id = d.game_id
             WHERE d.ts > now() - make_interval(days => %s)
                 AND d.delta IS NOT NULL AND d.stat NOT LIKE 'lint:%%'
+                -- a reprocessed game writes a fresh batch; only its latest counts
+                AND d.ts = (SELECT max(ts) FROM gop.dq_boxscore WHERE game_id = d.game_id)
             GROUP BY 1, 2 ORDER BY total_abs_delta DESC LIMIT 25""",
             (days,),
         ),
