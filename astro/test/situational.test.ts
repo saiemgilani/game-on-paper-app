@@ -103,3 +103,13 @@ describe('periodSplits', () => {
         }
     });
 });
+
+test('a null period neither mints a Q0 split nor counts as overtime', async () => {
+    const { periodSplits } = await import('../src/utils/situational');
+    const p = (period: number | null) => ({ period, EPA_scrimmage: 0.1, scrimmage_play: true });
+    const splits = periodSplits([p(1), p(1), p(null), p(2)]);
+    const keys = splits.map((s) => s.key);
+    expect(keys).not.toContain('q0');
+    expect(keys).not.toContain('ot');
+    expect(keys).toContain('q1');
+});

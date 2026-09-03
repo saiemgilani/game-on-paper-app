@@ -52,7 +52,8 @@ const perPlay = (xs: PlayLike[]) => (xs.length ? xs.reduce((t, p) => t + (Number
  */
 export function periodSplits(plays: PlayLike[]): { key: string; label: string; plays: PlayLike[] }[] {
     const inPeriod = (p: PlayLike, ...ns: number[]) => ns.includes(Number(p.period));
-    const periods = [...new Set(plays.map((p) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
+    // p.period == null would coerce to 0 and mint a bogus "Q0" split
+    const periods = [...new Set(plays.filter((p) => p.period != null).map((p) => Number(p.period)).filter((n) => Number.isFinite(n) && n >= 1))].sort((a, b) => a - b);
     const splits = [
         { key: "all", label: "Full game", plays },
         { key: "h1", label: "1st half", plays: plays.filter((p) => inPeriod(p, 1, 2)) },
