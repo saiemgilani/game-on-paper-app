@@ -261,3 +261,29 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
         expect(html).toContain('11 LNG, 0.80 best EPA, 1.2% best WPA');
     });
 });
+
+describe('the classic snapshot serves the public while v2 is in preview', () => {
+    let html = '';
+    beforeAll(async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = await retrieveProcessedGame(GAME_ID, 30);
+        const GamePageClassic = (await import('../src/components/game/classic/GamePage.astro')).default;
+        html = await container.renderToString(GamePageClassic, { props: { id: String(GAME_ID), game } });
+    }, 30000);
+
+    test('renders the pre-v2 page: plays table present, v2 surfaces absent', () => {
+        expect(html.length).toBeGreaterThan(50_000);
+        expect(html).toContain('<html');
+        // v2-only surfaces must not leak into the public variant
+        expect(html).not.toContain('data-play-filters');
+        expect(html).not.toContain('<symbol id="pi-td"');
+        expect(html).not.toContain('pi-pill');
+    });
+
+    test('the flag gates it: preview renders v2, public renders classic', async () => {
+        const { isFeatureEnabled, FLAGS } = await import('../src/utils/features');
+        expect(FLAGS['game-page-v2']).toBe('preview');
+        expect(isFeatureEnabled('game-page-v2', { preview: true })).toBe(true);
+        expect(isFeatureEnabled('game-page-v2', {})).toBe(false);
+    });
+});

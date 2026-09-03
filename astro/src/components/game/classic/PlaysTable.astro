@@ -1,0 +1,80 @@
+---
+// FROZEN SNAPSHOT of the pre-v2 game page (origin/main), served to the public
+// while the rebuilt page + play marks sit behind the 'game-page-v2' preview
+// flag. Do not develop here: promotion deletes this directory. Only the four
+// files both PRs MODIFIED are frozen; unmodified components are imported from
+// the live tree.
+import type { ProcessedPlay } from '../../../resources/python'
+import ExpandedPlayRow from '../plays/ExpandedPlayRow.astro'
+import PlayRow from './PlayRow.astro'
+
+
+interface Props {
+    plays: ProcessedPlay[]
+    prefix: string
+    expandable: boolean
+    caption?: string
+    showGuide?: boolean
+}
+
+const { plays, prefix, expandable, caption, showGuide } = Astro.props;
+
+---
+
+<div class="table table-responsive">
+    <table class="table table-sm table-responsive" style="border-collapse:collapse;">
+        {
+            (caption && !showGuide) && (
+                <caption>{caption}</caption>
+            )
+        }
+        {
+            (caption && showGuide) && (
+                <caption>
+                <span class="mb-1">{caption}</span>
+                <div>
+                    <p class="mb-0">Play shading guide:</p>
+                    <ul>
+                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li><strong class="text-danger">Red</strong> - turnover</li>
+                        <li><strong class="text-success">Green</strong> - scoring play</li>
+                    </ul>
+                </div>
+                </caption>
+            )
+        }
+        {
+            (!caption && showGuide) && (
+                <caption>
+                <div>
+                    <p class="mb-0">Play shading guide:</p>
+                    <ul>
+                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li><strong class="text-danger">Red</strong> - turnover</li>
+                        <li><strong class="text-success">Green</strong> - scoring play</li>
+                    </ul>
+                </div>
+                </caption>
+            )
+        }
+        <thead>
+            <tr>
+                <th style="text-align: left;">Time</th>
+                <th style="text-align: center;">Offense</th>
+                <th style="text-align: left;">Play Description</th>
+                <th style="text-align: center;">EPA</th>
+                <th style="text-align: center;">WP%</th>
+                <th style="text-align: right;">WPA</th>
+            </tr>
+        </thead>
+        <tbody>
+            {
+                (plays.map(p => (
+                    <PlayRow play={p} expandable={expandable} prefix={prefix}>
+                        <ExpandedPlayRow play={p} slot="expandable-row-content"/>
+                    </PlayRow>
+                )))
+            }
+        </tbody>
+    </table>
+</div>

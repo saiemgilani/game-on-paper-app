@@ -17,7 +17,10 @@
 export type FeatureState = 'off' | 'preview' | 'on';
 
 export const FLAGS: Record<string, FeatureState> = {
-    // 'example-widget': 'preview',
+    // The rebuilt game page (#189) AND play marks (#187): public traffic gets
+    // the frozen pre-v2 snapshot (components/game/classic/); the preview cookie
+    // renders the new tree. Promote by flipping to 'on' and deleting classic/.
+    'game-page-v2': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {
