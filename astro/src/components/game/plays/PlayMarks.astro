@@ -1,0 +1,20 @@
+---
+import { PLAY_ICON_LABEL, PLAY_PILL_TEXT, playIcons } from '../../../utils/playIcons';
+
+interface Props { play: any; size?: number; beside?: boolean }
+const { play, size, beside } = Astro.props;
+const ids = playIcons(play);
+// A defensive score (pick-six, scoop-and-score, blocked-kick return) keeps the touchdown glyph but
+// takes the turnover colour, so the offense's row and the defense's row never read the same.
+const defensive = play?.defense_score_play === true;
+const cls = (id: string) => `pi pi-${id}${defensive && id.startsWith('td') ? ' pi-def' : ''}`;
+const label = (id: string) => defensive && id.startsWith('td') ? `Defensive ${PLAY_ICON_LABEL[id as keyof typeof PLAY_ICON_LABEL].toLowerCase()}` : PLAY_ICON_LABEL[id as keyof typeof PLAY_ICON_LABEL];
+---
+{ids.length > 0 && (
+    <span class={`play-marks${beside ? ' play-marks-beside' : ''}`} style={size ? `font-size:${size}px` : undefined}>
+        {ids.map((id) => PLAY_PILL_TEXT[id]
+            ? <span class={`pi-pill pi-${id}`} role="img" aria-label={label(id)}>{PLAY_PILL_TEXT[id]}</span>
+            : <svg class={cls(id)} role="img" aria-label={label(id)}><title>{label(id)}</title><use href={`#pi-${id}`} /></svg>
+        )}
+    </span>
+)}

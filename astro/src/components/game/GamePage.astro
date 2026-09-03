@@ -12,6 +12,8 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
 import PlayFilters from './plays/PlayFilters.astro';
+import PlayMarkSprite from './plays/PlayMarkSprite.astro';
+import { threeAndOutPlays } from '../../utils/playIcons';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './metrics/PlayerBoxScore.astro';
 import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
@@ -55,6 +57,8 @@ if (verdict.requiredMissing.length) {
     return Astro.rewrite("/404")
 }
 salvageGame(game);
+// drive-shaped mark: flag the punt that ends a three-and-out so PlayMarks can render it per row
+for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: any) => x.game_play_number === n); if (p) (p as any).three_and_out = true; }
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
 const homeComp = game.header.competitions[0].competitors[0];
@@ -207,6 +211,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>
+        <PlayMarkSprite />
         <div class="container-fluid">
             <header class="blog-header py-3">
                 <div class="row flex-nowrap justify-content-between align-items-center">
