@@ -1,6 +1,8 @@
 node_modules
 */node_modules
-*/package-lock.json
+# astro/package-lock.json is TRACKED since 2026-09-03: two same-morning breakages
+# (astro 7.3.0 killed the workerd build; an npm 10 arborist crash killed CI)
+# came from lockfile-less installs drifting with the registry.
 */.DS_Store
 .DS_Store
 env
