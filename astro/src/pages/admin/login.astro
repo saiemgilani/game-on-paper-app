@@ -14,7 +14,7 @@ const failed = Astro.url.searchParams.get("err") === "1";
     { title: "Admin", active: true },
 ]}>
   <div class="container" style="max-width: 380px;">
-    <div class="card p-4 mt-5">
+    <div class="card p-4 my-5">
       <h4 class="mb-1">Admin</h4>
       <p class="text-body-secondary small mb-3">Operational dashboards for Game on Paper</p>
       {failed && <div class="alert alert-danger py-2 small" role="alert">Sign-in failed. Check the username and password.</div>}
