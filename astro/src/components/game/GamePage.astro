@@ -1,13 +1,9 @@
 ---
-import WatchButton from '../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../components/NavScroller.astro';
-import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+import { type ProcessedGame } from '../../resources/python';
 import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/manifest';
 import { gopStorage } from '../../utils/telemetry';
-import { cleanLocation, isEventFavorite, isChampionshipEvent, deduplicateByKey } from '../../utils/misc';
-import { DateTime } from 'luxon';
-import LocalDate from '../LocalDate.svelte';
-import type { ESPNCompetition } from '../../resources/espn';
+import { cleanLocation, isChampionshipEvent, deduplicateByKey } from '../../utils/misc';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
@@ -36,6 +32,7 @@ import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
+import GameHeader from './GameHeader.astro';
 
 interface Props {
    id: string | number
@@ -91,7 +88,6 @@ const gameStatus = game.header.competitions[0].status;
 // "win probability") -- "Game: X, Y" and "Advanced stats for X vs Y" gave Google
 // nothing to match a query against. Rendered names stay lowercased.
 const hasScore = gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0);
-const statusDetail = gameStatus.type.detail;
 const statusDescription = gameStatus.type.description ?? "Scheduled";
 const gameSpec = {
     id, hasScore,
@@ -106,8 +102,6 @@ const gameSpec = {
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription(gameSpec);
 const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
-
-const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
 
 const previewUrlParams = new URLSearchParams({
     homeSeason: String(game.season.year),
@@ -235,30 +229,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     <body>
         <PlayMarkSprite />
         <div class="container-fluid">
-            <header class="blog-header py-3">
-                <div class="row flex-nowrap justify-content-between align-items-center">
-                    <div class="col-2 pt-1">
-                        <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
-                    </div>
-                    <div class="col-12 col-md-8 text-center order-1 order-md-0">
-                        <div>
-                            <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
-                            {
-                                (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
-                            }
-                            {
-                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.header.competitions[0].date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
-                            }
-                            {
-                                (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
-                            }
-                        </div>
-                    </div>
-                    <div class="col-10 col-md-2 d-flex justify-content-end align-items-center">
-                        <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
-                    </div>
-                </div>
-            </header>
+            <GameHeader game={game} />
         </div>
         {/* Outside the header container on purpose: position sticky only works
             while the PARENT is in view; inside the small header container the
@@ -266,31 +237,33 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             level it sticks for the whole page. */}
         <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
-            <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
-                <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
-                {spanPills.map((sp) => (
-                    <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
-                ))}
-            </div>
-            {activeSpan && (
-                <div class="alert alert-info py-1 px-3 mb-2 small">
-                    Showing <strong>{activeSpan.label}</strong> only. Every play-derived table is recomputed for this window
-                    {game.advBoxScoreSpan ? '' : ' (advanced boxes fell back to full-game for this window)'};
-                    the charts, the Latest strip, ESPN's official stat lines and season percentiles always describe the full game.
-                </div>
-            )}
-            {latestPlays.length > 0 && (
-                <div class="row mb-3">
-                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                        <Panel id="latest" title="Latest">
-                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
-                            <div class="row" slot="panel-body">
-                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
-                            </div>
-                        </Panel>
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
+                        <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
+                        {spanPills.map((sp) => (
+                            <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
+                        ))}
                     </div>
+                    {activeSpan && (
+                        <div class="alert alert-info py-1 px-3 mb-2 small">
+                            Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
+                        </div>
+                    )}
+                    {latestPlays.length > 0 && (
+                        <div class="row mb-3">
+                            <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                                <Panel id="latest" title="Latest">
+                                    <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
+                                    <div class="row" slot="panel-body">
+                                        <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
+                                    </div>
+                                </Panel>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
@@ -319,7 +292,6 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                     plays={game.plays}
                                     drives={gameDrives}
-                                    caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Expected Points"
@@ -377,7 +349,6 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     season={game.season.year}
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                     plays={game.plays}
-                                    caption="Plays from scrimmage only, the same population the whole-game situational table below counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Situational"
@@ -552,7 +523,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
             </div>
-            <div class="row mb-0">
+            <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="all-plays" title="All Plays">
                         {

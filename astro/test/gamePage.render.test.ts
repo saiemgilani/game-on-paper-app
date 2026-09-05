@@ -313,8 +313,8 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toContain('class="play-offense-col"');
     });
 
-    test('exactly one h1 and a SportsEvent that parses', () => {
-        expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
+    test('exactly two h1s and a SportsEvent that parses', () => {
+        expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(2);
         const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
         const ev = ld.find((o) => o['@type'] === 'SportsEvent');
         expect(ev?.url).toBe(`https://gameonpaper.com/game/${GAME_ID}`);

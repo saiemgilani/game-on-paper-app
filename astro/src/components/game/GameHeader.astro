@@ -1,0 +1,90 @@
+---
+import { DateTime } from 'luxon';
+import { EMPTY_ESPN_COMPETITION, type ESPNCompetition, type ESPNPlayByPlayResponse, type ESPNScheduleEvent } from '../../resources/espn';
+import type { ProcessedGame } from '../../resources/python';
+import { isChampionshipEvent, cleanLocation } from '../../utils/misc';
+import LocalDate from '../LocalDate.svelte';
+import WatchButton from './WatchButton.astro';
+
+interface Props {
+   espnGame?: ESPNPlayByPlayResponse
+   game?: ProcessedGame
+}
+
+const { game, espnGame } = Astro.props;
+
+const espnHeader = game?.header || espnGame?.gamepackageJSON.header;
+const espnComp = espnHeader?.competitions[0] || EMPTY_ESPN_COMPETITION;
+
+const homeComp = espnComp.competitors[0];
+const awayComp = espnComp.competitors[1];
+const homeTeam = homeComp.team;
+const awayTeam = awayComp.team;
+const gameNote = espnHeader?.gameNote ?? "";
+const isChampEvent = isChampionshipEvent(gameNote);
+const gameStatus = espnComp.status;
+const statusDetail = gameStatus.type.detail;
+const statusDescription = gameStatus.type.description ?? "Scheduled";
+const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay") || statusDescription.includes("Schedule"))
+
+const gameDate = espnComp.date;
+
+---
+
+<div class="py-3 border-bottom">
+    <header class="blog-header d-none d-lg-inline">
+        <div class="row d-flex flex-wrap justify-content-between align-items-center">
+            <div class="col-2 pt-1">
+                <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
+            </div>
+            <div class="col-8 text-center">
+                <div>
+                    {
+                        (statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
+                    }
+                    {
+                        (!statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    }
+                    {
+                        (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
+                    }
+                    {
+                        (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={gameDate} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
+                    }
+                    {
+                        (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
+                    }
+                </div>
+            </div>
+            <div class="col-2 d-flex justify-content-end align-items-center">
+                <WatchButton game={espnComp} />
+            </div>
+        </div>
+    </header>
+    <header class="blog-header d-inline d-lg-none">
+        <div class="row">
+            <div class="col-12 text-center">
+                <div>
+                    <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    {
+                        (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
+                    }
+                    {
+                        (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={gameDate} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
+                    }
+                    {
+                        (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a class="btn btn-sm btn-outline-primary align-middle p-2" href="/"><i class="bi-arrow-left"></i> Back to Scoreboard</a>
+            </div>
+            <div>
+                <WatchButton game={espnComp} />
+            </div>
+        </div>
+    </header>
+</div>
