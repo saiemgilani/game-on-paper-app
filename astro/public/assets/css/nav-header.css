@@ -52,6 +52,7 @@ table {
   height: 2.75rem;
   overflow-y: hidden;
   border-bottom: 1px solid #e5e5e5;
+  border-top: 1px solid #e5e5e5;
 }
 
 .nav-scroller .nav {

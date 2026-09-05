@@ -1,0 +1,11 @@
+---
+import GameHeader from "../../components/game/GameHeader.astro";
+import GenericPage from "../../layouts/GenericPage.astro";
+import { retrieveGamePage } from "../../resources/espn";
+
+const espnGame = await retrieveGamePage(401856766);
+---
+
+<GenericPage title="test" subtitle="test" description="test" slug="/header" breadcrumbs={[]}>
+    <GameHeader espnGame={espnGame} />
+</GenericPage>

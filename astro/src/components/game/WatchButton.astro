@@ -18,17 +18,18 @@ if (game.status.type.completed == true) {
 let networkName: string | null = null;
 const geoBroadcasts = ((game.geoBroadcasts) || []).filter((g: ESPNGeoBroadcast) => ["1", "4"].includes(g.type.id)); // only look at TV & streaming
 if (geoBroadcasts.length > 0) {
-    networkName = game.geoBroadcasts![0].media.shortName;
+    networkName = geoBroadcasts[0].media.shortName;
 } else if ((game.broadcasts?.length ?? 0) > 0) {
     networkName = game.broadcasts![0].media?.shortName || null;
 }
 
 const networkMapping = networkName ? NETWORK_MAPPINGS[networkName] : null;
 const networkURL = (isESPNNetwork(networkName)) ? `https://www.espn.com/watch/player/_/eventCalendarId/${game.id}` : networkMapping;
+
 ---
 
 <Fragment>
     {
-        (networkURL) && <a class="btn btn-sm btn-outline-secondary" role="button" target="_blank" href={networkURL}>{`${actionPrefix} (${networkName})`}</a>
+        (networkURL) && <a class="btn btn-sm btn-outline-secondary p-2" role="button" target="_blank" href={networkURL}>{`${actionPrefix} (${networkName})`}</a>
     }
 </Fragment>

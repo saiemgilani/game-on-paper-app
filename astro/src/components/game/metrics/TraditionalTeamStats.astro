@@ -12,7 +12,7 @@ interface Props {
     drives: any[];
     caption?: string;
 }
-const { title = 'The Book', season, teams, plays, drives, caption } = Astro.props;
+const { title = 'Traditional Stats', season, teams, plays, drives, caption } = Astro.props;
 
 // One column per team, so the rows line up with the EPA tables above.
 const columns = teams.map((id) => traditionalTeamStats(plays, id, drives));

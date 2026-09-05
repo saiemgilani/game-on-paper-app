@@ -36,6 +36,7 @@ import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
+import GameHeader from './GameHeader.astro';
 
 interface Props {
    id: string | number
@@ -234,32 +235,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     </head>
     <body>
         <PlayMarkSprite />
-        <div class="container-fluid">
-            <header class="blog-header py-3">
-                <div class="row flex-nowrap justify-content-between align-items-center">
-                    <div class="col-2 pt-1">
-                        <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
-                    </div>
-                    <div class="col-12 col-md-8 text-center order-1 order-md-0">
-                        <div>
-                            <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
-                            {
-                                (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
-                            }
-                            {
-                                (isGameInactive) && <LocalDate client:only divClass="text-small m-0" date={game.header.competitions[0].date} format={DateTime.DATETIME_FULL} prefix={statusDescription} />
-                            }
-                            {
-                                (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
-                            }
-                        </div>
-                    </div>
-                    <div class="col-10 col-md-2 d-flex justify-content-end align-items-center">
-                        <WatchButton game={game.header.competitions[0] as ESPNCompetition} />
-                    </div>
-                </div>
-            </header>
-        </div>
+        <GameHeader game={game} />
         {/* Outside the header container on purpose: position sticky only works
             while the PARENT is in view; inside the small header container the
             nav released after a single scroll (CodeRabbit, #208). At body
