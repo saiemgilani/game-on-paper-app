@@ -295,7 +295,6 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                     plays={game.plays}
                                     drives={gameDrives}
-                                    caption="The counting stats an official book leads with, each carrying the EPA of the plays it counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Expected Points"
@@ -353,7 +352,6 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     season={game.season.year}
                                     teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                     plays={game.plays}
-                                    caption="Plays from scrimmage only, the same population the whole-game situational table below counts."
                                 />
                                 <TeamMetricsTable 
                                     title="Situational"

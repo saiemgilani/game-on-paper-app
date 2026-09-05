@@ -42,7 +42,7 @@ const labels = columns[0]?.map((r) => r.label) ?? [];
                         <td class="numeral" style="text-align: center;">
                             {rows[i].value}
                             {rows[i].epa != null && (
-                                <span class="text-muted text-small" style="display: block;" title="Expected points added over the plays this row counts">
+                                <span class="text-muted text-small" style="display: block;" title="Expected points added over these plays">
                                     {roundNumber(rows[i].epa as number, 2, 2)} EPA
                                 </span>
                             )}
