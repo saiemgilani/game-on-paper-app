@@ -4,15 +4,11 @@
 // flag. Do not develop here: promotion deletes this directory. Only the four
 // files both PRs MODIFIED are frozen; unmodified components are imported from
 // the live tree.
-import WatchButton from '../../../components/game/WatchButton.astro';
 import NavScroller, { type ScrollerItem } from '../../../components/NavScroller.astro';
-import { retrieveProcessedGame, type ProcessedGame } from '../../../resources/python';
+import { type ProcessedGame } from '../../../resources/python';
 import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../../utils/manifest';
 import { gopStorage } from '../../../utils/telemetry';
-import { cleanLocation, isEventFavorite, isChampionshipEvent, deduplicateByKey } from '../../../utils/misc';
-import { DateTime } from 'luxon';
-import LocalDate from '../../LocalDate.svelte';
-import type { ESPNCompetition } from '../../../resources/espn';
+import { cleanLocation, isChampionshipEvent, deduplicateByKey } from '../../../utils/misc';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import Scripts from '../../Scripts.astro';
 import PlaysTable from './PlaysTable.astro';
@@ -72,7 +68,6 @@ const gameStatus = game.header.competitions[0].status;
 // "win probability") -- "Game: X, Y" and "Advanced stats for X vs Y" gave Google
 // nothing to match a query against. Rendered names stay lowercased.
 const hasScore = gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0);
-const statusDetail = gameStatus.type.detail;
 const statusDescription = gameStatus.type.description ?? "Scheduled";
 const gameSpec = {
     id, hasScore,
@@ -87,8 +82,6 @@ const gameSpec = {
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription(gameSpec);
 const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
-
-const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
 
 const previewUrlParams = new URLSearchParams({
     homeSeason: String(game.season.year),
