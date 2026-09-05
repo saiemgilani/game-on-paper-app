@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { EMPTY_ESPN_COMPETITION, type ESPNCompetition, type ESPNPlayByPlayResponse, type ESPNScheduleEvent } from '../../resources/espn';
 import type { ProcessedGame } from '../../resources/python';
 import { isChampionshipEvent, cleanLocation } from '../../utils/misc';
-import { LocalDate } from '../LocalDate.svelte';
+import LocalDate from '../LocalDate.svelte';
 import WatchButton from './WatchButton.astro';
 
 interface Props {
@@ -25,9 +25,9 @@ const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = espnComp.status;
 const statusDetail = gameStatus.type.detail;
 const statusDescription = gameStatus.type.description ?? "Scheduled";
-const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay"))
+const isGameInactive = (gameStatus.type.completed == true || statusDescription.includes("Cancel") || statusDescription.includes("Postpone") || statusDescription.includes("Delay") || statusDescription.includes("Schedule"))
 
-const gameDate = espnComp.startDate;
+const gameDate = espnComp.date;
 
 ---
 
@@ -39,7 +39,12 @@ const gameDate = espnComp.startDate;
             </div>
             <div class="col-8 text-center">
                 <div>
-                    <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    {
+                        (statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
+                    }
+                    {
+                        (!statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    }
                     {
                         (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                     }
