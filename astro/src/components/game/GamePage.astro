@@ -235,7 +235,9 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     </head>
     <body>
         <PlayMarkSprite />
-        <GameHeader game={game} />
+        <div class="container-fluid">
+            <GameHeader game={game} />
+        </div>
         {/* Outside the header container on purpose: position sticky only works
             while the PARENT is in view; inside the small header container the
             nav released after a single scroll (CodeRabbit, #208). At body
