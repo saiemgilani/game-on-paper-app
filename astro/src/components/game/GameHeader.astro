@@ -65,7 +65,12 @@ const gameDate = espnComp.date;
         <div class="row">
             <div class="col-12 text-center">
                 <div>
-                    <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    {
+                        (statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
+                    }
+                    {
+                        (!statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
+                    }
                     {
                         (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                     }
