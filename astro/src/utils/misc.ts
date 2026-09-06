@@ -16,11 +16,12 @@ export const BLACK_THEME_BACKGROUND_RGBA = "rgba(0, 0, 0, 0.25)"
 export const BLACK_THEME_HOVER_RGBA = "rgba(0, 0, 0, 0.5)"
 
 export enum SpiceLevel {
-    BELL = 0,
-    SERRANO,
-    CAYENNE,
-    GHOST,
-    REAPER
+    WATER = 'testing',
+    BELL = 'none',
+    SERRANO = 'close-late',
+    CAYENNE = 'ranked-upset',
+    GHOST = 'ranked-close-late',
+    REAPER = 'fcs-upset'
 }
 
 

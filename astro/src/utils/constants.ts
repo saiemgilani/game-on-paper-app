@@ -39,7 +39,8 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "CIAA Network": "https://theciaasn.com",
     "HBCU GO": "https://hbcugo.tv/",
     "HBCU Go": "https://hbcugo.tv/",
-    "UCONN+": "https://uconnhuskies.com/watch/"
+    "UCONN+": "https://uconnhuskies.com/watch/",
+    "UConn+": "https://uconnhuskies.com/watch/"
 };
 
 export function isESPNNetwork(networkName?: string | null): boolean {

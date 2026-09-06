@@ -630,3 +630,47 @@ export async function retrieveTeamSeasonRecord(season: string | number, teamId: 
     const records: ESPNTeamEndpointResponse<ESPNRecord> = await retrieveTeamEndpoint({ endpoint: "records", season, teamId })
     return records.items
 }
+
+
+export const EMPTY_ESPN_COMPETITION: ESPNCompetition = {
+    id: "0",
+    uid: "",
+    timeValid: false,
+    dateValid: false,
+    conferenceCompetition: false,
+    playByPlayAvailable: false,
+    neutralSite: false,
+    recent: false,
+    attendance: 0,
+    geoBroadcasts: [],
+    broadcasts: [],
+    competitors: [
+        { id: "0", team: {id: "0", location: "HOME", uid: "", displayName: "HOME", name: "HOME", abbreviation: "HOME", isActive: false, shortDisplayName: "HOME", logo: "", conferenceId: "80"}, score: "0", uid: "", order: 0, homeAway: "home", winner: false, type: "Unknown", statistics: [], records: []},
+        { id: "1", team: {id: "1", location: "AWAY", uid: "", displayName: "AWAY", name: "AWAY", abbreviation: "AWAY", isActive: false, shortDisplayName: "AWAY", logo: "", conferenceId: "80"}, score: "0", uid: "", order: 1, homeAway: "home", winner: false, type: "Unknown", statistics: [], records: []},
+    ],
+    status: {
+        type: {
+            id: "0",
+            name: "Unknown",
+            state: "Unknown",
+            shortDetail: "Unk",
+            detail: "Unknown",
+            description: "Unknown",
+            completed: true
+        },
+        clock: 0,
+        displayClock: "0:00",
+        period: 0
+    },
+    type: {
+        id: "0",
+        abbreviation: "UNK"
+    },
+    date: new Date().toISOString(),
+    startDate: new Date().toISOString(),
+    format: {
+        regulation: { periods: 4 }
+    },
+    broadcast: "Unknown",
+    notes: []
+}
