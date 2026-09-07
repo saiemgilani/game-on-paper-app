@@ -86,24 +86,31 @@ const allTeamIds = games.map(g => {
 // cards are ~40% of a phone viewport each); the card grid stays the >=768px
 // rendering either way.
 const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
-const slotOf = (g: ESPNScheduleEvent) => {
-    // no announced kickoff: the date is a placeholder midnight, so a time
-    // label (and client-side localization) would be a lie
-    if ((g.competitions?.[0] as any)?.timeValid === false) return 'Time TBD';
+const etFmt = (d: string, opts: Intl.DateTimeFormatOptions) => {
     try {
-        return new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit',
-        }).format(new Date(g.date)) + ' ET';
-    } catch { return 'TBD'; }
+        return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...opts }).format(new Date(d));
+    } catch { return ''; }
 };
-const compactSlots: [string, ESPNScheduleEvent[]][] = [];
+// Slots are keyed by ET DAY + time, not time alone: on a year/week schedule
+// two Saturdays share "12:00 PM" and would otherwise merge under one header
+// (CodeRabbit on #216). The day prefix renders only when the page actually
+// spans multiple dates, so the single-day scoreboard keeps its clean labels.
+type CompactSlot = { key: string; day: string; time: string; tbd: boolean; games: ESPNScheduleEvent[] };
+const compactSlots: CompactSlot[] = [];
+let compactMultiDate = false;
 if (compactRows) {
     for (const g of [...games].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
-        const label = slotOf(g);
+        // no announced kickoff: the date is a placeholder midnight, so a time
+        // label (and client-side localization) would be a lie
+        const tbd = (g.competitions?.[0] as any)?.timeValid === false;
+        const day = etFmt(g.date, { weekday: 'short', month: 'numeric', day: 'numeric' });
+        const time = tbd ? 'Time TBD' : (etFmt(g.date, { hour: 'numeric', minute: '2-digit' }) || 'TBD') + ' ET';
+        const key = `${day}|${time}`;
         const last = compactSlots[compactSlots.length - 1];
-        if (last && last[0] === label) last[1].push(g);
-        else compactSlots.push([label, [g]]);
+        if (last && last.key === key) last.games.push(g);
+        else compactSlots.push({ key, day, time, tbd, games: [g] });
     }
+    compactMultiDate = new Set(compactSlots.map((s) => s.day)).size > 1;
 }
 ---
 
@@ -148,10 +155,13 @@ if (compactRows) {
             {
                 (compactRows && games.length > 0) && (
                     <div class="game-compact-list d-md-none mb-3">
-                        {compactSlots.map(([slot, slotGames]) => (
+                        {compactSlots.map((slot) => (
                             <Fragment>
-                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1" data-gb-utc={slot === 'Time TBD' ? undefined : slotGames[0].date}>{slot}</h6>
-                                {slotGames.map((g) => <GameCompactRow game={g} />)}
+                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1"
+                                    data-gb-utc={slot.tbd ? undefined : slot.games[0].date}
+                                    data-gb-fmt={compactMultiDate && !slot.tbd ? 'datetime' : undefined}>
+                                    {compactMultiDate ? `${slot.day} · ${slot.time}` : slot.time}</h6>
+                                {slot.games.map((g) => <GameCompactRow game={g} />)}
                             </Fragment>
                         ))}
                         {/* One pass over every ET label -- kickoff headers and
@@ -162,10 +172,15 @@ if (compactRows) {
                         <script is:inline>
                             (() => {
                                 try {
-                                    const fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
                                     document.querySelectorAll('[data-gb-utc]').forEach((el) => {
                                         const d = new Date(el.getAttribute('data-gb-utc'));
-                                        if (!isNaN(d.getTime())) el.textContent = fmt.format(d);
+                                        if (isNaN(d.getTime())) return;
+                                        // multi-date pages keep the day in the header so two
+                                        // Saturdays' 12:00 PM slots stay distinguishable
+                                        const opts = el.getAttribute('data-gb-fmt') === 'datetime'
+                                            ? { weekday: 'short', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
+                                            : { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+                                        el.textContent = new Intl.DateTimeFormat(undefined, opts).format(d);
                                     });
                                 } catch { /* ET server-rendered fallback stands */ }
                             })();

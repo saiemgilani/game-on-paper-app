@@ -105,11 +105,15 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(html).toContain('game-compact-list');
         const rows = [...html.matchAll(/class="game-banner[" ]/g)];
         expect(rows).toHaveLength(4);
-        // both fixture games share a kickoff -> exactly one time-slot header (ET)
-        const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
+        // slots are keyed by ET day + time; the fixture spans two dates, so
+        // labels carry the day prefix and the headers carry data-gb-fmt so the
+        // localization script keeps the date in its rewrite (CodeRabbit: two
+        // Saturdays sharing "12:00 PM" must not merge under one header)
+        const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>\s*([^<]+)</g)].map((m) => m[1].trim());
         expect(slots).toHaveLength(2);
-        expect(slots[0]).toMatch(/7:30 PM ET/);
-        expect(slots[1]).toBe('Time TBD');
+        expect(slots[0]).toMatch(/^\w+, 9\/6 · 7:30 PM ET$/);
+        expect(slots[1]).toMatch(/^\w+, 12\/5 · Time TBD$/);
+        expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*data-gb-fmt="datetime"/);
         // Option E: abbreviations with the rank AHEAD of the abbr on BOTH
         // sides (the banner list section only -- the md+ card grid also
         // renders ranks, differently)
