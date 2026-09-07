@@ -15,6 +15,7 @@ const subtitle = "Operational dashboards for Game on Paper";
     <h2 class="mb-0">Admin</h2>
     <span class="badge text-bg-danger text-uppercase">ops</span>
     <button class="btn btn-sm btn-outline-warning ms-3" id="preview-toggle" disabled title="Render 'preview'-state features (utils/features.ts) on the public site for this browser only. Responses are never cached while previewing.">Preview: …</button>
+    <button class="btn btn-sm btn-outline-info" id="preview-link" title="Mint a shareable link that turns preview mode on in ANY browser (colleagues included) — one click, no login. Valid 14 days; the preview cookie it sets lasts 30.">Copy preview link</button>
     <form method="post" action="/admin/api/logout" class="ms-2 mb-0"><button class="btn btn-sm btn-outline-secondary" type="submit" title="End this admin session">Sign out</button></form>
     <span class="ms-auto small admin-muted" id="asof"></span>
   </div>
@@ -207,6 +208,24 @@ const subtitle = "Operational dashboards for Game on Paper";
       const d = await fetch('/admin/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).then((r) => r.json());
       pvRender(d.enabled);
     } catch { pvBtn.disabled = false; }
+  });
+
+  // ---- shareable preview link ----
+  const plBtn = document.getElementById('preview-link');
+  plBtn.addEventListener('click', async () => {
+    const path = window.prompt('Path the link should open (the preview cookie it sets works site-wide):', '/');
+    if (path === null) return;
+    plBtn.disabled = true;
+    try {
+      const d = await fetch('/admin/api/preview-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => r.json());
+      if (!d.ok) throw new Error(d.error);
+      await navigator.clipboard.writeText(d.url);
+      plBtn.textContent = 'Copied!';
+    } catch (e) {
+      plBtn.textContent = 'Failed';
+      console.error('preview-link', e);
+    }
+    setTimeout(() => { plBtn.textContent = 'Copy preview link'; plBtn.disabled = false; }, 1500);
   });
 
   function line(id, labels, datasets) {

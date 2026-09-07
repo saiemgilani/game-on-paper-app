@@ -4,7 +4,10 @@ import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
-import { PREVIEW_COOKIE, readCookie, verifyPreviewCookie } from './utils/preview';
+import {
+  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, previewSetCookie, readCookie,
+  verifyPreviewCookie, verifyPreviewLink,
+} from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS } from './utils/features';
@@ -27,6 +30,26 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const stale = staleRedirectTarget(url.pathname);
   if (stale) {
     return context.redirect(stale + url.search, 301);
+  }
+
+  // Preview magic link: ?preview_key=<signed token> on any URL sets the preview
+  // cookie and redirects to the clean URL. One click on any browser, no admin
+  // login. An invalid/expired token still strips the param and redirects (the
+  // page then renders public, and the missing PREVIEW badge is the signal).
+  // The redirect carries Set-Cookie, so it must never enter Workers Caching.
+  const linkToken = url.searchParams.get(PREVIEW_LINK_PARAM);
+  if (linkToken !== null) {
+    const clean = new URL(url);
+    clean.searchParams.delete(PREVIEW_LINK_PARAM);
+    const headers = new Headers({
+      Location: clean.pathname + clean.search, 'Cache-Control': 'no-store',
+    });
+    const secret = getSecret('ADMIN_PASS');
+    if (secret && await verifyPreviewLink(linkToken, secret)) {
+      headers.append('Set-Cookie', await previewSetCookie(secret));
+    }
+    try { (context as any).cache?.set(false); } catch { /* cache provider absent in dev */ }
+    return new Response(null, { status: 302, headers });
   }
 
   // Admin preview mode: a valid signed cookie renders 'preview'-state features
