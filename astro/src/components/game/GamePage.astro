@@ -237,33 +237,37 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             level it sticks for the whole page. */}
         <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
-            <div class="row">
+            <div class="row mb-2">
                 <div class="col-12">
-                    <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
+                    <div class="d-flex justify-content-start align-items-center flex-wrap gap-1 mx-xs-0 mx-md-3 py-1 span-pills">
                         <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
                         {spanPills.map((sp) => (
                             <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
                         ))}
                     </div>
-                    {activeSpan && (
-                        <div class="alert alert-info py-1 px-3 mb-2 small">
-                            Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
-                        </div>
-                    )}
-                    {latestPlays.length > 0 && (
-                        <div class="row mb-3">
-                            <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                                <Panel id="latest" title="Latest">
-                                    <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
-                                    <div class="row" slot="panel-body">
-                                        <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
-                                    </div>
-                                </Panel>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
+            {activeSpan && (
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <div class="alert alert-info py-1 mx-xs-0 mx-md-3 small" role="alert">
+                            Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
+                        </div>
+                    </div>
+                </div>
+            )}
+            {latestPlays.length > 0 && (
+                <div class="row mb-2">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <Panel id="latest" title="Latest">
+                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
+                            <div class="row" slot="panel-body">
+                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
+                            </div>
+                        </Panel>
+                    </div>
+                </div>
+            )}
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
