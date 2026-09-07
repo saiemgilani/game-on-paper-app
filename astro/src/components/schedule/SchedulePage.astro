@@ -199,7 +199,10 @@ if (compactRows) {
             </div>
             <div class="row mb-3" hidden={!hasActiveGames}>
                 <div class="col-12">
-                    <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                    <p class="text-small text-muted">
+                        Because there are active games, this page auto-refreshes every minute while you're watching it.
+                        <span data-rendered-at={new Date().toISOString()}></span>
+                    </p>
                 </div>
             </div>
             <div class="row text-muted">
@@ -232,5 +235,20 @@ if (compactRows) {
                 )
             }
         </div>
-    </body>
+    <script>
+    // "Updated Ns ago" beside the auto-refresh note: honest about page age,
+    // cheap to keep current, and it makes a deferred (hidden-tab) refresh
+    // legible -- the reader sees the age climb, then the reload catch up.
+    const stamp = document.querySelector<HTMLElement>("[data-rendered-at]");
+    if (stamp?.dataset.renderedAt) {
+        const at = Date.parse(stamp.dataset.renderedAt);
+        const render = () => {
+            const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+            stamp.textContent = s < 10 ? "Updated just now." : s < 90 ? `Updated ${s}s ago.` : `Updated ${Math.round(s / 60)}m ago.`;
+        };
+        render();
+        setInterval(render, 10_000);
+    }
+</script>
+</body>
 </html>
