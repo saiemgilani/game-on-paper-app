@@ -201,7 +201,7 @@ if (compactRows) {
                 <div class="col-12">
                     <p class="text-small text-muted">
                         Because there are active games, this page auto-refreshes every minute while you're watching it.
-                        <span data-rendered-at={new Date().toISOString()}></span>
+                        {hasActiveGames && <span data-rendered-at={new Date().toISOString()}></span>}
                     </p>
                 </div>
             </div>
