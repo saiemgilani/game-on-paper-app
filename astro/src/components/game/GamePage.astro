@@ -33,6 +33,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
 import GameHeader from './GameHeader.astro';
+import FilterGroup from '../../layouts/FilterGroup.astro';
 
 interface Props {
    id: string | number
@@ -254,33 +255,39 @@ if (activeSpan) {
             level it sticks for the whole page. */}
         <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
-            <div class="row">
+            <div class="row ms-sm-auto mb-2">
                 <div class="col-12">
-                    <div class="d-flex align-items-center flex-wrap gap-1 px-3 py-1 span-pills">
-                        <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
-                        {spanPills.map((sp) => (
-                            <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
-                        ))}
-                    </div>
-                    {activeSpan && (
-                        <div class="alert alert-info py-1 px-3 mb-2 small">
-                            Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
-                        </div>
-                    )}
-                    {latestPlays.length > 0 && (
-                        <div class="row mb-3">
-                            <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                                <Panel id="latest" title="Latest">
-                                    <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
-                                    <div class="row" slot="panel-body">
-                                        <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
-                                    </div>
-                                </Panel>
-                            </div>
-                        </div>
-                    )}
+                    <FilterGroup label="Filter metrics by quarter">
+                        <Fragment slot="filter-body">
+                            <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
+                            {spanPills.map((sp) => (
+                                <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
+                            ))}
+                        </Fragment>
+                    </FilterGroup>
                 </div>
             </div>
+            {activeSpan && (
+                <div class="row ms-sm-auto mb-2">
+                    <div class="col-12">
+                        <div class="alert alert-info py-1 small" role="alert">
+                            Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
+                        </div>
+                    </div>
+                </div>
+            )}
+            {latestPlays.length > 0 && (
+                <div class="row mb-2">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <Panel id="latest" title="Latest" show={true}>
+                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
+                            <div class="row" slot="panel-body">
+                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
+                            </div>
+                        </Panel>
+                    </div>
+                </div>
+            )}
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
@@ -300,16 +307,10 @@ if (activeSpan) {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="team-stats" title="Team Stats">
+                    <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={activeSpan && game.advBoxScoreSpan ? [] : percentiles} />
-                                <TraditionalTeamStats
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                    drives={gameDrives}
-                                />
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'
@@ -357,16 +358,6 @@ if (activeSpan) {
                                     useSuffix={true}
                                     decimalPoints={2}
                                 />
-                                <PenaltyBreakdown
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                />
-                                <SituationalSplits
-                                    season={game.season.year}
-                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                    plays={game.plays}
-                                />
                                 <TeamMetricsTable 
                                     title="Situational"
                                     teamKey='pos_team'
@@ -409,6 +400,11 @@ if (activeSpan) {
                                     useSuffix={true}
                                     decimalPoints={2}
                                 />
+                                <SituationalSplits
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                />
                             </div>
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <TeamMetricsTable 
@@ -448,6 +444,17 @@ if (activeSpan) {
                                     useSuffix={false}
                                     decimalPoints={0}
                                 />
+                                <TraditionalTeamStats
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                    drives={spanDrives}
+                                />
+                                <PenaltyBreakdown
+                                    season={game.season.year}
+                                    teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                    plays={game.plays}
+                                />
                             </div>
                         </div>
                     </Panel>
@@ -455,7 +462,7 @@ if (activeSpan) {
             </div>
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam}>
+                    <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
                         <div class="row" slot="panel-body">
                             <PlayerBoxScore 
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
@@ -470,7 +477,7 @@ if (activeSpan) {
                     </TeamPanel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam}>
+                    <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam} show={false}>
                         <div class="row" slot="panel-body">
                             <PlayerBoxScore 
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
@@ -487,7 +494,7 @@ if (activeSpan) {
             </div>
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="big-plays" title="Big Plays">
+                    <Panel id="big-plays" title="Big Plays" show={false}>
                         <p class="text-small" slot="panel-subtitle">As determined by absolute EPA.</p>
                         <div class="row" slot="panel-body">
                             {
@@ -500,7 +507,7 @@ if (activeSpan) {
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="most-important-plays" title="Most Important Plays">
+                    <Panel id="most-important-plays" title="Most Important Plays" show={false}>
                         <p class="text-small" slot="panel-subtitle">As determined by absolute WPA.</p>
                         <div class="row" slot="panel-body">
                             {
@@ -514,8 +521,8 @@ if (activeSpan) {
                 </div>
             </div>
             <div class="row mb-3">
-                <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="scoring-plays" title="Scoring Plays">
+                <div class="col-lg-6 mb-2 ms-sm-auto px-md-4">
+                    <Panel id="scoring-plays" title="Scoring Plays" show={false}>
                         <div class="row" slot="panel-body">
                             <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
                             {
@@ -528,7 +535,7 @@ if (activeSpan) {
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="drives" title="Drives">
+                    <Panel id="drives" title="Drives" show={false}>
                         <div class="row" slot="panel-body">
                             {
                                 (spanDrives.length == 0) && (<p class="text-center text-muted">{activeSpan ? `No drives in ${activeSpan.label}` : "No drives in this game"}</p>)
@@ -542,7 +549,7 @@ if (activeSpan) {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="all-plays" title="All Plays">
+                    <Panel id="all-plays" title="All Plays" show={false}>
                         {
                             (gameStatus.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
                         }
@@ -552,14 +559,13 @@ if (activeSpan) {
                             }
                             {
                                 (game.plays.length > 0) && (
-                                    <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
-                                )
-                            }
-                            {
-                                (game.plays.length > 0) && (
-                                    <PlayFocus target="all" plays={game.plays}
-                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                        teamNames={{ [String(homeTeam.id)]: homeTeam.location, [String(awayTeam.id)]: awayTeam.location }} />
+                                    <div class="mt-2 d-flex flex-wrap justify-content-between">
+                                        <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                    
+                                        <PlayFocus target="all" plays={game.plays}
+                                            teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                            teamNames={{ [String(homeTeam.id)]: cleanLocation(homeTeam), [String(awayTeam.id)]: cleanLocation(awayTeam) }} />
+                                    </div>
                                 )
                             }
                             {

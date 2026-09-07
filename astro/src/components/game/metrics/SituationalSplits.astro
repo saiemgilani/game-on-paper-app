@@ -1,6 +1,7 @@
 ---
 import { periodSplits, situationalRows } from '../../../utils/situational';
 import { roundNumber } from '../../../utils/misc';
+import FilterGroup from '../../../layouts/FilterGroup.astro';
 
 interface Props {
     title?: string;
@@ -10,7 +11,7 @@ interface Props {
     plays: any[];
     caption?: string;
 }
-const { title = 'Situational by period', season, teams, plays, caption } = Astro.props;
+const { title = 'Situational (by period)', season, teams, plays, caption } = Astro.props;
 
 // Every split is rendered and all but one hidden: the numbers are small, and
 // shipping them as markup keeps the script to a class toggle with no data in it.
@@ -23,11 +24,13 @@ const labels = splits[0]?.columns[0]?.map((r) => r.label) ?? [];
 
 {splits.length > 0 && (
     <div data-situational-splits>
-        <div class="btn-group btn-group-sm flex-wrap mb-2" role="group" aria-label="Situational split">
-            {splits.map((s, i) => (
-                <button type="button" class={`btn btn-outline-secondary${i === 0 ? " active" : ""}`} data-split={s.key} aria-pressed={i === 0}>{s.label}</button>
-            ))}
-        </div>
+        <FilterGroup label="Situational splits">
+            <Fragment slot="filter-body">
+                {splits.map((s, i) => (
+                    <button type="button" class={`btn btn-sm btn-outline-secondary${i === 0 ? " active" : ""}`} data-split={s.key} aria-pressed={i === 0}>{s.label}</button>
+                ))}
+            </Fragment>
+        </FilterGroup>
         {splits.map((s, i) => (
             <div class="table-responsive" data-split-panel={s.key} hidden={i !== 0}>
                 <table class="table table-sm table-responsive">
@@ -51,10 +54,15 @@ const labels = splits[0]?.columns[0]?.map((r) => r.label) ?? [];
                                 {s.columns.map((rows) => (
                                     <td class="numeral" style="text-align: center;">
                                         {rows[r].value}
+                                    </td>
+                                ))}
+                            </tr>
+                            <tr>
+                                <td style="text-align: left;" title={s.columns[0][r].title}>&emsp;&emsp;EPA/Play</td>
+                                {s.columns.map((rows) => (
+                                    <td class="numeral" style="text-align: center;">
                                         {rows[r].epa != null && (
-                                            <span class="text-muted text-small" style="display: block;" title="Expected points added per play over the plays this row counts">
-                                                {roundNumber(rows[r].epa as number, 2, 2)} EPA/play
-                                            </span>
+                                            <span>{roundNumber(rows[r].epa as number, 2, 2)}</span>
                                         )}
                                     </td>
                                 ))}

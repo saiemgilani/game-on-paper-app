@@ -1,0 +1,11 @@
+---
+interface Props {
+    label: string
+}
+const { label } = Astro.props;
+---
+
+
+<div class="d-flex justify-content-start align-items-center flex-wrap gap-1 d-inline-flex" role="group" aria-label={label}>
+    <slot name="filter-body" />
+</div>

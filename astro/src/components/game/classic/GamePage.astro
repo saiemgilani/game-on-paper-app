@@ -204,7 +204,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="team-stats" title="Team Stats">
+                    <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
                                 <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
@@ -343,7 +343,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </div>
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam}>
+                    <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
                         <div class="row" slot="panel-body">
                             <PlayerBoxScore 
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
@@ -356,7 +356,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </TeamPanel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam}>
+                    <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam} show={false}>
                         <div class="row" slot="panel-body">
                             <PlayerBoxScore 
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
@@ -371,7 +371,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </div>
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="big-plays" title="Big Plays">
+                    <Panel id="big-plays" title="Big Plays" show={false}>
                         <p class="text-small" slot="panel-subtitle">As determined by absolute EPA.</p>
                         <div class="row" slot="panel-body">
                             {
@@ -384,7 +384,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="most-important-plays" title="Most Important Plays">
+                    <Panel id="most-important-plays" title="Most Important Plays" show={false}>
                         <p class="text-small" slot="panel-subtitle">As determined by absolute WPA.</p>
                         <div class="row" slot="panel-body">
                             {
@@ -398,8 +398,8 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                 </div>
             </div>
             <div class="row mb-3">
-                <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="scoring-plays" title="Scoring Plays">
+                <div class="col-lg-6 mb-3 mb-md-0 ms-sm-auto px-md-4">
+                    <Panel id="scoring-plays" title="Scoring Plays" show={false}>
                         <div class="row" slot="panel-body">
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
@@ -411,7 +411,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <Panel id="drives" title="Drives">
+                    <Panel id="drives" title="Drives" show={false}>
                         <div class="row" slot="panel-body">
                             {
                                 (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game.</p>)
@@ -425,7 +425,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="all-plays" title="All Plays">
+                    <Panel id="all-plays" title="All Plays" show={false}>
                         {
                             (gameStatus.type.completed != true) && (<p class="text-small" slot="panel-subtitle">Most recent plays first. Recent plays may have weird EPA/WPA results due to ESPN data weirdness.</p>)
                         }

@@ -10,7 +10,7 @@ interface Props {
 const { players } = Astro.props;
 ---
 
-<TeamPlayerTable id="rushing-players" title="Rushing">
+<TeamPlayerTable id="rushing-players" title="Rushing" show={true}>
     <Fragment slot="header">
         <th rowspan="1" colspan="1"></th>
         <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Carries</th>

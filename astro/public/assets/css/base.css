@@ -244,14 +244,3 @@ Target Matrix
   .site-nav-row::-webkit-scrollbar { display: none; }
   .site-nav-row .nav-link { white-space: nowrap; }
 }
-
-
-/* Span pills: 44px tap floor on touch devices (v2 mobile audit 2026-09-07 --
-   btn-sm renders 31px tall, under the tap-target floor). */
-@media (pointer: coarse) {
-  .span-pills .btn {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-  }
-}
