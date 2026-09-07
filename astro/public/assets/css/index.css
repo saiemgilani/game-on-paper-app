@@ -204,7 +204,9 @@ h1, h2, h3, h4, h5, h6 {
 .game-banner .gb-side {
     display: flex;
     align-items: center;
-    gap: 0.2rem;
+    /* 0.2rem read too tight between logo and abbreviation (maintainer);
+       fluid so the double-ranked 4-char worst case still fits at 320 */
+    gap: clamp(0.2rem, 1.5vw, 0.375rem);
     min-width: 0;
     /* any overflow value but visible lets the flex item shrink below its
        content, which is what keeps a long side from shoving the grid */
@@ -239,7 +241,7 @@ h1, h2, h3, h4, h5, h6 {
 .game-banner .gb-pts {
     font-size: clamp(1.05rem, 4.6vw, 1.25rem);
     font-variant-numeric: tabular-nums;
-    min-width: clamp(1.4rem, 5vw, 1.75rem);
+    min-width: clamp(1.25rem, 5vw, 1.75rem);
     text-align: center;
 }
 .game-banner .gb-mid { font-size: clamp(0.65rem, 3vw, 0.75rem); }
