@@ -97,6 +97,10 @@ export interface GameSpec {
     hasScore: boolean;
     /** ESPN status description ("Final", "Postponed", "Canceled") */
     statusDescription?: string;
+    /** real venue, when known -- emitted as the schema.org Place */
+    venueName?: string;
+    venueCity?: string;
+    venueRegion?: string;
 }
 
 /**
@@ -155,7 +159,9 @@ export function sportsEventJsonLd(g: GameSpec) {
         startDate: g.date,
         eventStatus: eventStatus(g.statusDescription),
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        ...(g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
+        ...(g.venueName
+        ? { location: { '@type': 'Place', name: g.venueName, ...(g.venueCity ? { address: { '@type': 'PostalAddress', addressLocality: g.venueCity, ...(g.venueRegion ? { addressRegion: g.venueRegion } : {}) } } : {}) } }
+        : g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
         homeTeam: home,
         awayTeam: away,
         competitor: [away, home],

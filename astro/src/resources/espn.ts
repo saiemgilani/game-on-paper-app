@@ -632,6 +632,96 @@ export async function retrieveTeamSeasonRecord(season: string | number, teamId: 
 }
 
 
+export interface ESPNSummaryWeather {
+    temperature?: number
+    highTemperature?: number
+    lowTemperature?: number
+    conditionId?: string
+    gust?: number
+    precipitation?: number
+}
+
+export interface ESPNSummaryVenue {
+    id?: string
+    fullName?: string
+    address?: { city?: string; state?: string; country?: string }
+    grass?: boolean
+}
+
+export interface ESPNPickcenterLine {
+    provider?: { name?: string }
+    details?: string
+    overUnder?: number
+    spread?: number
+}
+
+export interface ESPNSummaryLeaderEntry {
+    displayValue?: string
+    athlete?: {
+        id?: string
+        displayName?: string
+        shortName?: string
+        jersey?: string
+        position?: { abbreviation?: string }
+        headshot?: { href?: string }
+    }
+}
+
+export interface ESPNSummaryLeaderCategory {
+    name?: string
+    displayName?: string
+    leaders?: ESPNSummaryLeaderEntry[]
+}
+
+export interface ESPNSummaryTeamLeaders {
+    team?: { id?: string; abbreviation?: string; displayName?: string }
+    leaders?: ESPNSummaryLeaderCategory[]
+}
+
+export interface ESPNLastFiveEvent {
+    id?: string
+    week?: number
+    atVs?: string
+    gameDate?: string
+    score?: string
+    gameResult?: string
+    opponent?: { id?: string; abbreviation?: string; displayName?: string }
+}
+
+export interface ESPNSummaryLastFive {
+    team?: { id?: string }
+    events?: ESPNLastFiveEvent[]
+}
+
+export interface ESPNGameSummary {
+    gameInfo?: {
+        venue?: ESPNSummaryVenue
+        weather?: ESPNSummaryWeather
+        attendance?: number
+    }
+    pickcenter?: ESPNPickcenterLine[]
+    leaders?: ESPNSummaryTeamLeaders[]
+    lastFiveGames?: ESPNSummaryLastFive[]
+}
+
+// The cdn playbyplay payload carries only `header`; game context (venue,
+// weather, betting line, season leaders, recent form) lives on the site.api
+// summary endpoint. Same retry + API-host relay path as every ESPN call.
+export async function retrieveGameSummary(gameId: string | number): Promise<ESPNGameSummary | null> {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${gameId}`;
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN summary ${resp.status} for game ${gameId}`);
+            return null;
+        }
+        return await resp.json() as ESPNGameSummary;
+    } catch (e: any) {
+        console.error(`ESPN summary fetch failed for game ${gameId}: ${e}`);
+        return null;
+    }
+}
+
 export const EMPTY_ESPN_COMPETITION: ESPNCompetition = {
     id: "0",
     uid: "",

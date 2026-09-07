@@ -1,0 +1,74 @@
+---
+import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
+import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../../resources/sdv';
+import { roundNumber } from '../../utils/misc';
+
+interface Props {
+    summary: ESPNGameSummary | null
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+    neutralSite: boolean
+    homeAdjEpa?: number | null
+    awayAdjEpa?: number | null
+    metricYear: number
+}
+
+const { summary, homeTeam, awayTeam, neutralSite, homeAdjEpa, awayAdjEpa, metricYear } = Astro.props;
+
+const margin = calculatePredictedPointMargin(awayAdjEpa ?? undefined, homeAdjEpa ?? undefined, neutralSite);
+const winProb = calculatePredictedWinProb(margin);
+const favorite = margin == null ? null : (margin >= 0 ? homeTeam : awayTeam);
+const favProb = winProb == null ? null : (margin != null && margin >= 0 ? winProb : 1 - winProb);
+
+const line = (summary?.pickcenter ?? []).find(p => p?.details) ?? null;
+const venue = summary?.gameInfo?.venue ?? null;
+const weather = summary?.gameInfo?.weather ?? null;
+const venuePlace = [venue?.address?.city, venue?.address?.state ?? venue?.address?.country]
+    .filter(Boolean).join(", ");
+const weatherBits = weather ? [
+    weather.temperature != null ? `${weather.temperature}°F` : null,
+    weather.precipitation != null ? `${weather.precipitation}% precip` : null,
+    weather.gust != null ? `${weather.gust} mph gusts` : null,
+].filter(Boolean) : [];
+
+const hasAnything = favorite != null || line != null || venue != null;
+---
+{hasAnything && (
+<div class="row my-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3">
+                <div class="row text-center gy-3">
+                    {favorite != null && (
+                    <div class="col-md-4 col-12">
+                        <p class="small text-muted text-uppercase mb-1">On Paper</p>
+                        <p class="mb-0 fw-bold">
+                            <img class={`team-logo-${favorite.id} me-1 align-middle`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${favorite.id}.png`} alt={favorite.abbreviation} />
+                            {favorite.abbreviation} by {roundNumber(Math.abs(margin!), 2, 1)}
+                        </p>
+                        <p class="small text-muted m-0">{roundNumber(favProb! * 100, 2, 0)}% · Net Adj EPA/play, {metricYear}</p>
+                    </div>
+                    )}
+                    {line != null && (
+                    <div class="col-md-4 col-12">
+                        <p class="small text-muted text-uppercase mb-1">Betting Line</p>
+                        <p class="mb-0 fw-bold">{line.details}{line.overUnder != null ? ` · O/U ${line.overUnder}` : ""}</p>
+                        {line.provider?.name && (<p class="small text-muted m-0">{line.provider.name}</p>)}
+                    </div>
+                    )}
+                    {venue != null && (
+                    <div class="col-md-4 col-12">
+                        <p class="small text-muted text-uppercase mb-1">Venue</p>
+                        <p class="mb-0 fw-bold">{venue.fullName}{neutralSite ? " · Neutral site" : ""}</p>
+                        <p class="small text-muted m-0">
+                            {venuePlace}{weatherBits.length > 0 ? ` · ${weatherBits.join(" · ")}` : ""}
+                        </p>
+                    </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+)}

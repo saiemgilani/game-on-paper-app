@@ -1,0 +1,60 @@
+---
+import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
+
+interface Props {
+    summary: ESPNGameSummary | null
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+}
+
+const { summary, homeTeam, awayTeam } = Astro.props;
+
+// season-leader categories worth surfacing pregame; ESPN also ships
+// sacks/totalTackles but three offensive lines keep the card scannable
+const CATEGORIES = ["passingYards", "rushingYards", "receivingYards"];
+
+function teamLeaders(teamId: string | number) {
+    const block = (summary?.leaders ?? []).find(l => `${l?.team?.id}` === `${teamId}`);
+    if (!block) return [];
+    return (block.leaders ?? [])
+        .filter(c => CATEGORIES.includes(c?.name ?? ""))
+        .map(c => ({ category: c.displayName ?? c.name, entry: (c.leaders ?? [])[0] }))
+        .filter(x => x.entry?.athlete?.displayName);
+}
+
+const away = teamLeaders(awayTeam.id);
+const home = teamLeaders(homeTeam.id);
+---
+{(away.length > 0 || home.length > 0) && (
+<div class="row my-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3">
+                <h2 class="fs-5 mb-3">Players to Watch</h2>
+                <div class="row gy-3">
+                    {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
+                    <div class="col-md-6 col-12">
+                        <p class="fw-bold mb-2">
+                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={team.abbreviation} />
+                            {team.abbreviation}
+                        </p>
+                        {rows.length === 0
+                            ? (<p class="small text-muted m-0">No season leaders yet.</p>)
+                            : rows.map(r => (
+                                <p class="small mb-1">
+                                    <span class="text-muted">{r.category}:</span>{" "}
+                                    <strong>{r.entry!.athlete!.displayName}</strong>
+                                    {r.entry!.athlete!.position?.abbreviation ? ` (${r.entry!.athlete!.position!.abbreviation})` : ""}
+                                    {r.entry!.displayValue ? ` — ${r.entry!.displayValue}` : ""}
+                                </p>
+                            ))}
+                    </div>
+                    ))}
+                </div>
+                <p class="small m-0 mt-2 text-muted">Season statistical leaders entering this game.</p>
+            </div>
+        </div>
+    </div>
+</div>
+)}

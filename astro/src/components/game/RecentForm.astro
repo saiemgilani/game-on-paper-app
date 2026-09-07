@@ -1,0 +1,56 @@
+---
+import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
+
+interface Props {
+    summary: ESPNGameSummary | null
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+}
+
+const { summary, homeTeam, awayTeam } = Astro.props;
+
+function form(teamId: string | number) {
+    const block = (summary?.lastFiveGames ?? []).find(l => `${l?.team?.id}` === `${teamId}`);
+    // ESPN lists most recent first; render oldest -> newest so the streak reads left to right
+    return (block?.events ?? []).slice(0, 5).reverse();
+}
+
+const away = form(awayTeam.id);
+const home = form(homeTeam.id);
+---
+{(away.length > 0 || home.length > 0) && (
+<div class="row my-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3">
+                <h2 class="fs-5 mb-3">Recent Form</h2>
+                <div class="row gy-3">
+                    {[{ team: awayTeam, events: away }, { team: homeTeam, events: home }].map(({ team, events }) => (
+                    <div class="col-md-6 col-12">
+                        <p class="fw-bold mb-2">
+                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={team.abbreviation} />
+                            {team.abbreviation}
+                        </p>
+                        {events.length === 0
+                            ? (<p class="small text-muted m-0">No recent games.</p>)
+                            : (
+                            <div class="d-flex flex-wrap gap-2">
+                                {events.map(e => (
+                                    <a class="text-decoration-none" href={e.id ? `/game/${e.id}` : undefined} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
+                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : e.gameResult === "L" ? "bg-danger" : "bg-secondary"}`}>
+                                            {e.gameResult ?? "?"} {e.score ?? ""} {e.atVs ?? ""}{e.opponent?.abbreviation ?? ""}
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                            )}
+                    </div>
+                    ))}
+                </div>
+                <p class="small m-0 mt-2 text-muted">Last five games, oldest to newest.</p>
+            </div>
+        </div>
+    </div>
+</div>
+)}
