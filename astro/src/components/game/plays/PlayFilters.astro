@@ -16,8 +16,10 @@ interface Props {
     periods: number[];
     /** Live games read newest first; finished games read in order. */
     newestFirst: boolean;
+    /** Offer the key-plays toggle (rows must carry data-key-play). */
+    keyToggle?: boolean;
 }
-const { target, periods, newestFirst } = Astro.props;
+const { target, periods, newestFirst, keyToggle = false } = Astro.props;
 
 const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
 ---
@@ -31,9 +33,16 @@ const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
             ))}
         </Fragment>
     </FilterGroup>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-order-toggle="1" aria-pressed={newestFirst}>
-        {newestFirst ? "Newest first" : "Oldest first"}
-    </button>
+    <div class="d-flex gap-2">
+        {keyToggle && (
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-key-toggle="1" aria-pressed="false" title="Scoring plays and the biggest win-probability swings">
+                Key plays
+            </button>
+        )}
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-order-toggle="1" aria-pressed={newestFirst}>
+            {newestFirst ? "Newest first" : "Oldest first"}
+        </button>
+    </div>
 </div>
 
 <script>
@@ -52,9 +61,12 @@ const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
         const pairs = pairRows([...body.children], isDetail);
 
         let period = "all";
+        let keyOnly = false;
         const apply = () => {
             for (const pair of pairs) {
-                const match = period === "all" || String((pair[0] as HTMLElement).dataset.period) === period;
+                const first = pair[0] as HTMLElement;
+                const match = (period === "all" || String(first.dataset.period) === period)
+                    && (!keyOnly || first.dataset.keyPlay === "1");
                 // A filtered-in detail row is un-hidden but stays collapsed:
                 // Bootstrap's .collapse still governs whether it is on screen.
                 for (const row of pair) (row as HTMLElement).hidden = !match;
@@ -71,6 +83,11 @@ const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
                     other.classList.toggle("active", on);
                     other.setAttribute("aria-pressed", String(on));
                 }
+                apply();
+            } else if (btn.dataset.keyToggle !== undefined) {
+                keyOnly = !keyOnly;
+                btn.classList.toggle("active", keyOnly);
+                btn.setAttribute("aria-pressed", String(keyOnly));
                 apply();
             } else if (btn.dataset.orderToggle !== undefined) {
                 pairs.reverse();

@@ -168,6 +168,27 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
 }).slice(0, 10)
 
 
+// Key plays: scoring plays plus the biggest win-probability swings. Marked by
+// mutation (same pattern as three_and_out) so PlayRow can stamp data-key-play
+// without threading a prop through every table.
+const keyIds = new Set([
+    ...mostImpPlays.map((p: any) => p.game_play_number),
+    ...game.scoringPlays.map((p: any) => p.game_play_number),
+]);
+for (const p of game.plays) {
+    if (keyIds.has(p.game_play_number)) (p as any).key_play = true;
+}
+
+// "Catch me up": the three plays that most changed the game so far, plus the
+// last score -- the block a mid-game visitor reads before anything else.
+const lastScore: any = game.scoringPlays.at(-1);
+const catchUpPlays = mostImpPlays.slice(0, 3);
+const fmtClock = (p: any) => p.period > 4 ? (p.period == 5 ? "OT" : `${p.period - 4}OT`) : `Q${p.period} ${p.clock?.displayValue ?? ""}`;
+const fmtSwing = (p: any) => {
+    const v = Math.abs(Number(p.winProbability?.added ?? 0) * 100);
+    return `${v < 1 ? "<1" : Math.round(v)}% WP swing`;
+};
+
 let gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
 gameDrives = deduplicateByKey(gameDrives, "id");
 // under a span, only drives that intersect the window
@@ -273,6 +294,27 @@ if (activeSpan) {
                         <div class="alert alert-info py-1 small" role="alert">
                             Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
                         </div>
+                    </div>
+                </div>
+            )}
+            {catchUpPlays.length > 0 && (
+                <div class="row mb-2">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <details class="card p-0" open={gameStatus.type.completed != true}>
+                            <summary class="card-header py-2 fw-bold">Catch me up</summary>
+                            <div class="card-body py-2">
+                                <p class="small mb-1">{latestSubtitle}</p>
+                                {lastScore && (
+                                    <p class="small mb-1"><span class="text-muted">Last score:</span> {fmtClock(lastScore)} — {lastScore.text}</p>
+                                )}
+                                <p class="small mb-1 text-muted">Plays that changed the game:</p>
+                                <ul class="small mb-0 ps-4">
+                                    {catchUpPlays.map((p: any) => (
+                                        <li>{fmtClock(p)} — {p.text} <span class="text-muted">({fmtSwing(p)})</span></li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </details>
                     </div>
                 </div>
             )}
@@ -560,7 +602,7 @@ if (activeSpan) {
                             {
                                 (game.plays.length > 0) && (
                                     <div class="mt-2 d-flex flex-wrap justify-content-between">
-                                        <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                        <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} keyToggle={true} />
                                     
                                         <PlayFocus target="all" plays={game.plays}
                                             teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
