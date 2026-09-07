@@ -121,6 +121,23 @@ describe('the preview magic link', () => {
         expect(res.headers.get('X-Robots-Tag')).toBe('noindex');
     });
 
+    test('the /preview surface never rewrites into /admin, even with a valid cookie', async () => {
+        // the admin auth gate checks the ORIGINAL pathname; a rewrite would
+        // carry a view-only preview cookie past it (Sourcery on #217)
+        const ctx: any = {
+            request: new Request('https://gameonpaper.com/preview/admin/api/purge-game', {
+                headers: { cookie: `${PREVIEW_COOKIE}=${await mintPreviewCookie('test-secret')}` },
+            }),
+            locals: {},
+            cache: { set: () => {} },
+            redirect: (l: string) => new Response(null, { status: 302, headers: { Location: l } }),
+        };
+        const res = await (onRequest as any)(ctx, async () => new Response('SECRET'));
+        expect(res.status).toBe(302);
+        expect(res.headers.get('Location')).toBe('/admin/api/purge-game');
+        expect(ctx.locals.preview).toBeUndefined();
+    });
+
     test('the /preview surface without a valid cookie bounces to the public path', async () => {
         const ctx: any = {
             request: new Request('https://gameonpaper.com/preview/game/401752746?span=q3'),

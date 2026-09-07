@@ -14,10 +14,11 @@ export const PREVIEW_COOKIE = 'gop_preview';
 // costs nothing. The /admin button always shows the live state.
 export const PREVIEW_TTL_S = 30 * 24 * 60 * 60;
 
-// Magic link: ?preview_key=<token> on ANY site URL. The middleware verifies it,
-// sets the preview cookie, and redirects to the clean URL -- one click for a
-// colleague on any browser, no admin login. The token is purpose-separated from
-// the cookie (different HMAC message) so one can never be replayed as the other.
+// Magic link: ?preview_key=<token> on ANY site URL. The middleware verifies
+// it, sets the preview cookie, and redirects onto the uncacheable /preview
+// surface -- one click for a colleague on any browser, no admin login. The
+// token is purpose-separated from the cookie (different HMAC message) so one
+// can never be replayed as the other.
 export const PREVIEW_LINK_PARAM = 'preview_key';
 // The uncacheable preview surface: /preview/<path> renders <path> with
 // preview features on. Needed because a Workers Caching HIT on a public URL

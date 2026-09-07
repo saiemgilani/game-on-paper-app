@@ -17,10 +17,11 @@ const GAME_ID_RE = /\/game\/(\d+)/;
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
 
-  // Preview magic link: ?preview_key=<signed token> on any URL sets the preview
-  // cookie and redirects to the clean URL. One click on any browser, no admin
-  // login. An invalid/expired token still strips the param and redirects (the
-  // page then renders public, and the missing PREVIEW badge is the signal).
+  // Preview magic link: ?preview_key=<signed token> on any URL sets the
+  // preview cookie and lands on the uncacheable /preview surface (the clean
+  // URL is publicly cached, and a cache HIT never runs this middleware). One
+  // click on any browser, no admin login. An invalid/expired token strips the
+  // param and redirects to the PUBLIC path (no badge is the signal).
   // The redirect carries Set-Cookie, so it must never enter Workers Caching --
   // and this block runs FIRST, before the legacy /cfb redirects, because those
   // return 301s that forward the query string with no cache headers: a keyed
@@ -60,6 +61,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/')) {
     const rest = url.pathname.slice(PREVIEW_PATH_PREFIX.length) || '/';
     const target = legacyCfbTarget(rest) ?? staleRedirectTarget(rest) ?? rest;
+    // Never rewrite into /admin: the admin auth gate below checks the ORIGINAL
+    // pathname, so a rewrite would carry a view-only preview cookie past it
+    // (Sourcery on #217). Nested /preview is not a route either; both bounce
+    // out to be handled -- and authenticated -- as themselves.
+    if (target.startsWith('/admin') || target.startsWith(PREVIEW_PATH_PREFIX)) {
+      return context.redirect(target + url.search, 302);
+    }
     const cookieOk = await verifyPreviewCookie(
       readCookie(context.request.headers.get('cookie'), PREVIEW_COOKIE), getSecret('ADMIN_PASS'));
     if (!cookieOk) {
