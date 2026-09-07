@@ -2529,7 +2529,7 @@
     }
 }
 @media (prefers-color-scheme: dark) {
-    .game-compact-list { border-top-color: #3e4446; }
-    .game-compact-row { border-bottom-color: #3e4446; }
-    .game-compact-row .gcr-rank, .game-compact-row .gcr-status { color: #a8a095; }
+    .game-banner { background: #23272b; border-color: #3e4446; }
+    .game-banner .gb-city, .game-banner .gb-mid, .gb-slot { color: #a8a095; }
+    .game-banner .gb-stripe img { filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
 }

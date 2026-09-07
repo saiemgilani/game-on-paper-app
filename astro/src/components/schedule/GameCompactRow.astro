@@ -1,8 +1,9 @@
 ---
-// One-line scoreboard row (mobile): logos + score + status, tap for the game
-// page. Preview-flagged ('scoreboard-compact'); the card grid stays the
-// desktop rendering. No spice border in v1 -- calculateSpiceLevel lives in
-// GameThumb's frontmatter and moves to utils/misc if this promotes.
+// Banner-style scoreboard row (mobile, hoopsjunkie-inspired): slanted
+// team-color stripes with logos on the edges, city over a big bold
+// abbreviation, large scores with the winner bright, status centered.
+// The whole card links to the game page. Preview-flagged
+// ('scoreboard-compact'); the card grid stays the desktop rendering.
 import type { ESPNScheduleEvent } from "../../resources/espn";
 import { cleanAbbreviation, cleanScore } from "../../utils/misc";
 
@@ -19,29 +20,48 @@ const scheduled = status.type.name.includes("STATUS_SCHEDULED");
 const completed = status.type.completed == true;
 const homeScore = cleanScore(homeComp.score);
 const awayScore = cleanScore(awayComp.score);
-const ballTeamId = comp.situation?.lastPlay?.end?.team?.id;
 
 function rankOf(c: any): number {
   return c.curatedRank?.current || 99;
 }
+// ESPN ships bare hex; a missing color falls back to slate
+function colorOf(c: any): string {
+  const hex = String(c.team?.color ?? "").replace(/[^0-9a-fA-F]/g, "");
+  return hex.length === 6 || hex.length === 3 ? `#${hex}` : "#6c757d";
+}
+// "Final" / "10:24 - 3rd" / kickoff "7:30 PM" for scheduled games
+const statusLabel = scheduled
+  ? (status.type.shortDetail ?? "").split(" - ").pop()
+  : status.type.shortDetail;
+
+const side = (c: any, score: number, other: number) => ({
+  rank: rankOf(c),
+  abbr: cleanAbbreviation(c.team),
+  city: c.team.location ?? c.team.shortDisplayName ?? "",
+  color: colorOf(c),
+  logo: `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`,
+  id: c.id,
+  lost: completed && score < other,
+});
+const away = side(awayComp, awayScore, homeScore);
+const home = side(homeComp, homeScore, awayScore);
 ---
-<a class="game-compact-row" href={`/game/${game.id}`}>
-  <span class="gcr-team gcr-away">
-    {rankOf(awayComp) != 99 && <span class="gcr-rank">#{rankOf(awayComp)}</span>}
-    <img width="20" height="20" loading="lazy" decoding="async" alt="" class={`team-logo-${awayComp.id}`} src={`https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${awayComp.id}.png&h=40&w=40`} />
-    <span class:list={["gcr-abbr", { "fw-bold": completed && awayScore > homeScore }]}>{cleanAbbreviation(awayComp.team)}</span>
-    {!scheduled && !completed && ballTeamId == awayComp.id && <span class="gcr-ball">&#8226;</span>}
+<a class="game-banner" href={`/game/${game.id}`}>
+  <span class="gb-stripe gb-stripe-away" style={`background:${away.color}`}>
+    <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
   </span>
-  <span class="gcr-score">
-    {scheduled
-      ? "vs"
-      : <Fragment><span class:list={[{ "fw-bold": completed && awayScore > homeScore }]}>{awayScore}</span>&ndash;<span class:list={[{ "fw-bold": completed && homeScore > awayScore }]}>{homeScore}</span></Fragment>}
+  <span class="gb-side gb-away">
+    <span class="gb-city">{away.rank != 99 && <b>#{away.rank}</b>} {away.city}</span>
+    <span class:list={["gb-name", { "gb-lost": away.lost }]}>{away.abbr}</span>
   </span>
-  <span class="gcr-team gcr-home">
-    {!scheduled && !completed && ballTeamId == homeComp.id && <span class="gcr-ball">&#8226;</span>}
-    <span class:list={["gcr-abbr", { "fw-bold": completed && homeScore > awayScore }]}>{cleanAbbreviation(homeComp.team)}</span>
-    <img width="20" height="20" loading="lazy" decoding="async" alt="" class={`team-logo-${homeComp.id}`} src={`https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${homeComp.id}.png&h=40&w=40`} />
-    {rankOf(homeComp) != 99 && <span class="gcr-rank">#{rankOf(homeComp)}</span>}
+  <span class:list={["gb-score", { "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
+  <span class="gb-mid">{statusLabel}</span>
+  <span class:list={["gb-score", { "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
+  <span class="gb-side gb-home">
+    <span class="gb-city">{home.city} {home.rank != 99 && <b>#{home.rank}</b>}</span>
+    <span class:list={["gb-name", { "gb-lost": home.lost }]}>{home.abbr}</span>
   </span>
-  <span class="gcr-status">{status.type.shortDetail}</span>
+  <span class="gb-stripe gb-stripe-home" style={`background:${home.color}`}>
+    <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
+  </span>
 </a>

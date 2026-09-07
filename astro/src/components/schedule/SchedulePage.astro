@@ -79,9 +79,26 @@ const allTeamIds = games.map(g => {
     return g.competitions[0].competitors.map(t => t.id)
 }).reduce((a,b) => a.concat(b), [])
 
-// Preview: compact one-line rows on phones (the cards are ~40% of a phone
-// viewport each); the card grid stays the >=768px rendering either way.
+// Preview: banner rows on phones grouped under kickoff-time headers (the
+// cards are ~40% of a phone viewport each); the card grid stays the >=768px
+// rendering either way.
 const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
+const slotOf = (g: ESPNScheduleEvent) => {
+    try {
+        return new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit',
+        }).format(new Date(g.date)) + ' ET';
+    } catch { return 'TBD'; }
+};
+const compactSlots: [string, ESPNScheduleEvent[]][] = [];
+if (compactRows) {
+    for (const g of [...games].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
+        const label = slotOf(g);
+        const last = compactSlots[compactSlots.length - 1];
+        if (last && last[0] === label) last[1].push(g);
+        else compactSlots.push([label, [g]]);
+    }
+}
 ---
 
 <!DOCTYPE html>
@@ -125,7 +142,12 @@ const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
             {
                 (compactRows && games.length > 0) && (
                     <div class="game-compact-list d-md-none mb-3">
-                        {games.map((g) => <GameCompactRow game={g} />)}
+                        {compactSlots.map(([slot, slotGames]) => (
+                            <Fragment>
+                                <h6 class="gb-slot">{slot}</h6>
+                                {slotGames.map((g) => <GameCompactRow game={g} />)}
+                            </Fragment>
+                        ))}
                     </div>
                 )
             }

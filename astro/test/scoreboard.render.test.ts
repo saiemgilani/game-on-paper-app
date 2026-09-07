@@ -10,7 +10,7 @@ function competitor(id: string, abbr: string, score: string, rank = 99) {
     return {
         id,
         score,
-        team: { id, abbreviation: abbr, conferenceId: '8' },
+        team: { id, abbreviation: abbr, conferenceId: '8', color: 'ba0c2f', location: `${abbr} State` },
         curatedRank: { current: rank },
         records: [],
     };
@@ -61,15 +61,22 @@ async function render(locals: Record<string, unknown>) {
 }
 
 describe('the compact scoreboard rows are preview-gated', () => {
-    test('preview renders mobile rows and demotes the card grid to md+', async () => {
+    test('preview renders banner rows under a kickoff-time header, card grid demoted to md+', async () => {
         const html = await render({ preview: true });
         expect(html).toContain('game-compact-list');
-        const rows = [...html.matchAll(/class="game-compact-row"/g)];
+        const rows = [...html.matchAll(/class="game-banner"/g)];
         expect(rows).toHaveLength(2);
-        // completed: away-home score with the winner bold; scheduled: "vs" + a time
-        expect(html).toMatch(/gcr-score"><span>17<\/span>&ndash;<span class="fw-bold">24<\/span>/);
-        expect(html).toContain('vs');
-        expect(html).toContain('9/6 - 7:30 PM EDT');
+        // both fixture games share a kickoff -> exactly one time-slot header (ET)
+        const slots = [...html.matchAll(/class="gb-slot">([^<]+)</g)].map((m) => m[1]);
+        expect(slots).toHaveLength(1);
+        expect(slots[0]).toMatch(/7:30 PM ET/);
+        // completed: only the LOSER is dimmed; live/scheduled dim nobody
+        expect(html).toMatch(/gb-score gb-lost">17</);
+        expect(html).toMatch(/gb-score">24</);
+        // team-color stripe carries the ESPN hex
+        expect(html).toContain('style="background:#ba0c2f"');
+        // scheduled game: kickoff time in the middle, no scores
+        expect(html).toContain('7:30 PM EDT');
         // the card grid is still there for md+, hidden on phones
         expect(html).toMatch(/class="row mb-3 d-none d-md-flex"/);
     });
@@ -77,6 +84,7 @@ describe('the compact scoreboard rows are preview-gated', () => {
     test('the public page has no trace of the compact variant', async () => {
         const html = await render({});
         expect(html).not.toContain('game-compact');
+        expect(html).not.toContain('game-banner');
         expect(html).not.toContain('d-none d-md-flex');
     });
 });
