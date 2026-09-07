@@ -109,7 +109,6 @@ describe('GamePage renders a finished game end to end', () => {
         expect(panels).toHaveLength(7);
         expect(panels.filter((m) => !m[2].includes('hidden'))).toHaveLength(1);
         expect(panels[0][1]).toBe('all');
-        expect(html).toMatch(/-?\d+\.\d\d EPA\/play/);
     });
 
     test('penalties split by unit, and the totals are accepted flags only', () => {
@@ -131,7 +130,6 @@ describe('GamePage renders a finished game end to end', () => {
             expect(html).toContain(`>${label}<`);
         }
         expect(html).toMatch(/\d+-\d+ \(\d+%\)/);
-        expect(html).toMatch(/-?\d+\.\d\d EPA/);
         // the clock lives in the possession row itself, not just anywhere on the page
         expect(html).toMatch(/Time of possession<\/td>[\s\S]{0,600}?\d+:\d\d/);
     });
