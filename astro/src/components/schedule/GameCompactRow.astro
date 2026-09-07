@@ -21,6 +21,11 @@ const awayComp = comp.competitors[1];
 const status = comp.status;
 const scheduled = status.type.name.includes("STATUS_SCHEDULED");
 const completed = status.type.completed == true;
+const live = !scheduled && !completed;
+// Possession dot for live games, same convention as TeamRow's marker:
+// text-primary with the ball, text-danger in the red zone.
+const ballTeamId = comp.situation?.lastPlay?.end?.team?.id;
+const isRedZone = comp.situation?.isRedZone == true;
 const homeScore = cleanScore(homeComp.score);
 const awayScore = cleanScore(awayComp.score);
 
@@ -45,6 +50,7 @@ const side = (c: any, score: number, other: number) => ({
   id: c.id,
   won: completed && score > other,
   lost: completed && score < other,
+  hasBall: live && ballTeamId == c.id,
 });
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
@@ -56,13 +62,13 @@ const home = side(homeComp, homeScore, awayScore);
   <span class="flex-grow-1 overflow-hidden d-flex flex-column gap-1 py-2">
     <span class="d-flex justify-content-between align-items-baseline gap-2">
       <span class:list={["fs-6 text-truncate", { "fw-bold": away.won, "opacity-50": away.lost }]}>
-        {away.rank != 99 && <span class="small text-muted">#{away.rank}</span>} {away.name}
+        {away.rank != 99 && <span class="small text-muted">#{away.rank}</span>} {away.name}{away.hasBall && <span class={isRedZone ? "text-danger" : "text-primary"}>&nbsp;&#8226;</span>}
       </span>
       <span class:list={["gb-pts fs-5", { "fw-bold": away.won, "opacity-50": away.lost }]}>{scheduled ? "" : awayScore}</span>
     </span>
     <span class="d-flex justify-content-between align-items-baseline gap-2">
       <span class:list={["fs-6 text-truncate", { "fw-bold": home.won, "opacity-50": home.lost }]}>
-        {home.rank != 99 && <span class="small text-muted">#{home.rank}</span>} {home.name}
+        {home.rank != 99 && <span class="small text-muted">#{home.rank}</span>} {home.name}{home.hasBall && <span class={isRedZone ? "text-danger" : "text-primary"}>&nbsp;&#8226;</span>}
       </span>
       <span class:list={["gb-pts fs-5", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
     </span>

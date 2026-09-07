@@ -16,18 +16,24 @@ function competitor(id: string, abbr: string, score: string, rank = 99) {
     };
 }
 
-function gameEvent(id: string, opts: { completed: boolean }) {
-    const status = {
-        period: opts.completed ? 4 : 0,
-        clock: 0,
-        type: {
-            id: opts.completed ? '3' : '1',
-            name: opts.completed ? 'STATUS_FINAL' : 'STATUS_SCHEDULED',
-            completed: opts.completed,
-            detail: opts.completed ? 'Final' : 'Sat, September 6th at 7:30 PM EDT',
-            shortDetail: opts.completed ? 'Final' : '9/6 - 7:30 PM EDT',
-        },
-    };
+function gameEvent(id: string, opts: { completed: boolean; live?: boolean }) {
+    const status = opts.live
+        ? {
+            period: 3,
+            clock: 512,
+            type: { id: '2', name: 'STATUS_IN_PROGRESS', completed: false, detail: '8:32 - 3rd', shortDetail: '8:32 - 3rd' },
+        }
+        : {
+            period: opts.completed ? 4 : 0,
+            clock: 0,
+            type: {
+                id: opts.completed ? '3' : '1',
+                name: opts.completed ? 'STATUS_FINAL' : 'STATUS_SCHEDULED',
+                completed: opts.completed,
+                detail: opts.completed ? 'Final' : 'Sat, September 6th at 7:30 PM EDT',
+                shortDetail: opts.completed ? 'Final' : '9/6 - 7:30 PM EDT',
+            },
+        };
     return {
         id,
         date: '2026-09-06T23:30Z',
@@ -39,6 +45,8 @@ function gameEvent(id: string, opts: { completed: boolean }) {
             notes: [],
             // ids chosen off the MEME_LIST (61 = UGA renders lowercased on purpose)
             competitors: [competitor('333', 'ALA', '24', 5), competitor('2', 'AUB', '17')],
+            // the live game: ALA has the ball in the red zone
+            ...(opts.live ? { situation: { lastPlay: { end: { team: { id: '333' } } }, isRedZone: true } } : {}),
         }],
     };
 }
@@ -53,7 +61,7 @@ async function render(locals: Record<string, unknown>) {
     return container.renderToString(SchedulePage, {
         props: {
             season: 2026, week: 2, isScoreboard: true,
-            games: [gameEvent('401', { completed: true }), gameEvent('402', { completed: false })],
+            games: [gameEvent('401', { completed: true }), gameEvent('402', { completed: false }), gameEvent('403', { completed: false, live: true })],
         },
         request: new Request('https://gameonpaper.com/'),
         locals,
@@ -65,7 +73,7 @@ describe('the compact scoreboard rows are preview-gated', () => {
         const html = await render({ preview: true });
         expect(html).toContain('game-compact-list');
         const rows = [...html.matchAll(/class="game-banner[" ]/g)];
-        expect(rows).toHaveLength(2);
+        expect(rows).toHaveLength(3);
         // both fixture games share a kickoff -> exactly one time-slot header (ET)
         const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
         expect(slots).toHaveLength(1);
@@ -84,7 +92,11 @@ describe('the compact scoreboard rows are preview-gated', () => {
         // with data-gb-utc for the single localization script (no islands)
         expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*>7:30 PM EDT</);
         expect(html).toMatch(/gb-slot[^>]*data-gb-utc=/);
-        expect([...html.matchAll(/data-gb-utc=/g)].length).toBe(2); // header + 1 scheduled game
+        expect([...html.matchAll(/data-gb-utc="/g)].length).toBe(2); // header + 1 scheduled game (live/final carry none)
+        // live game: possession dot on the team with the ball, red in the red zone
+        const liveCard = html.slice(html.indexOf('/game/403'));
+        expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('text-danger');
+        expect(liveCard).toContain('8:32 - 3rd');
         expect(html).toContain("querySelectorAll('[data-gb-utc]')");
         // the card grid is still there for md+, hidden on phones
         expect(html).toMatch(/class="row mb-3 d-none d-md-flex"/);
