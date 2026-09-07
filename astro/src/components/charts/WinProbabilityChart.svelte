@@ -64,8 +64,13 @@ function createSpanShadePlugin(shade, isDarkMode) {
             const xScale = chart.scales.x;
             if (!xScale) return;
             const x0 = xScale.getPixelForValue(shade.from);
-            // a one-play window has from === to; keep the box visible
-            const x1 = Math.max(xScale.getPixelForValue(shade.to), x0 + 3);
+            // each play occupies [x(i), x(i+1)): an inclusive-to band ends at
+            // the NEXT play's x, which for a whole quarter is exactly the next
+            // period's marker (QA on #215 -- the edge was one play short).
+            // The last play of the game has no next x; clamp to the axis end.
+            const xEnd = Math.min(shade.to + 1, (chart.data.labels?.length ?? 1) - 1);
+            // a one-play window at the axis end still keeps a visible box
+            const x1 = Math.max(xScale.getPixelForValue(xEnd), x0 + 3);
             const { top, bottom } = chart.chartArea;
             const ctx = chart.ctx;
             ctx.save();
