@@ -164,6 +164,23 @@ export function sportsEventJsonLd(g: GameSpec) {
     };
 }
 
+export interface FaqEntry { question: string; answer: string }
+
+/** schema.org FAQPage from plain question/answer pairs (answers may hold HTML). */
+export function faqPageJsonLd(faqs: FaqEntry[], pageUrl: string) {
+    if (!faqs.length) return null;
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        '@id': `${pageUrl}#faq`,
+        mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer.replace(/<[^>]+>/g, '') },
+        })),
+    };
+}
+
 export function websiteJsonLd() {
     return {
         '@context': 'https://schema.org',
