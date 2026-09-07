@@ -144,10 +144,26 @@ if (compactRows) {
                     <div class="game-compact-list d-md-none mb-3">
                         {compactSlots.map(([slot, slotGames]) => (
                             <Fragment>
-                                <h6 class="gb-slot">{slot}</h6>
+                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1" data-gb-utc={slotGames[0].date}>{slot}</h6>
                                 {slotGames.map((g) => <GameCompactRow game={g} />)}
                             </Fragment>
                         ))}
+                        {/* One pass over every ET label -- kickoff headers and
+                            scheduled-game times -- rewritten to the viewer's
+                            timezone. Plain inline script: the LocalDate island
+                            does this per element, and ~100 hydrated islands is
+                            the page-weight class the mobile work just fought. */}
+                        <script is:inline>
+                            (() => {
+                                try {
+                                    const fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+                                    document.querySelectorAll('[data-gb-utc]').forEach((el) => {
+                                        const d = new Date(el.getAttribute('data-gb-utc'));
+                                        if (!isNaN(d.getTime())) el.textContent = fmt.format(d);
+                                    });
+                                } catch { /* ET server-rendered fallback stands */ }
+                            })();
+                        </script>
                     </div>
                 )
             }

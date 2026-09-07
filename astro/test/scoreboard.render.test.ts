@@ -64,24 +64,28 @@ describe('the compact scoreboard rows are preview-gated', () => {
     test('preview renders banner rows under a kickoff-time header, card grid demoted to md+', async () => {
         const html = await render({ preview: true });
         expect(html).toContain('game-compact-list');
-        const rows = [...html.matchAll(/class="game-banner"/g)];
+        const rows = [...html.matchAll(/class="game-banner[" ]/g)];
         expect(rows).toHaveLength(2);
         // both fixture games share a kickoff -> exactly one time-slot header (ET)
-        const slots = [...html.matchAll(/class="gb-slot">([^<]+)</g)].map((m) => m[1]);
+        const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
         expect(slots).toHaveLength(1);
         expect(slots[0]).toMatch(/7:30 PM ET/);
         // full school names, not truncated abbreviation pairs
         expect(html).toContain('ALA State');
         expect(html).toContain('AUB State');
-        // completed: winner bold (gb-won), loser dimmed (gb-lost), never both;
-        // live/scheduled mark nobody
-        expect(html).toMatch(/gb-pts gb-lost">17</);
-        expect(html).toMatch(/gb-pts gb-won">24</);
-        expect(html).not.toMatch(/gb-won gb-lost/);
+        // completed: winner fw-bold, loser opacity-50 (Bootstrap utilities,
+        // TeamRow semantics), never both; live/scheduled mark nobody
+        expect(html).toMatch(/gb-pts fs-5 opacity-50">17</);
+        expect(html).toMatch(/gb-pts fs-5 fw-bold">24</);
+        expect(html).not.toMatch(/fw-bold opacity-50/);
         // team-color stripe carries the ESPN hex
         expect(html).toContain('style="background:#ba0c2f"');
-        // scheduled game: kickoff time in the middle, no scores
-        expect(html).toContain('7:30 PM EDT');
+        // scheduled game: ET kickoff server-rendered as the no-JS fallback,
+        // with data-gb-utc for the single localization script (no islands)
+        expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*>7:30 PM EDT</);
+        expect(html).toMatch(/gb-slot[^>]*data-gb-utc=/);
+        expect([...html.matchAll(/data-gb-utc=/g)].length).toBe(2); // header + 1 scheduled game
+        expect(html).toContain("querySelectorAll('[data-gb-utc]')");
         // the card grid is still there for md+, hidden on phones
         expect(html).toMatch(/class="row mb-3 d-none d-md-flex"/);
     });

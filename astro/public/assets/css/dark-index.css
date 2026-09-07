@@ -2528,8 +2528,3 @@
         color: rgb(35, 148, 253) !important; /* #eeb211*/
     }
 }
-@media (prefers-color-scheme: dark) {
-    .game-banner { background: #23272b; border-color: #3e4446; }
-    .game-banner .gb-city, .game-banner .gb-mid, .gb-slot { color: #a8a095; }
-    .game-banner .gb-stripe img { filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
-}

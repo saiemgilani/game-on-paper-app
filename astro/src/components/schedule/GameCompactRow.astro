@@ -1,11 +1,12 @@
 ---
 // Banner-style scoreboard row (mobile): slanted team-color stripes with
-// logos on the edges; the two teams stacked inside with FULL school names
-// (no truncated abbreviation-plus-city pair -- a stacked line gets ~230px,
-// so "Middle Tennessee" fits where the mirrored layout had ~70px); status
-// in its own column. Winner bold, completed loser half-opacity, exactly
-// like TeamRow's formatScore. The whole card links to the game page.
-// Preview-flagged ('scoreboard-compact'); the card grid stays >=768px.
+// logos on the edges; the two teams stacked inside with full school names;
+// status in its own column. Bootstrap utilities carry the layout -- custom
+// CSS is only what Bootstrap cannot do (stripe clip-paths, tabular score
+// digits, the Chivo opt-in on the list). Winner fw-bold, completed loser
+// opacity-50, matching TeamRow's formatScore. Scheduled kickoffs render
+// the ET string server-side and carry data-gb-utc so SchedulePage's single
+// inline script (no per-row island) rewrites them to the viewer's timezone.
 import type { ESPNScheduleEvent } from "../../resources/espn";
 import { cleanLocation, cleanScore } from "../../utils/misc";
 
@@ -31,7 +32,7 @@ function colorOf(c: any): string {
   const hex = String(c.team?.color ?? "").replace(/[^0-9a-fA-F]/g, "");
   return hex.length === 6 || hex.length === 3 ? `#${hex}` : "#6c757d";
 }
-// "Final" / "10:24 - 3rd" / kickoff "7:30 PM EDT" for scheduled games
+// "Final" / "10:24 - 3rd" / kickoff "7:30 PM EDT" (ET fallback) for scheduled
 const statusLabel = scheduled
   ? (status.type.shortDetail ?? "").split(" - ").pop()
   : status.type.shortDetail;
@@ -48,26 +49,26 @@ const side = (c: any, score: number, other: number) => ({
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
 ---
-<a class="game-banner" href={`/game/${game.id}`}>
-  <span class="gb-stripe gb-stripe-away" style={`background:${away.color}`}>
+<a class="game-banner d-flex align-items-center gap-2 border rounded mb-2 text-reset text-decoration-none" href={`/game/${game.id}`}>
+  <span class="gb-stripe gb-stripe-away d-flex align-items-center justify-content-center align-self-stretch" style={`background:${away.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
   </span>
-  <span class="gb-teams">
-    <span class="gb-line">
-      <span class:list={["gb-nm", { "gb-won": away.won, "gb-lost": away.lost }]}>
-        {away.rank != 99 && <span class="gb-rank">#{away.rank}</span>} {away.name}
+  <span class="flex-grow-1 overflow-hidden d-flex flex-column gap-1 py-2">
+    <span class="d-flex justify-content-between align-items-baseline gap-2">
+      <span class:list={["fs-6 text-truncate", { "fw-bold": away.won, "opacity-50": away.lost }]}>
+        {away.rank != 99 && <span class="small text-muted">#{away.rank}</span>} {away.name}
       </span>
-      <span class:list={["gb-pts", { "gb-won": away.won, "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
+      <span class:list={["gb-pts fs-5", { "fw-bold": away.won, "opacity-50": away.lost }]}>{scheduled ? "" : awayScore}</span>
     </span>
-    <span class="gb-line">
-      <span class:list={["gb-nm", { "gb-won": home.won, "gb-lost": home.lost }]}>
-        {home.rank != 99 && <span class="gb-rank">#{home.rank}</span>} {home.name}
+    <span class="d-flex justify-content-between align-items-baseline gap-2">
+      <span class:list={["fs-6 text-truncate", { "fw-bold": home.won, "opacity-50": home.lost }]}>
+        {home.rank != 99 && <span class="small text-muted">#{home.rank}</span>} {home.name}
       </span>
-      <span class:list={["gb-pts", { "gb-won": home.won, "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
+      <span class:list={["gb-pts fs-5", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
     </span>
   </span>
-  <span class="gb-mid">{statusLabel}</span>
-  <span class="gb-stripe gb-stripe-home" style={`background:${home.color}`}>
+  <span class="small text-muted text-center text-nowrap" data-gb-utc={scheduled ? game.date : undefined}>{statusLabel}</span>
+  <span class="gb-stripe gb-stripe-home d-flex align-items-center justify-content-center align-self-stretch" style={`background:${home.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
   </span>
 </a>
