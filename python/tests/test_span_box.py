@@ -45,3 +45,57 @@ def test_spanned_box_falls_back_when_empty_or_invalid():
     assert span_box.spanned_box(g, "nope") == (None, None)
     g.plays_json = frame().filter(pl.col("period") > 90)
     assert span_box.spanned_box(g, "q2") == (None, None)
+
+
+def test_all_span_boxes_only_played_windows():
+    class G:
+        plays_json = frame()
+
+        def create_box_score(self, df):
+            return {"n": df.height, "periods": sorted(df["period"].to_list())}
+
+    boxes = span_box.all_span_boxes(G())
+    # every standard window has plays in the fixture (one play per period + OT)
+    assert sorted(boxes) == ["h1", "h2", "ot", "q1", "q2", "q3", "q4"]
+    assert boxes["h1"] == {"n": 2, "periods": [1, 2]}
+    assert boxes["ot"] == {"n": 1, "periods": [5]}
+    # matches the singular path window-for-window
+    assert boxes["q3"] == span_box.spanned_box(G(), "q3")[0]
+
+
+def test_all_span_boxes_omits_empty_windows_and_missing_plays():
+    class G:
+        plays_json = frame().filter(pl.col("period") <= 2)
+
+        def create_box_score(self, df):
+            return {"n": df.height}
+
+    boxes = span_box.all_span_boxes(G())
+    assert sorted(boxes) == ["h1", "q1", "q2"]  # no h2/q3/q4/ot in a half-played game
+
+    class NoPlays:
+        plays_json = None
+
+    assert span_box.all_span_boxes(NoPlays()) == {}
+
+
+def test_windows_read_plays_frame_not_the_mutated_list():
+    # production shape: sdv-py converts plays_json to a LIST at the end of
+    # run_processing (and app.py mutates it); the retained plays_frame
+    # (sdv-py #464) is the only re-aggregable source
+    class G:
+        plays_frame = frame()
+        plays_json = [{"mutated": True}]  # what app.py leaves behind
+
+        def create_box_score(self, df):
+            return {"n": df.height}
+
+    assert span_box.spanned_box(G(), "q2") == ({"n": 1}, "q2")
+    boxes = span_box.all_span_boxes(G())
+    assert boxes["h2"] == {"n": 2}
+
+    class ListOnly:
+        plays_json = [{"mutated": True}]  # old sdv-py: no frame retained
+
+    assert span_box.spanned_box(ListOnly(), "q2") == (None, None)
+    assert span_box.all_span_boxes(ListOnly()) == {}

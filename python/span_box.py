@@ -51,14 +51,63 @@ def parse_span(raw):
     return None
 
 
+def _plays_frame(game):
+    """The enriched polars frame, or None.
+
+    sdv-py's run_processing ends with ``self.plays_json = plays_json.to_dicts()``
+    and app.py then MUTATES those records (nesting start/end, deleting the flat
+    dotted columns create_box_score needs) -- so ``.filter`` threw on every
+    ?span= request and the fail-open except silently kept the full box
+    (advBoxScoreSpan was never set) from #206 until 2026-09-07. sdv-py now
+    retains the pre-conversion frame as ``plays_frame`` (sdv-py #464); reading
+    anything else here is wrong by construction.
+    """
+    frame = getattr(game, "plays_frame", None)
+    if isinstance(frame, pl.DataFrame):
+        return frame
+    plays = getattr(game, "plays_json", None)
+    return plays if isinstance(plays, pl.DataFrame) else None
+
+
 def spanned_box(game, raw_span):
     """Recompute advBoxScore over the window. Returns (box_dict, key) or (None, None)
     when the span is invalid or selects no plays (caller keeps the full box)."""
     parsed = parse_span(raw_span)
-    if parsed is None or getattr(game, "plays_json", None) is None:
+    if parsed is None:
+        return None, None
+    frame = _plays_frame(game)
+    if frame is None:
         return None, None
     key, expr = parsed
-    sliced = game.plays_json.filter(expr)
+    box = _box_for(game, frame, expr)
+    return (box, key) if box is not None else (None, None)
+
+
+def _box_for(game, frame, expr):
+    sliced = frame.filter(expr)
     if sliced.height == 0:
-        return None, None
-    return game.create_box_score(sliced), key
+        return None
+    return game.create_box_score(sliced)
+
+
+# render order for the standard windows; a window absent from the game
+# (no OT, or a live game still in Q1) is simply omitted
+_ALL_KEYS = ("q1", "q2", "h1", "q3", "q4", "h2", "ot")
+
+
+def all_span_boxes(game):
+    """Every standard window's box in ONE response, for in-place span
+    switching on the game page (no per-span navigation, no per-span API
+    round trips). The EP/WP pipeline already ran full-game; each window is
+    only a filter + re-aggregation. Windows with no plays are omitted.
+    Returns {} when plays are unavailable."""
+    frame = _plays_frame(game)
+    if frame is None:
+        return {}
+    out = {}
+    for key in _ALL_KEYS:
+        _, expr = parse_span(key)
+        box = _box_for(game, frame, expr)
+        if box is not None:
+            out[key] = box
+    return out
