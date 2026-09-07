@@ -16,6 +16,7 @@ import gop_routes
 import espn_proxy
 import dq
 import drive_summary
+import situational_stats
 import span_box
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
@@ -357,6 +358,20 @@ def process(game_id: int):
         except Exception as e:  # a summary must never cost the page
             logging.getLogger("root").warning(
                 f"drive summary failed for {game_id}: {e}"
+            )
+
+        # Situational team stats (metrics-note inventory), same contract.
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                sit = situational_stats.build(
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
+                )
+                if sit:
+                    processed_game["situationalStats"] = sit
+        except Exception as e:  # observability must never cost a render
+            logging.getLogger("root").warning(
+                f"situational stats failed for {game_id}: {e}"
             )
 
         body_bytes = orjson.dumps(
