@@ -774,7 +774,8 @@ const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
 
 // Mirrors: https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_game_predict.py
 export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false): number | null {
-    if (!away_adj_epa || !home_adj_epa) {
+    // null-checks, not falsiness: 0 is a legitimate Net Adj EPA rating
+    if (away_adj_epa == null || home_adj_epa == null || !Number.isFinite(away_adj_epa) || !Number.isFinite(home_adj_epa)) {
         return null
     }
 

@@ -377,6 +377,18 @@ async function relayESPN(url: string): Promise<Response | null> {
     const base = getSecret("PYTHON_HTTP_URL");
     const token = getSecret("PYTHON_HTTP_TOKEN");
     if (!base || !token) return null;
+    // The relay carries a bearer token: never send it over cleartext to a
+    // non-local host. http:// stays allowed for localhost so local dev works.
+    try {
+        const u = new URL(base);
+        const local = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+        if (u.protocol !== "https:" && !(u.protocol === "http:" && local)) {
+            console.error(`ESPN relay refused: PYTHON_HTTP_URL must be https (got ${u.protocol}//${u.hostname})`);
+            return null;
+        }
+    } catch {
+        return null;
+    }
     try {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },

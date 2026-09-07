@@ -36,13 +36,16 @@ const home = form(homeTeam.id);
                             ? (<p class="small text-muted m-0">No recent games.</p>)
                             : (
                             <div class="d-flex flex-wrap gap-2">
-                                {events.map(e => (
-                                    <a class="text-decoration-none" href={e.id ? `/game/${e.id}` : undefined} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
-                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : e.gameResult === "L" ? "bg-danger" : "bg-secondary"}`}>
+                                {events.map(e => {
+                                    const badge = (
+                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : e.gameResult === "L" ? "bg-danger" : "bg-secondary"}`} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
                                             {e.gameResult ?? "?"} {e.score ?? ""} {e.atVs ?? ""}{e.opponent?.abbreviation ?? ""}
                                         </span>
-                                    </a>
-                                ))}
+                                    );
+                                    return e.id
+                                        ? (<a class="text-decoration-none" href={`/game/${e.id}`}>{badge}</a>)
+                                        : badge;
+                                })}
                             </div>
                             )}
                     </div>
