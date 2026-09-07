@@ -333,3 +333,19 @@ def test_situational_fails_open():
     assert situational_stats.build(None, HOME, AWAY) is None
     assert situational_stats.build(pl.DataFrame(), HOME, AWAY) is None
     assert situational_stats.build(pl.DataFrame({"x": [1]}), HOME, AWAY) is None
+
+
+def test_windowed_build_drops_window_inherent_sections():
+    expr = pl.col("period").is_in([1, 2])
+    out = situational_stats.build(_frame(), HOME, AWAY, window_expr=expr)
+    h = out["teams"][HOME]
+    # windowable sections present and windowed
+    assert h["downs"]["down_1"]["plays"] == 1  # only the Q1 first-down play
+    assert h["red_zone"]["trips"] == 1
+    # window-inherent sections absent
+    for k in ("two_minute", "middle_8", "pace", "non_garbage", "fourth_down_decisions"):
+        assert k not in h, k
+
+
+def test_windowed_build_empty_window_is_none():
+    assert situational_stats.build(_frame(), HOME, AWAY, window_expr=pl.col("period") > 90) is None

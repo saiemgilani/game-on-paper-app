@@ -39,13 +39,25 @@ def _points(df):
     return int(df["pos_score_pts"].fill_null(0).sum()) if df.height else 0
 
 
-def build(frame, home_id, away_id):
-    """-> the situationalStats dict, or None when the frame is unusable."""
+def build(frame, home_id, away_id, window_expr=None):
+    """-> the situationalStats dict, or None when the frame is unusable.
+
+    ``window_expr`` (a polars filter, e.g. from span_box.parse_span) windows
+    the WINDOWABLE sections to that slice. Window-inherent sections --
+    two_minute, middle_8, non_garbage, pace, fourth_down_decisions -- are
+    omitted from a windowed build: they are themselves time windows or
+    game-level filters, and double-windowing them is a category error.
+    """
     if not isinstance(frame, pl.DataFrame) or frame.height == 0:
         return None
     needed = {"scrimmage_play", "pos_team", "EPA", "EPA_success", "pos_score_pts"}
     if not needed.issubset(set(frame.columns)):
         return None
+
+    if window_expr is not None:
+        frame = frame.filter(window_expr)
+        if frame.height == 0:
+            return None
 
     scrim = frame.filter(_TRUE("scrimmage_play"))
     out = {}
@@ -54,11 +66,12 @@ def build(frame, home_id, away_id):
         opp_off = scrim.filter(pl.col("pos_team").cast(pl.Utf8) != tid)
         t = {}
 
-        # --- clutch windows -------------------------------------------------
-        u2 = mine.filter(_TRUE("under_2"))
-        t["two_minute"] = {**_grp(u2), "points": _points(u2)}
-        m8 = mine.filter(_TRUE("middle_8"))
-        t["middle_8"] = {**_grp(m8), "points": _points(m8)}
+        # --- clutch windows (window-inherent: full-game builds only) --------
+        if window_expr is None:
+            u2 = mine.filter(_TRUE("under_2"))
+            t["two_minute"] = {**_grp(u2), "points": _points(u2)}
+            m8 = mine.filter(_TRUE("middle_8"))
+            t["middle_8"] = {**_grp(m8), "points": _points(m8)}
 
         # --- red zone / finishing drives (trips need drive identity; plays
         # are already attributed by pos_team, so drive.id is safe HERE) ------
@@ -325,6 +338,12 @@ def build(frame, home_id, away_id):
             | ((pl.col("period") >= 4) & (margin > 22))
         )
         t["non_garbage"] = _grp(mine.filter(~garbage))
+
+        if window_expr is not None:
+            # window-inherent or sample-size-noise sections never ship on a
+            # windowed build (two_minute/middle_8 were skipped above)
+            for k in ("fourth_down_decisions", "pace", "non_garbage"):
+                t.pop(k, None)
 
         out[tid] = t
     return {"teams": out}

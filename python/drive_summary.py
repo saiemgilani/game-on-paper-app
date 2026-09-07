@@ -105,10 +105,26 @@ def _obtained(prev_result, is_first_of_half):
     return r
 
 
-def build(drives, frame, home_id, away_id):
-    """-> the driveSummary dict, or None when inputs are unusable."""
+def build(drives, frame, home_id, away_id, periods=None):
+    """-> the driveSummary dict, or None when inputs are unusable.
+
+    ``periods`` windows the summary: a set of quarter numbers, or "ot"
+    (period > 4). A drive belongs to the quarter it STARTED in. The full
+    drive sequence still provides context (running score, the previous
+    drive for OBTAINED and points-off-turnovers), but only in-window drives
+    are counted, charted, or listed. Game-level lines (largest lead,
+    time leading/tied) ship only on the un-windowed build.
+    """
     if not drives or not isinstance(frame, pl.DataFrame) or frame.height == 0:
         return None
+
+    def in_window(p):
+        if periods is None:
+            return True
+        if periods == "ot":
+            return p is not None and p > 4
+        return p in periods
+
     home_id, away_id = str(home_id), str(away_id)
     team_ids = {home_id, away_id}
 
@@ -157,6 +173,12 @@ def build(drives, frame, home_id, away_id):
             and period is not None
             and (_period(prev) <= 2 < period)
         )
+
+        if not in_window(period):
+            # out-of-window drives still advance the running score so
+            # points-off-turnovers and OBTAINED stay correct at the seams
+            h, a = _score_after(d, h, a)
+            continue
 
         t["total_drives"] += 1
         t["yards"] += yards
@@ -264,8 +286,12 @@ def build(drives, frame, home_id, away_id):
 
         h, a = h2, a2
 
-    # frame-side aggregates per team
+    # frame-side aggregates per team, windowed to match
     scrim = frame.filter(pl.col("scrimmage_play") == True)  # noqa: E712
+    if periods == "ot":
+        scrim = scrim.filter(pl.col("period") > 4)
+    elif periods is not None:
+        scrim = scrim.filter(pl.col("period").is_in(sorted(periods)))
     for tid, t in teams.items():
         mine = scrim.filter(pl.col("pos_team").cast(pl.Utf8) == tid)
         third = mine.filter(pl.col("down") == 3)
@@ -329,8 +355,13 @@ def build(drives, frame, home_id, away_id):
         del t["success_fd"], t["success_ay"], t["start_yte_sum"], t["start_yte_n"]
 
     # largest lead + minutes leading/trailing/tied from the score-state clock
-    # (regulation only -- OT clocks don't tick the same axis)
-    reg = scrim.filter(pl.col("period") <= 4).sort("game_play_number")
+    # (regulation only -- OT clocks don't tick the same axis); game-level, so
+    # only the un-windowed build carries it
+    reg = (
+        scrim.filter(pl.col("period") <= 4).sort("game_play_number")
+        if periods is None
+        else scrim.head(0)
+    )
     lead = {home_id: 0, away_id: 0}
     clockstate = {home_id: 0, away_id: 0, "tied": 0}
     rows = reg.select(
@@ -349,12 +380,13 @@ def build(drives, frame, home_id, away_id):
             dt = max(0, r.get("start.adj_TimeSecsRem") or 0)
         key = home_id if hh > aa else away_id if aa > hh else "tied"
         clockstate[key] += dt
-    for tid, t in teams.items():
-        t["largest_lead"] = lead[tid]
-        t["time_leading_seconds"] = round(clockstate[tid])
-    tied_s = round(clockstate["tied"])
-    for t in teams.values():
-        t["time_tied_seconds"] = tied_s
+    if periods is None:
+        for tid, t in teams.items():
+            t["largest_lead"] = lead[tid]
+            t["time_leading_seconds"] = round(clockstate[tid])
+        tied_s = round(clockstate["tied"])
+        for t in teams.values():
+            t["time_tied_seconds"] = tied_s
 
     # long plays: top 5 scrimmage gains per team
     long_plays = {}
@@ -372,4 +404,6 @@ def build(drives, frame, home_id, away_id):
             if (p["statYardage"] or 0) > 0
         ]
 
+    if periods is not None and not chart:
+        return None  # nothing happened in this window
     return {"teams": teams, "chart": chart, "scores": scores, "longPlays": long_plays}

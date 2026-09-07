@@ -172,3 +172,20 @@ def test_drive_summary_fails_open_on_bad_inputs():
     assert drive_summary.build([], _frame(), HOME, AWAY) is None
     assert drive_summary.build(_drives(), pl.DataFrame(), HOME, AWAY) is None
     assert drive_summary.build(_drives(), None, HOME, AWAY) is None
+
+
+def test_windowed_build_books_drives_to_start_quarter():
+    out = drive_summary.build(_drives(), _frame(), HOME, AWAY, periods={2})
+    h, a = out["teams"][HOME], out["teams"][AWAY]
+    # Q2: home's INT drive, away's ensuing TD -- and pts-off-TO still credits
+    # because the out-of-window context (running score, prev drive) is kept
+    assert h["total_drives"] == 1 and a["total_drives"] == 1
+    assert a["points_off_turnovers"] == 7
+    # game-level lines never ship on a windowed build
+    assert "largest_lead" not in h and "time_leading_seconds" not in h
+    # chart holds only in-window drives
+    assert [c["period"] for c in out["chart"]] == [2, 2]
+
+
+def test_windowed_build_empty_window_is_none():
+    assert drive_summary.build(_drives(), _frame(), HOME, AWAY, periods="ot") is None

@@ -19,6 +19,12 @@ import drive_summary
 import situational_stats
 import span_box
 
+# span key -> drive-summary period windows (drives book to their start quarter)
+_SPAN_PERIODS = {
+    "q1": {1}, "q2": {2}, "q3": {3}, "q4": {4},
+    "h1": {1, 2}, "h2": {3, 4}, "ot": "ot",
+}
+
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
 assert HTTP_TOKEN, "HTTP_TOKEN not provided, can not start server"
 
@@ -321,37 +327,6 @@ def process(game_id: int):
         # processed_game, and everything after `return` is dead code -- which is
         # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
         # ordering (gop.dq_boxscore had zero rows since #192 merged).
-        # ?spans=all: every standard window's box in one response
-        # (advBoxScoreSpans), independent of the singular ?span= swap --
-        # the data layer for in-place span switching on the game page.
-        if request.args.get("spans") == "all":
-            try:
-                boxes = span_box.all_span_boxes(game)
-                if boxes:
-                    processed_game["advBoxScoreSpans"] = boxes
-            except Exception as e:  # a bad window must never cost the page
-                logging.getLogger("root").warning(
-                    f"all-span boxes failed for {game_id}: {e}"
-                )
-
-        raw_span = request.args.get("span")
-        if raw_span:
-            try:
-                box, span_key = span_box.spanned_box(game, raw_span)
-                if box is not None:
-                    processed_game["advBoxScore"] = box
-                    processed_game["advBoxScoreSpan"] = span_key
-            except Exception as e:  # a bad window must never cost the page
-                logging.getLogger("root").warning(
-                    f"span box failed for {game_id} span={raw_span}: {e}"
-                )
-
-        if not raw_span:  # a windowed request is not the game's canonical box
-            try:
-                _emit_dq(game_id, game, processed_game)
-            except Exception as e:  # observability must never cost a render
-                logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
-
         # StatBroadcast-style drive summary/chart. Cheap (one pass over ~25
         # drives + a few frame aggregations), so it ships on every response;
         # fail-open like everything else on this route.
@@ -386,6 +361,93 @@ def process(game_id: int):
             logging.getLogger("root").warning(
                 f"situational stats failed for {game_id}: {e}"
             )
+
+        # ?spans=all: every standard window's box, drive summary, and
+        # situational slice in one response -- the data layer for in-place
+        # span switching on the game page. Window-inherent sections
+        # (two-minute, middle-8, pace, non-garbage, 4th-down report) stay on
+        # the full-game objects only.
+        if request.args.get("spans") == "all":
+            try:
+                boxes = span_box.all_span_boxes(game)
+                if boxes:
+                    processed_game["advBoxScoreSpans"] = boxes
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"all-span boxes failed for {game_id}: {e}"
+                )
+            try:
+                frame = getattr(game, "plays_frame", None)
+                drv_all = (processed_game.get("drives") or {}).get("previous") or []
+                cur = (processed_game.get("drives") or {}).get("current")
+                if cur:
+                    drv_all = drv_all + [cur]
+                if frame is not None:
+                    hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
+                    ds_spans, sit_spans = {}, {}
+                    for key, per in _SPAN_PERIODS.items():
+                        parsed = span_box.parse_span(key)
+                        if parsed is None:
+                            continue
+                        _, expr = parsed
+                        if drv_all:
+                            w = drive_summary.build(
+                                drv_all, frame, hid, aid, periods=per
+                            )
+                            if w:
+                                ds_spans[key] = w
+                        w = situational_stats.build(frame, hid, aid, window_expr=expr)
+                        if w:
+                            sit_spans[key] = w
+                    if ds_spans:
+                        processed_game["driveSummarySpans"] = ds_spans
+                    if sit_spans:
+                        processed_game["situationalStatsSpans"] = sit_spans
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"all-span summaries failed for {game_id}: {e}"
+                )
+
+        raw_span = request.args.get("span")
+        if raw_span:
+            try:
+                box, span_key = span_box.spanned_box(game, raw_span)
+                if box is not None:
+                    processed_game["advBoxScore"] = box
+                    processed_game["advBoxScoreSpan"] = span_key
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"span box failed for {game_id} span={raw_span}: {e}"
+                )
+            # the summaries window with the box, keeping the response coherent
+            try:
+                parsed = span_box.parse_span(raw_span)
+                frame = getattr(game, "plays_frame", None)
+                if parsed is not None and frame is not None:
+                    key, expr = parsed
+                    hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
+                    w = situational_stats.build(frame, hid, aid, window_expr=expr)
+                    if w:
+                        processed_game["situationalStats"] = w
+                    per = _SPAN_PERIODS.get(key)
+                    drv_all = (processed_game.get("drives") or {}).get("previous") or []
+                    cur = (processed_game.get("drives") or {}).get("current")
+                    if cur:
+                        drv_all = drv_all + [cur]
+                    if per is not None and drv_all:
+                        w = drive_summary.build(drv_all, frame, hid, aid, periods=per)
+                        if w:
+                            processed_game["driveSummary"] = w
+            except Exception as e:
+                logging.getLogger("root").warning(
+                    f"span summaries failed for {game_id} span={raw_span}: {e}"
+                )
+
+        if not raw_span:  # a windowed request is not the game's canonical box
+            try:
+                _emit_dq(game_id, game, processed_game)
+            except Exception as e:  # observability must never cost a render
+                logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
 
         body_bytes = orjson.dumps(
             processed_game,
