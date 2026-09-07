@@ -99,3 +99,18 @@ def test_windows_read_plays_frame_not_the_mutated_list():
 
     assert span_box.spanned_box(ListOnly(), "q2") == (None, None)
     assert span_box.all_span_boxes(ListOnly()) == {}
+
+
+def test_all_span_boxes_survives_one_bad_window():
+    # a window whose aggregation raises is skipped; the rest still compute
+    class G:
+        plays_frame = frame()
+
+        def create_box_score(self, df):
+            if df["period"].to_list() == [2]:  # q2's slice
+                raise ValueError("boom")
+            return {"n": df.height}
+
+    boxes = span_box.all_span_boxes(G())
+    assert "q2" not in boxes
+    assert boxes["q1"] == {"n": 1} and boxes["h2"] == {"n": 2}

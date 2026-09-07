@@ -15,6 +15,8 @@ What cannot be windowed, ever:
   classes; a Q3 box against full-game distributions is a category error.
 """
 
+import logging
+
 import polars as pl
 
 _PERIODS = {
@@ -107,7 +109,11 @@ def all_span_boxes(game):
     out = {}
     for key in _ALL_KEYS:
         _, expr = parse_span(key)
-        box = _box_for(game, frame, expr)
+        try:
+            box = _box_for(game, frame, expr)
+        except Exception as e:  # one bad window must not cost the others
+            logging.getLogger("root").warning(f"span window {key} failed: {e}")
+            continue
         if box is not None:
             out[key] = box
     return out
