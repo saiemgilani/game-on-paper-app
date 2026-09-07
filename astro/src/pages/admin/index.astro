@@ -76,10 +76,12 @@ const subtitle = "Operational dashboards for Game on Paper";
     <div id="err-recent"></div>
   </section>
   <section id="dq">
-    <div class="card"><p class="admin-muted m-0">Play-flag box score vs ESPN's official team box, per completed game.
-      Zero is not the target for every stat (our pass flag counts sacks; ESPN's net passing subtracts sack yardage;
-      penalty yards differ in sign) &mdash; the signal is a <b>stable</b> delta distribution. A shift aligned with an
-      sdv-py version is a parser regression.</p></div>
+    <div class="card"><p class="admin-muted m-0">Play-derived box score vs ESPN's official team box, per completed game.
+      Our side is computed under official conventions (sacks count as rushes, pass yards are completions only,
+      a TD counts as a first down, penalties count accepted flags), so <b>zero IS the target</b>; residuals of a few
+      yards/units per game are normal spotter-vs-play-text noise. The signal is a <b>stable</b> delta distribution
+      &mdash; a shift aligned with an sdv-py version is a parser regression. Rows before 2026-09-07 predate this
+      reconciliation and read much worse.</p></div>
     <h6 class="admin-label">Scorecard · <span id="dq-days">14</span>d</h6>
     <div class="card twrap"><table class="table table-sm mb-0" id="t-dqscore"></table></div>
     <div class="grid2 mt-2">
