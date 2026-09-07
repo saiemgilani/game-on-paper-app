@@ -179,12 +179,29 @@ const epPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
 });
 const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
     return {
-        pos_team: p.pos_team, 
+        pos_team: p.pos_team,
         period: p.period,
         winProbability: p.winProbability,
         gameSpreadAvailable: p.gameSpreadAvailable
     }
 });
+// Charts stay full-game under a span (a WP chart of Q3 alone is misleading);
+// the active window is shaded on the full x-axis instead. Indices live in the
+// scrimmage-play sequence -- the WP chart's x-axis. The EP chart is skipped:
+// its x-axis is each team's own play count, so one shaded interval per game
+// does not exist there.
+let spanShade: { from: number, to: number, label: string } | null = null;
+if (activeSpan) {
+    const scrimmage = fullGamePlays.filter((p: any) => p.scrimmage_play == true);
+    let from = -1, to = -1;
+    scrimmage.forEach((p: any, i: number) => {
+        if (activeSpan.test(p)) {
+            if (from === -1) from = i;
+            to = i;
+        }
+    });
+    if (from !== -1) spanShade = { from, to, label: activeSpan.label };
+}
 ---
 <!DOCTYPE html>
 <html>
@@ -271,7 +288,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
      inside the Svelte charts, and a duplicate id makes getElementById hand
      Chart.js the wrapper div -- both charts then silently never draw. -->
                 <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei} spanShade={spanShade}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
