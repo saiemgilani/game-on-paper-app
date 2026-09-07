@@ -110,24 +110,25 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(slots).toHaveLength(2);
         expect(slots[0]).toMatch(/7:30 PM ET/);
         expect(slots[1]).toBe('Time TBD');
-        // full school names, not truncated abbreviation pairs
-        expect(html).toContain('ALA State');
-        expect(html).toContain('AUB State');
-        // completed: winner fw-bold, loser opacity-50 (Bootstrap utilities,
-        // TeamRow semantics), never both; live/scheduled mark nobody
-        expect(html).toMatch(/gb-pts fs-5 opacity-50">17</);
-        expect(html).toMatch(/gb-pts fs-5 fw-bold">24</);
-        expect(html).not.toMatch(/fw-bold opacity-50/);
-        // team-color stripe carries the ESPN hex
-        expect(html).toContain('style="background:#ba0c2f"');
+        // Option E: abbreviations with the rank AHEAD of the abbr on BOTH
+        // sides (the banner list section only -- the md+ card grid also
+        // renders ranks, differently)
+        const banners = html.slice(html.indexOf('game-compact-list'), html.indexOf('class="row mb-3'));
+        expect(banners).toMatch(/gb-rank text-muted">#5<\/span><span class="gb-abbr[^"]*">ALA</);
+        // completed: winner fw-bold, loser opacity-50 (TeamRow semantics),
+        // never both; live/scheduled mark nobody
+        expect(banners).toMatch(/gb-pts opacity-50">17</);
+        expect(banners).toMatch(/gb-pts fw-bold">24</);
+        expect(banners).not.toMatch(/fw-bold opacity-50/);
         // scheduled game: ET kickoff server-rendered as the no-JS fallback,
         // with data-gb-utc for the single localization script (no islands)
         expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*>7:30 PM EDT</);
         expect(html).toMatch(/gb-slot[^>]*data-gb-utc=/);
         expect([...html.matchAll(/data-gb-utc="/g)].length).toBe(2); // header + 1 scheduled game (live/final carry none)
-        // live game: possession dot on the team with the ball, red in the red zone
+        // live game: possession badge on the logo of the team with the ball,
+        // red variant in the red zone
         const liveCard = html.slice(html.indexOf('/game/403'));
-        expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('text-danger');
+        expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('gb-ball gb-ball-rz');
         expect(liveCard).toContain('8:32 - 3rd');
         // championship placeholder: default shield (no broken 500/0.png), note
         // line, TBD status, and NO data-gb-utc anywhere (its date is a
@@ -141,6 +142,7 @@ describe('the compact scoreboard rows are preview-gated', () => {
         // gold championship treatment on the card and the note line
         expect(html.slice(0, html.indexOf('/game/404')).slice(-400) + champA).toContain('outline-championship');
         expect(champA).toContain('text-championship');
+        expect(champA).toContain('gb-note');
         expect(champA).not.toContain('data-gb-utc');
         // the DESKTOP CARD GRID gets the same treatment (GameThumb/TeamRow):
         // TBD detail text instead of a LocalDate island on the placeholder

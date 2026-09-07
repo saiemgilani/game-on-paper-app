@@ -179,19 +179,68 @@ h1, h2, h3, h4, h5, h6 {
 .text-favorite {
     color: #2394fd !important; /* #eeb211*/
 }
-/* Banner scoreboard rows (GameCompactRow, preview 'scoreboard-compact').
-   Bootstrap utilities carry the layout; this block is only what Bootstrap
-   cannot express: the Chivo opt-in (the list is not a .row, which is where
-   the site applies the stack), the slanted color stripes, and tabular
-   score digits so the stacked scores align. */
+/* Scoreboard banner rows (GameCompactRow, preview 'scoreboard-compact') --
+   the chosen "Option E": one mirrored line per game, no color stripes.
+   Bootstrap utilities carry what they can; this block holds the grid (a
+   fixed score|status|score middle keeps every row's numbers dead-center),
+   the viewport-clamped type that keeps a double-ranked 4-char matchup from
+   clipping at 320, the logo-corner possession badge, and the Chivo opt-in
+   (the list is not a .row, which is where the site applies the stack). */
 .game-compact-list {
     font-family: "Chivo", "Fira Mono", serif;
 }
-.game-banner .gb-stripe {
-    width: 46px;
-    flex: none;
+.gb-slot {
+    margin: 14px 2px 6px;
+    font-size: .875rem;
+    color: #6c757d;
 }
-.game-banner .gb-stripe img { filter: drop-shadow(0 0 2px rgba(255,255,255,0.6)); }
-.game-banner .gb-stripe-away { clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
-.game-banner .gb-stripe-home { clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%); }
-.game-banner .gb-pts { font-variant-numeric: tabular-nums; }
+.game-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(clamp(3.6rem, 18vw, 5rem), auto) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.2rem;
+    padding-inline: clamp(0.25rem, 2vw, 0.5rem);
+}
+.game-banner .gb-side {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    /* any overflow value but visible lets the flex item shrink below its
+       content, which is what keeps a long side from shoving the grid */
+    overflow: hidden;
+}
+.game-banner .gb-side-home { justify-content: flex-end; }
+.game-banner .gb-logo {
+    position: relative;
+    flex: none;
+    line-height: 0;
+}
+.game-banner .gb-logo img {
+    width: clamp(22px, 7vw, 28px);
+    height: auto;
+}
+.game-banner .gb-ball {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    border: 2px solid var(--bs-body-bg, #fff);
+    background: var(--bs-primary);
+}
+.game-banner .gb-ball-rz { background: var(--bs-danger); }
+.game-banner .gb-rank { font-size: clamp(0.62rem, 2.7vw, 0.75rem); }
+.game-banner .gb-abbr {
+    font-size: clamp(0.8rem, 3.5vw, 1rem);
+    white-space: nowrap;
+}
+.game-banner .gb-pts {
+    font-size: clamp(1.05rem, 4.6vw, 1.25rem);
+    font-variant-numeric: tabular-nums;
+    min-width: clamp(1.4rem, 5vw, 1.75rem);
+    text-align: center;
+}
+.game-banner .gb-mid { font-size: clamp(0.65rem, 3vw, 0.75rem); }
+.game-banner .gb-note { grid-column: 1 / -1; }
