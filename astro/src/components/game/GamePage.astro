@@ -21,6 +21,8 @@ import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import PaperIndex from './metrics/PaperIndex.astro';
+import { paperIndex, paperIndexInputsFromBox } from '../../utils/paperIndex';
 import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
@@ -134,6 +136,7 @@ const scrollerItems: ScrollerItem[] = [
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wp-section", title: "WP Chart" },
     { href: "#ep-section", title: "EPA Chart" },
+    { href: "#paper-index", title: "Paper Index" },
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
@@ -167,6 +170,13 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
     }
 }).slice(0, 10)
 
+
+// Paper Index: single who-won-on-paper share from the full-game box (never
+// the windowed one -- a span page still describes the whole game's paper story)
+const boxRec = (section: any[], teamId: string) => (section ?? []).find((r: any) => String(r?.pos_team) === String(teamId));
+const paperHome = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, homeTeam.id), boxRec(game.advBoxScore?.situational, homeTeam.id));
+const paperAway = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, awayTeam.id), boxRec(game.advBoxScore?.situational, awayTeam.id));
+const paper = !activeSpan && paperHome && paperAway ? paperIndex(paperHome, paperAway) : null;
 
 let gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
 gameDrives = deduplicateByKey(gameDrives, "id");
@@ -307,6 +317,11 @@ if (activeSpan) {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    {paper && (
+                        <div id="paper-index" class="mb-3">
+                            <PaperIndex result={paper} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
+                        </div>
+                    )}
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
