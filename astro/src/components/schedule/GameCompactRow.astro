@@ -1,0 +1,84 @@
+---
+// Scoreboard banner row (mobile) -- the chosen "Option E": one line per
+// game, mirrored, no color stripes. Rank sits ahead of the abbreviation on
+// both sides; the middle is a fixed grid column (score | status | score) so
+// scores and clocks align dead-center down the list regardless of status
+// text or digit count. The possession dot rides the logo corner as a badge
+// (red in the red zone) instead of taking inline width; type, logo and
+// padding are viewport-clamped so a double-ranked 4-char matchup fits at
+// 320 (verified against element clipping in headless Chrome). Winner
+// fw-bold, completed loser opacity-50, matching TeamRow's formatScore.
+//
+// TBD/championship handling mirrors the card grid: timeValid:false renders
+// TBD and never carries data-gb-utc (the localization script would rewrite
+// the placeholder midnight); TBD competitors get ESPN's default shield; a
+// game note renders as a spanning second line, gold for championships.
+// Preview-flagged ('scoreboard-compact'); the card grid stays >=768px.
+import type { ESPNScheduleEvent } from "../../resources/espn";
+import { cleanAbbreviation, cleanScore, isChampionshipEvent } from "../../utils/misc";
+
+interface Props {
+  game: ESPNScheduleEvent;
+}
+
+const { game } = Astro.props;
+const comp = game.competitions[0];
+const homeComp = comp.competitors[0];
+const awayComp = comp.competitors[1];
+const status = comp.status;
+const scheduled = status.type.name.includes("STATUS_SCHEDULED");
+const completed = status.type.completed == true;
+const live = !scheduled && !completed;
+const ballTeamId = comp.situation?.lastPlay?.end?.team?.id;
+const isRedZone = comp.situation?.isRedZone == true;
+const homeScore = cleanScore(homeComp.score);
+const awayScore = cleanScore(awayComp.score);
+
+function rankOf(c: any): number {
+  return c.curatedRank?.current || 99;
+}
+const timeTBD = (comp as any).timeValid === false;
+// "Final" / "10:24 - 3rd" / kickoff "7:30 PM EDT" (ET fallback) for scheduled
+const statusLabel = scheduled
+  ? (timeTBD ? "TBD" : (status.type.shortDetail ?? "").split(" - ").pop())
+  : status.type.shortDetail;
+const gameNote = comp.notes?.length ? comp.notes[0].headline : null;
+const isChamp = !!gameNote && (isChampionshipEvent(gameNote) || gameNote.includes("Championship"));
+// A TBD placeholder competitor has no real team id; ESPN's default shield
+// stands in so the row never shows a broken image.
+const logoOf = (c: any) =>
+  c.id && String(c.id) !== "0" && c.team?.abbreviation !== "TBD"
+    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`
+    : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
+const side = (c: any, score: number, other: number) => ({
+  rank: rankOf(c),
+  abbr: cleanAbbreviation(c.team),
+  id: c.id,
+  logo: logoOf(c),
+  won: completed && score > other,
+  lost: completed && score < other,
+  hasBall: live && ballTeamId == c.id,
+});
+const away = side(awayComp, awayScore, homeScore);
+const home = side(homeComp, homeScore, awayScore);
+---
+<a class:list={["game-banner border rounded mb-2 py-2 text-reset text-decoration-none", { "outline-championship": isChamp }]} href={`/game/${game.id}`}>
+  <span class="gb-side">
+    <span class="gb-logo">
+      <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
+      {away.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}></span>}
+    </span>
+    <span class:list={["gb-abbr", { "fw-bold": away.won, "opacity-50": away.lost }]}>{away.rank != 99 && <span class="gb-rank text-muted">#{away.rank}</span>} {away.abbr}</span>
+  </span>
+  <span class:list={["gb-pts", { "fw-bold": away.won, "opacity-50": away.lost }]}>{scheduled ? "" : awayScore}</span>
+  <span class="gb-mid text-muted text-center text-nowrap" data-gb-utc={scheduled && !timeTBD ? game.date : undefined}>{statusLabel}</span>
+  <span class:list={["gb-pts", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
+  <span class="gb-side gb-side-home">
+    <span class:list={["gb-abbr", { "fw-bold": home.won, "opacity-50": home.lost }]}>{home.rank != 99 && <span class="gb-rank text-muted">#{home.rank}</span>} {home.abbr}</span>
+    <span class="gb-logo">
+      <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
+      {home.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}></span>}
+    </span>
+  </span>
+  {gameNote && <span class:list={["gb-note small text-center text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</span>}
+</a>

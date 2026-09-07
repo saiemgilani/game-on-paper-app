@@ -21,6 +21,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // the frozen pre-v2 snapshot (components/game/classic/); the preview cookie
     // renders the new tree. Promote by flipping to 'on' and deleting classic/.
     'game-page-v2': 'preview',
+    // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
+    // 768px. Desktop keeps the card grid either way.
+    'scoreboard-compact': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {

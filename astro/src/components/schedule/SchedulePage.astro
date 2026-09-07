@@ -2,7 +2,9 @@
 import { type ESPNScheduleEvent } from "../../resources/espn";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
+import GameCompactRow from "./GameCompactRow.astro";
 import GameThumb from "./GameThumb.astro";
+import { isFeatureEnabled } from "../../utils/features";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
@@ -77,6 +79,40 @@ const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(
 const allTeamIds = games.map(g => {
     return g.competitions[0].competitors.map(t => t.id)
 }).reduce((a,b) => a.concat(b), [])
+    // TBD placeholders have no real id; a dark-logo override for /0.png
+    // would replace their default shield with a broken image in dark mode
+    .filter(id => id && String(id) !== '0')
+
+// Preview: banner rows on phones grouped under kickoff-time headers (the
+// cards are ~40% of a phone viewport each); the card grid stays the >=768px
+// rendering either way.
+const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
+const etFmt = (d: string, opts: Intl.DateTimeFormatOptions) => {
+    try {
+        return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...opts }).format(new Date(d));
+    } catch { return ''; }
+};
+// Slots are keyed by ET DAY + time, not time alone: on a year/week schedule
+// two Saturdays share "12:00 PM" and would otherwise merge under one header
+// (CodeRabbit on #216). The day prefix renders only when the page actually
+// spans multiple dates, so the single-day scoreboard keeps its clean labels.
+type CompactSlot = { key: string; day: string; time: string; tbd: boolean; games: ESPNScheduleEvent[] };
+const compactSlots: CompactSlot[] = [];
+let compactMultiDate = false;
+if (compactRows) {
+    for (const g of [...games].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
+        // no announced kickoff: the date is a placeholder midnight, so a time
+        // label (and client-side localization) would be a lie
+        const tbd = (g.competitions?.[0] as any)?.timeValid === false;
+        const day = etFmt(g.date, { weekday: 'short', month: 'numeric', day: 'numeric' });
+        const time = tbd ? 'Time TBD' : (etFmt(g.date, { hour: 'numeric', minute: '2-digit' }) || 'TBD') + ' ET';
+        const key = `${day}|${time}`;
+        const last = compactSlots[compactSlots.length - 1];
+        if (last && last.key === key) last.games.push(g);
+        else compactSlots.push({ key, day, time, tbd, games: [g] });
+    }
+    compactMultiDate = new Set(compactSlots.map((s) => s.day)).size > 1;
+}
 ---
 
 <!DOCTYPE html>
@@ -117,7 +153,43 @@ const allTeamIds = games.map(g => {
         <div class="container">
             <h1 class="visually-hidden">{title || titleText}</h1>
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
-            <div class="row mb-3">
+            {
+                (compactRows && games.length > 0) && (
+                    <div class="game-compact-list d-md-none mb-3">
+                        {compactSlots.map((slot) => (
+                            <Fragment>
+                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1"
+                                    data-gb-utc={slot.tbd ? undefined : slot.games[0].date}
+                                    data-gb-fmt={compactMultiDate && !slot.tbd ? 'datetime' : undefined}>
+                                    {compactMultiDate ? `${slot.day} · ${slot.time}` : slot.time}</h6>
+                                {slot.games.map((g) => <GameCompactRow game={g} />)}
+                            </Fragment>
+                        ))}
+                        {/* One pass over every ET label -- kickoff headers and
+                            scheduled-game times -- rewritten to the viewer's
+                            timezone. Plain inline script: the LocalDate island
+                            does this per element, and ~100 hydrated islands is
+                            the page-weight class the mobile work just fought. */}
+                        <script is:inline>
+                            (() => {
+                                try {
+                                    document.querySelectorAll('[data-gb-utc]').forEach((el) => {
+                                        const d = new Date(el.getAttribute('data-gb-utc'));
+                                        if (isNaN(d.getTime())) return;
+                                        // multi-date pages keep the day in the header so two
+                                        // Saturdays' 12:00 PM slots stay distinguishable
+                                        const opts = el.getAttribute('data-gb-fmt') === 'datetime'
+                                            ? { weekday: 'short', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
+                                            : { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+                                        el.textContent = new Intl.DateTimeFormat(undefined, opts).format(d);
+                                    });
+                                } catch { /* ET server-rendered fallback stands */ }
+                            })();
+                        </script>
+                    </div>
+                )
+            }
+            <div class={`row mb-3${compactRows && games.length > 0 ? " d-none d-md-flex" : ""}`}>
                 {
                     (games.length > 0) && (games.map((g => <GameThumb game={g} />)))
                 }
