@@ -28,12 +28,17 @@ function formatScore(score: string | { displayValue: string }, winner: boolean, 
 const comp = (espnComp as ESPNCompetitor);
 const status = (espnStatus as ESPNStatus);
 const rank = comp.curatedRank?.current || 99;
+// A TBD placeholder competitor has no real team id; ESPN's default shield
+// stands in so the card never shows a broken image.
+const logoSrc = comp.id && String(comp.id) !== "0" && comp.team?.abbreviation !== "TBD"
+    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${comp.id}.png&h=80&w=80`
+    : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
 ---
 <div class={`m-0 d-flex ${spacer}`}>
     <div class="d-flex me-auto">
-        <img class=`float-start align-self-center me-2 team-logo-${comp.id}` width="30" height="30" loading="lazy" decoding="async" src=`https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${comp.id}.png&h=80&w=80` />
+        <img class=`float-start align-self-center me-2 team-logo-${comp.id}` width="30" height="30" loading="lazy" decoding="async" src={logoSrc} />
         <div class="d-flex flex-column me-3 align-self-center">
             <div class="d-flex align-items-center">
                 <span class=`small text-muted ${(rank != 99) ? "me-1" : ""}`>{(rank != 99) ? ("#" + rank) : ""}</span>
