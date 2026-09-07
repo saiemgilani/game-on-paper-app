@@ -231,7 +231,7 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--bs-primary);
 }
 .game-banner .gb-ball-rz { background: var(--bs-danger); }
-.game-banner .gb-rank { font-size: clamp(0.62rem, 2.7vw, 0.75rem); }
+.game-banner .gb-rank { font-size: clamp(0.62rem, 2.7vw, 0.75rem); font-weight: 400; }
 .game-banner .gb-abbr {
     font-size: clamp(0.8rem, 3.5vw, 1rem);
     white-space: nowrap;

@@ -68,15 +68,13 @@ const home = side(homeComp, homeScore, awayScore);
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
       {away.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}></span>}
     </span>
-    {away.rank != 99 && <span class="gb-rank text-muted">#{away.rank}</span>}
-    <span class:list={["gb-abbr", { "fw-bold": away.won, "opacity-50": away.lost }]}>{away.abbr}</span>
+    <span class:list={["gb-abbr", { "fw-bold": away.won, "opacity-50": away.lost }]}>{away.rank != 99 && <span class="gb-rank text-muted">#{away.rank}</span>} {away.abbr}</span>
   </span>
   <span class:list={["gb-pts", { "fw-bold": away.won, "opacity-50": away.lost }]}>{scheduled ? "" : awayScore}</span>
   <span class="gb-mid text-muted text-center text-nowrap" data-gb-utc={scheduled && !timeTBD ? game.date : undefined}>{statusLabel}</span>
   <span class:list={["gb-pts", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
   <span class="gb-side gb-side-home">
-    {home.rank != 99 && <span class="gb-rank text-muted">#{home.rank}</span>}
-    <span class:list={["gb-abbr", { "fw-bold": home.won, "opacity-50": home.lost }]}>{home.abbr}</span>
+    <span class:list={["gb-abbr", { "fw-bold": home.won, "opacity-50": home.lost }]}>{home.rank != 99 && <span class="gb-rank text-muted">#{home.rank}</span>} {home.abbr}</span>
     <span class="gb-logo">
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
       {home.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}></span>}

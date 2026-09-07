@@ -114,7 +114,8 @@ describe('the compact scoreboard rows are preview-gated', () => {
         // sides (the banner list section only -- the md+ card grid also
         // renders ranks, differently)
         const banners = html.slice(html.indexOf('game-compact-list'), html.indexOf('class="row mb-3'));
-        expect(banners).toMatch(/gb-rank text-muted">#5<\/span><span class="gb-abbr[^"]*">ALA</);
+        // rank lives INSIDE the abbr span so both share a text baseline
+        expect(banners).toMatch(/gb-abbr[^>]*><span class="gb-rank text-muted">#5<\/span> ALA</);
         // completed: winner fw-bold, loser opacity-50 (TeamRow semantics),
         // never both; live/scheduled mark nobody
         expect(banners).toMatch(/gb-pts opacity-50">17</);
