@@ -1,6 +1,7 @@
 ---
 import { periodSplits, situationalRows } from '../../../utils/situational';
 import { roundNumber } from '../../../utils/misc';
+import FilterGroup from '../../../layouts/FilterGroup.astro';
 
 interface Props {
     title?: string;
@@ -23,11 +24,13 @@ const labels = splits[0]?.columns[0]?.map((r) => r.label) ?? [];
 
 {splits.length > 0 && (
     <div data-situational-splits>
-        <div class="d-flex justify-content-start align-items-center flex-wrap gap-1 span-pills" role="group" aria-label="Situational split">
-            {splits.map((s, i) => (
-                <button type="button" class={`btn btn-sm btn-outline-secondary${i === 0 ? " active" : ""}`} data-split={s.key} aria-pressed={i === 0}>{s.label}</button>
-            ))}
-        </div>
+        <FilterGroup label="Situational splits">
+            <Fragment slot="filter-body">
+                {splits.map((s, i) => (
+                    <button type="button" class={`btn btn-sm btn-outline-secondary${i === 0 ? " active" : ""}`} data-split={s.key} aria-pressed={i === 0}>{s.label}</button>
+                ))}
+            </Fragment>
+        </FilterGroup>
         {splits.map((s, i) => (
             <div class="table-responsive" data-split-panel={s.key} hidden={i !== 0}>
                 <table class="table table-sm table-responsive">

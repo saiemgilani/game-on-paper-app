@@ -33,6 +33,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
 import GameHeader from './GameHeader.astro';
+import FilterGroup from '../../layouts/FilterGroup.astro';
 
 interface Props {
    id: string | number
@@ -254,20 +255,22 @@ if (activeSpan) {
             level it sticks for the whole page. */}
         <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
-            <div class="row mb-2">
+            <div class="row ms-sm-auto mb-2">
                 <div class="col-12">
-                    <div class="d-flex justify-content-start align-items-center flex-wrap gap-1 mx-xs-0 mx-md-3 py-1 span-pills">
-                        <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
-                        {spanPills.map((sp) => (
-                            <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
-                        ))}
-                    </div>
+                    <FilterGroup label="Filter metrics by quarter">
+                        <Fragment slot="filter-body">
+                            <a class={`btn btn-sm ${activeSpan ? 'btn-outline-secondary' : 'btn-secondary'}`} href={`/game/${id}`}>Full game</a>
+                            {spanPills.map((sp) => (
+                                <a class={`btn btn-sm ${activeSpan?.key === sp.key ? 'btn-secondary' : 'btn-outline-secondary'}`} href={`/game/${id}?span=${sp.key}`}>{sp.label}</a>
+                            ))}
+                        </Fragment>
+                    </FilterGroup>
                 </div>
             </div>
             {activeSpan && (
-                <div class="row mb-2">
+                <div class="row ms-sm-auto mb-2">
                     <div class="col-12">
-                        <div class="alert alert-info py-1 mx-xs-0 mx-md-3 small" role="alert">
+                        <div class="alert alert-info py-1 small" role="alert">
                             Showing <strong>{activeSpan.label}</strong> only for play-derived tables.
                         </div>
                     </div>
@@ -556,7 +559,7 @@ if (activeSpan) {
                             }
                             {
                                 (game.plays.length > 0) && (
-                                    <div class="mt-2 d-flex flex-wrap justify-content-start-xs justify-content-between">
+                                    <div class="mt-2 d-flex flex-wrap justify-content-between">
                                         <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
                                     
                                         <PlayFocus target="all" plays={game.plays}

@@ -1,4 +1,6 @@
 ---
+import FilterGroup from '../../../layouts/FilterGroup.astro';
+
 /**
  * Quarter filter and reading-order toggle for a PlaysTable.
  *
@@ -20,13 +22,15 @@ const { target, periods, newestFirst } = Astro.props;
 const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
 ---
 
-<div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-filters={target}>
-    <div class="d-flex justify-content-start align-items-center flex-wrap gap-1 span-pills" role="group" aria-label="Filter plays by quarter">
-        <button type="button" class="btn btn-sm btn-outline-secondary active" data-period-filter="all" aria-pressed="true">All</button>
-        {periods.map((p) => (
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-period-filter={p} aria-pressed="false">{label(p)}</button>
-        ))}
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-2 gap-2" data-play-filters={target}>
+    <FilterGroup label="Filter plays by quarter">
+        <Fragment slot="filter-body">
+            <button type="button" class="btn btn-sm btn-outline-secondary active" data-period-filter="all" aria-pressed="true">All</button>
+            {periods.map((p) => (
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-period-filter={p} aria-pressed="false">{label(p)}</button>
+            ))}
+        </Fragment>
+    </FilterGroup>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-order-toggle="1" aria-pressed={newestFirst}>
         {newestFirst ? "Newest first" : "Oldest first"}
     </button>
