@@ -2,7 +2,9 @@
 import { type ESPNScheduleEvent } from "../../resources/espn";
 import DarkModeLogos from "../DarkModeLogos.astro";
 import Footer from "../Footer.astro";
+import GameCompactRow from "./GameCompactRow.astro";
 import GameThumb from "./GameThumb.astro";
+import { isFeatureEnabled } from "../../utils/features";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
@@ -76,6 +78,10 @@ const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(
 const allTeamIds = games.map(g => {
     return g.competitions[0].competitors.map(t => t.id)
 }).reduce((a,b) => a.concat(b), [])
+
+// Preview: compact one-line rows on phones (the cards are ~40% of a phone
+// viewport each); the card grid stays the >=768px rendering either way.
+const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
 ---
 
 <!DOCTYPE html>
@@ -116,7 +122,14 @@ const allTeamIds = games.map(g => {
         <div class="container">
             <h1 class="visually-hidden">{title || titleText}</h1>
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
-            <div class="row mb-3">
+            {
+                (compactRows && games.length > 0) && (
+                    <div class="game-compact-list d-md-none mb-3">
+                        {games.map((g) => <GameCompactRow game={g} />)}
+                    </div>
+                )
+            }
+            <div class={`row mb-3${compactRows && games.length > 0 ? " d-none d-md-flex" : ""}`}>
                 {
                     (games.length > 0) && (games.map((g => <GameThumb game={g} />)))
                 }
