@@ -1,7 +1,6 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import PreviewBadge from "../components/PreviewBadge.astro";
 import Scripts from "../components/Scripts.astro";
 import { breadcrumbListJsonLd, jsonLdScript } from "../utils/seo";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -104,7 +103,6 @@ function generateBreadcrumbsListHtml(): string {
         <Fragment set:html={generateBreadcrumbsListHtml()} />
         {heading && <h1 class="visually-hidden">{heading}</h1>}
         <slot />
-        <PreviewBadge />
         <Footer />
         <Scripts />
     </body>

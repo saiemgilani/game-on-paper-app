@@ -17,11 +17,17 @@ export const POST: APIRoute = async ({ request }) => {
         if (typeof body?.path === 'string' && body.path.length > 0) path = body.path;
     } catch { /* empty body -> site root */ }
     // Same-site paths only: no scheme/host smuggling into the copied link.
-    if (!path.startsWith('/') || path.startsWith('//')) {
-        return Response.json({ ok: false, error: 'path must start with a single "/"' }, { status: 400 });
+    // Backslashes are rejected because the URL parser treats "/\evil.example"
+    // as "//evil.example" and would resolve it to another host.
+    if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+        return Response.json({ ok: false, error: 'path must be a same-site path starting with a single "/"' }, { status: 400 });
     }
+    const origin = new URL(request.url).origin;
     const token = await mintPreviewLink(secret);
-    const target = new URL(path, new URL(request.url).origin);
+    const target = new URL(path, origin);
+    if (target.origin !== origin) {
+        return Response.json({ ok: false, error: 'path resolved off-site' }, { status: 400 });
+    }
     target.searchParams.set(PREVIEW_LINK_PARAM, token);
     return Response.json({
         ok: true,
