@@ -5,7 +5,7 @@ import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, g
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -51,6 +51,31 @@ function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 
     return {
         id: id,
         beforeDraw: callback
+    };
+}
+
+// Translucent box over the active ?span= window (chart data stays full-game;
+// a WP chart of one quarter alone is misleading). Same canvas-plugin pattern
+// as createVerticalLinePlugin; indices are positions on the x axis.
+function createSpanShadePlugin(shade, isDarkMode) {
+    return {
+        id: 'span-shade',
+        beforeDatasetsDraw: (chart) => {
+            const xScale = chart.scales.x;
+            if (!xScale) return;
+            const x0 = xScale.getPixelForValue(shade.from);
+            const x1 = xScale.getPixelForValue(shade.to);
+            const { top, bottom } = chart.chartArea;
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.fillStyle = isDarkMode ? 'rgba(255, 213, 79, 0.10)' : 'rgba(255, 193, 7, 0.14)';
+            ctx.fillRect(x0, top, x1 - x0, bottom - top);
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 10px Helvetica';
+            ctx.fillStyle = isDarkMode ? '#ffd54f' : '#b45309';
+            ctx.fillText(shade.label, x0 + 4, bottom - 6);
+            ctx.restore();
+        },
     };
 }
 
@@ -207,6 +232,7 @@ async function generateChart() {
     var wpChart = new Chart(document.getElementById("wpChart"), {
         type: 'GradientFillLineController',
         plugins: [
+            ...(spanShade ? [createSpanShadePlugin(spanShade, isDarkMode)] : []),
             ...periodMarkers,
             {
                 beforeDatasetDraw: (chart) => {
