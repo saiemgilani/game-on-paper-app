@@ -19,7 +19,6 @@
 
 .blog-header {
   line-height: 1;
-  border-bottom: 1px solid #e5e5e5;
 }
 
 .blog-header-logo {
@@ -52,6 +51,7 @@ table {
   height: 2.75rem;
   overflow-y: hidden;
   border-bottom: 1px solid #e5e5e5;
+  border-top: 1px solid #e5e5e5;
 }
 
 .nav-scroller .nav {
