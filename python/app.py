@@ -321,6 +321,19 @@ def process(game_id: int):
         # processed_game, and everything after `return` is dead code -- which is
         # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
         # ordering (gop.dq_boxscore had zero rows since #192 merged).
+        # ?spans=all: every standard window's box in one response
+        # (advBoxScoreSpans), independent of the singular ?span= swap --
+        # the data layer for in-place span switching on the game page.
+        if request.args.get("spans") == "all":
+            try:
+                boxes = span_box.all_span_boxes(game)
+                if boxes:
+                    processed_game["advBoxScoreSpans"] = boxes
+            except Exception as e:  # a bad window must never cost the page
+                logging.getLogger("root").warning(
+                    f"all-span boxes failed for {game_id}: {e}"
+                )
+
         raw_span = request.args.get("span")
         if raw_span:
             try:
