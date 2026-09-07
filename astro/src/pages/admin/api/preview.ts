@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
-import { PREVIEW_COOKIE, PREVIEW_TTL_S, mintPreviewCookie, readCookie, verifyPreviewCookie } from '../../../utils/preview';
+import { PREVIEW_COOKIE, previewSetCookie, readCookie, verifyPreviewCookie } from '../../../utils/preview';
 
 export const prerender = false;
 
@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
         return Response.json({ ok: false, error: 'body must be {"on": true|false}' }, { status: 400 });
     }
     const cookie = on
-        ? `${PREVIEW_COOKIE}=${await mintPreviewCookie(secret)}; Path=/; Max-Age=${PREVIEW_TTL_S}; HttpOnly; Secure; SameSite=Lax`
+        ? await previewSetCookie(secret)
         : `${PREVIEW_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
     return Response.json({ ok: true, enabled: on }, {
         headers: { 'Set-Cookie': cookie, 'Cache-Control': 'no-store' },

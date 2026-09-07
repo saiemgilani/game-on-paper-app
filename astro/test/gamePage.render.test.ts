@@ -422,6 +422,18 @@ describe('box-score names jump into the play filter', () => {
     });
 });
 
+// The props of the WinProbabilityChart astro-island. A lazy cross-tag regex
+// can land on a NEIGHBORING island's props attribute, so scope to one tag.
+function wpIslandProps(html: string): string {
+    const tag = [...html.matchAll(/<astro-island[^>]*>/g)]
+        .map((m) => m[0])
+        .find((t) => t.includes('WinProbabilityChart'));
+    expect(tag).toBeTruthy();
+    const props = tag!.match(/ props="([^"]+)"/);
+    expect(props).toBeTruthy();
+    return props![1].replace(/&quot;/g, '"');
+}
+
 describe('the ?span= filter narrows the page to a window', () => {
     test('a Q3 span keeps only third-quarter rows in the All Plays table', async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
@@ -440,6 +452,20 @@ describe('the ?span= filter narrows the page to a window', () => {
         expect(spanned).toMatch(/Showing <strong>Q3<\/strong> only/);
         // the charts keep the whole game: the WP chart island still carries all four periods
         expect(spanned).toMatch(/astro-island[^>]+WinProbabilityChart/);
+        // ... and the active window arrives as spanShade indices for the shading plugin
+        const props = wpIslandProps(spanned);
+        expect(props).toMatch(/"spanShade":\[0,\{"from":\[0,\d+\],"to":\[0,\d+\],"label":\[0,"Q3"\]\}\]/);
+    });
+
+    test('no span means a null spanShade on the WP chart island', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const plain = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game },
+            request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+        });
+        expect(wpIslandProps(plain)).toContain('"spanShade":[0,null]');
     });
 
     test('the span is forwarded to the python API so the boxes recompute server-side', async () => {

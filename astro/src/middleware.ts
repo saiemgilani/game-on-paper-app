@@ -4,7 +4,10 @@ import {
   createCollector, gopStorage, sendToIngest, clientIp, type GopCollector,
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
-import { PREVIEW_COOKIE, readCookie, verifyPreviewCookie } from './utils/preview';
+import {
+  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, previewSetCookie, readCookie,
+  verifyPreviewCookie, verifyPreviewLink,
+} from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS } from './utils/features';
@@ -13,6 +16,31 @@ const GAME_ID_RE = /\/game\/(\d+)/;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+
+  // Preview magic link: ?preview_key=<signed token> on any URL sets the preview
+  // cookie and redirects to the clean URL. One click on any browser, no admin
+  // login. An invalid/expired token still strips the param and redirects (the
+  // page then renders public, and the missing PREVIEW badge is the signal).
+  // The redirect carries Set-Cookie, so it must never enter Workers Caching --
+  // and this block runs FIRST, before the legacy /cfb redirects, because those
+  // return 301s that forward the query string with no cache headers: a keyed
+  // legacy URL would otherwise cache a redirect carrying the key (review on
+  // #213). The key is stripped here in one hop no matter the URL shape.
+  const linkToken = url.searchParams.get(PREVIEW_LINK_PARAM);
+  if (linkToken !== null) {
+    const clean = new URL(url);
+    clean.searchParams.delete(PREVIEW_LINK_PARAM);
+    const headers = new Headers({
+      Location: clean.pathname + clean.search, 'Cache-Control': 'no-store',
+    });
+    const secret = getSecret('ADMIN_PASS');
+    if (secret && await verifyPreviewLink(linkToken, secret)) {
+      headers.append('Set-Cookie', await previewSetCookie(secret));
+    }
+    try { (context as any).cache?.set(false); } catch { /* cache provider absent in dev */ }
+    return new Response(null, { status: 302, headers });
+  }
+
 
   // Legacy /cfb/* URLs, handled before routing so every historical link lands.
   // These were pointed at /index by the redirects map, which is not a route.
@@ -147,7 +175,11 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // Preview renders are per-viewer; /admin responses are authenticated. Either
   // way a cached copy would be served to the wrong audience on a HIT -- and a
   // HIT never runs the Worker, so the auth check would be skipped entirely.
-  if (context.locals?.preview === true || isAdmin || spanVariesByViewer) {
+  // A ?preview_key= URL must never produce a cacheable response under any
+  // path: the redeem intercepts these before render, but if that ever
+  // regresses, this keeps a keyed URL out of Workers Caching entirely.
+  const carriesPreviewKey = url.searchParams.has(PREVIEW_LINK_PARAM);
+  if (context.locals?.preview === true || isAdmin || spanVariesByViewer || carriesPreviewKey) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
   }

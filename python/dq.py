@@ -8,26 +8,31 @@ Two products, both written through TEL after a completed game is processed:
   play-text flags (``advBoxScore.team``) and ESPN's official team box
   (``advBoxScore.espn_team``), plus reference-free lints over the plays.
 
-Zero is NOT the target for every stat -- our ``pass`` flag counts sacks and
-ESPN's net passing subtracts sack yardage, so some pairs carry a structural
-offset. The dashboard's signal is the STABILITY of each delta's distribution
-across games and sdv-py versions: a parser regression shows up as a
-version-aligned shift, the way the 2025 late-insert and penalty-EPA bugs
-would have.
+Our side is derived from plays under ESPN/NCAA OFFICIAL conventions rather
+than read off ``advBoxScore.team`` -- those columns are modeling aggregates
+(adjusted rush yardage, sacks kept with pass plays, penalty first downs split
+out), and diffing them against the official box drowned real signal in
+convention offsets (rush_yards had |delta|>2 in 86%% of games). Conventions,
+measured against 16 team-games on 2026-09-07:
+
+- sacks are RUSHING attempts and their (negative) yardage is rushing yardage;
+- pass yards count completions only (``netPassingYards`` is gross in CFB);
+- attempts/completions come from the official ``completionAttempts`` "C/A"
+  string (there is no ``pass_attempts`` key -- the old pair diffed against
+  None forever);
+- a touchdown counts as a first down;
+- penalties count ACCEPTED flags only, attributed via ``penalty_team_id``.
+
+Residual deltas are a few yards/units per game (spotters vs play-text); the
+dashboard's signal is the STABILITY of each delta's distribution across games
+and sdv-py versions -- a parser regression shows up as a version-aligned
+shift, the way the 2025 late-insert and penalty-EPA bugs would have.
+Rows written before 2026-09-07 predate this reconciliation (and use the stat
+name ``first_downs_created`` instead of ``first_downs``); window queries
+accordingly.
 """
 
 from datetime import datetime, timezone
-
-# (stat name, our team-box column, ESPN official-box key)
-BOX_PAIRS = [
-    ("rush_attempts", "rushes", "rushingAttempts"),
-    ("rush_yards", "rush_yards", "rushingYards"),
-    ("pass_attempts", "passes", "pass_attempts"),
-    ("pass_yards", "pass_yards", "netPassingYards"),
-    ("penalties", "penalties", "penalties"),
-    ("penalty_yards", "penalty_yards", "penalty_yards"),
-    ("first_downs_created", None, "firstDowns"),  # ours = passing + rushing created
-]
 
 
 def _num(v):
@@ -64,6 +69,85 @@ def build_game_meta_row(header, game_id):
     }
 
 
+def _parse_ca(v):
+    """ESPN's ``completionAttempts`` "15/21" -> (15.0, 21.0)."""
+    parts = str(v or "").split("/")
+    if len(parts) != 2:
+        return None, None
+    return _num(parts[0]), _num(parts[1])
+
+
+def _official_box(plays, team_box):
+    """Per-team stats under official conventions, derived from plays.
+
+    See the module docstring for the convention list and its measurement.
+    """
+    agg = {}
+
+    def team(tid):
+        return agg.setdefault(
+            int(tid),
+            {
+                "rush_attempts": 0.0,
+                "rush_yards": 0.0,
+                "pass_attempts": 0.0,
+                "completions": 0.0,
+                "pass_yards": 0.0,
+                "first_downs": 0.0,
+                "penalties": 0.0,
+                "penalty_yards": 0.0,
+            },
+        )
+
+    for p in plays:
+        tid = p.get("pos_team")
+        if tid is not None:
+            a = team(tid)
+            yards = _num(p.get("statYardage")) or 0.0
+            if p.get("sack") == True:  # noqa: E712
+                a["rush_attempts"] += 1
+                a["rush_yards"] += _num(p.get("yds_sacked")) or 0.0
+            elif p.get("rush") == True:  # noqa: E712
+                a["rush_attempts"] += 1
+                a["rush_yards"] += yards
+            elif p.get("pass") == True:  # noqa: E712
+                a["pass_attempts"] += 1
+                if p.get("completion") == True:  # noqa: E712
+                    a["completions"] += 1
+                    a["pass_yards"] += yards
+            # A TD counts as a first down officially; scrimmage TDs don't
+            # carry first_down_created, so add them on top of the box counts.
+            if (
+                p.get("scrimmage_play") == True  # noqa: E712
+                and p.get("touchdown") == True  # noqa: E712
+                and p.get("first_down_created") != True  # noqa: E712
+            ):
+                a["first_downs"] += 1
+        ptid = p.get("penalty_team_id")
+        if (
+            ptid is not None
+            and p.get("penalty_flag") == True  # noqa: E712
+            and p.get("penalty_declined") != True  # noqa: E712
+        ):
+            pa = team(ptid)
+            pa["penalties"] += 1
+            pa["penalty_yards"] += abs(_num(p.get("yds_penalty")) or 0.0)
+    # First downs by pass/rush/penalty come from the box counts (which match
+    # the official tally); only the TD top-up above is play-derived.
+    for t in team_box or []:
+        tid = t.get("pos_team")
+        if tid is None:
+            continue
+        a = team(tid)
+        for k in (
+            "passing_first_downs_created",
+            "rushing_first_downs_created",
+            "penalty_first_downs_created",
+        ):
+            a["first_downs"] += _num(t.get(k)) or 0.0
+    return agg
+
+
 def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     """Per-team box deltas + game-level lints for one completed game."""
     ts = datetime.now(timezone.utc)
@@ -75,28 +159,26 @@ def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     }
     rows = []
     box = processed_game.get("advBoxScore") or {}
-    espn_by_team = {
-        int(t["team_id"]): t
-        for t in box.get("espn_team") or []
-        if t.get("team_id") is not None
-    }
-    for team in box.get("team") or []:
-        tid = team.get("pos_team")
-        if tid is None or int(tid) not in espn_by_team:
+    plays = processed_game.get("plays") or []
+    ours_by_team = _official_box(plays, box.get("team"))
+    for espn in box.get("espn_team") or []:
+        tid = espn.get("team_id")
+        if tid is None or int(tid) not in ours_by_team:
             continue
-        espn = espn_by_team[int(tid)]
-        for stat, ours_key, espn_key in BOX_PAIRS:
-            if ours_key is None:
-                ours = _num(team.get("passing_first_downs_created"))
-                extra = _num(team.get("rushing_first_downs_created"))
-                ours = (
-                    None
-                    if ours is None and extra is None
-                    else (ours or 0) + (extra or 0)
-                )
-            else:
-                ours = _num(team.get(ours_key))
-            theirs = _num(espn.get(espn_key))
+        ours_box = ours_by_team[int(tid)]
+        comp, att = _parse_ca(espn.get("completionAttempts"))
+        espn_vals = {
+            "rush_attempts": _num(espn.get("rushingAttempts")),
+            "rush_yards": _num(espn.get("rushingYards")),
+            "pass_attempts": att,
+            "completions": comp,
+            "pass_yards": _num(espn.get("netPassingYards")),
+            "first_downs": _num(espn.get("firstDowns")),
+            "penalties": _num(espn.get("penalties")),
+            "penalty_yards": _num(espn.get("penalty_yards")),
+        }
+        for stat, theirs in espn_vals.items():
+            ours = ours_box[stat]
             if ours is None and theirs is None:
                 continue
             rows.append(
