@@ -180,16 +180,18 @@ h1, h2, h3, h4, h5, h6 {
     color: #2394fd !important; /* #eeb211*/
 }
 /* Banner scoreboard rows (GameCompactRow, preview 'scoreboard-compact').
-   hoopsjunkie-style: slanted team-color stripes + logos on the edges, city
-   over a big bold abbreviation, large scores (winner bright), status center.
-   Grouped under kickoff-time headers (.gb-slot). */
+   Slanted team-color stripes + logos on the edges, city over the team
+   abbreviation, scores center, status middle; grouped under kickoff-time
+   headers (.gb-slot). Type follows the site: the Chivo stack (the list is
+   not a .row, so it opts in explicitly), bootstrap heading weight, and
+   TeamRow's winner-bold / loser-half-opacity score treatment. */
+.game-compact-list {
+    font-family: "Chivo", "Fira Mono", serif;
+}
 .gb-slot {
     margin: 14px 2px 6px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-size: .875rem;
     color: #6c757d;
-    text-transform: uppercase;
 }
 .game-banner {
     display: grid;
@@ -199,7 +201,7 @@ h1, h2, h3, h4, h5, h6 {
     min-height: 64px;
     margin-bottom: 8px;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 0.5em;
     overflow: hidden;
     background: #fff;
     color: inherit;
@@ -222,9 +224,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .game-banner .gb-home { align-items: flex-end; text-align: right; }
 .game-banner .gb-city {
-    font-size: 11px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: .75rem;
     color: #6c757d;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -232,23 +232,23 @@ h1, h2, h3, h4, h5, h6 {
     max-width: 100%;
 }
 .game-banner .gb-name {
-    /* clamp so ARMY/CONN-length abbreviations never collide with the score
-       in a ~57px 1fr column at 390 */
-    font-size: clamp(14px, 4.2vw, 19px);
-    font-weight: 800;
+    /* clamped so ARMY/CONN-length abbreviations never collide with the
+       score in a ~70px team cell at 390 */
+    font-size: clamp(1rem, 4.2vw, 1.25rem);
+    font-weight: 500;
     white-space: nowrap;
 }
 .game-banner .gb-score {
-    font-size: clamp(18px, 5.4vw, 24px);
-    font-weight: 800;
+    font-size: clamp(1.05rem, 5vw, 1.5rem);
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
     min-width: 30px;
     text-align: center;
 }
+.game-banner .gb-won { font-weight: 700; }
 .game-banner .gb-lost { opacity: 0.5; }
 .game-banner .gb-mid {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: .75rem;
     color: #6c757d;
     text-align: center;
     white-space: nowrap;

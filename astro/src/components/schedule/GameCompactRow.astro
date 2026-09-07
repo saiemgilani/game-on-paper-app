@@ -41,6 +41,7 @@ const side = (c: any, score: number, other: number) => ({
   color: colorOf(c),
   logo: `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`,
   id: c.id,
+  won: completed && score > other,
   lost: completed && score < other,
 });
 const away = side(awayComp, awayScore, homeScore);
@@ -52,14 +53,14 @@ const home = side(homeComp, homeScore, awayScore);
   </span>
   <span class="gb-side gb-away">
     <span class="gb-city">{away.rank != 99 && <b>#{away.rank}</b>} {away.city}</span>
-    <span class:list={["gb-name", { "gb-lost": away.lost }]}>{away.abbr}</span>
+    <span class:list={["gb-name", { "gb-won": away.won, "gb-lost": away.lost }]}>{away.abbr}</span>
   </span>
-  <span class:list={["gb-score", { "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
+  <span class:list={["gb-score", { "gb-won": away.won, "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
   <span class="gb-mid">{statusLabel}</span>
-  <span class:list={["gb-score", { "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
+  <span class:list={["gb-score", { "gb-won": home.won, "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
   <span class="gb-side gb-home">
     <span class="gb-city">{home.city} {home.rank != 99 && <b>#{home.rank}</b>}</span>
-    <span class:list={["gb-name", { "gb-lost": home.lost }]}>{home.abbr}</span>
+    <span class:list={["gb-name", { "gb-won": home.won, "gb-lost": home.lost }]}>{home.abbr}</span>
   </span>
   <span class="gb-stripe gb-stripe-home" style={`background:${home.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />

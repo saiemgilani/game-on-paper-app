@@ -70,9 +70,11 @@ describe('the compact scoreboard rows are preview-gated', () => {
         const slots = [...html.matchAll(/class="gb-slot">([^<]+)</g)].map((m) => m[1]);
         expect(slots).toHaveLength(1);
         expect(slots[0]).toMatch(/7:30 PM ET/);
-        // completed: only the LOSER is dimmed; live/scheduled dim nobody
+        // completed: winner bold (gb-won), loser dimmed (gb-lost), never both;
+        // live/scheduled mark nobody
         expect(html).toMatch(/gb-score gb-lost">17</);
-        expect(html).toMatch(/gb-score">24</);
+        expect(html).toMatch(/gb-score gb-won">24</);
+        expect(html).not.toMatch(/gb-won gb-lost/);
         // team-color stripe carries the ESPN hex
         expect(html).toContain('style="background:#ba0c2f"');
         // scheduled game: kickoff time in the middle, no scores
