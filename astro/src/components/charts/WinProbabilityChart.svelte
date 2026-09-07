@@ -64,7 +64,8 @@ function createSpanShadePlugin(shade, isDarkMode) {
             const xScale = chart.scales.x;
             if (!xScale) return;
             const x0 = xScale.getPixelForValue(shade.from);
-            const x1 = xScale.getPixelForValue(shade.to);
+            // a one-play window has from === to; keep the box visible
+            const x1 = Math.max(xScale.getPixelForValue(shade.to), x0 + 3);
             const { top, bottom } = chart.chartArea;
             const ctx = chart.ctx;
             ctx.save();
