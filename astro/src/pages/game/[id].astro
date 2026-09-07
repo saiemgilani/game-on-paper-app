@@ -2,7 +2,7 @@
 import GamePage from '../../components/game/GamePage.astro';
 import GamePageClassic from '../../components/game/classic/GamePage.astro';
 import { isFeatureEnabled } from '../../utils/features';
-import { parseSpan } from '../../utils/span';
+import { requestedSpanKey } from '../../utils/span';
 import PreGamePage from '../../components/game/PreGamePage.astro';
 import { ESPN_IN_PROGRESS_STATUS_NAMES, ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { gopStorage } from '../../utils/telemetry';
@@ -48,9 +48,7 @@ try {
         // pills and the "showing Q3 only" banner) will actually be shown. A
         // public/classic render with a shared ?span= link would otherwise show
         // silently windowed box scores inside a full-game page.
-        const spanKey = isFeatureEnabled('game-page-v2', Astro.locals)
-            ? parseSpan(Astro.url.searchParams.get('span'))?.key ?? null
-            : null;
+        const spanKey = requestedSpanKey(Astro.locals, Astro.url.searchParams, isFeatureEnabled);
         game = await retrieveProcessedGame(id, config.maxAge || 30, spanKey);
     }
 
