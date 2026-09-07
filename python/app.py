@@ -362,58 +362,57 @@ def process(game_id: int):
                 f"situational stats failed for {game_id}: {e}"
             )
 
-        # ?spans=all: every standard window's box, drive summary, and
-        # situational slice in one response -- the data layer for in-place
-        # span switching on the game page. Window-inherent sections
-        # (two-minute, middle-8, pace, non-garbage, 4th-down report) stay on
-        # the full-game objects only.
-        if request.args.get("spans") == "all":
-            try:
-                boxes = span_box.all_span_boxes(game)
-                if boxes:
-                    processed_game["advBoxScoreSpans"] = boxes
-            except Exception as e:  # a bad window must never cost the page
-                logging.getLogger("root").warning(
-                    f"all-span boxes failed for {game_id}: {e}"
-                )
-            try:
-                frame = getattr(game, "plays_frame", None)
-                drv_all = (processed_game.get("drives") or {}).get("previous") or []
-                cur = (processed_game.get("drives") or {}).get("current")
-                if cur:
-                    drv_all = drv_all + [cur]
-                if frame is not None:
-                    hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
-                    ds_spans, sit_spans = {}, {}
-                    for key, per in _SPAN_PERIODS.items():
-                        parsed = span_box.parse_span(key)
-                        if parsed is None:
-                            continue
-                        _, expr = parsed
-                        try:  # one bad window must not cost the others
-                            if drv_all:
-                                w = drive_summary.build(
-                                    drv_all, frame, hid, aid, periods=per
-                                )
-                                if w:
-                                    ds_spans[key] = w
-                            w = situational_stats.build(
-                                frame, hid, aid, window_expr=expr
+        # Every standard window's box, drive summary, and situational slice
+        # ships on every response, so the frontend switches spans in place
+        # without a reload. Window-inherent sections (two-minute, middle-8,
+        # pace, non-garbage, 4th-down report) stay on the full-game objects
+        # only. The singular ?span= swap below stays for deep links.
+        try:
+            boxes = span_box.all_span_boxes(game)
+            if boxes:
+                processed_game["advBoxScoreSpans"] = boxes
+        except Exception as e:  # a bad window must never cost the page
+            logging.getLogger("root").warning(
+                f"all-span boxes failed for {game_id}: {e}"
+            )
+        try:
+            frame = getattr(game, "plays_frame", None)
+            drv_all = (processed_game.get("drives") or {}).get("previous") or []
+            cur = (processed_game.get("drives") or {}).get("current")
+            if cur:
+                drv_all = drv_all + [cur]
+            if frame is not None:
+                hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
+                ds_spans, sit_spans = {}, {}
+                for key, per in _SPAN_PERIODS.items():
+                    parsed = span_box.parse_span(key)
+                    if parsed is None:
+                        continue
+                    _, expr = parsed
+                    try:  # one bad window must not cost the others
+                        if drv_all:
+                            w = drive_summary.build(
+                                drv_all, frame, hid, aid, periods=per
                             )
                             if w:
-                                sit_spans[key] = w
-                        except Exception as e:
-                            logging.getLogger("root").warning(
-                                f"span summaries window {key} failed: {e}"
-                            )
-                    if ds_spans:
-                        processed_game["driveSummarySpans"] = ds_spans
-                    if sit_spans:
-                        processed_game["situationalStatsSpans"] = sit_spans
-            except Exception as e:  # a bad window must never cost the page
-                logging.getLogger("root").warning(
-                    f"all-span summaries failed for {game_id}: {e}"
-                )
+                                ds_spans[key] = w
+                        w = situational_stats.build(
+                            frame, hid, aid, window_expr=expr
+                        )
+                        if w:
+                            sit_spans[key] = w
+                    except Exception as e:
+                        logging.getLogger("root").warning(
+                            f"span summaries window {key} failed: {e}"
+                        )
+                if ds_spans:
+                    processed_game["driveSummarySpans"] = ds_spans
+                if sit_spans:
+                    processed_game["situationalStatsSpans"] = sit_spans
+        except Exception as e:  # a bad window must never cost the page
+            logging.getLogger("root").warning(
+                f"all-span summaries failed for {game_id}: {e}"
+            )
 
         raw_span = request.args.get("span")
         if raw_span:
