@@ -131,7 +131,12 @@ def test_drive_summary_frame_aggregates():
     assert a["first_downs"] == {"rush": 1, "pass": 0, "penalty": 1}
     # largest lead + score-state clock (home led 7-0 through the middle rows)
     assert h["largest_lead"] == 7 and a["largest_lead"] == 3
-    assert h["time_leading_seconds"] > 0 and a["time_leading_seconds"] > 0
+    # intervals belong to each play's OUTCOME: the opening TD drive's time
+    # counts as leading (not the tied pre-score state), and the tail after
+    # the last play carries the final score state
+    assert h["time_leading_seconds"] == 1800
+    assert a["time_leading_seconds"] == 1500
+    assert h["time_tied_seconds"] == 300
     # long plays sorted, positive gains only, per team
     assert out["longPlays"][AWAY][0]["yards"] == 45
     assert all(
@@ -185,6 +190,9 @@ def test_windowed_build_books_drives_to_start_quarter():
     assert "largest_lead" not in h and "time_leading_seconds" not in h
     # chart holds only in-window drives
     assert [c["period"] for c in out["chart"]] == [2, 2]
+    # first-down sources window with everything else (incl. penalty count)
+    assert h["first_downs"] == {"rush": 0, "pass": 1, "penalty": 0}
+    assert a["first_downs"] == {"rush": 0, "pass": 0, "penalty": 1}
 
 
 def test_windowed_build_empty_window_is_none():

@@ -390,15 +390,22 @@ def process(game_id: int):
                         if parsed is None:
                             continue
                         _, expr = parsed
-                        if drv_all:
-                            w = drive_summary.build(
-                                drv_all, frame, hid, aid, periods=per
+                        try:  # one bad window must not cost the others
+                            if drv_all:
+                                w = drive_summary.build(
+                                    drv_all, frame, hid, aid, periods=per
+                                )
+                                if w:
+                                    ds_spans[key] = w
+                            w = situational_stats.build(
+                                frame, hid, aid, window_expr=expr
                             )
                             if w:
-                                ds_spans[key] = w
-                        w = situational_stats.build(frame, hid, aid, window_expr=expr)
-                        if w:
-                            sit_spans[key] = w
+                                sit_spans[key] = w
+                        except Exception as e:
+                            logging.getLogger("root").warning(
+                                f"span summaries window {key} failed: {e}"
+                            )
                     if ds_spans:
                         processed_game["driveSummarySpans"] = ds_spans
                     if sit_spans:
@@ -429,15 +436,22 @@ def process(game_id: int):
                     w = situational_stats.build(frame, hid, aid, window_expr=expr)
                     if w:
                         processed_game["situationalStats"] = w
+                    else:  # never a full-game object on a windowed response
+                        processed_game.pop("situationalStats", None)
                     per = _SPAN_PERIODS.get(key)
                     drv_all = (processed_game.get("drives") or {}).get("previous") or []
                     cur = (processed_game.get("drives") or {}).get("current")
                     if cur:
                         drv_all = drv_all + [cur]
-                    if per is not None and drv_all:
-                        w = drive_summary.build(drv_all, frame, hid, aid, periods=per)
-                        if w:
-                            processed_game["driveSummary"] = w
+                    w = (
+                        drive_summary.build(drv_all, frame, hid, aid, periods=per)
+                        if per is not None and drv_all
+                        else None  # clock spans don't map to drive windows
+                    )
+                    if w:
+                        processed_game["driveSummary"] = w
+                    else:
+                        processed_game.pop("driveSummary", None)
             except Exception as e:
                 logging.getLogger("root").warning(
                     f"span summaries failed for {game_id} span={raw_span}: {e}"

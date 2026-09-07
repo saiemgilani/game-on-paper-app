@@ -326,14 +326,7 @@ def build(drives, frame, home_id, away_id, periods=None):
                     ).sum()
                 ).item()
             ),  # noqa: E712
-            "penalty": int(
-                frame.select(
-                    (
-                        (pl.col("firstD_by_penalty") == True)
-                        & (pl.col("pos_team").cast(pl.Utf8) == tid)
-                    ).sum()
-                ).item()
-            ),  # noqa: E712
+            "penalty": int(mine.select(pl.col("firstD_by_penalty").sum()).item()),
         }
 
         n = t["total_drives"] or 1
@@ -367,19 +360,29 @@ def build(drives, frame, home_id, away_id, periods=None):
     rows = reg.select(
         ["start.adj_TimeSecsRem", "start.homeScore", "start.awayScore"]
     ).to_dicts()
+    final_h, final_a = h, a  # running score after the chart walk = final score
     for j, r in enumerate(rows):
         hh, aa = r.get("start.homeScore") or 0, r.get("start.awayScore") or 0
         lead[home_id] = max(lead[home_id], hh - aa)
         lead[away_id] = max(lead[away_id], aa - hh)
+        # the interval after play j belongs to play j's OUTCOME -- the next
+        # play's start state (or the final score after the last play) -- so a
+        # go-ahead score counts its aftermath as leading, not the prior state
         if j + 1 < len(rows):
+            nxt = rows[j + 1]
             dt = (r.get("start.adj_TimeSecsRem") or 0) - (
-                rows[j + 1].get("start.adj_TimeSecsRem") or 0
+                nxt.get("start.adj_TimeSecsRem") or 0
             )
             dt = max(0, dt)
+            sh = nxt.get("start.homeScore") or 0
+            sa = nxt.get("start.awayScore") or 0
         else:
             dt = max(0, r.get("start.adj_TimeSecsRem") or 0)
-        key = home_id if hh > aa else away_id if aa > hh else "tied"
+            sh, sa = final_h, final_a
+        key = home_id if sh > sa else away_id if sa > sh else "tied"
         clockstate[key] += dt
+    lead[home_id] = max(lead[home_id], final_h - final_a)
+    lead[away_id] = max(lead[away_id], final_a - final_h)
     if periods is None:
         for tid, t in teams.items():
             t["largest_lead"] = lead[tid]
@@ -393,7 +396,7 @@ def build(drives, frame, home_id, away_id, periods=None):
     for tid in team_ids:
         top5 = (
             scrim.filter(pl.col("pos_team").cast(pl.Utf8) == tid)
-            .sort("statYardage", descending=True)
+            .sort("statYardage", descending=True, nulls_last=True)
             .head(5)
             .select(["statYardage", "period", "text"])
             .to_dicts()
