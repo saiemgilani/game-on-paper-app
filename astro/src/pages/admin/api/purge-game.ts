@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { auditAdmin } from '../../../utils/telemetry';
 
 export const prerender = false;
 
@@ -59,6 +60,9 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
         }
     }
     context.cache.set(false);
-    return Response.json({ ok: Object.values(results).every((v) => v === 'purged'), results },
+    const allOk = Object.values(results).every((v) => v === 'purged');
+    auditAdmin(context.request, 'purge-game',
+        `ids=[${ids.join(',')}] tags=[${tags.join(',')}]`, allOk);
+    return Response.json({ ok: allOk, results },
         { headers: { 'Cache-Control': 'no-store' } });
 }

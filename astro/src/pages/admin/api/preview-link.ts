@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
 import { PREVIEW_LINK_PARAM, PREVIEW_LINK_TTL_S, mintPreviewLink } from '../../../utils/preview';
+import { auditAdmin } from '../../../utils/telemetry';
 
 export const prerender = false;
 
@@ -23,6 +24,7 @@ export const POST: APIRoute = async ({ request }) => {
         return Response.json({ ok: false, error: 'path must be a same-site path starting with a single "/"' }, { status: 400 });
     }
     const origin = new URL(request.url).origin;
+    auditAdmin(request, 'preview-link', path, true);
     const token = await mintPreviewLink(secret);
     const target = new URL(path, origin);
     if (target.origin !== origin) {

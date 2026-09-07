@@ -109,6 +109,40 @@ def _overview(args):
 
 def _games(args):
     return {
+        # one row per live game: matchup, last render outcome, cache intent,
+        # ESPN fetch health, and DQ lints flagged today -- the "is tonight
+        # healthy" screen. Guard marks are merged in by the panel from the
+        # astro-side /admin/api/guards (they live in Workers KV).
+        "watchlist": _q("""SELECT gm.game_id,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup,
+                gm.away_score, gm.home_score, gm.status, gm.last_seen,
+                r.req_30m, r.last_req, r.render_outcome, r.cache_status,
+                f.espn_status, f.espn_ms,
+                coalesce(l.lints_flagged, 0) AS lints_flagged
+            FROM gop.game_meta gm
+            LEFT JOIN LATERAL (
+                SELECT count(*)::int AS req_30m, max(ts) AS last_req,
+                    (array_agg(render_outcome ORDER BY ts DESC))[1] AS render_outcome,
+                    (array_agg(cache_status ORDER BY ts DESC))[1] AS cache_status
+                FROM gop.request_log
+                WHERE game_id = gm.game_id::text AND ts > now() - interval '30 minutes'
+            ) r ON true
+            LEFT JOIN LATERAL (
+                SELECT status AS espn_status, duration_ms AS espn_ms
+                FROM gop.upstream_log
+                WHERE game_id = gm.game_id::text AND target = 'espn_pbp'
+                ORDER BY ts DESC LIMIT 1
+            ) f ON true
+            LEFT JOIN LATERAL (
+                SELECT count(*) FILTER (WHERE delta > 0)::int AS lints_flagged
+                FROM gop.dq_boxscore
+                WHERE game_id = gm.game_id AND stat LIKE 'lint:%%'
+                    AND ts > now() - interval '12 hours'
+            ) l ON true
+            WHERE gm.status IN ('STATUS_IN_PROGRESS', 'STATUS_HALFTIME',
+                'STATUS_END_PERIOD', 'STATUS_DELAYED')
+                AND gm.last_seen > now() - interval '6 hours'
+            ORDER BY r.req_30m DESC NULLS LAST LIMIT 40"""),
         "gamesAgg": _q("""SELECT game_id, count(*)::int AS req_30m,
                 percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95_ms,
                 max(ts) AS last_req,
@@ -136,7 +170,10 @@ def _upstream(args):
             GROUP BY target ORDER BY target"""),
         "failures": _q("""SELECT date_trunc('hour', ts) AS h,
                 count(*) FILTER (WHERE status >= 500)::int AS s5xx,
-                count(*) FILTER (WHERE status IS NULL AND ok = false)::int AS timeouts
+                count(*) FILTER (WHERE status IS NULL AND ok = false)::int AS timeouts,
+                -- the Akamai denial signature: 403/429 episodes stand out as
+                -- version-aligned cliffs the way parser regressions do on DQ
+                count(*) FILTER (WHERE status IN (403, 429))::int AS blocked
             FROM gop.upstream_log WHERE ts > now() - interval '24 hours' GROUP BY 1 ORDER BY 1"""),
         "slowest": _q("""SELECT u.ts, u.target, u.game_id, u.duration_ms, u.status,
                 gm.away_abbr || ' @ ' || gm.home_abbr AS matchup FROM gop.upstream_log u LEFT JOIN gop.game_meta gm ON gm.game_id::text = u.game_id
@@ -237,6 +274,13 @@ def _dq(args):
     }
 
 
+def _audit(args):
+    return {
+        "recent": _q("""SELECT ts, actor, action, detail, ok
+            FROM gop.admin_audit ORDER BY ts DESC LIMIT 100"""),
+    }
+
+
 def _traffic(args):
     return {
         "routes": _q("""SELECT route_pattern, count(*)::int AS n,
@@ -307,6 +351,7 @@ _ADMIN = {
     "upstream": _upstream,
     "errors": _errors,
     "dq": _dq,
+    "audit": _audit,
     "traffic": _traffic,
     "system": _system,
     "page": _page,

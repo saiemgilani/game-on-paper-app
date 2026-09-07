@@ -56,6 +56,23 @@ export async function sendToIngest(events: GopEvent[], cfg: IngestConfig): Promi
   }
 }
 
+// Audit trail for privileged admin POSTs (purge, preview toggle, link mint).
+// Rides the request's collector, so it ships with the middleware's normal
+// ingest batch; a request outside the collector (dev) is silently dropped,
+// matching the rest of telemetry's fail-open posture.
+export function auditAdmin(request: Request, action: string, detail: string, ok: boolean): void {
+    const c = gopStorage.getStore();
+    if (!c) return;
+    const auth = request.headers.get('authorization') ?? '';
+    let actor = 'admin-cookie';
+    if (auth.startsWith('Basic ')) {
+        try { actor = atob(auth.slice(6)).split(':')[0] || 'basic'; } catch { actor = 'basic'; }
+    }
+    c.events.push({ table: 'admin_audit', row: {
+        actor, action, detail: detail.slice(0, 500), ok,
+    } });
+}
+
 export type TimedFetchExtra = { game_id?: string | null; pythonBase?: string; summaryBase?: string };
 
 export async function wrappedFetch(url: string, init?: RequestInit): Promise<Response> {

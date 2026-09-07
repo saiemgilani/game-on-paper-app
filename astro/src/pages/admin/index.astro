@@ -56,8 +56,14 @@ const subtitle = "Operational dashboards for Game on Paper";
       <div class="card"><h6 class="admin-label mt-0">Status mix · 1h</h6><div class="bars" id="statusbars"></div><div class="legend" id="statuslegend"></div><div id="ov-services"></div></div>
     </div>
     <div class="card mt-2"><h6 class="admin-label mt-0">Latency percentiles (ms)</h6><canvas id="c-pct" height="150"></canvas></div>
+    <h6 class="admin-label">Recent admin actions</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-audit"></table></div>
   </section>
   <section id="games">
+    <h6 class="admin-label">Live now · watchlist</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-watchlist"></table></div>
+    <h6 class="admin-label">Regression-guard marks (KV high-water; a stale mark renders that page uncached on every request)</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-guards"></table></div>
     <h6 class="admin-label">Games with activity · last 30 min (click a row for page detail)</h6>
     <div class="card twrap"><table class="table table-sm mb-0" id="t-games"></table></div>
     <div id="page-detail"></div>
@@ -301,7 +307,38 @@ const subtitle = "Operational dashboards for Game on Paper";
   }
 
   async function refreshGames() {
-    const d = await api('games');
+    const [d, guards] = await Promise.all([
+      api('games'),
+      fetch('/admin/api/guards').then((r) => r.json()).catch(() => ({ marks: [] })),
+    ]);
+    const markBy = Object.fromEntries((guards.marks ?? []).map((m) => [String(m.game_id), m]));
+    table('t-watchlist', ['Game', 'Score', 'Status', 'Req 30m', 'Render', 'Cache intent', 'ESPN fetch', 'DQ lints', 'Guard'],
+      (d.watchlist ?? []).map((w) => {
+        const m = markBy[String(w.game_id)];
+        return { cells: [
+          `<a href="/game/${esc(w.game_id)}" target="_blank">${esc(w.matchup ?? w.game_id)}</a>`,
+          `${fmt(w.away_score)}–${fmt(w.home_score)}`, esc(w.status ?? '—'),
+          w.req_30m ?? 0, esc(w.render_outcome ?? 'ok'),
+          esc((w.cache_status ?? '—').slice(0, 24)),
+          w.espn_status == null ? '—' : `<span class="mono">${esc(w.espn_status)} · ${fmt(w.espn_ms)} ms</span>`,
+          w.lints_flagged || '0',
+          m ? `<span class="mono">Q${m.period ?? '?'} · ${m.plays ?? '?'} plays</span>` : '—'] };
+      }));
+    table('t-guards', ['Game', 'Period', 'Plays', 'Scores', 'Done', ''],
+      (guards.marks ?? []).map((m) => ({ cells: [
+        `<a href="/game/${esc(m.game_id)}" target="_blank"><span class="mono">${esc(m.game_id)}</span></a>`,
+        m.period ?? '—', m.plays ?? '—', esc((m.scores ?? []).join('–') || '—'),
+        m.completed ? 'yes' : 'no',
+        `<button class="btn btn-sm btn-outline-danger" data-guard-reset="${esc(m.game_id)}" title="Purge this page + delete its high-water mark">Reset</button>`] })));
+    document.querySelectorAll('#t-guards [data-guard-reset]').forEach((b) =>
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        b.disabled = true;
+        try {
+          await fetch(`/admin/api/purge-game?ids=${b.dataset.guardReset}`, { method: 'POST' });
+          b.textContent = 'Reset ✓';
+        } catch { b.textContent = 'Failed'; b.disabled = false; }
+      }));
     const fetchBy = Object.fromEntries(d.lastFetch.map((f) => [f.game_id, f]));
     table('t-games', ['Game ID', 'Req 30m', 'p95 ms', 'Cache hit', 'Degraded', 'Failed', 'Last ESPN fetch'],
       d.gamesAgg.map((g) => ({ attr: ` data-game="${esc(g.game_id)}"`, cells: [
@@ -333,13 +370,21 @@ const subtitle = "Operational dashboards for Game on Paper";
       { n: 'failed', v: oc.failed, c: STATUS.crit }]);
   }
 
+  async function refreshAudit() {
+    const d = await api('audit');
+    table('t-audit', ['When', 'Actor', 'Action', 'Detail', 'OK'],
+      (d.recent ?? []).map((a) => ({ cells: [`<span class="mono">${hhmm(a.ts)}</span>`,
+        esc(a.actor ?? '—'), esc(a.action), esc(a.detail ?? ''), a.ok === false ? '✗' : '✓'] })));
+  }
+
   async function refreshUpstream() {
     const d = await api('upstream');
     table('t-targets', ['Target', 'p50 ms', 'p95 ms', 'Success 24h', 'Calls'],
       d.targets.map((t) => ({ cells: [`<span class="mono">${esc(t.target)}</span>`, fmt(t.p50), fmt(t.p95), t.success == null ? '—' : fmt(100 * t.success, 2) + '%', t.total] })));
     line('c-fail', d.failures.map((f) => hhmm(f.h)), [
       { label: '5xx', data: d.failures.map((f) => f.s5xx), borderColor: S[1] },
-      { label: 'timeout', data: d.failures.map((f) => f.timeouts), borderColor: S[3] }]);
+      { label: 'timeout', data: d.failures.map((f) => f.timeouts), borderColor: S[3] },
+      { label: '403/429 blocked', data: d.failures.map((f) => f.blocked ?? 0), borderColor: S[2] }]);
     table('t-slowest', ['When', 'Target', 'Game', 'ms', 'Status'],
       d.slowest.map((s) => ({ cells: [`<span class="mono">${hhmm(s.ts)}</span>`, `<span class="mono">${esc(s.target)}</span>`,
         s.game_id ? `<a href="/game/${esc(s.game_id)}" target="_blank">${esc(s.matchup ?? s.game_id)}</a>` : '—',
@@ -461,7 +506,7 @@ const subtitle = "Operational dashboards for Game on Paper";
   }
   document.getElementById('st-probe').addEventListener('click', () => probeStaleness().catch((e) => console.error(e)));
 
-  const refreshers = { overview: refreshOverview, games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
+  const refreshers = { overview: () => Promise.all([refreshOverview(), refreshAudit()]), games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
   let active = 'overview';
   document.getElementById('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('button');

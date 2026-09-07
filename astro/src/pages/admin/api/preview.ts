@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
 import { PREVIEW_COOKIE, previewSetCookie, readCookie, verifyPreviewCookie } from '../../../utils/preview';
+import { auditAdmin } from '../../../utils/telemetry';
 
 export const prerender = false;
 
@@ -24,6 +25,7 @@ export const POST: APIRoute = async ({ request }) => {
     const cookie = on
         ? await previewSetCookie(secret)
         : `${PREVIEW_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+    auditAdmin(request, 'preview-toggle', on ? 'on' : 'off', true);
     return Response.json({ ok: true, enabled: on }, {
         headers: { 'Set-Cookie': cookie, 'Cache-Control': 'no-store' },
     });
