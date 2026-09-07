@@ -10,7 +10,7 @@ interface Props {
 const { players } = Astro.props;
 ---
 
-<TeamPlayerTable id="passing-players" title="Passing">
+<TeamPlayerTable id="passing-players" title="Passing" show={true}>
     <Fragment slot="header">
         <th rowspan="1" colspan="1"></th>
         <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Comp/Att</th>
