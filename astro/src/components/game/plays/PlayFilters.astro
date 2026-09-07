@@ -21,10 +21,10 @@ const label = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
 ---
 
 <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-filters={target}>
-    <div class="btn-group btn-group-sm" role="group" aria-label="Filter plays by quarter">
-        <button type="button" class="btn btn-outline-secondary active" data-period-filter="all" aria-pressed="true">All</button>
+    <div class="d-flex justify-content-start align-items-center flex-wrap gap-1 span-pills" role="group" aria-label="Filter plays by quarter">
+        <button type="button" class="btn btn-sm btn-outline-secondary active" data-period-filter="all" aria-pressed="true">All</button>
         {periods.map((p) => (
-            <button type="button" class="btn btn-outline-secondary" data-period-filter={p} aria-pressed="false">{label(p)}</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-period-filter={p} aria-pressed="false">{label(p)}</button>
         ))}
     </div>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-order-toggle="1" aria-pressed={newestFirst}>
