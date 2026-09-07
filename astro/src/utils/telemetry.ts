@@ -6,7 +6,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 export type GopEvent = {
-  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event';
+  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event' | 'admin_audit';
   row: Record<string, unknown>;
 };
 
@@ -60,16 +60,13 @@ export async function sendToIngest(events: GopEvent[], cfg: IngestConfig): Promi
 // Rides the request's collector, so it ships with the middleware's normal
 // ingest batch; a request outside the collector (dev) is silently dropped,
 // matching the rest of telemetry's fail-open posture.
-export function auditAdmin(request: Request, action: string, detail: string, ok: boolean): void {
+export function auditAdmin(locals: { adminActor?: string }, action: string, detail: string, ok: boolean): void {
     const c = gopStorage.getStore();
     if (!c) return;
-    const auth = request.headers.get('authorization') ?? '';
-    let actor = 'admin-cookie';
-    if (auth.startsWith('Basic ')) {
-        try { actor = atob(auth.slice(6)).split(':')[0] || 'basic'; } catch { actor = 'basic'; }
-    }
+    // the actor is vetted by the middleware at auth time -- never parsed from
+    // a raw header here, which a cookie-authed caller could forge
     c.events.push({ table: 'admin_audit', row: {
-        actor, action, detail: detail.slice(0, 500), ok,
+        actor: locals.adminActor ?? 'admin-cookie', action, detail: detail.slice(0, 500), ok,
     } });
 }
 

@@ -12,8 +12,17 @@ export const prerender = false;
 export const GET: APIRoute = async () => {
     const marks: Record<string, unknown>[] = [];
     try {
-        const listing = await env.ESPN_API_CACHE.list({ prefix: 'gamestate:', limit: 200 });
-        for (const k of listing.keys) {
+        // follow the cursor: KV pages at 1000 keys, and past-game marks live a
+        // full day, so a Saturday can exceed one page. Hard cap keeps the
+        // endpoint bounded either way.
+        const keys: { name: string }[] = [];
+        let cursor: string | undefined;
+        do {
+            const page: any = await env.ESPN_API_CACHE.list({ prefix: 'gamestate:', cursor });
+            keys.push(...page.keys);
+            cursor = page.list_complete ? undefined : page.cursor;
+        } while (cursor && keys.length < 2000);
+        for (const k of keys) {
             const gameId = k.name.slice('gamestate:'.length);
             try {
                 const state = await env.ESPN_API_CACHE.get(k.name, 'json') as Record<string, unknown> | null;

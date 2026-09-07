@@ -335,7 +335,9 @@ const subtitle = "Operational dashboards for Game on Paper";
         e.stopPropagation();
         b.disabled = true;
         try {
-          await fetch(`/admin/api/purge-game?ids=${b.dataset.guardReset}`, { method: 'POST' });
+          const r = await fetch(`/admin/api/purge-game?ids=${b.dataset.guardReset}`, { method: 'POST' });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || j.ok !== true) throw new Error(j.error ?? r.status);
           b.textContent = 'Reset ✓';
         } catch { b.textContent = 'Failed'; b.disabled = false; }
       }));

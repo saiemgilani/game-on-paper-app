@@ -61,7 +61,7 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
     }
     context.cache.set(false);
     const allOk = Object.values(results).every((v) => v === 'purged');
-    auditAdmin(context.request, 'purge-game',
+    auditAdmin(context.locals, 'purge-game',
         `ids=[${ids.join(',')}] tags=[${tags.join(',')}]`, allOk);
     return Response.json({ ok: allOk, results },
         { headers: { 'Cache-Control': 'no-store' } });

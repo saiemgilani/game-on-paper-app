@@ -9,7 +9,7 @@ export const prerender = false;
 // auth via the middleware. POST {"path": "/game/401..."} (default "/") returns
 // a URL that, opened in any browser, sets the preview cookie via the
 // middleware redeem and redirects to the clean path.
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
     const secret = getSecret('ADMIN_PASS');
     if (!secret) return Response.json({ ok: false, error: 'ADMIN_PASS not set' }, { status: 500 });
     let path = '/';
@@ -24,12 +24,14 @@ export const POST: APIRoute = async ({ request }) => {
         return Response.json({ ok: false, error: 'path must be a same-site path starting with a single "/"' }, { status: 400 });
     }
     const origin = new URL(request.url).origin;
-    auditAdmin(request, 'preview-link', path, true);
     const token = await mintPreviewLink(secret);
     const target = new URL(path, origin);
     if (target.origin !== origin) {
+        auditAdmin(locals, 'preview-link', `${path} (rejected: off-site)`, false);
         return Response.json({ ok: false, error: 'path resolved off-site' }, { status: 400 });
     }
+    // audited only once the mint and the origin check have both succeeded
+    auditAdmin(locals, 'preview-link', path, true);
     target.searchParams.set(PREVIEW_LINK_PARAM, token);
     return Response.json({
         ok: true,

@@ -119,7 +119,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
       return context.redirect('/admin/login', 302);
     }
-    if (cookieOk || basicOk) context.locals.adminAuthed = true;
+    if (cookieOk || basicOk) {
+      context.locals.adminAuthed = true;
+      // vetted here, where auth is actually verified: the audit log must not
+      // trust a raw Authorization header a cookie-authed caller could forge
+      let actor = 'admin-cookie';
+      if (basicOk) {
+        try { actor = atob((context.request.headers.get('authorization') ?? '').slice(6)).split(':')[0] || 'basic'; } catch { actor = 'basic'; }
+      }
+      context.locals.adminActor = actor;
+    }
   }
 
   const key = getSecret('GOP_INGEST_KEY') ?? '';
