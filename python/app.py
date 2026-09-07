@@ -15,6 +15,7 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
+import drive_summary
 import span_box
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
@@ -336,6 +337,27 @@ def process(game_id: int):
                 _emit_dq(game_id, game, processed_game)
             except Exception as e:  # observability must never cost a render
                 logging.getLogger("root").warning(f"dq emit failed for {game_id}: {e}")
+
+        # StatBroadcast-style drive summary/chart. Cheap (one pass over ~25
+        # drives + a few frame aggregations), so it ships on every response;
+        # fail-open like everything else on this route.
+        try:
+            frame = getattr(game, "plays_frame", None)
+            drv = (processed_game.get("drives") or {}).get("previous") or []
+            cur = (processed_game.get("drives") or {}).get("current")
+            if cur:
+                drv = drv + [cur]
+            if frame is not None and drv:
+                summary = drive_summary.build(
+                    drv, frame,
+                    frame["homeTeamId"][0], frame["awayTeamId"][0],
+                )
+                if summary:
+                    processed_game["driveSummary"] = summary
+        except Exception as e:  # a summary must never cost the page
+            logging.getLogger("root").warning(
+                f"drive summary failed for {game_id}: {e}"
+            )
 
         body_bytes = orjson.dumps(
             processed_game,
