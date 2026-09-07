@@ -19,6 +19,10 @@ export const PREVIEW_TTL_S = 30 * 24 * 60 * 60;
 // colleague on any browser, no admin login. The token is purpose-separated from
 // the cookie (different HMAC message) so one can never be replayed as the other.
 export const PREVIEW_LINK_PARAM = 'preview_key';
+// The uncacheable preview surface: /preview/<path> renders <path> with
+// preview features on. Needed because a Workers Caching HIT on a public URL
+// never runs the middleware, so a preview cookie is invisible there.
+export const PREVIEW_PATH_PREFIX = '/preview';
 export const PREVIEW_LINK_TTL_S = 14 * 24 * 60 * 60;
 
 async function hmacHex(secret: string, msg: string): Promise<string> {

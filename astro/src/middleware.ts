@@ -5,8 +5,8 @@ import {
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
 import {
-  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, previewSetCookie, readCookie,
-  verifyPreviewCookie, verifyPreviewLink,
+  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, previewSetCookie,
+  readCookie, verifyPreviewCookie, verifyPreviewLink,
 } from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
@@ -30,15 +30,43 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (linkToken !== null) {
     const clean = new URL(url);
     clean.searchParams.delete(PREVIEW_LINK_PARAM);
-    const headers = new Headers({
-      Location: clean.pathname + clean.search, 'Cache-Control': 'no-store',
-    });
+    // resolve legacy shapes now: /preview/* rewrites straight to routes, so a
+    // legacy path would 404 inside the preview surface
+    const cleanPath = legacyCfbTarget(clean.pathname) ?? staleRedirectTarget(clean.pathname) ?? clean.pathname;
     const secret = getSecret('ADMIN_PASS');
-    if (secret && await verifyPreviewLink(linkToken, secret)) {
+    const valid = !!secret && await verifyPreviewLink(linkToken, secret);
+    // A valid link lands on the /preview/ surface, NOT the clean URL: the
+    // clean URL is publicly cached, and a Workers Caching HIT never runs this
+    // middleware -- the cookie would be ignored and the viewer would see the
+    // public copy (exactly the reported bug). /preview/* is never cached.
+    const headers = new Headers({
+      Location: (valid ? PREVIEW_PATH_PREFIX : '') + cleanPath + clean.search,
+      'Cache-Control': 'no-store',
+    });
+    if (valid && secret) {
       headers.append('Set-Cookie', await previewSetCookie(secret));
     }
     try { (context as any).cache?.set(false); } catch { /* cache provider absent in dev */ }
     return new Response(null, { status: 302, headers });
+  }
+
+  // The preview surface: /preview/<path> renders <path> with preview features
+  // on, and is NEVER cached (path-based, like /admin -- see the guard below).
+  // Cookie required: without one the viewer is bounced to the public path.
+  // Cookie-based preview on normal URLs still works where the Worker runs
+  // (cache misses, no-store pages); this surface is the one place it is
+  // GUARANTEED to run, which is why the magic link and the badge live here.
+  let previewRewrite: string | undefined;
+  if (url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/')) {
+    const rest = url.pathname.slice(PREVIEW_PATH_PREFIX.length) || '/';
+    const target = legacyCfbTarget(rest) ?? staleRedirectTarget(rest) ?? rest;
+    const cookieOk = await verifyPreviewCookie(
+      readCookie(context.request.headers.get('cookie'), PREVIEW_COOKIE), getSecret('ADMIN_PASS'));
+    if (!cookieOk) {
+      return context.redirect(target + url.search, 302);
+    }
+    context.locals.preview = true;
+    previewRewrite = target + url.search;
   }
 
 
@@ -89,7 +117,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const key = getSecret('GOP_INGEST_KEY') ?? '';
   const enabled = (getSecret('TELEMETRY_ENABLED') ?? '1') !== '0' && !!key;
   if (!enabled || url.pathname.startsWith('/api/client-log')) {
-    return withPreviewCacheGuard(context, await next());
+    return withPreviewCacheGuard(context, await next(previewRewrite as any));
   }
 
   const collector = createCollector();
@@ -97,7 +125,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const t0 = Date.now();
   let response: Response;
   try {
-    response = await gopStorage.run(collector, () => next());
+    response = await gopStorage.run(collector, () => next(previewRewrite as any));
   } catch (err) {
     collector.render_outcome = 'failed';
     collector.events.push({ table: 'error_log', row: {
@@ -179,9 +207,11 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // path: the redeem intercepts these before render, but if that ever
   // regresses, this keeps a keyed URL out of Workers Caching entirely.
   const carriesPreviewKey = url.searchParams.has(PREVIEW_LINK_PARAM);
-  if (context.locals?.preview === true || isAdmin || spanVariesByViewer || carriesPreviewKey) {
+  const isPreviewPath = url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/');
+  if (context.locals?.preview === true || isAdmin || spanVariesByViewer || carriesPreviewKey || isPreviewPath) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
+    if (isPreviewPath) response.headers.set('X-Robots-Tag', 'noindex');
   }
   return response;
 }
