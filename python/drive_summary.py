@@ -202,11 +202,18 @@ def build(drives, frame, home_id, away_id):
             t["points_off_turnovers"] += own_delta
 
         if d.get("isScore"):
+            # the SCORING play, not merely the last play with text -- a
+            # post-score penalty or PAT note can be the drive's final entry
             finishing = None
             for p in reversed(d.get("plays") or []):
-                if p.get("text"):
+                if p.get("scoringPlay") and p.get("text"):
                     finishing = p["text"]
                     break
+            if finishing is None:
+                for p in reversed(d.get("plays") or []):
+                    if p.get("text"):
+                        finishing = p["text"]
+                        break
             scores.append(
                 {
                     "team_id": tid,

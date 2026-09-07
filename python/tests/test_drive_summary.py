@@ -39,7 +39,14 @@ def _drive(
                 "homeScore": last_score[0],
                 "awayScore": last_score[1],
                 "text": "the finishing play",
-            }
+                "scoringPlay": is_score,
+            },
+            # trailing post-score penalty entry must NOT win
+            {
+                "homeScore": last_score[0],
+                "awayScore": last_score[1],
+                "text": "PENALTY after the play",
+            },
         ],
     }
 
