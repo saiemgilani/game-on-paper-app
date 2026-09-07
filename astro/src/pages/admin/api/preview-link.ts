@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
 import { PREVIEW_LINK_PARAM, PREVIEW_LINK_TTL_S, mintPreviewLink } from '../../../utils/preview';
+import { auditAdmin } from '../../../utils/telemetry';
 
 export const prerender = false;
 
@@ -8,7 +9,7 @@ export const prerender = false;
 // auth via the middleware. POST {"path": "/game/401..."} (default "/") returns
 // a URL that, opened in any browser, sets the preview cookie via the
 // middleware redeem and redirects to the clean path.
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
     const secret = getSecret('ADMIN_PASS');
     if (!secret) return Response.json({ ok: false, error: 'ADMIN_PASS not set' }, { status: 500 });
     let path = '/';
@@ -26,8 +27,11 @@ export const POST: APIRoute = async ({ request }) => {
     const token = await mintPreviewLink(secret);
     const target = new URL(path, origin);
     if (target.origin !== origin) {
+        auditAdmin(locals, 'preview-link', `${path} (rejected: off-site)`, false);
         return Response.json({ ok: false, error: 'path resolved off-site' }, { status: 400 });
     }
+    // audited only once the mint and the origin check have both succeeded
+    auditAdmin(locals, 'preview-link', path, true);
     target.searchParams.set(PREVIEW_LINK_PARAM, token);
     return Response.json({
         ok: true,

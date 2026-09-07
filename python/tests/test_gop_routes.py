@@ -60,6 +60,20 @@ def test_ingest_accepts_valid_and_skips_unknown_tables(client):
     assert [t for t, _ in client.tel.pushed] == ["request_log", "client_event"]
 
 
+def test_ingest_accepts_admin_audit_rows(client):
+    resp = client.post(
+        "/gop/ingest",
+        headers={"X-GOP-Key": "k"},
+        json={"events": [
+            {"table": "admin_audit", "row": {
+                "actor": "saiem", "action": "purge-game",
+                "detail": "ids=[401856766] tags=[]", "ok": True}},
+        ]},
+    )
+    assert resp.status_code == 202
+    assert resp.get_json()["accepted"] == 1
+
+
 def test_ingest_strips_client_supplied_ts(client):
     client.post(
         "/gop/ingest",

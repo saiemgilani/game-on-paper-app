@@ -54,6 +54,13 @@ _TABLES = {
         "kickoff_ts",
         "last_seen",
     ],
+    "admin_audit": [
+        "ts",
+        "actor",
+        "action",
+        "detail",
+        "ok",
+    ],
     "dq_boxscore": [
         "ts",
         "game_id",

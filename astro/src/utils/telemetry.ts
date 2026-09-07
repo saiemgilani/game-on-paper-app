@@ -6,7 +6,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 export type GopEvent = {
-  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event';
+  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event' | 'admin_audit';
   row: Record<string, unknown>;
 };
 
@@ -54,6 +54,20 @@ export async function sendToIngest(events: GopEvent[], cfg: IngestConfig): Promi
   } catch {
     /* fail-open: telemetry loss is acceptable, page impact is not */
   }
+}
+
+// Audit trail for privileged admin POSTs (purge, preview toggle, link mint).
+// Rides the request's collector, so it ships with the middleware's normal
+// ingest batch; a request outside the collector (dev) is silently dropped,
+// matching the rest of telemetry's fail-open posture.
+export function auditAdmin(locals: { adminActor?: string }, action: string, detail: string, ok: boolean): void {
+    const c = gopStorage.getStore();
+    if (!c) return;
+    // the actor is vetted by the middleware at auth time -- never parsed from
+    // a raw header here, which a cookie-authed caller could forge
+    c.events.push({ table: 'admin_audit', row: {
+        actor: locals.adminActor ?? 'admin-cookie', action, detail: detail.slice(0, 500), ok,
+    } });
 }
 
 export type TimedFetchExtra = { game_id?: string | null; pythonBase?: string; summaryBase?: string };

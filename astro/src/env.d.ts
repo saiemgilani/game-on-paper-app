@@ -14,6 +14,8 @@ declare namespace App {
     interface Locals {
         preview?: boolean;
         adminAuthed?: boolean;
+        /** vetted audit identity: basic-auth username or "admin-cookie" */
+        adminActor?: string;
     }
   interface SessionData {
     favorites?: {
