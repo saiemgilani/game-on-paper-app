@@ -166,6 +166,13 @@ def _errors(args):
     }
 
 
+# Rows written before this predate the official-conventions reconciliation in
+# dq.py (sacks-as-rushes, completions-only pass yards, TD first downs,
+# accepted-only penalties) and carry structurally huge deltas under the SAME
+# stat names -- mixing them into a window makes every bucket read as broken.
+DQ_RECONCILED_SINCE = "2026-09-07"
+
+
 def _dq(args):
     """Box-vs-official deltas and lints. Stability across sdv_py_sha is the
     signal; a version-aligned shift in a stat's delta distribution is a parser
@@ -181,19 +188,19 @@ def _dq(args):
                 round(percentile_cont(0.5) WITHIN GROUP (ORDER BY delta)::numeric, 2)::float AS median_delta,
                 round(max(abs(delta))::numeric, 1)::float AS worst
             FROM gop.dq_boxscore
-            WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
-                AND stat NOT LIKE 'lint:%%'
+            WHERE ts > now() - make_interval(days => %s) AND ts >= %s::timestamptz
+                AND delta IS NOT NULL AND stat NOT LIKE 'lint:%%'
             GROUP BY 1 ORDER BY 1""",
-            (days,),
+            (days, DQ_RECONCILED_SINCE),
         ),
         "by_version": _q(
             """SELECT sdv_py_version, sdv_py_sha, stat,
                 count(*)::int AS n, round(avg(delta)::numeric, 2)::float AS mean_delta
             FROM gop.dq_boxscore
-            WHERE ts > now() - make_interval(days => %s) AND delta IS NOT NULL
-                AND stat NOT LIKE 'lint:%%'
+            WHERE ts > now() - make_interval(days => %s) AND ts >= %s::timestamptz
+                AND delta IS NOT NULL AND stat NOT LIKE 'lint:%%'
             GROUP BY 1, 2, 3 ORDER BY max(ts) DESC, 3 LIMIT 60""",
-            (days,),
+            (days, DQ_RECONCILED_SINCE),
         ),
         "worst_games": _q(
             """SELECT d.game_id,
@@ -203,12 +210,12 @@ def _dq(args):
                 count(*) FILTER (WHERE d.delta <> 0)::int AS stats_off
             FROM gop.dq_boxscore d
             LEFT JOIN gop.game_meta gm ON gm.game_id = d.game_id
-            WHERE d.ts > now() - make_interval(days => %s)
+            WHERE d.ts > now() - make_interval(days => %s) AND d.ts >= %s::timestamptz
                 AND d.delta IS NOT NULL AND d.stat NOT LIKE 'lint:%%'
                 -- a reprocessed game writes a fresh batch; only its latest counts
                 AND d.ts = (SELECT max(ts) FROM gop.dq_boxscore WHERE game_id = d.game_id)
             GROUP BY 1, 2 ORDER BY total_abs_delta DESC LIMIT 25""",
-            (days,),
+            (days, DQ_RECONCILED_SINCE),
         ),
         "lints": _q(
             """SELECT stat, count(*) FILTER (WHERE delta > 0)::int AS games_flagged,
