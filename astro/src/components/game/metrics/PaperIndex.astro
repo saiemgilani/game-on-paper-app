@@ -15,8 +15,9 @@ const { result, homeTeam, awayTeam, completed } = Astro.props;
 const homePct = Math.round(result.homeShare * 100);
 const awayPct = 100 - homePct;
 const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
-const leader = result.homeShare >= 0.5 ? homeTeam : awayTeam;
-const leaderPct = Math.max(homePct, awayPct);
+// the accessible meter mirrors the visible bar: both teams named, value =
+// the home share the bar's right segment shows
+const meterLabel = `Paper Index: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmtMargin = (v: number, digits = 2) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 ---
 <div class="card border rounded">
@@ -29,7 +30,7 @@ const fmtMargin = (v: number, digits = 2) => `${v >= 0 ? "+" : ""}${roundNumber(
         <div class="d-flex align-items-center gap-2">
             <img class={`team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
             <span class="fw-bold" style="min-width: 3ch">{awayPct}%</span>
-            <div class="progress flex-grow-1" style="height: 20px" role="meter" aria-label={`Paper Index: ${leader.abbreviation} ${leaderPct}%`} aria-valuenow={homePct} aria-valuemin="0" aria-valuemax="100">
+            <div class="progress flex-grow-1" style="height: 20px" role="meter" aria-label={meterLabel} aria-valuenow={homePct} aria-valuetext={`${homeTeam.abbreviation} ${homePct}%`} aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" style={`width: ${awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
                 <div class="progress-bar" style={`width: ${homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
             </div>

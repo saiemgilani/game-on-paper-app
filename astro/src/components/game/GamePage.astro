@@ -130,13 +130,20 @@ const latestSubtitle = !lastPlay
       ? `Final. Last drive: ${driveTeam ?? "unknown"}, ${driveResult ?? "no result"}.`
       : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
 
+// Paper Index: single who-won-on-paper share from the full-game box (never
+// the windowed one -- a span page still describes the whole game's paper story)
+const boxRec = (section: any[], teamId: string) => (section ?? []).find((r: any) => String(r?.pos_team) === String(teamId));
+const paperHome = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, homeTeam.id), boxRec(game.advBoxScore?.situational, homeTeam.id));
+const paperAway = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, awayTeam.id), boxRec(game.advBoxScore?.situational, awayTeam.id));
+const paper = !activeSpan && paperHome && paperAway ? paperIndex(paperHome, paperAway) : null;
+
 const scrollerItems: ScrollerItem[] = [
     // The Latest panel only renders when there are plays, so a game with none
     // must not advertise an anchor that isn't on the page.
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wp-section", title: "WP Chart" },
     { href: "#ep-section", title: "EPA Chart" },
-    { href: "#paper-index", title: "Paper Index" },
+    ...(paper ? [{ href: "#paper-index", title: "Paper Index" }] : []),
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
@@ -170,13 +177,6 @@ const mostImpPlays = game.plays.toSorted((a, b) => {
     }
 }).slice(0, 10)
 
-
-// Paper Index: single who-won-on-paper share from the full-game box (never
-// the windowed one -- a span page still describes the whole game's paper story)
-const boxRec = (section: any[], teamId: string) => (section ?? []).find((r: any) => String(r?.pos_team) === String(teamId));
-const paperHome = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, homeTeam.id), boxRec(game.advBoxScore?.situational, homeTeam.id));
-const paperAway = paperIndexInputsFromBox(boxRec(game.advBoxScore?.team, awayTeam.id), boxRec(game.advBoxScore?.situational, awayTeam.id));
-const paper = !activeSpan && paperHome && paperAway ? paperIndex(paperHome, paperAway) : null;
 
 let gameDrives = game.drives.current ? (game.drives.previous ?? []).concat([game.drives.current]) : (game.drives.previous ?? []);
 gameDrives = deduplicateByKey(gameDrives, "id");
