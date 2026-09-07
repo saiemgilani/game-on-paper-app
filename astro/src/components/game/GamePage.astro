@@ -539,14 +539,13 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                             }
                             {
                                 (game.plays.length > 0) && (
-                                    <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
-                                )
-                            }
-                            {
-                                (game.plays.length > 0) && (
-                                    <PlayFocus target="all" plays={game.plays}
-                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                        teamNames={{ [String(homeTeam.id)]: homeTeam.location, [String(awayTeam.id)]: awayTeam.location }} />
+                                    <div class="mt-2 d-flex flex-wrap justify-content-start-xs justify-content-between">
+                                        <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
+                                    
+                                        <PlayFocus target="all" plays={game.plays}
+                                            teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
+                                            teamNames={{ [String(homeTeam.id)]: cleanLocation(homeTeam), [String(awayTeam.id)]: cleanLocation(awayTeam) }} />
+                                    </div>
                                 )
                             }
                             {
