@@ -78,4 +78,36 @@ describe('the preview magic link', () => {
         expect(await verifyPreviewCookie(await mintPreviewLink('test-secret'), 'test-secret')).toBe(false);
         expect(await verifyPreviewLink(await mintPreviewCookie('test-secret'), 'test-secret')).toBe(false);
     });
+
+    test('a keyed LEGACY URL is redeemed first, not 301-redirected with the key', async () => {
+        // the legacy /cfb 301s forward the query string with no cache headers;
+        // if they ran before the redeem, a heuristically-cacheable redirect
+        // would carry the key (review on #213). Redeem must win.
+        const token = await mintPreviewLink('test-secret');
+        const ctx: any = {
+            request: new Request(`https://gameonpaper.com/cfb/game/401752746?span=q3&${PREVIEW_LINK_PARAM}=${token}`),
+            locals: {},
+            cache: { set: () => {} },
+            redirect: (l: string, code = 302) => new Response(null, { status: code, headers: { Location: l } }),
+        };
+        const res = await (onRequest as any)(ctx, async () => new Response('ok'));
+        expect(res.status).toBe(302);
+        expect(res.headers.get('Location')).toBe('/cfb/game/401752746?span=q3');
+        expect(res.headers.get('Location')).not.toContain(PREVIEW_LINK_PARAM);
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
+        expect(res.headers.get('Set-Cookie')).toContain(PREVIEW_COOKIE);
+    });
+
+    test('the cache guard forces no-store on any response for a keyed URL', async () => {
+        // belt and braces: even if the redeem ever regressed and a keyed URL
+        // rendered, the response must not be cacheable under that URL
+        const { withPreviewCacheGuard } = await import('../src/middleware');
+        const ctx: any = {
+            request: new Request(`https://gameonpaper.com/game/1?${PREVIEW_LINK_PARAM}=v1.1.abc`),
+            locals: {},
+            cache: { set: () => {} },
+        };
+        const res = withPreviewCacheGuard(ctx, new Response('page'));
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
+    });
 });
