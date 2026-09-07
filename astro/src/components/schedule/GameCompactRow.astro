@@ -1,11 +1,13 @@
 ---
-// Banner-style scoreboard row (mobile, hoopsjunkie-inspired): slanted
-// team-color stripes with logos on the edges, city over a big bold
-// abbreviation, large scores with the winner bright, status centered.
-// The whole card links to the game page. Preview-flagged
-// ('scoreboard-compact'); the card grid stays the desktop rendering.
+// Banner-style scoreboard row (mobile): slanted team-color stripes with
+// logos on the edges; the two teams stacked inside with FULL school names
+// (no truncated abbreviation-plus-city pair -- a stacked line gets ~230px,
+// so "Middle Tennessee" fits where the mirrored layout had ~70px); status
+// in its own column. Winner bold, completed loser half-opacity, exactly
+// like TeamRow's formatScore. The whole card links to the game page.
+// Preview-flagged ('scoreboard-compact'); the card grid stays >=768px.
 import type { ESPNScheduleEvent } from "../../resources/espn";
-import { cleanAbbreviation, cleanScore } from "../../utils/misc";
+import { cleanLocation, cleanScore } from "../../utils/misc";
 
 interface Props {
   game: ESPNScheduleEvent;
@@ -29,15 +31,14 @@ function colorOf(c: any): string {
   const hex = String(c.team?.color ?? "").replace(/[^0-9a-fA-F]/g, "");
   return hex.length === 6 || hex.length === 3 ? `#${hex}` : "#6c757d";
 }
-// "Final" / "10:24 - 3rd" / kickoff "7:30 PM" for scheduled games
+// "Final" / "10:24 - 3rd" / kickoff "7:30 PM EDT" for scheduled games
 const statusLabel = scheduled
   ? (status.type.shortDetail ?? "").split(" - ").pop()
   : status.type.shortDetail;
 
 const side = (c: any, score: number, other: number) => ({
   rank: rankOf(c),
-  abbr: cleanAbbreviation(c.team),
-  city: c.team.location ?? c.team.shortDisplayName ?? "",
+  name: cleanLocation(c.team) || c.team.shortDisplayName || "",
   color: colorOf(c),
   logo: `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`,
   id: c.id,
@@ -51,17 +52,21 @@ const home = side(homeComp, homeScore, awayScore);
   <span class="gb-stripe gb-stripe-away" style={`background:${away.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
   </span>
-  <span class="gb-side gb-away">
-    <span class="gb-city">{away.rank != 99 && <b>#{away.rank}</b>} {away.city}</span>
-    <span class:list={["gb-name", { "gb-won": away.won, "gb-lost": away.lost }]}>{away.abbr}</span>
+  <span class="gb-teams">
+    <span class="gb-line">
+      <span class:list={["gb-nm", { "gb-won": away.won, "gb-lost": away.lost }]}>
+        {away.rank != 99 && <span class="gb-rank">#{away.rank}</span>} {away.name}
+      </span>
+      <span class:list={["gb-pts", { "gb-won": away.won, "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
+    </span>
+    <span class="gb-line">
+      <span class:list={["gb-nm", { "gb-won": home.won, "gb-lost": home.lost }]}>
+        {home.rank != 99 && <span class="gb-rank">#{home.rank}</span>} {home.name}
+      </span>
+      <span class:list={["gb-pts", { "gb-won": home.won, "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
+    </span>
   </span>
-  <span class:list={["gb-score", { "gb-won": away.won, "gb-lost": away.lost }]}>{scheduled ? "" : awayScore}</span>
   <span class="gb-mid">{statusLabel}</span>
-  <span class:list={["gb-score", { "gb-won": home.won, "gb-lost": home.lost }]}>{scheduled ? "" : homeScore}</span>
-  <span class="gb-side gb-home">
-    <span class="gb-city">{home.city} {home.rank != 99 && <b>#{home.rank}</b>}</span>
-    <span class:list={["gb-name", { "gb-won": home.won, "gb-lost": home.lost }]}>{home.abbr}</span>
-  </span>
   <span class="gb-stripe gb-stripe-home" style={`background:${home.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
   </span>

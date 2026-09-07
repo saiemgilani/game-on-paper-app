@@ -180,11 +180,11 @@ h1, h2, h3, h4, h5, h6 {
     color: #2394fd !important; /* #eeb211*/
 }
 /* Banner scoreboard rows (GameCompactRow, preview 'scoreboard-compact').
-   Slanted team-color stripes + logos on the edges, city over the team
-   abbreviation, scores center, status middle; grouped under kickoff-time
-   headers (.gb-slot). Type follows the site: the Chivo stack (the list is
-   not a .row, so it opts in explicitly), bootstrap heading weight, and
-   TeamRow's winner-bold / loser-half-opacity score treatment. */
+   Slanted team-color stripes + logos on the edges; the two teams stacked
+   inside with full school names; status in its own column; grouped under
+   kickoff-time headers (.gb-slot). Type follows the site: the Chivo stack
+   (the list is not a .row, so it opts in explicitly), bootstrap heading
+   weight, and TeamRow's winner-bold / loser-half-opacity treatment. */
 .game-compact-list {
     font-family: "Chivo", "Fira Mono", serif;
 }
@@ -195,9 +195,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 .game-banner {
     display: grid;
-    grid-template-columns: 46px minmax(0, 1fr) auto minmax(46px, auto) auto minmax(0, 1fr) 46px;
+    grid-template-columns: 46px minmax(0, 1fr) minmax(52px, auto) 46px;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-height: 64px;
     margin-bottom: 8px;
     border: 1px solid #dee2e6;
@@ -216,34 +216,35 @@ h1, h2, h3, h4, h5, h6 {
 .game-banner .gb-stripe img { filter: drop-shadow(0 0 2px rgba(255,255,255,0.6)); }
 .game-banner .gb-stripe-away { clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
 .game-banner .gb-stripe-home { clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%); }
-.game-banner .gb-side {
+.game-banner .gb-teams {
     display: flex;
     flex-direction: column;
+    gap: 3px;
     min-width: 0;
-    line-height: 1.15;
+    padding: 8px 0;
 }
-.game-banner .gb-home { align-items: flex-end; text-align: right; }
-.game-banner .gb-city {
-    font-size: .75rem;
-    color: #6c757d;
+.game-banner .gb-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+}
+.game-banner .gb-nm {
+    font-size: 1.05rem;
+    font-weight: 500;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
+    min-width: 0;
 }
-.game-banner .gb-name {
-    /* clamped so ARMY/CONN-length abbreviations never collide with the
-       score in a ~70px team cell at 390 */
-    font-size: clamp(1rem, 4.2vw, 1.25rem);
-    font-weight: 500;
-    white-space: nowrap;
+.game-banner .gb-rank {
+    font-size: .75rem;
+    color: #6c757d;
 }
-.game-banner .gb-score {
-    font-size: clamp(1.05rem, 5vw, 1.5rem);
+.game-banner .gb-pts {
+    font-size: 1.15rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
-    min-width: 30px;
-    text-align: center;
 }
 .game-banner .gb-won { font-weight: 700; }
 .game-banner .gb-lost { opacity: 0.5; }
