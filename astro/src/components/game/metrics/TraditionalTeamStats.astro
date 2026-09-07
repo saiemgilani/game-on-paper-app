@@ -41,10 +41,15 @@ const labels = columns[0]?.map((r) => r.label) ?? [];
                     {columns.map((rows) => (
                         <td class="numeral" style="text-align: center;">
                             {rows[i].value}
+                        </td>
+                    ))}
+                </tr>
+                <tr hidden={!columns[0][i].epa}>
+                    <td style="text-align: left;" title={columns[0][i].title}>&emsp;&emsp;EPA</td>
+                    {columns.map((rows) => (
+                        <td class="numeral" style="text-align: center;">
                             {rows[i].epa != null && (
-                                <span class="text-muted text-small" style="display: block;" title="Expected points added over these plays">
-                                    {roundNumber(rows[i].epa as number, 2, 2)} EPA
-                                </span>
+                                <span>{roundNumber(rows[i].epa as number, 2, 2)}</span>
                             )}
                         </td>
                     ))}
