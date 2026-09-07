@@ -462,3 +462,27 @@ describe('the ?span= filter narrows the page to a window', () => {
         expect(plain).toContain('?span=q1');
     });
 });
+
+test('a shared ?span= link never windows the data for a public render', async () => {
+    // classic has no pills and no banner, so windowed boxes there would be
+    // silently wrong numbers -- the span must ride only with the v2 page.
+    //
+    // This calls the same function the route calls, with the real feature
+    // check, rather than matching the route's source text: a source regex keeps
+    // passing if a later change forwards the span on the public path while
+    // leaving the matched expression in place. The route itself cannot be
+    // rendered here -- it needs Astro.cache, which the container does not
+    // provide -- so the decision lives in requestedSpanKey() to stay reachable.
+    const { requestedSpanKey } = await import('../src/utils/span');
+    const { isFeatureEnabled } = await import('../src/utils/features');
+    const shared = new URL(`https://gameonpaper.com/game/${GAME_ID}?span=q3`).searchParams;
+
+    // public: the flag is off, so the span is dropped before the API call
+    expect(requestedSpanKey({}, shared, isFeatureEnabled)).toBeNull();
+    expect(requestedSpanKey(undefined, shared, isFeatureEnabled)).toBeNull();
+    // preview: v2 draws the pills and the banner, so the span rides along
+    expect(requestedSpanKey({ preview: true }, shared, isFeatureEnabled)).toBe('q3');
+    // and a junk span is still rejected even with the flag on
+    const junk = new URL(`https://gameonpaper.com/game/${GAME_ID}?span=nope`).searchParams;
+    expect(requestedSpanKey({ preview: true }, junk, isFeatureEnabled)).toBeNull();
+});

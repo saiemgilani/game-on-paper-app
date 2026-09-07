@@ -49,3 +49,39 @@ test('availableSpans offers only played windows', () => {
     expect(availableSpans([...reg, p(5)]).map((s) => s.key)).toContain('ot');
     expect(availableSpans([p(null)])).toEqual([]);
 });
+
+describe('cache guard: a ?span= URL varies by viewer while v2 is in preview', () => {
+    // Cloudflare keys the cache on the URL and never varies on the preview
+    // cookie, and a cache HIT does not run the Worker at all -- so a cached
+    // public (classic, span dropped) response would be handed to a previewing
+    // admin, who would silently get the un-windowed page they came to check.
+    const guard = async (url: string, locals: Record<string, unknown> = {}) => {
+        const { withPreviewCacheGuard } = await import('../src/middleware');
+        const calls: unknown[] = [];
+        const res = withPreviewCacheGuard(
+            { request: new Request(url), locals, cache: { set: (v: unknown) => calls.push(v) } },
+            new Response('x'),
+        );
+        return { cacheControl: res.headers.get('Cache-Control'), cacheCalls: calls };
+    };
+
+    test('a public ?span= render is not cached', async () => {
+        const r = await guard('https://gameonpaper.com/game/401729745?span=q3');
+        expect(r.cacheControl).toBe('no-store');
+        expect(r.cacheCalls).toEqual([false]);
+    });
+
+    test('the same page without a span still caches normally', async () => {
+        const r = await guard('https://gameonpaper.com/game/401729745');
+        expect(r.cacheControl).toBeNull();
+        expect(r.cacheCalls).toEqual([]);
+    });
+
+    test('a preview render is uncacheable either way', async () => {
+        expect((await guard('https://gameonpaper.com/game/401729745', { preview: true })).cacheControl).toBe('no-store');
+    });
+
+    test('/admin stays uncacheable', async () => {
+        expect((await guard('https://gameonpaper.com/admin')).cacheControl).toBe('no-store');
+    });
+});

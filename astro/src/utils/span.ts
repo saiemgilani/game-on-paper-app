@@ -77,3 +77,24 @@ export function availableSpans(plays: { period?: unknown }[]): { key: string; la
     if ([...periods].some((n) => n > 4)) out.push({ key: 'ot', label: 'Overtime' });
     return out;
 }
+
+/**
+ * The span key the python API should be asked for, given who is looking.
+ *
+ * A `?span=` in a shared link may only window the data when the v2 page will
+ * actually render -- it is v2 that draws the pills and the "showing Q3 only"
+ * banner. On the classic page a windowed box score would be silently wrong
+ * numbers inside a full-game layout, so the span is dropped.
+ *
+ * This lives here rather than inline in `pages/game/[id].astro` so it can be
+ * tested against real inputs: the route needs `Astro.cache`, which the Astro
+ * container does not provide, so the route itself cannot be rendered in vitest.
+ */
+export function requestedSpanKey(
+    locals: { preview?: boolean } | undefined,
+    searchParams: URLSearchParams,
+    isEnabled: (name: string, locals: { preview?: boolean } | undefined) => boolean,
+): string | null {
+    if (!isEnabled('game-page-v2', locals)) return null;
+    return parseSpan(searchParams.get('span'))?.key ?? null;
+}

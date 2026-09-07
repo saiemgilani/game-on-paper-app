@@ -7,6 +7,7 @@ import { checkBasicAuth } from './resources/admin';
 import { PREVIEW_COOKIE, readCookie, verifyPreviewCookie } from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
+import { FLAGS } from './utils/features';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -132,12 +133,21 @@ function safeClientAddress(context: any): string | null {
 // alone emits no header (heuristic 2h cache -- see 311d80e); no-store is the
 // explicit opt-out, and cache.set(false) after render wins over any options
 // the page itself accumulated.
-function withPreviewCacheGuard(context: any, response: Response): Response {
-  const isAdmin = new URL(context.request.url).pathname.startsWith('/admin');
+export function withPreviewCacheGuard(context: any, response: Response): Response {
+  const url = new URL(context.request.url);
+  const isAdmin = url.pathname.startsWith('/admin');
+  // A ?span= URL renders two different pages while game-page-v2 is in preview:
+  // v2 windows the boxes to the span, classic drops it and shows the full game.
+  // Cloudflare keys the cache on the URL and does not vary on the preview
+  // cookie, so the PUBLIC (classic) copy would be served to a previewing admin
+  // -- who would silently get the un-windowed page they were trying to check.
+  // Scoped to the preview state: once the flag is 'on' the span means the same
+  // thing to everyone and these URLs become cacheable again.
+  const spanVariesByViewer = url.searchParams.has('span') && FLAGS['game-page-v2'] === 'preview';
   // Preview renders are per-viewer; /admin responses are authenticated. Either
   // way a cached copy would be served to the wrong audience on a HIT -- and a
   // HIT never runs the Worker, so the auth check would be skipped entirely.
-  if (context.locals?.preview === true || isAdmin) {
+  if (context.locals?.preview === true || isAdmin || spanVariesByViewer) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
   }
