@@ -78,6 +78,9 @@ const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(
 const allTeamIds = games.map(g => {
     return g.competitions[0].competitors.map(t => t.id)
 }).reduce((a,b) => a.concat(b), [])
+    // TBD placeholders have no real id; a dark-logo override for /0.png
+    // would replace their default shield with a broken image in dark mode
+    .filter(id => id && String(id) !== '0')
 
 // Preview: banner rows on phones grouped under kickoff-time headers (the
 // cards are ~40% of a phone viewport each); the card grid stays the >=768px

@@ -91,7 +91,11 @@ function calculateSpiceLevel(g: ESPNScheduleEvent): SpiceLevel {
 
 const spiceLevel = calculateSpiceLevel(espnGame) || 'none';
 const gameNote = espnGame.competitions[0].notes.length > 0 ? espnGame.competitions[0].notes[0].headline : ""
-const isChamp = isChampionshipEvent(gameNote);
+// conference championships get the gold treatment too, not just CFP events
+const isChamp = isChampionshipEvent(gameNote) || gameNote.includes("Championship");
+// no announced kickoff: the date is a placeholder midnight, so LocalDate
+// would render a bogus local time -- show ESPN's TBD detail text instead
+const timeTBD = (espnGameComp as any).timeValid === false;
 
 function generateThumbTheme(): GameThumbTheme {
     if (isChamp) {
@@ -134,13 +138,16 @@ const canLoadStatsTheme = canLoadStats ? `disabled` : ``
                         (gameStatus.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={gameStatus.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
                     }
                     {
-                        (gameStatus.type.name.includes("STATUS_SCHEDULED")) && <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
+                        (gameStatus.type.name.includes("STATUS_SCHEDULED")) && (timeTBD
+                            ? <div class="m-0">{gameStatus.type.detail}</div>
+                            : <LocalDate client:idle divClass={"m-0"} date={espnGame.date} format={DateTime.DATETIME_SHORT} />)
                     }
                     {
                         (gameStatus.type.completed != true) && (!gameStatus.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{gameStatus.type.detail}</Fragment>
                     }
                 </strong>
             </div>
+            {gameNote && <p class:list={["small mb-2", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</p>}
             <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
             <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
             <GameSituation hidden={!canShowSituation} game={espnGame} />

@@ -142,6 +142,15 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(html.slice(0, html.indexOf('/game/404')).slice(-400) + champA).toContain('outline-championship');
         expect(champA).toContain('text-championship');
         expect(champA).not.toContain('data-gb-utc');
+        // the DESKTOP CARD GRID gets the same treatment (GameThumb/TeamRow):
+        // TBD detail text instead of a LocalDate island on the placeholder
+        // midnight, the note headline, the gold class, and shield logos --
+        // no broken /500/0.png anywhere on the page
+        const grid = html.slice(html.indexOf('class="row mb-3'));
+        expect(grid).toContain('Sat, December 5th TBD');
+        expect(grid).toContain('SEC Championship Game');
+        expect(grid).toContain('text-championship');
+        expect(html).not.toContain('/500/0.png');
         expect(html).toContain("querySelectorAll('[data-gb-utc]')");
         // the card grid is still there for md+, hidden on phones
         expect(html).toMatch(/class="row mb-3 d-none d-md-flex"/);
