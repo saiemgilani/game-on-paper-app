@@ -16,6 +16,37 @@ function competitor(id: string, abbr: string, score: string, rank = 99) {
     };
 }
 
+function tbdCompetitor() {
+    return {
+        id: '0',
+        score: '0',
+        team: { id: '0', abbreviation: 'TBD', location: 'TBD', conferenceId: '0' },
+        curatedRank: { current: 99 },
+        records: [],
+    };
+}
+
+function championshipEvent(id: string) {
+    // conference championship placeholder: TBD vs TBD, no announced kickoff
+    const status = {
+        period: 0, clock: 0,
+        type: { id: '1', name: 'STATUS_SCHEDULED', completed: false, detail: 'Sat, December 5th TBD', shortDetail: '12/5 - TBD' },
+    };
+    return {
+        id,
+        date: '2026-12-05T05:00Z',
+        status,
+        competitions: [{
+            id,
+            date: '2026-12-05T05:00Z',
+            status,
+            timeValid: false,
+            notes: [{ type: 'event', headline: 'SEC Championship Game' }],
+            competitors: [tbdCompetitor(), tbdCompetitor()],
+        }],
+    };
+}
+
 function gameEvent(id: string, opts: { completed: boolean; live?: boolean }) {
     const status = opts.live
         ? {
@@ -61,7 +92,7 @@ async function render(locals: Record<string, unknown>) {
     return container.renderToString(SchedulePage, {
         props: {
             season: 2026, week: 2, isScoreboard: true,
-            games: [gameEvent('401', { completed: true }), gameEvent('402', { completed: false }), gameEvent('403', { completed: false, live: true })],
+            games: [gameEvent('401', { completed: true }), gameEvent('402', { completed: false }), gameEvent('403', { completed: false, live: true }), championshipEvent('404')],
         },
         request: new Request('https://gameonpaper.com/'),
         locals,
@@ -73,11 +104,12 @@ describe('the compact scoreboard rows are preview-gated', () => {
         const html = await render({ preview: true });
         expect(html).toContain('game-compact-list');
         const rows = [...html.matchAll(/class="game-banner[" ]/g)];
-        expect(rows).toHaveLength(3);
+        expect(rows).toHaveLength(4);
         // both fixture games share a kickoff -> exactly one time-slot header (ET)
         const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
-        expect(slots).toHaveLength(1);
+        expect(slots).toHaveLength(2);
         expect(slots[0]).toMatch(/7:30 PM ET/);
+        expect(slots[1]).toBe('Time TBD');
         // full school names, not truncated abbreviation pairs
         expect(html).toContain('ALA State');
         expect(html).toContain('AUB State');
@@ -97,6 +129,19 @@ describe('the compact scoreboard rows are preview-gated', () => {
         const liveCard = html.slice(html.indexOf('/game/403'));
         expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('text-danger');
         expect(liveCard).toContain('8:32 - 3rd');
+        // championship placeholder: default shield (no broken 500/0.png), note
+        // line, TBD status, and NO data-gb-utc anywhere (its date is a
+        // placeholder midnight the localization script must not "fix"; the
+        // Time TBD slot header carries none either)
+        const champCard = html.slice(html.indexOf('/game/404'));
+        const champA = champCard.slice(0, champCard.indexOf('</a>'));
+        expect(champA).toContain('default-team-logo-500.png');
+        expect(champA).not.toContain('/500/0.png');
+        expect(champA).toContain('SEC Championship Game');
+        // gold championship treatment on the card and the note line
+        expect(html.slice(0, html.indexOf('/game/404')).slice(-400) + champA).toContain('outline-championship');
+        expect(champA).toContain('text-championship');
+        expect(champA).not.toContain('data-gb-utc');
         expect(html).toContain("querySelectorAll('[data-gb-utc]')");
         // the card grid is still there for md+, hidden on phones
         expect(html).toMatch(/class="row mb-3 d-none d-md-flex"/);

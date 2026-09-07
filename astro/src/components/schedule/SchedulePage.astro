@@ -84,6 +84,9 @@ const allTeamIds = games.map(g => {
 // rendering either way.
 const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
 const slotOf = (g: ESPNScheduleEvent) => {
+    // no announced kickoff: the date is a placeholder midnight, so a time
+    // label (and client-side localization) would be a lie
+    if ((g.competitions?.[0] as any)?.timeValid === false) return 'Time TBD';
     try {
         return new Intl.DateTimeFormat('en-US', {
             timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit',
@@ -144,7 +147,7 @@ if (compactRows) {
                     <div class="game-compact-list d-md-none mb-3">
                         {compactSlots.map(([slot, slotGames]) => (
                             <Fragment>
-                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1" data-gb-utc={slotGames[0].date}>{slot}</h6>
+                                <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1" data-gb-utc={slot === 'Time TBD' ? undefined : slotGames[0].date}>{slot}</h6>
                                 {slotGames.map((g) => <GameCompactRow game={g} />)}
                             </Fragment>
                         ))}

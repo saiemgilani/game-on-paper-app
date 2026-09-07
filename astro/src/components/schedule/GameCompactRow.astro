@@ -8,7 +8,7 @@
 // the ET string server-side and carry data-gb-utc so SchedulePage's single
 // inline script (no per-row island) rewrites them to the viewer's timezone.
 import type { ESPNScheduleEvent } from "../../resources/espn";
-import { cleanLocation, cleanScore } from "../../utils/misc";
+import { cleanLocation, cleanScore, isChampionshipEvent } from "../../utils/misc";
 
 interface Props {
   game: ESPNScheduleEvent;
@@ -37,16 +37,33 @@ function colorOf(c: any): string {
   const hex = String(c.team?.color ?? "").replace(/[^0-9a-fA-F]/g, "");
   return hex.length === 6 || hex.length === 3 ? `#${hex}` : "#6c757d";
 }
+// ESPN marks a game with no announced kickoff (conference championships,
+// far-future TV windows) with timeValid: false -- its date is a placeholder
+// midnight, so it must render "TBD" and NEVER carry data-gb-utc (the
+// localization script would rewrite TBD into a bogus local midnight).
+const timeTBD = (comp as any).timeValid === false;
 // "Final" / "10:24 - 3rd" / kickoff "7:30 PM EDT" (ET fallback) for scheduled
 const statusLabel = scheduled
-  ? (status.type.shortDetail ?? "").split(" - ").pop()
+  ? (timeTBD ? "TBD" : (status.type.shortDetail ?? "").split(" - ").pop())
   : status.type.shortDetail;
+// Championship/bowl headline ("Big Ten Championship Game") -- essential for
+// TBD-vs-TBD placeholders, informative on any game that carries one.
+const gameNote = comp.notes?.length ? comp.notes[0].headline : null;
+// Gold treatment for title games, matching GameThumb's championship theme --
+// conference championships count too, not just CFP/national-title events.
+const isChamp = !!gameNote && (isChampionshipEvent(gameNote) || gameNote.includes("Championship"));
 
+// A TBD placeholder competitor has no real team id; ESPN's default shield
+// stands in so the row never shows a broken image.
+const logoOf = (c: any) =>
+  c.id && String(c.id) !== "0" && c.team?.abbreviation !== "TBD"
+    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`
+    : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const side = (c: any, score: number, other: number) => ({
   rank: rankOf(c),
   name: cleanLocation(c.team) || c.team.shortDisplayName || "",
   color: colorOf(c),
-  logo: `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`,
+  logo: logoOf(c),
   id: c.id,
   won: completed && score > other,
   lost: completed && score < other,
@@ -55,7 +72,7 @@ const side = (c: any, score: number, other: number) => ({
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
 ---
-<a class="game-banner d-flex align-items-center gap-2 border rounded mb-2 text-reset text-decoration-none" href={`/game/${game.id}`}>
+<a class:list={["game-banner d-flex align-items-center gap-2 border rounded mb-2 text-reset text-decoration-none", { "outline-championship": isChamp }]} href={`/game/${game.id}`}>
   <span class="gb-stripe gb-stripe-away d-flex align-items-center justify-content-center align-self-stretch" style={`background:${away.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
   </span>
@@ -72,8 +89,9 @@ const home = side(homeComp, homeScore, awayScore);
       </span>
       <span class:list={["gb-pts fs-5", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
     </span>
+    {gameNote && <span class:list={["small text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</span>}
   </span>
-  <span class="small text-muted text-center text-nowrap" data-gb-utc={scheduled ? game.date : undefined}>{statusLabel}</span>
+  <span class="small text-muted text-center text-nowrap" data-gb-utc={scheduled && !timeTBD ? game.date : undefined}>{statusLabel}</span>
   <span class="gb-stripe gb-stripe-home d-flex align-items-center justify-content-center align-self-stretch" style={`background:${home.color}`}>
     <img width="40" height="40" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
   </span>
