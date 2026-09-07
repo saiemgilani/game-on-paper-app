@@ -15,6 +15,7 @@ def _frame():
         "down": [1, 3, 3, 4, 1, 2, 1, 3, 2, 1],
         "distance": [10, 2, 8, 1, 10, 5, 10, 5, 3, 10],
         "EPA": [0.5, 1.0, -0.5, 2.0, 0.2, -0.1, 0.3, -0.2, 0.1, 0.4],
+        "statYardage": [12, 4, 15, 2, 11, 3, 6, 7, 14, -3],
         "EPA_success": [True, True, False, True, True, False, True, False, True, True],
         "pos_score_pts": [0, 0, 7, 0, 0, 3, 0, 0, 7, 0],
         "under_2": [False, False, True, False, False, False, False, True, False, False],
@@ -273,6 +274,7 @@ def test_situational_sections_and_values():
 
     # every section of the metrics note is present
     for key in (
+        "big_plays",
         "two_minute",
         "middle_8",
         "red_zone",
@@ -307,6 +309,32 @@ def test_situational_sections_and_values():
     assert h["rushing_quality"]["power"] == {"made": 2, "att": 2}
     assert h["rushing_quality"]["short_yardage"] == {"made": 1, "att": 2}
     assert h["passing_profile"]["by_depth"]["medium"]["plays"] == 1
+    # article-mined additions: dropbacks/sacks, per-down splits, big plays
+    assert h["passing_profile"]["dropbacks"] == 2
+    assert h["passing_profile"]["sacks_taken"] == {"count": 0, "yards_lost": 0}
+    assert h["passing_profile"]["yards_per_completion"] == 15.0
+    assert h["rushing_quality"]["yards"] == 29
+    assert h["rushing_quality"]["yards_per_rush"] == 7.2
+    assert h["rushing_quality"]["yards_per_rush_with_sacks"] == 7.2
+    assert h["downs"]["down_3"]["avg_distance"] == 5.0
+    assert h["downs"]["down_3"]["yards_per_play"] == 9.5
+    assert h["downs"]["down_3"]["rush"] == {"att": 1, "yards": 4}
+    assert h["downs"]["down_3"]["pass"] == {"att": 1, "comp": 1, "yards": 15}
+    assert h["downs"]["down_3"]["conversions_by"] == {
+        "rush": 1,
+        "pass": 1,
+        "penalty": 0,
+    }
+    # big plays: pass 15+ (idx2 TD) + rushes 10+ (idx0, idx4)
+    assert h["big_plays"]["plays"] == 3 and h["big_plays"]["yards"] == 38
+    assert h["big_plays"]["touchdowns"] == 1
+    assert h["big_plays"]["pass"]["long"] == 15
+    assert h["big_plays"]["rush"] == {
+        "plays": 2,
+        "yards": 23,
+        "long": 12,
+        "touchdowns": 0,
+    }
     # 4th down: recommendation 'go', they went -> agreement 1/1
     assert h["fourth_down_decisions"] == {
         "decisions": 1,
@@ -348,4 +376,7 @@ def test_windowed_build_drops_window_inherent_sections():
 
 
 def test_windowed_build_empty_window_is_none():
-    assert situational_stats.build(_frame(), HOME, AWAY, window_expr=pl.col("period") > 90) is None
+    assert (
+        situational_stats.build(_frame(), HOME, AWAY, window_expr=pl.col("period") > 90)
+        is None
+    )

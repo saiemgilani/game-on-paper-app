@@ -106,8 +106,23 @@ def build(frame, home_id, away_id, window_expr=None):
         downs = {}
         for down in (1, 2, 3, 4):
             dd = mine.filter(pl.col("down") == down)
+            d_rush = dd.filter(_TRUE("rush"))
+            d_pass = dd.filter(_TRUE("pass") & (_TRUE("sack") == False))  # noqa: E712
             entry = {
                 **_grp(dd),
+                "avg_distance": _num(dd["distance"].mean(), 1) if dd.height else None,
+                "yards_per_play": _num(dd["statYardage"].mean(), 1)
+                if dd.height
+                else None,
+                "rush": {
+                    "att": d_rush.height,
+                    "yards": int(d_rush["statYardage"].fill_null(0).sum()),
+                },
+                "pass": {
+                    "att": d_pass.height,
+                    "comp": d_pass.filter(_TRUE("completion")).height,
+                    "yards": int(d_pass["statYardage"].fill_null(0).sum()),
+                },
                 "pass_rate": _num(dd.select(_TRUE("pass").mean()).item())
                 if dd.height
                 else None,
@@ -116,10 +131,15 @@ def build(frame, home_id, away_id, window_expr=None):
                 else None,
             }
             if down in (3, 4):
-                conv = dd.filter(
-                    _TRUE("first_down_created") | _TRUE("touchdown")
-                ).height
-                entry["conversions"] = {"made": conv, "att": dd.height}
+                conv_df = dd.filter(_TRUE("first_down_created") | _TRUE("touchdown"))
+                entry["conversions"] = {"made": conv_df.height, "att": dd.height}
+                # how conversions happened: through the air, on the ground,
+                # or gifted by penalty (the game-book attribution)
+                entry["conversions_by"] = {
+                    "rush": conv_df.filter(_TRUE("rush")).height,
+                    "pass": conv_df.filter(_TRUE("pass")).height,
+                    "penalty": dd.filter(_TRUE("firstD_by_penalty")).height,
+                }
                 buckets = {}
                 for name, lo, hi in (
                     ("short", 0, 3),
@@ -142,8 +162,20 @@ def build(frame, home_id, away_id, window_expr=None):
             if rushes.height
             else 0
         )
+        sacks = mine.filter(_TRUE("sack"))
+        sack_yds = int(sacks["statYardage"].fill_null(0).sum())
+        rush_yds = int(rushes["statYardage"].fill_null(0).sum())
         t["rushing_quality"] = {
             "attempts": rushes.height,
+            "yards": rush_yds,
+            # sack-adjusted by construction: the rush flag never covers sacks
+            "yards_per_rush": _num(rushes["statYardage"].mean(), 1),
+            # official NCAA team rushing folds sacks in
+            "yards_per_rush_with_sacks": _num(
+                (rush_yds + sack_yds) / (rushes.height + sacks.height), 1
+            )
+            if rushes.height + sacks.height
+            else None,
             "line_yards_per_rush": _num(rushes["line_yards"].mean(), 2),
             "second_level_per_rush": _num(rushes["second_level_yards"].mean(), 2),
             "open_field_per_rush": _num(rushes["open_field_yards"].mean(), 2),
@@ -180,10 +212,38 @@ def build(frame, home_id, away_id, window_expr=None):
             }
         t["passing_profile"] = {
             "attempts": passes.height,
+            "dropbacks": int(mine.select(_TRUE("pass").sum()).item()),
+            "sacks_taken": {"count": sacks.height, "yards_lost": -sack_yds},
+            "yards_per_attempt": _num(passes["statYardage"].mean(), 1),
+            "yards_per_completion": _num(comps["statYardage"].mean(), 1),
             "air_yards_per_att": _num(passes["air_yards"].mean(), 2),
             "yac_per_completion": _num(comps["yards_after_catch"].mean(), 2),
             "cpoe": _num(passes["cpoe"].mean()),
             "by_depth": depth,
+        }
+
+        # --- big plays: pass of 15+ / rush of 10+ ---------------------------
+        bp_pass = mine.filter(_TRUE("pass") & (pl.col("statYardage") >= 15))
+        bp_rush = mine.filter(_TRUE("rush") & (pl.col("statYardage") >= 10))
+
+        def _bp(df):
+            return {
+                "plays": df.height,
+                "yards": int(df["statYardage"].fill_null(0).sum()),
+                "long": int(df["statYardage"].max()) if df.height else None,
+                "touchdowns": df.filter(_TRUE("touchdown")).height,
+            }
+
+        t["big_plays"] = {
+            "plays": bp_pass.height + bp_rush.height,
+            "yards": int(
+                bp_pass["statYardage"].fill_null(0).sum()
+                + bp_rush["statYardage"].fill_null(0).sum()
+            ),
+            "touchdowns": bp_pass.filter(_TRUE("touchdown")).height
+            + bp_rush.filter(_TRUE("touchdown")).height,
+            "pass": _bp(bp_pass),
+            "rush": _bp(bp_rush),
         }
 
         # --- 4th-down decision report ---------------------------------------
