@@ -6,6 +6,7 @@ interface Props {
     result: {
         homeShare: number
         margins: Record<string, number>
+        byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
@@ -21,6 +22,14 @@ const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
 const meterLabel = `Paper Index: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
+// per-window strip, canonical order; a missing window simply doesn't render
+const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
+const periods = PERIOD_ORDER
+    .filter((k) => result.byPeriod?.[k])
+    .map((k) => {
+        const p = Math.min(99, Math.max(1, Math.round(result.byPeriod![k].homeShare * 100)));
+        return { label: k.toUpperCase(), homePct: p, awayPct: 100 - p };
+    });
 // the home team's edge on each fitted input, in display order
 const marginBits = [
     m.success != null ? `success ${fmt(m.success * 100)}%` : null,
@@ -49,8 +58,26 @@ const marginBits = [
             <span class="fw-bold" style="min-width: 3ch">{homePct}%</span>
             <img class={`team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
         </div>
+        {periods.length > 0 && (
+            <div class="d-flex flex-wrap gap-3 mt-2" aria-label="Paper Index by quarter">
+                {periods.map((p) => (
+                    <div class="text-center" style="min-width: 72px">
+                        <div class="progress" style="height: 10px" title={`${p.label}: ${awayTeam.abbreviation} ${p.awayPct}% — ${homeTeam.abbreviation} ${p.homePct}%`}>
+                            <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
+                            <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
+                        </div>
+                        <span class="small text-muted">{p.label} <span class="fw-bold">{p.homePct}</span></span>
+                    </div>
+                ))}
+            </div>
+        )}
         {marginBits.length > 0 && (
-            <p class="small text-muted m-0 mt-2">{homeTeam.abbreviation} margins: {marginBits.join(" · ")}</p>
+            <p class="small m-0 mt-2" aria-label="Paper Index margins">
+                <span class="text-muted">{homeTeam.abbreviation} margins:</span>{" "}
+                {marginBits.map((bit) => (
+                    <span class="badge me-1 text-body" style={`background-color: ${bit!.includes("+") ? "rgba(25,135,84,.18)" : "rgba(220,53,69,.18)"}`}>{bit}</span>
+                ))}
+            </p>
         )}
     </div>
 </div>

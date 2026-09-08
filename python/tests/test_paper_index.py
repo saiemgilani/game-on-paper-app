@@ -70,6 +70,19 @@ def test_compute_share_and_symmetry():
     assert set(out["margins"]) == set(paper_index.WEIGHTS)
 
 
+def test_by_period_windows():
+    f = _frame().with_columns(pl.Series("period", [1, 1, 2, 2, 1, 1, 2, 2]))
+    out = paper_index.compute(f, 10, 20)
+    assert set(out["byPeriod"]) == {"q1", "q2"}
+    for w in out["byPeriod"].values():
+        assert 0.0 < w["homeShare"] < 1.0
+        assert set(w["margins"]) == set(paper_index.WEIGHTS)
+    # a window where one side never snapped is omitted, not fabricated
+    f2 = _frame().with_columns(pl.Series("period", [1, 1, 1, 1, 2, 2, 2, 2]))
+    out2 = paper_index.compute(f2, 10, 20)
+    assert out2["byPeriod"] == {}
+
+
 def test_fails_open():
     assert paper_index.compute(pl.DataFrame(), 10, 20) is None
     assert paper_index.compute(pl.DataFrame({"x": [1]}), 10, 20) is None

@@ -114,6 +114,31 @@ def share_from_inputs(home: dict, away: dict) -> dict:
     return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": margins}
 
 
+def by_period(frame: pl.DataFrame, home_id, away_id) -> dict:
+    """Per-quarter (and OT) shares: the same fitted model applied to each
+    window's plays -- who won EACH QUARTER on paper. Descriptive slices, so a
+    window where either side has no snaps is simply omitted; margins that are
+    per-game counts (turnovers) naturally shrink with the window."""
+    if "period" not in frame.columns:
+        return {}
+    out = {}
+    periods = sorted(
+        p for p in frame["period"].unique().to_list() if p is not None and p >= 1
+    )
+    for p in periods:
+        label = f"q{p}" if p <= 4 else "ot"
+        sliced = frame.filter(
+            pl.col("period") == p if p <= 4 else pl.col("period") >= 5
+        )
+        home = team_inputs(sliced, home_id)
+        away = team_inputs(sliced, away_id)
+        if home is None or away is None:
+            continue
+        if label not in out:  # multiple OT periods fold into one "ot" window
+            out[label] = share_from_inputs(home, away)
+    return out
+
+
 def compute(frame: pl.DataFrame, home_id, away_id) -> dict | None:
     """-> the paperIndex response object, or None when inputs are unusable."""
     home = team_inputs(frame, home_id)
@@ -122,4 +147,8 @@ def compute(frame: pl.DataFrame, home_id, away_id) -> dict | None:
         return None
     out = share_from_inputs(home, away)
     out["teams"] = {str(home_id): home, str(away_id): away}
+    try:
+        out["byPeriod"] = by_period(frame, home_id, away_id)
+    except Exception:  # the strip is garnish; the gauge must survive it
+        out["byPeriod"] = {}
     return out
