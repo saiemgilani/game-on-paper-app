@@ -392,6 +392,9 @@ async function relayESPN(url: string): Promise<Response | null> {
     try {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },
+            // never follow a redirect carrying the bearer token to a host we
+            // did not validate above
+            redirect: "error",
         });
         console.warn(`ESPN 403 for ${url}; relayed via API host -> ${resp.status}`);
         return resp;
