@@ -49,10 +49,12 @@ if (gop) {
     gop.render_outcome = verdict.outcome;
     gop.missing_datasets = verdict.missingNames.length ? verdict.missingNames : null;
 }
-if (verdict.requiredMissing.length) {
-    if (gop) gop.render_outcome = 'failed';
-    return Astro.rewrite("/404")
-}
+// Components cannot Astro.rewrite() -- doing so aborts the stream and the
+// page ships as an empty 200 (the 2026-09-07 delayed-game outage). Render
+// the error page inline instead; the page-level router should normally have
+// caught this state before the component ever mounted.
+const requiredMissing = verdict.requiredMissing.length > 0;
+if (requiredMissing && gop) gop.render_outcome = 'failed';
 salvageGame(game);
 
 const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
