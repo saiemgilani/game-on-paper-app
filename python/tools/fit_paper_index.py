@@ -8,9 +8,15 @@ Candidate survey that chose this spec (holdout 2024-2025, measured
 2026-09-07): EPA-only Brier 0.0805 (mean EPA is one number that hides WHY a
 team won, and the unconstrained EPA+success+explosive fit went
 sign-incoherent from collinearity: success -1.16, explosive -10.86);
-success+explosive 0.1423; +opp conversion 0.1138; +field position 0.0834;
-+havoc 0.0790; +turnovers = THIS MODEL, 0.0727 -- the best measured spec,
-every weight positive, every margin individually explainable in the UI.
+success+explosive 0.1423; +opp conversion 0.1138; +field position (yards)
+0.0834; +havoc 0.0790; +turnovers 0.0727; field position re-expressed as the
+EP of the average drive start (bundled cfb_field_position_ep curve) = THIS
+MODEL, 0.0719 -- the best measured spec, every weight positive, every margin
+individually explainable in points/rates in the UI. Also tested and
+rejected: field position as drives x EP SUM (0.0819 -- drive-count noise),
+line-yards/rush as a seventh factor (weight went negative under
+collinearity with success+explosiveness), and plays/drives margins (zero
+holdout signal, w=0.0 standalone).
 
 Run (from python/):
     .venv/bin/python tools/fit_paper_index.py
@@ -30,6 +36,7 @@ import numpy as np
 import polars as pl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from paper_index import _EP_TABLE as EP_TABLE  # noqa: E402
 from paper_index import share_from_inputs, team_inputs  # noqa: E402
 
 TRAIN_SEASONS = range(2016, 2024)  # 2016-2023
@@ -175,10 +182,14 @@ def season_ext_rows(season: int) -> pl.DataFrame:
             start_yte=pl.col("start.yardsToEndzone").first(),
         )
     )
+    drv = drv.with_columns(
+        yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
+    ).join(EP_TABLE, on="yardline_own", how="left")
     drives = drv.group_by(["game_id", "pos_team_id"]).agg(
         opp_trips=pl.col("opp").cast(pl.Float64).sum(),
         opp_converted=(pl.col("opp") & pl.col("scored")).cast(pl.Float64).sum(),
         avg_start_yte=pl.col("start_yte").mean(),
+        avg_start_ep=pl.col("ep").mean(),
     )
     out = base.join(drives, on=["game_id", "pos_team_id"], how="inner").with_columns(
         opp_conv_rate=pl.when(pl.col("opp_trips") > 0)
@@ -214,7 +225,7 @@ def build_games() -> pl.DataFrame:
         )
         .with_columns(
             oppconv_margin=pl.col("h_opp_conv_rate") - pl.col("a_opp_conv_rate"),
-            fp_margin=pl.col("a_avg_start_yte") - pl.col("h_avg_start_yte"),
+            fp_margin=pl.col("h_avg_start_ep") - pl.col("a_avg_start_ep"),
             havoc_margin=pl.col("a_havoc_allowed") - pl.col("h_havoc_allowed"),
             to_margin=pl.col("a_turnovers") - pl.col("h_turnovers"),
         )
@@ -269,6 +280,7 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
             assert abs(ti["explosiveRate"] - r[f"{side}_explosive"]) < 1e-9
             assert abs(ti["oppConversion"] - r[f"{side}_opp_conv_rate"]) < 1e-9
             assert abs(ti["avgStartYardsToEndzone"] - r[f"{side}_avg_start_yte"]) < 1e-9
+            assert abs(ti["avgStartEp"] - r[f"{side}_avg_start_ep"]) < 1e-9
             assert abs(ti["havocAllowedRate"] - r[f"{side}_havoc_allowed"]) < 1e-9
             assert abs(ti["turnoversCommitted"] - r[f"{side}_turnovers"]) < 1e-9
     print(
@@ -309,8 +321,8 @@ def main() -> int:
         f"decomposition: reliability {rel:.4f}, resolution {res:.4f}, uncertainty {unc:.4f}"
     )
 
-    # gates (never-lower; measured at fit time: Brier 0.0727, resolution
-    # 0.1597, holdout n=1894, beats EPA-only 0.0805)
+    # gates (never-lower; measured at fit time: Brier 0.0719, resolution
+    # 0.1600, holdout n=1894, beats EPA-only 0.0805)
     assert len(yh) >= 1200, f"holdout too small: {len(yh)}"
     assert brier < 0.10, f"Brier regressed: {brier}"
     assert brier <= brier_epa + 1e-9, f"lost to EPA-only: {brier} vs {brier_epa}"
@@ -328,6 +340,7 @@ def main() -> int:
             "explosiveRate": r[f"{s}_explosive"],
             "oppConversion": r[f"{s}_opp_conv_rate"],
             "avgStartYardsToEndzone": r[f"{s}_avg_start_yte"],
+            "avgStartEp": r[f"{s}_avg_start_ep"],
             "havocAllowedRate": r[f"{s}_havoc_allowed"],
             "turnoversCommitted": r[f"{s}_turnovers"],
         }

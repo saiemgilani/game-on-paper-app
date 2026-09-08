@@ -49,11 +49,16 @@ def _frame():
 
 def test_team_inputs_aggregation():
     ti = paper_index.team_inputs(_frame(), 10)
+    # drive starts: a=75 yte (own 25), b=80 yte (own 20) -> EP from the
+    # bundled curve, averaged
+    ep = dict(paper_index._EP_TABLE.iter_rows())
+    expected_ep = (ep[25] + ep[20]) / 2
     assert ti == {
         "successRate": 0.75,
         "explosiveRate": 0.25,
         "oppConversion": 1.0,  # one opportunity drive (a), it scored
-        "avgStartYardsToEndzone": 77.5,  # drive starts: a=75, b=80
+        "avgStartYardsToEndzone": 77.5,
+        "avgStartEp": expected_ep,
         "havocAllowedRate": 0.0,
         "turnoversCommitted": 1.0,
     }

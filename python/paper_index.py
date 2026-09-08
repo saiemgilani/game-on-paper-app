@@ -15,18 +15,29 @@ shares -- train/serve parity comes from both sides calling team_inputs().
 from __future__ import annotations
 
 import math
+import pathlib
 
 import polars as pl
+import sportsdataverse
+
+# Expected points of a drive start by own yardline, bundled with the sdv-py
+# models (99 rows). Field position enters the model in POINTS, not yards.
+_EP_TABLE = pl.read_parquet(
+    pathlib.Path(sportsdataverse.__file__).parent
+    / "cfb"
+    / "models"
+    / "cfb_field_position_ep.parquet"
+)
 
 # Fitted 2026-09-07 by tools/fit_paper_index.py on 2016-2023 finals
 # (holdout 2024-2025: see the oracle fixture's provenance block).
 WEIGHTS = {
-    "success": 17.9143,
-    "explosive": 19.4814,
-    "opp_conversion": 3.8807,
-    "field_position": 0.1362,
-    "havoc": 5.2035,
-    "turnovers": 0.5732,
+    "success": 17.7470,
+    "explosive": 19.5992,
+    "opp_conversion": 3.8633,
+    "field_position": 3.6399,
+    "havoc": 5.2005,
+    "turnovers": 0.5631,
 }
 
 _NEEDED = {
@@ -80,6 +91,15 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
     avg_start = drives["start_yte"].mean() if drives.height else None
     if avg_start is None:
         return None
+    ep_starts = (
+        drives.with_columns(
+            yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
+        )
+        .join(_EP_TABLE, on="yardline_own", how="left")
+    )
+    avg_start_ep = ep_starts["ep"].mean()
+    if avg_start_ep is None:
+        return None
     return {
         "successRate": float(
             mine.select((pl.col("EPA_success") == True).mean()).item()
@@ -90,6 +110,7 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
         # no opportunities is neutral finishing, not zero-percent finishing
         "oppConversion": (opp_converted / opp_trips) if opp_trips > 0 else 0.5,
         "avgStartYardsToEndzone": float(avg_start),
+        "avgStartEp": float(avg_start_ep),
         "havocAllowedRate": float(mine.select((pl.col("havoc") == True).mean()).item()),  # noqa: E712
         "turnoversCommitted": float(
             mine.select((pl.col("is_pos_team_turnover") == True).sum()).item()  # noqa: E712
@@ -103,9 +124,9 @@ def share_from_inputs(home: dict, away: dict) -> dict:
         "success": home["successRate"] - away["successRate"],
         "explosive": home["explosiveRate"] - away["explosiveRate"],
         "opp_conversion": home["oppConversion"] - away["oppConversion"],
-        # lower yards-to-endzone is better field position, so away - home
-        "field_position": away["avgStartYardsToEndzone"]
-        - home["avgStartYardsToEndzone"],
+        # field position in POINTS: EP of the average drive start (bundled
+        # cfb_field_position_ep curve); higher is better, so home - away
+        "field_position": home["avgStartEp"] - away["avgStartEp"],
         # havoc the HOME defense created = havoc allowed on away snaps
         "havoc": away["havocAllowedRate"] - home["havocAllowedRate"],
         "turnovers": away["turnoversCommitted"] - home["turnoversCommitted"],

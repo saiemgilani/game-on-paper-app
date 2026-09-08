@@ -35,7 +35,7 @@ const marginBits = [
     m.success != null ? `success ${fmt(m.success * 100)}%` : null,
     m.explosive != null ? `explosiveness ${fmt(m.explosive * 100)}%` : null,
     m.opp_conversion != null ? `finishing ${fmt(m.opp_conversion * 100)}%` : null,
-    m.field_position != null ? `field position ${fmt(m.field_position)} yds` : null,
+    m.field_position != null ? `field position ${fmt(m.field_position, 2)} EP` : null,
     m.havoc != null ? `havoc ${fmt(m.havoc * 100)}%` : null,
     m.turnovers != null ? `turnovers ${fmt(m.turnovers, 0)}` : null,
 ].filter(Boolean);
