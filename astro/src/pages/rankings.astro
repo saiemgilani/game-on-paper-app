@@ -8,8 +8,14 @@ const polls = fbsPolls(data?.rankings);
 const week = polls[0]?.occurrence?.displayValue ?? "";
 const season = data?.latestSeason?.year;
 
-// polls move weekly; an hour of cache keeps poll day fresh without hammering
-Astro.cache.set({ maxAge: 3600, swr: 7200, tags: ["rankings"] });
+// polls move weekly; an hour of cache keeps poll day fresh without hammering.
+// A failed fetch must NOT cache the unavailable page for that hour.
+if (polls.length > 0) {
+    Astro.cache.set({ maxAge: 3600, swr: 7200, tags: ["rankings"] });
+} else {
+    Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
+}
 
 const title = season ? `${season} College Football Rankings` : "College Football Rankings";
 const subtitle = "AP Top 25, Coaches Poll, and CFP rankings with weekly movement, first-place votes, and links to every team's advanced stats.";
@@ -39,7 +45,7 @@ const itemLists = polls.map((p) => ({
     <div class="container my-4">
         <div class="row">
             <div class="col-12">
-                <h1 class="fs-3">College Football Rankings{week ? <span class="text-muted fs-5"> — {week}</span> : null}</h1>
+                <h1 class="fs-3">{title}{week ? <span class="text-muted fs-5"> — {week}</span> : null}</h1>
                 {polls.length === 0 && (
                     <p class="text-muted">Rankings are unavailable right now. Try again in a few minutes.</p>
                 )}

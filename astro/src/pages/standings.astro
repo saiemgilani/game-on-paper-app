@@ -12,7 +12,13 @@ const conferences = results
         rows: sortStandings((c.standings!.entries ?? []).map(parseStandingsEntry)),
     }));
 
-Astro.cache.set({ maxAge: 3600, swr: 7200, tags: ["standings"] });
+// same failure contract as /rankings: never cache the unavailable page
+if (conferences.length > 0) {
+    Astro.cache.set({ maxAge: 3600, swr: 7200, tags: ["standings"] });
+} else {
+    Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
+}
 
 const title = "College Football Standings";
 const subtitle = "Conference standings for every FBS league — records, points, streaks — with links to each team's advanced stats.";
