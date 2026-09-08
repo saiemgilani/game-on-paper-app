@@ -25,7 +25,9 @@ def _frame():
         {
             "scrimmage_play": [True] * 8,
             "pos_team": [10, 10, 10, 10, 20, 20, 20, 20],
-            "EPA_success": [True, True, True, False, True, False, False, False],
+            "EPA": [0.5, 1.5, 0.4, -0.3, 0.8, -0.2, -0.5, -0.1],
+            "pos_score_pts": [0, 0, 7, 0, 0, 0, 0, 0],
+            "EPA_success": [True, True, True, False, True, False, True, False],
             "EPA_explosive": [False, True, False, False, False, False, False, False],
             "havoc": [False, False, False, False, True, True, False, False],
             "scoring_opp": [False, True, True, False, False, False, False, False],
@@ -53,10 +55,12 @@ def test_team_inputs_aggregation():
     # bundled curve, averaged
     ep = dict(paper_index._EP_TABLE.iter_rows())
     expected_ep = (ep[25] + ep[20]) / 2
+    assert abs(ti.pop("explosivenessEpa") - 0.8) < 1e-12  # mean of the 3 successes
     assert ti == {
         "successRate": 0.75,
         "explosiveRate": 0.25,
         "oppConversion": 1.0,  # one opportunity drive (a), it scored
+        "ptsPerOpp": 7.0,  # 7 points on 1 opportunity trip
         "avgStartYardsToEndzone": 77.5,
         "avgStartEp": expected_ep,
         "havocAllowedRate": 0.0,
@@ -64,6 +68,7 @@ def test_team_inputs_aggregation():
     }
     ti20 = paper_index.team_inputs(_frame(), 20)
     assert ti20["oppConversion"] == 0.5  # no opportunities -> neutral
+    assert ti20["ptsPerOpp"] == paper_index.LEAGUE_PTS_PER_OPP
     assert ti20["havocAllowedRate"] == 0.5
 
 

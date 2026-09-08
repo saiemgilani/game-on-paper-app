@@ -1,9 +1,11 @@
 """Paper Index: who won this game on paper?
 
-One share per team in [0, 1] from six performance margins -- success rate,
-explosive-play rate, scoring-opportunity conversion, average starting field
-position, havoc, and turnovers -- squashed through an intercept-free logistic
-so a dead-even game reads 50/50.
+One share per team in [0, 1] from eight performance margins in their
+advanced-box forms -- success rate, explosive-play rate, explosiveness (EPA
+per successful play), scoring-opportunity conversion rate, points per
+opportunity, starting field position in expected points, havoc, and
+turnovers -- squashed through an intercept-free logistic so a dead-even game
+reads 50/50.
 
 Weights are fitted by tools/fit_paper_index.py (intercept-free logistic,
 P(home won), real finals from the released play-by-play; provenance and
@@ -32,13 +34,20 @@ _EP_TABLE = pl.read_parquet(
 # Fitted 2026-09-07 by tools/fit_paper_index.py on 2016-2023 finals
 # (holdout 2024-2025: see the oracle fixture's provenance block).
 WEIGHTS = {
-    "success": 17.7470,
-    "explosive": 19.5992,
-    "opp_conversion": 3.8633,
-    "field_position": 3.6399,
-    "havoc": 5.2005,
-    "turnovers": 0.5631,
+    "success": 23.8447,
+    "explosive": 2.8098,
+    "explosive_epa": 3.2703,
+    "opp_conversion": 3.4280,
+    "pts_per_opp": 0.1860,
+    "field_position": 4.0046,
+    "havoc": 5.9958,
+    "turnovers": 0.6005,
 }
+
+# league average points per scoring opportunity, train seasons only (the
+# neutral value for a team with no opportunity trips); fitted constant,
+# printed by the trainer alongside the weights
+LEAGUE_PTS_PER_OPP = 3.3566
 
 _NEEDED = {
     "scrimmage_play",
@@ -51,6 +60,8 @@ _NEEDED = {
     "drive.isScore",
     "start.yardsToEndzone",
     "is_pos_team_turnover",
+    "EPA",
+    "pos_score_pts",
 }
 
 
@@ -100,6 +111,13 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
     avg_start_ep = ep_starts["ep"].mean()
     if avg_start_ep is None:
         return None
+    succ = mine.filter(pl.col("EPA_success") == True)  # noqa: E712
+    expl_epa = succ["EPA"].mean() if succ.height else None
+    if expl_epa is None:
+        return None  # a slice with zero successful plays has no explosiveness
+    opp_points = float(
+        mine.filter(pl.col("scoring_opp") == True)["pos_score_pts"].fill_null(0).sum()  # noqa: E712
+    )
     return {
         "successRate": float(
             mine.select((pl.col("EPA_success") == True).mean()).item()
@@ -107,8 +125,10 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
         "explosiveRate": float(
             mine.select((pl.col("EPA_explosive") == True).mean()).item()
         ),  # noqa: E712
+        "explosivenessEpa": float(expl_epa),
         # no opportunities is neutral finishing, not zero-percent finishing
         "oppConversion": (opp_converted / opp_trips) if opp_trips > 0 else 0.5,
+        "ptsPerOpp": (opp_points / opp_trips) if opp_trips > 0 else LEAGUE_PTS_PER_OPP,
         "avgStartYardsToEndzone": float(avg_start),
         "avgStartEp": float(avg_start_ep),
         "havocAllowedRate": float(mine.select((pl.col("havoc") == True).mean()).item()),  # noqa: E712
@@ -123,7 +143,9 @@ def share_from_inputs(home: dict, away: dict) -> dict:
     margins = {
         "success": home["successRate"] - away["successRate"],
         "explosive": home["explosiveRate"] - away["explosiveRate"],
+        "explosive_epa": home["explosivenessEpa"] - away["explosivenessEpa"],
         "opp_conversion": home["oppConversion"] - away["oppConversion"],
+        "pts_per_opp": home["ptsPerOpp"] - away["ptsPerOpp"],
         # field position in POINTS: EP of the average drive start (bundled
         # cfb_field_position_ep curve); higher is better, so home - away
         "field_position": home["avgStartEp"] - away["avgStartEp"],

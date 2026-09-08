@@ -33,8 +33,10 @@ const periods = PERIOD_ORDER
 // the home team's edge on each fitted input, in display order
 const marginBits = [
     m.success != null ? `success ${fmt(m.success * 100)}%` : null,
-    m.explosive != null ? `explosiveness ${fmt(m.explosive * 100)}%` : null,
+    m.explosive != null ? `explosive rate ${fmt(m.explosive * 100)}%` : null,
+    m.explosive_epa != null ? `explosiveness ${fmt(m.explosive_epa, 2)} EPA` : null,
     m.opp_conversion != null ? `finishing ${fmt(m.opp_conversion * 100)}%` : null,
+    m.pts_per_opp != null ? `pts/opportunity ${fmt(m.pts_per_opp)}` : null,
     m.field_position != null ? `field position ${fmt(m.field_position, 2)} EP` : null,
     m.havoc != null ? `havoc ${fmt(m.havoc * 100)}%` : null,
     m.turnovers != null ? `turnovers ${fmt(m.turnovers, 0)}` : null,
@@ -44,9 +46,9 @@ const marginBits = [
     <div class="card-body py-3">
         <h2 class="fs-5 mb-1">Paper Index</h2>
         <p class="small text-muted mb-2">
-            Who {completed ? "won" : "is winning"} this game on paper: success rate, explosiveness,
-            drive finishing, field position, havoc, and turnovers — each weighted by how much it
-            decides real games.
+            Who {completed ? "won" : "is winning"} this game on paper: efficiency, explosiveness,
+            finishing drives, field position, havoc, and turnovers — each in its advanced-box form,
+            weighted by how much it decides real games.
         </p>
         <div class="d-flex align-items-center gap-2">
             <img class={`team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />

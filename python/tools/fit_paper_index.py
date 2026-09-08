@@ -1,8 +1,10 @@
 """Fit the Paper Index weights against a decade of real finals.
 
 The shipped model (python/paper_index.py) is an intercept-free logistic over
-six margins: success rate, explosive rate, scoring-opportunity conversion,
-starting field position, havoc, and turnovers.
+eight margins in their advanced-box forms: success rate, explosive-play
+rate, explosiveness (EPA per successful play), scoring-opportunity
+conversion rate, points per opportunity, starting field position in expected
+points, havoc, and turnovers.
 
 Candidate survey that chose this spec (holdout 2024-2025, measured
 2026-09-07): EPA-only Brier 0.0805 (mean EPA is one number that hides WHY a
@@ -14,9 +16,15 @@ EP of the average drive start (bundled cfb_field_position_ep curve) = THIS
 MODEL, 0.0719 -- the best measured spec, every weight positive, every margin
 individually explainable in points/rates in the UI. Also tested and
 rejected: field position as drives x EP SUM (0.0819 -- drive-count noise),
-line-yards/rush as a seventh factor (weight went negative under
-collinearity with success+explosiveness), and plays/drives margins (zero
-holdout signal, w=0.0 standalone).
+line-yards/rush as an extra factor (weight went negative under collinearity
+with success+explosiveness), plays/drives margins (zero holdout signal,
+w=0.0 standalone), standard/passing-down success splits (no gain over
+overall success and sign-incoherent alongside it), and the raw EPA/play
+margin (best Brier 0.0606 but four factors flip negative -- the kitchen
+sink explains scoreboards by unexplaining its own factors). Adding the
+advanced-box forms -- explosiveness as EPA per successful play and scoring
+opportunities as points per opportunity, alongside the rate forms -- is the
+shipped spec: Brier 0.0657, 91.1% winner agreement, all weights positive.
 
 Run (from python/):
     .venv/bin/python tools/fit_paper_index.py
@@ -37,7 +45,7 @@ import polars as pl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from paper_index import _EP_TABLE as EP_TABLE  # noqa: E402
-from paper_index import share_from_inputs, team_inputs  # noqa: E402
+from paper_index import LEAGUE_PTS_PER_OPP, share_from_inputs, team_inputs  # noqa: E402
 
 TRAIN_SEASONS = range(2016, 2024)  # 2016-2023
 HOLDOUT_SEASONS = (2024, 2025)
@@ -75,13 +83,18 @@ EXT_COLUMNS = [
     "drive.id",
     "drive.isScore",
     "start.yardsToEndzone",
+    "EPA",
+    "EPA_success",
+    "pos_score_pts",
 ]
 # junk guard: a real FBS game has far more than 20 scrimmage snaps a side
 MIN_PLAYS_PER_TEAM = 20
 FEATS = [
     "success_margin",
     "explosive_margin",
+    "expl_epa_margin",
     "oppconv_margin",
+    "ppo_margin",
     "fp_margin",
     "havoc_margin",
     "to_margin",
@@ -172,6 +185,11 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     base = scrim.group_by(["game_id", "pos_team_id"]).agg(
         havoc_allowed=pl.col("havoc").cast(pl.Float64).mean(),
         turnovers=pl.col("is_pos_team_turnover").cast(pl.Float64).sum(),
+        explosiveness=pl.col("EPA").filter(pl.col("EPA_success") == True).mean(),  # noqa: E712
+        opp_points=pl.col("pos_score_pts")
+        .filter(pl.col("scoring_opp") == True)  # noqa: E712
+        .fill_null(0)
+        .sum(),
     )
     drv = (
         scrim.filter(pl.col("drive.id").is_not_null())
@@ -194,7 +212,10 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     out = base.join(drives, on=["game_id", "pos_team_id"], how="inner").with_columns(
         opp_conv_rate=pl.when(pl.col("opp_trips") > 0)
         .then(pl.col("opp_converted") / pl.col("opp_trips"))
-        .otherwise(0.5)
+        .otherwise(0.5),
+        pts_per_opp=pl.when(pl.col("opp_trips") > 0)
+        .then(pl.col("opp_points") / pl.col("opp_trips"))
+        .otherwise(LEAGUE_PTS_PER_OPP),
     )
     out.write_parquet(cache)
     return out
@@ -225,6 +246,8 @@ def build_games() -> pl.DataFrame:
         )
         .with_columns(
             oppconv_margin=pl.col("h_opp_conv_rate") - pl.col("a_opp_conv_rate"),
+            ppo_margin=pl.col("h_pts_per_opp") - pl.col("a_pts_per_opp"),
+            expl_epa_margin=pl.col("h_explosiveness") - pl.col("a_explosiveness"),
             fp_margin=pl.col("h_avg_start_ep") - pl.col("a_avg_start_ep"),
             havoc_margin=pl.col("a_havoc_allowed") - pl.col("h_havoc_allowed"),
             to_margin=pl.col("a_turnovers") - pl.col("h_turnovers"),
@@ -278,6 +301,8 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
             assert ti is not None, (r["game_id"], tid)
             assert abs(ti["successRate"] - r[f"{side}_success"]) < 1e-9
             assert abs(ti["explosiveRate"] - r[f"{side}_explosive"]) < 1e-9
+            assert abs(ti["explosivenessEpa"] - r[f"{side}_explosiveness"]) < 1e-9
+            assert abs(ti["ptsPerOpp"] - r[f"{side}_pts_per_opp"]) < 1e-9
             assert abs(ti["oppConversion"] - r[f"{side}_opp_conv_rate"]) < 1e-9
             assert abs(ti["avgStartYardsToEndzone"] - r[f"{side}_avg_start_yte"]) < 1e-9
             assert abs(ti["avgStartEp"] - r[f"{side}_avg_start_ep"]) < 1e-9
@@ -321,10 +346,10 @@ def main() -> int:
         f"decomposition: reliability {rel:.4f}, resolution {res:.4f}, uncertainty {unc:.4f}"
     )
 
-    # gates (never-lower; measured at fit time: Brier 0.0719, resolution
-    # 0.1600, holdout n=1894, beats EPA-only 0.0805)
+    # gates (never-lower; measured at fit time: Brier 0.0657, resolution
+    # 0.1660, holdout n=1894, beats EPA-only 0.0805)
     assert len(yh) >= 1200, f"holdout too small: {len(yh)}"
-    assert brier < 0.10, f"Brier regressed: {brier}"
+    assert brier < 0.09, f"Brier regressed: {brier}"
     assert brier <= brier_epa + 1e-9, f"lost to EPA-only: {brier} vs {brier_epa}"
     assert res > 0.10, f"degraded toward base rate: resolution {res}"
     assert rel < 0.01, f"miscalibrated: reliability {rel}"
@@ -338,6 +363,8 @@ def main() -> int:
         return {
             "successRate": r[f"{s}_success"],
             "explosiveRate": r[f"{s}_explosive"],
+            "explosivenessEpa": r[f"{s}_explosiveness"],
+            "ptsPerOpp": r[f"{s}_pts_per_opp"],
             "oppConversion": r[f"{s}_opp_conv_rate"],
             "avgStartYardsToEndzone": r[f"{s}_avg_start_yte"],
             "avgStartEp": r[f"{s}_avg_start_ep"],
@@ -351,7 +378,9 @@ def main() -> int:
                 [
                     "success",
                     "explosive",
+                    "explosive_epa",
                     "opp_conversion",
+                    "pts_per_opp",
                     "field_position",
                     "havoc",
                     "turnovers",
