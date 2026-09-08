@@ -103,7 +103,15 @@ try {
 const homeSummary = homeSummaries.length == 0 ? null : homeSummaries[0];
 const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
 
-const matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5)
+let matchupHistory: Awaited<ReturnType<typeof retrieveMatchupHistory>> = [];
+try {
+    matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5);
+} catch (e) {
+    // same fail-open contract as the other SDV lookups above: a matchup-history
+    // outage must not cost the pregame page
+    console.error(e);
+    matchupHistory = [];
+}
 
 ---
 

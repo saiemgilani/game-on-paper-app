@@ -72,7 +72,7 @@ const statusName = espnGame?.gamepackageJSON?.header?.competitions?.[0]?.status?
 // A game with no processed plays before/at kickoff is a pregame state, not a
 // GamePage render (401858212, 2026-09-07: DELAYED with an empty plays payload).
 const pregameState = ["STATUS_SCHEDULED", "STATUS_DELAYED"].includes(statusName ?? "")
-    && (!game || game.plays.length === 0);
+    && (!game || !Array.isArray(game.plays) || game.plays.length === 0);
 const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requiredMissing.length === 0;
 ---
 {
