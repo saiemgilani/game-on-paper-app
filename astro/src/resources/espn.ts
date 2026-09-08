@@ -683,6 +683,40 @@ export async function retrieveRankings(): Promise<ESPNRankingsResponse | null> {
     }
 }
 
+export interface ESPNStandingsEntry {
+    team?: {
+        id?: string
+        location?: string
+        abbreviation?: string
+        logos?: { href: string }[]
+    }
+    stats?: { name?: string; displayValue?: string; type?: string }[]
+}
+
+export interface ESPNConferenceStandings {
+    id?: string
+    name?: string
+    shortName?: string
+    standings?: { entries?: ESPNStandingsEntry[] }
+}
+
+// One conference's standings by ESPN group id; null on any failure so a
+// single conference outage never costs the standings page.
+export async function retrieveConferenceStandings(groupId: string | number): Promise<ESPNConferenceStandings | null> {
+    const url = `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=${groupId}`;
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN standings ${resp.status} for group ${groupId}`);
+            return null;
+        }
+        return await resp.json() as ESPNConferenceStandings;
+    } catch (e: any) {
+        console.error(`ESPN standings fetch failed for group ${groupId}: ${e}`);
+        return null;
+    }
+}
+
 export const EMPTY_ESPN_COMPETITION: ESPNCompetition = {
     id: "0",
     uid: "",
