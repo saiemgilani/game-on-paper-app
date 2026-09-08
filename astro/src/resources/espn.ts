@@ -632,6 +632,57 @@ export async function retrieveTeamSeasonRecord(season: string | number, teamId: 
 }
 
 
+export interface ESPNRankEntry {
+    current: number
+    previous: number
+    points?: number
+    firstPlaceVotes?: number
+    trend?: string
+    recordSummary?: string
+    team: {
+        id: string
+        abbreviation?: string
+        location?: string
+        nickname?: string
+        logo?: string
+        color?: string
+    }
+}
+
+export interface ESPNRanking {
+    id: string
+    name: string
+    shortName?: string
+    headline?: string
+    date?: string
+    occurrence?: { displayValue?: string }
+    ranks: ESPNRankEntry[]
+    others?: ESPNRankEntry[]
+}
+
+export interface ESPNRankingsResponse {
+    latestSeason?: { year?: number }
+    latestWeek?: number
+    rankings: ESPNRanking[]
+}
+
+// Current poll rankings (AP / Coaches / CFP when in season). Same retry +
+// API-host relay path as every ESPN call.
+export async function retrieveRankings(): Promise<ESPNRankingsResponse | null> {
+    const url = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings";
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN rankings ${resp.status}`);
+            return null;
+        }
+        return await resp.json() as ESPNRankingsResponse;
+    } catch (e: any) {
+        console.error(`ESPN rankings fetch failed: ${e}`);
+        return null;
+    }
+}
+
 export const EMPTY_ESPN_COMPETITION: ESPNCompetition = {
     id: "0",
     uid: "",
