@@ -826,6 +826,12 @@ export interface ProcessedGame {
     plays: ProcessedPlay[]
     drives: { previous?: ProcessedDrive[], current?: ProcessedDrive }
     scoringPlays: ProcessedPlay[]
+    /** who-won-on-paper share + margins, computed server-side (paper_index.py) */
+    paperIndex?: {
+        homeShare: number
+        margins: Record<string, number>
+        teams: Record<string, Record<string, number>>
+    }
     winprobability: ESPNWinProbability[]
     homeTeamSpread: number
     overUnder: number

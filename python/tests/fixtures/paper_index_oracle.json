@@ -1,0 +1,304 @@
+{
+ "weights": {
+  "success": 17.914251897758778,
+  "explosive": 19.481392167364813,
+  "opp_conversion": 3.8807445970541874,
+  "field_position": 0.13617933853984748,
+  "havoc": 5.20354922291424,
+  "turnovers": 0.5731689020914261
+ },
+ "provenance": {
+  "script": "python/tools/fit_paper_index.py",
+  "train_seasons": "2016-2023",
+  "holdout_seasons": [
+   2024,
+   2025
+  ],
+  "train_games": 6637,
+  "holdout_games": 1894,
+  "holdout_brier": 0.0727,
+  "holdout_log_loss": 0.2394,
+  "holdout_accuracy": 0.8986,
+  "holdout_resolution": 0.1597,
+  "holdout_reliability": 0.0014,
+  "epa_only_brier": 0.0805
+ },
+ "games": [
+  {
+   "gameId": "401752877",
+   "season": 2025,
+   "homeScore": 0,
+   "awayScore": 34,
+   "home": {
+    "successRate": 0.2391304347826087,
+    "explosiveRate": 0.043478260869565216,
+    "oppConversion": 0.0,
+    "avgStartYardsToEndzone": 74.22222222222223,
+    "havocAllowedRate": 0.13043478260869565,
+    "turnoversCommitted": 1.0
+   },
+   "away": {
+    "successRate": 0.6716417910447762,
+    "explosiveRate": 0.07462686567164178,
+    "oppConversion": 0.8571428571428571,
+    "avgStartYardsToEndzone": 76.75,
+    "havocAllowedRate": 0.07462686567164178,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 5.027286671382374e-06
+  },
+  {
+   "gameId": "401752865",
+   "season": 2025,
+   "homeScore": 16,
+   "awayScore": 34,
+   "home": {
+    "successRate": 0.5211267605633803,
+    "explosiveRate": 0.04225352112676056,
+    "oppConversion": 0.75,
+    "avgStartYardsToEndzone": 74.0,
+    "havocAllowedRate": 0.11267605633802817,
+    "turnoversCommitted": 3.0
+   },
+   "away": {
+    "successRate": 0.46774193548387094,
+    "explosiveRate": 0.04838709677419355,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 53.1,
+    "havocAllowedRate": 0.06451612903225806,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 0.007036486352344865
+  },
+  {
+   "gameId": "401634114",
+   "season": 2024,
+   "homeScore": 38,
+   "awayScore": 58,
+   "home": {
+    "successRate": 0.5757575757575758,
+    "explosiveRate": 0.06060606060606061,
+    "oppConversion": 0.8333333333333334,
+    "avgStartYardsToEndzone": 73.45454545454545,
+    "havocAllowedRate": 0.07575757575757576,
+    "turnoversCommitted": 1.0
+   },
+   "away": {
+    "successRate": 0.5394736842105263,
+    "explosiveRate": 0.09210526315789473,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 61.81818181818182,
+    "havocAllowedRate": 0.039473684210526314,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 0.04940452749006051
+  },
+  {
+   "gameId": "401762468",
+   "season": 2025,
+   "homeScore": 17,
+   "awayScore": 28,
+   "home": {
+    "successRate": 0.40789473684210525,
+    "explosiveRate": 0.07894736842105263,
+    "oppConversion": 0.5714285714285714,
+    "avgStartYardsToEndzone": 70.66666666666667,
+    "havocAllowedRate": 0.11842105263157894,
+    "turnoversCommitted": 1.0
+   },
+   "away": {
+    "successRate": 0.43103448275862066,
+    "explosiveRate": 0.06896551724137931,
+    "oppConversion": 0.8,
+    "avgStartYardsToEndzone": 72.27272727272727,
+    "havocAllowedRate": 0.10344827586206896,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 0.17661285378863328
+  },
+  {
+   "gameId": "401762441",
+   "season": 2025,
+   "homeScore": 24,
+   "awayScore": 27,
+   "home": {
+    "successRate": 0.4393939393939394,
+    "explosiveRate": 0.09090909090909091,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 70.5,
+    "havocAllowedRate": 0.15151515151515152,
+    "turnoversCommitted": 1.0
+   },
+   "away": {
+    "successRate": 0.423728813559322,
+    "explosiveRate": 0.0847457627118644,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 73.22222222222223,
+    "havocAllowedRate": 0.0847457627118644,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 0.46276977126452934
+  },
+  {
+   "gameId": "401762838",
+   "season": 2025,
+   "homeScore": 49,
+   "awayScore": 28,
+   "home": {
+    "successRate": 0.4098360655737705,
+    "explosiveRate": 0.09836065573770492,
+    "oppConversion": 0.8,
+    "avgStartYardsToEndzone": 67.6923076923077,
+    "havocAllowedRate": 0.13114754098360656,
+    "turnoversCommitted": 2.0
+   },
+   "away": {
+    "successRate": 0.410958904109589,
+    "explosiveRate": 0.0547945205479452,
+    "oppConversion": 0.7142857142857143,
+    "avgStartYardsToEndzone": 68.06666666666666,
+    "havocAllowedRate": 0.0958904109589041,
+    "turnoversCommitted": 2.0
+   },
+   "expectedHomeShare": 0.736676812269529
+  },
+  {
+   "gameId": "401628437",
+   "season": 2024,
+   "homeScore": 28,
+   "awayScore": 14,
+   "home": {
+    "successRate": 0.4935064935064935,
+    "explosiveRate": 0.05194805194805195,
+    "oppConversion": 0.8,
+    "avgStartYardsToEndzone": 72.18181818181819,
+    "havocAllowedRate": 0.15584415584415584,
+    "turnoversCommitted": 4.0
+   },
+   "away": {
+    "successRate": 0.4153846153846154,
+    "explosiveRate": 0.06153846153846154,
+    "oppConversion": 0.42857142857142855,
+    "avgStartYardsToEndzone": 76.41666666666667,
+    "havocAllowedRate": 0.15384615384615385,
+    "turnoversCommitted": 2.0
+   },
+   "expectedHomeShare": 0.8883547035539989
+  },
+  {
+   "gameId": "401729786",
+   "season": 2024,
+   "homeScore": 28,
+   "awayScore": 21,
+   "home": {
+    "successRate": 0.46296296296296297,
+    "explosiveRate": 0.1111111111111111,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 72.0,
+    "havocAllowedRate": 0.1111111111111111,
+    "turnoversCommitted": 0.0
+   },
+   "away": {
+    "successRate": 0.4,
+    "explosiveRate": 0.09230769230769231,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 78.9,
+    "havocAllowedRate": 0.15384615384615385,
+    "turnoversCommitted": 1.0
+   },
+   "expectedHomeShare": 0.9619269339408244
+  },
+  {
+   "gameId": "401752915",
+   "season": 2025,
+   "homeScore": 27,
+   "awayScore": 10,
+   "home": {
+    "successRate": 0.43859649122807015,
+    "explosiveRate": 0.08771929824561403,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 63.0,
+    "havocAllowedRate": 0.19298245614035087,
+    "turnoversCommitted": 0.0
+   },
+   "away": {
+    "successRate": 0.390625,
+    "explosiveRate": 0.0625,
+    "oppConversion": 0.5,
+    "avgStartYardsToEndzone": 73.0909090909091,
+    "havocAllowedRate": 0.171875,
+    "turnoversCommitted": 0.0
+   },
+   "expectedHomeShare": 0.9895989433757332
+  },
+  {
+   "gameId": "401628691",
+   "season": 2024,
+   "homeScore": 41,
+   "awayScore": 22,
+   "home": {
+    "successRate": 0.4925373134328358,
+    "explosiveRate": 0.13432835820895522,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 73.9,
+    "havocAllowedRate": 0.07462686567164178,
+    "turnoversCommitted": 2.0
+   },
+   "away": {
+    "successRate": 0.32786885245901637,
+    "explosiveRate": 0.04918032786885246,
+    "oppConversion": 0.4,
+    "avgStartYardsToEndzone": 64.9090909090909,
+    "havocAllowedRate": 0.11475409836065574,
+    "turnoversCommitted": 2.0
+   },
+   "expectedHomeShare": 0.9973262319469404
+  },
+  {
+   "gameId": "401752712",
+   "season": 2025,
+   "homeScore": 38,
+   "awayScore": 10,
+   "home": {
+    "successRate": 0.5217391304347826,
+    "explosiveRate": 0.14492753623188406,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 72.9,
+    "havocAllowedRate": 0.043478260869565216,
+    "turnoversCommitted": 0.0
+   },
+   "away": {
+    "successRate": 0.30612244897959184,
+    "explosiveRate": 0.061224489795918366,
+    "oppConversion": 0.5,
+    "avgStartYardsToEndzone": 70.77777777777777,
+    "havocAllowedRate": 0.12244897959183673,
+    "turnoversCommitted": 1.0
+   },
+   "expectedHomeShare": 0.9997051443730167
+  },
+  {
+   "gameId": "401756892",
+   "season": 2025,
+   "homeScore": 70,
+   "awayScore": 0,
+   "home": {
+    "successRate": 0.7346938775510204,
+    "explosiveRate": 0.10204081632653061,
+    "oppConversion": 1.0,
+    "avgStartYardsToEndzone": 58.5,
+    "havocAllowedRate": 0.04081632653061224,
+    "turnoversCommitted": 0.0
+   },
+   "away": {
+    "successRate": 0.2765957446808511,
+    "explosiveRate": 0.0,
+    "oppConversion": 0.0,
+    "avgStartYardsToEndzone": 78.41666666666667,
+    "havocAllowedRate": 0.1276595744680851,
+    "turnoversCommitted": 2.0
+   },
+   "expectedHomeShare": 0.9999999896429307
+  }
+ ]
+}

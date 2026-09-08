@@ -1,10 +1,12 @@
 ---
 import type { ESPNTeam } from '../../../resources/espn';
-import type { PaperIndexResult } from '../../../utils/paperIndex';
 import { roundNumber } from '../../../utils/misc';
 
 interface Props {
-    result: PaperIndexResult
+    result: {
+        homeShare: number
+        margins: Record<string, number>
+    }
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
     completed: boolean
@@ -12,20 +14,30 @@ interface Props {
 
 const { result, homeTeam, awayTeam, completed } = Astro.props;
 
-const homePct = Math.round(result.homeShare * 100);
+// clamp so a 99.7% blowout reads 99/1, never a pinned 100/0
+const homePct = Math.min(99, Math.max(1, Math.round(result.homeShare * 100)));
 const awayPct = 100 - homePct;
 const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
-// the accessible meter mirrors the visible bar: both teams named, value =
-// the home share the bar's right segment shows
 const meterLabel = `Paper Index: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
-const fmtMargin = (v: number, digits = 2) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
+const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
+const m = result.margins;
+// the home team's edge on each fitted input, in display order
+const marginBits = [
+    m.success != null ? `success ${fmt(m.success * 100)}%` : null,
+    m.explosive != null ? `explosiveness ${fmt(m.explosive * 100)}%` : null,
+    m.opp_conversion != null ? `finishing ${fmt(m.opp_conversion * 100)}%` : null,
+    m.field_position != null ? `field position ${fmt(m.field_position)} yds` : null,
+    m.havoc != null ? `havoc ${fmt(m.havoc * 100)}%` : null,
+    m.turnovers != null ? `turnovers ${fmt(m.turnovers, 0)}` : null,
+].filter(Boolean);
 ---
 <div class="card border rounded">
     <div class="card-body py-3">
         <h2 class="fs-5 mb-1">Paper Index</h2>
         <p class="small text-muted mb-2">
-            Who {completed ? "won" : "is winning"} this game on paper: sustained performance only
-            (EPA/play, success rate, explosiveness) — turnover luck excluded.
+            Who {completed ? "won" : "is winning"} this game on paper: success rate, explosiveness,
+            drive finishing, field position, havoc, and turnovers — each weighted by how much it
+            decides real games.
         </p>
         <div class="d-flex align-items-center gap-2">
             <img class={`team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
@@ -37,10 +49,8 @@ const fmtMargin = (v: number, digits = 2) => `${v >= 0 ? "+" : ""}${roundNumber(
             <span class="fw-bold" style="min-width: 3ch">{homePct}%</span>
             <img class={`team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
         </div>
-        <p class="small text-muted m-0 mt-2">
-            {homeTeam.abbreviation} margins: EPA/play {fmtMargin(result.epaMargin)} ·
-            success rate {fmtMargin(result.successMargin * 100, 1)}% ·
-            explosiveness {fmtMargin(result.explosiveMargin * 100, 1)}%
-        </p>
+        {marginBits.length > 0 && (
+            <p class="small text-muted m-0 mt-2">{homeTeam.abbreviation} margins: {marginBits.join(" · ")}</p>
+        )}
     </div>
 </div>

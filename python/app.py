@@ -15,6 +15,7 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
+import paper_index
 import span_box
 
 HTTP_TOKEN = os.getenv("PYTHON_HTTP_TOKEN")
@@ -329,6 +330,23 @@ def process(game_id: int):
         except Exception as e:  # a bad window must never cost the page
             logging.getLogger("root").warning(
                 f"all-span boxes failed for {game_id}: {e}"
+            )
+
+        # Paper Index: one who-won-on-paper share from six fitted margins
+        # (python/paper_index.py; trained by tools/fit_paper_index.py).
+        # Always the FULL game -- a span page still describes the whole game's
+        # paper story -- and fail-open like everything else here.
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                pidx = paper_index.compute(
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
+                )
+                if pidx:
+                    processed_game["paperIndex"] = pidx
+        except Exception as e:  # the index must never cost the page
+            logging.getLogger("root").warning(
+                f"paper index failed for {game_id}: {e}"
             )
 
         raw_span = request.args.get("span")
