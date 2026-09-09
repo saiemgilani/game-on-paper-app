@@ -13,6 +13,8 @@ const allConferences = results
     .map((c) => ({
         groupId: c.groupId,
         name: c.data!.name ?? "Conference",
+        // the dropdown uses ESPN's abbreviation, the standard the chart builder set
+        shortName: c.data!.shortName ?? c.data!.name ?? "Conference",
         rows: sortStandings((c.data!.standings!.entries ?? []).map(parseStandingsEntry)),
     }));
 
@@ -50,7 +52,7 @@ const teamIds = conferences.flatMap((c) => c.rows.map((r) => r.teamId));
                     <select class="form-select w-auto" aria-label="Switch conference" data-conference-select>
                         <option value="" selected={!requested}>All conferences</option>
                         {allConferences.map((c) => (
-                            <option value={c.groupId} selected={c.groupId === requested}>{c.name}</option>
+                            <option value={c.groupId} selected={c.groupId === requested}>{c.shortName}</option>
                         ))}
                     </select>
                 )}
