@@ -393,9 +393,15 @@ async function relayESPN(url: string): Promise<Response | null> {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },
             // never follow a redirect carrying the bearer token to a host we
-            // did not validate above
-            redirect: "error",
+            // did not validate above. Workers fetch implements only "follow"
+            // and "manual" ("error" throws a TypeError at the edge), so take
+            // the manual response and refuse any 3xx explicitly.
+            redirect: "manual",
         });
+        if (resp.status >= 300 && resp.status < 400) {
+            console.error(`ESPN relay refused: redirect (${resp.status}) from the API host`);
+            return null;
+        }
         console.warn(`ESPN 403 for ${url}; relayed via API host -> ${resp.status}`);
         return resp;
     } catch (e: any) {
