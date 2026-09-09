@@ -20,7 +20,7 @@ const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 
 const homePct = clampPct(result.homeShare);
 const awayPct = 100 - homePct;
 const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
-const meterLabel = `Paper Index: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
+const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
 // the home team's edge on each fitted input, in display order
@@ -43,7 +43,7 @@ const periods = PERIOD_ORDER
         return { label: k.toUpperCase(), homePct: p, awayPct: 100 - p };
     });
 ---
-<Panel id="paper-index" title="Paper Index" show={true}>
+<Panel id="paper-index" title="Deserved Win %" show={true}>
     <p class="text-small" slot="panel-subtitle">
         Who {completed ? "won" : "is winning"} this game on paper: efficiency, explosiveness,
         finishing drives, field position, havoc, and turnovers — each in its advanced-box form,
@@ -62,7 +62,7 @@ const periods = PERIOD_ORDER
                 <img class={`img-fluid team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
             </div>
             {periods.length > 0 && (
-                <div class="d-flex flex-wrap gap-3 mt-3" aria-label="Paper Index by quarter">
+                <div class="d-flex flex-wrap gap-3 mt-3" aria-label="Deserved Win % by quarter">
                     {periods.map((p) => (
                         <div class="text-center" style="min-width: 72px">
                             <div class="progress" style="height: 10px" title={`${p.label}: ${awayTeam.abbreviation} ${p.awayPct}% — ${homeTeam.abbreviation} ${p.homePct}%`}>
