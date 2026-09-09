@@ -15,8 +15,8 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
-import drive_summary
-import situational_stats
+from sportsdataverse.cfb import cfb_drive_summary as drive_summary
+from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
 
 # span key -> drive-summary period windows (drives book to their start quarter)
@@ -337,7 +337,7 @@ def process(game_id: int):
             if cur:
                 drv = drv + [cur]
             if frame is not None and drv:
-                summary = drive_summary.build(
+                summary = drive_summary.create_drive_summary(
                     drv, frame,
                     frame["homeTeamId"][0], frame["awayTeamId"][0],
                 )
@@ -352,7 +352,7 @@ def process(game_id: int):
         try:
             frame = getattr(game, "plays_frame", None)
             if frame is not None:
-                sit = situational_stats.build(
+                sit = situational_stats.create_situational_stats(
                     frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
                 )
                 if sit:
@@ -391,12 +391,12 @@ def process(game_id: int):
                     _, expr = parsed
                     try:  # one bad window must not cost the others
                         if drv_all:
-                            w = drive_summary.build(
+                            w = drive_summary.create_drive_summary(
                                 drv_all, frame, hid, aid, periods=per
                             )
                             if w:
                                 ds_spans[key] = w
-                        w = situational_stats.build(
+                        w = situational_stats.create_situational_stats(
                             frame, hid, aid, window_expr=expr
                         )
                         if w:
@@ -432,7 +432,7 @@ def process(game_id: int):
                 if parsed is not None and frame is not None:
                     key, expr = parsed
                     hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
-                    w = situational_stats.build(frame, hid, aid, window_expr=expr)
+                    w = situational_stats.create_situational_stats(frame, hid, aid, window_expr=expr)
                     if w:
                         processed_game["situationalStats"] = w
                     else:  # never a full-game object on a windowed response
@@ -443,7 +443,7 @@ def process(game_id: int):
                     if cur:
                         drv_all = drv_all + [cur]
                     w = (
-                        drive_summary.build(drv_all, frame, hid, aid, periods=per)
+                        drive_summary.create_drive_summary(drv_all, frame, hid, aid, periods=per)
                         if per is not None and drv_all
                         else None  # clock spans don't map to drive windows
                     )
