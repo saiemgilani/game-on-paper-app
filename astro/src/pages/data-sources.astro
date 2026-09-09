@@ -6,20 +6,12 @@ export const prerender = true;
 
 const faqs: FaqEntry[] = [
     {
-        question: "Where does Game on Paper's data come from?",
-        answer: "Play-by-play and box scores come from ESPN's public college football feeds. Season-level team metrics come from the SportsDataverse open-data project, while collegefootballdata.com informs parts of the historical record. Betting context comes from the lines carried in ESPN's feed.",
-    },
-    {
-        question: "How fresh are live game pages?",
-        answer: "Live game pages and the scoreboard refresh about once a minute while you're watching them. Completed games are cached and stable.",
-    },
-    {
         question: "Why is a play missing or wrong?",
         answer: "The upstream play-by-play feed occasionally drops, mislabels, or later corrects plays. Some box score values are estimated from play text when the feed doesn't carry them. When the feed corrects itself, the page picks the correction up on its next refresh.",
     },
     {
         question: "Can I report a data problem?",
-        answer: "Yes — open an issue on the GitHub repository or reach the site on Bluesky. Feed-quality reports with a game link are the fastest to act on.",
+        answer: "Yes — open an issue on the GitHub repository or reach the site on Bluesky (both linked in the footer). Feed-quality reports with a game link are the fastest to act on.",
     },
 ];
 
@@ -47,19 +39,16 @@ const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
                 <h2 class="fs-4 mt-4">Sources</h2>
                 <ul>
                     <li>
-                        <strong>Play-by-play, box scores, schedules, game context</strong> —
-                        <a href="https://espn.com/college-football">ESPN</a>'s public college
-                        football feeds (plays, drives, linescores, venue, broadcasts, betting lines).
+                        <strong>Play-by-play, box scores, schedules, game context</strong>:
+                        <a href="https://espn.com/college-football">ESPN</a>'s public college football feeds (plays, drives, linescores, venue, broadcasts, betting lines).
                     </li>
                     <li>
-                        <strong>Season-level team metrics and history</strong> —
-                        <a href="https://www.sportsdataverse.org">SportsDataverse</a> open data,
-                        which also powers the season percentiles behind the stat coloring.
+                        <strong>Season-level team metrics and history</strong>:
+                        <a href="https://www.sportsdataverse.org">SportsDataverse</a> open data, which also powers the season percentiles behind the stat coloring.
                     </li>
                     <li>
-                        <strong>Community data</strong> —
-                        <a href="https://collegefootballdata.com">collegefootballdata.com</a>
-                        informs parts of the historical record.
+                        <strong>Community data</strong>:
+                        <a href="https://collegefootballdata.com">collegefootballdata.com</a> informs parts of the historical record.
                     </li>
                 </ul>
 
@@ -85,12 +74,6 @@ const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
                         <p class="mt-2 text-muted" set:html={f.answer} />
                     </details>
                 ))}
-
-                <p class="text-muted small mt-4">
-                    Found something off? Open an issue on
-                    <a href="https://github.com/saiemgilani/game-on-paper-app">GitHub</a> or reach us on
-                    <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a>.
-                </p>
             </div>
         </div>
     </div>

@@ -6,24 +6,8 @@ export const prerender = true;
 
 const faqs: FaqEntry[] = [
     {
-        question: "What is EPA (Expected Points Added)?",
-        answer: "Expected Points Added measures how much a play changed the offense's expected scoring. Every down, distance, and field position has an expected point value; EPA is the change in that value from one play to the next, so a 5-yard gain on 3rd-and-4 counts for more than the same gain on 3rd-and-15.",
-    },
-    {
-        question: "How is win probability calculated?",
-        answer: "Our win probability model estimates each team's chance of winning before every play from the score, time remaining, field position, down and distance, timeouts, and the pregame point spread. The chart on every game page shows how that probability moved play by play.",
-    },
-    {
-        question: "What counts as a successful play?",
-        answer: "A play is a success when its EPA is positive — the offense left the play in a better scoring position than it started. Success rate is the share of scrimmage plays that were successes.",
-    },
-    {
         question: "Are the stats adjusted for opponent or garbage time?",
         answer: "Only Adjusted EPA/Play is opponent-adjusted; it accounts for home-field advantage, quality of opponent, and garbage time, and only considers FBS vs FBS games. Every other metric on the site is unadjusted.",
-    },
-    {
-        question: "Where do the 4th-down recommendations come from?",
-        answer: "The decision cards compare the win probability of going for it, kicking a field goal, and punting, using conversion and make probabilities for the situation. The recommendation is the choice with the highest win probability, and the card shows the gap to the best alternative.",
     },
     {
         question: "Why do numbers here differ from ESPN's box score?",
@@ -115,8 +99,7 @@ const canonicalUrl = new URL('/methodology', 'https://gameonpaper.com').href;
                 ))}
 
                 <p class="text-muted small mt-4">
-                    Where the data comes from, and how fresh it is, lives on
-                    <a href="/data-sources">Data &amp; Sources</a>.
+                    Where the data comes from, and how fresh it is, lives on <a href="/data-sources">Data &amp; Sources</a>.
                 </p>
             </div>
         </div>
