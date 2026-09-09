@@ -1,16 +1,23 @@
 ---
 import GenericPage from '../layouts/GenericPage.astro';
+import DarkModeLogos from '../components/DarkModeLogos.astro';
 import { retrieveRankings } from '../resources/espn';
 import { fbsPolls, movement, othersLine } from '../utils/rankings';
+import { cleanLocation } from '../utils/misc';
 
 const data = await retrieveRankings();
 const polls = fbsPolls(data?.rankings);
 const week = polls[0]?.occurrence?.displayValue ?? "";
 const season = data?.latestSeason?.year;
 
+// one poll renders at a time, switched by dropdown (leaderboard pattern)
+const POLL_SLUGS: Record<string, string> = { "21": "cfp", "1": "ap", "2": "coaches" };
+const requested = Astro.url.searchParams.get("poll");
+const poll = polls.find((p) => POLL_SLUGS[String(p.id)] === requested) ?? polls[0];
+
 // polls move weekly; an hour of cache keeps poll day fresh without hammering.
 // A failed fetch must NOT cache the unavailable page for that hour.
-if (polls.length > 0) {
+if (poll) {
     Astro.cache.set({ maxAge: 3600, swr: 7200, tags: ["rankings"] });
 } else {
     Astro.cache.set(false);
@@ -18,20 +25,22 @@ if (polls.length > 0) {
 }
 
 const title = season ? `${season} College Football Rankings` : "College Football Rankings";
-const subtitle = "AP Top 25, Coaches Poll, and CFP rankings with weekly movement, first-place votes, and links to every team's advanced stats.";
+const subtitle = "AP Top 25, Coaches Poll, and CFP rankings with weekly movement and first-place votes.";
 
-const itemLists = polls.map((p) => ({
+const itemList = poll ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: `${p.name}${p.occurrence?.displayValue ? ` — ${p.occurrence.displayValue}` : ''}`,
-    numberOfItems: p.ranks.length,
-    itemListElement: p.ranks.map((r) => ({
+    name: `${poll.name}${poll.occurrence?.displayValue ? ` — ${poll.occurrence.displayValue}` : ''}`,
+    numberOfItems: poll.ranks.length,
+    itemListElement: poll.ranks.map((r) => ({
         '@type': 'ListItem',
         position: r.current,
         name: `${r.team.location ?? ''} ${r.team.nickname ?? ''}`.trim(),
         url: new URL(`/team/${r.team.id}`, 'https://gameonpaper.com').href,
     })),
-}));
+} : null;
+
+const teamIds = (poll?.ranks ?? []).map((r) => r.team.id);
 ---
 <GenericPage
     title={title}
@@ -39,72 +48,76 @@ const itemLists = polls.map((p) => ({
     slug="/rankings"
     heading={title}
     description={subtitle}
-    breadcrumbs={[{ title: 'Home', url: '/', active: false }, { title: 'Rankings', active: true }]}
-    jsonLd={itemLists}
+    breadcrumbs={[
+        { title: 'Home', url: '/', active: false },
+        { title: 'Rankings', url: '/rankings', active: false },
+        ...(week ? [{ title: week, active: true }] : []),
+    ]}
+    jsonLd={itemList ? [itemList] : []}
 >
     <div class="container my-4">
-        <div class="row">
-            <div class="col-12">
-                <h1 class="fs-3">{title}{week ? <span class="text-muted fs-5"> — {week}</span> : null}</h1>
-                {polls.length === 0 && (
-                    <p class="text-muted">Rankings are unavailable right now. Try again in a few minutes.</p>
+        <div class="row mb-2">
+            <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h1 class="fs-3 m-0">{title}</h1>
+                {polls.length > 1 && (
+                    <select class="form-select w-auto" aria-label="Switch poll" data-poll-select>
+                        {polls.map((p) => (
+                            <option value={POLL_SLUGS[String(p.id)]} selected={p.id === poll?.id}>{p.name}</option>
+                        ))}
+                    </select>
                 )}
             </div>
         </div>
-        <div class="row">
-            {polls.map((poll) => (
-                <div class={polls.length > 1 ? "col-lg-6 col-12 mb-4" : "col-12 mb-4"}>
-                    <div class="card border rounded">
-                        <div class="card-body py-3">
-                            <h2 class="fs-5 mb-2">{poll.name}{poll.occurrence?.displayValue ? <span class="text-muted small"> · {poll.occurrence.displayValue}</span> : null}</h2>
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-1">
-                                    <thead>
+        {!poll && (
+            <p class="text-muted">Rankings are unavailable right now. Try again in a few minutes.</p>
+        )}
+        {poll && (
+            <div class="row">
+                <div class="col-lg-8 col-12">
+                    <h2 class="fs-5 mb-2">{poll.name}</h2>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-1">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Team</th>
+                                    <th class="text-center">Record</th>
+                                    <th class="text-center">Pts</th>
+                                    <th class="text-center">Move</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {poll.ranks.map((r) => {
+                                    const mv = movement(r);
+                                    return (
                                         <tr>
-                                            <th class="text-end">#</th>
-                                            <th>Team</th>
-                                            <th>Record</th>
-                                            <th class="text-end">Pts</th>
-                                            <th class="text-end">Move</th>
+                                            <td class="fw-bold">{r.current}</td>
+                                            <td>
+                                                <a href={`/team/${r.team.id}`}><img class={`img-fluid team-logo-${r.team.id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${r.team.id}.png`} alt={`ESPN team id ${r.team.id} ${cleanLocation(r.team)}`} title={r.team.location} /><span class="visually-hidden">{cleanLocation(r.team)}</span><strong>{cleanLocation(r.team)}</strong></a>
+                                                {r.firstPlaceVotes ? <span class="text-muted small"> ({r.firstPlaceVotes})</span> : null}
+                                            </td>
+                                            <td class="text-center text-muted">{r.recordSummary ?? ""}</td>
+                                            <td class="text-center text-muted">{r.points ?? ""}</td>
+                                            <td class={`text-center small ${mv.dir === "up" ? "text-success" : mv.dir === "down" ? "text-danger" : mv.dir === "new" ? "fw-bold" : "text-muted"}`}>{mv.label}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {poll.ranks.map((r) => {
-                                            const mv = movement(r);
-                                            return (
-                                                <tr>
-                                                    <td class="text-end fw-bold">{r.current}</td>
-                                                    <td>
-                                                        <a class="text-decoration-none" href={`/team/${r.team.id}`}>
-                                                            <img class={`team-logo-${r.team.id} me-1 align-middle`} width="20" height="20" src={r.team.logo ?? `https://a.espncdn.com/i/teamlogos/ncaa/500/${r.team.id}.png`} alt="" loading="lazy" />
-                                                            {r.team.location ?? r.team.abbreviation}
-                                                        </a>
-                                                        {r.firstPlaceVotes ? <span class="text-muted small"> ({r.firstPlaceVotes})</span> : null}
-                                                    </td>
-                                                    <td class="text-muted">{r.recordSummary ?? ""}</td>
-                                                    <td class="text-end text-muted">{r.points ?? ""}</td>
-                                                    <td class={`text-end small ${mv.dir === "up" ? "text-success" : mv.dir === "down" ? "text-danger" : mv.dir === "new" ? "fw-bold" : "text-muted"}`}>{mv.label}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {othersLine(poll.others) && (
-                                <p class="small text-muted m-0">Others receiving votes: {othersLine(poll.others)}</p>
-                            )}
-                        </div>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
+                    {othersLine(poll.others) && (
+                        <p class="small text-muted">Others receiving votes: {othersLine(poll.others)}</p>
+                    )}
+                    <p class="small text-muted">First-place votes in parentheses. Poll data from ESPN.</p>
                 </div>
-            ))}
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <p class="small text-muted">
-                    First-place votes in parentheses. Every team links to its advanced-stats page —
-                    EPA, success rate, and season trends. Poll data from ESPN.
-                </p>
             </div>
-        </div>
+        )}
     </div>
+    <DarkModeLogos teamIds={teamIds} />
+    <script>
+        const sel = document.querySelector<HTMLSelectElement>("[data-poll-select]");
+        sel?.addEventListener("change", () => {
+            window.location.href = `/rankings?poll=${sel.value}`;
+        });
+    </script>
 </GenericPage>
