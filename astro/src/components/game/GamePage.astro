@@ -314,9 +314,7 @@ if (activeSpan) {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     {paper && (
-                        <div id="paper-index" class="mb-3">
-                            <PaperIndex result={paper} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
-                        </div>
+                        <PaperIndex result={paper} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
                     )}
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
