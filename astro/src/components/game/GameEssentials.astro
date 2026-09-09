@@ -42,12 +42,12 @@ const hasAnything = favorite != null || line != null || venue != null;
                 <div class="row text-center gy-3 justify-content-center">
                     {favorite != null && (
                     <div class="col-md-4 col-12">
-                        <p class="small text-muted text-uppercase mb-1">On Paper</p>
+                        <p class="small text-muted text-uppercase mb-1">Projection</p>
                         <p class="mb-0 fw-bold">
                             <img class={`team-logo-${favorite.id} me-1 align-middle`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${favorite.id}.png`} alt={favorite.abbreviation} />
                             {favorite.abbreviation} by {roundNumber(Math.abs(margin!), 2, 1)}
                         </p>
-                        <p class="small text-muted m-0">{roundNumber(favProb! * 100, 2, 0)}% · Net Adj EPA/play, {metricYear}</p>
+                        <p class="small text-muted m-0">{roundNumber(favProb! * 100, 2, 0)}% by Net Adj EPA/play, {metricYear}</p>
                     </div>
                     )}
                     {line != null && (
@@ -62,7 +62,7 @@ const hasAnything = favorite != null || line != null || venue != null;
                         <p class="small text-muted text-uppercase mb-1">Venue</p>
                         <p class="mb-0 fw-bold">{venue.fullName}{neutralSite ? " · Neutral site" : ""}</p>
                         <p class="small text-muted m-0">
-                            {venuePlace}{weatherBits.length > 0 ? ` · ${weatherBits.join(" · ")}` : ""}
+                            {venuePlace}{weatherBits.length > 0 ? ` / ${weatherBits.join(" / ")}` : ""}
                         </p>
                     </div>
                     )}

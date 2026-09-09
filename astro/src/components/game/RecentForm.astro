@@ -19,7 +19,7 @@ const away = form(awayTeam.id);
 const home = form(homeTeam.id);
 ---
 {(away.length > 0 || home.length > 0) && (
-<div class="row my-3">
+<div class="row mb-3">
     <div class="col-lg-2 d-none d-lg-block"></div>
     <div class="col-lg-8 col-md-12 margin-override">
         <div class="card border rounded">
@@ -37,9 +37,11 @@ const home = form(homeTeam.id);
                             : (
                             <div class="d-flex flex-wrap gap-2">
                                 {events.map(e => {
+                                    // green = win, purple = loss, matching the site's good/bad colors
+                                    const lost = e.gameResult === "L";
                                     const badge = (
-                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : e.gameResult === "L" ? "bg-danger" : "bg-secondary"}`} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
-                                            {e.gameResult ?? "?"} {e.score ?? ""} {e.atVs ?? ""}{e.opponent?.abbreviation ?? ""}
+                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : lost ? "" : "bg-secondary"}`} style={lost ? "background-color: var(--bs-purple)" : undefined} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
+                                            {e.gameResult ?? "?"} {e.score ?? ""} {e.atVs ?? ""} {e.opponent?.abbreviation ?? ""}
                                         </span>
                                     );
                                     return e.id
