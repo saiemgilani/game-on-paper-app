@@ -831,6 +831,7 @@ export interface ProcessedGame {
         homeShare: number
         margins: Record<string, number>
         teams: Record<string, Record<string, number>>
+        byPeriod: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
     winprobability: ESPNWinProbability[]
     homeTeamSpread: number

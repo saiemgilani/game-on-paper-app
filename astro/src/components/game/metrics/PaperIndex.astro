@@ -25,13 +25,13 @@ const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, 
 const m = result.margins;
 // the home team's edge on each fitted input, in display order
 const marginRows = [
-    m.success != null ? { label: "Success rate", value: `${fmt(m.success * 100)}%`, pos: m.success >= 0 } : null,
-    m.explosive != null ? { label: "Explosive-play rate", value: `${fmt(m.explosive * 100)}%`, pos: m.explosive >= 0 } : null,
+    m.success != null ? { label: "Success Rate", value: `${fmt(m.success * 100)}%`, pos: m.success >= 0 } : null,
+    m.explosive != null ? { label: "Explosive Play Rate", value: `${fmt(m.explosive * 100)}%`, pos: m.explosive >= 0 } : null,
     m.explosive_epa != null ? { label: "Explosiveness (EPA/success)", value: fmt(m.explosive_epa, 2), pos: m.explosive_epa >= 0 } : null,
-    m.opp_conversion != null ? { label: "Opportunity conversion", value: `${fmt(m.opp_conversion * 100)}%`, pos: m.opp_conversion >= 0 } : null,
+    m.opp_conversion != null ? { label: "Opportunity Conversion Rate", value: `${fmt(m.opp_conversion * 100)}%`, pos: m.opp_conversion >= 0 } : null,
     m.pts_per_opp != null ? { label: "Points per opportunity", value: fmt(m.pts_per_opp), pos: m.pts_per_opp >= 0 } : null,
     m.field_position != null ? { label: "Field position (EP)", value: fmt(m.field_position, 2), pos: m.field_position >= 0 } : null,
-    m.havoc != null ? { label: "Havoc", value: `${fmt(m.havoc * 100)}%`, pos: m.havoc >= 0 } : null,
+    m.havoc != null ? { label: "Havoc Rate", value: `${fmt(m.havoc * 100)}%`, pos: m.havoc >= 0 } : null,
     m.turnovers != null ? { label: "Turnovers", value: fmt(m.turnovers, 0), pos: m.turnovers >= 0 } : null,
 ].filter((r): r is { label: string; value: string; pos: boolean } => !!r);
 // per-window strip, canonical order; a missing window simply doesn't render
@@ -43,7 +43,7 @@ const periods = PERIOD_ORDER
         return { label: k.toUpperCase(), homePct: p, awayPct: 100 - p };
     });
 ---
-<Panel id="paper-index" title="Deserved Win %" show={true}>
+<Panel id="paper-index" title="Deserved Win %" show={true} class="mb-md-3">
     <p class="text-small" slot="panel-subtitle">
         Who {completed ? "won" : "is winning"} this game on paper: efficiency, explosiveness,
         finishing drives, field position, havoc, and turnovers — each in its advanced-box form,
@@ -80,7 +80,7 @@ const periods = PERIOD_ORDER
                 <thead>
                     <tr>
                         <th>Margin</th>
-                        <th class="text-center">{homeTeam.abbreviation}</th>
+                        <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
                     </tr>
                 </thead>
                 <tbody>

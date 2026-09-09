@@ -129,8 +129,9 @@ const latestSubtitle = !lastPlay
       ? `Final. Last drive: ${driveTeam ?? "unknown"}, ${driveResult ?? "no result"}.`
       : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
 
-// Paper Index: computed server-side from the full game (a span page still
-// describes the whole game's paper story), rendered here when present
+// Paper Index: computed server-side from the full game. A span page scopes
+// every other panel to its window, so the full-game panel is suppressed there
+// rather than sitting among windowed ones claiming to describe the same thing.
 const paper = !activeSpan ? game.paperIndex ?? null : null;
 
 const scrollerItems: ScrollerItem[] = [

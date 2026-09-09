@@ -16,20 +16,27 @@ shares -- train/serve parity comes from both sides calling team_inputs().
 
 from __future__ import annotations
 
+import functools
 import math
 import pathlib
 
 import polars as pl
 import sportsdataverse
 
-# Expected points of a drive start by own yardline, bundled with the sdv-py
-# models (99 rows). Field position enters the model in POINTS, not yards.
-_EP_TABLE = pl.read_parquet(
-    pathlib.Path(sportsdataverse.__file__).parent
-    / "cfb"
-    / "models"
-    / "cfb_field_position_ep.parquet"
-)
+@functools.cache
+def _ep_table() -> pl.DataFrame:
+    """Expected points of a drive start by own yardline (99 rows).
+
+    Bundled with the sdv-py models; field position enters the model in POINTS,
+    not yards. Read on first use, not at import: app.py imports this module at
+    startup, and a missing parquet must not take the server down with it.
+    """
+    return pl.read_parquet(
+        pathlib.Path(sportsdataverse.__file__).parent
+        / "cfb"
+        / "models"
+        / "cfb_field_position_ep.parquet"
+    )
 
 # Fitted 2026-09-07 by tools/fit_paper_index.py on 2016-2023 finals
 # (holdout 2024-2025: see the oracle fixture's provenance block).
@@ -106,7 +113,7 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
         drives.with_columns(
             yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
         )
-        .join(_EP_TABLE, on="yardline_own", how="left")
+        .join(_ep_table(), on="yardline_own", how="left")
     )
     avg_start_ep = ep_starts["ep"].mean()
     if avg_start_ep is None:

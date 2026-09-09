@@ -53,7 +53,7 @@ def test_team_inputs_aggregation():
     ti = paper_index.team_inputs(_frame(), 10)
     # drive starts: a=75 yte (own 25), b=80 yte (own 20) -> EP from the
     # bundled curve, averaged
-    ep = dict(paper_index._EP_TABLE.iter_rows())
+    ep = dict(paper_index._ep_table().iter_rows())
     expected_ep = (ep[25] + ep[20]) / 2
     assert abs(ti.pop("explosivenessEpa") - 0.8) < 1e-12  # mean of the 3 successes
     assert ti == {

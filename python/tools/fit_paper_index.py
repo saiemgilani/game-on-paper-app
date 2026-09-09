@@ -44,7 +44,7 @@ import numpy as np
 import polars as pl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from paper_index import _EP_TABLE as EP_TABLE  # noqa: E402
+from paper_index import _ep_table  # noqa: E402
 from paper_index import LEAGUE_PTS_PER_OPP, share_from_inputs, team_inputs  # noqa: E402
 
 TRAIN_SEASONS = range(2016, 2024)  # 2016-2023
@@ -202,7 +202,7 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     )
     drv = drv.with_columns(
         yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
-    ).join(EP_TABLE, on="yardline_own", how="left")
+    ).join(_ep_table(), on="yardline_own", how="left")
     drives = drv.group_by(["game_id", "pos_team_id"]).agg(
         opp_trips=pl.col("opp").cast(pl.Float64).sum(),
         opp_converted=(pl.col("opp") & pl.col("scored")).cast(pl.Float64).sum(),

@@ -3,12 +3,14 @@ interface Props {
     id: string
     title: string
     show: boolean
+    /** extra classes for the panel wrapper, e.g. spacing utilities */
+    class?: string
 }
 
-const { id, title, show } = Astro.props;
+const { id, title, show, class: extraClass } = Astro.props;
 ---
 
-<div class="panel-group">
+<div class={`panel-group${extraClass ? ` ${extraClass}` : ""}`}>
     <div class="panel panel-default">
         <div class="panel-heading">
             <div class="panel-title">
