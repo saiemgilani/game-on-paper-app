@@ -86,6 +86,13 @@ export function range(start: number, end: number): number[] {
     return Array.from(Array(end + 1).keys()).slice(start);
 }
 
+/** "2004 to 2025", a single year, or a placeholder when a table returned nothing (never "undefined"). */
+export function yearRange(seasons: number[]): string {
+    const s = [...new Set(seasons)].sort();
+    if (s.length === 0) return 'none yet';
+    return s.length > 1 ? `${s[0]} to ${s[s.length - 1]}` : `${s[0]}`;
+}
+
 export function roundNumber(value: string | number | undefined | null, power10: number, fixed: number): string {
     if (typeof value == "number") {
         value = `${value}`;

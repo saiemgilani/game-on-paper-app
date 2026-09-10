@@ -6,6 +6,7 @@ import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import { retrievePercentiles, type SDVSeasonPercentile } from '../../resources/sdv';
 import { leaguePath, type League } from '../../utils/league';
+import { yearRange } from '../../utils/misc';
 
 // Route component: the page (per league) sets the league; this reads and renders.
 interface Props { league: League }
@@ -27,8 +28,6 @@ const selectedPercentiles = allPctls.map((p: any) => {
     }
 })
 
-let availableSeasons = selectedPercentiles.map(b => b.season)
-availableSeasons = [...new Set(availableSeasons)].sort();
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
@@ -41,18 +40,18 @@ const breadcrumbs: PageBreadcrumb[] = [
     }
 ]
 
-const yearRange = availableSeasons.length > 1 ? `${availableSeasons[0]} to ${availableSeasons[availableSeasons.length - 1]}` : `${availableSeasons[0]}`
-const title = `National Trends | ${yearRange} | Game on Paper`;
+const range = yearRange(selectedPercentiles.map(b => b.season))
+const title = `National Trends | ${range} | Game on Paper`;
 // Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 
 ---
 
-<GenericPage title={title} subtitle={`National level metric history`} description={`How ${league === 'nfl' ? 'NFL' : 'college football'} advanced stats have moved nationally, ${yearRange}: EPA per play, success rate, explosiveness and win probability season over season.`} slug={leaguePath(league, "/charts/trends")} breadcrumbs={breadcrumbs}>
+<GenericPage title={title} subtitle={`National level metric history`} description={`How ${league === 'nfl' ? 'NFL' : 'college football'} advanced stats have moved nationally, ${range}: EPA per play, success rate, explosiveness and win probability season over season.`} slug={leaguePath(league, "/charts/trends")} breadcrumbs={breadcrumbs}>
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">
                 <h1>National Trends</h1>
-                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange}{league === 'cfb' && " - Data shown is from FBS vs FBS games only."}{league === 'nfl' && " - Regular season games only."}</p>
+                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {range}{league === 'cfb' && " - Data shown is from FBS vs FBS games only."}{league === 'nfl' && " - Regular season games only."}</p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
                 <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time.{league === 'cfb' && " Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games."}</p>
                 <!-- <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
