@@ -7,14 +7,6 @@ const cfg = LEAGUES[league];
 const other: League = league === 'cfb' ? 'nfl' : 'cfb';
 const lp = (p: string) => leaguePath(league, p);
 const METRIC_YEAR = LAST_YEAR;
-// A league whose season tables are not on the SDV API yet has no working
-// leaderboards / team / chart pages, so the nav does not offer them. Week
-// schedules are ESPN-backed and work for every league.
-const seasonNav = cfg.sdvEnabled;
-const weekNumbers = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => i + 1);
-// postseason rounds reachable from the nav too (same labels as ScheduleDropdown)
-const POST_LABELS = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
-const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ week: i + 1, label }));
 ---
 
 <header class="p-3 mb-3 border-bottom">
@@ -27,7 +19,6 @@ const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0 site-nav-row">
                 <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
-                {seasonNav && (
                 <li class="nav-item dropdown">
                     <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                         Leaderboards
@@ -43,8 +34,6 @@ const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({
                         <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
                     </ul>
                 </li>
-                )}
-                {seasonNav && (
                 <li class="nav-item dropdown">
                     <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                         Charts
@@ -54,8 +43,6 @@ const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({
                         <li><a class="dropdown-item" href={lp("/charts/builder")}>Builder</a></li>
                     </ul>
                 </li>
-                )}
-                {seasonNav ? (
                 <li class="nav-item dropdown">
                     <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                         Seasons
@@ -68,30 +55,10 @@ const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({
                     }
                     </ul>
                 </li>
-                ) : (
-                <li class="nav-item dropdown">
-                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                        Weeks
-                    </a>
-                    <ul class="dropdown-menu">
-                    {
-                        weekNumbers.map((w) => (
-                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/type/2/week/${w}`)}>{METRIC_YEAR} Week {w}</a></li>
-                        ))
-                    }
-                    <h6 class="dropdown-header">Postseason</h6>
-                    {
-                        postWeeks.map((p) => (
-                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/type/3/week/${p.week}`)}>{METRIC_YEAR} {p.label}</a></li>
-                        ))
-                    }
-                    </ul>
-                </li>
-                )}
-                {seasonNav && <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>}
-                {seasonNav && <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>}
-                <li><a href={lp("/glossary")} class="nav-link px-2 link-secondary">Glossary</a></li>
-                <li><a href={lp("/changelog")} class="nav-link px-2 link-secondary">Changelog</a></li>
+                <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
+                <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
+                <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
             </ul>
 
             <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3" role="search" id="game-id-form">

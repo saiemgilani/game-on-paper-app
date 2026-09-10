@@ -55,14 +55,19 @@ describe('espn.ts routes by league', () => {
     });
 });
 
-describe('sdv.ts is inert for a league without tables', () => {
-    test('nfl returns empties without a request', async () => {
+describe('sdv.ts routes each league to its own API base', () => {
+    test('nfl season-table reads hit /v1/nfl with a namespaced cache key, cfb is unchanged', async () => {
         const sdv = await import('../src/resources/sdv');
-        expect(await sdv.retrievePercentiles(2025, 50, 2025, 'nfl')).toEqual([]);
-        expect(await sdv.retrieveTeamSummaries({ season: 2025, league: 'nfl' })).toEqual([]);
-        expect(await sdv.retrievePlayerSummaries(2025, sdv.SummaryType.PASSING, null, 'plays', false, 10, 2025, 'nfl')).toEqual([]);
-        expect(await sdv.retrieveTeam(7, 'nfl')).toBeNull();
-        expect(await sdv.retrieveTeamGames({ season: 2025, home_id: 7, league: 'nfl' })).toEqual([]);
-        expect(seen.filter(u => u.includes('sportsdataverse.org'))).toEqual([]);
+        await sdv.retrieveTeamSummaries({ season: 2025, league: 'nfl' }).catch(() => {});
+        await sdv.retrievePercentiles(2025, 50, 2025, 'nfl').catch(() => {});
+        await sdv.retrievePlayerSummaries(2025, sdv.SummaryType.PASSING, null, 'plays', false, 10, 2025, 'nfl').catch(() => {});
+        await sdv.retrieveTeamSummaries({ season: 2025 }).catch(() => {});
+        const urls = seen.filter(u => u.includes('sportsdataverse.org'));
+        expect(urls.find(u => u.includes('/v1/nfl/team_summaries?'))).toContain('season=2025');
+        expect(urls.some(u => u.includes('/v1/nfl/percentiles?'))).toBe(true);
+        expect(urls.some(u => u.includes('/v1/nfl/passing?'))).toBe(true);
+        expect(urls.some(u => u.includes('/v1/cfb/team_summaries?'))).toBe(true);
+        // nfl rows never ask for the college-only FBS filter
+        expect(urls.filter(u => u.includes('/v1/nfl/')).every(u => !u.includes('fbs_class='))).toBe(true);
     });
 });

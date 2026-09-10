@@ -59,7 +59,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         slug: 'nfl', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
         espnPath: 'nfl', espnCoreLeague: 'nfl',
         scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nfl',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: false,
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true,
         // ESPN play-by-play for the NFL is reliable from the 2002 realignment on
         get seasons() { return range(2002, CURRENT_YEAR); }, regularSeasonWeeks: 18, postseasonWeeks: 5,
         logoLeague: 'nfl', teamCount: 32, pool: 'NFL',

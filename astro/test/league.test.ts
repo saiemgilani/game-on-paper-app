@@ -35,7 +35,7 @@ describe('LEAGUES', () => {
     test('nfl differs only where ESPN and the data differ', () => {
         expect(LEAGUES.nfl).toMatchObject({
             urlPrefix: '/nfl', espnPath: 'nfl', espnCoreLeague: 'nfl', defaultGroup: null, scoreboardQuery: '',
-            scoreboardCacheKey: 'scoreboard:nfl', sdvEnabled: false, regularSeasonWeeks: 18, postseasonWeeks: 5,
+            scoreboardCacheKey: 'scoreboard:nfl', sdvEnabled: true, regularSeasonWeeks: 18, postseasonWeeks: 5,
         });
         expect(LEAGUES.nfl.seasons[0]).toBe(2002);
     });

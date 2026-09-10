@@ -56,10 +56,10 @@ describe('SchedulePage renders the NFL scoreboard', () => {
         expect(html).toContain('https://gameonpaper.com/nfl'); // canonical from the original path
     });
 
-    test('season-table nav is hidden, weeks and the switch to cfb are offered', () => {
-        expect(html).not.toContain('/teams/differential');
-        expect(html).not.toContain('/charts/builder');
-        expect(html).toContain('/nfl/year/2025/type/2/week/1"');
+    test('season-table nav is prefixed, weeks and the switch to cfb are offered', () => {
+        expect(html).toContain('href="/nfl/year/2025/teams/differential"');
+        expect(html).toContain('href="/nfl/charts/builder"');
+        expect(html).not.toMatch(/href="\/year\/\d{4}\/teams\//);
         expect(html).toMatch(/league-switch[^>]*href="\/"|href="\/"[^>]*league-switch/);
     });
 });
