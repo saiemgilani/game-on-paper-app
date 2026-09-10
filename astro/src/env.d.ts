@@ -16,6 +16,8 @@ declare namespace App {
         adminAuthed?: boolean;
         /** vetted audit identity: basic-auth username or "admin-cookie" */
         adminActor?: string;
+        /** which league this request renders; set by middleware from the URL prefix, 'cfb' when unprefixed */
+        league?: import('./utils/league').League;
     }
   interface SessionData {
     favorites?: {
