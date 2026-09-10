@@ -23,3 +23,21 @@ jobs:
       # shipping as an empty 200 -- which is exactly what happened on 2026-08-31.
       - run: npx vitest run
         working-directory: astro
+  pytest:
+    # The Flask processor. This job did not exist when #224's merge commit
+    # landed with unresolved conflict markers in python/app.py: vitest was green,
+    # the module did not parse, and the API deploy failed on restart. A syntax or
+    # import error here blocks the merge instead.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+      - run: uv sync --locked
+        working-directory: python
+      - run: uv run pytest -q
+        working-directory: python
+        env:
+          PYTHON_HTTP_TOKEN: test
