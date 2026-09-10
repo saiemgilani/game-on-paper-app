@@ -32,6 +32,8 @@ function buildEntries(): Entry[] {
     const today = new Date().toISOString().slice(0, 10);
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
+        // the NFL scoreboard; its season/team URLs follow once the NFL tables exist
+        { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
         // Trailing slashes are load-bearing: prerendered routes 307 to the
         // slashed form, and advertising a redirect wastes the crawl budget this
         // file exists to protect. Verified per-URL against production.
