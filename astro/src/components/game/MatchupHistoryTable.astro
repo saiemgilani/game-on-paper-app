@@ -1,5 +1,6 @@
 ---
 import type { SDVGame } from '../../resources/sdv';
+import { leaguePath } from '../../utils/league';
 import { capitalizeFirstLetter, produceTeamLogoLink } from '../../utils/misc';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from "luxon";
@@ -26,7 +27,7 @@ const { games } = Astro.props;
                     games.length > 0 && games.map(m => (
                         <tr>
                             <td class="text-left">
-                                <a href={`/game/${m.game_id}`}>
+                                <a href={leaguePath(Astro.locals.league, `/game/${m.game_id}`)}>
                                     <LocalDate client:only divClass="text-small m-0" date={m.start_date} format={DateTime.DATE_SHORT} prefix={null} />
                                 </a>
                             </td>

@@ -4,10 +4,12 @@ import { gopStorage } from "../utils/telemetry";
 import { getCurrentScoreboard, type ESPNScheduleEvent } from "../resources/espn";
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config";
 import { CURRENT_YEAR } from "../utils/constants";
+import { LEAGUES } from "../utils/league";
 
+const league = Astro.locals.league ?? 'cfb';
 let games: ESPNScheduleEvent[] = [];
 try {
-    games = await getCurrentScoreboard(true, true);
+    games = await getCurrentScoreboard(true, true, league);
     // Feed the matchup dimension: one upserted gop.game_meta row per event, so
     // admin views can name a game instead of showing a bare id. The ingest path
     // batches these; the write is an ON CONFLICT upsert.
@@ -35,7 +37,7 @@ try {
     Astro.cache.set({
         maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
         swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
-        tags: ["favorites-enabled", "scoreboard"],
+        tags: ["favorites-enabled", "scoreboard", `league:${league}`],
     });
 } catch (e) {
     console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)
@@ -47,4 +49,4 @@ try {
 
 ---
 
-<SchedulePage title={"College Football | Game on Paper"} season={CURRENT_YEAR} week={games[0]?.week?.number} seasontype={games[0]?.season?.type} isScoreboard={true} games={games} />
+<SchedulePage title={`${LEAGUES[league].name} | Game on Paper`} season={CURRENT_YEAR} week={games[0]?.week?.number} seasontype={games[0]?.season?.type} isScoreboard={true} games={games} />

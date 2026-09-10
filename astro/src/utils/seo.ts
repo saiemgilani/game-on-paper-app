@@ -10,8 +10,12 @@
  */
 
 import type { PageBreadcrumb } from "../layouts/GenericPage.astro";
+import { leaguePath, type League } from "./league";
 
 export const ORIGIN = 'https://gameonpaper.com';
+
+/** the sport noun the copy uses; cfb is the historical default so existing text is unchanged */
+const sportNoun = (league?: League) => (league === 'nfl' ? 'NFL' : 'college football');
 
 export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
     const items = crumbs.filter((c) => c.url);
@@ -76,6 +80,8 @@ export function datasetJsonLd(spec: DatasetSpec) {
 
 export interface GameSpec {
     id: string | number;
+    /** which league's URL space and copy; cfb when absent */
+    league?: League;
     /** rendered (lowercased) names, as the site shows them */
     away: string;
     home: string;
@@ -127,10 +133,11 @@ export function gameTitle(g: GameSpec): string {
 export function gameDescription(g: GameSpec): string {
     const when = new Date(g.date);
     const day = isNaN(when.getTime()) ? '' : ` on ${when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}`;
+    const sport = sportNoun(g.league);
     if (g.hasScore) {
-        return `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}${day}: college football advanced box score with EPA per play, success rate, explosiveness, win probability chart, drives and every play.`;
+        return `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}${day}: ${sport} advanced box score with EPA per play, success rate, explosiveness, win probability chart, drives and every play.`;
     }
-    return `${g.away} vs ${g.home}${day}: college football matchup preview with win probability, EPA per play, success rate and explosiveness for both teams, plus series history.`;
+    return `${g.away} vs ${g.home}${day}: ${sport} matchup preview with win probability, EPA per play, success rate and explosiveness for both teams, plus series history.`;
 }
 
 /** A game as a SportsEvent -- the only schema.org type Google shows sports rich results for. */
@@ -139,9 +146,9 @@ export function sportsEventJsonLd(g: GameSpec) {
         '@type': 'SportsTeam',
         name: name || fallback,
         sport: 'American football',
-        ...(id != null ? { url: new URL(`/team/${id}`, ORIGIN).href } : {}),
+        ...(id != null ? { url: new URL(leaguePath(g.league, `/team/${id}`), ORIGIN).href } : {}),
     });
-    const url = new URL(`/game/${g.id}`, ORIGIN).href;
+    const url = new URL(leaguePath(g.league, `/game/${g.id}`), ORIGIN).href;
     const home = team(g.homeName, g.home, g.homeId);
     const away = team(g.awayName, g.away, g.awayId);
     return {
@@ -159,19 +166,21 @@ export function sportsEventJsonLd(g: GameSpec) {
         homeTeam: home,
         awayTeam: away,
         competitor: [away, home],
-        organizer: { '@type': 'SportsOrganization', name: 'NCAA' },
-        ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: ['college football', 'EPA per play', 'success rate', 'win probability'] } } : {}),
+        organizer: { '@type': 'SportsOrganization', name: g.league === 'nfl' ? 'NFL' : 'NCAA' },
+        ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: [sportNoun(g.league), 'EPA per play', 'success rate', 'win probability'] } } : {}),
     };
 }
 
-export function websiteJsonLd() {
+export function websiteJsonLd(league: League = 'cfb') {
     return {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Game on Paper',
         alternateName: 'GameOnPaper.com',
         url: ORIGIN,
-        description: 'College football advanced analytics: EPA per play, success rate, win probability and advanced box scores for every FBS game.',
+        description: league === 'nfl'
+            ? 'NFL advanced analytics: EPA per play, success rate, win probability and advanced box scores for every game.'
+            : 'College football advanced analytics: EPA per play, success rate, win probability and advanced box scores for every FBS game.',
         publisher: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN, sameAs: ['https://bsky.app/profile/gameonpaper.com', 'https://x.com/gameonpaper'] },
     };
 }

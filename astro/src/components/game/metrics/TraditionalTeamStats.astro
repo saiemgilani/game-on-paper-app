@@ -1,5 +1,6 @@
 ---
 import { traditionalTeamStats } from '../../../utils/traditionalStats';
+import { leaguePath } from '../../../utils/league';
 import { roundNumber } from '../../../utils/misc';
 
 interface Props {
@@ -27,7 +28,7 @@ const labels = columns[0]?.map((r) => r.label) ?? [];
                 <th class="box-heading">{title}</th>
                 {teams.map((value) => (
                     <th style="text-align: center;">
-                        <a href={`/year/${season}/team/${value}`}>
+                        <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}>
                             <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
                         </a>
                     </th>

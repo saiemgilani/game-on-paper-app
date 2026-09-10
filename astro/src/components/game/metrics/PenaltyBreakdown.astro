@@ -1,5 +1,6 @@
 ---
 import { penaltiesFor } from '../../../utils/penalties';
+import { leaguePath } from '../../../utils/league';
 
 interface Props {
     season: number;
@@ -28,7 +29,7 @@ const any = cols.some((c) => c.counts.total.n > 0 || c.declined > 0 || c.offsett
                     <th class="box-heading">Penalties</th>
                     {teams.map((value) => (
                         <th style="text-align: center;">
-                            <a href={`/year/${season}/team/${value}`}>
+                            <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}>
                                 <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
                             </a>
                         </th>

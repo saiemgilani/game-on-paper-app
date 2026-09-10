@@ -15,6 +15,7 @@
 // game note renders as a spanning second line, gold for championships.
 // Preview-flagged ('scoreboard-compact'); the card grid stays >=768px.
 import type { ESPNScheduleEvent } from "../../resources/espn";
+import { leaguePath } from "../../utils/league";
 import { cleanAbbreviation, cleanScore, isChampionshipEvent } from "../../utils/misc";
 
 interface Props {
@@ -62,7 +63,7 @@ const side = (c: any, score: number, other: number) => ({
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
 ---
-<a class:list={["game-banner border rounded mb-2 py-2 text-reset text-decoration-none", { "outline-championship": isChamp }]} href={`/game/${game.id}`}>
+<a class:list={["game-banner border rounded mb-2 py-2 text-reset text-decoration-none", { "outline-championship": isChamp }]} href={leaguePath(Astro.locals.league, `/game/${game.id}`)}>
   <span class="gb-side">
     <span class="gb-logo">
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />

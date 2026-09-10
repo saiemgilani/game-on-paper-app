@@ -1,5 +1,6 @@
 ---
 import type { ProcessedBoxScore } from '../../../resources/python';
+import { leaguePath } from '../../../utils/league';
 import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
@@ -192,7 +193,7 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
                 {
                     advancedBoxScore.team.map((group: any) => group.pos_team).map(value => (
                         <th style="text-align: center;">
-                            <a href={`/year/${season}/team/${value}`}>
+                            <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}>
                                 <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/>
                             </a>
                         </th>

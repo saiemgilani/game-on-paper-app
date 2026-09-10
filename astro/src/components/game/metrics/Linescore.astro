@@ -6,6 +6,8 @@
  * it is a summary of exactly what that panel lists, and the page has no room
  * near the top for something this small.
  */
+import { leaguePath } from "../../../utils/league";
+
 interface Props {
     /** ESPN competitors, away and home, each with `linescores`. */
     competitors: any[];
@@ -38,7 +40,7 @@ const show = periods > 0 && rows.length === 2;
                 {rows.map((t) => (
                     <tr>
                         <td style="text-align: left;">
-                            <a href={`/year/${season}/team/${t.team?.id}`}>
+                            <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${t.team?.id}`)}>
                                 <img class={`img-fluid team-logo-${t.team?.id}`} width="22px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${t.team?.id}.png`} alt={`ESPN team id ${t.team?.id}`} />
                             </a>
                             <span class="ms-1">{t.team?.abbreviation ?? t.team?.shortDisplayName}</span>

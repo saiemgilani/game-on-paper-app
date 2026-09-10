@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { EMPTY_ESPN_COMPETITION, type ESPNCompetition, type ESPNPlayByPlayResponse, type ESPNScheduleEvent } from '../../resources/espn';
 import type { ProcessedGame } from '../../resources/python';
 import { isChampionshipEvent, cleanLocation } from '../../utils/misc';
+import { leaguePath } from '../../utils/league';
 import LocalDate from '../LocalDate.svelte';
 import WatchButton from './WatchButton.astro';
 
@@ -35,7 +36,7 @@ const gameDate = espnComp.date;
     <header class="blog-header d-none d-lg-inline">
         <div class="row d-flex flex-wrap justify-content-between align-items-center">
             <div class="col-2 pt-1">
-                <a class="btn btn-sm btn-outline-primary align-middle" href="/"><i class="bi-arrow-left"></i></a>
+                <a class="btn btn-sm btn-outline-primary align-middle" href={leaguePath(Astro.locals.league, "/")}><i class="bi-arrow-left"></i></a>
             </div>
             <div class="col-8 text-center">
                 <div>
@@ -85,7 +86,7 @@ const gameDate = espnComp.date;
         </div>
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <a class="btn btn-sm btn-outline-primary align-middle p-2" href="/"><i class="bi-arrow-left"></i> Back to Scoreboard</a>
+                <a class="btn btn-sm btn-outline-primary align-middle p-2" href={leaguePath(Astro.locals.league, "/")}><i class="bi-arrow-left"></i> Back to Scoreboard</a>
             </div>
             <div>
                 <WatchButton game={espnComp} />

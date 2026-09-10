@@ -10,17 +10,20 @@ import { gopStorage } from '../../utils/telemetry';
 import { retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import ErrorPage from "../../components/ErrorPage.astro";
 import { getGameCacheConfig } from '../../utils/config';
+import { LEAGUES, leaguePath } from '../../utils/league';
 
 const { id } = Astro.params;
+const league = Astro.locals.league ?? 'cfb';
+const espnPath = LEAGUES[league].espnPath;
 if (!id) {
     Astro.cache.set(false);
     Astro.response.headers.set("Cache-Control", "no-store");
-    return Astro.redirect("/"); 
+    return Astro.redirect(leaguePath(league, "/"));
 }
 let espnGame: ESPNPlayByPlayResponse | null = null;
 let game: ProcessedGame | null = null;
 try {
-    const guarded = await retrieveGamePageGuarded(id);
+    const guarded = await retrieveGamePageGuarded(id, league);
     espnGame = guarded.page;
     if (!espnGame) {
         throw new Error(`Game ID ${id} had no data`);
@@ -36,7 +39,7 @@ try {
             gop.events.push({ table: 'error_log', row: {
                 service: 'astro', level: 'warn',
                 message: `stale ESPN payload: ${guarded.reason}`.slice(0, 500),
-                stack: null, path: `/game/${id}`, game_id: String(id), context: null } });
+                stack: null, path: leaguePath(league, `/game/${id}`), game_id: String(id), context: null } });
         }
     }
     
@@ -50,7 +53,7 @@ try {
         // public/classic render with a shared ?span= link would otherwise show
         // silently windowed box scores inside a full-game page.
         const spanKey = requestedSpanKey(Astro.locals, Astro.url.searchParams, isFeatureEnabled);
-        game = await retrieveProcessedGame(id, config.maxAge || 30, spanKey);
+        game = await retrieveProcessedGame(id, config.maxAge || 30, spanKey, league);
     }
 
     if (guarded.regressed) {
@@ -82,7 +85,7 @@ const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requ
             htmlSubtitle="Unable to find game" 
             slug={Astro.url.pathname}
             humanTitle="This game could not be found."
-            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/${espnPath}/game/_/gameId/${id}' target='__blank'>here</a>.`}
         />
     )
 }
@@ -92,7 +95,7 @@ const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requ
        2026-09-07's 401858212). Routing it into GamePage used to hit the
        manifest's required-'plays' rewrite INSIDE a component -- illegal, the
        stream aborted, and the page served an empty 200. */
-    (espnGame && pregameState) && <PreGamePage id={id} espnGame={espnGame} />
+    (espnGame && pregameState) && <PreGamePage id={id} espnGame={espnGame} league={league} />
 }
 {
     (espnGame && !game && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) && (
@@ -101,7 +104,7 @@ const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requ
             htmlSubtitle="Unable to process game" 
             slug={Astro.url.pathname}
             humanTitle="This game could not be processed."
-            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/${espnPath}/game/_/gameId/${id}' target='__blank'>here</a>.`}
         />
     )
 }
@@ -115,12 +118,12 @@ const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requ
             htmlSubtitle="Unable to process game"
             slug={Astro.url.pathname}
             humanTitle="This game could not be processed."
-            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/college-football/game/_/gameId/${id}' target='__blank'>here</a>.`}
+            message={`This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/${espnPath}/game/_/gameId/${id}' target='__blank'>here</a>.`}
         />
     )
 }
 {
     (espnGame && game && gameRenderable && !pregameState) && (isFeatureEnabled('game-page-v2', Astro.locals)
-        ? <GamePage id={id} game={game} />
-        : <GamePageClassic id={id} game={game} />)
+        ? <GamePage id={id} game={game} league={league} />
+        : <GamePageClassic id={id} game={game} league={league} />)
 }

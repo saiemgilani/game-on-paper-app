@@ -8,6 +8,7 @@ import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { isTeamFavorite } from "../../utils/misc";
 import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
 
+const league = Astro.locals.league ?? 'cfb';
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
 const awayTeamId = query.get("awayTeamId") || "52";
@@ -19,13 +20,13 @@ allTeamSeasons.sort((a, b) => {
     return a.name.localeCompare(b.name)
 })
 
-let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId)
-let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries({ season: Number(awaySeason), team_id: awayTeamId, maxLookback: Number(awaySeason)});
+let awayTeam = (!awaySeason || !awayTeamId) ? null : await retrieveTeamSeasonInformation(awaySeason, awayTeamId, league)
+let awayTeamData = (!awaySeason || !awayTeamId) ? [] : await retrieveTeamSummaries({ season: Number(awaySeason), team_id: awayTeamId, maxLookback: Number(awaySeason), league });
 let awayTeamSummary = (awayTeamData.length > 0) ? awayTeamData[0] : null
-let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId)
-let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason)});
+let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInformation(homeSeason, homeTeamId, league)
+let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason), league });
 let homeTeamSummary = (homeTeamData.length > 0) ? homeTeamData[0] : null
-const actualGames = (!homeSeason || !homeTeamId || !awayTeamId || !awaySeason || homeSeason != awaySeason) ? [] : await retrieveTeamGames({ season: homeSeason, home_id: homeTeamId, away_id: awayTeamId, limit: 1 })
+const actualGames = (!homeSeason || !homeTeamId || !awayTeamId || !awaySeason || homeSeason != awaySeason) ? [] : await retrieveTeamGames({ season: homeSeason, home_id: homeTeamId, away_id: awayTeamId, limit: 1, league })
 
 const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
 const predWinProb = calculatePredictedWinProb(predMargin)

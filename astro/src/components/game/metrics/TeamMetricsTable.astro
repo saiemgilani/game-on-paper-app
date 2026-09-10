@@ -1,5 +1,6 @@
 ---
 import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
+import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { roundNumber } from '../../../utils/misc';
 
@@ -89,7 +90,7 @@ function handleMetricRows(item: string): string {
                 <th class="box-heading">{title}</th>
                 {
                     (teamBoxScores.map((group: any) => group[teamKey]).map(value => (
-                        <th style="text-align: center;"><a href={`/year/${season}/team/${value}`}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                        <th style="text-align: center;"><a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
                     )))
                 }
             </tr>
