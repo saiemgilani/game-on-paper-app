@@ -1,11 +1,10 @@
 ---
 import TeamProfileRoute from '../../../components/routes/TeamProfileRoute.astro';
+import { loadTeamProfile } from '../../../routes/teamProfile';
 
-Astro.locals.league = 'nfl';
-const { id } = Astro.params;
-if (!id) {
-    Astro.cache.set(false);
+const r = await loadTeamProfile(Astro, 'nfl');
+if ('notFound' in r) {
     return Astro.rewrite("/404");
 }
 ---
-<TeamProfileRoute league={'nfl'} id={id} />
+<TeamProfileRoute {...r} />

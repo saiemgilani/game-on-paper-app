@@ -53,7 +53,7 @@ const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTea
             </div>
         </div>
     </div>
-    <MatchupBuilder client:idle teamSeasons={allTeamSeasons} awaySeason={awaySeason} homeSeason={homeSeason} awayTeamId={awayTeamId} homeTeamId={homeTeamId} projection={projection} />
+    <MatchupBuilder client:idle teamSeasons={allTeamSeasons} awaySeason={awaySeason} homeSeason={homeSeason} awayTeamId={awayTeamId} homeTeamId={homeTeamId} projection={projection} league={league} />
     {
         !canDisplayMatchupView && (
             <div class="container">

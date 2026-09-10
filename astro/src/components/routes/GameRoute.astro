@@ -9,7 +9,6 @@ import GamePageClassic from '../game/classic/GamePage.astro';
 import PreGamePage from '../game/PreGamePage.astro';
 import ErrorPage from '../ErrorPage.astro';
 import { isFeatureEnabled } from '../../utils/features';
-import { ESPN_INVALID_GAME_STATUS_NAMES } from '../../resources/espn';
 import { LEAGUES } from '../../utils/league';
 import type { GameRouteData } from '../../routes/game';
 
@@ -38,7 +37,10 @@ const espnLink = `This may be due to a lack of data from ESPN. Double check that
     (espnGame && pregameState) && <PreGamePage id={id} espnGame={espnGame} league={league} />
 }
 {
-    (espnGame && !game && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) && (
+    /* No processed game and not a pregame: ESPN's status is invalid, or the
+       processor failed on a valid game (loadGameRoute swallows that error).
+       Either way there is nothing to render but the error page. */
+    (espnGame && !game && !pregameState) && (
         <ErrorPage
             htmlTitle="Game Unprocessable"
             htmlSubtitle="Unable to process game"
