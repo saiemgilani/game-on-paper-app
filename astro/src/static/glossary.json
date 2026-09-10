@@ -50,6 +50,13 @@
             "definition": "Total expected points added divided by plays. It is the fairest way to compare units that ran a different number of snaps: a team that adds 30 EPA on 60 plays (+0.50 per play) was far more efficient than one that added 30 on 90. On Game on Paper, offensive EPA/play counts every offensive snap in FBS vs FBS games; defensive EPA/play is what a defense <i>allowed</i>, so lower (more negative) is better. Per-dropback and per-rush versions split it by play type. EPA/play is <b>not</b> adjusted for opponent or garbage time \u2014 for that use <a href='#glossary-section-A'>Adjusted EPA/Play</a>. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>."
         }
     ],
+    "F": [
+        {
+            "term": "Fourth down recommendations",
+            "source": "https://cfb4th.sportsdataverse.org",
+            "definition": "Our fourth-down decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of each choice (go, field goal, punt) using conversion and make (for FG) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>" 
+        }
+    ],
     "G": [
         {
             "term": "Garbage time",
@@ -148,6 +155,11 @@
             "term": "Turnover Luck",
             "definition": "(From FootballStudyHall.com) the difference between a team's turnover and expected turnover margins and, using the average point value of a turnover (~5.0 points), projects how many points a team gained or lost per game.",
             "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
+        },
+        {
+            "term": "Two-point try recommendations",
+            "source": "",
+            "definition": "Our two-point decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of a two-point attempt using conversion and make (for XPs) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, our recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>" 
         }
     ],
     "W": [

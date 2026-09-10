@@ -4,36 +4,22 @@ import { faqPageJsonLd, type FaqEntry } from '../utils/seo';
 
 export const prerender = true;
 
-const faqs: FaqEntry[] = [
-    {
-        question: "Why is a play missing or wrong?",
-        answer: "The upstream play-by-play feed occasionally drops, mislabels, or later corrects plays. Some box score values are estimated from play text when the feed doesn't carry them. When the feed corrects itself, the page picks the correction up on its next refresh.",
-    },
-    {
-        question: "Can I report a data problem?",
-        answer: "Yes — open an issue on the GitHub repository or reach the site on Bluesky (both linked in the footer). Feed-quality reports with a game link are the fastest to act on.",
-    },
-];
-
 const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
 ---
 <GenericPage
     title="Data & Sources"
-    subtitle="Where Game on Paper's data comes from, how fresh it is, and what its limits are."
+    subtitle="Data souces, freshness, and limitations"
     slug="/data-sources"
     heading="Game on Paper data and sources"
-    description="Where Game on Paper's college football data comes from, how often pages refresh, and known data limitations."
+    description="Data souces, freshness, and limitations"
     breadcrumbs={[{ title: 'Home', url: '/', active: false }, { title: 'Data & Sources', active: true }]}
-    jsonLd={[faqPageJsonLd(faqs, canonicalUrl)]}
 >
     <div class="container my-4">
         <div class="row">
             <div class="col-lg-8 col-12">
                 <h1 class="fs-3">Data &amp; Sources</h1>
                 <p class="text-muted">
-                    Everything on Game on Paper is computed from public data. This page says where
-                    each piece comes from, how often it refreshes, and where its limits are.
-                    How the numbers are computed lives on <a href="/methodology">Methodology</a>.
+                    Everything on Game on Paper is computed from public data. If you see a data issue/inaccuracy, please open an issue on <a href="https://github.com/saiemgilani/game-on-paper-app/issues/new">GitHub</a> or reach out via <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a>. Feed-quality reports with a game link are the fastest to act on.
                 </p>
 
                 <h2 class="fs-4 mt-4">Sources</h2>
@@ -44,36 +30,28 @@ const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
                     </li>
                     <li>
                         <strong>Season-level team metrics and history</strong>:
-                        <a href="https://www.sportsdataverse.org">SportsDataverse</a> open data, which also powers the season percentiles behind the stat coloring.
+                        <a href="https://www.sportsdataverse.org">SportsDataverse</a> open data, which also powers season-level percentiles and team/player leaderboards.
                     </li>
                     <li>
                         <strong>Community data</strong>:
-                        <a href="https://collegefootballdata.com">collegefootballdata.com</a> informs parts of the historical record.
+                        <a href="https://collegefootballdata.com">collegefootballdata.com</a> completes some of our historic datasets.
                     </li>
                 </ul>
 
                 <h2 class="fs-4 mt-4">Freshness</h2>
                 <ul>
-                    <li><strong>Live games and the scoreboard</strong>: refresh about once a minute while the page is open and visible.</li>
-                    <li><strong>Completed games</strong>: cached and stable once final.</li>
+                    <li><strong>Live games and the scoreboard</strong>: refresh every minute while you have the page open and visible.</li>
+                    <li><strong>Completed games</strong>: cached after the game goes final. We will occasionally update these pages if ESPN cleans the play-by-play data upstream or if we have new metrics to display.</li>
                     <li><strong>Season metrics and percentiles</strong>: updated as the underlying SportsDataverse datasets refresh, typically within a day of games completing.</li>
                 </ul>
 
                 <h2 class="fs-4 mt-4">Known limitations</h2>
                 <ul>
-                    <li>Upstream play feeds occasionally drop, mislabel, or retroactively correct plays; pages pick up corrections on their next refresh.</li>
+                    <li>Upstream play feeds occasionally drop, mislabel, or retroactively correct plays. Pages pick up corrections on their next refresh.</li>
                     <li>Some box score values are estimated from play text when the feed doesn't carry them directly.</li>
                     <li>Other than Adjusted EPA/Play, metrics are not adjusted for opponent quality or garbage time.</li>
-                    <li>Early-season sample sizes are small; season-level rates stabilize as games accumulate.</li>
+                    <li>Early-season sample sizes are small and so metrics at those stages are not quite reliable as performance evaluation tools. As more games are played, these metrics will stabilize.</li>
                 </ul>
-
-                <h2 class="fs-4 mt-4">Frequently asked questions</h2>
-                {faqs.map((f) => (
-                    <details class="mb-2">
-                        <summary class="fw-bold">{f.question}</summary>
-                        <p class="mt-2 text-muted" set:html={f.answer} />
-                    </details>
-                ))}
             </div>
         </div>
     </div>

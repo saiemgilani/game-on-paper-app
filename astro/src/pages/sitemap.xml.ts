@@ -50,7 +50,6 @@ function buildEntries(): Entry[] {
         { loc: '/rankings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/standings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
-        { loc: '/methodology/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
         { loc: '/data-sources/', lastmod: today, changefreq: 'monthly', priority: '0.4' },
         { loc: '/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
