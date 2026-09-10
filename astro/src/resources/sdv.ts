@@ -4,7 +4,7 @@ import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } 
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry"
-import { LEAGUES, type League } from "../utils/league";
+import { LEAGUES, type League, teamCategoriesFor } from '../utils/league';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -699,8 +699,10 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     } else if (category) {
         metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
     } else if (!category) {
-        // not implemented yet
-        metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p]).concat(SDV_TEAM_CARD_COLUMNS[p]))
+        // every column the LEAGUE's categories read: the NFL-only categories name
+        // columns the cfb table does not have, and one unknown column in `select`
+        // is a 400 (every team profile / season team / pregame read went empty)
+        metric_columns = teamCategoriesFor(league).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p] ?? []).concat(SDV_TEAM_CARD_COLUMNS[p] ?? []))
     } else {
         throw Error(`Category ${category} not implemented`)
     }
