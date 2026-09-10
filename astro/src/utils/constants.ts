@@ -40,7 +40,9 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "HBCU GO": "https://hbcugo.tv/",
     "HBCU Go": "https://hbcugo.tv/",
     "UCONN+": "https://uconnhuskies.com/watch/",
-    "UConn+": "https://uconnhuskies.com/watch/"
+    "UConn+": "https://uconnhuskies.com/watch/",
+    "Netflix": "https://www.netflix.com/search?q=nfl%20on%20christmas&suggestionId=Collection%3A81926081",
+    "Prime Video": "https://www.amazon.com/gp/video/storefront/ref=atv_me_pvs_c_7sjRqq_2_1?contentType=merch&contentId=tnf&merchId=tnf"
 };
 
 export function isESPNNetwork(networkName?: string | null): boolean {
