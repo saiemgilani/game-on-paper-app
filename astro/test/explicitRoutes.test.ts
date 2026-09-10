@@ -36,6 +36,26 @@ describe('explicit /nfl pages', () => {
         expect(nfl).toEqual(cfb);
     });
 
+    test('a page handles every variant its loader can return', () => {
+        // routes/*.ts loaders return {redirect}/{notFound} unions; a page that
+        // forgets a branch spreads the marker object into the component and
+        // ships an "undefined" page as HTTP 200 (seen on /year/2025junk/teams).
+        const loaders = ['leaderboards', 'matchup', 'seasonTeam', 'game']
+            .map((f) => readFileSync(new URL(`../src/routes/${f}.ts`, import.meta.url)).toString()).join('\n');
+        const variants: Record<string, string[]> = {};
+        for (const m of loaders.matchAll(/export (?:async )?function (\w+)\([\s\S]*?\n\}/g)) {
+            variants[m[1]] = ['notFound', 'redirect'].filter((k) => m[0].includes(`{ ${k}`));
+        }
+        expect(variants.prepareLeaderboard).toEqual(['notFound', 'redirect']);
+        for (const p of walk(PAGES)) {
+            const src = readFileSync(join(PAGES, p)).toString();
+            for (const [fn, keys] of Object.entries(variants)) {
+                if (!src.includes(`${fn}(`)) continue;
+                for (const k of keys) expect(src, `${p} handles '${k}' from ${fn}`).toContain(`'${k}' in r`);
+            }
+        }
+    });
+
     test('an nfl page sets the league itself (no middleware)', () => {
         for (const p of walk(join(PAGES, 'nfl'))) {
             const src = readFileSync(join(PAGES, 'nfl', p)).toString();
