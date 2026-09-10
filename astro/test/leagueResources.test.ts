@@ -70,4 +70,19 @@ describe('sdv.ts routes each league to its own API base', () => {
         // nfl rows never ask for the college-only FBS filter
         expect(urls.filter(u => u.includes('/v1/nfl/')).every(u => !u.includes('fbs_class='))).toBe(true);
     });
+
+    test('a no-category team read selects only the columns its league has', async () => {
+        const sdv = await import('../src/resources/sdv');
+        await sdv.retrieveTeamSummaries({ team_id: 59 }).catch(() => {});
+        await sdv.retrieveTeamSummaries({ team_id: 12, league: 'nfl' }).catch(() => {});
+        const sel = (u: string) => decodeURIComponent(new URL(u).searchParams.get('select') ?? '').split(',');
+        const cfb = sel(seen.find(u => u.includes('/v1/cfb/team_summaries?'))!);
+        const nfl = sel(seen.find(u => u.includes('/v1/nfl/team_summaries?'))!);
+        // the rbsdm columns exist in nfl.team_summaries only; asking cfb for one is a 400
+        expect(cfb).not.toContain('pass_oe_off');
+        expect(cfb).not.toContain('luck_opp_fg_pct_def_rank');
+        expect(cfb).toContain('net_adj_epa');
+        expect(nfl).toContain('pass_oe_off');
+        expect(nfl).toContain('net_adj_epa');
+    });
 });
