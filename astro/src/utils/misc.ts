@@ -1,5 +1,5 @@
 import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor, ESPNStatus } from "../resources/espn";
-import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES } from "./constants";
+import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES, SDV_TEAM_METRIC_CATEGORIES } from "./constants";
 import { espnLogoLeague, leaguePath, type League } from "./league";
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 
@@ -559,6 +559,13 @@ export function generateCategoryForMetric(metric: string): string {
 }
 
 export function modifyMetricForCategory(category: string, metric: string) {
+    // an NFL-only category (tendencies / fourth-downs / luck) shares no column
+    // with the cfb grid: a metric it does not carry sorts by its first column
+    // (the leaderboard showed N/A ranks when the default net_adj_epa carried over)
+    const own = SDV_TEAM_METRIC_CATEGORIES[category];
+    if (own && !["offensive", "defensive", "differential"].includes(category)) {
+        return metric in own ? metric : Object.keys(own)[0];
+    }
     if (category == "offensive" && ["adj_def_epa", "net_adj_epa"].includes(metric)) {
         return "adj_off_epa"
     } else if (category == "defensive" && ["adj_off_epa", "net_adj_epa"].includes(metric)) {

@@ -80,6 +80,11 @@ describe('leaderboard loaders', () => {
         expect(a.locals.league).toBe('nfl');
         expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/tendencies?sort=proe', { year: '2025', category: 'tendencies' }), 'nfl'))
             .toEqual({ season: 2025, category: 'tendencies', metric: 'proe' });
+        // no ?sort: an NFL-only category defaults to its own first column, not net_adj_epa
+        expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/tendencies', { year: '2025', category: 'tendencies' }), 'nfl'))
+            .toEqual({ season: 2025, category: 'tendencies', metric: 'pass_rate_off' });
+        expect(prepareTeamCategory(fakeAstro('/year/2025/teams/offensive', { year: '2025', category: 'offensive' }), 'cfb'))
+            .toEqual({ season: 2025, category: 'offensive', metric: 'adj_off_epa' });
     });
 
     test('player category and the index pages', async () => {
