@@ -29,8 +29,10 @@ function walk(dir: string, prefix = ''): string[] {
 
 describe('explicit /nfl pages', () => {
     test('every league-aware cfb page has an nfl twin, and nothing else lives under /nfl', () => {
-        // pages with no league: admin/api/health/404/sitemap/glossary/changelog
-        const leagueless = /^(admin|api|changelog|glossary|health|404|sitemap|nfl)(\/|\.)/;
+        // pages with no league: admin/api/health/404/sitemap/glossary/changelog,
+        // plus the standing explainer pages, which sit alongside the glossary
+        // and describe the site rather than a league's slate
+        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap|nfl)(\/|\.)/;
         // CFB-only, and not the same thing as leagueless: this page IS league
         // -specific, it just has no NFL counterpart -- the AP and Coaches polls
         // have no professional equivalent. Standings are NOT in here: the NFL
@@ -85,6 +87,11 @@ describe('leaderboard loaders', () => {
         expect(a.locals.league).toBe('nfl');
         expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/tendencies?sort=proe', { year: '2025', category: 'tendencies' }), 'nfl'))
             .toEqual({ season: 2025, category: 'tendencies', metric: 'proe' });
+        // no ?sort: an NFL-only category defaults to its own first column, not net_adj_epa
+        expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/tendencies', { year: '2025', category: 'tendencies' }), 'nfl'))
+            .toEqual({ season: 2025, category: 'tendencies', metric: 'pass_rate_off' });
+        expect(prepareTeamCategory(fakeAstro('/year/2025/teams/offensive', { year: '2025', category: 'offensive' }), 'cfb'))
+            .toEqual({ season: 2025, category: 'offensive', metric: 'adj_off_epa' });
     });
 
     test('player category and the index pages', async () => {

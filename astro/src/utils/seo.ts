@@ -104,6 +104,11 @@ export interface GameSpec {
     hasScore: boolean;
     /** ESPN status description ("Final", "Postponed", "Canceled") */
     statusDescription?: string;
+    /** real venue, when known -- emitted as the schema.org Place */
+    venueName?: string;
+    venueCity?: string;
+    venueRegion?: string;
+    venueCountry?: string;
 }
 
 /**
@@ -163,12 +168,31 @@ export function sportsEventJsonLd(g: GameSpec) {
         startDate: g.date,
         eventStatus: eventStatus(g.statusDescription),
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        ...(g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
+        ...(g.venueName
+        ? { location: { '@type': 'Place', name: g.venueName, ...(g.venueCity || g.venueRegion || g.venueCountry ? { address: { '@type': 'PostalAddress', ...(g.venueCity ? { addressLocality: g.venueCity } : {}), ...(g.venueRegion ? { addressRegion: g.venueRegion } : {}), ...(g.venueCountry ? { addressCountry: g.venueCountry } : {}) } } : {}) } }
+        : g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
         homeTeam: home,
         awayTeam: away,
         competitor: [away, home],
         organizer: { '@type': 'SportsOrganization', name: g.league === 'nfl' ? 'NFL' : 'NCAA' },
         ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: [sportNoun(g.league), 'EPA per play', 'success rate', 'win probability'] } } : {}),
+    };
+}
+
+export interface FaqEntry { question: string; answer: string }
+
+/** schema.org FAQPage from plain question/answer pairs (answers may hold HTML). */
+export function faqPageJsonLd(faqs: FaqEntry[], pageUrl: string) {
+    if (!faqs.length) return null;
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        '@id': `${pageUrl}#faq`,
+        mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer.replace(/<[^>]+>/g, '') },
+        })),
     };
 }
 
@@ -228,8 +252,8 @@ export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
     tendencies: {
         h1: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected`,
         title: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected and Neutral-Situation Pass Rate | Game on Paper`,
-        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes).`,
-        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation.',
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes), plus series conversion rate for the offense and the defense.`,
+        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation. Series conversion rate is the share of sets of downs that end in a first down or touchdown.',
     },
     'fourth-downs': {
         h1: (s, l) => `${s} ${sportTitle(l)} Fourth Down Decisions`,

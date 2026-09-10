@@ -2,7 +2,7 @@
 import MatchupView from "../../components/game/MatchupView.astro";
 import MatchupBuilder from "../../components/game/MatchupBuilder.svelte";
 import GenericPage from "../../layouts/GenericPage.astro";
-import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamGames, calculatePredictedWinProb, type SDVGame } from "../../resources/sdv";
+import { calculatePredictedPointMargin, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamGames, retrieveMatchupHistory, calculatePredictedWinProb, type SDVGame } from "../../resources/sdv";
 import { retrieveAllTeams } from "../../utils/teams";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { isTeamFavorite } from "../../utils/misc";
@@ -27,6 +27,16 @@ let homeTeam = (!homeSeason || !homeTeamId) ? null : await retrieveTeamSeasonInf
 let homeTeamData = (!homeSeason || !homeTeamId) ? [] : await retrieveTeamSummaries({ season: Number(homeSeason), team_id: homeTeamId, maxLookback: Number(homeSeason), league });
 let homeTeamSummary = (homeTeamData.length > 0) ? homeTeamData[0] : null
 const actualGames = (!homeSeason || !homeTeamId || !awayTeamId || !awaySeason || homeSeason != awaySeason) ? [] : await retrieveTeamGames({ season: homeSeason, home_id: homeTeamId, away_id: awayTeamId, limit: 1, league })
+// recent meetings between the two programs, any season -- the same table the
+// pregame page shows (it was wired to an empty array here)
+let matchupHistory: SDVGame[] = [];
+if (homeTeamId && awayTeamId) {
+    try {
+        matchupHistory = await retrieveMatchupHistory(homeTeamId, awayTeamId, 5, league);
+    } catch (e) {
+        console.error(`matchup history unavailable for ${homeTeamId} vs ${awayTeamId}: ${e}`);
+    }
+}
 
 const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
 const predWinProb = calculatePredictedWinProb(predMargin)
@@ -67,7 +77,7 @@ const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTea
     }
     {
         canDisplayMatchupView && (
-            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} matchupHistory={[]} />
+            <MatchupView awayTeamSeason={awayTeam} homeTeamSeason={homeTeam} awayTeamSummary={awayTeamSummary} homeTeamSummary={homeTeamSummary} matchupHistory={matchupHistory} />
         )
     }
 </GenericPage>

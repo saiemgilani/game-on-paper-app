@@ -31,8 +31,9 @@ export async function loadTeamProfile(Astro: AstroGlobal, league: League): Promi
     } catch (e: any) {
         console.error(`ERROR while loading team ${id}: ${e}, ${e.stack}`);
     }
-    // a rejected request or a null payload (the ESPN client hands the body back as-is)
-    if (!team) {
+    // a rejected request, a null payload, or ESPN's 400 body ({"error": ...}) for an
+    // unknown id -- the client hands the body back as-is, so "no id" is the test
+    if (!team?.id) {
         Astro.cache.set(false);
         return { notFound: true };
     }
