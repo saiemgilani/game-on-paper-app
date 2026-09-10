@@ -9,6 +9,7 @@ import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
 import { jsonLdScript, websiteJsonLd } from "../../utils/seo"
+import { LEAGUES } from "../../utils/league"
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 interface Props {
@@ -23,21 +24,24 @@ interface Props {
 
 const { title, season, seasontype, week, group, isScoreboard } = Astro.props;
 let { games } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const leagueName = LEAGUES[league].name;
 
 let titleParts: string[] = [];
 if (season) {
     titleParts.push(`${season}`)
 }
 
-titleParts = titleParts.concat(["College Football", "Game on Paper"])
+titleParts = titleParts.concat([leagueName, "Game on Paper"])
 
 const titleText = titleParts.join(" | ")
-// Canonical/OG values. Astro.url.pathname is already the served path, so this
-// cannot drift from the real URL the way a hand-built prefix can.
-const canonicalUrl = new URL(Astro.url.pathname, "https://gameonpaper.com").href
+// Canonical/OG values. Astro.originPathname is the path the visitor requested
+// (Astro.url is the rewrite target once middleware maps /nfl/* onto these
+// routes), so this cannot drift from the real URL the way a hand-built prefix can.
+const canonicalUrl = new URL(Astro.originPathname ?? Astro.url.pathname, "https://gameonpaper.com").href
 const pageDescription = isScoreboard
-    ? "Live college football scoreboard with EPA per play, success rate, win probability and advanced box scores for every game."
-    : `College football schedule with EPA per play, success rate, win probability and advanced stats for every game: ${titleText}.`
+    ? `Live ${leagueName.toLowerCase()} scoreboard with EPA per play, success rate, win probability and advanced box scores for every game.`
+    : `${leagueName} schedule with EPA per play, success rate, win probability and advanced stats for every game: ${titleText}.`
 
 
 games.sort((a: ESPNScheduleEvent, b: ESPNScheduleEvent) => {
@@ -141,7 +145,7 @@ if (compactRows) {
         <meta name="twitter:site" content="@gameonpaper">
         <meta name="twitter:title" content={title || titleText}>
         <meta name="twitter:description" content={pageDescription}>
-        {isScoreboard && <script type="application/ld+json" set:html={jsonLdScript([websiteJsonLd()])} />}
+        {isScoreboard && <script type="application/ld+json" set:html={jsonLdScript([websiteJsonLd(league)])} />}
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/index.css" rel="stylesheet">
         <link href="/assets/css/dark-index.css" rel="stylesheet">
@@ -152,7 +156,7 @@ if (compactRows) {
         <Header />
         <div class="container">
             <h1 class="visually-hidden">{title || titleText}</h1>
-            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} />
+            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} />
             {
                 (compactRows && games.length > 0) && (
                     <div class="game-compact-list d-md-none mb-3">
@@ -199,7 +203,10 @@ if (compactRows) {
             </div>
             <div class="row mb-3" hidden={!hasActiveGames}>
                 <div class="col-12">
-                    <p class="text-small text-muted">Because there are active games, page will auto-refresh every minute.</p>
+                    <p class="text-small text-muted">
+                        Because there are active games, this page auto-refreshes every minute while you're watching it.
+                        {hasActiveGames && <span data-rendered-at={new Date().toISOString()}></span>}
+                    </p>
                 </div>
             </div>
             <div class="row text-muted">
@@ -217,20 +224,26 @@ if (compactRows) {
             </div>
             <Footer />
             <Scripts />
-            <script>
-                document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
-                    e.preventDefault()
-                    const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
-                    if (gameId) {
-                        window.location.assign("/game/" + gameId);
-                    }
-                });
-            </script>
             {
                 (hasActiveGames) && (
                     <script is:inline src="/assets/js/auto-update.js" />
                 )
             }
         </div>
-    </body>
+    <script>
+    // "Updated Ns ago" beside the auto-refresh note: honest about page age,
+    // cheap to keep current, and it makes a deferred (hidden-tab) refresh
+    // legible -- the reader sees the age climb, then the reload catch up.
+    const stamp = document.querySelector<HTMLElement>("[data-rendered-at]");
+    if (stamp?.dataset.renderedAt) {
+        const at = Date.parse(stamp.dataset.renderedAt);
+        const render = () => {
+            const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+            stamp.textContent = s < 10 ? "Updated just now." : s < 90 ? `Updated ${s}s ago.` : `Updated ${Math.round(s / 60)}m ago.`;
+        };
+        render();
+        setInterval(render, 10_000);
+    }
+</script>
+</body>
 </html>

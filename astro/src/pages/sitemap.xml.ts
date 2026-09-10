@@ -1,7 +1,9 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
+import { LEAGUES, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
+import { FLAGS } from '../utils/features';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
 // the season list) and costs nothing to serve. Deliberately makes no network
@@ -30,17 +32,49 @@ type Entry = { loc: string; lastmod: string; changefreq: string; priority: strin
 
 function buildEntries(): Entry[] {
     const today = new Date().toISOString().slice(0, 10);
+    // This file is prerendered -- there is no viewer to hold a preview cookie --
+    // so the NFL is advertised only once the 'nfl' flag is public; until then
+    // every /nfl URL is a 404 and a sitemap must never list one.
+    const nflPublic = FLAGS['nfl'] === 'on';
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
+        ...(nflPublic ? [
+            { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
+            { loc: '/nfl/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
+            { loc: '/nfl/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
+        ] : []),
         // Trailing slashes are load-bearing: prerendered routes 307 to the
         // slashed form, and advertising a redirect wastes the crawl budget this
         // file exists to protect. Verified per-URL against production.
         { loc: '/teams/', lastmod: today, changefreq: 'weekly', priority: '0.7' },
+        { loc: '/rankings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
+        { loc: '/standings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
+        { loc: '/methodology/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
+        { loc: '/data-sources/', lastmod: today, changefreq: 'monthly', priority: '0.4' },
         { loc: '/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/changelog/', lastmod: today, changefreq: 'weekly', priority: '0.3' },
     ];
+
+    // the NFL mirrors the cfb season/leaderboard/team blocks below, prefixed;
+    // its week schedules are listed too (the cfb ones are reached from /year/N)
+    const nfl = LEAGUES.nfl;
+    for (const year of nflPublic ? nfl.seasons : []) {
+        const lastmod = seasonLastmod(year);
+        const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
+        out.push({ loc: `/nfl/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
+        if (year !== CURRENT_YEAR) {
+            out.push({ loc: `/nfl/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
+            out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
+            for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+            for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/nfl/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+        }
+        // week 18 arrived with the 17-game schedule in 2021
+        const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
+        for (let w = 1; w <= regWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+        for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+    }
 
     for (const year of AVAILABLE_SEASONS) {
         const lastmod = seasonLastmod(year);
@@ -58,20 +92,24 @@ function buildEntries(): Entry[] {
         for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
     }
 
-    for (const team of retrieveAllTeams()) {
-        out.push({
-            loc: `/team/${team.team_id}`,
-            lastmod: today, changefreq: 'weekly', priority: '0.6',
-        });
-        // one entry per season the team actually played, so we never advertise a
-        // team-season page that would render empty
-        for (const year of team.seasons ?? []) {
+    for (const league of (nflPublic ? ['cfb', 'nfl'] : ['cfb']) as readonly ('cfb' | 'nfl')[]) {
+        const lp = (p: string) => (league === 'cfb' ? p : `/nfl${p}`);
+        if (league === 'nfl') out.push({ loc: '/nfl/teams', lastmod: today, changefreq: 'weekly', priority: '0.7' });
+        for (const team of retrieveAllTeams(league)) {
             out.push({
-                loc: `/year/${year}/team/${team.team_id}`,
-                lastmod: seasonLastmod(year),
-                changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
-                priority: '0.5',
+                loc: lp(`/team/${team.team_id}`),
+                lastmod: today, changefreq: 'weekly', priority: '0.6',
             });
+            // one entry per season the team actually played, so we never advertise a
+            // team-season page that would render empty
+            for (const year of team.seasons ?? []) {
+                out.push({
+                    loc: lp(`/year/${year}/team/${team.team_id}`),
+                    lastmod: seasonLastmod(year),
+                    changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
+                    priority: '0.5',
+                });
+            }
         }
     }
     return out;

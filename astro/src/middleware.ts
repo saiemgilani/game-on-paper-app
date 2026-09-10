@@ -10,7 +10,7 @@ import {
 } from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
-import { FLAGS } from './utils/features';
+import { FLAGS, isFeatureEnabled } from './utils/features';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -100,6 +100,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const previewCookie = readCookie(context.request.headers.get('cookie'), PREVIEW_COOKIE);
   if (previewCookie) {
     context.locals.preview = await verifyPreviewCookie(previewCookie, getSecret('ADMIN_PASS'));
+  }
+
+  // The NFL surface is a 'preview' feature (utils/features.ts). The explicit
+  // pages/nfl/** tree is reached only by a viewer holding the preview cookie --
+  // via /preview/nfl/... (previewRewrite) or the cookie on the public URL, which
+  // withPreviewCacheGuard keeps out of Workers Caching. Everyone else gets the
+  // site's 404, cacheable like any other. An access gate on a namespace, the
+  // same job the /admin block does below -- not a route rewrite: the URL and
+  // the page file stay one-to-one.
+  const effectivePath = previewRewrite ? new URL(previewRewrite, url).pathname : url.pathname;
+  if ((effectivePath === '/nfl' || effectivePath.startsWith('/nfl/')) && !isFeatureEnabled('nfl', context.locals)) {
+    previewRewrite = '/404';
   }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {

@@ -1,6 +1,7 @@
 <script>
     import { SDV_TEAM_METRIC_CATEGORIES } from "../../utils/constants";
     import { toTitleCase, modifyMetricForCategory } from "../../utils/misc";
+    import { leagueFromLocation, leaguePath } from "../../utils/league";
 
     const { category, metric, onChangeValue } = $props()
 
@@ -18,7 +19,7 @@
 		if (onChangeValue) {
             onChangeValue(c, m)
         } else {
-            window.location = `/teams/${c}?sort=${m}`;
+            window.location = leaguePath(leagueFromLocation(), `/teams/${c}?sort=${m}`);
         }
     }
 

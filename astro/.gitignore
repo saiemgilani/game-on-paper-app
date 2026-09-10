@@ -24,3 +24,6 @@ pnpm-debug.log*
 .idea/
 
 .omc
+
+# visual-check.mjs output (screenshots are shared on the PR, not committed)
+img/visual/

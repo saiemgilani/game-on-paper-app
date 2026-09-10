@@ -61,8 +61,21 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
     }
 }
 
-export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean): CacheOptions {
-    const espnWeek = GLOBAL_SCHEDULE_MAP[`${season}`].find(s => s.type == `${seasontype}` && s.value == `${week}`)
+export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: 'cfb' | 'nfl' = 'cfb'): CacheOptions {
+    // GLOBAL_SCHEDULE_MAP is the COLLEGE calendar (bowl/CFP weeks vary by season).
+    // Another league has no entry, so decide from what the page itself knows:
+    // live games refresh at the scoreboard rate, a past season is done, and a
+    // current-season week without live games re-checks hourly.
+    if (league !== 'cfb') {
+        if (hasActiveGames) {
+            return { maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate, swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER, tags: ['week-in-progress'] };
+        }
+        if (Number(season) < CURRENT_YEAR) {
+            return { maxAge: 60 * 60 * 24 * 365, tags: ['week-complete'] };
+        }
+        return { maxAge: 60 * 60, swr: 60 * 60, tags: ['week-in-progress'] };
+    }
+    const espnWeek = (GLOBAL_SCHEDULE_MAP[`${season}`] ?? []).find(s => s.type == `${seasontype}` && s.value == `${week}`)
     // if we can't validate the week against the schedule, check if it has active games. 
     // If it does, reload actively. If not, never reload.
     if (!espnWeek) {

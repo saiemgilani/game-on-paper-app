@@ -1,5 +1,6 @@
 import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor, ESPNStatus } from "../resources/espn";
-import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES } from "./constants";
+import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES, SDV_TEAM_METRIC_CATEGORIES } from "./constants";
+import { espnLogoLeague, leaguePath, type League } from "./league";
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 
 export type RGBColor = { r: number, g: number, b: number};
@@ -83,6 +84,13 @@ export async function waitForElement(document: HTMLDocument, id: string, delay: 
 // https://stackoverflow.com/questions/8273047/javascript-function-similar-to-python-range
 export function range(start: number, end: number): number[] {
     return Array.from(Array(end + 1).keys()).slice(start);
+}
+
+/** "2004 to 2025", a single year, or a placeholder when a table returned nothing (never "undefined"). */
+export function yearRange(seasons: number[]): string {
+    const s = [...new Set(seasons)].sort();
+    if (s.length === 0) return 'none yet';
+    return s.length > 1 ? `${s[0]} to ${s[s.length - 1]}` : `${s[0]}`;
 }
 
 export function roundNumber(value: string | number | undefined | null, power10: number, fixed: number): string {
@@ -539,6 +547,10 @@ export function formatNumberForMetric(metric: string, value: number): string {
 }
 
 export function shouldInvertSortForMetric(category: string, metric: string): boolean {
+    // opponents MISSING field goals is the lucky outcome, so the lowest opp FG% leads
+    if (metric == "luck_opp_fg_pct_def") return true;
+    // fewer opponent series converted is the better defense
+    if (metric == "series_conv_def") return true;
     return (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
 }
 
@@ -547,6 +559,13 @@ export function generateCategoryForMetric(metric: string): string {
 }
 
 export function modifyMetricForCategory(category: string, metric: string) {
+    // an NFL-only category (tendencies / fourth-downs / luck) shares no column
+    // with the cfb grid: a metric it does not carry sorts by its first column
+    // (the leaderboard showed N/A ranks when the default net_adj_epa carried over)
+    const own = SDV_TEAM_METRIC_CATEGORIES[category];
+    if (own && !["offensive", "defensive", "differential"].includes(category)) {
+        return metric in own ? metric : Object.keys(own)[0];
+    }
     if (category == "offensive" && ["adj_def_epa", "net_adj_epa"].includes(metric)) {
         return "adj_off_epa"
     } else if (category == "defensive" && ["adj_off_epa", "net_adj_epa"].includes(metric)) {
@@ -705,12 +724,12 @@ export function formatRank(rank: number | undefined | null) {
     return rankString
 }
 
-export function produceTeamLogoLink(team?: { team_id: string | number, school: string, season?: string | number } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px"): string {
+export function produceTeamLogoLink(team?: { team_id: string | number, school: string, season?: string | number } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px", league: League = 'cfb'): string {
     if (!team) {
-        return `<${headerType} class="d-inline"><a href="/teams"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
+        return `<${headerType} class="d-inline"><a href="${leaguePath(league, "/teams")}"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`
     }
-    const teamLink = (team.season) ? `/year/${team.season}/team/${team.team_id}` : `/team/${team.team_id}`
-    return `<${headerType} class="d-inline"><a href="${teamLink}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
+    const teamLink = leaguePath(league, (team.season) ? `/year/${team.season}/team/${team.team_id}` : `/team/${team.team_id}`)
+    return `<${headerType} class="d-inline"><a href="${teamLink}"><img class="img-fluid team-logo-${team.team_id}" width="${imgSize}" src="https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/></a>${showNickname ? (" " + cleanField(team, "school")) : ""}</${headerType}>`
 }
 
 export function capitalizeFirstLetter(val: string): string {
