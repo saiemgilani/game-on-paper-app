@@ -11,7 +11,6 @@ import {
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS } from './utils/features';
-import { splitLeague } from './utils/league';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -58,28 +57,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Cookie-based preview on normal URLs still works where the Worker runs
   // (cache misses, no-store pages); this surface is the one place it is
   // GUARANTEED to run, which is why the magic link and the badge live here.
-  // League prefix: /nfl/* renders the SAME page files as the cfb routes with
-  // locals.league = 'nfl' (resources and link builders read it). A rewrite,
-  // not a redirect, so the public URL keeps its prefix and Workers Caching
-  // keys on it. Resolved before the preview surface so /preview/nfl/... composes.
-  const split = splitLeague(url.pathname);
-  // Never rewrite INTO a protected or special namespace: the admin gate below
-  // checks the ORIGINAL pathname, so /nfl/admin would reach /admin unchecked
-  // (CodeRabbit on #229). Those surfaces have no league; bounce to the bare path.
-  if (split.league !== 'cfb') {
-    const t = split.rest;
-    if (t === '/admin' || t.startsWith('/admin/') || t === PREVIEW_PATH_PREFIX || t.startsWith(PREVIEW_PATH_PREFIX + '/') || t.startsWith('/api/')) {
-      return context.redirect(t + url.search, 302);
-    }
-  }
-  context.locals.league = split.league;
-  const leagueRewrite: string | undefined = split.league === 'cfb' ? undefined : split.rest + url.search;
-
   let previewRewrite: string | undefined;
   if (url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/')) {
-    const restSplit = splitLeague(url.pathname.slice(PREVIEW_PATH_PREFIX.length) || '/');
-    context.locals.league = restSplit.league;
-    const rest = restSplit.rest;
+    const rest = url.pathname.slice(PREVIEW_PATH_PREFIX.length) || '/';
     const target = legacyCfbTarget(rest) ?? staleRedirectTarget(rest) ?? rest;
     // Never rewrite into /admin: the admin auth gate below checks the ORIGINAL
     // pathname, so a rewrite would carry a view-only preview cookie past it
@@ -151,13 +131,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  // A preview rewrite already had its league prefix stripped above, so it wins.
-  const rewriteTo = previewRewrite ?? leagueRewrite;
-
   const key = getSecret('GOP_INGEST_KEY') ?? '';
   const enabled = (getSecret('TELEMETRY_ENABLED') ?? '1') !== '0' && !!key;
   if (!enabled || url.pathname.startsWith('/api/client-log')) {
-    return withPreviewCacheGuard(context, await next(rewriteTo as any));
+    return withPreviewCacheGuard(context, await next(previewRewrite as any));
   }
 
   const collector = createCollector();
@@ -165,7 +142,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const t0 = Date.now();
   let response: Response;
   try {
-    response = await gopStorage.run(collector, () => next(rewriteTo as any));
+    response = await gopStorage.run(collector, () => next(previewRewrite as any));
   } catch (err) {
     collector.render_outcome = 'failed';
     collector.events.push({ table: 'error_log', row: {

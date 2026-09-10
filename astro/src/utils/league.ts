@@ -1,9 +1,9 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
 
 /**
- * The site renders one league per request. Middleware sets
- * `Astro.locals.league` from the URL prefix (`/nfl/*`) and rewrites onto the
- * shared page files; resources and link builders read it. `cfb` is the
+ * The site renders one league per request. The NFL lives at explicit pages
+ * under `pages/nfl/**` that set `Astro.locals.league` and render the shared
+ * route components; resources and link builders read it. `cfb` is the
  * unprefixed default, so every pre-existing URL, cache key and KV key is
  * untouched.
  */

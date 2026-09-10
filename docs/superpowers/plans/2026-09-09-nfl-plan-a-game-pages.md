@@ -543,6 +543,12 @@ git commit -m "feat(league): league config, path split and prefix helpers"
 
 ### Task 5: Middleware rewrite `/nfl/*` → routes with `locals.league`
 
+> **Superseded 2026-09-09** (review on #229): no middleware rewrite. The NFL is
+> explicit pages under `pages/nfl/**` (one thin page per cfb page) that set
+> `Astro.locals.league` and render shared route components in
+> `components/routes/`, with page-side decisions (redirect/404/cache) in
+> `src/routes/*.ts`. Pinned by `test/explicitRoutes.test.ts`.
+
 **Files:**
 - Modify: `astro/src/middleware.ts` (the block starting `let previewRewrite` ~line 55–80, and the final `next()` call)
 - Modify: `astro/src/env.d.ts:14-19` (`Locals` gains `league?: League`)

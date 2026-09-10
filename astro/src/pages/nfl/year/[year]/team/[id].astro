@@ -1,0 +1,10 @@
+---
+import SeasonTeamRoute from '../../../../../components/routes/SeasonTeamRoute.astro';
+import { loadSeasonTeam } from '../../../../../routes/seasonTeam';
+
+const r = await loadSeasonTeam(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+---
+<SeasonTeamRoute {...r} />

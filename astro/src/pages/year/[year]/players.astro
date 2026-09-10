@@ -1,12 +1,11 @@
 ---
 import PlayerLeaderboardPage from "../../../components/leaderboards/PlayerLeaderboardPage.astro";
-import { CURRENT_YEAR, LAST_YEAR } from "../../../utils/constants";
-import { leaguePath } from "../../../utils/league";
+import { prepareLeaderboard } from "../../../routes/leaderboards";
 
-const { year } = Astro.params;
-if (year == `${CURRENT_YEAR}`) {
-    return Astro.redirect(leaguePath(Astro.locals.league, `/year/${LAST_YEAR}/players`))
+const r = prepareLeaderboard(Astro, 'cfb', 'players');
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
 }
 ---
 
-<PlayerLeaderboardPage season={parseInt(year || `${CURRENT_YEAR}`)} category={"passing"} metric={"EPAplay"} />
+<PlayerLeaderboardPage season={r.season} category={"passing"} metric={"EPAplay"} />

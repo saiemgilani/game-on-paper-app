@@ -43,6 +43,6 @@ Real rows from the `nfl-data` stage-06 producer's 2025 build
 top-4 teams by net adjusted EPA from `team_summaries` (all 416 columns) and the
 top-4 qualified passers from `passing`. Captured 2026-09-09; no hand edits.
 
-**Used by:** `test/nflLeaderboards.render.test.ts`, which mocks the SDV client
+**Used by:** `test/nflLeaderboards.render.test.ts` and `test/explicitRoutes.test.ts`, which mock the SDV client
 with these rows (the NFL tables are not on the API yet) and renders the team and
 player leaderboard pages with `locals.league = 'nfl'`.
