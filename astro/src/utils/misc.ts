@@ -549,6 +549,8 @@ export function formatNumberForMetric(metric: string, value: number): string {
 export function shouldInvertSortForMetric(category: string, metric: string): boolean {
     // opponents MISSING field goals is the lucky outcome, so the lowest opp FG% leads
     if (metric == "luck_opp_fg_pct_def") return true;
+    // fewer opponent series converted is the better defense
+    if (metric == "series_conv_def") return true;
     return (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
 }
 

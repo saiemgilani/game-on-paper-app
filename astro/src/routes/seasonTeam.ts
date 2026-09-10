@@ -44,8 +44,9 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         Astro.cache.set(false);
         return { notFound: true };
     }
-    // the ESPN client hands the body back as-is; a null payload is not-found too
-    if (!team) {
+    // the ESPN client hands the body back as-is: a null payload or ESPN's 400 body
+    // ({"error": ...}, no id) for an unknown team is not-found too
+    if (!team?.id) {
         Astro.cache.set(false);
         return { notFound: true };
     }

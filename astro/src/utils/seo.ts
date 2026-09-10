@@ -228,8 +228,8 @@ export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
     tendencies: {
         h1: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected`,
         title: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected and Neutral-Situation Pass Rate | Game on Paper`,
-        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes).`,
-        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation.',
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes), plus series conversion rate for the offense and the defense.`,
+        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation. Series conversion rate is the share of sets of downs that end in a first down or touchdown.',
     },
     'fourth-downs': {
         h1: (s, l) => `${s} ${sportTitle(l)} Fourth Down Decisions`,
