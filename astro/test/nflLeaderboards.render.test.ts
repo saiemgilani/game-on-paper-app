@@ -3,6 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { modifyMetricForCategory } from '../src/utils/misc';
 
 // The season surfaces (team + player leaderboards) rendered for the NFL with
 // real rows from the nfl-data producer's 2025 build (tests/fixtures/
@@ -27,7 +28,7 @@ beforeAll(async () => {
 async function renderTeams(category: string) {
     const { default: Page } = await import('../src/components/leaderboards/TeamLeaderboardPage.astro');
     return container.renderToString(Page, {
-        props: { season: 2025, category, metric: category === 'differential' ? 'net_adj_epa' : undefined },
+        props: { season: 2025, category, metric: modifyMetricForCategory(category, 'net_adj_epa') },
         request: new Request(`https://gameonpaper.com/nfl/year/2025/teams/${category}`),
         locals: { league: 'nfl' },
     });
@@ -53,6 +54,9 @@ describe('NFL team leaderboard', () => {
         // rbsdm's Series Conv % (nflfastR series_success) joined the grid with the
         // 2002-2025 rebuild; the defense column ranks lowest-first
         expect(html).toContain('Series Conv %');
+        // sorted by a column the category has (pass_oe_off), so every row carries a rank
+        expect(html).not.toContain('>N/A<');
+        expect(html).not.toContain('title="undefined"');
         expect(html).toContain('Opp Series Conv %');
         // canonical + JSON-LD dataset url carry the league prefix
         expect(html).toContain('gameonpaper.com/nfl/year/2025/teams/tendencies');
