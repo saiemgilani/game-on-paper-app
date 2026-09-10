@@ -226,9 +226,12 @@ if (compactRows) {
                     e.preventDefault()
                     const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
                     if (gameId) {
-                        // stay in the league of the page the search was made from
-                        const prefix = window.location.pathname === "/nfl" || window.location.pathname.startsWith("/nfl/") ? "/nfl" : "";
-                        window.location.assign(prefix + "/game/" + gameId);
+                        // stay on the surface the search was made from: /preview and/or /nfl
+                        const path = window.location.pathname;
+                        const preview = path === "/preview" || path.startsWith("/preview/") ? "/preview" : "";
+                        const rest = path.slice(preview.length);
+                        const league = rest === "/nfl" || rest.startsWith("/nfl/") ? "/nfl" : "";
+                        window.location.assign(preview + league + "/game/" + gameId);
                     }
                 });
             </script>

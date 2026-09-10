@@ -51,7 +51,9 @@ describe('GamePage renders a finished NFL game end to end', () => {
     });
 
     test('internal links carry the /nfl prefix and no cfb link leaks', () => {
-        expect(html).toContain('/nfl/game/matchup?');
+        // the matchup preview reads the season tables, which the nfl does not
+        // have on the API yet -- the link is not offered rather than 404ing
+        expect(html).not.toContain('/game/matchup?');
         expect(html).toContain(`href="/nfl/game/${GAME_ID}"`);
         expect(html).not.toMatch(/href="\/game\/\d+/);
         expect(html).not.toMatch(/href="\/year\/\d{4}\/team\//);

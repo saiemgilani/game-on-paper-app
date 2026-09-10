@@ -445,14 +445,15 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
         }
     }
 
-    if (group == -1) { // top 25
+    // the Top 25 (group -1) and CFP (week 999) sentinels are college-only shapes
+    if (league === 'cfb' && group == -1) { // top 25
         result = result.filter((g: ESPNScheduleEvent) => {
             const home = g.competitions[0].competitors[0];
             const away = g.competitions[0].competitors[1];
 
             return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
         })
-    } else if (week === 999) { // CFP
+    } else if (league === 'cfb' && week === 999) { // CFP
         result = result.filter((g: ESPNScheduleEvent) => {
             const gameNote = g.competitions[0].notes.length > 0 ? g.competitions[0].notes[0].headline : ""
             return (

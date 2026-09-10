@@ -102,6 +102,7 @@ _BAD_COLS = [
     "start.yardsToEndzone",
     "start.posTeamTimeouts",
     "start.defTeamTimeouts",
+    "start.defPosTeamTimeouts",
     "start.shortDownDistanceText",
     "start.possessionText",
     "start.downDistanceText",
@@ -118,6 +119,7 @@ _BAD_COLS = [
     "end.yardsToEndzone",
     "end.posTeamTimeouts",
     "end.defTeamTimeouts",
+    "end.defPosTeamTimeouts",
     "end.shortDownDistanceText",
     "end.possessionText",
     "end.downDistanceText",
@@ -234,7 +236,7 @@ def _reshape_records(plays):
             # so sdv-py's frame has no such column at all -- not even a null.
             "shortDownDistanceText": record.get("start.shortDownDistanceText"),
             "possessionText": record.get("start.possessionText"),
-            "downDistanceText": record["start.downDistanceText"],
+            "downDistanceText": record.get("start.downDistanceText"),
             "posTeamSpread": record["start.pos_team_spread"],
         }
 
@@ -276,7 +278,6 @@ def _reshape_records(plays):
             v = record[k]
             if isinstance(v, float) and not math.isfinite(v):
                 record[k] = None
-
 
 
 # league -> (processor class, name of its ESPN fetch method). The pipeline,

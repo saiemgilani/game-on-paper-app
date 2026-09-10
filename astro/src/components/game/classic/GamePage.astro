@@ -106,7 +106,8 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#scoring-plays", title: "Scoring Plays" },
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
-    { href: `/game/matchup?${previewUrlParams.toString()}`, title: "Matchup Preview" },
+    // the matchup preview reads the season tables; not offered for a league without them
+    ...(LEAGUES[league].sdvEnabled ? [{ href: leaguePath(league, `/game/matchup?${previewUrlParams.toString()}`), title: "Matchup Preview" }] : []),
     { href: `https://www.espn.com/${espnPath}/game/_/gameId/${id}`, title: "Gamecast" },
 ];
 

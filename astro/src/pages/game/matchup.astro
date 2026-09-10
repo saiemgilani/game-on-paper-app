@@ -7,8 +7,15 @@ import { retrieveAllTeams } from "../../utils/teams";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { isTeamFavorite } from "../../utils/misc";
 import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import { LEAGUES } from "../../utils/league";
 
 const league = Astro.locals.league ?? 'cfb';
+// the builder is nothing but season-table reads; without them it is an empty
+// page with a college team selector, so it is a 404 for that league
+if (!LEAGUES[league].sdvEnabled) {
+    Astro.cache.set(false);
+    return Astro.rewrite("/404");
+}
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
 const awayTeamId = query.get("awayTeamId") || (league === 'nfl' ? "12" : "52");

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
+import { LEAGUES } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
@@ -43,6 +44,16 @@ function buildEntries(): Entry[] {
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/changelog/', lastmod: today, changefreq: 'weekly', priority: '0.3' },
     ];
+
+    // NFL week schedules are ESPN-backed and live today; NFL season/team pages
+    // join once the season tables exist (see docs/superpowers/plans/...plan-bc).
+    const nfl = LEAGUES.nfl;
+    for (const year of nfl.seasons) {
+        const lastmod = seasonLastmod(year);
+        const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
+        for (let w = 1; w <= nfl.regularSeasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+        for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+    }
 
     for (const year of AVAILABLE_SEASONS) {
         const lastmod = seasonLastmod(year);

@@ -19,7 +19,7 @@ let games: ESPNScheduleEvent[] = [];
 try {
     games = await getRemoteGames(season, seasontype, weekCleaned, group, league);
     const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(item.status?.type.completed == true || item.status?.type.name.includes("SCHEDULED") || item.status?.type.name.includes("CANCEL") || item.status?.type.name.includes("POSTPONE") || item.status?.type.name.includes("DELAY")))
-    const config = getScheduleCacheConfig(new Date(), season, seasontype, weekCleaned, !!hasActiveGames);
+    const config = getScheduleCacheConfig(new Date(), season, seasontype, weekCleaned, !!hasActiveGames, league);
     Astro.cache.set(config);
 } catch (e) {
     console.error(`ERROR while fetching games for ${JSON.stringify(Astro.props)}: ${e}`)

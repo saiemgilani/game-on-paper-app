@@ -12,6 +12,9 @@ const METRIC_YEAR = LAST_YEAR;
 // schedules are ESPN-backed and work for every league.
 const seasonNav = cfg.sdvEnabled;
 const weekNumbers = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => i + 1);
+// postseason rounds reachable from the nav too (same labels as ScheduleDropdown)
+const POST_LABELS = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
+const postWeeks = POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ week: i + 1, label }));
 ---
 
 <header class="p-3 mb-3 border-bottom">
@@ -76,6 +79,12 @@ const weekNumbers = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => i +
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/type/2/week/${w}`)}>{METRIC_YEAR} Week {w}</a></li>
                         ))
                     }
+                    <h6 class="dropdown-header">Postseason</h6>
+                    {
+                        postWeeks.map((p) => (
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/type/3/week/${p.week}`)}>{METRIC_YEAR} {p.label}</a></li>
+                        ))
+                    }
                     </ul>
                 </li>
                 )}
@@ -96,9 +105,12 @@ const weekNumbers = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => i +
         e.preventDefault()
         const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
         if (gameId) {
-            // stay in the league of the page the search was made from
-            const prefix = window.location.pathname === "/nfl" || window.location.pathname.startsWith("/nfl/") ? "/nfl" : "";
-            window.location.assign(prefix + "/game/" + gameId);
+            // stay on the surface the search was made from: /preview and/or /nfl
+            const path = window.location.pathname;
+            const preview = path === "/preview" || path.startsWith("/preview/") ? "/preview" : "";
+            const rest = path.slice(preview.length);
+            const league = rest === "/nfl" || rest.startsWith("/nfl/") ? "/nfl" : "";
+            window.location.assign(preview + league + "/game/" + gameId);
         }
     });
 </script>
