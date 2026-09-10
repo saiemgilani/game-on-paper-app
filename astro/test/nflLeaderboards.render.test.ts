@@ -50,6 +50,10 @@ describe('NFL team leaderboard', () => {
         expect(html).toContain('Pass Rate Over Expected');
         expect(html).toContain('PROE');
         expect(html).toContain('Neutral Pass Rate');
+        // rbsdm's Series Conv % (nflfastR series_success) joined the grid with the
+        // 2002-2025 rebuild; the defense column ranks lowest-first
+        expect(html).toContain('Series Conv %');
+        expect(html).toContain('Opp Series Conv %');
         // canonical + JSON-LD dataset url carry the league prefix
         expect(html).toContain('gameonpaper.com/nfl/year/2025/teams/tendencies');
     }, 60_000);

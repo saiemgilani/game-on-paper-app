@@ -788,6 +788,8 @@ export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> 
         "neutral_pass_rate_off": "Neutral Pass Rate",
         "neutral_xpass_rate_off": "Neutral Expected",
         "neutral_pass_oe_off": "Neutral PROE",
+        "series_conv_off": "Series Conv %",
+        "series_conv_def": "Opp Series Conv %",
     },
     "fourth-downs": {
         "fourth_decisions_off": "Decisions",
@@ -851,6 +853,8 @@ export const SDV_TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, nu
         "neutral_pass_rate_off": [ 100, 2, 1 ],
         "neutral_xpass_rate_off": [ 100, 2, 1 ],
         "neutral_pass_oe_off": [ 1, 2, 1 ],
+        "series_conv_off": [ 100, 2, 1 ],
+        "series_conv_def": [ 100, 2, 1 ],
     },
     "fourth-downs": {
         "fourth_decisions_off": [ 1, 0, 0 ],
@@ -904,6 +908,8 @@ export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> 
         "pass_oe_off": "Pass rate over expected, in percentage points: actual pass rate minus the model's expected pass rate for the same situations.",
         "neutral_pass_rate_off": "Neutral: 1st/2nd down, win probability 20-80%, outside the two-minute warning, first three quarters.",
         "neutral_pass_oe_off": "Neutral: 1st/2nd down, win probability 20-80%, outside the two-minute warning, first three quarters.",
+        "series_conv_off": "Share of offensive series (a set of downs) ending in a first down or touchdown. QB-kneel series excluded.",
+        "series_conv_def": "Share of opponents' series against this defense ending in a first down or touchdown. Lower is better; ranked with the lowest first.",
     },
     "fourth-downs": {
         "fourth_go_expected_off": "Share of this team's fourth-down decisions on which the win-probability model recommended going for it.",
@@ -998,6 +1004,7 @@ export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
     "pass_rate_off", "xpass_rate_off", "neutral_pass_rate_off", "neutral_xpass_rate_off",
     "fourth_go_rate_off", "fourth_go_expected_off", "fourth_go_over_expected_off", "fourth_go_when_recommended_off",
     "luck_fumble_rec_pct_off", "luck_fumble_rec_pct_def", "luck_opp_fg_pct_def",
+    "series_conv_off", "series_conv_def",
     "success",
     "success_off",
     "success_def",
@@ -1121,6 +1128,7 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
     "neutral_pass_rate": "Neutral Pass Rate",
     "neutral_xpass_rate": "Neutral Expected Pass Rate",
     "neutral_pass_oe": "Neutral Pass Rate Over Expected",
+    "series_conv": "Series Conversion Rate",
     "fourth_decisions": "Fourth Down Decisions",
     "fourth_go_rate": "Fourth Down Go Rate",
     "fourth_go_expected": "Model Fourth Down Go Rate",
