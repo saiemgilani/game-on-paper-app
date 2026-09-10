@@ -3,6 +3,9 @@ import PlayerLeaderboardPage from "../../../components/leaderboards/PlayerLeader
 import { prepareLeaderboard } from "../../../routes/leaderboards";
 
 const r = prepareLeaderboard(Astro, 'cfb', 'players');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
 if ('redirect' in r) {
     return Astro.redirect(r.redirect);
 }
