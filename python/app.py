@@ -16,12 +16,9 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
-<<<<<<< HEAD
 import paper_index
-=======
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
->>>>>>> origin/main
 import span_box
 
 # span key -> drive-summary period windows (drives book to their start quarter)
@@ -346,11 +343,6 @@ def _process_game(league: str, game_id: int):
         # processed_game, and everything after `return` is dead code -- which is
         # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
         # ordering (gop.dq_boxscore had zero rows since #192 merged).
-<<<<<<< HEAD
-        # Every standard window's box ships on every response
-        # (advBoxScoreSpans), so the frontend switches spans in place without
-        # a reload. The singular ?span= swap below stays for deep links.
-=======
         # StatBroadcast-style drive summary/chart. Cheap (one pass over ~25
         # drives + a few frame aggregations), so it ships on every response;
         # fail-open like everything else on this route.
@@ -391,7 +383,6 @@ def _process_game(league: str, game_id: int):
         # without a reload. Window-inherent sections (two-minute, middle-8,
         # pace, non-garbage, 4th-down report) stay on the full-game objects
         # only. The singular ?span= swap below stays for deep links.
->>>>>>> origin/main
         try:
             boxes = span_box.all_span_boxes(game)
             if boxes:
@@ -400,24 +391,6 @@ def _process_game(league: str, game_id: int):
             logging.getLogger("root").warning(
                 f"all-span boxes failed for {game_id}: {e}"
             )
-<<<<<<< HEAD
-
-        # Paper Index: one who-won-on-paper share from six fitted margins
-        # (python/paper_index.py; trained by tools/fit_paper_index.py).
-        # Always the FULL game -- a span page still describes the whole game's
-        # paper story -- and fail-open like everything else here.
-        try:
-            frame = getattr(game, "plays_frame", None)
-            if frame is not None:
-                pidx = paper_index.compute(
-                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
-                )
-                if pidx:
-                    processed_game["paperIndex"] = pidx
-        except Exception as e:  # the index must never cost the page
-            logging.getLogger("root").warning(
-                f"paper index failed for {game_id}: {e}"
-=======
         try:
             frame = getattr(game, "plays_frame", None)
             drv_all = (processed_game.get("drives") or {}).get("previous") or []
@@ -455,7 +428,23 @@ def _process_game(league: str, game_id: int):
         except Exception as e:  # a bad window must never cost the page
             logging.getLogger("root").warning(
                 f"all-span summaries failed for {game_id}: {e}"
->>>>>>> origin/main
+            )
+
+        # Paper Index: one who-won-on-paper share from six fitted margins
+        # (python/paper_index.py; trained by tools/fit_paper_index.py).
+        # Always the FULL game -- a span page still describes the whole game's
+        # paper story -- and fail-open like everything else here.
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                pidx = paper_index.compute(
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
+                )
+                if pidx:
+                    processed_game["paperIndex"] = pidx
+        except Exception as e:  # the index must never cost the page
+            logging.getLogger("root").warning(
+                f"paper index failed for {game_id}: {e}"
             )
 
         raw_span = request.args.get("span")
