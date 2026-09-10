@@ -1,0 +1,8 @@
+---
+import SchedulePage from "../../../components/schedule/SchedulePage.astro";
+import { loadWeek } from "../../../routes/week";
+
+// week 1 of the regular season when [type]/[week] are absent (loadWeek defaults them)
+const { season, seasontype, week, group, games } = await loadWeek(Astro, 'nfl');
+---
+<SchedulePage season={season} seasontype={seasontype} week={week} group={group} isScoreboard={false} games={games} />

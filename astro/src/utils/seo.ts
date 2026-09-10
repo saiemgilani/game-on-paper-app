@@ -10,8 +10,12 @@
  */
 
 import type { PageBreadcrumb } from "../layouts/GenericPage.astro";
+import { leaguePath, type League } from "./league";
 
 export const ORIGIN = 'https://gameonpaper.com';
+
+/** the sport noun the copy uses; cfb is the historical default so existing text is unchanged */
+const sportNoun = (league?: League) => (league === 'nfl' ? 'NFL' : 'college football');
 
 export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
     const items = crumbs.filter((c) => c.url);
@@ -55,6 +59,7 @@ export interface DatasetSpec {
     url: string;
     season: number;
     variables: string[];
+    league?: League;
 }
 
 /** A season leaderboard as a Dataset so the table is discoverable as data, not just a page. */
@@ -67,7 +72,7 @@ export function datasetJsonLd(spec: DatasetSpec) {
         description: spec.description,
         url,
         temporalCoverage: `${spec.season}`,
-        keywords: ['college football', 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
+        keywords: [sportNoun(spec.league), 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
         creator: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN },
         isAccessibleForFree: true,
         variableMeasured: spec.variables.map((v) => ({ '@type': 'PropertyValue', name: v })),
@@ -76,6 +81,8 @@ export function datasetJsonLd(spec: DatasetSpec) {
 
 export interface GameSpec {
     id: string | number;
+    /** which league's URL space and copy; cfb when absent */
+    league?: League;
     /** rendered (lowercased) names, as the site shows them */
     away: string;
     home: string;
@@ -97,6 +104,11 @@ export interface GameSpec {
     hasScore: boolean;
     /** ESPN status description ("Final", "Postponed", "Canceled") */
     statusDescription?: string;
+    /** real venue, when known -- emitted as the schema.org Place */
+    venueName?: string;
+    venueCity?: string;
+    venueRegion?: string;
+    venueCountry?: string;
 }
 
 /**
@@ -127,10 +139,11 @@ export function gameTitle(g: GameSpec): string {
 export function gameDescription(g: GameSpec): string {
     const when = new Date(g.date);
     const day = isNaN(when.getTime()) ? '' : ` on ${when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}`;
+    const sport = sportNoun(g.league);
     if (g.hasScore) {
-        return `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}${day}: college football advanced box score with EPA per play, success rate, explosiveness, win probability chart, drives and every play.`;
+        return `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}${day}: ${sport} advanced box score with EPA per play, success rate, explosiveness, win probability chart, drives and every play.`;
     }
-    return `${g.away} vs ${g.home}${day}: college football matchup preview with win probability, EPA per play, success rate and explosiveness for both teams, plus series history.`;
+    return `${g.away} vs ${g.home}${day}: ${sport} matchup preview with win probability, EPA per play, success rate and explosiveness for both teams, plus series history.`;
 }
 
 /** A game as a SportsEvent -- the only schema.org type Google shows sports rich results for. */
@@ -139,9 +152,9 @@ export function sportsEventJsonLd(g: GameSpec) {
         '@type': 'SportsTeam',
         name: name || fallback,
         sport: 'American football',
-        ...(id != null ? { url: new URL(`/team/${id}`, ORIGIN).href } : {}),
+        ...(id != null ? { url: new URL(leaguePath(g.league, `/team/${id}`), ORIGIN).href } : {}),
     });
-    const url = new URL(`/game/${g.id}`, ORIGIN).href;
+    const url = new URL(leaguePath(g.league, `/game/${g.id}`), ORIGIN).href;
     const home = team(g.homeName, g.home, g.homeId);
     const away = team(g.awayName, g.away, g.awayId);
     return {
@@ -155,23 +168,44 @@ export function sportsEventJsonLd(g: GameSpec) {
         startDate: g.date,
         eventStatus: eventStatus(g.statusDescription),
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        ...(g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
+        ...(g.venueName
+        ? { location: { '@type': 'Place', name: g.venueName, ...(g.venueCity || g.venueRegion || g.venueCountry ? { address: { '@type': 'PostalAddress', ...(g.venueCity ? { addressLocality: g.venueCity } : {}), ...(g.venueRegion ? { addressRegion: g.venueRegion } : {}), ...(g.venueCountry ? { addressCountry: g.venueCountry } : {}) } } : {}) } }
+        : g.neutralSite ? {} : { location: { '@type': 'Place', name: `${home.name} home field` } }),
         homeTeam: home,
         awayTeam: away,
         competitor: [away, home],
-        organizer: { '@type': 'SportsOrganization', name: 'NCAA' },
-        ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: ['college football', 'EPA per play', 'success rate', 'win probability'] } } : {}),
+        organizer: { '@type': 'SportsOrganization', name: g.league === 'nfl' ? 'NFL' : 'NCAA' },
+        ...(g.hasScore ? { subjectOf: { '@type': 'Dataset', name: `${away.name} ${g.awayScore}, ${home.name} ${g.homeScore} advanced box score`, url, keywords: [sportNoun(g.league), 'EPA per play', 'success rate', 'win probability'] } } : {}),
     };
 }
 
-export function websiteJsonLd() {
+export interface FaqEntry { question: string; answer: string }
+
+/** schema.org FAQPage from plain question/answer pairs (answers may hold HTML). */
+export function faqPageJsonLd(faqs: FaqEntry[], pageUrl: string) {
+    if (!faqs.length) return null;
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        '@id': `${pageUrl}#faq`,
+        mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer.replace(/<[^>]+>/g, '') },
+        })),
+    };
+}
+
+export function websiteJsonLd(league: League = 'cfb') {
     return {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Game on Paper',
         alternateName: 'GameOnPaper.com',
         url: ORIGIN,
-        description: 'College football advanced analytics: EPA per play, success rate, win probability and advanced box scores for every FBS game.',
+        description: league === 'nfl'
+            ? 'NFL advanced analytics: EPA per play, success rate, win probability and advanced box scores for every game.'
+            : 'College football advanced analytics: EPA per play, success rate, win probability and advanced box scores for every FBS game.',
         publisher: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN, sameAs: ['https://bsky.app/profile/gameonpaper.com', 'https://x.com/gameonpaper'] },
     };
 }
@@ -188,46 +222,72 @@ export function jsonLdScript(objs: (object | null)[]): string {
     return JSON.stringify(body).replace(/<\//g, '<\\/');
 }
 
-/** Copy for the three team-leaderboard categories. The words here are the words people search. */
-export const LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string; intro: string }> = {
+/** "College Football" / "NFL" and "FBS" / "NFL" -- the copy below is written once for both leagues. */
+const sportTitle = (l?: League) => (l === 'nfl' ? 'NFL' : 'College Football');
+const poolNoun = (l?: League) => (l === 'nfl' ? 'NFL' : 'FBS');
+
+type LeaderboardCopy = { h1: (s: number, l?: League) => string; title: (s: number, l?: League) => string; description: (s: number, l?: League) => string; intro: string };
+
+/** Copy for the team-leaderboard categories. The words here are the words people search. */
+export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
     offensive: {
-        h1: (s) => `${s} College Football Offensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
-        description: (s) => `Every FBS offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Offensive EPA per Play Rankings`,
+        title: (s, l) => `${s} ${sportTitle(l)} Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
         intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance and field position. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field, so it is the fairest single number for how good an offense really is.',
     },
     defensive: {
-        h1: (s) => `${s} College Football Defensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
-        description: (s) => `Every FBS defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Defensive EPA per Play Rankings`,
+        title: (s, l) => `${s} ${sportTitle(l)} Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
         intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
     },
     differential: {
-        h1: (s) => `${s} College Football Team Rankings by Net EPA per Play`,
-        title: (s) => `${s} College Football Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
-        description: (s) => `Every FBS team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Team Rankings by Net EPA per Play`,
+        title: (s, l) => `${s} ${sportTitle(l)} Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
         intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. Adjusted for opponent, home field and garbage time.',
+    },
+    // NFL-only categories (rbsdm.com parity); the college grid has no such columns
+    tendencies: {
+        h1: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected`,
+        title: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected and Neutral-Situation Pass Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes), plus series conversion rate for the offense and the defense.`,
+        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation. Series conversion rate is the share of sets of downs that end in a first down or touchdown.',
+    },
+    'fourth-downs': {
+        h1: (s, l) => `${s} ${sportTitle(l)} Fourth Down Decisions`,
+        title: (s, l) => `${s} ${sportTitle(l)} Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} by fourth-down go rate, the go rate the win-probability model recommends, the gap between them, and the average boost of going when the model says go.`,
+        intro: 'On every fourth down the model compares the win probability of going for it, kicking and punting. Go rate over expected is how often a team goes minus how often the model would; boost is the average win-probability edge of going on the plays where going was recommended.',
+    },
+    luck: {
+        h1: (s, l) => `${s} ${sportTitle(l)} Luck: Fumble Recoveries and Opponent Field Goals`,
+        title: (s, l) => `${s} ${sportTitle(l)} Luck Rankings: Fumble Recovery Rate, Opponent FG% | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} by the share of its own fumbles it recovered, the share of opponent fumbles it recovered, and its opponents' field-goal percentage.`,
+        intro: 'Who recovers a loose ball and whether the other kicker misses are close to coin flips over a season. Teams far from the middle here have been lucky or unlucky in ways that tend not to persist.',
     },
 };
 
-export const LEADERBOARD_CATEGORIES = Object.keys(LEADERBOARD_COPY);
+/** The shared team-leaderboard categories every league has; per-league extras live in utils/league.ts. */
+export const LEADERBOARD_CATEGORIES = ['offensive', 'defensive', 'differential'];
 
 /** Copy for the three player-leaderboard categories. Same shape as LEADERBOARD_COPY, minus intro. */
-export const PLAYER_LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string }> = {
+export const PLAYER_LEADERBOARD_COPY: Record<string, Omit<LeaderboardCopy, 'intro'>> = {
     passing: {
         h1: (s) => `${s} Passing EPA per Play Leaders`,
-        title: (s) => `${s} College Football Passing EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS quarterbacks ranked by EPA per play (dropback), with total EPA, success rate, explosiveness and yards per attempt. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Passing EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} quarterbacks ranked by EPA per play (dropback), with total EPA, success rate, explosiveness and yards per attempt. Sortable, updated after every game.`,
     },
     rushing: {
         h1: (s) => `${s} Rushing EPA per Play Leaders`,
-        title: (s) => `${s} College Football Rushing EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS rushers ranked by EPA per play (carry), with total EPA, success rate, explosiveness and yards per carry. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Rushing EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} rushers ranked by EPA per play (carry), with total EPA, success rate, explosiveness and yards per carry. Sortable, updated after every game.`,
     },
     receiving: {
         h1: (s) => `${s} Receiving EPA per Play Leaders`,
-        title: (s) => `${s} College Football Receiving EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS receivers ranked by EPA per play (target), with total EPA, success rate, explosiveness and yards per target. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Receiving EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} receivers ranked by EPA per play (target), with total EPA, success rate, explosiveness and yards per target. Sortable, updated after every game.`,
     },
 };
 

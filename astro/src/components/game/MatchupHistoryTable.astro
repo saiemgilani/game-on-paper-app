@@ -1,5 +1,6 @@
 ---
 import type { SDVGame } from '../../resources/sdv';
+import { leaguePath } from '../../utils/league';
 import { capitalizeFirstLetter, produceTeamLogoLink } from '../../utils/misc';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from "luxon";
@@ -26,7 +27,7 @@ const { games } = Astro.props;
                     games.length > 0 && games.map(m => (
                         <tr>
                             <td class="text-left">
-                                <a href={`/game/${m.game_id}`}>
+                                <a href={leaguePath(Astro.locals.league, `/game/${m.game_id}`)}>
                                     <LocalDate client:only divClass="text-small m-0" date={m.start_date} format={DateTime.DATE_SHORT} prefix={null} />
                                 </a>
                             </td>
@@ -49,14 +50,14 @@ const { games } = Astro.props;
                             </td>
                             {
                                 m.completed && (
-                                    <td class="text-center" style={(m.away_points < m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team, season: m.season }, "span", true, "14px")} /> {m.away_points}</td>
-                                    <td class="text-center" style={(m.away_points > m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team, season: m.season }, "span", true, "14px")} /> {m.home_points}</td>
+                                    <td class="text-center" style={(m.away_points < m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team, season: m.season }, "span", true, "14px", Astro.locals.league)} /> {m.away_points}</td>
+                                    <td class="text-center" style={(m.away_points > m.home_points) ? "opacity: 0.5;" : ""}><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team, season: m.season }, "span", true, "14px", Astro.locals.league)} /> {m.home_points}</td>
                                 )
                             }
                             {
                                 (!m.completed) && (
-                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team, season: m.season }, "span", true, "14px")} /></td>
-                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team, season: m.season }, "span", true, "14px")} /></td>
+                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.away_id, school: m.away_team, season: m.season }, "span", true, "14px", Astro.locals.league)} /></td>
+                                <td class="text-center"><Fragment set:html={produceTeamLogoLink({ team_id: m.home_id, school: m.home_team, season: m.season }, "span", true, "14px", Astro.locals.league)} /></td>
                                 )
                             }
                         </tr>

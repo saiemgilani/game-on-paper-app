@@ -24,6 +24,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
     // 768px. Desktop keeps the card grid either way.
     'scoreboard-compact': 'preview',
+    // The whole NFL surface (pages/nfl/**, the header's league switch, the
+    // sitemap's /nfl URLs). Gated once in middleware: a viewer without the
+    // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'
+    // when the NFL launches -- nothing else changes.
+    'nfl': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {

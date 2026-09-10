@@ -4,6 +4,7 @@ import { safeCachePut } from "../utils/misc"
 import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
 import { wrappedFetch } from "../utils/telemetry"
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
+import { LEAGUES, type League } from "../utils/league"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
@@ -377,10 +378,31 @@ async function relayESPN(url: string): Promise<Response | null> {
     const base = getSecret("PYTHON_HTTP_URL");
     const token = getSecret("PYTHON_HTTP_TOKEN");
     if (!base || !token) return null;
+    // The relay carries a bearer token: never send it over cleartext to a
+    // non-local host. http:// stays allowed for localhost so local dev works.
+    try {
+        const u = new URL(base);
+        const local = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+        if (u.protocol !== "https:" && !(u.protocol === "http:" && local)) {
+            console.error(`ESPN relay refused: PYTHON_HTTP_URL must be https (got ${u.protocol}//${u.hostname})`);
+            return null;
+        }
+    } catch {
+        return null;
+    }
     try {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },
+            // never follow a redirect carrying the bearer token to a host we
+            // did not validate above. Workers fetch implements only "follow"
+            // and "manual" ("error" throws a TypeError at the edge), so take
+            // the manual response and refuse any 3xx explicitly.
+            redirect: "manual",
         });
+        if (resp.status >= 300 && resp.status < 400) {
+            console.error(`ESPN relay refused: redirect (${resp.status}) from the API host`);
+            return null;
+        }
         console.warn(`ESPN 403 for ${url}; relayed via API host -> ${resp.status}`);
         return resp;
     } catch (e: any) {
@@ -389,10 +411,12 @@ async function relayESPN(url: string): Promise<Response | null> {
     }
 }
 
-export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number): Promise<ESPNScheduleEvent[]> {
-    let espnGroup = group;
+export async function getRemoteGames(year: number, seasontype?: number, week?: number, group?: number, league: League = 'cfb'): Promise<ESPNScheduleEvent[]> {
+    const cfg = LEAGUES[league];
+    // a league with no conference grouping (nfl) never sends `group`
+    let espnGroup = cfg.defaultGroup === null ? undefined : group;
     if (espnGroup && espnGroup < 0) {
-        espnGroup = 80; // All FBS which we will filter
+        espnGroup = cfg.defaultGroup ?? undefined; // All FBS which we will filter
     }
 
     const baseParams: Record<string, any> = {
@@ -413,7 +437,7 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
     if (seasontype) {
         query.append("seasontype", `${seasontype || 2}`);
     }
-    const reqURL = `https://cdn.espn.com/core/college-football/schedule?` + query.toString()
+    const reqURL = `https://cdn.espn.com/core/${cfg.espnPath}/schedule?` + query.toString()
     console.info(`ESPN schedule query: ${reqURL}`)
     const resp = await requestESPN(reqURL);
     if (!resp.ok) {
@@ -442,14 +466,15 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
         }
     }
 
-    if (group == -1) { // top 25
+    // the Top 25 (group -1) and CFP (week 999) sentinels are college-only shapes
+    if (league === 'cfb' && group == -1) { // top 25
         result = result.filter((g: ESPNScheduleEvent) => {
             const home = g.competitions[0].competitors[0];
             const away = g.competitions[0].competitors[1];
 
             return ((home.curatedRank?.current ?? 99) < 26) || ((away.curatedRank?.current ?? 99) < 26)
         })
-    } else if (week === 999) { // CFP
+    } else if (league === 'cfb' && week === 999) { // CFP
         result = result.filter((g: ESPNScheduleEvent) => {
             const gameNote = g.competitions[0].notes.length > 0 ? g.competitions[0].notes[0].headline : ""
             return (
@@ -461,12 +486,13 @@ export async function getRemoteGames(year: number, seasontype?: number, week?: n
     return result;
 }
 
-export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEnabled = false): Promise<ESPNScheduleEvent[]> {
+export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEnabled = false, league: League = 'cfb'): Promise<ESPNScheduleEvent[]> {
+    const cfg = LEAGUES[league];
     // for safety, this cache TTL should be longer than the refresh rate
     const cacheTTL = CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER;
     try {
         if (cacheReadEnabled) { 
-            const cachedContent = await env.ESPN_API_CACHE.get("scoreboard", "json");
+            const cachedContent = await env.ESPN_API_CACHE.get(cfg.scoreboardCacheKey, "json");
             if (cachedContent) {
                 console.info(`ESPN API cache hit: scoreboard`)
                 return (cachedContent as ESPNScheduleEvent[]);
@@ -475,14 +501,14 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
         console.info(`ESPN API cache miss (cacheWriteEnabled: ${cacheWriteEnabled}): scoreboard`)
         // thanks to @pseudo-r on GitHub: https://github.com/pseudo-r/Public-ESPN-API#core-api-v3-enriched-schema
-        const resp = await requestESPN(`https://cdn.espn.com/core/college-football/scoreboard?group=80&limit=1000&xhr=1&${(new Date()).getTime()}`)
+        const resp = await requestESPN(`https://cdn.espn.com/core/${cfg.espnPath}/scoreboard?${cfg.scoreboardQuery}xhr=1&${(new Date()).getTime()}`)
 
         if (!resp.ok) {
             // Serve the last scoreboard we know was good rather than an empty page.
             // The short-TTL "scoreboard" entry is gone within two refreshes; this
             // one lives a day, so a multi-minute ESPN denial shows a slightly old
             // scoreboard instead of none.
-            const lastGood = await env.ESPN_API_CACHE.getWithMetadata("scoreboard:lastgood", "json");
+            const lastGood = await env.ESPN_API_CACHE.getWithMetadata(`${cfg.scoreboardCacheKey}:lastgood`, "json");
             if (lastGood?.value) {
                 const ageS = Math.round((Date.now() - Number((lastGood.metadata as any)?.fetchedAt ?? 0)) / 1000);
                 console.warn(`ESPN API: scoreboard ${resp.status}; serving last-good scoreboard from ${ageS}s ago`);
@@ -495,9 +521,9 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 
         if (cacheWriteEnabled && result) {
             console.info(`ESPN API cache update: scoreboard`)
-            await safeCachePut(env.ESPN_API_CACHE, "scoreboard", JSON.stringify(result), cacheTTL, { fetchedAt: Date.now() })
+            await safeCachePut(env.ESPN_API_CACHE, cfg.scoreboardCacheKey, JSON.stringify(result), cacheTTL, { fetchedAt: Date.now() })
             if (result.length > 0) {
-                await safeCachePut(env.ESPN_API_CACHE, "scoreboard:lastgood", JSON.stringify(result), 60 * 60 * 24, { fetchedAt: Date.now() })
+                await safeCachePut(env.ESPN_API_CACHE, `${cfg.scoreboardCacheKey}:lastgood`, JSON.stringify(result), 60 * 60 * 24, { fetchedAt: Date.now() })
             }
         }
         return result;
@@ -507,8 +533,8 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
     }
 }
 
-export async function retrieveGamePage(gameId: string | number): Promise<ESPNPlayByPlayResponse> {
-    const req = await requestESPN(`https://cdn.espn.com/core/college-football/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
+export async function retrieveGamePage(gameId: string | number, league: League = 'cfb'): Promise<ESPNPlayByPlayResponse> {
+    const req = await requestESPN(`https://cdn.espn.com/core/${LEAGUES[league].espnPath}/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
     const contentRaw = await req.text();
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
@@ -538,13 +564,16 @@ const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
  * Fail-open throughout: any KV problem degrades to today's behaviour rather
  * than costing anyone a page.
  */
-export async function retrieveGamePageGuarded(gameId: string | number): Promise<GuardedGamePage> {
-    const key = `gamestate:${gameId}`;
-    const gameContentKey = `gamecontent:${gameId}`;
+export async function retrieveGamePageGuarded(gameId: string | number, league: League = 'cfb'): Promise<GuardedGamePage> {
+    // cfb keeps its historical bare keys; other leagues are namespaced so an id
+    // can never read another league's high-water mark
+    const ns = league === 'cfb' ? '' : `${league}:`;
+    const key = `gamestate:${ns}${gameId}`;
+    const gameContentKey = `gamecontent:${ns}${gameId}`;
 
     let page: ESPNPlayByPlayResponse | null = null;
     try {
-        page = await retrieveGamePage(gameId);
+        page = await retrieveGamePage(gameId, league);
     } catch (e: any) {
         console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
     }
@@ -577,7 +606,7 @@ export async function retrieveGamePageGuarded(gameId: string | number): Promise<
     if (verdict.regressed) {
         console.warn(`game-state guard: stale payload for ${gameId} (${verdict.reason}); refetching`);
         try {
-            const retryPage = await retrieveGamePage(gameId);
+            const retryPage = await retrieveGamePage(gameId, league);
             best = pickFresher(best, { state: extractGameState(retryPage), payload: retryPage });
             verdict = isRegression(best.state, highWater);
         } catch (e: any) {
@@ -602,20 +631,21 @@ export interface ESPNTeamRequestPayload {
     teamId: string | number
     season?: string | number
     seasonType?: string | number | null
+    league?: League
 }
 
 async function retrieveTeamEndpoint(payload: ESPNTeamRequestPayload): Promise<any> {
     const endpoint = payload.endpoint ? payload.endpoint : ""
     const seasonType = payload.seasonType != null ? `/types/${payload.seasonType}` : ""
     const seasonStr = payload.season != null ? `/seasons/${payload.season}` : ""
-    const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
+    const url = `https://sports.core.api.espn.com/v2/sports/football/leagues/${LEAGUES[payload.league ?? 'cfb'].espnCoreLeague}${seasonStr}${seasonType}/teams/${payload.teamId}/${endpoint}?lang=en&region=us`
     const req =  await requestESPN(url);
     const res = await req.json()
     return res
 }
 
-export async function retrieveTeamInformation(teamId: string | number): Promise<ESPNTeam> {
-    return await retrieveTeamEndpoint({ teamId })
+export async function retrieveTeamInformation(teamId: string | number, league: League = 'cfb'): Promise<ESPNTeam> {
+    return await retrieveTeamEndpoint({ teamId, league })
 }
 
 export interface ESPNTeamEndpointResponse<T> {
@@ -626,11 +656,101 @@ export interface ESPNTeamEndpointResponse<T> {
   items: T[]
 }
 
-export async function retrieveTeamSeasonRecord(season: string | number, teamId: string | number): Promise<ESPNRecord[]> {
-    const records: ESPNTeamEndpointResponse<ESPNRecord> = await retrieveTeamEndpoint({ endpoint: "records", season, teamId })
+export async function retrieveTeamSeasonRecord(season: string | number, teamId: string | number, league: League = 'cfb'): Promise<ESPNRecord[]> {
+    const records: ESPNTeamEndpointResponse<ESPNRecord> = await retrieveTeamEndpoint({ endpoint: "records", season, teamId, league })
     return records.items
 }
 
+
+export interface ESPNSummaryWeather {
+    temperature?: number
+    highTemperature?: number
+    lowTemperature?: number
+    conditionId?: string
+    gust?: number
+    precipitation?: number
+}
+
+export interface ESPNSummaryVenue {
+    id?: string
+    fullName?: string
+    address?: { city?: string; state?: string; country?: string }
+    grass?: boolean
+}
+
+export interface ESPNPickcenterLine {
+    provider?: { name?: string }
+    details?: string
+    overUnder?: number
+    spread?: number
+}
+
+export interface ESPNSummaryLeaderEntry {
+    displayValue?: string
+    athlete?: {
+        id?: string
+        displayName?: string
+        shortName?: string
+        jersey?: string
+        position?: { abbreviation?: string }
+        headshot?: { href?: string }
+    }
+}
+
+export interface ESPNSummaryLeaderCategory {
+    name?: string
+    displayName?: string
+    leaders?: ESPNSummaryLeaderEntry[]
+}
+
+export interface ESPNSummaryTeamLeaders {
+    team?: { id?: string; abbreviation?: string; displayName?: string }
+    leaders?: ESPNSummaryLeaderCategory[]
+}
+
+export interface ESPNLastFiveEvent {
+    id?: string
+    week?: number
+    atVs?: string
+    gameDate?: string
+    score?: string
+    gameResult?: string
+    opponent?: { id?: string; abbreviation?: string; displayName?: string }
+}
+
+export interface ESPNSummaryLastFive {
+    team?: { id?: string }
+    events?: ESPNLastFiveEvent[]
+}
+
+export interface ESPNGameSummary {
+    gameInfo?: {
+        venue?: ESPNSummaryVenue
+        weather?: ESPNSummaryWeather
+        attendance?: number
+    }
+    pickcenter?: ESPNPickcenterLine[]
+    leaders?: ESPNSummaryTeamLeaders[]
+    lastFiveGames?: ESPNSummaryLastFive[]
+}
+
+// The cdn playbyplay payload carries only `header`; game context (venue,
+// weather, betting line, season leaders, recent form) lives on the site.api
+// summary endpoint. Same retry + API-host relay path as every ESPN call.
+export async function retrieveGameSummary(gameId: string | number): Promise<ESPNGameSummary | null> {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${gameId}`;
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN summary ${resp.status} for game ${gameId}`);
+            return null;
+        }
+        return await resp.json() as ESPNGameSummary;
+    } catch (e: any) {
+        console.error(`ESPN summary fetch failed for game ${gameId}: ${e}`);
+        return null;
+    }
+}
 
 export const EMPTY_ESPN_COMPETITION: ESPNCompetition = {
     id: "0",

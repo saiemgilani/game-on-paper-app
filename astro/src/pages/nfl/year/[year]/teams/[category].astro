@@ -1,0 +1,14 @@
+---
+import TeamLeaderboardPage from "../../../../../components/leaderboards/TeamLeaderboardPage.astro";
+import { prepareTeamCategory } from "../../../../../routes/leaderboards";
+
+const r = prepareTeamCategory(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+
+<TeamLeaderboardPage season={r.season} category={r.category} metric={r.metric} />

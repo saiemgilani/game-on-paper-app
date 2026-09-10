@@ -48,6 +48,10 @@ describe('sitemap.xml', () => {
     expect(xml).not.toContain(`/year/${CURRENT_YEAR}/players`);
   });
 
+  test('no /nfl URL while the nfl flag is not public (they are 404s)', () => {
+    expect(xml).not.toContain('gameonpaper.com/nfl');
+  });
+
   test('no doubled slashes or undefined leaked into a URL', () => {
     expect(xml).not.toMatch(/gameonpaper\.com\/\//);
     expect(xml).not.toContain('undefined');

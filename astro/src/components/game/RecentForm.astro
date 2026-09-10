@@ -1,0 +1,71 @@
+---
+import { DateTime } from 'luxon';
+import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
+import { cleanAbbreviation } from '../../utils/misc';
+
+interface Props {
+    summary: ESPNGameSummary | null
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+}
+
+const { summary, homeTeam, awayTeam } = Astro.props;
+
+// MM/DD/YY from ESPN's ISO game date, in UTC so the label never slides a day
+const shortDate = (iso?: string | null): string => {
+    if (!iso) return "";
+    const d = DateTime.fromISO(iso, { zone: "utc" });
+    return d.isValid ? d.toFormat("LL/dd/yy") : "";
+};
+
+function form(teamId: string | number) {
+    const block = (summary?.lastFiveGames ?? []).find(l => `${l?.team?.id}` === `${teamId}`);
+    // ESPN lists most recent first; render oldest -> newest so the streak reads left to right
+    return (block?.events ?? []).slice(0, 5).reverse();
+}
+
+const away = form(awayTeam.id);
+const home = form(homeTeam.id);
+---
+{(away.length > 0 || home.length > 0) && (
+<div class="row mb-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3">
+                <h2 class="fs-5 mb-1">Recent Form</h2>
+                <p class="small text-muted mb-3">Last five games.</p>
+                <div class="row gy-3">
+                    {[{ team: awayTeam, events: away }, { team: homeTeam, events: home }].map(({ team, events }) => (
+                    <div class="col-md-6 col-12">
+                        <p class="fw-bold mb-2">
+                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={team.abbreviation} />
+                            {team.abbreviation}
+                        </p>
+                        {events.length === 0
+                            ? (<p class="small text-muted m-0">No recent games.</p>)
+                            : (
+                            <div class="d-flex flex-wrap gap-2">
+                                {events.map(e => {
+                                    // green = win, purple = loss, matching the site's good/bad colors
+                                    const lost = e.gameResult === "L";
+                                    const played = shortDate(e.gameDate);
+                                    const badge = (
+                                        <span class={`badge ${e.gameResult === "W" ? "bg-success" : lost ? "" : "bg-secondary"}`} style={lost ? "background-color: var(--bs-purple)" : undefined} title={`${e.atVs ?? ""} ${e.opponent?.displayName ?? ""} ${e.score ?? ""}`}>
+                                            {e.gameResult ?? "?"} {e.score ?? ""} {e.atVs ?? ""} {cleanAbbreviation(e.opponent) || (e.opponent?.abbreviation ?? "")}{played ? ` \u00b7 ${played}` : ""}
+                                        </span>
+                                    );
+                                    return e.id
+                                        ? (<a class="text-decoration-none" href={`/game/${e.id}`}>{badge}</a>)
+                                        : badge;
+                                })}
+                            </div>
+                            )}
+                    </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+)}
