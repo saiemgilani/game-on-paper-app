@@ -71,6 +71,9 @@ describe('leaderboard loaders', () => {
         expect(prepareLeaderboard(fakeAstro(`/nfl/year/${CURRENT_YEAR}/players`, { year: `${CURRENT_YEAR}` }), 'nfl', 'players'))
             .toEqual({ redirect: `/nfl/year/${LAST_YEAR}/players` });
         expect(prepareLeaderboard(fakeAstro('/year/2024/teams', { year: '2024' }), 'cfb', 'teams')).toEqual({ season: 2024 });
+        // a malformed year never reaches the season tables as NaN
+        expect(prepareLeaderboard(fakeAstro('/year/2025junk/teams', { year: '2025junk' }), 'cfb', 'teams')).toEqual({ notFound: true });
+        expect(preparePlayerCategory(fakeAstro('/nfl/year/abc/players/passing', { year: 'abc', category: 'passing' }), 'nfl')).toEqual({ notFound: true });
     });
 });
 

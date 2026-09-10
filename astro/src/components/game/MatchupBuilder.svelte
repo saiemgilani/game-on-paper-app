@@ -1,8 +1,7 @@
 <script lang="ts">
     import type { TeamIndex } from "../../utils/teams";
-    import { espnLogoLeague, leagueFromLocation } from '../../utils/league';
+    import { espnLogoLeague, leagueFromLocation, leaguePath } from '../../utils/league';
     import { cleanName, roundNumber, cleanField } from "../../utils/misc";
-    import { leagueFromLocation, leaguePath } from "../../utils/league";
 
     const { teamSeasons, homeTeamId, homeSeason, awayTeamId, awaySeason, projection } = $props();
 

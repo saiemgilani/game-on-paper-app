@@ -23,9 +23,15 @@ export async function loadWeek(Astro: AstroGlobal, league: League): Promise<Week
     // a league without conference grouping (nfl) has no group at all
     const groupRaw = Astro.url.searchParams.get("group") || String(cfg.defaultGroup ?? "");
     const group = cfg.defaultGroup === null ? undefined : parseInt(groupRaw || `${cfg.defaultGroup}`);
-    const weekCleaned = parseInt(week || "1");
-    const season = parseInt(year || `${CURRENT_YEAR}`);
-    const seasontype = parseInt(type || "2");
+    // a malformed param falls back to its default rather than sending NaN to
+    // ESPN (which drops the filter and returns the whole season)
+    const int = (raw: string | undefined, fallback: number) => {
+        const v = parseInt(raw ?? "");
+        return Number.isFinite(v) ? v : fallback;
+    };
+    const weekCleaned = int(week, 1);
+    const season = int(year, CURRENT_YEAR);
+    const seasontype = int(type, 2);
 
     let games: ESPNScheduleEvent[] = [];
     try {

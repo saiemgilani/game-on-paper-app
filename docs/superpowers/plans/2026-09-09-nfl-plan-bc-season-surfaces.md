@@ -54,6 +54,10 @@ purely additive (5 paths added, 572 existing paths byte-identical).
 
 ## Gated on a human (in order)
 
+> **Status 2026-09-09:** steps 1–3 and the 2002–2024 backfill in step 5 are DONE (5 tables on
+> `/v1/nfl/*` for 2002–2025, `sdvEnabled: true`, NFL week URLs in the sitemap). Step 4 is the
+> merge of #229; the `series` column remains open.
+
 1. Merge nfl-data#36; publish 2025 (`python -m nfl_data_06_team_summaries --seasons 2025 --publish`
    or let the Monday cron do it).
 2. Merge sdv-db#57; `sdv-db ingest --sport nfl --dataset <tbl> --seasons 2025:2025` × 5;

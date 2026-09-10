@@ -51,7 +51,9 @@ function buildEntries(): Entry[] {
     for (const year of nfl.seasons) {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
-        for (let w = 1; w <= nfl.regularSeasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+        // week 18 arrived with the 17-game schedule in 2021
+        const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
+        for (let w = 1; w <= regWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
         for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
     }
 

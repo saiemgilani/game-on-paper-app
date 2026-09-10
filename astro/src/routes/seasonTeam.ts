@@ -44,6 +44,11 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         Astro.cache.set(false);
         return { notFound: true };
     }
+    // the ESPN client hands the body back as-is; a null payload is not-found too
+    if (!team) {
+        Astro.cache.set(false);
+        return { notFound: true };
+    }
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];

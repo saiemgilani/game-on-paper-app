@@ -59,6 +59,7 @@ export interface DatasetSpec {
     url: string;
     season: number;
     variables: string[];
+    league?: League;
 }
 
 /** A season leaderboard as a Dataset so the table is discoverable as data, not just a page. */
@@ -71,7 +72,7 @@ export function datasetJsonLd(spec: DatasetSpec) {
         description: spec.description,
         url,
         temporalCoverage: `${spec.season}`,
-        keywords: ['college football', 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
+        keywords: [sportNoun(spec.league), 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
         creator: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN },
         isAccessibleForFree: true,
         variableMeasured: spec.variables.map((v) => ({ '@type': 'PropertyValue', name: v })),
