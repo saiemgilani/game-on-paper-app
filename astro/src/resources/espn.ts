@@ -717,6 +717,8 @@ export interface ESPNStandingsEntry {
     team?: {
         id?: string
         location?: string
+        displayName?: string
+        shortDisplayName?: string
         abbreviation?: string
         logos?: { href: string }[]
     }
