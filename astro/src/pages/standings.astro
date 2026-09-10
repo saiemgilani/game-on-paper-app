@@ -64,7 +64,7 @@ const teamIds = conferences.flatMap((c) => c.rows.map((r) => r.teamId));
         <div class="row">
             {conferences.map((conf) => (
                 <div class={conferences.length > 1 ? "col-lg-6 col-12 mb-4" : "col-lg-8 col-12 mb-4"}>
-                    <h2 class="fs-5 mb-2">{conf.name}</h2>
+                    {conferences.length > 1 && (<h2 class="fs-5 mb-2">{conf.name}</h2>)}
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead>

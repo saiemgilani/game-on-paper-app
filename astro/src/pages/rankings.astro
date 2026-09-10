@@ -97,7 +97,7 @@ const teamIds = (poll?.ranks ?? []).map((r) => r.team.id);
                                             </td>
                                             <td class="text-center text-muted">{r.recordSummary ?? ""}</td>
                                             <td class="text-center text-muted">{r.points ?? ""}</td>
-                                            <td class={`text-center small ${mv.dir === "up" ? "text-success" : mv.dir === "down" ? "text-danger" : mv.dir === "new" ? "fw-bold" : "text-muted"}`}>{mv.label}</td>
+                                            <td class={`text-center small ${mv.dir === "up" ? "text-success" : mv.dir === "new" ? "fw-bold" : mv.dir === "down" ? "" : "text-muted"}`} style={mv.dir === "down" ? "color: var(--bs-purple)" : undefined}>{mv.label}</td>
                                         </tr>
                                     );
                                 })}
