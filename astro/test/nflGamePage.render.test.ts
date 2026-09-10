@@ -61,6 +61,9 @@ describe('GamePage renders a finished NFL game end to end', () => {
     test('ESPN URLs are the NFL ones', () => {
         expect(html).toContain(`https://www.espn.com/nfl/game/_/gameId/${GAME_ID}`);
         expect(html).toContain(`sports/football/nfl/events/${GAME_ID}.png`);
+        // team logos: the shared components used to hard-code the NCAA path
+        expect(html).toContain('teamlogos/nfl/500/7.png');
+        expect(html).not.toContain('teamlogos/ncaa/');
         expect(html).toContain(`https://gameonpaper.com/nfl/game/${GAME_ID}`); // canonical
         // glossary rows may cite college-football writing (Football Study Hall,
         // The Athletic); what must not appear is an ESPN college-football URL

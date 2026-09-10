@@ -36,3 +36,13 @@ with `locals.league = 'nfl'`).
 
 **To regenerate:** same call; the game id must stay 401772944 so the test's
 URL assertions hold.
+
+## `nfl-summaries-2025.json`
+Real rows from the `nfl-data` stage-06 producer's 2025 build
+(`python -m nfl_team_summaries --seasons 2025` against `model_pbp_2025`): the
+top-4 teams by net adjusted EPA from `team_summaries` (all 416 columns) and the
+top-4 qualified passers from `passing`. Captured 2026-09-09; no hand edits.
+
+**Used by:** `test/nflLeaderboards.render.test.ts`, which mocks the SDV client
+with these rows (the NFL tables are not on the API yet) and renders the team and
+player leaderboard pages with `locals.league = 'nfl'`.
