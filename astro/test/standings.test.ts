@@ -65,6 +65,16 @@ describe("sortStandings", () => {
         expect(sortStandings(rows, "nfl").map((r: any) => r.name)).toEqual(["Bills", "Dolphins", "Patriots"]);
     });
 
+    it("counts an NFL tie as half a win in the fallback", () => {
+        const rows = [
+            { seed: 999, overall: "1-0-1", conference: "0-0", division: "0-0", name: "tied" },   // .750
+            { seed: 999, overall: "1-1", conference: "0-0", division: "0-0", name: "even" },     // .500
+            { seed: 999, overall: "0-0-1", conference: "0-0", division: "0-0", name: "onlyTie" }, // .500, not .000
+            { seed: 999, overall: "0-1", conference: "0-0", division: "0-0", name: "lost" },     // .000
+        ] as any[];
+        expect(sortStandings(rows, "nfl").map((r: any) => r.name)).toEqual(["tied", "even", "onlyTie", "lost"]);
+    });
+
     it("breaks ties on the league's own record: division for the NFL, conference for CFB", () => {
         const rows = [
             { seed: 999, overall: "2-1", conference: "1-1", division: "0-1", name: "confStrong" },

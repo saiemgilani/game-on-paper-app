@@ -128,9 +128,11 @@ export function parseStandingsEntry(entry: ESPNStandingsEntry, league: League = 
  * conference for CFB -- and ESPN's own order after that (the sort is stable).
  */
 export function sortStandings(rows: StandingsRow[], league: League = 'cfb'): StandingsRow[] {
+    // "W-L" or, in the NFL, "W-L-T": a tie is half a win, the league's own rule
     const winPct = (rec: string) => {
-        const [w, l] = rec.split("-").map(Number);
-        return Number.isFinite(w) && Number.isFinite(l) && w + l > 0 ? w / (w + l) : 0;
+        const [w, l, t = 0] = rec.split("-").map(Number);
+        const games = w + l + t;
+        return Number.isFinite(games) && games > 0 ? (w + t / 2) / games : 0;
     };
     const fullySeeded = rows.length > 0 && rows.every((r) => r.seed !== 999);
     if (fullySeeded) return rows.toSorted((a, b) => a.seed - b.seed);
