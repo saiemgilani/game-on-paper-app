@@ -1,58 +1,102 @@
 ---
-import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
+import type { ESPNTeam } from '../../resources/espn';
+import {
+    SummaryType,
+    retrievePlayerSummaries,
+    type SDVPassingSummary,
+    type SDVPlayerSummary,
+    type SDVReceivingSummary,
+    type SDVRushingSummary,
+} from '../../resources/sdv';
+import { cleanAbbreviation, roundNumber } from '../../utils/misc';
 
 interface Props {
-    summary: ESPNGameSummary | null
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
+    metricYear: number
 }
 
-const { summary, homeTeam, awayTeam } = Astro.props;
+const { homeTeam, awayTeam, metricYear } = Astro.props;
 
-// season-leader categories worth surfacing pregame; ESPN also ships
-// sacks/totalTackles but three offensive lines keep the card scannable
-const CATEGORIES = ["passingYards", "rushingYards", "receivingYards"];
-
-function teamLeaders(teamId: string | number) {
-    const block = (summary?.leaders ?? []).find(l => `${l?.team?.id}` === `${teamId}`);
-    if (!block) return [];
-    return (block.leaders ?? [])
-        .filter(c => CATEGORIES.includes(c?.name ?? ""))
-        .map(c => ({ category: c.displayName ?? c.name, entry: (c.leaders ?? [])[0] }))
-        .filter(x => x.entry?.athlete?.displayName);
+interface WatchRow {
+    title: string
+    name: string
+    subtitle: string
 }
 
-const away = teamLeaders(awayTeam.id);
-const home = teamLeaders(homeTeam.id);
+// Our leaders, not ESPN's: the season's most VALUABLE passer, rusher and
+// receiver by total EPA, described in EPA/play. ESPN's summary.leaders block
+// ranks by raw yards, which is the one thing this site exists not to do.
+const yds = (n: number) => `${n} yd${Math.abs(n) === 1 ? "" : "s"}`;
+const named = (rows: SDVPlayerSummary[], key: string) =>
+    rows.filter((r) => {
+        const n = (r as any)[key];
+        return n && n !== "NA";
+    });
+const best = <T,>(rows: T[]): T | null =>
+    rows.length === 0 ? null : rows.toSorted((a, b) => (b as any).TEPA - (a as any).TEPA)[0];
+
+async function watchRows(teamId: string | number): Promise<WatchRow[]> {
+    const [pass, rush, rec] = await Promise.all([
+        retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "TEPA", false, 10, metricYear),
+        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "TEPA", false, 20, metricYear),
+        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "TEPA", false, 25, metricYear),
+    ]);
+    const p = best(named(pass, "passer_player_name") as SDVPassingSummary[]);
+    const r = best(named(rush, "rusher_player_name") as SDVRushingSummary[]);
+    const c = best(named(rec, "receiver_player_name") as SDVReceivingSummary[]);
+    return [
+        p && {
+            title: "Passing",
+            name: p.passer_player_name,
+            subtitle: `${roundNumber(p.EPAplay, 2, 2)} EPA/play · ${p.dropbacks} db · ${yds(p.yards)} · ${p.passing_td} TD`,
+        },
+        r && {
+            title: "Rushing",
+            name: r.rusher_player_name,
+            subtitle: `${roundNumber(r.EPAplay, 2, 2)} EPA/play · ${r.plays} car · ${yds(r.yards)} · ${r.rushing_td} TD`,
+        },
+        c && {
+            title: "Receiving",
+            name: c.receiver_player_name,
+            subtitle: `${roundNumber(c.EPAplay, 2, 2)} EPA/play · ${c.plays} rec · ${yds(c.yards)}`,
+        },
+    ].filter((x): x is WatchRow => !!x);
+}
+
+// A team with no season data yet simply renders no rows; one failed lookup
+// must not cost the other team's card.
+const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTeam.id)]);
 ---
 {(away.length > 0 || home.length > 0) && (
-<div class="row my-3">
+<div class="row mb-3">
     <div class="col-lg-2 d-none d-lg-block"></div>
     <div class="col-lg-8 col-md-12 margin-override">
         <div class="card border rounded">
             <div class="card-body py-3">
-                <h2 class="fs-5 mb-3">Players to Watch</h2>
+                <h2 class="fs-5 mb-1">Players to Watch</h2>
+                <p class="small text-muted mb-3">Season leaders by total EPA, {metricYear}.</p>
                 <div class="row gy-3">
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">
-                        <p class="fw-bold mb-2">
-                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={team.abbreviation} />
-                            {team.abbreviation}
+                        <p class="fw-bold mb-2 d-flex align-items-center gap-2">
+                            <a class="text-decoration-none text-reset d-flex align-items-center gap-2" href={`/team/${team.id}`}>
+                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={cleanAbbreviation(team)} />
+                                <span>{cleanAbbreviation(team)}</span>
+                            </a>
                         </p>
                         {rows.length === 0
-                            ? (<p class="small text-muted m-0">No season leaders yet.</p>)
+                            ? (<p class="small text-muted m-0">No season data yet.</p>)
                             : rows.map(r => (
                                 <p class="small mb-1">
-                                    <span class="text-muted">{r.category}:</span>{" "}
-                                    <strong>{r.entry!.athlete!.displayName}</strong>
-                                    {r.entry!.athlete!.position?.abbreviation ? ` (${r.entry!.athlete!.position!.abbreviation})` : ""}
-                                    {r.entry!.displayValue ? ` — ${r.entry!.displayValue}` : ""}
+                                    <span class="text-muted">{r.title}:</span>{" "}
+                                    <strong>{r.name}</strong>
+                                    <span class="text-muted d-block">{r.subtitle}</span>
                                 </p>
                             ))}
                     </div>
                     ))}
                 </div>
-                <p class="small m-0 mt-2 text-muted">Season statistical leaders entering this game.</p>
             </div>
         </div>
     </div>

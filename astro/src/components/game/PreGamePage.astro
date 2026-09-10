@@ -184,7 +184,7 @@ const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
         </div>
         <div class="container-fluid">
             <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={metricYear} />
-            <PlayersToWatch summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
+            <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={metricYear} />
             <RecentForm summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
         </div>
         <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} matchupHistory={matchupHistory} />

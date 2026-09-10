@@ -1,7 +1,7 @@
 ---
 import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
 import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../../resources/sdv';
-import { roundNumber } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber } from '../../utils/misc';
 
 interface Props {
     summary: ESPNGameSummary | null
@@ -15,12 +15,29 @@ interface Props {
 
 const { summary, homeTeam, awayTeam, neutralSite, homeAdjEpa, awayAdjEpa, metricYear } = Astro.props;
 
+// ESPN writes a line as "<ABBR> -3.5". Swap its abbreviation for ours so a
+// meme-list team reads the same here as everywhere else on the page.
+const cleanLineDetails = (details?: string | null): string => {
+    if (!details) return "";
+    for (const t of [homeTeam, awayTeam]) {
+        const cleaned = cleanAbbreviation(t);
+        if (t.abbreviation && cleaned !== t.abbreviation) {
+            return details.replace(t.abbreviation, cleaned);
+        }
+    }
+    return details;
+};
+
 const margin = calculatePredictedPointMargin(awayAdjEpa ?? undefined, homeAdjEpa ?? undefined, neutralSite);
 const winProb = calculatePredictedWinProb(margin);
 const favorite = margin == null ? null : (margin >= 0 ? homeTeam : awayTeam);
 const favProb = winProb == null ? null : (margin != null && margin >= 0 ? winProb : 1 - winProb);
 
-const line = (summary?.pickcenter ?? []).find(p => p?.details) ?? null;
+// ESPN ships one entry per sportsbook. Take the consensus line when it is
+// there -- "first with details" is whichever book ESPN happened to order
+// first, which is not a number worth showing next to our own projection.
+const priced = (summary?.pickcenter ?? []).filter(p => p?.details);
+const line = priced.find(p => /consensus|average/i.test(p?.provider?.name ?? "")) ?? priced[0] ?? null;
 const venue = summary?.gameInfo?.venue ?? null;
 const weather = summary?.gameInfo?.weather ?? null;
 const venuePlace = [venue?.address?.city, venue?.address?.state ?? venue?.address?.country]
@@ -43,9 +60,9 @@ const hasAnything = favorite != null || line != null || venue != null;
                     {favorite != null && (
                     <div class="col-md-4 col-12">
                         <p class="small text-muted text-uppercase mb-1">Projection</p>
-                        <p class="mb-0 fw-bold">
-                            <img class={`team-logo-${favorite.id} me-1 align-middle`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${favorite.id}.png`} alt={favorite.abbreviation} />
-                            {favorite.abbreviation} by {roundNumber(Math.abs(margin!), 2, 1)}
+                        <p class="mb-0 fw-bold d-flex align-items-center justify-content-center gap-1">
+                            <img class={`team-logo-${favorite.id}`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${favorite.id}.png`} alt={cleanAbbreviation(favorite)} />
+                            <span>{cleanAbbreviation(favorite)} by {roundNumber(Math.abs(margin!), 2, 1)}</span>
                         </p>
                         <p class="small text-muted m-0">{roundNumber(favProb! * 100, 2, 0)}% by Net Adj EPA/play, {metricYear}</p>
                     </div>
@@ -53,14 +70,14 @@ const hasAnything = favorite != null || line != null || venue != null;
                     {line != null && (
                     <div class="col-md-4 col-12">
                         <p class="small text-muted text-uppercase mb-1">Betting Line</p>
-                        <p class="mb-0 fw-bold">{line.details}{line.overUnder != null ? ` · O/U ${line.overUnder}` : ""}</p>
+                        <p class="mb-0 fw-bold">{cleanLineDetails(line.details)}{line.overUnder != null ? ` \u2014 O/U ${line.overUnder}` : ""}</p>
                         {line.provider?.name && (<p class="small text-muted m-0">{line.provider.name}</p>)}
                     </div>
                     )}
                     {venue != null && (
                     <div class="col-md-4 col-12">
                         <p class="small text-muted text-uppercase mb-1">Venue</p>
-                        <p class="mb-0 fw-bold">{venue.fullName}{neutralSite ? " · Neutral site" : ""}</p>
+                        <p class="mb-0 fw-bold">{venue.fullName}{neutralSite ? " \u2014 Neutral site" : ""}</p>
                         <p class="small text-muted m-0">
                             {venuePlace}{weatherBits.length > 0 ? ` / ${weatherBits.join(" / ")}` : ""}
                         </p>
