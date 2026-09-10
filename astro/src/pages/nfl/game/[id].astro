@@ -1,0 +1,10 @@
+---
+import GameRoute from '../../../components/routes/GameRoute.astro';
+import { loadGameRoute } from '../../../routes/game';
+
+const r = await loadGameRoute(Astro, 'nfl');
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+<GameRoute {...r} />

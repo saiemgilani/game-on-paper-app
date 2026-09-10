@@ -1,5 +1,6 @@
 <script>
 import Chart from 'chart.js/auto';
+import { espnLogoLeague, leagueFromLocation } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
@@ -287,7 +288,7 @@ async function generateChart() {
                     }
 
                     if (!homeImage.src) {
-                        homeImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`;
+                        homeImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${homeTeam.id}.png`;
                     }
 
                     homeImage.onload = () => {                                            // when the image loads
@@ -307,7 +308,7 @@ async function generateChart() {
                     }
 
                     if (!awayImage.src) {
-                        awayImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`;
+                        awayImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${awayTeam.id}.png`;
                     }
 
                     awayImage.onload = () => {                                            // when the image loads

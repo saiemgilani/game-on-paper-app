@@ -1,0 +1,8 @@
+---
+// Rendered per request (was prerendered): the index varies by league. Cached for a day.
+import TeamIndexRoute from '../../components/routes/TeamIndexRoute.astro';
+
+Astro.locals.league = 'nfl';
+Astro.cache.set({ maxAge: 60 * 60 * 24, tags: ["teams-index"] });
+---
+<TeamIndexRoute league={'nfl'} />

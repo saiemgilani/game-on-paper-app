@@ -1,5 +1,6 @@
 ---
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../utils/constants';
+import { espnLogoLeague } from '../utils/league';
 
 interface Props {
     teamIds: (string | number)[]
@@ -7,9 +8,16 @@ interface Props {
 const { teamIds } = Astro.props;
 
 let teamIdCSS = teamIds.map(p => {
+    if (Astro.locals.league == 'nfl') {
+        return `
+            img.team-logo-${p} {
+                content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${p}.png&h=120&w=120')
+            }
+        `
+    }
     return `
     img.team-logo-${p} {
-        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${p}.png&h=120&w=120')
+        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500-dark/${p}.png&h=120&w=120')
     }
     `
 })

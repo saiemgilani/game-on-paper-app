@@ -1,12 +1,24 @@
 <script>
-	import { AVAILABLE_SEASONS } from '../../utils/constants';
-    import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
+	import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
+	import { LEAGUES, leaguePath } from '../../utils/league';
 
-	const { season, week, seasontype, group } = $props()
+	// `league` is passed from SchedulePage (SSR knows Astro.locals.league);
+	// it defaults to cfb so every existing caller is unchanged.
+	const { season, week, seasontype, group, league = 'cfb' } = $props()
+	const cfg = LEAGUES[league];
+	// cfb weeks come from the static schedule map (bowl/CFP weeks vary by
+	// season); the nfl calendar is fixed: 18 regular + 5 postseason rounds.
+	const NFL_POST_LABELS = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
+	function weeksFor(s) {
+		if (league === 'cfb') return GLOBAL_SCHEDULE_MAP[s] || [];
+		const reg = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));
+		const post = NFL_POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ type: 3, value: i + 1, label, detail: 'Postseason' }));
+		return reg.concat(post);
+	}
 	// svelte-ignore state_referenced_locally
 	let selectedSeason = $state({ value: String(season) });
-	let selectedSeasonWeeks = $derived({ value: GLOBAL_SCHEDULE_MAP[selectedSeason.value] || [] });
-	let selectedGroup = $state({ value: group || 80 });
+	let selectedSeasonWeeks = $derived({ value: weeksFor(selectedSeason.value) });
+	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : (group || cfg.defaultGroup) });
 	let selectedWeek = $state({ value: (week && seasontype) ? `${seasontype};${week}`: "-1;-1" });
 
 
@@ -19,7 +31,7 @@
 
 	function onSubmit(e) {
 		e.preventDefault();
-		
+
 		var baseUrl = `/year/${selectedSeason.value}`
 		if (selectedWeek.value != "-1;-1") {
 			const cleanWeekItems = selectedWeek.value.split(';')
@@ -33,7 +45,7 @@
 			baseUrl += `?group=${selectedGroup.value}`;
 		}
 
-		window.location = baseUrl;
+		window.location = leaguePath(league, baseUrl);
 	}
 </script>
 
@@ -42,7 +54,7 @@
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-lg" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
-				{#each AVAILABLE_SEASONS as s}
+				{#each cfg.seasons as s}
 					<option value={s} selected={(selectedSeason.value == s)}>{s}</option>
 				{/each}
             </select>
@@ -55,7 +67,8 @@
 			{/each}
         </select>
         </div>
-		
+
+		{#if cfg.defaultGroup !== null}
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-lg" onchange={(e) => selectedGroup.value = e.target.value}>
 				{#each GLOBAL_GROUP_LIST as g}
@@ -63,6 +76,7 @@
 				{/each}
             </select>
         </div>
+		{/if}
         <div class="col-lg-auto mb-3">
             <button type="submit" class="btn btn-lg btn-primary" onclick={onSubmit}>View</button>
         </div>

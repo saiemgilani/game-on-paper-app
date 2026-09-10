@@ -1,0 +1,10 @@
+---
+import TeamProfileRoute from '../../../components/routes/TeamProfileRoute.astro';
+import { loadTeamProfile } from '../../../routes/teamProfile';
+
+const r = await loadTeamProfile(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+---
+<TeamProfileRoute {...r} />

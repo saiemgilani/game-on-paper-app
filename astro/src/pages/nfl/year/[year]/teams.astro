@@ -1,0 +1,14 @@
+---
+import TeamLeaderboardPage from "../../../../components/leaderboards/TeamLeaderboardPage.astro";
+import { prepareLeaderboard } from "../../../../routes/leaderboards";
+
+const r = prepareLeaderboard(Astro, 'nfl', 'teams');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+
+<TeamLeaderboardPage season={r.season} category={"differential"} metric={"net_adj_epa"} />

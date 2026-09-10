@@ -1,8 +1,14 @@
 <script>
-    import { SDV_TEAM_METRIC_CATEGORIES, AVAILABLE_SEASONS } from "../../utils/constants";
+    import { SDV_TEAM_METRIC_CATEGORIES } from "../../utils/constants";
     import { toTitleCase, modifyMetricForCategory } from "../../utils/misc";
+    import { LEAGUES, leaguePath, teamCategoriesFor } from "../../utils/league";
 
-    const { season, category, metric, onChangeValue } = $props()
+    // `league` is passed by the SSR page (Astro.locals.league); cfb default
+    // keeps every existing caller unchanged.
+    const { season, category, metric, onChangeValue, league = 'cfb' } = $props()
+    const seasons = LEAGUES[league].seasons;
+    // the shared three plus this league's extras (rbsdm-style nfl categories)
+    const extraCategories = teamCategoriesFor(league).filter((c) => !['differential', 'offensive', 'defensive'].includes(c));
 
     function onChangeSeason(e) {
         onChangeValueWrapper(e.target.value, category, metric)
@@ -22,7 +28,7 @@
 		if (onChangeValue) {
             onChangeValue(s, c, m)
         } else {
-            window.location = `/year/${s}/teams/${c}?sort=${m}`;
+            window.location = leaguePath(league, `/year/${s}/teams/${c}?sort=${m}`);
         }
     }
 
@@ -42,7 +48,7 @@
             } else if (key.includes("_off") || key.includes("_def")) {
                 subcat = "overall"
             }
-            
+
             if (!Object.keys(optGroupMap).includes(subcat)) {
                 optGroupMap[subcat] = []
             }
@@ -56,7 +62,7 @@
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-md" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
-				{#each AVAILABLE_SEASONS as s}
+				{#each seasons as s}
 					<option value={s} selected={(season == s)}>{s}</option>
 				{/each}
             </select>
@@ -67,6 +73,9 @@
                 <option value="differential" selected={(category == 'differential')}>Net Statistics</option>
                 <option value="offensive" selected={(category == 'offensive')}>Offensive</option>
                 <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
+                {#each extraCategories as c}
+                <option value={c} selected={(category == c)}>{toTitleCase(c.replace('-', ' '))}</option>
+                {/each}
             </select>
         </div>
         <div class="col-auto mb-xs-3 mb-sm-0">
@@ -74,11 +83,11 @@
                 <option value="-1" disabled>Choose Metric...</option>
                 {#each Object.entries(optGroupMap) as [subcat, metrics]}
                     <optgroup label={toTitleCase(subcat)}>
-                        {#each metrics as m}
-                            <option value={m[0]} selected={(metric == m[0])}>{m[1]}</option>
+                        {#each metrics as [key, title]}
+                            <option value={key} selected={(metric == key)}>{title}</option>
                         {/each}
                     </optgroup>
-				{/each}
+                {/each}
             </select>
         </div>
     </div>
