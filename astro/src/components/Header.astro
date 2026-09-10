@@ -56,9 +56,16 @@ const METRIC_YEAR = LAST_YEAR;
                     </ul>
                 </li>
                 <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
-                <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
-                <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
-                <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                        Tools
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                        <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
+                        <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
+                    </ul>
+                </li>
             </ul>
 
             <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3" role="search" id="game-id-form">
