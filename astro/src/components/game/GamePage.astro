@@ -21,6 +21,7 @@ import PassingChart from './metrics/PassingChart.astro';
 import RushingChart from './metrics/RushingChart.astro';
 import TeamMetricsTable from './metrics/TeamMetricsTable.astro';
 import BinionBoxScore from './metrics/BinionBoxScore.astro';
+import PaperIndex from './metrics/PaperIndex.astro';
 import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
@@ -134,12 +135,18 @@ const latestSubtitle = !lastPlay
       ? `Final. Last drive: ${driveTeam ?? "unknown"}, ${driveResult ?? "no result"}.`
       : `${driveTeam ?? "Unknown"} has the ball. Q${lastPlay.period ?? "?"} ${lastPlay.clock?.displayValue ?? ""}, drive so far: ${driveResult ?? "in progress"}.`;
 
+// Paper Index: computed server-side from the full game. A span page scopes
+// every other panel to its window, so the full-game panel is suppressed there
+// rather than sitting among windowed ones claiming to describe the same thing.
+const paper = !activeSpan ? game.paperIndex ?? null : null;
+
 const scrollerItems: ScrollerItem[] = [
     // The Latest panel only renders when there are plays, so a game with none
     // must not advertise an anchor that isn't on the page.
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wp-section", title: "WP Chart" },
     { href: "#ep-section", title: "EPA Chart" },
+    ...(paper ? [{ href: "#paper-index", title: "Deserved Win %" }] : []),
     { href: "#team-stats", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays", title: "Big Plays" },
@@ -314,6 +321,9 @@ if (activeSpan) {
             </div>
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    {paper && (
+                        <PaperIndex result={paper} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
+                    )}
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">

@@ -1,0 +1,97 @@
+---
+import type { ESPNTeam } from '../../../resources/espn';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import { roundNumber } from '../../../utils/misc';
+
+interface Props {
+    result: {
+        homeShare: number
+        margins: Record<string, number>
+        byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
+    }
+    homeTeam: ESPNTeam
+    awayTeam: ESPNTeam
+    completed: boolean
+}
+
+const { result, homeTeam, awayTeam, completed } = Astro.props;
+
+const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 100)));
+const homePct = clampPct(result.homeShare);
+const awayPct = 100 - homePct;
+const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
+const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
+const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
+const m = result.margins;
+// the home team's edge on each fitted input, in display order
+const marginRows = [
+    m.success != null ? { label: "Success Rate", value: `${fmt(m.success * 100)}%`, pos: m.success >= 0 } : null,
+    m.explosive != null ? { label: "Explosive Play Rate", value: `${fmt(m.explosive * 100)}%`, pos: m.explosive >= 0 } : null,
+    m.explosive_epa != null ? { label: "Explosiveness (EPA/success)", value: fmt(m.explosive_epa, 2), pos: m.explosive_epa >= 0 } : null,
+    m.opp_conversion != null ? { label: "Opportunity Conversion Rate", value: `${fmt(m.opp_conversion * 100)}%`, pos: m.opp_conversion >= 0 } : null,
+    m.pts_per_opp != null ? { label: "Points per opportunity", value: fmt(m.pts_per_opp), pos: m.pts_per_opp >= 0 } : null,
+    m.field_position != null ? { label: "Field position (EP)", value: fmt(m.field_position, 2), pos: m.field_position >= 0 } : null,
+    m.havoc != null ? { label: "Havoc Rate", value: `${fmt(m.havoc * 100)}%`, pos: m.havoc >= 0 } : null,
+    m.turnovers != null ? { label: "Turnovers", value: fmt(m.turnovers, 0), pos: m.turnovers >= 0 } : null,
+].filter((r): r is { label: string; value: string; pos: boolean } => !!r);
+// per-window strip, canonical order; a missing window simply doesn't render
+const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
+const periods = PERIOD_ORDER
+    .filter((k) => result.byPeriod?.[k])
+    .map((k) => {
+        const p = clampPct(result.byPeriod![k].homeShare);
+        return { label: k.toUpperCase(), homePct: p, awayPct: 100 - p };
+    });
+---
+<Panel id="paper-index" title="Deserved Win %" show={true} class="mb-md-3">
+    <p class="text-small" slot="panel-subtitle">
+        Who {completed ? "won" : "is winning"} this game on paper: efficiency, explosiveness,
+        finishing drives, field position, havoc, and turnovers — each in its advanced-box form,
+        weighted by how much it decides real games.
+    </p>
+    <div class="row" slot="panel-body">
+        <div class="col-lg-8 col-12 d-flex flex-column justify-content-center mb-3 mb-lg-0">
+            <div class="d-flex align-items-center gap-2">
+                <img class={`img-fluid team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
+                <span class="fw-bold" style="min-width: 4ch">{awayPct}%</span>
+                <div class="progress flex-grow-1" style="height: 24px" role="meter" aria-label={meterLabel} aria-valuenow={homePct} aria-valuetext={`${homeTeam.abbreviation} ${homePct}%`} aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar" style={`width: ${awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
+                    <div class="progress-bar" style={`width: ${homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
+                </div>
+                <span class="fw-bold" style="min-width: 4ch">{homePct}%</span>
+                <img class={`img-fluid team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
+            </div>
+            {periods.length > 0 && (
+                <div class="d-flex flex-wrap gap-3 mt-3" aria-label="Deserved Win % by quarter">
+                    {periods.map((p) => (
+                        <div class="text-center" style="min-width: 72px">
+                            <div class="progress" style="height: 10px" title={`${p.label}: ${awayTeam.abbreviation} ${p.awayPct}% — ${homeTeam.abbreviation} ${p.homePct}%`}>
+                                <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
+                                <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
+                            </div>
+                            <span class="small text-muted">{p.label} <span class="fw-bold">{p.homePct}%</span></span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+        <div class="col-lg-4 col-12">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Margin</th>
+                        <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {marginRows.map((r) => (
+                        <tr>
+                            <td class="text-small">{r.label}</td>
+                            <td class="text-center fw-bold" style={r.pos ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{r.value}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</Panel>

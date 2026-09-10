@@ -3,12 +3,16 @@ interface Props {
     id: string
     title: string
     show: boolean
+    /** extra classes for the panel wrapper, e.g. spacing utilities */
+    class?: string
 }
 
-const { id, title, show } = Astro.props;
+// `class` is a reserved word and cannot be a binding name, so it aliases to
+// `className` -- the Astro convention. `class:list` drops it when undefined.
+const { id, title, show, class: className } = Astro.props;
 ---
 
-<div class="panel-group">
+<div class:list={["panel-group", className]}>
     <div class="panel panel-default">
         <div class="panel-heading">
             <div class="panel-title">
