@@ -33,7 +33,12 @@ describe('explicit /nfl pages', () => {
         // plus the standing explainer pages, which sit alongside the glossary
         // and describe the site rather than a league's slate
         const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap|nfl)(\/|\.)/;
-        const cfb = walk(PAGES).filter((p) => !leagueless.test(p)).sort();
+        // CFB-only, and not the same thing as leagueless: this page IS league
+        // -specific, it just has no NFL counterpart -- the AP and Coaches polls
+        // have no professional equivalent. Standings are NOT in here: the NFL
+        // publishes them per division and /nfl/standings renders them.
+        const cfbOnly = /^(rankings)\./;
+        const cfb = walk(PAGES).filter((p) => !leagueless.test(p) && !cfbOnly.test(p)).sort();
         const nfl = walk(join(PAGES, 'nfl')).sort();
         expect(nfl).toEqual(cfb);
     });

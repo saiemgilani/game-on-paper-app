@@ -1,0 +1,119 @@
+---
+import GenericPage from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import { loadStandings } from '../../utils/standings';
+import { cleanField } from '../../utils/misc';
+import { LEAGUES, leaguePath, type League } from '../../utils/league';
+
+interface Props {
+    league: League
+}
+
+const { league } = Astro.props;
+const cfg = LEAGUES[league];
+const lp = (p: string) => leaguePath(league, p);
+
+const allConferences = await loadStandings(league);
+
+// one group at a time or all, switched by dropdown (leaderboard pattern)
+const requested = Astro.url.searchParams.get("conference");
+const conferences = requested
+    ? allConferences.filter((c) => c.groupId === requested)
+    : allConferences;
+
+// same failure contract as /rankings: never cache the unavailable page
+if (allConferences.length > 0) {
+    Astro.cache.set({ maxAge: 3600, swr: 7200, tags: [`standings-${league}`] });
+} else {
+    Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
+}
+
+// The NFL groups by division inside two conferences; CFB by conference.
+const unit = league === 'nfl' ? "division" : "conference";
+const title = `${cfg.name} Standings`;
+const subtitle = league === 'nfl'
+    ? "Division standings across both conferences — records, points, and streaks."
+    : "Conference standings for every FBS league — records, points, and streaks.";
+const teamIds = conferences.flatMap((c) => c.rows.map((r) => r.teamId));
+---
+<GenericPage
+    title={title}
+    subtitle={subtitle}
+    slug={lp("/standings")}
+    heading={title}
+    description={subtitle}
+    breadcrumbs={[{ title: 'Home', url: lp('/'), active: false }, { title: 'Standings', active: true }]}
+>
+    <div class="container my-4">
+        <div class="row mb-2">
+            <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h1 class="fs-3 m-0">{title}</h1>
+                {allConferences.length > 1 && (
+                    <select class="form-select w-auto" aria-label={`Switch ${unit}`} data-conference-select data-base={lp("/standings")}>
+                        <option value="" selected={!requested}>All {unit}s</option>
+                        {allConferences.map((c) => (
+                            <option value={c.groupId} selected={c.groupId === requested}>{c.shortName}</option>
+                        ))}
+                    </select>
+                )}
+            </div>
+        </div>
+        {conferences.length === 0 && (
+            <p class="text-muted">Standings are unavailable right now. Try again in a few minutes.</p>
+        )}
+        <div class="row">
+            {conferences.map((conf) => (
+                <div class={conferences.length > 1 ? "col-lg-6 col-12 mb-4" : "col-lg-8 col-12 mb-4"}>
+                    {conferences.length > 1 && (<h2 class="fs-5 mb-2">{conf.name}</h2>)}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th class="text-center">Conf</th>
+                                    <th class="text-center">Overall</th>
+                                    <th class="text-center">PF</th>
+                                    <th class="text-center">PA</th>
+                                    <th class="text-center">+/-</th>
+                                    <th class="text-center">Strk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {conf.rows.map((r) => (
+                                    <tr>
+                                        <td>
+                                            <a href={lp(`/team/${r.teamId}`)}><img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={r.logo ?? `https://a.espncdn.com/i/teamlogos/${cfg.logoLeague}/500/${r.teamId}.png`} alt={`ESPN team id ${r.teamId} ${cleanField(r, "name")}`} title={r.name} /><span class="visually-hidden">{cleanField(r, "name")}</span><strong><span class="d-none d-sm-inline">{cleanField(r, "name")}</span><span class="d-sm-none">{r.abbreviation ?? cleanField(r, "name")}</span></strong></a>
+                                        </td>
+                                        <td class="text-center">{r.conference || "—"}</td>
+                                        <td class="text-center">{r.overall}</td>
+                                        <td class="text-center text-muted">{r.pointsFor}</td>
+                                        <td class="text-center text-muted">{r.pointsAgainst}</td>
+                                        <td class="text-center text-muted">{r.pointDifferential}</td>
+                                        <td class="text-center text-muted">{r.streak}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ))}
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <p class="small text-muted">
+                    {league === 'cfb' && (<Fragment>See also the <a href="/rankings">Top 25 rankings</a>. </Fragment>)}
+                    Standings data from ESPN.
+                </p>
+            </div>
+        </div>
+    </div>
+    <DarkModeLogos teamIds={teamIds} />
+    <script>
+        const sel = document.querySelector<HTMLSelectElement>("[data-conference-select]");
+        const base = sel?.dataset.base ?? "/standings";
+        sel?.addEventListener("change", () => {
+            window.location.href = sel.value ? `${base}?conference=${sel.value}` : base;
+        });
+    </script>
+</GenericPage>

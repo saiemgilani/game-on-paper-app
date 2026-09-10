@@ -32,6 +32,11 @@ const METRIC_YEAR = LAST_YEAR;
                         <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
                         <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
                         <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
+                        <h6 class="dropdown-header">Standings</h6>
+                        {/* Rankings is not lp()-wrapped and is cfb-only: the AP and
+                            Coaches polls have no NFL equivalent. Standings has a twin. */}
+                        {league === 'cfb' && (<li><a class="dropdown-item" href="/rankings">Top 25 Rankings</a></li>)}
+                        <li><a class="dropdown-item" href={lp("/standings")}>{league === 'nfl' ? 'Division Standings' : 'Conference Standings'}</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">

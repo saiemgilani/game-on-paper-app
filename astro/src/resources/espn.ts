@@ -662,6 +662,95 @@ export async function retrieveTeamSeasonRecord(season: string | number, teamId: 
 }
 
 
+export interface ESPNRankEntry {
+    current: number
+    previous: number
+    points?: number
+    firstPlaceVotes?: number
+    trend?: string
+    recordSummary?: string
+    team: {
+        id: string
+        abbreviation?: string
+        location?: string
+        nickname?: string
+        logo?: string
+        color?: string
+    }
+}
+
+export interface ESPNRanking {
+    id: string
+    name: string
+    shortName?: string
+    headline?: string
+    date?: string
+    occurrence?: { displayValue?: string }
+    ranks: ESPNRankEntry[]
+    others?: ESPNRankEntry[]
+}
+
+export interface ESPNRankingsResponse {
+    latestSeason?: { year?: number }
+    latestWeek?: number
+    rankings: ESPNRanking[]
+}
+
+// Current poll rankings (AP / Coaches / CFP when in season). Same retry +
+// API-host relay path as every ESPN call.
+export async function retrieveRankings(): Promise<ESPNRankingsResponse | null> {
+    const url = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings";
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN rankings ${resp.status}`);
+            return null;
+        }
+        return await resp.json() as ESPNRankingsResponse;
+    } catch (e: any) {
+        console.error(`ESPN rankings fetch failed: ${e}`);
+        return null;
+    }
+}
+
+export interface ESPNStandingsEntry {
+    team?: {
+        id?: string
+        location?: string
+        abbreviation?: string
+        logos?: { href: string }[]
+    }
+    stats?: { name?: string; displayValue?: string; type?: string }[]
+}
+
+export interface ESPNConferenceStandings {
+    id?: string
+    name?: string
+    shortName?: string
+    abbreviation?: string
+    /** NFL nests its divisions here; the conference itself carries no entries. */
+    children?: ESPNConferenceStandings[]
+    standings?: { entries?: ESPNStandingsEntry[] }
+}
+
+// One group's standings by ESPN group id; null on any failure so a single
+// conference outage never costs the standings page. CFB returns entries on the
+// group itself, the NFL returns a conference whose divisions are `children`.
+export async function retrieveConferenceStandings(groupId: string | number, league: League = 'cfb'): Promise<ESPNConferenceStandings | null> {
+    const url = `https://site.api.espn.com/apis/v2/sports/football/${LEAGUES[league].espnPath}/standings?group=${groupId}`;
+    try {
+        const resp = await requestESPN(url);
+        if (!resp.ok) {
+            console.warn(`ESPN standings ${resp.status} for group ${groupId}`);
+            return null;
+        }
+        return await resp.json() as ESPNConferenceStandings;
+    } catch (e: any) {
+        console.error(`ESPN standings fetch failed for group ${groupId}: ${e}`);
+        return null;
+    }
+}
+
 export interface ESPNSummaryWeather {
     temperature?: number
     highTemperature?: number
