@@ -63,6 +63,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // not a redirect, so the public URL keeps its prefix and Workers Caching
   // keys on it. Resolved before the preview surface so /preview/nfl/... composes.
   const split = splitLeague(url.pathname);
+  // Never rewrite INTO a protected or special namespace: the admin gate below
+  // checks the ORIGINAL pathname, so /nfl/admin would reach /admin unchecked
+  // (CodeRabbit on #229). Those surfaces have no league; bounce to the bare path.
+  if (split.league !== 'cfb') {
+    const t = split.rest;
+    if (t === '/admin' || t.startsWith('/admin/') || t === PREVIEW_PATH_PREFIX || t.startsWith(PREVIEW_PATH_PREFIX + '/') || t.startsWith('/api/')) {
+      return context.redirect(t + url.search, 302);
+    }
+  }
   context.locals.league = split.league;
   const leagueRewrite: string | undefined = split.league === 'cfb' ? undefined : split.rest + url.search;
 

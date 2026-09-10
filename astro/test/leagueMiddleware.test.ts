@@ -39,6 +39,17 @@ describe('league prefix rewrite', () => {
         expect(locals.league).toBe('cfb');
         expect(nextCalls).toEqual([undefined]);
     });
+    test('protected and special namespaces are never reached through the league prefix', async () => {
+        // the admin gate checks the ORIGINAL pathname; a rewrite from /nfl/admin
+        // to /admin would skip it (CodeRabbit on #229)
+        for (const p of ['/nfl/admin', '/nfl/admin/api/purge-game?ids=1', '/nfl/preview/game/1', '/nfl/api/client-log']) {
+            const { locals, res, nextCalls } = await run(`https://gameonpaper.com${p}`);
+            expect(res.status).toBe(302);
+            expect(res.headers.get('Location')).toBe(p.replace('/nfl', ''));
+            expect(nextCalls).toEqual([]);
+            expect(locals.league).toBeUndefined();
+        }
+    });
     test('/nflx is not the nfl', async () => {
         const { locals, nextCalls } = await run('https://gameonpaper.com/nflx');
         expect(locals.league).toBe('cfb');
