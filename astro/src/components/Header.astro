@@ -14,7 +14,6 @@ const METRIC_YEAR = LAST_YEAR;
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
             <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
                 <a href={lp("/")} class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
-                <a href={leaguePath(other, "/")} class="badge rounded-pill text-bg-secondary text-decoration-none ms-2 league-switch" title={`Switch to ${LEAGUES[other].name}`}>{cfg.shortName} <span aria-hidden="true">&rsaquo;</span> {LEAGUES[other].shortName}</a>
             </div>
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0 site-nav-row">
@@ -68,23 +67,9 @@ const METRIC_YEAR = LAST_YEAR;
                 </li>
             </ul>
 
-            <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3" role="search" id="game-id-form">
-                <input id="inputGameId" type="search" class="form-control" placeholder="Search for an ESPN game ID..." aria-label="Search">
+            <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
+                <a href={leaguePath(other, "/")} class="btn btn-md btn-outline-primary" title={`Switch to ${LEAGUES[other].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[other].shortName}</a>
             </form>
         </div>
     </div>
 </header>
-<script>
-    document.getElementById("game-id-form")?.addEventListener("submit", function(e) {
-        e.preventDefault()
-        const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
-        if (gameId) {
-            // stay on the surface the search was made from: /preview and/or /nfl
-            const path = window.location.pathname;
-            const preview = path === "/preview" || path.startsWith("/preview/") ? "/preview" : "";
-            const rest = path.slice(preview.length);
-            const league = rest === "/nfl" || rest.startsWith("/nfl/") ? "/nfl" : "";
-            window.location.assign(preview + league + "/game/" + gameId);
-        }
-    });
-</script>
