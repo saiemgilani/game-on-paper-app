@@ -1,5 +1,7 @@
 ---
 import { periodSplits, situationalRows } from '../../../utils/situational';
+import { espnLogoLeague } from '../../../utils/league';
+import { leaguePath } from '../../../utils/league';
 import { roundNumber } from '../../../utils/misc';
 import FilterGroup from '../../../layouts/FilterGroup.astro';
 
@@ -40,8 +42,8 @@ const labels = splits[0]?.columns[0]?.map((r) => r.label) ?? [];
                             <th class="box-heading">{title} &mdash; {s.label}</th>
                             {teams.map((value) => (
                                 <th style="text-align: center;">
-                                    <a href={`/year/${season}/team/${value}`}>
-                                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${value}.png`} alt={`ESPN team id ${value}`} />
+                                    <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}>
+                                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${value}.png`} alt={`ESPN team id ${value}`} />
                                     </a>
                                 </th>
                             ))}

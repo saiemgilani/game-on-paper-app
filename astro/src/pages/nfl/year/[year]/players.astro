@@ -1,0 +1,14 @@
+---
+import PlayerLeaderboardPage from "../../../../components/leaderboards/PlayerLeaderboardPage.astro";
+import { prepareLeaderboard } from "../../../../routes/leaderboards";
+
+const r = prepareLeaderboard(Astro, 'nfl', 'players');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+
+<PlayerLeaderboardPage season={r.season} category={"passing"} metric={"EPAplay"} />

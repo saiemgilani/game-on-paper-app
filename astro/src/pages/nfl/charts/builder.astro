@@ -1,0 +1,7 @@
+---
+import ChartBuilderRoute from '../../../components/routes/ChartBuilderRoute.astro';
+import { loadChartBuilder } from '../../../routes/charts';
+
+const data = await loadChartBuilder(Astro, 'nfl');
+---
+<ChartBuilderRoute {...data} />
