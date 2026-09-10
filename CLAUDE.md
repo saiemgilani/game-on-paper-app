@@ -37,10 +37,13 @@ BASE=https://gameonpaper.com npm run visual-check -- /nfl /nfl/year/2025/teams/t
 # writes astro/img/visual/<route>-<device>-<scheme>.png (4 per route)
 ```
 
-`scripts/visual-check.mjs` uses `playwright-core` (resolve it with
-`npm i -g playwright-core`; it downloads **no** browser) driving your installed
-Google Chrome, or the chromium at `$VISUAL_CHECK_EXECUTABLE`. It is deliberately
-not a repo dependency, so `npm ci` stays lean.
+`scripts/visual-check.mjs` uses `playwright-core` (install it once with
+`npm i -g playwright-core` or `npm i -D playwright-core`; it downloads **no**
+browser) driving your installed Google Chrome, or the chromium at
+`$VISUAL_CHECK_EXECUTABLE`. It is deliberately not a repo dependency, so
+`npm ci` stays lean, and it exits non-zero if a route fails to load so an error
+page never passes as a valid shot. (Isolated root container that needs the
+Chrome sandbox off: set `VISUAL_CHECK_NO_SANDBOX=1`.)
 
 Attach the four (or the relevant subset) to the PR, or send them to reviewers.
 When a change is league-specific, shoot the `/nfl` route **and** its `cfb` twin —
