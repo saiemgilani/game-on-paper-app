@@ -317,7 +317,9 @@ if (activeSpan) {
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
-                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={activeSpan && game.advBoxScoreSpan ? [] : percentiles} />
+                                {
+                                    (league == 'cfb') && (<BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={activeSpan && game.advBoxScoreSpan ? [] : percentiles} />)
+                                }
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'

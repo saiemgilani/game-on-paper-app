@@ -20,6 +20,10 @@ body {
   font-size: .875rem;
 }
 
+header {
+  font-size: 1rem !important;
+}
+
 .feather {
   width: 16px;
   height: 16px;
