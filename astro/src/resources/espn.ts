@@ -706,13 +706,17 @@ export interface ESPNConferenceStandings {
     id?: string
     name?: string
     shortName?: string
+    abbreviation?: string
+    /** NFL nests its divisions here; the conference itself carries no entries. */
+    children?: ESPNConferenceStandings[]
     standings?: { entries?: ESPNStandingsEntry[] }
 }
 
-// One conference's standings by ESPN group id; null on any failure so a
-// single conference outage never costs the standings page.
-export async function retrieveConferenceStandings(groupId: string | number): Promise<ESPNConferenceStandings | null> {
-    const url = `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=${groupId}`;
+// One group's standings by ESPN group id; null on any failure so a single
+// conference outage never costs the standings page. CFB returns entries on the
+// group itself, the NFL returns a conference whose divisions are `children`.
+export async function retrieveConferenceStandings(groupId: string | number, league: League = 'cfb'): Promise<ESPNConferenceStandings | null> {
+    const url = `https://site.api.espn.com/apis/v2/sports/football/${LEAGUES[league].espnPath}/standings?group=${groupId}`;
     try {
         const resp = await requestESPN(url);
         if (!resp.ok) {

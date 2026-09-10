@@ -1,10 +1,64 @@
-import type { ESPNStandingsEntry } from "../resources/espn";
+import { retrieveConferenceStandings, type ESPNConferenceStandings, type ESPNStandingsEntry } from "../resources/espn";
+import type { League } from "./league";
 
 /**
  * FBS conference group ids in display order: the P4, then the G5, then the
  * rebuilt Pac-12 and the independents. '80' (all FBS) is deliberately absent.
  */
 export const STANDINGS_CONFERENCES = ["8", "5", "4", "1", "151", "17", "37", "15", "12", "9", "18"];
+
+/**
+ * NFL conference group ids, AFC then NFC. Unlike CFB, the conference itself
+ * carries no entries -- its four divisions come back as `children`, so two
+ * fetches yield the eight blocks the page renders.
+ */
+export const NFL_CONFERENCES = ["8", "7"];
+
+export interface StandingsGroup {
+    groupId: string
+    name: string
+    shortName: string
+    rows: StandingsRow[]
+}
+
+/** A group is renderable only once it actually has teams in it. */
+function toGroup(
+    c: ESPNConferenceStandings | null | undefined,
+    fallbackId: string,
+    // ESPN abbreviates an NFL division to EAST/NORTH/SOUTH/WEST, which collides
+    // across the two conferences -- the dropdown would list EAST twice. The full
+    // name ("AFC East") is already short, so the NFL keeps it.
+    preferFullName = false,
+): StandingsGroup | null {
+    const entries = c?.standings?.entries ?? [];
+    if (!c || entries.length === 0) return null;
+    const name = c.name ?? "Conference";
+    return {
+        groupId: c.id ?? fallbackId,
+        name,
+        // the dropdown uses ESPN's short form, the standard the chart builder set
+        shortName: preferFullName ? name : (c.shortName ?? c.abbreviation ?? name),
+        rows: sortStandings(entries.map(parseStandingsEntry)),
+    };
+}
+
+/**
+ * Every standings block for a league, in display order.
+ *
+ * CFB is one fetch per conference with entries on the group itself; the NFL is
+ * one fetch per conference whose divisions arrive as `children`. Both flatten to
+ * the same shape, so the page does not branch. A failed fetch drops its own
+ * block and costs no other.
+ */
+export async function loadStandings(league: League): Promise<StandingsGroup[]> {
+    const ids = league === 'nfl' ? NFL_CONFERENCES : STANDINGS_CONFERENCES;
+    const results = await Promise.all(ids.map((g) => retrieveConferenceStandings(g, league)));
+    return results.flatMap((c, i) =>
+        league === 'nfl'
+            ? (c?.children ?? []).map((d) => toGroup(d, `${ids[i]}-${d.id ?? ""}`, true))
+            : [toGroup(c, ids[i])],
+    ).filter((g): g is StandingsGroup => !!g);
+}
 
 export interface StandingsRow {
     teamId: string
