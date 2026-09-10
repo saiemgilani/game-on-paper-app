@@ -4,6 +4,7 @@ import math
 from flask import Flask, request, jsonify, Response, g
 from datetime import datetime as dt, timezone as tz
 from sportsdataverse.cfb import CFBPlayProcess
+from sportsdataverse.nfl import NFLPlayProcess
 from flask_compress import Compress
 import orjson
 
@@ -278,18 +279,37 @@ def _reshape_records(plays):
 
 
 
-@app.route("/cfb/<int:game_id>/process", methods=["GET"])
-@require_auth_token
-def process(game_id: int):
+# league -> (processor class, name of its ESPN fetch method). The pipeline,
+# box-score builder and record shape are shared by both sdv-py processors;
+# only construction and the fetch differ.
+_PROCESSORS = {
+    "cfb": (CFBPlayProcess, "espn_cfb_pbp"),
+    "nfl": (NFLPlayProcess, "espn_nfl_pbp"),
+}
+
+
+def _fill_success(plays):
+    """CFBPlayProcess emits `success`; NFLPlayProcess does not. Same definition
+    as nflfastR (EPA > 0) so the two leagues' play filters agree."""
+    if plays and "success" not in plays[0]:
+        for record in plays:
+            epa = record.get("EPA")
+            record["success"] = bool(
+                isinstance(epa, (int, float)) and math.isfinite(epa) and epa > 0
+            )
+
+
+def _process_game(league: str, game_id: int):
     timings = {}
     try:
-        g.gop_meta = {"game_id": str(game_id)}
-        game = CFBPlayProcess(gameId=game_id)
+        cls, fetch_name = _PROCESSORS[league]
+        g.gop_meta = {"game_id": str(game_id), "league": league}
+        game = cls(gameId=game_id)
         game.join_participants = True
         game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
         espn_logged = False
         with stage(timings, "espn_fetch"):
-            game.espn_cfb_pbp()
+            getattr(game, fetch_name)()
         TEL.push(
             "upstream_log",
             {
@@ -306,6 +326,7 @@ def process(game_id: int):
         with stage(timings, "pipeline"):
             processed_game = game.run_processing_pipeline()
 
+        _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
 
         # Both of these must precede serialization: the span swap mutates
@@ -387,6 +408,18 @@ def process(game_id: int):
         return jsonify(
             {"status": "bad", "message": "Unknown error occurred, check logs."}
         ), 500
+
+
+@app.route("/cfb/<int:game_id>/process", methods=["GET"])
+@require_auth_token
+def process(game_id: int):
+    return _process_game("cfb", game_id)
+
+
+@app.route("/nfl/<int:game_id>/process", methods=["GET"])
+@require_auth_token
+def process_nfl(game_id: int):
+    return _process_game("nfl", game_id)
 
 
 def _sdv_identity():
