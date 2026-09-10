@@ -91,6 +91,193 @@ def require_auth_token(func):
     return check_token
 
 
+# Flat columns sdv-py adds that the site rebuilds as nested objects below;
+# dropped from every record after the fold so the payload carries each once.
+_BAD_COLS = [
+    "start.distance",
+    "start.yardLine",
+    "start.team.id",
+    "start.down",
+    "start.yardsToEndzone",
+    "start.posTeamTimeouts",
+    "start.defTeamTimeouts",
+    "start.shortDownDistanceText",
+    "start.possessionText",
+    "start.downDistanceText",
+    "start.pos_team_timeouts",
+    "start.def_pos_team_timeouts",
+    "clock.displayValue",
+    "type.id",
+    "type.text",
+    "type.abbreviation",
+    "end.distance",
+    "end.yardLine",
+    "end.team.id",
+    "end.down",
+    "end.yardsToEndzone",
+    "end.posTeamTimeouts",
+    "end.defTeamTimeouts",
+    "end.shortDownDistanceText",
+    "end.possessionText",
+    "end.downDistanceText",
+    "end.pos_team_timeouts",
+    "end.def_pos_team_timeouts",
+    "expectedPoints.before",
+    "expectedPoints.after",
+    "expectedPoints.added",
+    "winProbability.before",
+    "winProbability.after",
+    "winProbability.added",
+    "scoringType.displayName",
+    "scoringType.name",
+    "scoringType.abbreviation",
+]
+
+
+def _reshape_records(plays):
+    """Fold sdv-py's flat dotted columns back into ESPN's nested shape.
+
+    League-agnostic: CFBPlayProcess and NFLPlayProcess emit the same dotted
+    columns for everything read here. Mutates ``plays`` in place; non-finite
+    floats become None so orjson emits null rather than raising.
+    """
+    for record in plays:
+        record["clock"] = {
+            "displayValue": record["clock.displayValue"],
+            "minutes": record["clock.minutes"],
+            "seconds": record["clock.seconds"],
+        }
+
+        record["type"] = {
+            "id": record["type.id"],
+            "text": record["type.text"],
+            "abbreviation": record["type.abbreviation"],
+        }
+        record["modelInputs"] = {
+            "start": {
+                "down": record["start.down"],
+                "distance": record["start.distance"],
+                "yardsToEndzone": record["start.yardsToEndzone"],
+                "TimeSecsRem": record["start.TimeSecsRem"],
+                "adj_TimeSecsRem": record["start.adj_TimeSecsRem"],
+                "pos_score_diff": record["pos_score_diff_start"],
+                "posTeamTimeouts": record["start.posTeamTimeouts"],
+                "defTeamTimeouts": record["start.defPosTeamTimeouts"],
+                "ExpScoreDiff": record["start.ExpScoreDiff"],
+                "ExpScoreDiff_Time_Ratio": record["start.ExpScoreDiff_Time_Ratio"],
+                "spread_time": record["start.spread_time"],
+                "pos_team_receives_2H_kickoff": record[
+                    "start.pos_team_receives_2H_kickoff"
+                ],
+                "is_home": record["start.is_home"],
+                "period": record["period"],
+            },
+            "end": {
+                "down": record["end.down"],
+                "distance": record["end.distance"],
+                "yardsToEndzone": record["end.yardsToEndzone"],
+                "TimeSecsRem": record["end.TimeSecsRem"],
+                "adj_TimeSecsRem": record["end.adj_TimeSecsRem"],
+                "posTeamTimeouts": record["end.posTeamTimeouts"],
+                "defTeamTimeouts": record["end.defPosTeamTimeouts"],
+                "pos_score_diff": record["pos_score_diff_end"],
+                "ExpScoreDiff": record["end.ExpScoreDiff"],
+                "ExpScoreDiff_Time_Ratio": record["end.ExpScoreDiff_Time_Ratio"],
+                "spread_time": record["end.spread_time"],
+                "pos_team_receives_2H_kickoff": record[
+                    "end.pos_team_receives_2H_kickoff"
+                ],
+                "is_home": record["end.is_home"],
+                "period": record["period"],
+            },
+        }
+
+        record["expectedPoints"] = {
+            "before": record["EP_start"],
+            "after": record["EP_end"],
+            "added": record["EPA"],
+        }
+
+        record["winProbability"] = {
+            "before": record["wp_before"],
+            "after": record["wp_after"],
+            "added": record["wpa"],
+        }
+
+        record["start"] = {
+            "team": {
+                "id": record["start.team.id"],
+            },
+            "pos_team": {
+                "id": record["start.pos_team.id"],
+                "name": record["start.pos_team.name"],
+            },
+            "def_pos_team": {
+                "id": record["start.def_pos_team.id"],
+                "name": record["start.def_pos_team.name"],
+            },
+            "distance": record["start.distance"],
+            "yardLine": record["start.yardLine"],
+            "down": record["start.down"],
+            "yardsToEndzone": record["start.yardsToEndzone"],
+            "homeScore": record["start.homeScore"],
+            "awayScore": record["start.awayScore"],
+            "pos_team_score": record["start.pos_team_score"],
+            "def_pos_team_score": record["start.def_pos_team_score"],
+            "pos_score_diff": record["pos_score_diff_start"],
+            "posTeamTimeouts": record["start.posTeamTimeouts"],
+            "defTeamTimeouts": record["start.defPosTeamTimeouts"],
+            "ExpScoreDiff": record["start.ExpScoreDiff"],
+            "ExpScoreDiff_Time_Ratio": record["start.ExpScoreDiff_Time_Ratio"],
+            # ESPN omits these on kickoff-only payloads (first ~40s of a live game),
+            # so sdv-py's frame has no such column at all -- not even a null.
+            "shortDownDistanceText": record.get("start.shortDownDistanceText"),
+            "possessionText": record.get("start.possessionText"),
+            "downDistanceText": record["start.downDistanceText"],
+            "posTeamSpread": record["start.pos_team_spread"],
+        }
+
+        record["end"] = {
+            "team": {
+                "id": record["end.team.id"],
+            },
+            "pos_team": {
+                "id": record["end.pos_team.id"],
+                "name": record["end.pos_team.name"],
+            },
+            "def_pos_team": {
+                "id": record["end.def_pos_team.id"],
+                "name": record["end.def_pos_team.name"],
+            },
+            "distance": record["end.distance"],
+            "yardLine": record["end.yardLine"],
+            "down": record["end.down"],
+            "yardsToEndzone": record["end.yardsToEndzone"],
+            "homeScore": record["end.homeScore"],
+            "awayScore": record["end.awayScore"],
+            "pos_team_score": record["end.pos_team_score"],
+            "def_pos_team_score": record["end.def_pos_team_score"],
+            "pos_score_diff": record["pos_score_diff_end"],
+            "posTeamTimeouts": record["end.posTeamTimeouts"],
+            "defPosTeamTimeouts": record["end.defPosTeamTimeouts"],
+            "ExpScoreDiff": record["end.ExpScoreDiff"],
+            "ExpScoreDiff_Time_Ratio": record["end.ExpScoreDiff_Time_Ratio"],
+            "shortDownDistanceText": record.get("end.shortDownDistanceText"),
+            "possessionText": record.get("end.possessionText"),
+            "downDistanceText": record.get("end.downDistanceText"),
+        }
+
+        # remove added columns
+        for k in list(record.keys()):
+            if k in _BAD_COLS:
+                del record[k]
+                continue
+            v = record[k]
+            if isinstance(v, float) and not math.isfinite(v):
+                record[k] = None
+
+
+
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process(game_id: int):
@@ -119,201 +306,7 @@ def process(game_id: int):
         with stage(timings, "pipeline"):
             processed_game = game.run_processing_pipeline()
 
-        bad_cols = [
-            "start.distance",
-            "start.yardLine",
-            "start.team.id",
-            "start.down",
-            "start.yardsToEndzone",
-            "start.posTeamTimeouts",
-            "start.defTeamTimeouts",
-            "start.shortDownDistanceText",
-            "start.possessionText",
-            "start.downDistanceText",
-            "start.pos_team_timeouts",
-            "start.def_pos_team_timeouts",
-            "clock.displayValue",
-            "type.id",
-            "type.text",
-            "type.abbreviation",
-            "end.distance",
-            "end.yardLine",
-            "end.team.id",
-            "end.down",
-            "end.yardsToEndzone",
-            "end.posTeamTimeouts",
-            "end.defTeamTimeouts",
-            "end.shortDownDistanceText",
-            "end.possessionText",
-            "end.downDistanceText",
-            "end.pos_team_timeouts",
-            "end.def_pos_team_timeouts",
-            "expectedPoints.before",
-            "expectedPoints.after",
-            "expectedPoints.added",
-            "winProbability.before",
-            "winProbability.after",
-            "winProbability.added",
-            "scoringType.displayName",
-            "scoringType.name",
-            "scoringType.abbreviation",
-        ]
-        # clean records back into ESPN format
-        for record in processed_game["plays"]:
-            record["clock"] = {
-                "displayValue": record["clock.displayValue"],
-                "minutes": record["clock.minutes"],
-                "seconds": record["clock.seconds"],
-            }
-
-            record["type"] = {
-                "id": record["type.id"],
-                "text": record["type.text"],
-                "abbreviation": record["type.abbreviation"],
-            }
-            record["modelInputs"] = {
-                "start": {
-                    "down": record["start.down"],
-                    "distance": record["start.distance"],
-                    "yardsToEndzone": record["start.yardsToEndzone"],
-                    "TimeSecsRem": record["start.TimeSecsRem"],
-                    "adj_TimeSecsRem": record["start.adj_TimeSecsRem"],
-                    "pos_score_diff": record["pos_score_diff_start"],
-                    "posTeamTimeouts": record["start.posTeamTimeouts"],
-                    "defTeamTimeouts": record["start.defPosTeamTimeouts"],
-                    "ExpScoreDiff": record["start.ExpScoreDiff"],
-                    "ExpScoreDiff_Time_Ratio": record["start.ExpScoreDiff_Time_Ratio"],
-                    "spread_time": record["start.spread_time"],
-                    "pos_team_receives_2H_kickoff": record[
-                        "start.pos_team_receives_2H_kickoff"
-                    ],
-                    "is_home": record["start.is_home"],
-                    "period": record["period"],
-                },
-                "end": {
-                    "down": record["end.down"],
-                    "distance": record["end.distance"],
-                    "yardsToEndzone": record["end.yardsToEndzone"],
-                    "TimeSecsRem": record["end.TimeSecsRem"],
-                    "adj_TimeSecsRem": record["end.adj_TimeSecsRem"],
-                    "posTeamTimeouts": record["end.posTeamTimeouts"],
-                    "defTeamTimeouts": record["end.defPosTeamTimeouts"],
-                    "pos_score_diff": record["pos_score_diff_end"],
-                    "ExpScoreDiff": record["end.ExpScoreDiff"],
-                    "ExpScoreDiff_Time_Ratio": record["end.ExpScoreDiff_Time_Ratio"],
-                    "spread_time": record["end.spread_time"],
-                    "pos_team_receives_2H_kickoff": record[
-                        "end.pos_team_receives_2H_kickoff"
-                    ],
-                    "is_home": record["end.is_home"],
-                    "period": record["period"],
-                },
-            }
-
-            record["expectedPoints"] = {
-                "before": record["EP_start"],
-                "after": record["EP_end"],
-                "added": record["EPA"],
-            }
-
-            record["winProbability"] = {
-                "before": record["wp_before"],
-                "after": record["wp_after"],
-                "added": record["wpa"],
-            }
-
-            record["start"] = {
-                "team": {
-                    "id": record["start.team.id"],
-                },
-                "pos_team": {
-                    "id": record["start.pos_team.id"],
-                    "name": record["start.pos_team.name"],
-                },
-                "def_pos_team": {
-                    "id": record["start.def_pos_team.id"],
-                    "name": record["start.def_pos_team.name"],
-                },
-                "distance": record["start.distance"],
-                "yardLine": record["start.yardLine"],
-                "down": record["start.down"],
-                "yardsToEndzone": record["start.yardsToEndzone"],
-                "homeScore": record["start.homeScore"],
-                "awayScore": record["start.awayScore"],
-                "pos_team_score": record["start.pos_team_score"],
-                "def_pos_team_score": record["start.def_pos_team_score"],
-                "pos_score_diff": record["pos_score_diff_start"],
-                "posTeamTimeouts": record["start.posTeamTimeouts"],
-                "defTeamTimeouts": record["start.defPosTeamTimeouts"],
-                "ExpScoreDiff": record["start.ExpScoreDiff"],
-                "ExpScoreDiff_Time_Ratio": record["start.ExpScoreDiff_Time_Ratio"],
-                # ESPN omits these on kickoff-only payloads (first ~40s of a live game),
-                # so sdv-py's frame has no such column at all -- not even a null.
-                "shortDownDistanceText": record.get("start.shortDownDistanceText"),
-                "possessionText": record.get("start.possessionText"),
-                "downDistanceText": record["start.downDistanceText"],
-                "posTeamSpread": record["start.pos_team_spread"],
-            }
-
-            record["end"] = {
-                "team": {
-                    "id": record["end.team.id"],
-                },
-                "pos_team": {
-                    "id": record["end.pos_team.id"],
-                    "name": record["end.pos_team.name"],
-                },
-                "def_pos_team": {
-                    "id": record["end.def_pos_team.id"],
-                    "name": record["end.def_pos_team.name"],
-                },
-                "distance": record["end.distance"],
-                "yardLine": record["end.yardLine"],
-                "down": record["end.down"],
-                "yardsToEndzone": record["end.yardsToEndzone"],
-                "homeScore": record["end.homeScore"],
-                "awayScore": record["end.awayScore"],
-                "pos_team_score": record["end.pos_team_score"],
-                "def_pos_team_score": record["end.def_pos_team_score"],
-                "pos_score_diff": record["pos_score_diff_end"],
-                "posTeamTimeouts": record["end.posTeamTimeouts"],
-                "defPosTeamTimeouts": record["end.defPosTeamTimeouts"],
-                "ExpScoreDiff": record["end.ExpScoreDiff"],
-                "ExpScoreDiff_Time_Ratio": record["end.ExpScoreDiff_Time_Ratio"],
-                "shortDownDistanceText": record.get("end.shortDownDistanceText"),
-                "possessionText": record.get("end.possessionText"),
-                "downDistanceText": record.get("end.downDistanceText"),
-            }
-
-            # record["players"] = {
-            #     'passer_player_name' : record["passer_player_name"],
-            #     'rusher_player_name' : record["rusher_player_name"],
-            #     'receiver_player_name' : record["receiver_player_name"],
-            #     'sack_player_name' : record["sack_player_name"],
-            #     'sack_player_name2' : record["sack_player_name2"],
-            #     'pass_breakup_player_name' : record["pass_breakup_player_name"],
-            #     'interception_player_name' : record["interception_player_name"],
-            #     'fg_kicker_player_name' : record["fg_kicker_player_name"],
-            #     'fg_block_player_name' : record["fg_block_player_name"],
-            #     'fg_return_player_name' : record["fg_return_player_name"],
-            #     'kickoff_player_name' : record["kickoff_player_name"],
-            #     'kickoff_return_player_name' : record["kickoff_return_player_name"],
-            #     'punter_player_name' : record["punter_player_name"],
-            #     'punt_block_player_name' : record["punt_block_player_name"],
-            #     'punt_return_player_name' : record["punt_return_player_name"],
-            #     'punt_block_return_player_name' : record["punt_block_return_player_name"],
-            #     'fumble_player_name' : record["fumble_player_name"],
-            #     'fumble_forced_player_name' : record["fumble_forced_player_name"],
-            #     'fumble_recovered_player_name' : record["fumble_recovered_player_name"],
-            # }
-            # remove added columns
-            for k in list(record.keys()):
-                if k in bad_cols:
-                    del record[k]
-                    continue
-                v = record[k]
-                if isinstance(v, float) and not math.isfinite(v):
-                    record[k] = None
+        _reshape_records(processed_game["plays"])
 
         # Both of these must precede serialization: the span swap mutates
         # processed_game, and everything after `return` is dead code -- which is
