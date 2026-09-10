@@ -214,7 +214,9 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <div class="row" slot="panel-body">
                             <div class="col-md-4 ms-sm-auto col-lg-4">
-                                <BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />
+                                {
+                                    (league == "cfb") && (<BinionBoxScore season={game.season.year} advancedBoxScore={game.advBoxScore} percentiles={percentiles} />)
+                                }
                                 <TeamMetricsTable 
                                     title="Expected Points"
                                     teamKey='pos_team'
