@@ -8,6 +8,13 @@ interface Props {
 const { teamIds } = Astro.props;
 
 let teamIdCSS = teamIds.map(p => {
+    if (Astro.locals.league == 'nfl') {
+        return `
+            img.team-logo-${p} {
+                content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${p}.png&h=120&w=120')
+            }
+        `
+    }
     return `
     img.team-logo-${p} {
         content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500-dark/${p}.png&h=120&w=120')
