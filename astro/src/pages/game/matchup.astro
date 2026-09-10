@@ -11,11 +11,11 @@ import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
 const league = Astro.locals.league ?? 'cfb';
 const query = Astro.url.searchParams;
 const awaySeason = query.get("awaySeason") || "2025";
-const awayTeamId = query.get("awayTeamId") || "52";
+const awayTeamId = query.get("awayTeamId") || (league === 'nfl' ? "12" : "52");
 const homeSeason = query.get("homeSeason") || "2025";
-const homeTeamId = query.get("homeTeamId") || "59";
+const homeTeamId = query.get("homeTeamId") || (league === 'nfl' ? "2" : "59");
 
-let allTeamSeasons = retrieveAllTeams();
+let allTeamSeasons = retrieveAllTeams(league);
 allTeamSeasons.sort((a, b) => {
     return a.name.localeCompare(b.name)
 })

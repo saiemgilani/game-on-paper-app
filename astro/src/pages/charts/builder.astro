@@ -13,7 +13,8 @@ const season = query.get("season") || `${LAST_YEAR}`;
 const metricX = query.get("x") || "adj_off_epa";
 const metricY = query.get("y") || "adj_def_epa";
 
-const teamData = await retrieveTeamSummaries({ season: Number(season), columns: [metricX, metricY], maxLookback: Number(season) })//(Number(season), undefined, undefined, [metricX, metricY], Number(season));
+const league = Astro.locals.league ?? 'cfb';
+const teamData = await retrieveTeamSummaries({ season: Number(season), columns: [metricX, metricY], maxLookback: Number(season), league })
 const points = teamData.map((t: any) => {
     return {
         team_id: t.team_id,
@@ -54,7 +55,7 @@ if (points.length > 0) {
 
 <GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} description={`Plot any two ${season} college football advanced stats against each other: EPA per play, success rate, explosiveness, havoc and win probability for every FBS team.`} slug="/charts/builder" breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={points.map(t => t.team_id)} />
-    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points}>
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} league={league}>
         <FallbackSpinner slot="fallback" />
     </ChartBuilder>
 </GenericPage>

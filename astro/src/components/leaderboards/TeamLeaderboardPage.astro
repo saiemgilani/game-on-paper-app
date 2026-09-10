@@ -1,6 +1,6 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import { AVAILABLE_SEASONS } from "../../utils/constants";
+import { LEAGUES, leaguePath } from "../../utils/league";
 import { toTitleCase } from "../../utils/misc";
 import { LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
 import TeamLeaderboardTable from "./TeamLeaderboardTable.astro";
@@ -13,19 +13,22 @@ interface Props {
 }
 
 let { season, category, metric } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+const AVAILABLE_SEASONS = cfg.seasons;
 category = category || "differential";
 metric = metric || "net_adj_epa";
 
-const categoryTitle = category == "differential" ? "Net" : toTitleCase(category);
+const categoryTitle = category == "differential" ? "Net" : toTitleCase(category.replace("-", " "));
 // Title, H1 and description carry the words people actually search -- "EPA per
 // play", "success rate", "college football" -- because the page previously
 // contained none of them anywhere in visible text (measured 2026-08-29).
 const copy = LEADERBOARD_COPY[category] ?? LEADERBOARD_COPY.differential;
-const pageTitle = copy.title(season);
-const pageUrl = `/year/${season}/teams/${category}`;
+const pageTitle = copy.title(season, league);
+const pageUrl = leaguePath(league, `/year/${season}/teams/${category}`);
 const dataset = datasetJsonLd({
-    name: copy.h1(season),
-    description: copy.description(season),
+    name: copy.h1(season, league),
+    description: copy.description(season, league),
     url: pageUrl,
     season,
     variables: ["adjusted EPA per play", "EPA per play", "success rate", "explosiveness", "havoc rate"],
@@ -33,24 +36,24 @@ const dataset = datasetJsonLd({
 
 const breadcrumbs: PageBreadcrumb[] = [
     { title: "Seasons", active: false },
-    { title: `${season}`, url: `/year/${season}`, active: false },
-    { title: `${categoryTitle} Statistics`, url: `/year/${season}/teams/${category}`, active: true },
+    { title: `${season}`, url: leaguePath(league, `/year/${season}`), active: false },
+    { title: `${categoryTitle} Statistics`, url: pageUrl, active: true },
 ];
 
 ---
 
-<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} description={copy.description(season)} slug={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={copy.h1(season)}>
+<GenericPage title={pageTitle} subtitle={`${categoryTitle} during the ${season} season`} description={copy.description(season, league)} slug={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={copy.h1(season, league)}>
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">
                 <h3>{season} {categoryTitle} Team Rankings</h3>
-                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {AVAILABLE_SEASONS[0]} to {AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]} - Data shown is from FBS vs FBS games only.</p>
+                <p class="m-0 text-muted"><strong>Available Seasons:</strong> {AVAILABLE_SEASONS[0]} to {AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}{league === 'cfb' && " - Data shown is from FBS vs FBS games only."}{league === 'nfl' && " - Regular season games only."}</p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
-                <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
+                <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time.{league === 'cfb' && " Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games."}</p>
                 <!-- <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
-                <TeamMetricDropdown client:idle season={season} category={category} metric={metric} onChangeValue={null} />
+                <TeamMetricDropdown client:idle season={season} category={category} metric={metric} onChangeValue={null} league={league} />
             </div>
         </div>
     </div>

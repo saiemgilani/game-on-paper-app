@@ -1,5 +1,6 @@
 <script lang="ts">
 import Chart from 'chart.js/auto';
+import { espnLogoLeague, leagueFromLocation } from '../../utils/league';
 import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED, SPECIAL_IMAGES_DARK } from "../../utils/constants";
 import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
 import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric, cleanField } from "../../utils/misc";
@@ -87,7 +88,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
         } else if (Object.keys(SPECIAL_IMAGES).includes(String(teamId))) {
             img.src = SPECIAL_IMAGES[teamId];
         } else {
-            img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${teamId}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png`
+            img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${teamId}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${teamId}.png`
         }
 
         const publishedData = seasons.map(p => {

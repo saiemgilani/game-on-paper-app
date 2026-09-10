@@ -2,6 +2,7 @@
 // export const prerender = true;
 
 import TeamTrendsChart from "../../components/charts/TeamTrendsChart.svelte";
+import { espnLogoLeague } from '../../utils/league';
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { cleanLocation, retrieveValue, roundNumber, generateColorRampValue, cleanField, formatRank, teamColorHex } from "../../utils/misc";
 import { retrieveAllTeams, type TeamIndex } from "../../utils/teams";
@@ -10,6 +11,7 @@ import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import { retrieveTeamInformation } from "../../resources/espn";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
+import { LEAGUES, leaguePath } from "../../utils/league";
 
 // export function getStaticPaths() {
 //     const teams: TeamIndex[] = retrieveAllTeams()
@@ -19,17 +21,19 @@ import FallbackSpinner from '../../components/FallbackSpinner.astro';
 // }
 
 const { id } = Astro.params;
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
 if (!id) {
     Astro.cache.set(false);
     return Astro.rewrite("/404");
 }
 
-const team = await retrieveTeamInformation(id)
+const team = await retrieveTeamInformation(id, league)
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
         title: "Teams",
-        url: "/teams",
+        url: leaguePath(league, "/teams"),
         active: false
     },
     {
@@ -40,11 +44,11 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 let allPctls: SDVSeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-    const percentiles = await retrievePercentiles(undefined, p);
+    const percentiles = await retrievePercentiles(undefined, p, undefined, league);
     allPctls = allPctls.concat(percentiles);
 }
 
-let teamData = await retrieveTeamSummaries({ team_id: Number(id) })
+let teamData = await retrieveTeamSummaries({ team_id: Number(id), league })
 teamData = teamData.sort((a,b) => a.season - b.season).map((t:any) => {
     t.color = team.color
     t.alternateColor = team.alternateColor
@@ -60,7 +64,7 @@ function createSeasonColumn(summary: SDVTeamSummary, key: string): string {
     const val = roundNumber(retrieveValue(summary, key), 2, 2)
     const rank = retrieveValue(summary, `${key}_rank`)
 
-    const colorRampClass = generateColorRampValue(parseInt(rank), 134, true)
+    const colorRampClass = generateColorRampValue(parseInt(rank), cfg.teamCount, true)
     const rankStr = formatRank(parseInt(rank))
     return `
     <td class="numeral ${colorRampClass}" style="text-align: center;">${val} <small class="align-self-center" style="opacity: 50%">#${rankStr}</small></td>
@@ -85,7 +89,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
     <div class="container">
         <div class="row mb-3">
             <div class="col-lg-6 col-xs-12 mb-xs-3">
-                <h1 class="d-flex"><img class={`img-fluid team-logo-${team.id} me-2`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/> <span class="ms-1">{cleanLocation(team)}</span></h1>
+                <h1 class="d-flex"><img class={`img-fluid team-logo-${team.id} me-2`} width="50px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/> <span class="ms-1">{cleanLocation(team)}</span></h1>
                 <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
                 <!-- <p class="m-0 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
             </div>

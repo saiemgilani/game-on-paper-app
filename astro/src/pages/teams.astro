@@ -1,27 +1,34 @@
 ---
-export const prerender = true;
-
+// Rendered per request (was prerendered): the index varies by league, and a
+// prerendered page cannot read Astro.locals.league. Cached for a day below.
 import GenericPage from "../layouts/GenericPage.astro";
+import { LEAGUES, espnLogoLeague, leaguePath } from '../utils/league';
 import { cleanField } from "../utils/misc";
-import { AVAILABLE_SEASONS, SESSION_FAVORITES_DEFAULT } from "../utils/constants";
+import { SESSION_FAVORITES_DEFAULT } from "../utils/constants";
 import DarkModeLogos from "../components/DarkModeLogos.astro";
 import { type TeamIndex, retrieveAllTeams } from "../utils/teams";
 
-const title = `Team Index | College Football | Game on Paper`;
-const subtitle = 'Every FBS college football team with links to season pages of EPA per play, success rate, explosiveness and win probability.';
-const teams: TeamIndex[] = retrieveAllTeams()
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+const AVAILABLE_SEASONS = cfg.seasons;
+const title = `Team Index | ${cfg.name} | Game on Paper`;
+const subtitle = league === 'cfb'
+    ? 'Every FBS college football team with links to season pages of EPA per play, success rate, explosiveness and win probability.'
+    : 'Every NFL team with links to season pages of EPA per play, success rate, explosiveness and win probability.';
+const teams: TeamIndex[] = retrieveAllTeams(league)
+Astro.cache.set({ maxAge: 60 * 60 * 24, tags: ["teams-index"] });
 
 function generateTeamRow(team: any): string {
     const seasonCells = AVAILABLE_SEASONS.map((p) => {
         if (team.seasons.includes(p)) {
-            return `<td class="text-center" colspan="1"><a href="/year/${p}/team/${team.team_id}">${p}</a></td>`
+            return `<td class="text-center" colspan="1"><a href="${leaguePath(league, `/year/${p}/team/${team.team_id}`)}">${p}</a></td>`
         } else {
             return `<td class="text-center" colspan="1"><p class="m-0 text-muted">${p}</p></td>`
         }
     }).join("")
     return `
     <tr>
-        <td class="text-left" colspan="1"><a href="/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
+        <td class="text-left" colspan="1"><a href="${leaguePath(league, `/team/${team.team_id}`)}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
         ${seasonCells}
     </tr>
     `
@@ -29,7 +36,7 @@ function generateTeamRow(team: any): string {
 
 ---
 
-<GenericPage title={title} subtitle={subtitle} heading="College Football Team Index" slug="/teams" breadcrumbs={[]}>
+<GenericPage title={title} subtitle={subtitle} heading={`${cfg.name} Team Index`} slug={leaguePath(league, "/teams")} breadcrumbs={[]}>
     <link href="/assets/css/sticky-table.css" rel="stylesheet">
     <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
     <div class="container">

@@ -1,8 +1,12 @@
 <script>
     import { toTitleCase } from "../../utils/misc";
-    import { AVAILABLE_SEASONS, SDV_PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
+    import { SDV_PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
+    import { LEAGUES, leaguePath } from "../../utils/league";
 
-    const { season, category, metric } = $props()
+    // `league` is passed by the SSR page (Astro.locals.league); cfb default
+    // keeps every existing caller unchanged.
+    const { season, category, metric, league = 'cfb' } = $props()
+    const seasons = LEAGUES[league].seasons;
 
     function onChangeSeason(e) {
         onChangeValue(e.target.value, category, metric)
@@ -17,7 +21,7 @@
     }
 
     function onChangeValue(s, c, m) {
-		window.location = `/year/${s}/players/${c}?sort=${m}`;
+		window.location = leaguePath(league, `/year/${s}/players/${c}?sort=${m}`);
     }
 
 </script>
@@ -26,7 +30,7 @@
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-md" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
-				{#each AVAILABLE_SEASONS as s}
+				{#each seasons as s}
 					<option value={s} selected={(season == s)}>{s}</option>
 				{/each}
             </select>

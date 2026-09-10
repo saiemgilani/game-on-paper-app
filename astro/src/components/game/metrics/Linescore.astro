@@ -7,6 +7,7 @@
  * near the top for something this small.
  */
 import { leaguePath } from "../../../utils/league";
+import { espnLogoLeague } from '../../../utils/league';
 
 interface Props {
     /** ESPN competitors, away and home, each with `linescores`. */
@@ -41,7 +42,7 @@ const show = periods > 0 && rows.length === 2;
                     <tr>
                         <td style="text-align: left;">
                             <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${t.team?.id}`)}>
-                                <img class={`img-fluid team-logo-${t.team?.id}`} width="22px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${t.team?.id}.png`} alt={`ESPN team id ${t.team?.id}`} />
+                                <img class={`img-fluid team-logo-${t.team?.id}`} width="22px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${t.team?.id}.png`} alt={`ESPN team id ${t.team?.id}`} />
                             </a>
                             <span class="ms-1">{t.team?.abbreviation ?? t.team?.shortDisplayName}</span>
                         </td>

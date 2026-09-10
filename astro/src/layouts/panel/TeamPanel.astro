@@ -1,5 +1,6 @@
 ---
 import type { ESPNTeam } from '../../resources/espn';
+import { espnLogoLeague } from '../../utils/league';
 import { cleanLocation } from '../../utils/misc';
 import { leaguePath } from '../../utils/league';
 
@@ -28,7 +29,7 @@ const { id, season, team, show } = Astro.props;
                                 aria-expanded={show}>[show/hide]</a>
                         </span>
                     </h2>
-                    <th style="text-align: center;"><a href={leaguePath(Astro.locals.league, `/year/${season}/team/${team.id}`)}><img class={`img-fluid team-logo-${team.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/></a></th>
+                    <th style="text-align: center;"><a href={leaguePath(Astro.locals.league, `/year/${season}/team/${team.id}`)}><img class={`img-fluid team-logo-${team.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} alt={`ESPN team id ${team.id}`}/></a></th>
                 </div>
             </div>
         </div>

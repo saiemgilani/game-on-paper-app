@@ -197,46 +197,72 @@ export function jsonLdScript(objs: (object | null)[]): string {
     return JSON.stringify(body).replace(/<\//g, '<\\/');
 }
 
-/** Copy for the three team-leaderboard categories. The words here are the words people search. */
-export const LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string; intro: string }> = {
+/** "College Football" / "NFL" and "FBS" / "NFL" -- the copy below is written once for both leagues. */
+const sportTitle = (l?: League) => (l === 'nfl' ? 'NFL' : 'College Football');
+const poolNoun = (l?: League) => (l === 'nfl' ? 'NFL' : 'FBS');
+
+type LeaderboardCopy = { h1: (s: number, l?: League) => string; title: (s: number, l?: League) => string; description: (s: number, l?: League) => string; intro: string };
+
+/** Copy for the team-leaderboard categories. The words here are the words people search. */
+export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
     offensive: {
-        h1: (s) => `${s} College Football Offensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
-        description: (s) => `Every FBS offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Offensive EPA per Play Rankings`,
+        title: (s, l) => `${s} ${sportTitle(l)} Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
         intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance and field position. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field, so it is the fairest single number for how good an offense really is.',
     },
     defensive: {
-        h1: (s) => `${s} College Football Defensive EPA per Play Rankings`,
-        title: (s) => `${s} College Football Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
-        description: (s) => `Every FBS defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Defensive EPA per Play Rankings`,
+        title: (s, l) => `${s} ${sportTitle(l)} Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
         intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
     },
     differential: {
-        h1: (s) => `${s} College Football Team Rankings by Net EPA per Play`,
-        title: (s) => `${s} College Football Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
-        description: (s) => `Every FBS team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
+        h1: (s, l) => `${s} ${sportTitle(l)} Team Rankings by Net EPA per Play`,
+        title: (s, l) => `${s} ${sportTitle(l)} Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
         intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. Adjusted for opponent, home field and garbage time.',
+    },
+    // NFL-only categories (rbsdm.com parity); the college grid has no such columns
+    tendencies: {
+        h1: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected`,
+        title: (s, l) => `${s} ${sportTitle(l)} Pass Rate Over Expected and Neutral-Situation Pass Rate | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} offense in ${s} by pass rate, expected pass rate and pass rate over expected, overall and in neutral situations (early downs, competitive score, outside two minutes).`,
+        intro: 'Pass rate over expected compares how often an offense throws with how often a model says an average team would throw from the same down, distance, field position, score and clock. Positive means pass-heavy for the situation.',
+    },
+    'fourth-downs': {
+        h1: (s, l) => `${s} ${sportTitle(l)} Fourth Down Decisions`,
+        title: (s, l) => `${s} ${sportTitle(l)} Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} by fourth-down go rate, the go rate the win-probability model recommends, the gap between them, and the average boost of going when the model says go.`,
+        intro: 'On every fourth down the model compares the win probability of going for it, kicking and punting. Go rate over expected is how often a team goes minus how often the model would; boost is the average win-probability edge of going on the plays where going was recommended.',
+    },
+    luck: {
+        h1: (s, l) => `${s} ${sportTitle(l)} Luck: Fumble Recoveries and Opponent Field Goals`,
+        title: (s, l) => `${s} ${sportTitle(l)} Luck Rankings: Fumble Recovery Rate, Opponent FG% | Game on Paper`,
+        description: (s, l) => `Every ${poolNoun(l)} team in ${s} by the share of its own fumbles it recovered, the share of opponent fumbles it recovered, and its opponents' field-goal percentage.`,
+        intro: 'Who recovers a loose ball and whether the other kicker misses are close to coin flips over a season. Teams far from the middle here have been lucky or unlucky in ways that tend not to persist.',
     },
 };
 
-export const LEADERBOARD_CATEGORIES = Object.keys(LEADERBOARD_COPY);
+/** The shared team-leaderboard categories every league has; per-league extras live in utils/league.ts. */
+export const LEADERBOARD_CATEGORIES = ['offensive', 'defensive', 'differential'];
 
 /** Copy for the three player-leaderboard categories. Same shape as LEADERBOARD_COPY, minus intro. */
-export const PLAYER_LEADERBOARD_COPY: Record<string, { h1: (s: number) => string; title: (s: number) => string; description: (s: number) => string }> = {
+export const PLAYER_LEADERBOARD_COPY: Record<string, Omit<LeaderboardCopy, 'intro'>> = {
     passing: {
         h1: (s) => `${s} Passing EPA per Play Leaders`,
-        title: (s) => `${s} College Football Passing EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS quarterbacks ranked by EPA per play (dropback), with total EPA, success rate, explosiveness and yards per attempt. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Passing EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} quarterbacks ranked by EPA per play (dropback), with total EPA, success rate, explosiveness and yards per attempt. Sortable, updated after every game.`,
     },
     rushing: {
         h1: (s) => `${s} Rushing EPA per Play Leaders`,
-        title: (s) => `${s} College Football Rushing EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS rushers ranked by EPA per play (carry), with total EPA, success rate, explosiveness and yards per carry. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Rushing EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} rushers ranked by EPA per play (carry), with total EPA, success rate, explosiveness and yards per carry. Sortable, updated after every game.`,
     },
     receiving: {
         h1: (s) => `${s} Receiving EPA per Play Leaders`,
-        title: (s) => `${s} College Football Receiving EPA per Play Leaders | Game on Paper`,
-        description: (s) => `${s} FBS receivers ranked by EPA per play (target), with total EPA, success rate, explosiveness and yards per target. Sortable, updated after every game.`,
+        title: (s, l) => `${s} ${sportTitle(l)} Receiving EPA per Play Leaders | Game on Paper`,
+        description: (s, l) => `${s} ${poolNoun(l)} receivers ranked by EPA per play (target), with total EPA, success rate, explosiveness and yards per target. Sortable, updated after every game.`,
     },
 };
 

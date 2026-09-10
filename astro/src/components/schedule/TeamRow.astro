@@ -1,5 +1,6 @@
 ---
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
+import { espnLogoLeague } from '../../utils/league';
 import { cleanScore, getRecordString, cleanAbbreviation } from "../../utils/misc";
 
 interface Props {
@@ -31,7 +32,7 @@ const rank = comp.curatedRank?.current || 99;
 // A TBD placeholder competitor has no real team id; ESPN's default shield
 // stands in so the card never shows a broken image.
 const logoSrc = comp.id && String(comp.id) !== "0" && comp.team?.abbreviation !== "TBD"
-    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${comp.id}.png&h=80&w=80`
+    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${comp.id}.png&h=80&w=80`
     : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''

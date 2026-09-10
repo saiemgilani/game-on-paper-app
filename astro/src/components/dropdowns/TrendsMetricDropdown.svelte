@@ -1,11 +1,13 @@
 <script>
+    import { leagueFromLocation, leaguePath } from "../../utils/league";
+
     const { metric, onChangeValue } = $props()
 
     function onChangeMetric(e) {
         if (onChangeValue) {
             onChangeValue(e.target.value)
         } else {
-            window.location = `/charts/trends?sort=${e.target.value}`;
+            window.location = leaguePath(leagueFromLocation(), `/charts/trends?sort=${e.target.value}`);
         }
     }
 </script>

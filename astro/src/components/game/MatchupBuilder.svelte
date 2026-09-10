@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { TeamIndex } from "../../utils/teams";
+    import { espnLogoLeague, leagueFromLocation } from '../../utils/league';
     import { cleanName, roundNumber, cleanField } from "../../utils/misc";
     import { leagueFromLocation, leaguePath } from "../../utils/league";
 
@@ -92,7 +93,7 @@
     {#if projection}
     <div class="row mt-2">
         <div class="col-12 text-center">
-            <p class="mb-0 fs-2"><strong>Projected Winner: <a href={leaguePath(leagueFromLocation(), `/team/${projection.team_id}`)}><img class={`img-fluid team-logo-${projection.team_id} me-1 align-middle`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${projection.team_id}.png`} alt={`ESPN team id ${projection.team_id}`}/></a>{cleanField(projection, "winner")}</strong></p>
+            <p class="mb-0 fs-2"><strong>Projected Winner: <a href={leaguePath(leagueFromLocation(), `/team/${projection.team_id}`)}><img class={`img-fluid team-logo-${projection.team_id} me-1 align-middle`} width="50px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${projection.team_id}.png`} alt={`ESPN team id ${projection.team_id}`}/></a>{cleanField(projection, "winner")}</strong></p>
             <p title="Based on the two teams' Net Adj EPA/Play at a neutral site. This projection is for fun -- please don't use this for anything important.">by {roundNumber(projection.margin, 2, 1)} pts ({roundNumber(projection.win_prob * 100, 2, 1)}%) at a neutral site</p>
             {#if projection.actual_game_id}
             <div class="d-flex justify-content-center">

@@ -15,6 +15,7 @@
 // game note renders as a spanning second line, gold for championships.
 // Preview-flagged ('scoreboard-compact'); the card grid stays >=768px.
 import type { ESPNScheduleEvent } from "../../resources/espn";
+import { espnLogoLeague } from '../../utils/league';
 import { leaguePath } from "../../utils/league";
 import { cleanAbbreviation, cleanScore, isChampionshipEvent } from "../../utils/misc";
 
@@ -49,7 +50,7 @@ const isChamp = !!gameNote && (isChampionshipEvent(gameNote) || gameNote.include
 // stands in so the row never shows a broken image.
 const logoOf = (c: any) =>
   c.id && String(c.id) !== "0" && c.team?.abbreviation !== "TBD"
-    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/${c.id}.png&h=80&w=80`
+    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${c.id}.png&h=80&w=80`
     : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const side = (c: any, score: number, other: number) => ({
   rank: rankOf(c),

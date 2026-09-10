@@ -32,6 +32,14 @@ export interface LeagueConfig {
     seasons: number[];
     regularSeasonWeeks: number;
     postseasonWeeks: number;
+    /** a.espncdn.com/i/teamlogos/<logoLeague>/500/<team id>.png */
+    logoLeague: 'ncaa' | 'nfl';
+    /** teams ranked in a season table; the rank colour ramp scales to it */
+    teamCount: number;
+    /** the population the season tables describe, for copy ("FBS vs FBS games only") */
+    pool: string;
+    /** team-leaderboard categories beyond the shared differential/offensive/defensive */
+    extraTeamCategories: string[];
 }
 
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -42,7 +50,10 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         espnPath: 'college-football', espnCoreLeague: 'college-football',
         scoreboardQuery: 'group=80&limit=1000&', defaultGroup: 80, scoreboardCacheKey: 'scoreboard',
         sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true,
-        seasons: AVAILABLE_SEASONS, regularSeasonWeeks: 15, postseasonWeeks: 1,
+        // getters, not values: constants.ts -> misc.ts -> league.ts -> constants.ts is a
+        // cycle, and an eager read here sees AVAILABLE_SEASONS before it is initialised
+        get seasons() { return AVAILABLE_SEASONS; }, regularSeasonWeeks: 15, postseasonWeeks: 1,
+        logoLeague: 'ncaa', teamCount: 134, pool: 'FBS', extraTeamCategories: [],
     },
     nfl: {
         slug: 'nfl', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
@@ -50,9 +61,22 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nfl',
         sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: false,
         // ESPN play-by-play for the NFL is reliable from the 2002 realignment on
-        seasons: range(2002, CURRENT_YEAR), regularSeasonWeeks: 18, postseasonWeeks: 5,
+        get seasons() { return range(2002, CURRENT_YEAR); }, regularSeasonWeeks: 18, postseasonWeeks: 5,
+        logoLeague: 'nfl', teamCount: 32, pool: 'NFL',
+        // the rbsdm.com measures the nfl-data producer adds to team_summaries
+        extraTeamCategories: ['tendencies', 'fourth-downs', 'luck'],
     },
 };
+
+/** ESPN logo path segment for a league's team ids (numeric ids resolve for both). */
+export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' {
+    return LEAGUES[league ?? DEFAULT_LEAGUE].logoLeague;
+}
+
+/** Team-leaderboard categories a league serves: the shared three plus its extras. */
+export function teamCategoriesFor(league: League | undefined): string[] {
+    return ['differential', 'offensive', 'defensive', ...LEAGUES[league ?? DEFAULT_LEAGUE].extraTeamCategories];
+}
 
 /** '/nfl/game/1' -> { nfl, '/game/1' }; anything else is cfb, untouched. */
 export function splitLeague(pathname: string): { league: League; rest: string } {

@@ -11,7 +11,7 @@ const metric = query.get("sort") || "EPAplay";
 
 let allPctls: SDVSeasonPercentile[] = []
 for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-    const percentiles = await retrievePercentiles(undefined, p);
+    const percentiles = await retrievePercentiles(undefined, p, undefined, Astro.locals.league);
     allPctls = allPctls.concat(percentiles);
 }
 
