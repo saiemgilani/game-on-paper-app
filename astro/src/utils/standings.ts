@@ -117,7 +117,6 @@ export function parseStandingsEntry(entry: ESPNStandingsEntry, league: League = 
     };
 }
 
-/** Conference order: seed when ESPN provides it, else conference win rate. */
 /**
  * ESPN's `playoffSeed` encodes the league's own tiebreak order, which is the
  * right primary key -- but only once ESPN has seeded the WHOLE group. Early in
