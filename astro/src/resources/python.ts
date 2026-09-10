@@ -1,6 +1,7 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { wrappedFetch } from "../utils/telemetry"
+import { type League } from "../utils/league"
 
 export interface ProcessedModelInput {
     down: number
@@ -840,8 +841,8 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, span?: string | null): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, span);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, span?: string | null, league: League = 'cfb'): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, span, league);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -928,14 +929,14 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, span?: string | null): Promise<ProcessedGame> {
+async function processPlays(gameId: string | number, cacheTTL: number, span?: string | null, league: League = 'cfb'): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
 
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
     const spanQ = span ? `?span=${encodeURIComponent(span)}` : '';
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/cfb/${gameId}/process${spanQ}`, {
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process${spanQ}`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
@@ -947,7 +948,7 @@ async function processPlays(gameId: string | number, cacheTTL: number, span?: st
             // deployed version means a deploy (a parser fix in sportsdataverse-py
             // rides in with every build) invalidates it without any zone purge; the
             // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/cfb/${gameId}/process?v=${APP_VERSION}${span ? `&span=${span}` : ''}`,
+            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}${span ? `&span=${span}` : ''}`,
         }
     })
     const content = await req.text();
