@@ -1,6 +1,11 @@
 ---
-import { AVAILABLE_SEASONS, LAST_YEAR } from "../utils/constants";
+import { LAST_YEAR } from "../utils/constants";
+import { LEAGUES, leaguePath, type League } from "../utils/league";
 
+const league: League = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+const other: League = league === 'cfb' ? 'nfl' : 'cfb';
+const lp = (p: string) => leaguePath(league, p);
 const METRIC_YEAR = LAST_YEAR;
 ---
 
@@ -8,24 +13,25 @@ const METRIC_YEAR = LAST_YEAR;
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
             <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
-                <a href="/" class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
+                <a href={lp("/")} class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
+                <a href={leaguePath(other, "/")} class="badge rounded-pill text-bg-secondary text-decoration-none ms-2 league-switch" title={`Switch to ${LEAGUES[other].name}`}>{cfg.shortName} <span aria-hidden="true">&rsaquo;</span> {LEAGUES[other].shortName}</a>
             </div>
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0 site-nav-row">
-                <li><a href="/" class="nav-link px-2 link-secondary">Scoreboard</a></li>
+                <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
                 <li class="nav-item dropdown">
                     <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                         Leaderboards
                     </a>
                     <ul class="dropdown-menu">
                         <h6 class="dropdown-header">Team Level</h6>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/differential`}>Net Statistics</a></li>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/offensive`}>Offensive</a></li>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/teams/defensive`}>Defensive</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/differential`)}>Net Statistics</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/offensive`)}>Offensive</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/defensive`)}>Defensive</a></li>
                         <h6 class="dropdown-header">Player Level</h6>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/passing`}>Passing</a></li>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/rushing`}>Rushing</a></li>
-                        <li><a class="dropdown-item" href={`/year/${METRIC_YEAR}/players/receiving`}>Receiving</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
+                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -33,8 +39,8 @@ const METRIC_YEAR = LAST_YEAR;
                         Charts
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/charts/trends">Trends</a></li>
-                        <li><a class="dropdown-item" href="/charts/builder">Builder</a></li>
+                        <li><a class="dropdown-item" href={lp("/charts/trends")}>Trends</a></li>
+                        <li><a class="dropdown-item" href={lp("/charts/builder")}>Builder</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -43,14 +49,14 @@ const METRIC_YEAR = LAST_YEAR;
                     </a>
                     <ul class="dropdown-menu">
                     {
-                        AVAILABLE_SEASONS.map((yr) => (
-                            <li><a class="dropdown-item" href={`/year/${yr}/teams`}>{yr}</a></li>
+                        cfg.seasons.map((yr) => (
+                            <li><a class="dropdown-item" href={lp(`/year/${yr}/teams`)}>{yr}</a></li>
                         ))
                     }
                     </ul>
                 </li>
-                <li><a href="/teams" class="nav-link px-2 link-secondary">Teams</a></li>
-                <li><a href="/game/matchup" class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
+                <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
                 <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
                 <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
             </ul>
@@ -66,7 +72,12 @@ const METRIC_YEAR = LAST_YEAR;
         e.preventDefault()
         const gameId = (document.getElementById("inputGameId") as HTMLInputElement)?.value;
         if (gameId) {
-            window.location.assign("/game/" + gameId);
+            // stay on the surface the search was made from: /preview and/or /nfl
+            const path = window.location.pathname;
+            const preview = path === "/preview" || path.startsWith("/preview/") ? "/preview" : "";
+            const rest = path.slice(preview.length);
+            const league = rest === "/nfl" || rest.startsWith("/nfl/") ? "/nfl" : "";
+            window.location.assign(preview + league + "/game/" + gameId);
         }
     });
 </script>

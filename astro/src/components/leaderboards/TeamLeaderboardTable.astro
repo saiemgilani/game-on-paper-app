@@ -1,5 +1,6 @@
 ---
 import { retrieveTeamSummaries, type SDVTeamSummary } from '../../resources/sdv';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldInvertSortForMetric, STANDARD_THEME_COLOR, isTeamFavorite, formatRank, generateMarginalString  } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
@@ -15,7 +16,7 @@ const { season, category, metric } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
-let content: SDVTeamSummary[] = await retrieveTeamSummaries({ season, category, maxLookback: season});
+let content: SDVTeamSummary[] = await retrieveTeamSummaries({ season, category, maxLookback: season, league: Astro.locals.league });
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
@@ -42,7 +43,9 @@ content = content.toSorted((a, b) => {
 })
 
 function generateMetricHead(key: string, title: string): string {
-    const abbr = SDV_TEAM_METRIC_HOVER_TEXT[category][key];
+    let abbr = (SDV_TEAM_METRIC_HOVER_TEXT[category] ?? {})[key];
+    // the shared hover copy was written for the college grid
+    if (abbr && Astro.locals.league === 'nfl') abbr = abbr.replace(' in FBS vs FBS games', '');
     if (abbr) {
         title = `<abbr title="${abbr}">${title}</abbr>`
     }
@@ -66,14 +69,15 @@ function generateMetricRow(team: any): string {
     const colContent = Object.entries(columns).map(([k, _]) => generateMetricCell(team, category, k)).join("")
     let rankStr = formatRank(parseFloat(retrieveValue(team, metric + '_rank')))
     if ((rankStr == "N/A" && metric == 'net_adj_epa') || (metric == "net_adj_epa" && retrieveValue(team, metric) == "N/A")) {
-        rankStr = `<abbr title='This team may not have played an FBS opponent yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
+        const why = Astro.locals.league === 'nfl' ? 'enough games' : 'an FBS opponent';
+        rankStr = `<abbr title='This team may not have played ${why} yet. This value and their rank will be updated when they do.'>${rankStr}</abbr>`;
     }
 
     return `
     <tr>
         <td class="text-right" colspan="1">${rankStr}</td>
         <td class="text-left" colspan="1">
-            <a href="/year/${season}/team/${team.team_id}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/ncaa/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong>${cleanField(team, "pos_team")}</strong></a>
+            <a href="${leaguePath(Astro.locals.league, `/year/${season}/team/${team.team_id}`)}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.team_id}.png" alt="ESPN team id ${team.team_id} ${cleanField(team, "pos_team")}" title="${team.team}"/><span class="visually-hidden">${cleanField(team, "pos_team")}</span><strong>${cleanField(team, "pos_team")}</strong></a>
         </td>
         ${colContent}
     </tr>`;

@@ -1,5 +1,7 @@
 ---
 import type { ESPNTeam } from '../../resources/espn'
+import { espnLogoLeague } from '../../utils/league';
+import { leaguePath } from '../../utils/league'
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv'
 import { SESSION_FAVORITES_DEFAULT } from '../../utils/constants'
 import { cleanLocation, generateColorRampValue, getNumberWithOrdinal, isTeamFavorite, roundNumber, formatRank, generateMarginalString } from '../../utils/misc'
@@ -33,7 +35,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
         <div class="card-title mb-0">
             <div class="d-flex align-items-center justify-content-between">
                 <h2>{cleanLocation(team)}</h2>
-                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} /> 
+                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} /> 
             </div>
         </div>
         <div class="table-responsive">
@@ -77,7 +79,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
 
         {
             (summary && !hideNavigation) && (
-                <a href={`/year/${metricSeason.trim()}/team/${team.id}`}>View full profile</a>
+                <a href={leaguePath(Astro.locals.league, `/year/${metricSeason.trim()}/team/${team.id}`)}>View full profile</a>
             )
         }
     </div>

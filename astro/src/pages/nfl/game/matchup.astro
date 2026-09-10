@@ -1,0 +1,10 @@
+---
+import MatchupRoute from '../../../components/routes/MatchupRoute.astro';
+import { prepareMatchup } from '../../../routes/matchup';
+
+const r = prepareMatchup(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+---
+<MatchupRoute {...r} />

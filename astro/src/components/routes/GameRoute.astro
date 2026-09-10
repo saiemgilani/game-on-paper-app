@@ -1,0 +1,69 @@
+---
+/**
+ * The game page's render step, shared by `pages/game/[id].astro` and
+ * `pages/nfl/game/[id].astro`. Takes the data `routes/game.ts` loaded; the
+ * page itself only decides the redirect.
+ */
+import GamePage from '../game/GamePage.astro';
+import GamePageClassic from '../game/classic/GamePage.astro';
+import PreGamePage from '../game/PreGamePage.astro';
+import ErrorPage from '../ErrorPage.astro';
+import { isFeatureEnabled } from '../../utils/features';
+import { ESPN_INVALID_GAME_STATUS_NAMES } from '../../resources/espn';
+import { LEAGUES } from '../../utils/league';
+import type { GameRouteData } from '../../routes/game';
+
+type Props = GameRouteData;
+const { league, id, espnGame, game, pregameState, gameRenderable } = Astro.props;
+const espnPath = LEAGUES[league].espnPath;
+const espnLink = `This may be due to a lack of data from ESPN. Double check that play-by-play is available at ESPN <a href='https://www.espn.com/${espnPath}/game/_/gameId/${id}' target='__blank'>here</a>.`;
+---
+{
+    (!espnGame) && (
+        <ErrorPage
+            htmlTitle="Game Not Found"
+            htmlSubtitle="Unable to find game"
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be found."
+            message={espnLink}
+        />
+    )
+}
+{
+    /* A game with no processed plays is a pregame state whether python
+       errored (scheduled) or returned an empty payload (delayed at kickoff,
+       2026-09-07's 401858212). Routing it into GamePage used to hit the
+       manifest's required-'plays' rewrite INSIDE a component -- illegal, the
+       stream aborted, and the page served an empty 200. */
+    (espnGame && pregameState) && <PreGamePage id={id} espnGame={espnGame} league={league} />
+}
+{
+    (espnGame && !game && ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) && (
+        <ErrorPage
+            htmlTitle="Game Unprocessable"
+            htmlSubtitle="Unable to process game"
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be processed."
+            message={espnLink}
+        />
+    )
+}
+{
+    /* A processed game missing a required dataset (header/plays/box) cannot
+       render GamePage; the page-level gate replaces the component-level
+       Astro.rewrite that aborted the stream into an empty 200. */
+    (espnGame && game && !gameRenderable && !pregameState) && (
+        <ErrorPage
+            htmlTitle="Game Unprocessable"
+            htmlSubtitle="Unable to process game"
+            slug={Astro.url.pathname}
+            humanTitle="This game could not be processed."
+            message={espnLink}
+        />
+    )
+}
+{
+    (espnGame && game && gameRenderable && !pregameState) && (isFeatureEnabled('game-page-v2', Astro.locals)
+        ? <GamePage id={id} game={game} league={league} />
+        : <GamePageClassic id={id} game={game} league={league} />)
+}

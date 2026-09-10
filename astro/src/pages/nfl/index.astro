@@ -1,0 +1,11 @@
+---
+// The NFL scoreboard. Every /nfl page is an explicit route: it sets the league
+// and renders the shared component; nothing is rewritten in middleware.
+import SchedulePage from "../../components/schedule/SchedulePage.astro";
+import { CURRENT_YEAR } from "../../utils/constants";
+import { LEAGUES } from "../../utils/league";
+import { loadScoreboard } from "../../routes/scoreboard";
+
+const games = await loadScoreboard(Astro, 'nfl');
+---
+<SchedulePage title={`${LEAGUES.nfl.name} | Game on Paper`} season={CURRENT_YEAR} week={games[0]?.week?.number} seasontype={games[0]?.season?.type} isScoreboard={true} games={games} />

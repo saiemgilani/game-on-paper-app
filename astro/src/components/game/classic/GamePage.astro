@@ -29,18 +29,22 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../../utils/seo';
 import GameHeader from '../GameHeader.astro';
+import { LEAGUES, leaguePath, type League } from '../../../utils/league';
 
 interface Props {
    id: string | number
    game: ProcessedGame
+   league?: League
 }
 
 const { id, game } = Astro.props;
+const league: League = Astro.props.league ?? Astro.locals.league ?? 'cfb';
+const espnPath = LEAGUES[league].espnPath;
 
 // Canonical is /game/<id>, the path actually served. /cfb/game/<id> also
 // resolves (it 301s here), so advertising it as canonical pointed Google at a
 // redirect and split signals between two URLs for the same page.
-const canonicalUrl = new URL(`/game/${id}`, "https://gameonpaper.com").href
+const canonicalUrl = new URL(leaguePath(league, `/game/${id}`), "https://gameonpaper.com").href
 
 const gop = gopStorage.getStore();
 if (gop) gop.game_id = String(id);
@@ -57,7 +61,7 @@ const requiredMissing = verdict.requiredMissing.length > 0;
 if (requiredMissing && gop) gop.render_outcome = 'failed';
 salvageGame(game);
 
-const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined);
+const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
@@ -82,8 +86,8 @@ const gameSpec = {
     statusDescription,
 };
 const title = gameTitle(gameSpec);
-const subtitle = gameDescription(gameSpec);
-const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
+const subtitle = gameDescription({ ...gameSpec, league });
+const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]);
 
 const previewUrlParams = new URLSearchParams({
     homeSeason: String(game.season.year),
@@ -102,8 +106,9 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#scoring-plays", title: "Scoring Plays" },
     { href: "#drives", title: "Drives" },
     { href: "#all-plays", title: "All Plays" },
-    { href: `/game/matchup?${previewUrlParams.toString()}`, title: "Matchup Preview" },
-    { href: `https://www.espn.com/college-football/game/_/gameId/${id}`, title: "Gamecast" },
+    // the matchup preview reads the season tables; not offered for a league without them
+    ...(LEAGUES[league].sdvEnabled ? [{ href: leaguePath(league, `/game/matchup?${previewUrlParams.toString()}`), title: "Matchup Preview" }] : []),
+    { href: `https://www.espn.com/${espnPath}/game/_/gameId/${id}`, title: "Gamecast" },
 ];
 
 const bigPlays = game.plays.toSorted((a, b) => {
@@ -170,7 +175,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta property="og:url" content={canonicalUrl}>
         <meta property="og:title" content={title}>
         <meta property="og:description" content={subtitle}>
-        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${id}.png?templateId=espn.com.share.1`}>
+        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${id}.png?templateId=espn.com.share.1`}>
         <meta property="og:image:width" content="400">
         <meta property="og:image:height" content="400">
         <meta property="og:type" content="website">
@@ -179,7 +184,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta name="twitter:title" content={title}>
         <meta name="twitter:description" content={subtitle}>
         <meta name="twitter:card" content="summary">
-        <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${id}.png?templateId=espn.com.share.1`}>
+        <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${id}.png?templateId=espn.com.share.1`}>
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />

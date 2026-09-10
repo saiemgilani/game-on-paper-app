@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
+import { LEAGUES } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
@@ -32,6 +33,8 @@ function buildEntries(): Entry[] {
     const today = new Date().toISOString().slice(0, 10);
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
+        // the NFL scoreboard; its season/team URLs follow once the NFL tables exist
+        { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
         // Trailing slashes are load-bearing: prerendered routes 307 to the
         // slashed form, and advertising a redirect wastes the crawl budget this
         // file exists to protect. Verified per-URL against production.
@@ -41,6 +44,18 @@ function buildEntries(): Entry[] {
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/changelog/', lastmod: today, changefreq: 'weekly', priority: '0.3' },
     ];
+
+    // NFL week schedules are ESPN-backed and live today; NFL season/team pages
+    // join once the season tables exist (see docs/superpowers/plans/...plan-bc).
+    const nfl = LEAGUES.nfl;
+    for (const year of nfl.seasons) {
+        const lastmod = seasonLastmod(year);
+        const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
+        // week 18 arrived with the 17-game schedule in 2021
+        const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
+        for (let w = 1; w <= regWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+        for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+    }
 
     for (const year of AVAILABLE_SEASONS) {
         const lastmod = seasonLastmod(year);

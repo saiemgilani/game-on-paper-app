@@ -1,11 +1,11 @@
 ---
 import TeamLeaderboardPage from "../../../components/leaderboards/TeamLeaderboardPage.astro";
-import { CURRENT_YEAR, LAST_YEAR } from "../../../utils/constants";
+import { prepareLeaderboard } from "../../../routes/leaderboards";
 
-const { year } = Astro.params;
-if (year == `${CURRENT_YEAR}`) {
-    return Astro.redirect(`/year/${LAST_YEAR}/teams`)
+const r = prepareLeaderboard(Astro, 'cfb', 'teams');
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
 }
 ---
 
-<TeamLeaderboardPage season={parseInt(year || `${CURRENT_YEAR}`)} category={"differential"} metric={"net_adj_epa"} />
+<TeamLeaderboardPage season={r.season} category={"differential"} metric={"net_adj_epa"} />
