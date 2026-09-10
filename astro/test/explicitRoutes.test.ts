@@ -29,8 +29,10 @@ function walk(dir: string, prefix = ''): string[] {
 
 describe('explicit /nfl pages', () => {
     test('every league-aware cfb page has an nfl twin, and nothing else lives under /nfl', () => {
-        // pages with no league: admin/api/health/404/sitemap/glossary/changelog
-        const leagueless = /^(admin|api|changelog|glossary|health|404|sitemap|nfl)(\/|\.)/;
+        // pages with no league: admin/api/health/404/sitemap/glossary/changelog,
+        // plus the standing explainer pages, which sit alongside the glossary
+        // and describe the site rather than a league's slate
+        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap|nfl)(\/|\.)/;
         const cfb = walk(PAGES).filter((p) => !leagueless.test(p)).sort();
         const nfl = walk(join(PAGES, 'nfl')).sort();
         expect(nfl).toEqual(cfb);

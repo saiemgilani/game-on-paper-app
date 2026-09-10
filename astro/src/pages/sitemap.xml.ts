@@ -48,6 +48,8 @@ function buildEntries(): Entry[] {
         // file exists to protect. Verified per-URL against production.
         { loc: '/teams/', lastmod: today, changefreq: 'weekly', priority: '0.7' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
+        { loc: '/methodology/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
+        { loc: '/data-sources/', lastmod: today, changefreq: 'monthly', priority: '0.4' },
         { loc: '/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/changelog/', lastmod: today, changefreq: 'weekly', priority: '0.3' },
