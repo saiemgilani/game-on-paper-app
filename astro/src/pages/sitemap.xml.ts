@@ -3,6 +3,7 @@ import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
 import { LEAGUES, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
+import { FLAGS } from '../utils/features';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
 // the season list) and costs nothing to serve. Deliberately makes no network
@@ -31,12 +32,17 @@ type Entry = { loc: string; lastmod: string; changefreq: string; priority: strin
 
 function buildEntries(): Entry[] {
     const today = new Date().toISOString().slice(0, 10);
+    // This file is prerendered -- there is no viewer to hold a preview cookie --
+    // so the NFL is advertised only once the 'nfl' flag is public; until then
+    // every /nfl URL is a 404 and a sitemap must never list one.
+    const nflPublic = FLAGS['nfl'] === 'on';
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
-        // the NFL scoreboard; its season/team URLs follow once the NFL tables exist
-        { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
-        { loc: '/nfl/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
-        { loc: '/nfl/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
+        ...(nflPublic ? [
+            { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
+            { loc: '/nfl/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
+            { loc: '/nfl/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
+        ] : []),
         // Trailing slashes are load-bearing: prerendered routes 307 to the
         // slashed form, and advertising a redirect wastes the crawl budget this
         // file exists to protect. Verified per-URL against production.
@@ -50,7 +56,7 @@ function buildEntries(): Entry[] {
     // the NFL mirrors the cfb season/leaderboard/team blocks below, prefixed;
     // its week schedules are listed too (the cfb ones are reached from /year/N)
     const nfl = LEAGUES.nfl;
-    for (const year of nfl.seasons) {
+    for (const year of nflPublic ? nfl.seasons : []) {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
         out.push({ loc: `/nfl/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
@@ -82,7 +88,7 @@ function buildEntries(): Entry[] {
         for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
     }
 
-    for (const league of ['cfb', 'nfl'] as const) {
+    for (const league of (nflPublic ? ['cfb', 'nfl'] : ['cfb']) as readonly ('cfb' | 'nfl')[]) {
         const lp = (p: string) => (league === 'cfb' ? p : `/nfl${p}`);
         if (league === 'nfl') out.push({ loc: '/nfl/teams', lastmod: today, changefreq: 'weekly', priority: '0.7' });
         for (const team of retrieveAllTeams(league)) {
