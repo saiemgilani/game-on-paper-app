@@ -85,7 +85,7 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
             <table class="table table-sm table-responsive">
                 <thead>
                     <tr>
-                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px")}</div></th>
+                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px", Astro.locals.league)}</div></th>
                         <th class="text-center w-25" style="text-align: center;" colspan="1">${seasonLabel}</th>
                     </tr>
                 </thead>
@@ -257,7 +257,7 @@ const matchupData = [
     <div class="row">
         <Fragment set:html={produceTeamSector(awayTeamSeason?.team, awayTeamBreakdown)} />
         <div class="col-md-12 ms-sm-auto col-lg-6">
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Defense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Defense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -280,7 +280,7 @@ const matchupData = [
                     </tbody>
                 </table>
             </div>
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false)} /> Offense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Offense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>

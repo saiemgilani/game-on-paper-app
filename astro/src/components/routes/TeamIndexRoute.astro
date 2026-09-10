@@ -1,0 +1,71 @@
+---
+// Rendered per request (was prerendered): the index varies by league, and a
+// prerendered page cannot read Astro.locals.league. Cached for a day below.
+import GenericPage from "../../layouts/GenericPage.astro";
+import { LEAGUES, espnLogoLeague, leaguePath, type League } from '../../utils/league';
+import { cleanField } from "../../utils/misc";
+import { SESSION_FAVORITES_DEFAULT } from "../../utils/constants";
+import DarkModeLogos from "../../components/DarkModeLogos.astro";
+import { type TeamIndex, retrieveAllTeams } from "../../utils/teams";
+
+// Route component: the page (per league) sets the league and the cache policy.
+interface Props { league: League }
+const { league } = Astro.props;
+const cfg = LEAGUES[league];
+const AVAILABLE_SEASONS = cfg.seasons;
+const title = `Team Index | ${cfg.name} | Game on Paper`;
+const subtitle = league === 'cfb'
+    ? 'Every FBS college football team with links to season pages of EPA per play, success rate, explosiveness and win probability.'
+    : 'Every NFL team with links to season pages of EPA per play, success rate, explosiveness and win probability.';
+const teams: TeamIndex[] = retrieveAllTeams(league)
+
+function generateTeamRow(team: any): string {
+    const seasonCells = AVAILABLE_SEASONS.map((p) => {
+        if (team.seasons.includes(p)) {
+            return `<td class="text-center" colspan="1"><a href="${leaguePath(league, `/year/${p}/team/${team.team_id}`)}">${p}</a></td>`
+        } else {
+            return `<td class="text-center" colspan="1"><p class="m-0 text-muted">${p}</p></td>`
+        }
+    }).join("")
+    return `
+    <tr>
+        <td class="text-left" colspan="1"><a href="${leaguePath(league, `/team/${team.team_id}`)}"><img class="img-fluid team-logo-${team.team_id} me-2" width="20px" src="https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.team_id}.png" alt="ESPN team id ${team.team_id}"/><strong>${cleanField(team, "name")}</strong></a></td>
+        ${seasonCells}
+    </tr>
+    `
+}
+
+---
+
+<GenericPage title={title} subtitle={subtitle} heading={`${cfg.name} Team Index`} slug={leaguePath(league, "/teams")} breadcrumbs={[]}>
+    <link href="/assets/css/sticky-table.css" rel="stylesheet">
+    <DarkModeLogos teamIds={teams.map(t => t.team_id)} />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2>All Teams</h2>
+                <p class="m-0 mb-2 text-muted text-small">A convenient list of all teams available in our database along with links to their season pages. A grayed out season indicates that season is not available.</p>
+                <!-- <p class="mt-0 text-muted text-small">Note: this page is auto-generated, so that teams that you have marked as "favorite" will not be marked here.</p> -->
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-responsive table-fix-first-col">
+                        <thead>
+                            <th class="text-left" colspan="1">Team</th>
+                            {
+                                AVAILABLE_SEASONS.map((p) => (<th class="text-center" colspan="1">{p}</th>))
+                            }
+                        </thead>
+                        <tbody>
+                            {
+                                teams.map(t => (<Fragment set:html={generateTeamRow(t)} />))
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</GenericPage>

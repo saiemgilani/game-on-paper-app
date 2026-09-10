@@ -1,0 +1,39 @@
+---
+import ChartBuilder from '../../components/charts/ChartBuilder.svelte';
+import GenericPage from '../../layouts/GenericPage.astro';
+import FallbackSpinner from '../../components/FallbackSpinner.astro';
+import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from './../../components/DarkModeLogos.astro';
+import { generateTeamMetricTitle } from '../../utils/misc';
+import { leaguePath } from '../../utils/league';
+import type { ChartBuilderData } from '../../routes/charts';
+
+// Route component: routes/charts.ts (per-league page) read the query, the
+// season table and set the cache policy; this renders.
+type Props = ChartBuilderData;
+const { league, season, metricX, metricY, points } = Astro.props;
+
+const breadcrumbs: PageBreadcrumb[] = [
+    {
+        title: 'Charts',
+        active: false
+    },
+    {
+        title: 'Builder',
+        active: true,
+    }
+]
+
+
+const title = `Chart Builder | Game on Paper`;
+const sport = league === 'nfl' ? 'NFL' : 'college football';
+const pool = league === 'nfl' ? 'NFL' : 'FBS';
+
+---
+
+<GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} description={`Plot any two ${season} ${sport} advanced stats against each other: EPA per play, success rate, explosiveness, havoc and win probability for every ${pool} team.`} slug={leaguePath(league, "/charts/builder")} breadcrumbs={breadcrumbs}>
+    <DarkModeLogos teamIds={points.map(t => t.team_id)} />
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} league={league}>
+        <FallbackSpinner slot="fallback" />
+    </ChartBuilder>
+</GenericPage>

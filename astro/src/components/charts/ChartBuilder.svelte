@@ -1,11 +1,14 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
+    import { espnLogoLeague, leagueFromLocation, leaguePath } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
 
-    const { season, x, y, points } = $props();
+    // `league` comes from the SSR page; the FBS group/conference filters and
+    // copy only make sense for college football
+    const { season, x, y, points, league = 'cfb' } = $props();
     let selectedSeason = season;
     let selectedMetricX = x;
     let selectedMetricY = y;
@@ -105,7 +108,7 @@
                             } else if (Object.keys(SPECIAL_IMAGES).includes(String(t.team_id))) {
                                 img.src = SPECIAL_IMAGES[t.team_id];
                             } else {
-                                img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${t.team_id}.png` : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.team_id}.png`
+                                img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${t.team_id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${t.team_id}.png`
                             }
                             return img
                         }),
@@ -355,7 +358,7 @@
             x: selectedMetricX,
             y: selectedMetricY
         })
-        window.location = `/charts/builder?${urlParams.toString()}`
+        window.location = leaguePath(league, `/charts/builder?${urlParams.toString()}`)
     }
 
     if (document.readyState !== 'loading') {
@@ -372,7 +375,7 @@
     <div class="row mb-3">
         <div class="col-lg-6 col-xs-12 mb-xs-3">
             <h1>Chart Builder</h1>
-            <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange} - Data shown is from FBS vs FBS games only.</p>
+            <p class="m-0 text-muted"><strong>Available Seasons:</strong> {yearRange}{league === 'cfb' ? ' - Data shown is from FBS vs FBS games only.' : ''}</p>
             <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: other than for Adj EPA/Play, metrics are <strong>not</strong> adjusted for quality of opponent or garbage time.</p>
             <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
             <p class="m-0 mb-2 text-muted text-small">Note: this page is best viewed on desktop.</p>
@@ -433,6 +436,7 @@
             <span class="align-self-center">Focus on:</span>
         </div>
         
+        {#if league === 'cfb'}
         <form class="col-xs-12 col-sm-auto mb-3 mr-xs-0 mr-sm-2 d-flex justify-content-start">
             <select class="form-select form-select-md" onchange={onChangeFBSClassFilter}>
                 <option value="-1" disabled>Focus on FBS group...</option>
@@ -457,6 +461,7 @@
                 {/each}
             </select>
         </form>
+        {/if}
     </div>
 </div>
 
@@ -484,7 +489,7 @@
                         {#each chartedPoints as p, i}
                         <tr>
                             <td class="text-right" colspan="1">{i + 1}</td>
-                            <td class="text-left" colspan="1"><a href={`/year/${season}/team/${p.team_id}`}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
+                            <td class="text-left" colspan="1"><a href={leaguePath(league, `/year/${season}/team/${p.team_id}`)}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, "pos_team")}`} title={cleanField(p, "pos_team")}/><span class="visually-hidden">{cleanField(p, "pos_team")}</span><strong>{cleanField(p, "pos_team")}</strong></a></td>
                             <td class={`text-center ${generateColorRampValue(parseFloat(p.x_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(selectedMetricX, p.x)}</td>
                             <td class={`text-center ${generateColorRampValue(parseFloat(p.y_rank), points.length, true)}`} colspan="1">{formatNumberForMetric(selectedMetricY, p.y)}</td>
                         </tr>

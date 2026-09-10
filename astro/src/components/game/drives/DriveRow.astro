@@ -1,5 +1,6 @@
 ---
 import type { ESPNTeam } from "../../../resources/espn"
+import { espnLogoLeague } from '../../../utils/league';
 import type { ProcessedDrive, ProcessedPlay } from "../../../resources/python"
 import { formatDistance, formatYardline, roundNumber, cleanAbbreviation } from "../../../utils/misc"
 import { isScrimmage } from "../../../utils/situational"
@@ -76,7 +77,7 @@ const endWP = endWPPlays[endWPPlays.length - 1];
 
 <tr data-bs-toggle={expandable ? "collapse" : ""} href={`#drive-${prefix}-${drive.id}`} class=`accordion-toggle${classText}`>
     <td style="text-align: left;vertical-align:center;">{period}</td>
-    <td style="text-align: center;vertical-align:center;"><img class={`img-fluid team-logo-${offense.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${offense.id}.png`} alt={`ESPN team id ${offense.id}`}/></td>
+    <td style="text-align: center;vertical-align:center;"><img class={`img-fluid team-logo-${offense.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${offense.id}.png`} alt={`ESPN team id ${offense.id}`}/></td>
     <td style="text-align: left;vertical-align:center;">{drive.displayResult || 'In Progress'}</td>
     <td style="text-align: left;vertical-align:center;">{drive.description}</td>
     <td class="numeral d-none d-xl-table-cell" style="text-align: center;vertical-align:center;" title="Share of this drive's plays from scrimmage that gained enough for their down">{roundNumber(avgSR * 100, 3, 0)}%</td>

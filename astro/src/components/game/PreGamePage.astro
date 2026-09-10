@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { type ESPNPlayByPlayResponse } from '../../resources/espn';
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
 import { retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveMatchupHistory } from '../../resources/sdv';
+import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
 import { cleanLocation, isChampionshipEvent } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
@@ -18,9 +19,12 @@ import GameHeader from './GameHeader.astro';
 interface Props {
     id: string | number
     espnGame: ESPNPlayByPlayResponse
+    league?: League
 }
 
 const { id, espnGame } = Astro.props;
+const league: League = Astro.props.league ?? Astro.locals.league ?? 'cfb';
+const espnPath = LEAGUES[league].espnPath;
 
 const game = espnGame.gamepackageJSON.header.competitions[0];
 
@@ -43,11 +47,11 @@ const gameSpec = {
     statusDescription,
 };
 const title = gameTitle(gameSpec);
-const subtitle = gameDescription(gameSpec);
-const structuredData = jsonLdScript([sportsEventJsonLd(gameSpec)]);
+const subtitle = gameDescription({ ...gameSpec, league });
+const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]);
 // Canonical is /game/<id>, the served path; /cfb/game/<id> is Disallowed in
 // robots.txt, so the old value told Google the authoritative URL was one it may not crawl.
-const canonicalUrl = new URL(`/game/${id}`, "https://gameonpaper.com").href;
+const canonicalUrl = new URL(leaguePath(league, `/game/${id}`), "https://gameonpaper.com").href;
 const metricYear = espnGame.gamepackageJSON.header.season.year == CURRENT_YEAR ? LAST_YEAR : espnGame.gamepackageJSON.header.season.year;
 
 let homeTeamSeason: SDVTeamSeasonInformation = {
@@ -55,7 +59,7 @@ let homeTeamSeason: SDVTeamSeasonInformation = {
     events: [],
 };
 try {
-    homeTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, homeTeam.id)
+    homeTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, homeTeam.id, league)
 } catch (e) {
     console.error(e);
     homeTeamSeason = {
@@ -69,7 +73,7 @@ let awayTeamSeason: SDVTeamSeasonInformation = {
     events: [],
 };
 try {
-    awayTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, awayTeam.id);
+    awayTeamSeason = await retrieveTeamSeasonInformation(espnGame.gamepackageJSON.header.season.year, awayTeam.id, league);
 } catch (e) {
     console.error(e);
     awayTeamSeason = {
@@ -80,7 +84,7 @@ try {
 
 let homeSummaries: SDVTeamSummary[] = [];
 try {
-    homeSummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(homeTeam.id) });
+    homeSummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(homeTeam.id), league });
     if (!homeSummaries) {
         homeSummaries = []
     }
@@ -91,7 +95,7 @@ try {
 
 let awaySummaries: SDVTeamSummary[] = [];
 try {
-    awaySummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(awayTeam.id) });
+    awaySummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(awayTeam.id), league });
     if (!awaySummaries) {
         awaySummaries = []
     }
@@ -105,7 +109,7 @@ const awaySummary = awaySummaries.length == 0 ? null : awaySummaries[0];
 
 let matchupHistory: Awaited<ReturnType<typeof retrieveMatchupHistory>> = [];
 try {
-    matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5);
+    matchupHistory = await retrieveMatchupHistory(homeTeam.id, awayTeam.id, 5, league);
 } catch (e) {
     // same fail-open contract as the other SDV lookups above: a matchup-history
     // outage must not cost the pregame page
@@ -140,7 +144,7 @@ try {
         <meta property="og:url" content={canonicalUrl}>
         <meta property="og:title" content={title}>
         <meta property="og:description" content={subtitle}>
-        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
+        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${game.id}.png?templateId=espn.com.share.1`}>
         <meta property="og:image:width" content="400">
         <meta property="og:image:height" content="400">
         <meta property="og:type" content="website">
@@ -149,7 +153,7 @@ try {
         <meta name="twitter:title" content={title}>
         <meta name="twitter:description" content={subtitle}>
         <meta name="twitter:card" content="summary">
-        <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/college-football/events/${game.id}.png?templateId=espn.com.share.1`}>
+        <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${game.id}.png?templateId=espn.com.share.1`}>
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />

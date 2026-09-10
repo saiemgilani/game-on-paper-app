@@ -40,7 +40,9 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "HBCU GO": "https://hbcugo.tv/",
     "HBCU Go": "https://hbcugo.tv/",
     "UCONN+": "https://uconnhuskies.com/watch/",
-    "UConn+": "https://uconnhuskies.com/watch/"
+    "UConn+": "https://uconnhuskies.com/watch/",
+    "Netflix": "https://www.netflix.com/search?q=nfl%20on%20christmas&suggestionId=Collection%3A81926081",
+    "Prime Video": "https://www.amazon.com/gp/video/storefront/ref=atv_me_pvs_c_7sjRqq_2_1?contentType=merch&contentId=tnf&merchId=tnf"
 };
 
 export function isESPNNetwork(networkName?: string | null): boolean {
@@ -383,7 +385,7 @@ export const TURNOVER_VEC: string[] = [
     "Uncategorized Touchdown"
 ]
 
-export const BOX_SCORE_NON_RATE_DECIMAL_COLUMNS: string[] = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play", "EPA_late_down_per_play", "EPA_late_down", "late_down_avg_distance"];
+export const BOX_SCORE_NON_RATE_DECIMAL_COLUMNS: string[] = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off", "EPA_overall_offense","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play", "EPA_late_down_per_play", "EPA_late_down", "late_down_avg_distance", "EPA_overall_total", "EPA_penalty"];
 export const BOX_SCORE_NON_RATE_COLUMNS: string[] = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
 export const BOX_SCORE_NON_RATE_PERCENT_COLUMNS: string[] = ["drive_total_gained_yards_rate","drive_stopped_rate","EPA_success_rate_third","EPA_success_rate_rz"];
 
@@ -776,6 +778,30 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
 ]
 
 export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
+    // NFL-only categories (rbsdm.com parity) -- columns the nfl-data producer
+    // adds to team_summaries; the college grid never has them (utils/league.ts
+    // decides which league offers which category)
+    "tendencies": {
+        "pass_rate_off": "Pass Rate",
+        "xpass_rate_off": "Expected Pass Rate",
+        "pass_oe_off": "PROE",
+        "neutral_pass_rate_off": "Neutral Pass Rate",
+        "neutral_xpass_rate_off": "Neutral Expected",
+        "neutral_pass_oe_off": "Neutral PROE",
+    },
+    "fourth-downs": {
+        "fourth_decisions_off": "Decisions",
+        "fourth_go_rate_off": "Go Rate",
+        "fourth_go_expected_off": "Model Go Rate",
+        "fourth_go_over_expected_off": "Go Rate Over Expected",
+        "fourth_go_boost_off": "Avg Boost",
+        "fourth_go_when_recommended_off": "Went When Told To",
+    },
+    "luck": {
+        "luck_fumble_rec_pct_off": "Own Fumbles Recovered",
+        "luck_fumble_rec_pct_def": "Opp Fumbles Recovered",
+        "luck_opp_fg_pct_def": "Opp FG%",
+    },
     "differential": {
         "net_adj_epa": "Adj EPA/Play",
         "EPAplay_margin": "EPA/Play",
@@ -817,6 +843,28 @@ export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> 
 }
 
 export const SDV_TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
+    // [multiplier, power10, fixed]; pass_oe / neutral_pass_oe are already percentage points
+    "tendencies": {
+        "pass_rate_off": [ 100, 2, 1 ],
+        "xpass_rate_off": [ 100, 2, 1 ],
+        "pass_oe_off": [ 1, 2, 1 ],
+        "neutral_pass_rate_off": [ 100, 2, 1 ],
+        "neutral_xpass_rate_off": [ 100, 2, 1 ],
+        "neutral_pass_oe_off": [ 1, 2, 1 ],
+    },
+    "fourth-downs": {
+        "fourth_decisions_off": [ 1, 0, 0 ],
+        "fourth_go_rate_off": [ 100, 2, 1 ],
+        "fourth_go_expected_off": [ 100, 2, 1 ],
+        "fourth_go_over_expected_off": [ 100, 2, 1 ],
+        "fourth_go_boost_off": [ 1, 2, 2 ],
+        "fourth_go_when_recommended_off": [ 100, 2, 1 ],
+    },
+    "luck": {
+        "luck_fumble_rec_pct_off": [ 100, 2, 1 ],
+        "luck_fumble_rec_pct_def": [ 100, 2, 1 ],
+        "luck_opp_fg_pct_def": [ 100, 2, 1 ],
+    },
     "differential": {
         "net_adj_epa": [ 1, 2, 2 ],
         "EPAplay_margin": [ 1, 2, 2 ],
@@ -852,6 +900,19 @@ export const SDV_TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, nu
 };
 
 export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
+    "tendencies": {
+        "pass_oe_off": "Pass rate over expected, in percentage points: actual pass rate minus the model's expected pass rate for the same situations.",
+        "neutral_pass_rate_off": "Neutral: 1st/2nd down, win probability 20-80%, outside the two-minute warning, first three quarters.",
+        "neutral_pass_oe_off": "Neutral: 1st/2nd down, win probability 20-80%, outside the two-minute warning, first three quarters.",
+    },
+    "fourth-downs": {
+        "fourth_go_expected_off": "Share of this team's fourth-down decisions on which the win-probability model recommended going for it.",
+        "fourth_go_boost_off": "Average win-probability gain (points) of going, on the decisions where the model recommended going.",
+        "fourth_go_when_recommended_off": "Share of model-recommended go decisions on which the team actually went for it.",
+    },
+    "luck": {
+        "luck_opp_fg_pct_def": "Opponents' field-goal percentage against this team. Lower is luckier; ranked with the lowest first.",
+    },
     "differential": {
         "net_adj_epa": "Accounts for home-field advantange, accounting for home-field advantage, quality of opponent, and garbage time in FBS vs FBS games.",
     }, 
@@ -934,6 +995,9 @@ export const SDV_PLAYER_PERCENT_COLUMNS: string[] = [
 ];
 
 export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
+    "pass_rate_off", "xpass_rate_off", "neutral_pass_rate_off", "neutral_xpass_rate_off",
+    "fourth_go_rate_off", "fourth_go_expected_off", "fourth_go_over_expected_off", "fourth_go_when_recommended_off",
+    "luck_fumble_rec_pct_off", "luck_fumble_rec_pct_def", "luck_opp_fg_pct_def",
     "success",
     "success_off",
     "success_def",
@@ -981,6 +1045,9 @@ export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
 
 export const SDV_RADAR_COLUMNS: Record<string, string[]> = {
     "differential": [],
+    "tendencies": [],
+    "fourth-downs": [],
+    "luck": [],
     "defensive": [
         "EPAplay_def",
         "early_down_EPA_def",
@@ -1020,6 +1087,9 @@ export const SDV_RADAR_COLUMNS: Record<string, string[]> = {
 }
 
 export const SDV_TEAM_CARD_COLUMNS: Record<string, string[]> = {
+    "tendencies": [],
+    "fourth-downs": [],
+    "luck": [],
     "differential": [
         "available_yards_pct_margin",
         "yardsplay_margin",
@@ -1044,6 +1114,21 @@ export const SDV_TEAM_CARD_COLUMNS: Record<string, string[]> = {
 }
 
 export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
+    // nfl team_summaries extras (generateTeamMetricTitle strips _off/_def before the lookup)
+    "pass_rate": "Pass Rate",
+    "xpass_rate": "Expected Pass Rate",
+    "pass_oe": "Pass Rate Over Expected",
+    "neutral_pass_rate": "Neutral Pass Rate",
+    "neutral_xpass_rate": "Neutral Expected Pass Rate",
+    "neutral_pass_oe": "Neutral Pass Rate Over Expected",
+    "fourth_decisions": "Fourth Down Decisions",
+    "fourth_go_rate": "Fourth Down Go Rate",
+    "fourth_go_expected": "Model Fourth Down Go Rate",
+    "fourth_go_over_expected": "Fourth Down Go Rate Over Expected",
+    "fourth_go_boost": "Average Fourth Down Boost",
+    "fourth_go_when_recommended": "Went For It When Recommended",
+    "luck_fumble_rec_pct": "Fumble Recovery Rate",
+    "luck_opp_fg_pct": "Opponent Field Goal Percentage",
   "plays": "Total Plays",
   "playsgame": "Plays/Game",
   "passrate": "Pass %",
