@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { parseSpan, availableSpans, fmtAdjClock } from '../src/utils/span';
+import { parseSpan, fmtAdjClock } from '../src/utils/span';
 
 const p = (period: number | null, adj?: number) => ({ period, 'start.adj_TimeSecsRem': adj });
 
@@ -40,14 +40,6 @@ test('fmtAdjClock places the reading in its quarter', () => {
     expect(fmtAdjClock(2700)).toBe('Q2 15:00');
     expect(fmtAdjClock(1350)).toBe('Q3 7:30');
     expect(fmtAdjClock(0)).toBe('Q4 0:00');
-});
-
-test('availableSpans offers only played windows', () => {
-    const reg = [p(1), p(2), p(3), p(4)];
-    expect(availableSpans(reg).map((s) => s.key)).toEqual(['q1', 'q2', 'h1', 'q3', 'q4', 'h2']);
-    expect(availableSpans([p(1), p(2)]).map((s) => s.key)).toEqual(['q1', 'q2', 'h1']);
-    expect(availableSpans([...reg, p(5)]).map((s) => s.key)).toContain('ot');
-    expect(availableSpans([p(null)])).toEqual([]);
 });
 
 describe('cache guard: a ?span= URL varies by viewer while v2 is in preview', () => {

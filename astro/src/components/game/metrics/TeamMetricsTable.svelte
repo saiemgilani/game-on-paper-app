@@ -1,6 +1,6 @@
----
+<script lang="ts">
 import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
-import { espnLogoLeague } from '../../../utils/league';
+import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { roundNumber } from '../../../utils/misc';
@@ -15,7 +15,9 @@ interface Props {
     decimalPoints: number
     caption?: string
 }
-const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption } = Astro.props;
+const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
+
+const groups = teamBoxScores.map((group: any) => group[teamKey]);
 
 function handleMetricRows(item: string): string {
     const finalDecimalPoints = decimalPoints || 1;
@@ -65,46 +67,28 @@ function handleMetricRows(item: string): string {
     }
     return result;
 }
-
-// Object.keys(teamBoxScores).forEach(key => {
-//     let baseData = (teamBoxScores as any)[key]
-//     teamBoxScores[key] = baseData.toSorted((a: any, b: any) => {
-//         if (a[teamKey] == awayTeam.id && b[teamKey] == homeTeam.id) {
-//             return -1;
-//         } else if (b[teamKey] == awayTeam.id && a[teamKey] == homeTeam.id) {
-//             return 1;
-//         } else {
-//             return 0;
-//         }
-//     });
-// });
-
----
+</script>
 
 <div class="table-responsive">
     <table class="table table-sm table-responsive">
-        {
-            (caption) && (<caption class="text-muted text-small">{caption}</caption>)
-        }
+        {#if caption}
+            <caption class="text-muted text-small">{caption}</caption>
+        {/if}
         <thead>
             <tr>
                 <th class="box-heading">{title}</th>
-                {
-                    (teamBoxScores.map((group: any) => group[teamKey]).map(value => (
-                        <th style="text-align: center;"><a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
-                    )))
-                }
+                {#each groups as value}
+                    <th style="text-align: center;"><a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                {/each}
             </tr>
         </thead>
         <tbody>
-            {
-                columns.map(item => (
-                    <tr>
-                        <td style="text-align: left;"><Fragment set:html={METRIC_KEY_TITLE_MAPPING[item] || item} /></td>
-                        <Fragment set:html={handleMetricRows(item)} />
-                    </tr>
-                ))
-            }
+            {#each columns as item}
+                <tr>
+                        <td style="text-align: left;">{@html METRIC_KEY_TITLE_MAPPING[item] || item}</td>
+                        {@html handleMetricRows(item)}
+                </tr>
+            {/each}
         </tbody>
     </table>
 </div>
