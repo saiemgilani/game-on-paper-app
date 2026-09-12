@@ -234,6 +234,20 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             level it sticks for the whole page. */}
         <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
+            {latestPlays.length > 0 && (
+                <div class="row mb-2">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <Panel id="latest" title="Latest" show={true}>
+                            <p class="text-small" slot="panel-subtitle">{latestSubtitle}</p>
+                            <div class="row" slot="panel-body">
+                                <PlaysTable plays={latestPlays} prefix="latest" expandable={false} />
+                            </div>
+                        </Panel>
+                    </div>
+                </div>
+            )}
+        </div>
+        <div class="container-fluid">
             <div class="row mb-3">
                 <!-- The nav anchor must NOT be wpChart/epChart: those ids belong to the canvases
      inside the Svelte charts, and a duplicate id makes getElementById hand
@@ -249,11 +263,17 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </ExpectedPointsChart>
                 </div>
             </div>
+            {
+                (game.paperIndex && gameStatus.type.completed == true) && (
+                    <div class="row mb-3">
+                        <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                            <PaperIndex result={game.paperIndex} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
+                        </div>
+                    </div>
+                )
+            }
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    {game.paperIndex && (
-                        <PaperIndex result={game.paperIndex} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
-                    )}
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league}>
                             <FallbackSpinner slot="fallback" />
