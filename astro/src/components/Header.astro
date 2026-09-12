@@ -54,7 +54,7 @@ const METRIC_YEAR = LAST_YEAR;
                     </a>
                     <ul class="dropdown-menu">
                     {
-                        cfg.seasons.map((yr) => (
+                        cfg.seasons.sort((a, b) => b - a).map((yr) => (
                             <li><a class="dropdown-item" href={lp(`/year/${yr}/teams`)}>{yr}</a></li>
                         ))
                     }
