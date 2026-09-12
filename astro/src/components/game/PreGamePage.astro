@@ -18,6 +18,7 @@ import GameHeader from './GameHeader.astro';
 import GameEssentials from './GameEssentials.astro';
 import PlayersToWatch from './PlayersToWatch.astro';
 import RecentForm from './RecentForm.astro';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props {
     id: string | number
@@ -193,11 +194,15 @@ const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]
                 </div>
             </div>
         </div>
-        <div class="container-fluid">
-            <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={metricYear} />
-            <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={metricYear} />
-            <RecentForm summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
-        </div>
+        {
+            (isFeatureEnabled('game-page-v2', Astro.locals)) && (
+                <div class="container-fluid">
+                    <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={metricYear} />
+                    <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={metricYear} />
+                    <RecentForm summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
+                </div>
+            )
+        }
         <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} matchupHistory={matchupHistory} />
         <Footer />
     </body>
