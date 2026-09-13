@@ -10,79 +10,76 @@ const lp = (p: string) => leaguePath(league, p);
 const METRIC_YEAR = LAST_YEAR;
 ---
 
-<header class="p-3 mb-3 border-bottom">
-    <div class="container">
-        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
-            <div class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none me-md-3">
-                <a href={lp("/")} class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
-            </div>
-
-            <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0 site-nav-row">
-                <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                        Leaderboards
-                    </a>
-                    <ul class="dropdown-menu">
-                        <h6 class="dropdown-header">Team Level</h6>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/differential`)}>Net Statistics</a></li>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/offensive`)}>Offensive</a></li>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/defensive`)}>Defensive</a></li>
-                        <h6 class="dropdown-header">Player Level</h6>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
-                        <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
-                        <h6 class="dropdown-header">Standings</h6>
-                        {/* Rankings is not lp()-wrapped and is cfb-only: the AP and
-                            Coaches polls have no NFL equivalent. Standings has a twin. */}
-                        {league === 'cfb' && (<li><a class="dropdown-item" href="/rankings">Top 25 Rankings</a></li>)}
-                        <li><a class="dropdown-item" href={lp("/standings")}>{league === 'nfl' ? 'Division Standings' : 'Conference Standings'}</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                        Charts
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href={lp("/charts/trends")}>Trends</a></li>
-                        <li><a class="dropdown-item" href={lp("/charts/builder")}>Builder</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                        Seasons
-                    </a>
-                    <ul class="dropdown-menu">
-                    {
-                        cfg.seasons.sort((a, b) => b - a).map((yr) => (
-                            <li><a class="dropdown-item" href={lp(`/year/${yr}/teams`)}>{yr}</a></li>
-                        ))
-                    }
-                    </ul>
-                </li>
-                <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                        Tools
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
-                        <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
-                        <li><a href="/data-sources" class="nav-link px-2 link-secondary">Data & Sources</a></li>
-                        <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
-                    </ul>
-                </li>
-            </ul>
-
-            {
-                /* the switch INTO the NFL is offered only to a viewer the 'nfl'
-                   flag admits (utils/features.ts); the switch back to CFB always */
-                (other !== 'nfl' || isFeatureEnabled('nfl', Astro.locals)) && (
-                <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
+<header class="p-2 mb-3 border-bottom">
+    <nav class="navbar navbar-expand-sm bg-body-tertiary">
+        <div class="container">
+            <a href={lp("/")} class="fs-4 blog-header-logo text-decoration-none text-reset"><img src="/assets/img/favicon.svg" height="25px" class="align-self-center me-2"/>Game on Paper</a>
+            <button class="btn btn-sm btn-outline-primary d-inline d-sm-none" type="button" data-bs-toggle="collapse" data-bs-target="#navOptions" aria-controls="navOptions" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="bi bi-justify"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navOptions">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                            Leaderboards
+                        </a>
+                        <ul class="dropdown-menu">
+                            <h6 class="dropdown-header">Team Level</h6>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/differential`)}>Net Statistics</a></li>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/offensive`)}>Offensive</a></li>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/teams/defensive`)}>Defensive</a></li>
+                            <h6 class="dropdown-header">Player Level</h6>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
+                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
+                            <h6 class="dropdown-header">Standings</h6>
+                            {/* Rankings is not lp()-wrapped and is cfb-only: the AP and
+                                Coaches polls have no NFL equivalent. Standings has a twin. */}
+                            {league === 'cfb' && (<li><a class="dropdown-item" href="/rankings">Top 25 Rankings</a></li>)}
+                            <li><a class="dropdown-item" href={lp("/standings")}>{league === 'nfl' ? 'Division Standings' : 'Conference Standings'}</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                            Charts
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href={lp("/charts/trends")}>Trends</a></li>
+                            <li><a class="dropdown-item" href={lp("/charts/builder")}>Builder</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                            Seasons
+                        </a>
+                        <ul class="dropdown-menu">
+                        {
+                            cfg.seasons.sort((a, b) => b - a).map((yr) => (
+                                <li><a class="dropdown-item" href={lp(`/year/${yr}/teams`)}>{yr}</a></li>
+                            ))
+                        }
+                        </ul>
+                    </li>
+                    <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                            Tools
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                            <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
+                            <li><a href="/data-sources" class="nav-link px-2 link-secondary">Data & Sources</a></li>
+                            <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                {
+                    (isFeatureEnabled("nfl", Astro.locals)) && (<form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
                     <a href={leaguePath(other, "/")} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[other].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[other].shortName}</a>
-                </form>
-                )
-            }
+                </form>)
+                }
+            </div>
         </div>
-    </div>
+    </nav>
 </header>
