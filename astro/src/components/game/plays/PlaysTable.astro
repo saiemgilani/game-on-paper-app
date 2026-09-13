@@ -3,6 +3,7 @@ import type { ProcessedPlay } from '../../../resources/python'
 import ExpandedPlayRow from './ExpandedPlayRow.astro'
 import PlayRow from './PlayRow.astro'
 import { PLAY_ICON_LABEL, PLAY_ICON_LEGEND, PLAY_PILL_TEXT } from '../../../utils/playIcons'
+import ExplosivePlayMarkSprite from './ExplosivePlayMarkSprite.astro'
 
 
 interface Props {
@@ -44,11 +45,12 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
             (!caption && showGuide) && (
                 <caption>
                 <div>
-                    <p class="mb-0">Play shading guide:</p>
+                    <p class="mb-0">Play mark guide:</p>
                     <ul>
-                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
-                        <li><strong class="text-danger">Red</strong> - turnover</li>
-                        <li><strong class="text-success">Green</strong> - scoring play</li>
+                        <li>Shaded <strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li>Shaded <strong class="text-danger">Red</strong> - turnover</li>
+                        <li>Shaded <strong class="text-success">Green</strong> - scoring play</li>
+                        <li><ExplosivePlayMarkSprite /> - explosive play</li>
                     </ul>
                 </div>
                 </caption>
