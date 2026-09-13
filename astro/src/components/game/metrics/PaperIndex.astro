@@ -1,7 +1,7 @@
 ---
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
-import { roundNumber } from '../../../utils/misc';
+import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -68,7 +68,7 @@ const periods = PERIOD_ORDER
                                 <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
                                 <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
                             </div>
-                            <span class="small text-muted">{p.label} <span class="fw-bold">{p.homePct}%</span></span>
+                            <span class="small text-muted">{p.label} - <span class="fw-bold">{cleanAbbreviation(homeTeam)} {p.homePct}%</span></span>
                         </div>
                     ))}
                 </div>
