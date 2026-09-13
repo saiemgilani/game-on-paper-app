@@ -44,9 +44,10 @@ const periods = PERIOD_ORDER
     });
 ---
 <Panel id="paper-index" title="Deserved Win %" show={true} class="mb-md-3">
-    <p class="text-small" slot="panel-subtitle">
-        AKA post-game win expectancy. Inspired by <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s SP+ PGWE models.
-    </p>
+    <div slot="panel-subtitle">
+        <p class="mb-0">AKA post-game win expectancy. Inspired by <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s <a href="https://www.espn.com/college-football/story/_/id/48288665/college-football-2026-turnovers-lucky-bounces">SP+ PGWE</a>.</p>
+        <blockquote class="text-muted small fst-italic">The idea is to take all of a game's key, predictive stats...and basically toss them into the air and say, "With these stats, you could have expected to win this game X% of the time."</blockquote>
+    </div>
     <div class="row mb-3" slot="panel-body">
         <div class="col-lg-8 col-12 d-flex flex-column justify-content-center mb-3 mb-lg-0">
             <div class="d-flex align-items-center gap-2">
