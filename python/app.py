@@ -382,7 +382,7 @@ def _process_game(league: str, game_id: int):
         # ships on every response, so the frontend switches spans in place
         # without a reload. Window-inherent sections (two-minute, middle-8,
         # pace, non-garbage, 4th-down report) stay on the full-game objects
-        # only. The singular ?span= swap below stays for deep links.
+        # only.
         try:
             boxes = span_box.all_span_boxes(game)
             if boxes:

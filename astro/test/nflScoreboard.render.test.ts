@@ -36,7 +36,7 @@ describe('SchedulePage renders the NFL scoreboard', () => {
         html = await container.renderToString(SchedulePage, {
             props: { title: 'NFL | Game on Paper', season: 2025, week: 10, seasontype: 2, isScoreboard: true, games: [finalEvent('401772944')] },
             request: new Request('https://gameonpaper.com/nfl'),
-            locals: { league: 'nfl' },
+            locals: { league: 'nfl', preview: true },
         });
     }, 60_000);
 

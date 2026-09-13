@@ -1,4 +1,4 @@
-// A time window over one game, parsed from ?span= on the game page. Applied
+// A time window over one game on the game page. Applied
 // once in GamePage frontmatter (game.plays is filtered before any derivation),
 // so every astro-computed section -- play tables, drives, situational,
 // defensive box, traditional stats, penalties -- recomputes for free. The

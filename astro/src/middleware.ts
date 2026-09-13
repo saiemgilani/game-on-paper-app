@@ -221,11 +221,6 @@ function safeClientAddress(context: any): string | null {
 export function withPreviewCacheGuard(context: any, response: Response): Response {
   const url = new URL(context.request.url);
   const isAdmin = url.pathname.startsWith('/admin');
-  // A ?span= URL renders two different pages while game-page-v2 is in preview:
-  // v2 windows the boxes to the span, classic drops it and shows the full game.
-  // Cloudflare keys the cache on the URL and does not vary on the preview
-  // cookie, so the PUBLIC (classic) copy would be served to a previewing admin
-  // -- who would silently get the un-windowed page they were trying to check.
   // Scoped to the preview state: once the flag is 'on' the span means the same
   // thing to everyone and these URLs become cacheable again.
   // Preview renders are per-viewer; /admin responses are authenticated. Either

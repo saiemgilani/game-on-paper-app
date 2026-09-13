@@ -874,6 +874,10 @@ export async function retrieveProcessedGame(gameId: string | number, cacheTTL: n
         });
     }
 
+    if (!pbp.advBoxScoreSpans) {
+        pbp.advBoxScoreSpans = {}
+    }
+
     for (let [span, advBoxScore] of Object.entries(pbp.advBoxScoreSpans)) {
         for (let [key, baseData] of Object.entries(advBoxScore || {})) {
             const statKeys = (baseData as any).length > 0 ? Object.keys((baseData as any)[0]) : []

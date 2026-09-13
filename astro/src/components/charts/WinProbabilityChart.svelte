@@ -55,7 +55,7 @@ function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 
     };
 }
 
-// Translucent box over the active ?span= window (chart data stays full-game;
+// Translucent box over the active span (chart data stays full-game;
 // a WP chart of one quarter alone is misleading). Same canvas-plugin pattern
 // as createVerticalLinePlugin; indices are positions on the x axis.
 function createSpanShadePlugin(shade, isDarkMode) {

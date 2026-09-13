@@ -65,13 +65,6 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (espnGame && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            // a valid ?span= also windows the python-computed advanced boxes; the
-            // API keys its cache on it, and falls back to full-game when the window
-            // is invalid or empty
-            // The span may only window the data when the v2 page (which renders the
-            // pills and the "showing Q3 only" banner) will actually be shown. A
-            // public/classic render with a shared ?span= link would otherwise show
-            // silently windowed box scores inside a full-game page.
             game = await retrieveProcessedGame(id, config.maxAge || 30, league);
         }
 
