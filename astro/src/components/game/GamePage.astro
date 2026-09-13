@@ -264,7 +264,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                 </div>
             </div>
             {
-                (game.paperIndex && gameStatus.type.completed == true) && (
+                (game.paperIndex && league == "cfb" && gameStatus.type.completed == true) && (
                     <div class="row mb-3">
                         <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                             <PaperIndex result={game.paperIndex} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
