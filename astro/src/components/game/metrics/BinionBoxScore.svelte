@@ -12,8 +12,8 @@ interface Props {
     percentiles: SDVSeasonPercentile[]
 }
 
-const {season, advancedBoxScore, percentiles} = $props();
-const groups = advancedBoxScore.team.map((group: any) => group.pos_team);
+const {season, advancedBoxScore, percentiles}: Props = $props();
+const groups = $derived(advancedBoxScore.team.map((group: any) => group.pos_team));
 
 const percentile_title_key_mapping: Record<string, string> = {
     "EPA_per_play" : "EPAplay",

@@ -1,10 +1,3 @@
-// A time window over one game on the game page. Applied
-// once in GamePage frontmatter (game.plays is filtered before any derivation),
-// so every astro-computed section -- play tables, drives, situational,
-// defensive box, traditional stats, penalties -- recomputes for free. The
-// python-computed advanced boxes stay full-game until the API grows the same
-// parameter; the charts deliberately keep the whole game for context.
-//
 // Specs: q1..q4, ot (any period > 4), h1, h2, or "<from>-<to>" in game-clock
 // seconds remaining (adj_TimeSecsRem: 3600 = Q1 15:00 counting down to 0).
 // Clock ranges are normalized to 30-second buckets so crawlers cannot mint an

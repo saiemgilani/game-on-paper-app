@@ -31,12 +31,12 @@ let selectedSpan = $state("all");
 let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSED_BOX_SCORE)
 
 function onChangeSpan(e: Event) {
-    selectedSpan = e.target.value
+    selectedSpan = (e.target as HTMLSelectElement).value
 }
 </script>
 <div class="d-flex flex-wrap gap-2 align-items-center mb-2 mt-1">
     <label class="text-small text-muted" for="span-stats">Show only</label>
-    <select id="span-stats" class="form-select form-select-sm" style="width:auto;min-width:250px" onchange={onChangeSpan}>
+    <select id="span-stats" aria-label="Show only this period of metrics" class="form-select form-select-sm" style="width:auto;min-width:250px" onchange={onChangeSpan}>
         <option value="all" selected={"all" == selectedSpan}>Game</option>
         {#each availableSpans as s}
         <option value={s.key} selected={s.key == selectedSpan}>{s.label}</option>

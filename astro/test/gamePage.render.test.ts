@@ -101,7 +101,7 @@ describe('GamePage renders a finished game end to end', () => {
     test('situational metrics render client-side', () => {
         expect((html.match(/id="team-stats"/g) ?? []).length).toBe(1);
         expect((html.match(/id="span-stats"/g) ?? []).length).toBe(0);
-        expect(html).not.toContain(/astro-island[^>]+SituationalSection/);
+        expect(html).toMatch(/astro-island[^>]+SituationalSection/);
     });
 
     // test('penalties split by unit, and the totals are accepted flags only', () => {

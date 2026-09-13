@@ -116,7 +116,7 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
         finalTeamInfo.reverse()
     }
 
-    let finalDecimalPoints = decimalPoints || 1;
+    let finalDecimalPoints = (!decimalPoints && decimalPoints != 0) ? 1 : decimalPoints;
     var result = ""
     if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {

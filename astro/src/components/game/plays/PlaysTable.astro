@@ -30,12 +30,12 @@ const { plays, prefix, expandable, caption, showGuide } = Astro.props;
                 <caption>
                 <span class="mb-1">{caption}</span>
                 <div>
-                    <p class="mb-0">Play shading guide:</p>
+                    <p class="mb-0">Play mark guide:</p>
                     <ul>
-                        <li><strong class="text-warning">Yellow</strong> - penalty</li>
-                        <li><strong class="text-danger">Red</strong> - turnover</li>
-                        <li><strong class="text-success">Green</strong> - scoring play</li>
-                        <li class="play-marks-legend">Marks - {PLAY_ICON_LEGEND.map((id) => (<span class="me-2 text-nowrap">{PLAY_PILL_TEXT[id] ? <span class={`pi-pill pi-${id}`} aria-hidden="true">{PLAY_PILL_TEXT[id]}</span> : <svg class={`pi pi-${id}`} aria-hidden="true"><use href={`#pi-${id}`} /></svg>} {PLAY_ICON_LABEL[id].toLowerCase()}</span>))}</li>
+                        <li>Shaded <strong class="text-warning">Yellow</strong> - penalty</li>
+                        <li>Shaded <strong class="text-danger">Red</strong> - turnover</li>
+                        <li>Shaded <strong class="text-success">Green</strong> - scoring play</li>
+                        <li><ExplosivePlayMarkSprite /> - explosive play</li>
                     </ul>
                 </div>
                 </caption>
