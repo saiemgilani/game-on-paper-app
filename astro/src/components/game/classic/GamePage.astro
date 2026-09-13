@@ -194,7 +194,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
     <body>
         <div class="container-fluid">
             <GameHeader game={game} />
-            <NavScroller items={scrollerItems} />
+            <div class="py-1 mb-3 border-top border-bottom"><NavScroller items={scrollerItems} /></div>
         </div>
         <div class="container-fluid">
             <div class="row mb-3">
