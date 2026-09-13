@@ -10,7 +10,7 @@ import { parseSpan } from '../../../utils/span';
 // import type { ProcessedBoxScore } from '../../../resources/python';
 // import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import TeamMetricsTable from './TeamMetricsTable.svelte';
-// import BinionBoxScore from './BinionBoxScore.astro';
+import BinionBoxScore from './BinionBoxScore.svelte';
 // import PenaltyBreakdown from './PenaltyBreakdown.astro';
 // import TraditionalTeamStats from './TraditionalTeamStats.astro';
 
@@ -25,7 +25,7 @@ const EMPTY_PROCESSED_BOX_SCORE = {
   turnover: [],
 }
 
-const { season, advBoxScoreSpans, league } = $props();
+const { season, advBoxScoreSpans, league, percentiles } = $props();
 const availableSpans = Object.keys(advBoxScoreSpans).map(parseSpan).filter(p => !!p)
 let selectedSpan = $state("all");
 let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSED_BOX_SCORE)
@@ -45,6 +45,9 @@ function onChangeSpan(e: Event) {
 </div>
 <div class="row">
     <div class="col-md-4 ms-sm-auto col-lg-4">
+        {#if league == "cfb"}
+        <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} />
+        {/if}
         <TeamMetricsTable 
             title="Expected Points"
             teamKey='pos_team'
