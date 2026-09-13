@@ -32,11 +32,14 @@ const { items } = Astro.props;
 </Fragment>
 <script>
     document.getElementById("game-section-picker")?.addEventListener("change", (e: Event) => {
-        const href = e.target.value;
+        const href = (e.target as HTMLSelectElement).value;
         if (href && href.startsWith("#")) {
-            document.getElementById(e.target.value.replace("#", ""))?.scrollIntoView({ behavior: "smooth"})
+            document.getElementById(href.replace("#", ""))?.scrollIntoView({ behavior: "smooth"})
         } else if (href && (href.startsWith("/") || href.startsWith("https://"))) {
-            window.open(href, '_blank')?.focus();
+            const aTag: HTMLAnchorElement = document.createElement("a")
+            aTag.href = href;
+            aTag.target = "__blank"
+            aTag.click()
         }
     })
 </script>
