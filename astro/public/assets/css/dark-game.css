@@ -2477,10 +2477,7 @@ iframe {
 .blog-header-logo:hover {
     text-decoration-color: initial;
 }
-.nav-scroller {
-    border-bottom-color: rgb(55, 60, 62);
-    border-top-color: rgb(55, 60, 62);
-}
+
 .gt_group_heading {
     border-bottom-color: rgb(56, 61, 63);
     color: #e8e6e3 !important;

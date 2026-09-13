@@ -232,7 +232,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             while the PARENT is in view; inside the small header container the
             nav released after a single scroll (CodeRabbit, #208). At body
             level it sticks for the whole page. */}
-        <div class="game-nav-sticky"><NavScroller items={scrollerItems} /></div>
+        <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={scrollerItems} /></div>
         <div class="container-fluid">
             {latestPlays.length > 0 && (
                 <div class="row mb-2">
