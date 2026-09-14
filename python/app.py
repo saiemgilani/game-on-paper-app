@@ -609,7 +609,8 @@ def _emit_dq(game_id, game, processed_game):
         "type"
     ) or {}
     if status.get("completed") is True:
-        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA):
+        league = (getattr(g, "gop_meta", None) or {}).get("league", "cfb")
+        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA, league=league):
             TEL.push("dq_boxscore", row)
 
 

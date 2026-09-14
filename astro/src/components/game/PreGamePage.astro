@@ -50,7 +50,14 @@ const gameSummaryPromise = retrieveGameSummary(id);
 // Canonical is /game/<id>, the served path; /cfb/game/<id> is Disallowed in
 // robots.txt, so the old value told Google the authoritative URL was one it may not crawl.
 const canonicalUrl = new URL(leaguePath(league, `/game/${id}`), "https://gameonpaper.com").href;
-const metricYear = espnGame.gamepackageJSON.header.season.year == CURRENT_YEAR ? LAST_YEAR : espnGame.gamepackageJSON.header.season.year;
+// Team metrics: the game's own season once its tables exist (week 1 onward),
+// otherwise the previous season -- and the label below says which one was used.
+// Player lists keep the previous season for a current-season game: the player
+// tables lag the team tables and the API only falls back on an error, not on an
+// empty result.
+const gameSeason: number = espnGame.gamepackageJSON.header.season.year;
+const playersMetricYear = gameSeason == CURRENT_YEAR ? LAST_YEAR : gameSeason;
+let metricYear = playersMetricYear;
 
 let homeTeamSeason: SDVTeamSeasonInformation = {
     team: null,
@@ -81,21 +88,25 @@ try {
 }
 
 let homeSummaries: SDVTeamSummary[] = [];
-try {
-    homeSummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(homeTeam.id), league });
-    if (!homeSummaries) {
-        homeSummaries = []
-    }
-} catch (e) {
-    console.error(e);
-    homeSummaries = [];
-}
-
 let awaySummaries: SDVTeamSummary[] = [];
+const fetchTeamSummaries = async (season: number): Promise<[SDVTeamSummary[], SDVTeamSummary[]]> => {
+    const one = async (teamId: string | number) => {
+        try {
+            return (await retrieveTeamSummaries({ season, team_id: Number(teamId), league, maxLookback: season })) ?? [];
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    };
+    return [await one(homeTeam.id), await one(awayTeam.id)];
+};
 try {
-    awaySummaries = await retrieveTeamSummaries({ season: metricYear, team_id: Number(awayTeam.id), league });
-    if (!awaySummaries) {
-        awaySummaries = []
+    [homeSummaries, awaySummaries] = await fetchTeamSummaries(gameSeason);
+    if (homeSummaries.length > 0 && awaySummaries.length > 0) {
+        metricYear = gameSeason;
+    } else if (gameSeason != playersMetricYear) {
+        [homeSummaries, awaySummaries] = await fetchTeamSummaries(playersMetricYear);
+        metricYear = playersMetricYear;
     }
 } catch (e) {
     console.error(e);
@@ -198,7 +209,7 @@ const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]
             (isFeatureEnabled('game-page-v2', Astro.locals)) && (
                 <div class="container-fluid">
                     <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={metricYear} />
-                    <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={metricYear} />
+                    <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={playersMetricYear} />
                     <RecentForm summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
                 </div>
             )

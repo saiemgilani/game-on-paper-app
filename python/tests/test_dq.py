@@ -147,3 +147,30 @@ def test_dq_rows_lint_clock_stoppage_rows():
     by = {(r["team_id"], r["stat"]): r for r in dq.build_dq_rows(clean, 1)}
     assert by[(None, "lint:clock_scrimmage")]["delta"] == 0.0
     assert by[(None, "lint:clock_epa")]["delta"] == 0.0
+
+
+def test_dq_rows_nfl_sack_convention():
+    # NFL official scoring: a sack is neither a rush nor a pass attempt and its
+    # yardage comes off net passing (ESPN's netPassingYards / rushingAttempts).
+    plays = [
+        {"pos_team": 30, "sack": True, "pass": True, "statYardage": -8, "yds_sacked": -8, "scrimmage_play": True},
+        {"pos_team": 30, "rush": True, "statYardage": 5, "scrimmage_play": True},
+        {"pos_team": 30, "pass": True, "completion": True, "statYardage": 20, "scrimmage_play": True},
+    ]
+    cfb = dq._official_box(plays, [], "cfb")[30]
+    nfl = dq._official_box(plays, [], "nfl")[30]
+    assert (cfb["rush_attempts"], cfb["rush_yards"], cfb["pass_attempts"], cfb["pass_yards"]) == (2, -3, 1, 20)
+    assert (nfl["rush_attempts"], nfl["rush_yards"], nfl["pass_attempts"], nfl["pass_yards"]) == (1, 5, 1, 12)
+
+
+def test_dq_ep_between_lint_ignores_special_teams():
+    game = {
+        "advBoxScore": {"team": [], "espn_team": []},
+        "plays": [
+            {"type": {"text": "Kickoff"}, "scrimmage_play": False, "EP_between": 8.6, "EPA": 0.0},
+            {"type": {"text": "Rush"}, "scrimmage_play": True, "EP_between": 0.4, "EPA": 0.1},
+            {"type": {"text": "Pass Reception"}, "scrimmage_play": True, "EP_between": 4.1, "EPA": 0.1},
+        ],
+    }
+    by = {(r["team_id"], r["stat"]): r for r in dq.build_dq_rows(game, 1)}
+    assert by[(None, "lint:ep_between_big")]["delta"] == 1.0
