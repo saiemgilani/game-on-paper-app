@@ -239,7 +239,7 @@ if (compactRows) {
         const at = Date.parse(stamp.dataset.renderedAt);
         const render = () => {
             const s = Math.max(0, Math.round((Date.now() - at) / 1000));
-            stamp.textContent = s < 10 ? "Updated just now." : s < 90 ? `Updated ${s}s ago.` : `Updated ${Math.round(s / 60)}m ago.`;
+            stamp.textContent = s < 10 ? " Updated just now." : s < 90 ? ` Updated ${s}s ago.` : ` Updated ${Math.round(s / 60)}m ago.`;
         };
         render();
         setInterval(render, 10_000);
