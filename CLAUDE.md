@@ -83,6 +83,10 @@ node scripts/pr-evidence-comment.mjs --out img/lighthouse/<base>-<head>   # the 
 Why the method is what it is (the script enforces all of it):
 - **Builds:** production `astro build` of both trees, never `astro dev`, with every
   `preview` flag forced on in **both**. Otherwise one side measures the classic page.
+  A `preview` flag normally renders only for a viewer holding the signed preview
+  cookie. Nothing a headless Lighthouse run can present, so the script instead
+  rewrites `'preview'` → `'on'` in `src/utils/features.ts` inside its throwaway
+  worktrees (never in your checkout). `--flags a,b` limits which flags it rewrites.
 - **Frontend-only by default:** uncached local page generation (15–20 s on a game
   page) swamps frontend differences, so each tree's rendered HTML is served with its
   own `dist/client` from a gzip server. `astro preview` doesn't compress, so
