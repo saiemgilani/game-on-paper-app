@@ -121,3 +121,29 @@ def test_dq_rows_skip_unmatched_teams():
     game = {"advBoxScore": {"team": [{"pos_team": 1}], "espn_team": []}, "plays": []}
     rows = dq.build_dq_rows(game, 5)
     assert all(r["stat"].startswith("lint:") or r["stat"] == "plays" for r in rows)
+
+
+def test_dq_rows_lint_clock_stoppage_rows():
+    # ESPN's NFL feed emits "Official Timeout" / "Two-minute warning" rows; an
+    # older processor flagged them as scrimmage plays and scored EPA on them
+    # (down=-1 state), which is exactly what these two lints count. Both the
+    # flat (`type.text`) and reshaped (`type: {text}`) record shapes are seen.
+    game = {
+        "advBoxScore": {"team": [], "espn_team": []},
+        "plays": [
+            {"type": {"text": "Official Timeout"}, "scrimmage_play": True, "EPA": -4.2},
+            {"type.text": "Two-minute warning", "scrimmage_play": False, "EPA": 0.0},
+            {"type": {"text": "Timeout"}, "scrimmage_play": False, "EPA": 0.0},
+            {"type": {"text": "Rush"}, "scrimmage_play": True, "EPA": 1.1},
+        ],
+    }
+    by = {(r["team_id"], r["stat"]): r for r in dq.build_dq_rows(game, 401872922)}
+    assert by[(None, "lint:clock_scrimmage")]["delta"] == 1.0
+    assert by[(None, "lint:clock_epa")]["delta"] == 1.0
+    clean = {
+        "advBoxScore": {"team": [], "espn_team": []},
+        "plays": [{"type": {"text": "Official Timeout"}, "scrimmage_play": False, "EPA": 0.0}],
+    }
+    by = {(r["team_id"], r["stat"]): r for r in dq.build_dq_rows(clean, 1)}
+    assert by[(None, "lint:clock_scrimmage")]["delta"] == 0.0
+    assert by[(None, "lint:clock_epa")]["delta"] == 0.0

@@ -148,6 +148,28 @@ def _official_box(plays, team_box):
     return agg
 
 
+_CLOCK_TYPES = frozenset(
+    {
+        "Timeout",
+        "Official Timeout",
+        "Two-minute warning",
+        "Two-Minute Warning",
+        "End Period",
+        "End of Half",
+        "End of Game",
+    }
+)
+
+
+def _play_type(play):
+    """ESPN's play type text, whether the record is still flat (``type.text``)
+    or already reshaped by ``app._reshape_records`` (``type: {text}``)."""
+    t = play.get("type")
+    if isinstance(t, dict):
+        return t.get("text")
+    return play.get("type.text")
+
+
 def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     """Per-team box deltas + game-level lints for one completed game."""
     ts = datetime.now(timezone.utc)
@@ -194,8 +216,15 @@ def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     # Reference-free lints: espn is NULL and the expectation is delta == 0.
     plays = processed_game.get("plays") or []
     scrimmage = [p for p in plays if p.get("scrimmage_play") == True]  # noqa: E712
+    # Clock stoppages ("Timeout", "Official Timeout", "Two-minute warning", end
+    # of period) are not plays: any EPA on them leaks straight into the team
+    # totals (2026 NFL week 1: -0.9 to -18.2 EPA per team-game before the
+    # sportsdataverse-py fix), and the manifest cannot see it.
+    clock_rows = [p for p in plays if _play_type(p) in _CLOCK_TYPES]
     lints = {
         "lint:epa_null": sum(1 for p in scrimmage if p.get("EPA") is None),
+        "lint:clock_scrimmage": sum(1 for p in clock_rows if p.get("scrimmage_play") == True),  # noqa: E712
+        "lint:clock_epa": sum(1 for p in clock_rows if abs(_num(p.get("EPA")) or 0.0) > 1e-9),
         "lint:wp_oob": sum(
             1
             for p in plays

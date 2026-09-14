@@ -339,6 +339,17 @@ def _process_game(league: str, game_id: int):
         _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
 
+        # Every block below reads the processor's enriched polars frame and is
+        # fail-open, so a processor that never exposes one (NFLPlayProcess
+        # before sportsdataverse-py's plays_frame landed) silently drops the
+        # drive summary, situational block, span boxes and Paper Index. Say so
+        # once per request instead of letting four features vanish unlogged.
+        if getattr(game, "plays_frame", None) is None:
+            logging.getLogger("root").warning(
+                f"{league} processor exposed no plays_frame for {game_id}: "
+                "drive summary, situational stats, span boxes and paper index skipped"
+            )
+
         # Both of these must precede serialization: the span swap mutates
         # processed_game, and everything after `return` is dead code -- which is
         # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
