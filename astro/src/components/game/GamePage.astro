@@ -124,7 +124,7 @@ const scrollerItems: ScrollerItem[] = [
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wp-section", title: "WP Chart" },
     { href: "#ep-section", title: "EPA Chart" },
-    ...((game.paperIndex && league == "cfb" && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
+    ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
@@ -258,7 +258,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                 </div>
             </div>
             {
-                (game.paperIndex && league == "cfb" && gameStatus.type.completed == true) && (
+                (game.paperIndex && gameStatus.type.completed == true) && (
                     <div class="row mb-3">
                         <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                             <PaperIndex result={game.paperIndex} homeTeam={homeTeam} awayTeam={awayTeam} completed={gameStatus.type.completed == true} />
