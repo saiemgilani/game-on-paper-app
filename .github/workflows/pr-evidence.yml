@@ -124,7 +124,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
           dest="pr$PR/${PR_HEAD_SHA:0:7}"
-          if git fetch --depth 1 origin pr-previews; then
+          # full fetch: the checkout is complete history, and a shallow fetch would graft it
+          if git fetch -q origin pr-previews; then
             git worktree add --detach "$wt" FETCH_HEAD
           else
             git worktree add --detach "$wt" HEAD
@@ -138,7 +139,7 @@ jobs:
           # other PRs push here concurrently; their paths never overlap, so rebase and retry
           for attempt in 1 2 3 4 5; do
             git -C "$wt" push -q origin HEAD:refs/heads/pr-previews && break
-            git -C "$wt" fetch -q --depth 20 origin pr-previews
+            git -C "$wt" fetch -q origin pr-previews
             git -C "$wt" rebase -q FETCH_HEAD
             [ "$attempt" = 5 ] && exit 1
           done
