@@ -400,7 +400,7 @@ def _process_game(league: str, game_id: int):
             frame = getattr(game, "plays_frame", None)
             if frame is not None:
                 pidx = paper_index.compute(
-                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0], league=league
                 )
                 if pidx:
                     processed_game["paperIndex"] = pidx

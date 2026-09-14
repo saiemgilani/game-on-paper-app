@@ -51,6 +51,11 @@ WEIGHTS = {
     "turnovers": 0.6005,
 }
 
+# The weights above and the cfb_field_position_ep curve are fitted on college
+# finals only. A league without its own fit gets no index rather than a
+# college-weighted one wearing its name; the NFL fit lands with the
+# espn_nfl_* processed-game releases.
+FITTED_LEAGUES = frozenset({"cfb"})
 # league average points per scoring opportunity, train seasons only (the
 # neutral value for a team with no opportunity trips); fitted constant,
 # printed by the trainer alongside the weights
@@ -189,8 +194,11 @@ def by_period(frame: pl.DataFrame, home_id, away_id) -> dict:
     return out
 
 
-def compute(frame: pl.DataFrame, home_id, away_id) -> dict | None:
-    """-> the paperIndex response object, or None when inputs are unusable."""
+def compute(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict | None:
+    """-> the paperIndex response object, or None when inputs are unusable or
+    the league has no fitted weights (see FITTED_LEAGUES)."""
+    if league not in FITTED_LEAGUES:
+        return None
     home = team_inputs(frame, home_id)
     away = team_inputs(frame, away_id)
     if home is None or away is None:
