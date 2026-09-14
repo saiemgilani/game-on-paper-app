@@ -45,10 +45,50 @@ browser) driving your installed Google Chrome, or the chromium at
 page never passes as a valid shot. (Isolated root container that needs the
 Chrome sandbox off: set `VISUAL_CHECK_NO_SANDBOX=1`.)
 
-Attach the four (or the relevant subset) to the PR, or send them to reviewers.
 When a change is league-specific, shoot the `/nfl` route **and** its `cfb` twin —
 the two share components, so a regression usually hits both. `img/visual/` is
 git-ignored; don't commit the PNGs.
+
+## PR evidence — REQUIRED on every PR
+Every PR that touches `astro/` or `python/` carries two pieces of evidence in its
+description (or a comment on it), filled in via `.github/pull_request_template.md`.
+A backend change counts: the processor's output is what the game page renders.
+Only PRs confined to docs, CI, or repo config are exempt, and they say so in
+the template.
+
+1. **The four preview screenshots.** Take them from the visual-check matrix
+   above: desktop-light, desktop-dark, mobile-light, mobile-dark, of the page the
+   change affects most. Build them from the **PR branch**, not production. Lay
+   them out as a 2×2 table of above-the-fold thumbnails, each linking to the
+   full-page image. Full-page mobile shots run 10k+ px tall, too long to inline.
+2. **A Lighthouse comparison of the PR against its base.** Run it on the same
+   page(s) as the screenshots, and include a final game with full play-by-play
+   when game pages are affected.
+   - **Builds:** production builds (`astro build`) of both trees, never
+     `astro dev`. Preview-gated features must be on in **both** trees, otherwise
+     one side measures the classic page.
+   - **Runs:** Lighthouse CLI, `mobile` and `--preset=desktop`, at least 3 runs
+     each. Report the **median and the min–max run range**. Performance varies
+     by 10+ points between identical builds, so a median gap whose ranges
+     overlap is noise, and the report says so.
+   - **Metrics:** the four category scores, FCP, LCP, TBT, CLS, Speed Index,
+     gzipped HTML, JS transfer, DOM elements, plus the accessibility audits that
+     newly fail.
+   - **Server time:** uncached local page generation (15–20 s on a game page)
+     swamps frontend differences. When it does, also measure frontend-only:
+     serve each tree's server-rendered HTML with that tree's own `dist/` assets
+     from a static gzip server.
+   - **Compression:** local `astro preview` does not compress. Take HTML size
+     from a gzip server, not from the preview.
+   - **Findings:** call out every regression with its likely cause, e.g. the
+     layout-shift element Lighthouse's `layout-shifts` audit names.
+
+**Hosting images:** the GitHub API cannot upload images. Push them to the orphan
+branch `pr-previews` (`pr<N>/{desktop,mobile}-{light,dark}.jpg`,
+`pr<N>/lighthouse.png`) and embed them via
+`https://raw.githubusercontent.com/saiemgilani/game-on-paper-app/<commit-sha>/pr<N>/…`.
+Pin the **commit SHA**, not the branch name, so later pushes can't change
+what an old comment shows. Workflows ignore that branch.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.
