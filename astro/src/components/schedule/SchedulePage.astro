@@ -209,7 +209,7 @@ if (compactRows) {
                     </p>
                 </div>
             </div>
-            <div class="row text-muted">
+            <div class="row text-muted small">
                 <div class="col-12">
                     <caption>Game border color guide:
                         <ul>
@@ -222,14 +222,14 @@ if (compactRows) {
                     </caption>
                 </div>
             </div>
-            <Footer />
-            <Scripts />
-            {
-                (hasActiveGames) && (
-                    <script is:inline src="/assets/js/auto-update.js" />
-                )
-            }
         </div>
+        <Footer />
+        <Scripts />
+        {
+            (hasActiveGames) && (
+                <script is:inline src="/assets/js/auto-update.js" />
+            )
+        }
     <script>
     // "Updated Ns ago" beside the auto-refresh note: honest about page age,
     // cheap to keep current, and it makes a deferred (hidden-tab) refresh
@@ -239,7 +239,7 @@ if (compactRows) {
         const at = Date.parse(stamp.dataset.renderedAt);
         const render = () => {
             const s = Math.max(0, Math.round((Date.now() - at) / 1000));
-            stamp.textContent = s < 10 ? "Updated just now." : s < 90 ? `Updated ${s}s ago.` : `Updated ${Math.round(s / 60)}m ago.`;
+            stamp.textContent = s < 10 ? " Updated just now." : s < 90 ? ` Updated ${s}s ago.` : ` Updated ${Math.round(s / 60)}m ago.`;
         };
         render();
         setInterval(render, 10_000);

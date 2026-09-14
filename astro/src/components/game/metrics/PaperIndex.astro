@@ -1,7 +1,7 @@
 ---
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
-import { roundNumber } from '../../../utils/misc';
+import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -44,12 +44,11 @@ const periods = PERIOD_ORDER
     });
 ---
 <Panel id="paper-index" title="Deserved Win %" show={true} class="mb-md-3">
-    <p class="text-small" slot="panel-subtitle">
-        Who {completed ? "won" : "is winning"} this game on paper: efficiency, explosiveness,
-        finishing drives, field position, havoc, and turnovers — each in its advanced-box form,
-        weighted by how much it decides real games.
-    </p>
-    <div class="row" slot="panel-body">
+    <div slot="panel-subtitle">
+        <p class="mb-0">AKA post-game win expectancy. Inspired by <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s <a href="https://www.espn.com/college-football/story/_/id/48288665/college-football-2026-turnovers-lucky-bounces">SP+ PGWE</a>.</p>
+        <blockquote class="text-muted small fst-italic">The idea is to take all of a game's key, predictive stats...and basically toss them into the air and say, "With these stats, you could have expected to win this game X% of the time."</blockquote>
+    </div>
+    <div class="row mb-3" slot="panel-body">
         <div class="col-lg-8 col-12 d-flex flex-column justify-content-center mb-3 mb-lg-0">
             <div class="d-flex align-items-center gap-2">
                 <img class={`img-fluid team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
@@ -69,7 +68,7 @@ const periods = PERIOD_ORDER
                                 <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
                                 <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
                             </div>
-                            <span class="small text-muted">{p.label} <span class="fw-bold">{p.homePct}%</span></span>
+                            <span class="small text-muted">{p.label} - <span class="fw-bold">{cleanAbbreviation(homeTeam)} {p.homePct}%</span></span>
                         </div>
                     ))}
                 </div>

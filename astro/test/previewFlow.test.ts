@@ -49,7 +49,7 @@ describe('the preview chain end to end', () => {
 describe('the preview magic link', () => {
     async function redeem(token: string) {
         const ctx: any = {
-            request: new Request(`https://gameonpaper.com/game/401752746?span=q3&${PREVIEW_LINK_PARAM}=${token}`),
+            request: new Request(`https://gameonpaper.com/game/401752746?${PREVIEW_LINK_PARAM}=${token}`),
             locals: {},
             cache: { set: () => {} },
             redirect: (l: string) => new Response(null, { status: 302, headers: { Location: l } }),
@@ -63,7 +63,7 @@ describe('the preview magic link', () => {
         // invisible and the viewer would see the public copy
         const res = await redeem(await mintPreviewLink('test-secret'));
         expect(res.status).toBe(302);
-        expect(res.headers.get('Location')).toBe('/preview/game/401752746?span=q3');
+        expect(res.headers.get('Location')).toBe('/preview/game/401752746');
         expect(res.headers.get('Cache-Control')).toBe('no-store');
         const setCookie = res.headers.get('Set-Cookie') ?? '';
         expect(setCookie).toContain(`${PREVIEW_COOKIE}=`);
@@ -74,7 +74,7 @@ describe('the preview magic link', () => {
     test('an expired link still strips the param but sets no cookie', async () => {
         const res = await redeem(await mintPreviewLink('test-secret', Math.floor(Date.now() / 1000) - 15 * 24 * 3600));
         expect(res.status).toBe(302);
-        expect(res.headers.get('Location')).toBe('/game/401752746?span=q3');
+        expect(res.headers.get('Location')).toBe('/game/401752746');
         expect(res.headers.get('Set-Cookie')).toBeNull();
     });
     test('tokens are purpose-separated: a link token is not a cookie and vice versa', async () => {
@@ -90,14 +90,14 @@ describe('the preview magic link', () => {
         // to routes, so an unresolved legacy path would 404 there.
         const token = await mintPreviewLink('test-secret');
         const ctx: any = {
-            request: new Request(`https://gameonpaper.com/cfb/game/401752746?span=q3&${PREVIEW_LINK_PARAM}=${token}`),
+            request: new Request(`https://gameonpaper.com/cfb/game/401752746?${PREVIEW_LINK_PARAM}=${token}`),
             locals: {},
             cache: { set: () => {} },
             redirect: (l: string, code = 302) => new Response(null, { status: code, headers: { Location: l } }),
         };
         const res = await (onRequest as any)(ctx, async () => new Response('ok'));
         expect(res.status).toBe(302);
-        expect(res.headers.get('Location')).toBe('/preview/game/401752746?span=q3');
+        expect(res.headers.get('Location')).toBe('/preview/game/401752746');
         expect(res.headers.get('Location')).not.toContain(PREVIEW_LINK_PARAM);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
         expect(res.headers.get('Set-Cookie')).toContain(PREVIEW_COOKIE);
@@ -106,7 +106,7 @@ describe('the preview magic link', () => {
     test('the /preview surface rewrites to the real route with preview on, never cached', async () => {
         let rewrittenTo: unknown = 'not called';
         const ctx: any = {
-            request: new Request('https://gameonpaper.com/preview/game/401752746?span=q3', {
+            request: new Request('https://gameonpaper.com/preview/game/401752746', {
                 headers: { cookie: `${PREVIEW_COOKIE}=${await mintPreviewCookie('test-secret')}` },
             }),
             locals: {},
@@ -115,7 +115,7 @@ describe('the preview magic link', () => {
         };
         const res = await (onRequest as any)(ctx, async (rw: unknown) => { rewrittenTo = rw; return new Response('page'); });
         expect(res.status).toBe(200);
-        expect(rewrittenTo).toBe('/game/401752746?span=q3');
+        expect(rewrittenTo).toBe('/game/401752746');
         expect(ctx.locals.preview).toBe(true);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
         expect(res.headers.get('X-Robots-Tag')).toBe('noindex');
@@ -140,14 +140,14 @@ describe('the preview magic link', () => {
 
     test('the /preview surface without a valid cookie bounces to the public path', async () => {
         const ctx: any = {
-            request: new Request('https://gameonpaper.com/preview/game/401752746?span=q3'),
+            request: new Request('https://gameonpaper.com/preview/game/401752746'),
             locals: {},
             cache: { set: () => {} },
             redirect: (l: string) => new Response(null, { status: 302, headers: { Location: l } }),
         };
         const res = await (onRequest as any)(ctx, async () => new Response('page'));
         expect(res.status).toBe(302);
-        expect(res.headers.get('Location')).toBe('/game/401752746?span=q3');
+        expect(res.headers.get('Location')).toBe('/game/401752746');
     });
 
     test('the cache guard forces no-store on any response for a keyed URL', async () => {

@@ -24,7 +24,7 @@ describe('python.ts routes by league', () => {
     test('cfb is unchanged, nfl hits /nfl/<id>/process', async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         await retrieveProcessedGame(1, 30).catch(() => {});
-        await retrieveProcessedGame(2, 30, null, 'nfl').catch(() => {});
+        await retrieveProcessedGame(2, 30, 'nfl').catch(() => {});
         expect(seen.some(u => u.endsWith('/cfb/1/process'))).toBe(true);
         expect(seen.some(u => u.endsWith('/nfl/2/process'))).toBe(true);
     });

@@ -221,14 +221,8 @@ function safeClientAddress(context: any): string | null {
 export function withPreviewCacheGuard(context: any, response: Response): Response {
   const url = new URL(context.request.url);
   const isAdmin = url.pathname.startsWith('/admin');
-  // A ?span= URL renders two different pages while game-page-v2 is in preview:
-  // v2 windows the boxes to the span, classic drops it and shows the full game.
-  // Cloudflare keys the cache on the URL and does not vary on the preview
-  // cookie, so the PUBLIC (classic) copy would be served to a previewing admin
-  // -- who would silently get the un-windowed page they were trying to check.
   // Scoped to the preview state: once the flag is 'on' the span means the same
   // thing to everyone and these URLs become cacheable again.
-  const spanVariesByViewer = url.searchParams.has('span') && FLAGS['game-page-v2'] === 'preview';
   // Preview renders are per-viewer; /admin responses are authenticated. Either
   // way a cached copy would be served to the wrong audience on a HIT -- and a
   // HIT never runs the Worker, so the auth check would be skipped entirely.
@@ -237,7 +231,7 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // regresses, this keeps a keyed URL out of Workers Caching entirely.
   const carriesPreviewKey = url.searchParams.has(PREVIEW_LINK_PARAM);
   const isPreviewPath = url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/');
-  if (context.locals?.preview === true || isAdmin || spanVariesByViewer || carriesPreviewKey || isPreviewPath) {
+  if (context.locals?.preview === true || isAdmin || carriesPreviewKey || isPreviewPath) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
     if (isPreviewPath) response.headers.set('X-Robots-Tag', 'noindex');

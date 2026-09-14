@@ -16,8 +16,8 @@ import TeamPanel from '../../../layouts/panel/TeamPanel.astro';
 import PlayerBoxScore from './PlayerBoxScore.astro';
 import PassingChart from '../metrics/PassingChart.astro';
 import RushingChart from '../metrics/RushingChart.astro';
-import TeamMetricsTable from '../metrics/TeamMetricsTable.astro';
-import BinionBoxScore from '../metrics/BinionBoxScore.astro';
+import TeamMetricsTable from './TeamMetricsTable.astro';
+import BinionBoxScore from './BinionBoxScore.astro';
 import DrivesTable from '../drives/DrivesTable.astro';
 import ExpectedPointsChart from '../../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../../charts/WinProbabilityChart.svelte';
@@ -99,13 +99,13 @@ const previewUrlParams = new URLSearchParams({
 const scrollerItems: ScrollerItem[] = [
     { href: "#wpChart", title: "WP Chart" },
     { href: "#epChart", title: "EPA Chart" },
-    { href: "#team-stats", title: "Team Stats" },
+    { href: "#team-stats-panel", title: "Team Stats" },
     { href: "#player-stats", title: "Player Stats" },
-    { href: "#big-plays", title: "Big Plays" },
-    { href: "#most-imp-plays", title: "Most Important Plays" },
-    { href: "#scoring-plays", title: "Scoring Plays" },
-    { href: "#drives", title: "Drives" },
-    { href: "#all-plays", title: "All Plays" },
+    { href: "#big-plays-panel", title: "Big Plays" },
+    { href: "#most-important-plays-panel", title: "Most Important Plays" },
+    { href: "#scoring-plays-panel", title: "Scoring Plays" },
+    { href: "#drives-panel", title: "Drives" },
+    { href: "#all-plays-panel", title: "All Plays" },
     // the matchup preview reads the season tables; not offered for a league without them
     ...(LEAGUES[league].sdvEnabled ? [{ href: leaguePath(league, `/game/matchup?${previewUrlParams.toString()}`), title: "Matchup Preview" }] : []),
     { href: `https://www.espn.com/${espnPath}/game/_/gameId/${id}`, title: "Gamecast" },
@@ -194,7 +194,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
     <body>
         <div class="container-fluid">
             <GameHeader game={game} />
-            <NavScroller items={scrollerItems} />
+            <div class="py-1 mb-3 border-top border-bottom"><NavScroller items={scrollerItems} /></div>
         </div>
         <div class="container-fluid">
             <div class="row mb-3">

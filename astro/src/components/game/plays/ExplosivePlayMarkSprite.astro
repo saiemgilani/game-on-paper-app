@@ -1,0 +1,13 @@
+---
+import type { ProcessedPlay } from '../../../resources/python';
+import { PLAY_ICON_LABEL } from '../../../utils/playIcons';
+
+interface Props {
+    play?: ProcessedPlay
+}
+const { play } = Astro.props;
+const defensive = play?.defense_score_play === true;
+const cls = (id: string) => `pi pi-${id}${defensive && id.startsWith('td') ? ' pi-def' : ''}`;
+const label = (id: string) => defensive && id.startsWith('td') ? `Defensive ${PLAY_ICON_LABEL[id as keyof typeof PLAY_ICON_LABEL].toLowerCase()}` : PLAY_ICON_LABEL[id as keyof typeof PLAY_ICON_LABEL];
+---
+<span class="play-mark-beside"><svg class={cls("explosive")} role="img" aria-label={label("explosive")}><title>{label("explosive")}</title><use href={`#pi-explosive`} /></svg></span>

@@ -29,12 +29,12 @@ describe('GamePage renders a finished NFL game end to end', () => {
     let html = '';
     beforeAll(async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
-        const game = await retrieveProcessedGame(GAME_ID, 30, null, 'nfl');
+        const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const { default: GamePage } = await import('../src/components/game/GamePage.astro');
         html = await container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl' },
+            locals: { league: 'nfl', preview: true },
         });
         if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);
@@ -55,7 +55,7 @@ describe('GamePage renders a finished NFL game end to end', () => {
         // 2002-2025 rollout), so it is offered -- prefixed like everything else
         expect(html).toContain('href="/nfl/game/matchup?');
         expect(html).not.toMatch(/href="\/game\/matchup\?/);
-        expect(html).toContain(`href="/nfl/game/${GAME_ID}"`);
+        expect(html).toContain(`href="https://gameonpaper.com/nfl/game/${GAME_ID}"`);
         expect(html).not.toMatch(/href="\/game\/\d+/);
         expect(html).not.toMatch(/href="\/year\/\d{4}\/team\//);
         expect(html).toMatch(/href="\/nfl\/year\/\d{4}\/team\//);
