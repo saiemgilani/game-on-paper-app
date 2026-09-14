@@ -1,7 +1,7 @@
 ---
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
-import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
+import { adjustTeamColorsForContrast, cleanAbbreviation, roundNumber, rgbToHex } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -15,11 +15,12 @@ interface Props {
 }
 
 const { result, homeTeam, awayTeam, completed } = Astro.props;
+const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
 
 const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 100)));
 const homePct = clampPct(result.homeShare);
 const awayPct = 100 - homePct;
-const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
+const barColor = (t: ESPNTeam, fallback: string) => t.id == awayTeam.id ? (rgbToHex(awayTeamColor) ?? fallback) : (rgbToHex(homeTeamColor) ?? fallback);
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
@@ -54,8 +55,8 @@ const periods = PERIOD_ORDER
                 <img class={`img-fluid team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
                 <span class="fw-bold" style="min-width: 4ch">{awayPct}%</span>
                 <div class="progress flex-grow-1" style="height: 24px" role="meter" aria-label={meterLabel} aria-valuenow={homePct} aria-valuetext={`${homeTeam.abbreviation} ${homePct}%`} aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar" style={`width: ${awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
-                    <div class="progress-bar" style={`width: ${homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
+                    <div class="progress-bar" style={`width: ${awayPct}%; background-color: ${barColor(awayTeam, "#888888")}`}></div>
+                    <div class="progress-bar" style={`width: ${homePct}%; background-color: ${barColor(homeTeam, "#444444")}`}></div>
                 </div>
                 <span class="fw-bold" style="min-width: 4ch">{homePct}%</span>
                 <img class={`img-fluid team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
@@ -65,8 +66,8 @@ const periods = PERIOD_ORDER
                     {periods.map((p) => (
                         <div class="text-center" style="min-width: 72px">
                             <div class="progress" style="height: 10px" title={`${p.label}: ${awayTeam.abbreviation} ${p.awayPct}% — ${homeTeam.abbreviation} ${p.homePct}%`}>
-                                <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "888888")}`}></div>
-                                <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "444444")}`}></div>
+                                <div class="progress-bar" style={`width: ${p.awayPct}%; background-color: ${barColor(awayTeam, "#888888")}`}></div>
+                                <div class="progress-bar" style={`width: ${p.homePct}%; background-color: ${barColor(homeTeam, "#444444")}`}></div>
                             </div>
                             <span class="small text-muted">{p.label} - <span class="fw-bold">{cleanAbbreviation(homeTeam)} {p.homePct}%</span></span>
                         </div>
