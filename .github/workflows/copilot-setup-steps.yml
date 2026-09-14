@@ -1,0 +1,44 @@
+name: Copilot setup steps
+
+# The environment GitHub Copilot's coding agent starts from (the job must be
+# named `copilot-setup-steps`). It gets the same tools the pr-evidence workflow
+# uses, so the agent can run the vitest/pytest gates and iterate with
+# scripts/visual-check.mjs and scripts/lighthouse-compare.mjs before pushing.
+# The evidence posted on the PR still comes from the pr-evidence workflow.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: astro/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+        working-directory: astro
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+
+      - run: uv sync --locked
+        working-directory: python
+
+      - name: Review tools (not repo dependencies)
+        run: npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1

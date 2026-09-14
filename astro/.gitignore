@@ -27,3 +27,9 @@ pnpm-debug.log*
 
 # visual-check.mjs output (screenshots are shared on the PR, not committed)
 img/visual/
+
+# local Worker secrets for `astro dev` / `astro preview` (never commit)
+.dev.vars*
+
+# lighthouse-compare.mjs output (results are posted on the PR, not committed)
+img/lighthouse/

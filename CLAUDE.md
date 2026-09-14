@@ -49,46 +49,55 @@ When a change is league-specific, shoot the `/nfl` route **and** its `cfb` twin 
 the two share components, so a regression usually hits both. `img/visual/` is
 git-ignored; don't commit the PNGs.
 
-## PR evidence — REQUIRED on every PR
-Every PR that touches `astro/` or `python/` carries two pieces of evidence in its
-description (or a comment on it), filled in via `.github/pull_request_template.md`.
-A backend change counts: the processor's output is what the game page renders.
-Only PRs confined to docs, CI, or repo config are exempt, and they say so in
-the template.
+## PR evidence — REQUIRED on every PR, posted automatically
+Every PR that touches `astro/` or `python/` carries two pieces of evidence. A
+backend change counts: the processor's output is what the game page renders.
+PRs confined to docs, CI, or repo config are exempt.
 
-1. **The four preview screenshots.** Take them from the visual-check matrix
-   above: desktop-light, desktop-dark, mobile-light, mobile-dark, of the page the
-   change affects most. Build them from the **PR branch**, not production. Lay
-   them out as a 2×2 table of above-the-fold thumbnails, each linking to the
-   full-page image. Full-page mobile shots run 10k+ px tall, too long to inline.
-2. **A Lighthouse comparison of the PR against its base.** Run it on the same
-   page(s) as the screenshots, and include a final game with full play-by-play
-   when game pages are affected.
-   - **Builds:** production builds (`astro build`) of both trees, never
-     `astro dev`. Preview-gated features must be on in **both** trees, otherwise
-     one side measures the classic page.
-   - **Runs:** Lighthouse CLI, `mobile` and `--preset=desktop`, at least 3 runs
-     each. Report the **median and the min–max run range**. Performance varies
-     by 10+ points between identical builds, so a median gap whose ranges
-     overlap is noise, and the report says so.
-   - **Metrics:** the four category scores, FCP, LCP, TBT, CLS, Speed Index,
-     gzipped HTML, JS transfer, DOM elements, plus the accessibility audits that
-     newly fail.
-   - **Server time:** uncached local page generation (15–20 s on a game page)
-     swamps frontend differences. When it does, also measure frontend-only:
-     serve each tree's server-rendered HTML with that tree's own `dist/` assets
-     from a static gzip server.
-   - **Compression:** local `astro preview` does not compress. Take HTML size
-     from a gzip server, not from the preview.
-   - **Findings:** call out every regression with its likely cause, e.g. the
-     layout-shift element Lighthouse's `layout-shifts` audit names.
+1. **The four preview screenshots** of the PR: desktop-light, desktop-dark,
+   mobile-light, mobile-dark (the matrix above), as above-the-fold thumbnails
+   linking to full pages.
+2. **A Lighthouse comparison of the PR against its base**, on the same page(s).
 
-**Hosting images:** the GitHub API cannot upload images. Push them to the orphan
-branch `pr-previews` (`pr<N>/{desktop,mobile}-{light,dark}.jpg`,
-`pr<N>/lighthouse.png`) and embed them via
-`https://raw.githubusercontent.com/saiemgilani/game-on-paper-app/<commit-sha>/pr<N>/…`.
-Pin the **commit SHA**, not the branch name, so later pushes can't change
-what an old comment shows. Workflows ignore that branch.
+**`.github/workflows/pr-evidence.yml` produces both on every push** to a
+same-repo PR and keeps them in one PR comment. It compares GitHub's PR merge
+commit against the base tip it merged onto, so only this PR's changes differ even
+after `main` moves. Choose pages with an `Evidence routes: /a /b` line in the PR
+description; the default is a final game with full play-by-play (`/game/401856682`),
+the heaviest page. Fork PRs get no secrets, so their evidence is produced locally
+and pasted into the template. When the workflow fails, fix the cause or explain
+in the PR; never paste numbers the workflow didn't measure.
+
+Run the same thing locally with `astro/scripts/lighthouse-compare.mjs`. Its
+header documents the flags, including `LH_ASTRO_PREFIX` for hosts whose glibc
+is too old for workerd:
+
+```bash
+cd astro
+node scripts/lighthouse-compare.mjs --base origin/main --head HEAD --shots \
+  --python-url http://127.0.0.1:5177 \
+  --backend-cmd 'uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' /game/401856682
+node scripts/pr-evidence-comment.mjs --out img/lighthouse/<base>-<head>   # the comment, as markdown
+```
+
+Why the method is what it is (the script enforces all of it):
+- **Builds:** production `astro build` of both trees, never `astro dev`, with every
+  `preview` flag forced on in **both**. Otherwise one side measures the classic page.
+- **Frontend-only by default:** uncached local page generation (15–20 s on a game
+  page) swamps frontend differences, so each tree's rendered HTML is served with its
+  own `dist/client` from a gzip server. `astro preview` doesn't compress, so
+  this is also the only place HTML/JS sizes match production. `--mode both` adds
+  end-to-end runs.
+- **Run ranges:** Performance varies by 10+ points between identical builds. Every
+  metric keeps its min–max range, and a delta is called a regression only when the
+  base and PR ranges don't overlap. Base and PR runs alternate.
+- **Findings:** non-overlapping regressions are listed with a likely cause (the
+  largest layout-shift element for CLS), along with audits that newly fail.
+
+**Hosting images:** the GitHub API cannot upload images, so screenshots go on the
+orphan branch `pr-previews` (`pr<N>/<head-sha7>/…`) and are embedded via
+`raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/…`, pinned to the commit
+so later pushes can't change an old comment. No workflow triggers on that branch.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.
