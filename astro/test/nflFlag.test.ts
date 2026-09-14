@@ -35,7 +35,7 @@ describe('the nfl flag', () => {
     });
 
     test('a public viewer gets the 404 for every /nfl path, and only those', async () => {
-        for (const p of ['/nfl', '/nfl/', '/nfl/year/2025/teams/tendencies', '/nfl/game/401772944?span=q3']) {
+        for (const p of ['/nfl', '/nfl/', '/nfl/year/2025/teams/tendencies', '/nfl/game/401772944']) {
             expect((await run(p, null)).rewrittenTo, p).toBe('/404');
         }
         // the cfb site is untouched, and a path that merely starts with the letters is not the namespace
@@ -71,7 +71,7 @@ describe('the nfl flag', () => {
         expect(prev).toContain('league-switch');
         expect(prev).toContain('href="/nfl"');
         // on the NFL side (already admitted) the switch back to CFB is always there
-        const nfl = await container.renderToString(Header, { request: new Request('https://gameonpaper.com/nfl'), locals: { league: 'nfl' } });
+        const nfl = await container.renderToString(Header, { request: new Request('https://gameonpaper.com/nfl'), locals: { league: 'nfl', preview: true } });
         expect(nfl).toMatch(/league-switch[^>]*href="\/"|href="\/"[^>]*league-switch/);
     }, 30_000);
 });

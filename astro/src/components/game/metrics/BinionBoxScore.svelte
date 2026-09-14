@@ -1,6 +1,6 @@
----
+<script lang="ts">
 import type { ProcessedBoxScore } from '../../../resources/python';
-import { espnLogoLeague } from '../../../utils/league';
+import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
@@ -12,7 +12,8 @@ interface Props {
     percentiles: SDVSeasonPercentile[]
 }
 
-const {season, advancedBoxScore, percentiles} = Astro.props;
+const {season, advancedBoxScore, percentiles}: Props = $props();
+const groups = $derived(advancedBoxScore.team.map((group: any) => group.pos_team));
 
 const percentile_title_key_mapping: Record<string, string> = {
     "EPA_per_play" : "EPAplay",
@@ -179,38 +180,34 @@ const columns = [
     "defensive.havoc_total"
 ]
 const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].season;
----
+</script>
 
 <div class="table-responsive">
     <table class="table table-sm table-responsive">
-        <caption class="text-muted text-small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>). Data from GameOnPaper.com by Akshay Easwaran (<a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a>) and Saiem Gilani (<a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a>) with kneel downs removed.
-        {
-            (percentiles.length > 0) && (<span> Cell colors reflect the percentile of a team's performance against all single-game FBS vs FBS performances in that stat in {percentileSeason}.</span>)
-        }
+        <caption class="text-muted small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>). Data from GameOnPaper.com by Akshay Easwaran (<a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a>) and Saiem Gilani (<a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a>) with kneel downs removed.
+        {#if percentiles.length > 0}
+            <span> Cell colors reflect the percentile of a team's performance against all single-game FBS vs FBS performances in that stat in {percentileSeason}.</span>
+        {/if}
         </caption>
         <thead>
             <tr>
                 <th style="text-align: left;">Overall</th>
-                {
-                    advancedBoxScore.team.map((group: any) => group.pos_team).map(value => (
-                        <th style="text-align: center;">
-                            <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${value}`)}>
-                                <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
-                            </a>
-                        </th>
-                    ))
-                }
+                {#each groups as value}
+                <th style="text-align: center;">
+                    <a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}>
+                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
+                    </a>
+                </th>
+                {/each}
             </tr>
         </thead>
         <tbody>
-            {
-                columns.map(item => (
-                    <tr>
-                        <td style="text-align: left;"><Fragment set:html={slim_title_mapping[item] || item} /></td>
-                        <Fragment set:html={handleBoxScoreMetricRows(item, true, 2)} />
-                    </tr>
-                ))
-            }
+            {#each columns as item}
+            <tr>
+                <td style="text-align: left;">{@html slim_title_mapping[item] || item}</td>
+                {@html handleBoxScoreMetricRows(item, true, 2)}
+            </tr>
+            {/each}
         </tbody>
     </table>
 </div>

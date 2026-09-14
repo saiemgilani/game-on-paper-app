@@ -18,7 +18,7 @@ describe('leaguePath', () => {
         expect(leaguePath(undefined, '/teams/')).toBe('/teams/');
     });
     test('prefixes nfl and collapses the root', () => {
-        expect(leaguePath('nfl', '/game/1?span=q1')).toBe('/nfl/game/1?span=q1');
+        expect(leaguePath('nfl', '/game/1')).toBe('/nfl/game/1');
         expect(leaguePath('nfl', '/')).toBe('/nfl');
         expect(leaguePath('nfl', '/nfl/game/1')).toBe('/nfl/game/1'); // never double-prefixes
     });

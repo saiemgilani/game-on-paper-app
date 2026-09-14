@@ -433,7 +433,7 @@ describe('leaguePath', () => {
         expect(leaguePath(undefined, '/teams/')).toBe('/teams/');
     });
     test('prefixes nfl and collapses the root', () => {
-        expect(leaguePath('nfl', '/game/1?span=q1')).toBe('/nfl/game/1?span=q1');
+        expect(leaguePath('nfl', '/game/1')).toBe('/nfl/game/1');
         expect(leaguePath('nfl', '/')).toBe('/nfl');
         expect(leaguePath('nfl', '/nfl/game/1')).toBe('/nfl/game/1'); // never double-prefixes
     });
@@ -568,9 +568,9 @@ import { describe, expect, test } from 'vitest';
 
 describe('league prefix rewrite', () => {
     test('/nfl/game/1 sets locals.league=nfl and rewrites to /game/1', async () => {
-        const { ctx, rewrites } = await runMiddleware('https://gameonpaper.com/nfl/game/1?span=q1');
+        const { ctx, rewrites } = await runMiddleware('https://gameonpaper.com/nfl/game/1');
         expect(ctx.locals.league).toBe('nfl');
-        expect(rewrites).toEqual(['/game/1?span=q1']);
+        expect(rewrites).toEqual(['/game/1']);
     });
     test('/nfl alone is the nfl scoreboard', async () => {
         const { ctx, rewrites } = await runMiddleware('https://gameonpaper.com/nfl');

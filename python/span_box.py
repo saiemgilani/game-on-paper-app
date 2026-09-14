@@ -1,4 +1,4 @@
-"""Windowed advanced box scores for ?span= on the game page.
+"""Windowed advanced box scores on the game page.
 
 The EP/WP pipeline must always run on the FULL game (lags, cumulative state,
 model context), so per-play metrics are computed whole-game and only the

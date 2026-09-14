@@ -14,10 +14,32 @@ const { items } = Astro.props;
 ---
 
 
-<div class="nav-scroller py-1 mb-3">
-    <nav class="nav d-flex justify-content-between">
-        {
-            (items.map((p) => <a href={p.href} class="p-2 link-secondary">{p.title}</a>))
+<Fragment>
+    <div class="nav-scroller d-none d-lg-inline border-bottom border-top">
+        <nav class="nav d-flex justify-content-between">
+            {
+                (items.map((p) => <a href={p.href} class="p-2 link-secondary">{p.title}</a>))
+            }
+        </nav>
+    </div>
+    <div class="py-1 d-inline d-lg-none">
+        <select class="form-select form-select-md" style="min-width:250px;border:0;" id="game-section-picker">
+            {
+                (items.map((p) => <option value={p.href}>{p.title}</option>))
+            }
+        </select>
+    </div>
+</Fragment>
+<script>
+    document.getElementById("game-section-picker")?.addEventListener("change", (e: Event) => {
+        const href = (e.target as HTMLSelectElement).value;
+        if (href && href.startsWith("#")) {
+            document.getElementById(href.replace("#", ""))?.scrollIntoView({ behavior: "smooth"})
+        } else if (href && (href.startsWith("/") || href.startsWith("https://"))) {
+            const aTag: HTMLAnchorElement = document.createElement("a")
+            aTag.href = href;
+            aTag.target = "__blank"
+            aTag.click()
         }
-    </nav>
-</div>
+    })
+</script>

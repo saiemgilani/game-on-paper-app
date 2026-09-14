@@ -12,7 +12,7 @@ interface Props {
 const { id, title, show, class: className } = Astro.props;
 ---
 
-<div class:list={["panel-group", className]}>
+<div class:list={["panel-group", className]} id={`${id}-panel`}>
     <div class="panel panel-default">
         <div class="panel-heading">
             <div class="panel-title">

@@ -1,10 +1,3 @@
-// A time window over one game, parsed from ?span= on the game page. Applied
-// once in GamePage frontmatter (game.plays is filtered before any derivation),
-// so every astro-computed section -- play tables, drives, situational,
-// defensive box, traditional stats, penalties -- recomputes for free. The
-// python-computed advanced boxes stay full-game until the API grows the same
-// parameter; the charts deliberately keep the whole game for context.
-//
 // Specs: q1..q4, ot (any period > 4), h1, h2, or "<from>-<to>" in game-clock
 // seconds remaining (adj_TimeSecsRem: 3600 = Q1 15:00 counting down to 0).
 // Clock ranges are normalized to 30-second buckets so crawlers cannot mint an
@@ -18,10 +11,10 @@ export interface Span {
 }
 
 const PERIOD_SPANS: Record<string, { label: string; periods?: number[]; ot?: boolean }> = {
-    q1: { label: 'Q1', periods: [1] },
-    q2: { label: 'Q2', periods: [2] },
-    q3: { label: 'Q3', periods: [3] },
-    q4: { label: 'Q4', periods: [4] },
+    q1: { label: '1st quarter', periods: [1] },
+    q2: { label: '2nd quarter', periods: [2] },
+    q3: { label: '3rd quarter', periods: [3] },
+    q4: { label: '4th quarter', periods: [4] },
     h1: { label: '1st half', periods: [1, 2] },
     h2: { label: '2nd half', periods: [3, 4] },
     ot: { label: 'Overtime', ot: true },
@@ -64,37 +57,4 @@ export function parseSpan(raw: string | null | undefined): Span | null {
             return Number.isFinite(n) && n <= from && n >= to && !(period > 4);
         },
     };
-}
-
-/** The pill row: Full + only the windows the game actually played. */
-export function availableSpans(plays: { period?: unknown }[]): { key: string; label: string }[] {
-    const periods = new Set(plays.map((p) => Number(p.period)).filter((n) => Number.isFinite(n) && n >= 1));
-    const out: { key: string; label: string }[] = [];
-    for (const key of ['q1', 'q2', 'h1', 'q3', 'q4', 'h2'] as const) {
-        const def = PERIOD_SPANS[key];
-        if ((def.periods as number[]).some((n) => periods.has(n))) out.push({ key, label: def.label });
-    }
-    if ([...periods].some((n) => n > 4)) out.push({ key: 'ot', label: 'Overtime' });
-    return out;
-}
-
-/**
- * The span key the python API should be asked for, given who is looking.
- *
- * A `?span=` in a shared link may only window the data when the v2 page will
- * actually render -- it is v2 that draws the pills and the "showing Q3 only"
- * banner. On the classic page a windowed box score would be silently wrong
- * numbers inside a full-game layout, so the span is dropped.
- *
- * This lives here rather than inline in `pages/game/[id].astro` so it can be
- * tested against real inputs: the route needs `Astro.cache`, which the Astro
- * container does not provide, so the route itself cannot be rendered in vitest.
- */
-export function requestedSpanKey(
-    locals: { preview?: boolean } | undefined,
-    searchParams: URLSearchParams,
-    isEnabled: (name: string, locals: { preview?: boolean } | undefined) => boolean,
-): string | null {
-    if (!isEnabled('game-page-v2', locals)) return null;
-    return parseSpan(searchParams.get('span'))?.key ?? null;
 }
