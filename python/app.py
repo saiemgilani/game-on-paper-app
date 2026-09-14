@@ -146,6 +146,22 @@ _BAD_COLS = [
 ]
 
 
+def _frameless_features(game):
+    """The frame-dependent features a request loses when ``plays_frame`` is absent.
+
+    Span boxes are listed only when span_box's own lookup also comes up empty:
+    it falls back to ``plays_json`` when that is still a polars frame, so the
+    log must not report a feature skipped that in fact rendered.
+    """
+    if getattr(game, "plays_frame", None) is not None:
+        return []
+    skipped = ["drive summary", "situational stats"]
+    if span_box._plays_frame(game) is None:
+        skipped.append("span boxes")
+    skipped.append("paper index")
+    return skipped
+
+
 def _reshape_records(plays):
     """Fold sdv-py's flat dotted columns back into ESPN's nested shape.
 
@@ -341,13 +357,12 @@ def _process_game(league: str, game_id: int):
 
         # Every block below reads the processor's enriched polars frame and is
         # fail-open, so a processor that never exposes one (NFLPlayProcess
-        # before sportsdataverse-py's plays_frame landed) silently drops the
-        # drive summary, situational block, span boxes and Paper Index. Say so
-        # once per request instead of letting four features vanish unlogged.
-        if getattr(game, "plays_frame", None) is None:
+        # before sportsdataverse-py's plays_frame landed) silently drops them.
+        # Say so once per request instead of letting features vanish unlogged.
+        skipped = _frameless_features(game)
+        if skipped:
             logging.getLogger("root").warning(
-                f"{league} processor exposed no plays_frame for {game_id}: "
-                "drive summary, situational stats, span boxes and paper index skipped"
+                f"{league} processor exposed no plays_frame for {game_id}: {', '.join(skipped)} skipped"
             )
 
         # Both of these must precede serialization: the span swap mutates
