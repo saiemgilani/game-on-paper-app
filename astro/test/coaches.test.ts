@@ -176,6 +176,17 @@ describe('the plays floor', () => {
     });
 });
 
+describe('glossary entries', () => {
+    test('the six coach terms exist, and no source URL carries the {season} placeholder (only definitions are substituted)', () => {
+        const g = JSON.parse(readFileSync(new URL('../src/static/glossary.json', import.meta.url)).toString()) as Record<string, { term: string; definition: string; source: string }[]>;
+        const all = Object.values(g).flat();
+        for (const term of ['Situation-neutral pass rate', 'Seconds per play', 'Scripted drives', 'Scoring opportunity', 'Fourth-down agreement rate', 'Win probability left on the field']) {
+            expect(all.map((e) => e.term), term).toContain(term);
+        }
+        for (const e of all) expect(e.source, e.term).not.toContain('{');
+    });
+});
+
 describe('copy', () => {
     test('every board has copy that names the head coach, the league and its subject', () => {
         for (const b of COACH_BOARD_SLUGS) {

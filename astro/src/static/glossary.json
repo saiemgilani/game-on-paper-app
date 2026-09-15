@@ -137,12 +137,12 @@
         {
             "term": "Seconds per play",
             "definition": "Seconds of game clock elapsed per offensive snap, computed over drives with a usable clock, so it measures the tempo the head coach chose rather than the length of the game. Lower is faster. The situation-neutral version drops the two-minute drill and blowouts, where the score dictates the pace. When no drive carries a clock the value is blank. Shown on the <a href='/year/{season}/coaches/pace'>head coach pace board</a>.",
-            "source": "https://gameonpaper.com/year/{season}/coaches/pace"
+            "source": "https://gameonpaper.com/coaches/pace"
         },
         {
             "term": "Scripted drives",
             "definition": "The opening drives of each game, the ones a head coach plans in the week and calls off a script before adapting to what the defense shows. The scripted columns on the <a href='/year/{season}/coaches/scoring'>head coach scoring board</a> hold EPA per play, success rate and points per drive on those drives; the unscripted columns are every drive after, so the gap between them is a rough read on planning versus in-game adjustment.",
-            "source": "https://gameonpaper.com/year/{season}/coaches/scoring"
+            "source": "https://gameonpaper.com/coaches/scoring"
         },
         {
             "term": "Scoring opportunity",
