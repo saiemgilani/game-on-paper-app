@@ -191,7 +191,7 @@
         },
         {
             "term": "Scoring Opportunity Touches",
-            "definition": "Rushes, targets and touchdowns on snaps taken inside the opponent's 40-yard line (a scoring opportunity), and inside the 20 (the red zone), per player. Efficiencies per trip (touchdown rate, points per trip) are on the team splits.",
+            "definition": "A player's touches (rushes plus receptions) on snaps taken inside the opponent's 40-yard line (a scoring opportunity), and inside the 20 (the red zone), with the touchdowns among them in parentheses; targets are counted separately. Efficiencies per trip (touchdown rate, points per trip) are on the team splits.",
             "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
