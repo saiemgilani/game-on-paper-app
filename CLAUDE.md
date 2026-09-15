@@ -93,12 +93,15 @@ Why the method is what it is (the script enforces all of it):
   this is also the only place HTML/JS sizes match production. `--mode both` adds
   end-to-end runs.
 - **Run ranges and floors:** Performance varies by 10+ points between identical
-  builds. Every metric keeps its min–max range, and a delta is flagged only when the
-  base and PR ranges don't overlap **and** it clears an absolute and a relative floor
-  (`astro/scripts/lighthouse-verdicts.mjs`). Separated ranges alone produced a false
-  TBT "improvement" on identical HTML in #247. When base and PR serve identical HTML
-  (ignoring Astro's random island `uid`s) and identical built client files for a page,
-  the comment says so instead of listing deltas. Base and PR runs alternate.
+  builds, and a game page's CLS swings 0.56–1.13 with hydration timing. Every metric
+  keeps its min–max range. A delta is flagged only when the gap between the base and
+  PR ranges clears an absolute floor **and** the median moved by a relative floor
+  (`astro/scripts/lighthouse-verdicts.mjs`). Merely non-overlapping ranges produced
+  false flags on identical HTML (TBT in #247, CLS by 0.006 in #250). When base and PR
+  serve identical HTML (ignoring Astro's random island `uid`s) and identical built
+  client files for a page, frontend results say so instead of listing deltas. A live
+  game gets a warning, since base and PR capture different plays. Base and PR runs
+  alternate.
 - **Findings:** non-overlapping regressions are listed with a likely cause (the
   largest layout-shift element for CLS), along with audits that newly fail.
 

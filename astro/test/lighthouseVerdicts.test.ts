@@ -48,6 +48,18 @@ describe('verdicts', () => {
     expect(lines(base, head)).toEqual([]);
   });
 
+  test('#250: ranges that separate by less than the floor are noise (desktop CLS 0.825 vs 0.831–1.116)', () => {
+    const base = side([{ cls: 0.825 }, { cls: 0.825 }, { cls: 0.825 }]);
+    const head = side([{ cls: 0.831 }, { cls: 1.098 }, { cls: 1.116 }]);
+    expect(lines(base, head)).toEqual([]);
+  });
+
+  test('#248: ranges touching at one value are noise (mobile CLS 0.304–0.379 vs 0.291–0.304)', () => {
+    const base = side([{ cls: 0.304 }, { cls: 0.341 }, { cls: 0.379 }]);
+    const head = side([{ cls: 0.291 }, { cls: 0.304 }, { cls: 0.304 }]);
+    expect(lines(base, head)).toEqual([]);
+  });
+
   test('improvements read as improvements', () => {
     const base = side([{ tbt: 900 }, { tbt: 1000 }]);
     const head = side([{ tbt: 400 }, { tbt: 450 }]);

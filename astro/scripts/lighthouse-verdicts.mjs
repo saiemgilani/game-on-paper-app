@@ -25,10 +25,10 @@ export function aggregate(runs = []) {
 }
 
 const LOWER_IS_BETTER = new Set(['fcp', 'lcp', 'tbt', 'cls', 'si', 'htmlKb', 'jsKb', 'dom']);
-// A delta earns a bullet only when the base and PR run ranges don't overlap AND it
-// clears both floors below. Separated ranges alone aren't enough for timing metrics:
-// on a shared runner, 3 runs per side of byte-identical HTML separated TBT 329 → 232 ms
-// (#247), so timings also need a real share of the base median.
+// A delta earns a bullet only when the gap between the base and PR run ranges is at
+// least FLOOR (so ranges must separate, by a meaningful amount) AND the median moved by
+// at least REL_FLOOR of the base. Merely non-overlapping ranges were not enough: 3 runs
+// per side of byte-identical HTML separated TBT 329 → 232 ms (#247) and CLS by 0.006 (#250).
 export const FLOOR = { performance: 0.03, fcp: 200, lcp: 200, tbt: 100, cls: 0.02, si: 250, htmlKb: 2, jsKb: 2, dom: 50 };
 // Performance has no relative floor on purpose: it is already a 0-100 score, and a
 // 3-point drop matters as much on a 40 page as on a 90 one (a relative floor would
@@ -55,9 +55,12 @@ export function verdicts(base, head, preset) {
     const h = head[key];
     if (b.median == null || h.median == null) continue;
     const delta = h.median - b.median;
-    if (Math.abs(delta) < FLOOR[key]) continue;
+    // the space BETWEEN the two run ranges (<= 0 when they overlap) must itself clear the
+    // absolute floor: ranges that merely don't touch (CLS 0.825 vs 0.831-1.116 in #250,
+    // on a page whose CLS swings 0.56-1.13 with hydration timing) are still noise
+    const gap = Math.max(h.min - b.max, b.min - h.max);
+    if (gap < FLOOR[key]) continue;
     if (REL_FLOOR[key] && Math.abs(delta) < REL_FLOOR[key] * Math.abs(b.median)) continue;
-    if (!(h.min > b.max || h.max < b.min)) continue;
     const worse = LOWER_IS_BETTER.has(key) ? delta > 0 : delta < 0;
     let line = `**${worse ? 'Regression' : 'Improvement'}, ${preset} ${LABEL[key]}:** ${withRange(key, b)} → ${withRange(key, h)}`;
     if (key === 'cls' && worse && head.shift) line += `. Largest shift: \`${head.shift}\``;
