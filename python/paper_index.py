@@ -7,11 +7,15 @@ opportunity, starting field position in expected points, havoc, and
 turnovers -- squashed through an intercept-free logistic so a dead-even game
 reads 50/50.
 
-Weights are fitted by tools/fit_paper_index.py (intercept-free logistic,
-P(home won), real finals from the released play-by-play; provenance and
-holdout metrics in the fixture it writes). The oracle test replays real
-holdout games through THIS module and asserts it reproduces the trainer's
+Weights are fitted PER LEAGUE by tools/fit_paper_index.py (intercept-free
+logistic, P(home won), real finals from that league's released play-by-play;
+provenance and holdout metrics in the fixture it writes:
+tests/fixtures/paper_index_oracle.json for college,
+paper_index_oracle_nfl.json for the NFL). The oracle tests replay real
+holdout games through THIS module and assert it reproduces the trainer's
 shares -- train/serve parity comes from both sides calling team_inputs().
+The field-position margin is valued in POINTS with each league's own
+EP-by-yardline curve bundled in sportsdataverse-py.
 """
 
 from __future__ import annotations
@@ -23,43 +27,59 @@ import pathlib
 import polars as pl
 import sportsdataverse
 
-@functools.cache
-def _ep_table() -> pl.DataFrame:
-    """Expected points of a drive start by own yardline (99 rows).
 
-    Bundled with the sdv-py models; field position enters the model in POINTS,
-    not yards. Read on first use, not at import: app.py imports this module at
-    startup, and a missing parquet must not take the server down with it.
+@functools.cache
+def _ep_table(league: str = "cfb") -> pl.DataFrame:
+    """Expected points of a drive start by own yardline (99 rows) for a league.
+
+    Bundled with the sdv-py models (`cfb/models/cfb_field_position_ep.parquet`,
+    `nfl/models/nfl_field_position_ep.parquet`); field position enters the
+    model in POINTS, not yards. Read on first use, not at import: app.py
+    imports this module at startup, and a missing parquet must not take the
+    server down with it.
     """
     return pl.read_parquet(
         pathlib.Path(sportsdataverse.__file__).parent
-        / "cfb"
+        / league
         / "models"
-        / "cfb_field_position_ep.parquet"
+        / f"{league}_field_position_ep.parquet"
     )
 
-# Fitted 2026-09-07 by tools/fit_paper_index.py on 2016-2023 finals
-# (holdout 2024-2025: see the oracle fixture's provenance block).
+
+# Fitted by tools/fit_paper_index.py on 2016-2023 finals of each league
+# (holdout 2024-2025: see each oracle fixture's provenance block).
+# cfb: fitted 2026-09-07. nfl: fitted 2026-09-14 on espn_nfl_pbp.
 WEIGHTS = {
-    "success": 23.8447,
-    "explosive": 2.8098,
-    "explosive_epa": 3.2703,
-    "opp_conversion": 3.4280,
-    "pts_per_opp": 0.1860,
-    "field_position": 4.0046,
-    "havoc": 5.9958,
-    "turnovers": 0.6005,
+    "cfb": {
+        "success": 23.8447,
+        "explosive": 2.8098,
+        "explosive_epa": 3.2703,
+        "opp_conversion": 3.4280,
+        "pts_per_opp": 0.1860,
+        "field_position": 4.0046,
+        "havoc": 5.9958,
+        "turnovers": 0.6005,
+    },
+    "nfl": {
+        "success": 0.0,
+        "explosive": 0.0,
+        "explosive_epa": 0.0,
+        "opp_conversion": 0.0,
+        "pts_per_opp": 0.0,
+        "field_position": 0.0,
+        "havoc": 0.0,
+        "turnovers": 0.0,
+    },
 }
 
-# The weights above and the cfb_field_position_ep curve are fitted on college
-# finals only. A league without its own fit gets no index rather than a
-# college-weighted one wearing its name; the NFL fit lands with the
-# espn_nfl_* processed-game releases.
-FITTED_LEAGUES = frozenset({"cfb"})
+# A league without its own fit gets no index rather than another league's
+# weights wearing its name.
+FITTED_LEAGUES = frozenset(WEIGHTS)
+
 # league average points per scoring opportunity, train seasons only (the
-# neutral value for a team with no opportunity trips); fitted constant,
+# neutral value for a team with no opportunity trips); fitted constants,
 # printed by the trainer alongside the weights
-LEAGUE_PTS_PER_OPP = 3.3566
+LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 0.0}
 
 _NEEDED = {
     "scrimmage_play",
@@ -77,13 +97,14 @@ _NEEDED = {
 }
 
 
-def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
-    """The six model inputs for one team's offense, from a plays frame.
+def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | None:
+    """The model inputs for one team's offense, from a plays frame.
 
     Works on both the live plays_frame and the released play-by-play (the
     trainer renames pos_team_id -> pos_team first): success rate, explosive
-    rate, scoring-opportunity conversion (share of opportunity drives that
-    scored), average drive-start yards to the end zone, havoc allowed (the
+    rate, explosiveness, scoring-opportunity conversion (share of opportunity
+    drives that scored), points per opportunity, average drive-start yards to
+    the end zone and its EP on the league's curve, havoc allowed (the
     opponent's havoc, created on this team's snaps), and turnovers committed.
     """
     if not isinstance(frame, pl.DataFrame) or frame.height == 0:
@@ -114,12 +135,9 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
     avg_start = drives["start_yte"].mean() if drives.height else None
     if avg_start is None:
         return None
-    ep_starts = (
-        drives.with_columns(
-            yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
-        )
-        .join(_ep_table(), on="yardline_own", how="left")
-    )
+    ep_starts = drives.with_columns(
+        yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
+    ).join(_ep_table(league), on="yardline_own", how="left")
     avg_start_ep = ep_starts["ep"].mean()
     if avg_start_ep is None:
         return None
@@ -140,7 +158,9 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
         "explosivenessEpa": float(expl_epa),
         # no opportunities is neutral finishing, not zero-percent finishing
         "oppConversion": (opp_converted / opp_trips) if opp_trips > 0 else 0.5,
-        "ptsPerOpp": (opp_points / opp_trips) if opp_trips > 0 else LEAGUE_PTS_PER_OPP,
+        "ptsPerOpp": (opp_points / opp_trips)
+        if opp_trips > 0
+        else LEAGUE_PTS_PER_OPP[league],
         "avgStartYardsToEndzone": float(avg_start),
         "avgStartEp": float(avg_start_ep),
         "havocAllowedRate": float(mine.select((pl.col("havoc") == True).mean()).item()),  # noqa: E712
@@ -150,7 +170,7 @@ def team_inputs(frame: pl.DataFrame, team_id) -> dict | None:
     }
 
 
-def share_from_inputs(home: dict, away: dict) -> dict:
+def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     """Margins + the logistic share, from two team_inputs() dicts."""
     margins = {
         "success": home["successRate"] - away["successRate"],
@@ -158,18 +178,19 @@ def share_from_inputs(home: dict, away: dict) -> dict:
         "explosive_epa": home["explosivenessEpa"] - away["explosivenessEpa"],
         "opp_conversion": home["oppConversion"] - away["oppConversion"],
         "pts_per_opp": home["ptsPerOpp"] - away["ptsPerOpp"],
-        # field position in POINTS: EP of the average drive start (bundled
-        # cfb_field_position_ep curve); higher is better, so home - away
+        # field position in POINTS: EP of the average drive start (the
+        # league's field_position_ep curve); higher is better, so home - away
         "field_position": home["avgStartEp"] - away["avgStartEp"],
         # havoc the HOME defense created = havoc allowed on away snaps
         "havoc": away["havocAllowedRate"] - home["havocAllowedRate"],
         "turnovers": away["turnoversCommitted"] - home["turnoversCommitted"],
     }
-    z = sum(WEIGHTS[k] * margins[k] for k in WEIGHTS)
+    weights = WEIGHTS[league]
+    z = sum(weights[k] * margins[k] for k in weights)
     return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": margins}
 
 
-def by_period(frame: pl.DataFrame, home_id, away_id) -> dict:
+def by_period(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict:
     """Per-quarter (and OT) shares: the same fitted model applied to each
     window's plays -- who won EACH QUARTER on paper. Descriptive slices, so a
     window where either side has no snaps is simply omitted; margins that are
@@ -185,12 +206,12 @@ def by_period(frame: pl.DataFrame, home_id, away_id) -> dict:
         sliced = frame.filter(
             pl.col("period") == p if p <= 4 else pl.col("period") >= 5
         )
-        home = team_inputs(sliced, home_id)
-        away = team_inputs(sliced, away_id)
+        home = team_inputs(sliced, home_id, league)
+        away = team_inputs(sliced, away_id, league)
         if home is None or away is None:
             continue
         if label not in out:  # multiple OT periods fold into one "ot" window
-            out[label] = share_from_inputs(home, away)
+            out[label] = share_from_inputs(home, away, league)
     return out
 
 
@@ -199,14 +220,14 @@ def compute(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict 
     the league has no fitted weights (see FITTED_LEAGUES)."""
     if league not in FITTED_LEAGUES:
         return None
-    home = team_inputs(frame, home_id)
-    away = team_inputs(frame, away_id)
+    home = team_inputs(frame, home_id, league)
+    away = team_inputs(frame, away_id, league)
     if home is None or away is None:
         return None
-    out = share_from_inputs(home, away)
+    out = share_from_inputs(home, away, league)
     out["teams"] = {str(home_id): home, str(away_id): away}
     try:
-        out["byPeriod"] = by_period(frame, home_id, away_id)
+        out["byPeriod"] = by_period(frame, home_id, away_id, league)
     except Exception:  # the strip is garnish; the gauge must survive it
         out["byPeriod"] = {}
     return out

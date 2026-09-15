@@ -11,12 +11,17 @@ import json
 import pathlib
 
 import polars as pl
+import pytest
 
 import paper_index
 
-FIXTURE = json.loads(
-    (pathlib.Path(__file__).parent / "fixtures" / "paper_index_oracle.json").read_text()
-)
+_FIX_DIR = pathlib.Path(__file__).parent / "fixtures"
+FIXTURES = {
+    "cfb": json.loads((_FIX_DIR / "paper_index_oracle.json").read_text()),
+    "nfl": json.loads((_FIX_DIR / "paper_index_oracle_nfl.json").read_text()),
+}
+FIXTURE = FIXTURES["cfb"]
+LEAGUES = sorted(FIXTURES)
 
 
 def _frame():
@@ -99,28 +104,53 @@ def test_fails_open():
     assert paper_index.compute(_frame(), 999, 20) is None  # unknown team
 
 
-def test_shipped_weights_match_fixture():
+@pytest.mark.parametrize("league", LEAGUES)
+def test_shipped_weights_match_fixture(league):
     """Never-lower/lineage gate: the committed WEIGHTS must be the trainer's
     output (4-decimal rounding documented in the module). Editing one without
     re-running tools/fit_paper_index.py fails here."""
-    for k, v in FIXTURE["weights"].items():
-        assert abs(paper_index.WEIGHTS[k] - v) < 5e-5, (k, paper_index.WEIGHTS[k], v)
+    fx = FIXTURES[league]
+    assert fx["provenance"].get("league", "cfb") == league
+    for k, v in fx["weights"].items():
+        assert abs(paper_index.WEIGHTS[league][k] - v) < 5e-5, (league, k, v)
+    assert (
+        abs(paper_index.LEAGUE_PTS_PER_OPP[league] - fx["provenance"]["league_pts_per_opp"])
+        < 5e-5
+    )
+    assert league in paper_index.FITTED_LEAGUES
+    assert all(w > 0 for w in paper_index.WEIGHTS[league].values())
 
 
-def test_oracle_real_holdout_games():
+@pytest.mark.parametrize("league", LEAGUES)
+def test_oracle_real_holdout_games(league):
     """The module reproduces the trainer's share for 12 real holdout games."""
-    for g in FIXTURE["games"]:
-        got = paper_index.share_from_inputs(g["home"], g["away"])["homeShare"]
+    for g in FIXTURES[league]["games"]:
+        got = paper_index.share_from_inputs(g["home"], g["away"], league)["homeShare"]
         assert abs(got - g["expectedHomeShare"]) < 5e-4, (
+            league,
             g["gameId"],
             got,
             g["expectedHomeShare"],
         )
 
 
-def test_oracle_spans_the_range():
-    shares = [g["expectedHomeShare"] for g in FIXTURE["games"]]
+@pytest.mark.parametrize("league", LEAGUES)
+def test_oracle_spans_the_range(league):
+    shares = [g["expectedHomeShare"] for g in FIXTURES[league]["games"]]
     assert min(shares) < 0.15 and max(shares) > 0.85
+
+
+def test_each_league_values_field_position_on_its_own_curve():
+    cfb = dict(paper_index._ep_table("cfb").iter_rows())
+    nfl = dict(paper_index._ep_table("nfl").iter_rows())
+    assert set(cfb) == set(nfl) == set(range(1, 100))
+    assert nfl[50] != cfb[50]  # two fits, two curves
+    assert nfl[99] > nfl[50] > nfl[1]
+    # the same plays frame scores a different field-position input per league
+    a = paper_index.team_inputs(_frame(), 10, "cfb")
+    b = paper_index.team_inputs(_frame(), 10, "nfl")
+    assert a["avgStartYardsToEndzone"] == b["avgStartYardsToEndzone"]
+    assert a["avgStartEp"] != b["avgStartEp"]
 
 
 def test_compute_is_none_for_a_league_without_a_fit():

@@ -27,7 +27,12 @@ opportunities as points per opportunity, alongside the rate forms -- is the
 shipped spec: Brier 0.0657, 91.1% winner agreement, all weights positive.
 
 Run (from python/):
-    .venv/bin/python tools/fit_paper_index.py
+    .venv/bin/python tools/fit_paper_index.py                  # college (default)
+    .venv/bin/python tools/fit_paper_index.py --league nfl     # NFL, from the espn_nfl_pbp release
+    .venv/bin/python tools/fit_paper_index.py --league nfl --pbp-dir /path/to/espn_nfl/pbp
+
+Each league is its own fit: its own released play-by-play, its own bundled
+field-position EP curve, its own oracle fixture and its own never-lower gates.
 
 Gates follow the never-lower rule: every floor is derived from the value
 observed at fit time and documented beside its measured number; lowering one
@@ -49,17 +54,42 @@ from paper_index import LEAGUE_PTS_PER_OPP, share_from_inputs, team_inputs  # no
 
 TRAIN_SEASONS = range(2016, 2024)  # 2016-2023
 HOLDOUT_SEASONS = (2024, 2025)
-CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache"
-FIXTURE_PATH = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "tests"
-    / "fixtures"
-    / "paper_index_oracle.json"
-)
-PBP_URL = (
+_RELEASE = (
     "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/"
-    "espn_cfb_pbp/play_by_play_{season}.parquet"
+    "espn_{league}_pbp/play_by_play_{{season}}.parquet"
 )
+_FIXTURE_NAME = {"cfb": "paper_index_oracle.json", "nfl": "paper_index_oracle_nfl.json"}
+# never-lower gates, measured at each league's fit time (None = first fit:
+# print the numbers, then pin them here before the weights ship)
+GATES = {
+    # cfb, fit 2026-09-07: Brier 0.0657, resolution 0.1660, holdout n=1894,
+    # beats EPA-only 0.0805
+    "cfb": {"min_holdout": 1200, "brier": 0.09, "resolution": 0.10, "reliability": 0.01},
+    "nfl": None,
+}
+
+# set by configure(); module globals so the cached per-season helpers stay simple
+LEAGUE = "cfb"
+CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache" / "cfb"
+FIXTURE_PATH = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "paper_index_oracle.json"
+PBP_URL = _RELEASE.format(league="cfb")
+
+
+def configure(league: str, pbp_dir: str | None = None) -> None:
+    """Point the trainer at one league: its pbp source, cache, fixture."""
+    global LEAGUE, CACHE_DIR, FIXTURE_PATH, PBP_URL
+    if league not in _FIXTURE_NAME:
+        raise SystemExit(f"unknown league {league!r}; one of {sorted(_FIXTURE_NAME)}")
+    LEAGUE = league
+    CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache" / league
+    FIXTURE_PATH = (
+        pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / _FIXTURE_NAME[league]
+    )
+    PBP_URL = (
+        str(pathlib.Path(pbp_dir) / "play_by_play_{season}.parquet")
+        if pbp_dir
+        else _RELEASE.format(league=league)
+    )
 BASE_COLUMNS = [
     "game_id",
     "game_play_number",
@@ -202,7 +232,7 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     )
     drv = drv.with_columns(
         yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
-    ).join(_ep_table(), on="yardline_own", how="left")
+    ).join(_ep_table(LEAGUE), on="yardline_own", how="left")
     drives = drv.group_by(["game_id", "pos_team_id"]).agg(
         opp_trips=pl.col("opp").cast(pl.Float64).sum(),
         opp_converted=(pl.col("opp") & pl.col("scored")).cast(pl.Float64).sum(),
@@ -215,7 +245,7 @@ def season_ext_rows(season: int) -> pl.DataFrame:
         .otherwise(0.5),
         pts_per_opp=pl.when(pl.col("opp_trips") > 0)
         .then(pl.col("opp_points") / pl.col("opp_trips"))
-        .otherwise(LEAGUE_PTS_PER_OPP),
+        .otherwise(LEAGUE_PTS_PER_OPP[LEAGUE]),
     )
     out.write_parquet(cache)
     return out
@@ -268,6 +298,28 @@ def fit_logistic_no_intercept(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     return beta
 
 
+def fit_logistic_nonneg(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, list[int]]:
+    """Active-set non-negative logistic fit: a margin whose weight turns
+    negative under collinearity is pinned to zero and the rest refit, until
+    every remaining weight is positive. Returns (beta, dropped column idx).
+    Identical to the unconstrained fit when that fit is already positive."""
+    active = list(range(X.shape[1]))
+    dropped: list[int] = []
+    while True:
+        b = fit_logistic_no_intercept(X[:, active], y)
+        neg = [active[i] for i in np.where(b < 0)[0]]
+        if not neg:
+            break
+        # drop the most negative one at a time -- a second margin may turn
+        # positive once its collinear partner is gone
+        worst = active[int(np.argmin(b))]
+        dropped.append(worst)
+        active.remove(worst)
+    beta = np.zeros(X.shape[1])
+    beta[active] = b
+    return beta, sorted(dropped)
+
+
 def share(X: np.ndarray, beta: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-(X @ beta)))
 
@@ -297,7 +349,7 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
     for r in sample.to_dicts():
         gframe = pbp.filter(pl.col("game_id") == r["game_id"])
         for side, tid in (("h", r["home_id"]), ("a", r["away_id"])):
-            ti = team_inputs(gframe, tid)
+            ti = team_inputs(gframe, tid, LEAGUE)
             assert ti is not None, (r["game_id"], tid)
             assert abs(ti["successRate"] - r[f"{side}_success"]) < 1e-9
             assert abs(ti["explosiveRate"] - r[f"{side}_explosive"]) < 1e-9
@@ -323,9 +375,13 @@ def main() -> int:
     yh = hold["home_won"].to_numpy().astype(float)
     print(f"train games: {len(yt)}, holdout: {len(yh)} {HOLDOUT_SEASONS}")
 
-    beta = fit_logistic_no_intercept(Xt, yt)
+    beta, dropped_idx = fit_logistic_nonneg(Xt, yt)
+    dropped = [FEATS[i] for i in dropped_idx]
     print("fitted weights:", dict(zip(FEATS, np.round(beta, 4))))
-    assert (beta > 0).all(), f"sign-incoherent fit: {beta}"  # every margin must help
+    if dropped:
+        print(f"margins pinned to zero (went negative under collinearity): {dropped}")
+    assert (beta >= 0).all(), f"sign-incoherent fit: {beta}"  # every margin must help
+    assert (beta > 0).sum() >= 5, f"too few live margins: {beta}"
 
     p_hold = share(Xh, beta)
     p_epa_only = share(
@@ -346,13 +402,33 @@ def main() -> int:
         f"decomposition: reliability {rel:.4f}, resolution {res:.4f}, uncertainty {unc:.4f}"
     )
 
-    # gates (never-lower; measured at fit time: Brier 0.0657, resolution
-    # 0.1660, holdout n=1894, beats EPA-only 0.0805)
-    assert len(yh) >= 1200, f"holdout too small: {len(yh)}"
-    assert brier < 0.09, f"Brier regressed: {brier}"
+    # league average points per scoring opportunity on the TRAIN seasons: the
+    # neutral ptsPerOpp for a team with no opportunity trips (paste into
+    # paper_index.LEAGUE_PTS_PER_OPP alongside the weights)
+    ext_train = pl.concat(
+        [season_ext_rows(s) for s in TRAIN_SEASONS], how="vertical_relaxed"
+    )
+    league_ppo = float(
+        ext_train.select(
+            pl.col("opp_points").sum() / pl.col("opp_trips").sum()
+        ).item()
+    )
+    print(f"league pts per opportunity (train seasons): {league_ppo:.4f}")
+
+    # gates (never-lower; each league's floors were measured at its fit time)
+    gates = GATES[LEAGUE]
+    if gates is None:
+        print(
+            f"FIRST FIT for {LEAGUE}: no gates pinned yet -- pin GATES[{LEAGUE!r}] from "
+            f"holdout n={len(yh)}, Brier {brier:.4f}, resolution {res:.4f}, "
+            f"reliability {rel:.4f} before shipping the weights"
+        )
+    else:
+        assert len(yh) >= gates["min_holdout"], f"holdout too small: {len(yh)}"
+        assert brier < gates["brier"], f"Brier regressed: {brier}"
+        assert res > gates["resolution"], f"degraded toward base rate: resolution {res}"
+        assert rel < gates["reliability"], f"miscalibrated: reliability {rel}"
     assert brier <= brier_epa + 1e-9, f"lost to EPA-only: {brier} vs {brier_epa}"
-    assert res > 0.10, f"degraded toward base rate: resolution {res}"
-    assert rel < 0.01, f"miscalibrated: reliability {rel}"
 
     parity_check(games, HOLDOUT_SEASONS[0])
 
@@ -390,6 +466,9 @@ def main() -> int:
         ),
         "provenance": {
             "script": "python/tools/fit_paper_index.py",
+            "league": LEAGUE,
+            "league_pts_per_opp": round(league_ppo, 4),
+            "margins_pinned_to_zero": dropped,
             "train_seasons": f"{TRAIN_SEASONS.start}-{TRAIN_SEASONS.stop - 1}",
             "holdout_seasons": list(HOLDOUT_SEASONS),
             "train_games": len(yt),
@@ -418,19 +497,31 @@ def main() -> int:
     # weights (its committed constants are updated from this printout after)
     import paper_index as _pi
 
-    _pi.WEIGHTS = {k: float(v) for k, v in fixture["weights"].items()}
+    _pi.WEIGHTS[LEAGUE] = {k: float(v) for k, v in fixture["weights"].items()}
     for g in fixture["games"]:
-        got = share_from_inputs(g["home"], g["away"])["homeShare"]
+        got = share_from_inputs(g["home"], g["away"], LEAGUE)["homeShare"]
         assert abs(got - g["expectedHomeShare"]) < 1e-9, (g["gameId"], got)
 
     FIXTURE_PATH.parent.mkdir(parents=True, exist_ok=True)
     FIXTURE_PATH.write_text(json.dumps(fixture, indent=1))
     print(f"oracle fixture written: {FIXTURE_PATH}")
-    print("\npaste into python/paper_index.py WEIGHTS:")
+    print(f"\npaste into python/paper_index.py WEIGHTS[{LEAGUE!r}]:")
     for k, v in fixture["weights"].items():
         print(f'    "{k}": {v:.4f},')
+    print(f'and LEAGUE_PTS_PER_OPP[{LEAGUE!r}] = {league_ppo:.4f}')
     return 0
 
 
 if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Fit the Paper Index weights for one league.")
+    ap.add_argument("--league", default="cfb", choices=sorted(_FIXTURE_NAME))
+    ap.add_argument(
+        "--pbp-dir",
+        default=None,
+        help="local dir of play_by_play_{season}.parquet (default: the league's release)",
+    )
+    args = ap.parse_args()
+    configure(args.league, args.pbp_dir)
     sys.exit(main())
