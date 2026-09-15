@@ -49,9 +49,7 @@ class _OfflineNFL(NFLPlayProcess):
     def __init__(self, gameId=GAMES["nfl"], **kwargs):
         self._summary = _load(f"nfl_summary_{gameId}.json.gz")
         items = _load(f"nfl_plays_{gameId}.json.gz")["items"]
-        parts = play_participants_from_items(
-            items, gameId, athlete_lookup=athlete_lookup_from_summary(self._summary)
-        )
+        parts = play_participants_from_items(items, gameId, athlete_lookup=athlete_lookup_from_summary(self._summary))
         super().__init__(gameId=gameId, participants=parts, **kwargs)
 
     def espn_nfl_pbp(self, summary=None, **kwargs):
@@ -66,9 +64,7 @@ class _OfflineCFB(CFBPlayProcess):
         super().__init__(gameId=gameId, **kwargs)
 
     def espn_cfb_pbp(self, summary=None, **kwargs):
-        self.join_participants = (
-            False  # the route sets True; offline must not reach ESPN
-        )
+        self.join_participants = False  # the route sets True; offline must not reach ESPN
         return super().espn_cfb_pbp(summary=self._summary, **kwargs)
 
 
@@ -102,9 +98,7 @@ def body(league):
     app_mod.TEL.push = lambda *a, **k: None
     app_mod._emit_dq = lambda *a, **k: None
     try:
-        r = app_mod.app.test_client().get(
-            f"/{league}/{GAMES[league]}/process", headers=_auth()
-        )
+        r = app_mod.app.test_client().get(f"/{league}/{GAMES[league]}/process", headers=_auth())
         assert r.status_code == 200, r.get_data(as_text=True)[:300]
         yield r.get_json()
     finally:
@@ -129,9 +123,7 @@ def test_box_score_carries_every_usage_section(body):
 
 def test_player_usage_and_st_team_have_rows_for_both_teams(body, league):
     box = body["advBoxScore"]
-    teams = {
-        str(c["team"]["id"]) for c in body["header"]["competitions"][0]["competitors"]
-    }
+    teams = {str(c["team"]["id"]) for c in body["header"]["competitions"][0]["competitors"]}
     assert len(teams) == 2
 
     assert {str(r["pos_team"]) for r in box["player_usage"]} == teams
@@ -145,15 +137,142 @@ def test_player_usage_and_st_team_have_rows_for_both_teams(body, league):
             assert box[section], section
 
 
-def test_player_usage_rows_carry_the_columns_the_page_reads(body):
-    row = body["advBoxScore"]["player_usage"][0]
-    for col in (
+# the columns UsageBoxScore.astro / SituationalSplits.astro read from each section
+PAGE_COLUMNS = {
+    "player_usage": (
         "player_id",
         "player_name",
         "position_group",
+        "opportunities",
+        "rushes",
+        "targets",
+        "receptions",
         "target_share",
-        "explosive_plays",
-        "first_downs",
-    ):
-        assert col in row, col
+        "first_down_share",
+        "fd_td_rate",
+        "explosive_rate",
+        "rz_touches",
+        "rz_touchdowns",
+        "so_touches",
+        "so_touchdowns",
+        "third_down_opportunities",
+        "third_down_over_expected",
+    ),
+    "position_group_usage": (
+        "position_group",
+        "opportunities",
+        "target_share",
+        "first_down_share",
+        "fd_td_rate",
+        "explosive_rate",
+        "rz_touches",
+        "rz_touchdowns",
+        "so_touches",
+        "so_touchdowns",
+        "third_down_opportunities",
+        "third_down_over_expected",
+    ),
+    "tackles": ("def_pos_team", "player_id", "player_name", "position_group", "tackles", "assists", "tackle_share"),
+    "position_group_tackles": ("def_pos_team", "position_group", "tackles", "assists", "tackle_share"),
+    "team_usage": (
+        "third_down_conversions",
+        "third_down_opportunities",
+        "third_down_expected",
+        "third_down_over_expected",
+        "rz_trips",
+        "rz_touchdown_rate",
+        "rz_points_per_trip",
+        "rz_success_rate",
+        "rz_epa_per_play",
+        "so_trips",
+        "so_touchdown_rate",
+        "so_points_per_trip",
+        "so_success_rate",
+        "so_epa_per_play",
+    ),
+    "drive_scripting": ("script", "drives", "epa_per_play", "success_rate", "points_per_drive"),
+    "st_kickers": (
+        "player_name",
+        "fg_attempts",
+        "fg_made",
+        "fg_long",
+        "fg_blocked",
+        "fg_0_39_attempts",
+        "fg_0_39_made",
+        "fg_40_49_attempts",
+        "fg_40_49_made",
+        "fg_50_plus_attempts",
+        "fg_50_plus_made",
+        "xp_attempts",
+        "xp_made",
+        "kickoffs",
+        "kickoff_avg",
+        "kickoff_touchback_rate",
+        "kickoff_returns_allowed",
+        "kickoff_return_avg_allowed",
+        "kickoff_return_tds_allowed",
+        "fg_epa",
+        "kickoff_epa",
+    ),
+    "st_punters": (
+        "player_name",
+        "punts",
+        "punt_avg",
+        "punt_net_avg",
+        "punt_long",
+        "punt_inside_20",
+        "punt_touchbacks",
+        "punt_fair_catches",
+        "punt_returns_allowed",
+        "punt_return_avg_allowed",
+        "punt_blocked",
+        "punt_epa",
+    ),
+    "st_returners": (
+        "player_name",
+        "kick_returns",
+        "kick_return_yards",
+        "kick_return_avg",
+        "kick_return_long",
+        "kick_return_tds",
+        "punt_returns",
+        "punt_return_yards",
+        "punt_return_avg",
+        "punt_return_long",
+        "punt_return_tds",
+        "kick_return_epa",
+        "punt_return_epa",
+    ),
+    "st_blocks": ("def_pos_team", "player_name", "punt_blocks", "fg_blocks"),
+    "st_team": (
+        "fg_made",
+        "fg_attempts",
+        "fgs_blocked",
+        "kickoff_touchback_rate",
+        "kickoff_return_avg_allowed",
+        "kickoff_return_tds_allowed",
+        "punt_net_avg",
+        "punt_return_avg_allowed",
+        "punt_return_tds_allowed",
+        "kick_returns",
+        "kick_return_avg",
+        "kick_return_tds",
+        "punt_returns",
+        "punt_return_avg",
+        "punt_return_tds",
+    ),
+}
 
+
+def test_every_section_carries_the_columns_the_page_reads(body):
+    box = body["advBoxScore"]
+    assert set(PAGE_COLUMNS) == set(SECTIONS)
+    checked = []
+    for section, cols in PAGE_COLUMNS.items():
+        rows = box[section]
+        if not rows:  # e.g. st_blocks in a game with no blocked kick, tackles without participants
+            continue
+        checked.append(section)
+        for col in cols:
+            assert all(col in r for r in rows), f"{section}.{col}"
+    assert {"player_usage", "team_usage", "drive_scripting", "st_kickers", "st_punters", "st_team"} <= set(checked)

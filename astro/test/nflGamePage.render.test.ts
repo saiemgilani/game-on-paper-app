@@ -155,6 +155,15 @@ describe('usage / situational / special-teams sections', () => {
             pos_team: away, player_id: 'p1', player_name: 'Away Punter', punts: 4, punt_yards: 180, punt_long: 55, punt_touchbacks: 1, punt_inside_20: 2, punt_fair_catches: 1, punt_downed: 1,
             punt_out_of_bounds: 0, punt_blocked: 0, punt_returns_allowed: 1, punt_return_yards_allowed: 8, punt_return_tds_allowed: 0, punt_epa: -0.4, punt_avg: 45, punt_net_yards: 152, punt_net_avg: 38, punt_inside_20_rate: 0.5, punt_return_avg_allowed: 8,
         }];
+        game.advBoxScore.position_group_usage = [{ ...usage(home, '', ''), player_id: undefined, player_name: undefined, position_group: 'TE', opportunities: 12 }];
+        game.advBoxScore.position_group_tackles = [
+            { def_pos_team: away, position_group: 'DB', tackles: 11, assists: 4, tackle_points: 13, team_tackle_points: 21, tackle_share: 13 / 21 },
+        ];
+        game.advBoxScore.st_returners = [{
+            pos_team: home, player_id: 'r1', player_name: 'Home Returner', kick_returns: 2, kick_return_yards: 50, kick_return_long: 31, kick_return_tds: 0, kick_return_epa: 0.4,
+            punt_returns: 1, punt_return_yards: 12, punt_return_long: 12, punt_return_tds: 1, punt_return_epa: 3.1, kick_return_avg: 25, punt_return_avg: 12,
+        }];
+        game.advBoxScore.st_blocks = [{ def_pos_team: away, player_id: 'b1', player_name: 'Away Blocker', punt_blocks: 1, fg_blocks: 0, blocks: 1 }];
         game.advBoxScore.st_team = [away, home].map((team) => ({
             pos_team: team, kickoffs: 5, kickoff_touchbacks: 3, kickoff_returns_allowed: 2, kickoff_return_yards_allowed: 44, kickoff_return_tds_allowed: 0, kickoff_epa: 0.3,
             kick_returns: 2, kick_return_yards: 50, kick_return_tds: 0, kick_return_epa: 0.2, punts: 4, punt_yards: 180, punt_touchbacks: 1, punts_blocked: 0, punt_returns_allowed: 1,
@@ -184,5 +193,13 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('Home Kicker');
         expect(html).toContain('Away Punter');
         expect(html).toContain('FG 2/3');
+        // returner, block and position-group rows
+        expect(html).toContain('Home Returner');
+        expect(html).toContain('KR 2-50, 25.0 avg, 31 LNG.');
+        expect(html).toContain('PR 1-12, 12.0 avg, 12 LNG, 1 TD.');
+        expect(html).toContain('Away Blocker');
+        expect(html).toContain('1 punt blocked.');
+        expect(html).toContain('<i>TE</i>');
+        expect(html).toContain('<i>DB</i>');
     }, 120_000);
 });
