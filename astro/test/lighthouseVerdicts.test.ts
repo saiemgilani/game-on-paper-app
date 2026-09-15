@@ -56,4 +56,8 @@ describe('normalizeHtml', () => {
     expect(normalizeHtml(a)).toBe(normalizeHtml(b));
     expect(normalizeHtml(a)).not.toBe(normalizeHtml(b.replace('LocalDate', 'OtherDate')));
   });
+
+  test('a uid on any other element is content, not noise', () => {
+    expect(normalizeHtml('<div uid="a">x</div>')).not.toBe(normalizeHtml('<div uid="b">x</div>'));
+  });
 });

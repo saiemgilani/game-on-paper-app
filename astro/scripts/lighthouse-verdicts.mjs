@@ -68,5 +68,7 @@ export function verdicts(base, head, preset) {
 }
 
 // Astro gives every island a random `uid` per render, so two renders of the same
-// page never match byte for byte. Strip it before deciding "identical".
-export const normalizeHtml = (html) => html.replace(/\suid="[^"]*"/g, '');
+// page never match byte for byte. Strip that attribute -- on <astro-island> tags
+// only, so a real `uid` change on any other element still counts as a change.
+export const normalizeHtml = (html) =>
+  html.replace(/<astro-island\b[^>]*>/g, (tag) => tag.replace(/\suid="[^"]*"/, ''));

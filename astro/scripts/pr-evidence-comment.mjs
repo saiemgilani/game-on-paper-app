@@ -72,7 +72,8 @@ out.push('', '### Lighthouse: PR vs base', '', lighthouse ?? 'No Lighthouse resu
 out.push('', '<details><summary>Method</summary>', '',
   '- **Builds:** base is the PR\'s base commit; head is the PR merged onto it, so only this PR\'s changes differ. Each is a production `astro build` from its own worktree, with every `preview` feature flag forced on in both.',
   '- **Frontend-only:** each tree\'s server-rendered HTML plus its own `dist/client`, served gzip-compressed with no server wait, so the numbers measure what the branch ships. Base and PR runs alternate.',
-  '- **Runs:** Lighthouse CLI with simulated throttling, mobile and desktop presets. A delta is flagged only when the base and PR run ranges don\'t overlap; Performance moves 10+ points between identical builds.',
+  '- **Runs:** Lighthouse CLI with simulated throttling, mobile and desktop presets. A delta is flagged only when the base and PR run ranges don\'t overlap **and** it clears an absolute and a relative floor (`lighthouse-verdicts.mjs`); Performance moves 10+ points between identical builds.',
+  '- **⚪ No frontend change:** printed instead of deltas when base and PR serve identical HTML (ignoring Astro\'s random island ids) and identical built client files for a page.',
   '- **Tooling:** `astro/scripts/lighthouse-compare.mjs` and `visual-check.mjs`; see CLAUDE.md "PR evidence".',
   '', '</details>');
 
