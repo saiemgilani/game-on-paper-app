@@ -115,6 +115,12 @@ jobs:
             --out "$EVIDENCE_DIR" $ROUTES
           echo "exit=$?" >> "$GITHUB_OUTPUT"
 
+      - name: Remove local secrets once the preview is gone
+        # the preview and processor needed them; nothing after this step does. (They were
+        # necessarily readable by the PR code that ran in the comparison step.)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp/gop-lighthouse -name '.dev.vars' -type f -print -delete 2>/dev/null || true
+
       - name: Keep raw reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,8 +142,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
           dest="pr$PR/${PR_HEAD_SHA:0:7}"
+          # one-shot auth for every pr-previews fetch and push (the checkout persists no token);
+          # an unauthenticated fetch failing on a private repo would otherwise fall through to a
+          # fresh orphan branch whose push is then rejected
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
           # full fetch: the checkout is complete history, and a shallow fetch would graft it
-          if git fetch -q origin pr-previews; then
+          if git -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews; then
             git worktree add --detach "$wt" FETCH_HEAD
           else
             git worktree add --detach "$wt" HEAD
@@ -150,11 +161,10 @@ jobs:
           # a re-run of the same commit can reproduce identical images: nothing to commit, still publish
           if ! git -C "$wt" diff --cached --quiet; then
             git -C "$wt" commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
-            auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
             # other PRs push here concurrently; their paths never overlap, so rebase and retry
             for attempt in 1 2 3 4 5; do
               git -C "$wt" -c "http.https://github.com/.extraheader=$auth" push -q origin HEAD:refs/heads/pr-previews && break
-              git -C "$wt" fetch -q origin pr-previews
+              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews
               git -C "$wt" rebase -q FETCH_HEAD
               [ "$attempt" = 5 ] && exit 1
             done
