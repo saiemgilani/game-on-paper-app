@@ -102,3 +102,76 @@ describe('the NFL game page carries the same v2 blocks as the CFB page (#243 ali
     }, 60_000);
 
 });
+
+
+describe('usage / situational / special-teams sections', () => {
+    test('render once the processor emits the usage box, and stay absent otherwise', async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const render = async (game: any) => container.renderToString(GamePage, {
+            props: { id: GAME_ID, game, league: 'nfl' },
+            request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
+            locals: { league: 'nfl', preview: true },
+        });
+        const bare = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
+        const without = await render(bare);
+        expect(without).not.toContain('id="situational-splits-panel"');
+
+        const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
+        const away = parseInt(game.awayTeamId ?? game.boxScore?.teams?.[0]?.team?.id ?? game.advBoxScore.team[0].pos_team);
+        const home = parseInt(game.homeTeamId ?? game.advBoxScore.team[1].pos_team);
+        const usage = (team: number, name: string, id: string) => ({
+            pos_team: team, player_id: id, player_name: name, position_group: 'WR',
+            rushes: 0, targets: 9, receptions: 6, touches: 6, opportunities: 9, rush_yards: 0, receiving_yards: 88,
+            first_downs: 4, touchdowns: 1, fd_or_td: 4, explosive_plays: 2, successful_plays: 5, epa: 4.2,
+            rz_rushes: 0, rz_targets: 2, rz_touches: 1, rz_touchdowns: 1, so_rushes: 0, so_targets: 3, so_touches: 2, so_touchdowns: 1,
+            third_down_opportunities: 3, third_down_conversions: 2, third_down_expected: 1.4,
+            fd_td_rate: 4 / 9, explosive_rate: 2 / 9, success_rate: 5 / 9, epa_per_opportunity: 4.2 / 9,
+            rz_touchdown_rate: 1, so_touchdown_rate: 0.5, third_down_rate: 2 / 3, third_down_over_expected: 0.6,
+            target_share: 0.3, first_down_share: 0.2, touch_share: 0.1,
+        });
+        game.advBoxScore.player_usage = [usage(away, 'Away Receiver', 'a1'), usage(home, 'Home Receiver', 'h1')];
+        game.advBoxScore.tackles = [
+            { def_pos_team: away, player_id: 'd1', player_name: 'Away Backer', position_group: 'LB', tackles: 7, assists: 2, tackle_points: 8, team_tackle_points: 8, tackle_share: 1 },
+        ];
+        game.advBoxScore.team_usage = [away, home].map((team) => ({
+            pos_team: team, plays: 60, rushes: 25, targets: 35, completions: 22, first_downs: 18, touchdowns: 3, explosive_plays: 6, successful_plays: 27, epa: 5.5,
+            third_down_opportunities: 12, third_down_conversions: 5, third_down_expected: 4.6, third_down_rate: 5 / 12, third_down_over_expected: 0.4,
+            success_rate: 0.45, explosive_rate: 0.1, epa_per_play: 0.09,
+            rz_plays: 8, rz_successes: 4, rz_epa: 1.1, rz_touchdowns: 2, rz_targets: 4, rz_rushes: 4, rz_trips: 3, rz_points: 17, rz_touchdown_rate: 2 / 3, rz_points_per_trip: 17 / 3, rz_success_rate: 0.5, rz_epa_per_play: 0.14,
+            so_plays: 14, so_successes: 7, so_epa: 2.0, so_touchdowns: 3, so_targets: 7, so_rushes: 7, so_trips: 5, so_points: 24, so_touchdown_rate: 0.6, so_points_per_trip: 4.8, so_success_rate: 0.5, so_epa_per_play: 0.14,
+        }));
+        game.advBoxScore.drive_scripting = [away, home].flatMap((team) => [
+            { pos_team: team, script: 'scripted', drives: 4, plays: 24, epa: 3, successes: 12, yards: 160, points: 10, touchdowns: 1, scoring_opps: 3, epa_per_play: 0.125, success_rate: 0.5, yards_per_play: 6.7, points_per_drive: 2.5, touchdown_rate: 0.25, scoring_opp_rate: 0.75 },
+            { pos_team: team, script: 'non_scripted', drives: 8, plays: 40, epa: 1, successes: 16, yards: 200, points: 14, touchdowns: 2, scoring_opps: 4, epa_per_play: 0.025, success_rate: 0.4, yards_per_play: 5, points_per_drive: 1.75, touchdown_rate: 0.25, scoring_opp_rate: 0.5 },
+        ]);
+        game.advBoxScore.st_kickers = [{
+            pos_team: home, player_id: 'k1', player_name: 'Home Kicker', kickoffs: 5, kickoff_yards: 320, kickoff_touchbacks: 3, kickoff_onside: 0, kickoff_out_of_bounds: 0,
+            kickoff_returns_allowed: 2, kickoff_return_yards_allowed: 44, kickoff_return_tds_allowed: 0, kickoff_epa: 0.3, fg_attempts: 3, fg_made: 2, fg_long: 48, fg_blocked: 0,
+            fg_0_39_attempts: 1, fg_0_39_made: 1, fg_40_49_attempts: 2, fg_40_49_made: 1, fg_50_plus_attempts: 0, fg_50_plus_made: 0, fg_epa: 1.1, xp_attempts: 2, xp_made: 2,
+            kickoff_avg: 64, kickoff_touchback_rate: 0.6, kickoff_return_avg_allowed: 22, fg_pct: 2 / 3, xp_pct: 1,
+        }];
+        game.advBoxScore.st_punters = [{
+            pos_team: away, player_id: 'p1', player_name: 'Away Punter', punts: 4, punt_yards: 180, punt_long: 55, punt_touchbacks: 1, punt_inside_20: 2, punt_fair_catches: 1, punt_downed: 1,
+            punt_out_of_bounds: 0, punt_blocked: 0, punt_returns_allowed: 1, punt_return_yards_allowed: 8, punt_return_tds_allowed: 0, punt_epa: -0.4, punt_avg: 45, punt_net_yards: 152, punt_net_avg: 38, punt_inside_20_rate: 0.5, punt_return_avg_allowed: 8,
+        }];
+        game.advBoxScore.st_team = [away, home].map((team) => ({
+            pos_team: team, kickoffs: 5, kickoff_touchbacks: 3, kickoff_returns_allowed: 2, kickoff_return_yards_allowed: 44, kickoff_return_tds_allowed: 0, kickoff_epa: 0.3,
+            kick_returns: 2, kick_return_yards: 50, kick_return_tds: 0, kick_return_epa: 0.2, punts: 4, punt_yards: 180, punt_touchbacks: 1, punts_blocked: 0, punt_returns_allowed: 1,
+            punt_return_yards_allowed: 8, punt_return_tds_allowed: 0, punt_epa: -0.4, punt_returns: 1, punt_return_yards: 12, punt_return_tds: 0, punt_return_epa: 0.1,
+            fg_attempts: 3, fg_made: 2, fgs_blocked: 0, fg_epa: 1.1, punt_blocks_by: 0, fg_blocks_by: 0, punt_net_yards: 152, kickoff_touchback_rate: 0.6, kickoff_return_avg_allowed: 22,
+            punt_net_avg: 38, punt_return_avg_allowed: 8, kick_return_avg: 25, punt_return_avg: 12, fg_pct: 2 / 3,
+        }));
+        const html = await render(game);
+        expect(html).toContain('id="situational-splits-panel"');
+        expect(html).toContain('3rd downs over expected');
+        expect(html).toContain('Scripted drives');
+        expect(html).toContain('Net punt average');
+        expect(html).toContain('Away Receiver');
+        expect(html).toContain('Home Receiver');
+        expect(html).toContain('Away Backer');
+        expect(html).toContain('Home Kicker');
+        expect(html).toContain('Away Punter');
+        expect(html).toContain('FG 2/3');
+    }, 120_000);
+});

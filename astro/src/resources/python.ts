@@ -546,6 +546,279 @@ export interface ProcessedBoxScore {
   situational: ProcessedSituationalBoxScore[]
   team: ProcessedTeamBoxScore[]
   turnover: ProcessedTurnoverBoxScore[]
+  // usage / situational / special-teams sections (sportsdataverse.football.usage_box);
+  // absent from processors older than the box, so every consumer treats them as optional
+  player_usage?: ProcessedPlayerUsage[]
+  position_group_usage?: ProcessedPositionGroupUsage[]
+  tackles?: ProcessedTackle[]
+  position_group_tackles?: ProcessedPositionGroupTackle[]
+  team_usage?: ProcessedTeamUsage[]
+  drive_scripting?: ProcessedDriveScripting[]
+  st_kickers?: ProcessedSTKicker[]
+  st_punters?: ProcessedSTPunter[]
+  st_returners?: ProcessedSTReturner[]
+  st_blocks?: ProcessedSTBlock[]
+  st_team?: ProcessedSTTeam[]
+}
+
+/** Shared usage counters: one row per (team, player) or (team, position group). */
+export interface ProcessedUsageCounts {
+  pos_team: number
+  rushes: number
+  targets: number
+  receptions: number
+  touches: number
+  opportunities: number
+  rush_yards: number
+  receiving_yards: number
+  first_downs: number
+  touchdowns: number
+  fd_or_td: number
+  explosive_plays: number
+  successful_plays: number
+  epa: number
+  rz_rushes: number
+  rz_targets: number
+  rz_touches: number
+  rz_touchdowns: number
+  so_rushes: number
+  so_targets: number
+  so_touches: number
+  so_touchdowns: number
+  third_down_opportunities: number
+  third_down_conversions: number
+  third_down_expected: number
+  fd_td_rate: number | null
+  explosive_rate: number | null
+  success_rate: number | null
+  epa_per_opportunity: number | null
+  rz_touchdown_rate: number | null
+  so_touchdown_rate: number | null
+  third_down_rate: number | null
+  third_down_over_expected: number | null
+  target_share: number | null
+  first_down_share: number | null
+  touch_share: number | null
+}
+
+export interface ProcessedPlayerUsage extends ProcessedUsageCounts {
+  player_id: string | null
+  player_name: string | null
+  position_group: string | null
+}
+
+export interface ProcessedPositionGroupUsage extends ProcessedUsageCounts {
+  position_group: string
+}
+
+export interface ProcessedTackle {
+  def_pos_team: number
+  player_id: string
+  player_name: string | null
+  position_group: string | null
+  tackles: number
+  assists: number
+  tackle_points: number
+  team_tackle_points: number
+  tackle_share: number | null
+}
+
+export interface ProcessedPositionGroupTackle {
+  def_pos_team: number
+  position_group: string
+  tackles: number
+  assists: number
+  tackle_points: number
+  team_tackle_points: number
+  tackle_share: number | null
+}
+
+export interface ProcessedTeamUsage {
+  pos_team: number
+  plays: number
+  rushes: number
+  targets: number
+  completions: number
+  first_downs: number
+  touchdowns: number
+  explosive_plays: number
+  successful_plays: number
+  epa: number
+  third_down_opportunities: number | null
+  third_down_conversions: number | null
+  third_down_expected: number | null
+  third_down_rate: number | null
+  third_down_over_expected: number | null
+  success_rate: number | null
+  explosive_rate: number | null
+  epa_per_play: number | null
+  rz_plays: number | null
+  rz_successes: number | null
+  rz_epa: number | null
+  rz_touchdowns: number | null
+  rz_targets: number | null
+  rz_rushes: number | null
+  rz_trips: number | null
+  rz_points: number | null
+  rz_touchdown_rate: number | null
+  rz_points_per_trip: number | null
+  rz_success_rate: number | null
+  rz_epa_per_play: number | null
+  so_plays: number | null
+  so_successes: number | null
+  so_epa: number | null
+  so_touchdowns: number | null
+  so_targets: number | null
+  so_rushes: number | null
+  so_trips: number | null
+  so_points: number | null
+  so_touchdown_rate: number | null
+  so_points_per_trip: number | null
+  so_success_rate: number | null
+  so_epa_per_play: number | null
+}
+
+export interface ProcessedDriveScripting {
+  pos_team: number
+  script: 'scripted' | 'non_scripted'
+  drives: number
+  plays: number
+  epa: number
+  successes: number
+  yards: number
+  points: number
+  touchdowns: number
+  scoring_opps: number
+  epa_per_play: number | null
+  success_rate: number | null
+  yards_per_play: number | null
+  points_per_drive: number | null
+  touchdown_rate: number | null
+  scoring_opp_rate: number | null
+}
+
+export interface ProcessedSTKicker {
+  pos_team: number
+  player_id: string | null
+  player_name: string | null
+  kickoffs: number
+  kickoff_yards: number
+  kickoff_touchbacks: number
+  kickoff_onside: number
+  kickoff_out_of_bounds: number
+  kickoff_returns_allowed: number
+  kickoff_return_yards_allowed: number
+  kickoff_return_tds_allowed: number
+  kickoff_epa: number
+  fg_attempts: number
+  fg_made: number
+  fg_long: number | null
+  fg_blocked: number
+  fg_0_39_attempts: number
+  fg_0_39_made: number
+  fg_40_49_attempts: number
+  fg_40_49_made: number
+  fg_50_plus_attempts: number
+  fg_50_plus_made: number
+  fg_epa: number
+  xp_attempts: number
+  xp_made: number
+  kickoff_avg: number | null
+  kickoff_touchback_rate: number | null
+  kickoff_return_avg_allowed: number | null
+  fg_pct: number | null
+  xp_pct: number | null
+}
+
+export interface ProcessedSTPunter {
+  pos_team: number
+  player_id: string | null
+  player_name: string | null
+  punts: number
+  punt_yards: number
+  punt_long: number | null
+  punt_touchbacks: number
+  punt_inside_20: number
+  punt_fair_catches: number
+  punt_downed: number
+  punt_out_of_bounds: number
+  punt_blocked: number
+  punt_returns_allowed: number
+  punt_return_yards_allowed: number
+  punt_return_tds_allowed: number
+  punt_epa: number
+  punt_avg: number | null
+  punt_net_yards: number
+  punt_net_avg: number | null
+  punt_inside_20_rate: number | null
+  punt_return_avg_allowed: number | null
+}
+
+export interface ProcessedSTReturner {
+  pos_team: number
+  player_id: string | null
+  player_name: string | null
+  kick_returns: number
+  kick_return_yards: number
+  kick_return_long: number | null
+  kick_return_tds: number
+  kick_return_epa: number
+  punt_returns: number
+  punt_return_yards: number
+  punt_return_long: number | null
+  punt_return_tds: number
+  punt_return_epa: number
+  kick_return_avg: number | null
+  punt_return_avg: number | null
+}
+
+export interface ProcessedSTBlock {
+  def_pos_team: number
+  player_id: string | null
+  player_name: string | null
+  punt_blocks: number
+  fg_blocks: number
+  blocks: number
+}
+
+export interface ProcessedSTTeam {
+  pos_team: number
+  kickoffs: number
+  kickoff_touchbacks: number
+  kickoff_returns_allowed: number
+  kickoff_return_yards_allowed: number
+  kickoff_return_tds_allowed: number
+  kickoff_epa: number
+  kick_returns: number
+  kick_return_yards: number
+  kick_return_tds: number
+  kick_return_epa: number
+  punts: number
+  punt_yards: number
+  punt_touchbacks: number
+  punts_blocked: number
+  punt_returns_allowed: number
+  punt_return_yards_allowed: number
+  punt_return_tds_allowed: number
+  punt_epa: number
+  punt_returns: number
+  punt_return_yards: number
+  punt_return_tds: number
+  punt_return_epa: number
+  fg_attempts: number
+  fg_made: number
+  fgs_blocked: number
+  fg_epa: number
+  punt_blocks_by: number
+  fg_blocks_by: number
+  punt_net_yards: number
+  kickoff_touchback_rate: number | null
+  kickoff_return_avg_allowed: number | null
+  punt_net_avg: number | null
+  punt_return_avg_allowed: number | null
+  kick_return_avg: number | null
+  punt_return_avg: number | null
+  fg_pct: number | null
 }
 
 export interface ProcessedDefensiveBoxScore {

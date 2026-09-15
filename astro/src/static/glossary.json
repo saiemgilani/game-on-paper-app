@@ -21,7 +21,7 @@
     "E": [
         {
             "term": "Expected points added (EPA)",
-            "definition": "The change in <i>expected points</i> caused by one play. Before every snap, Game on Paper's model estimates how many points the offense can expect to score next, given down, distance, field position, time remaining and score. After the play it estimates again; the difference is EPA. A 40-yard completion on 3rd-and-10 adds several points of expectation; a sack that forces a punt subtracts. Touchdowns and turnovers swing it hardest. EPA is the unit every other Game on Paper stat is built from \u2014 summed it is a player's total EPA, averaged it is <b>EPA per play</b>. The model is the college version of the nflfastR approach linked here, trained on FBS play-by-play. See the <a href='/year/{season}/players/passing'>passing</a>, <a href='/year/{season}/players/rushing'>rushing</a> and <a href='/year/{season}/players/receiving'>receiving</a> EPA leaders.",
+            "definition": "The change in <i>expected points</i> caused by one play. Before every snap, Game on Paper's model estimates how many points the offense can expect to score next, given down, distance, field position, time remaining and score. After the play it estimates again; the difference is EPA. A 40-yard completion on 3rd-and-10 adds several points of expectation; a sack that forces a punt subtracts. Touchdowns and turnovers swing it hardest. EPA is the unit every other Game on Paper stat is built from — summed it is a player's total EPA, averaged it is <b>EPA per play</b>. The model is the college version of the nflfastR approach linked here, trained on FBS play-by-play. See the <a href='/year/{season}/players/passing'>passing</a>, <a href='/year/{season}/players/rushing'>rushing</a> and <a href='/year/{season}/players/receiving'>receiving</a> EPA leaders.",
             "source": "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
         },
         {
@@ -36,7 +36,7 @@
         },
         {
             "term": "Explosive play / Explosiveness",
-            "definition": "On Game on Paper, a pass play that nets more than 2.4 EPA or a rushing play that nets more than 1.8 EPA \u2014 the 75th percentile of each play type, so roughly one play in four qualifies. Explosiveness (or explosive rate) is the share of a unit's plays that clear the bar. Where <a href='#glossary-section-S'>success rate</a> asks how <i>often</i> an offense stays on schedule, explosiveness asks how often it breaks a game open; the best offenses do both, and a defense that gives up few explosive plays forces long, error-prone drives. Other sites define an explosive play as any gain of 15+ yards, which ignores down, distance and field position. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>.",
+            "definition": "On Game on Paper, a pass play that nets more than 2.4 EPA or a rushing play that nets more than 1.8 EPA — the 75th percentile of each play type, so roughly one play in four qualifies. Explosiveness (or explosive rate) is the share of a unit's plays that clear the bar. Where <a href='#glossary-section-S'>success rate</a> asks how <i>often</i> an offense stays on schedule, explosiveness asks how often it breaks a game open; the best offenses do both, and a defense that gives up few explosive plays forces long, error-prone drives. Other sites define an explosive play as any gain of 15+ yards, which ignores down, distance and field position. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>.",
             "source": ""
         },
         {
@@ -47,21 +47,31 @@
         {
             "term": "EPA per play (EPA/play)",
             "source": "",
-            "definition": "Total expected points added divided by plays. It is the fairest way to compare units that ran a different number of snaps: a team that adds 30 EPA on 60 plays (+0.50 per play) was far more efficient than one that added 30 on 90. On Game on Paper, offensive EPA/play counts every offensive snap in FBS vs FBS games; defensive EPA/play is what a defense <i>allowed</i>, so lower (more negative) is better. Per-dropback and per-rush versions split it by play type. EPA/play is <b>not</b> adjusted for opponent or garbage time \u2014 for that use <a href='#glossary-section-A'>Adjusted EPA/Play</a>. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>."
+            "definition": "Total expected points added divided by plays. It is the fairest way to compare units that ran a different number of snaps: a team that adds 30 EPA on 60 plays (+0.50 per play) was far more efficient than one that added 30 on 90. On Game on Paper, offensive EPA/play counts every offensive snap in FBS vs FBS games; defensive EPA/play is what a defense <i>allowed</i>, so lower (more negative) is better. Per-dropback and per-rush versions split it by play type. EPA/play is <b>not</b> adjusted for opponent or garbage time — for that use <a href='#glossary-section-A'>Adjusted EPA/Play</a>. Rankings: <a href='/year/{season}/teams/offensive'>offense</a>, <a href='/year/{season}/teams/defensive'>defense</a>."
         }
     ],
     "F": [
         {
             "term": "Fourth down recommendations",
             "source": "https://cfb4th.sportsdataverse.org",
-            "definition": "Our fourth-down decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of each choice (go, field goal, punt) using conversion and make (for FG) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>" 
+            "definition": "Our fourth-down decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of each choice (go, field goal, punt) using conversion and make (for FG) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>"
+        },
+        {
+            "term": "First Down + Touchdown Rate",
+            "definition": "The share of a player's opportunities (rushes + targets) that ended in a first down or a touchdown. Both outcomes move the chains or the scoreboard, so the rate reads as how often a touch did its job.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
+        },
+        {
+            "term": "First Down Share",
+            "definition": "A player's first downs as a share of every first down the team earned by rush or reception in the game (penalty first downs excluded).",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
     "G": [
         {
             "term": "Garbage time",
             "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary",
-            "definition": "Plays run after a game is effectively decided, when starters sit and play-calling stops resembling a real contest. Game on Paper uses the Bill Connelly thresholds: a play is garbage time when the score margin exceeds 43 points in the first quarter, 37 in the second, 27 in the third or 21 in the fourth quarter and overtime. Those plays are excluded from every <i>adjusted</i> stat \u2014 Adjusted EPA/Play, adjusted success rate, explosiveness and havoc \u2014 because a backup quarterback padding stats against a prevent defense says little about either team. Raw EPA/play and the game-page box scores still include them, which is one reason adjusted and raw numbers differ. See <a href='#glossary-section-A'>Adjusted EPA/Play</a>."
+            "definition": "Plays run after a game is effectively decided, when starters sit and play-calling stops resembling a real contest. Game on Paper uses the Bill Connelly thresholds: a play is garbage time when the score margin exceeds 43 points in the first quarter, 37 in the second, 27 in the third or 21 in the fourth quarter and overtime. Those plays are excluded from every <i>adjusted</i> stat — Adjusted EPA/Play, adjusted success rate, explosiveness and havoc — because a backup quarterback padding stats against a prevent defense says little about either team. Raw EPA/play and the game-page box scores still include them, which is one reason adjusted and raw numbers differ. See <a href='#glossary-section-A'>Adjusted EPA/Play</a>."
         }
     ],
     "H": [
@@ -95,6 +105,11 @@
             "term": "Net EPA per play",
             "source": "",
             "definition": "A team's offensive EPA per play minus the EPA per play its defense allows. It is the single best play-by-play summary of how much better a team is than its opponents, because it credits a dominant defense as much as a prolific offense and cannot be inflated by pace. The opponent-adjusted version, <b>net adjusted EPA/play</b>, is the default sort on the <a href='/year/{season}/teams/differential'>net team rankings</a> and the closest thing Game on Paper has to a power rating; the same page shows the success-rate margin and explosiveness margin computed the same way. A positive number means the offense adds more expected points per snap than the defense gives back."
+        },
+        {
+            "term": "Net Punt Average",
+            "definition": "Gross punt yards minus return yards allowed minus 20 yards for every touchback, divided by punts -- the field position a punter actually delivered.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
     "O": [
@@ -126,7 +141,7 @@
     "S": [
         {
             "term": "Successful play / Success Rate",
-            "definition": "On Game on Paper, a successful play is any play with positive EPA \u2014 the offense left the field in a better scoring position than it started. Success rate is the share of plays that were successful, and it measures <i>consistency</i>: an offense that gains four yards every snap has a high success rate but few explosive plays, and the two together describe how a unit moves the ball. Success rate is shown for offense and defense (where lower is better) and split by passing and rushing on the <a href='/year/{season}/teams/offensive'>offensive</a> and <a href='/year/{season}/teams/defensive'>defensive</a> leaderboards. Other sites define success by yardage instead of EPA, as follows: <table class='table table-sm table-responsive'><thead><tr><th>Down</th><th>Success Criteria</th></tr></thead><tbody><tr><td>1</td><td>50%+ of distance </td></tr><tr><td>2</td><td>70+% of distance</td></tr><tr><td>3+</td><td>100% of distance</td></tr></tbody></table>",
+            "definition": "On Game on Paper, a successful play is any play with positive EPA — the offense left the field in a better scoring position than it started. Success rate is the share of plays that were successful, and it measures <i>consistency</i>: an offense that gains four yards every snap has a high success rate but few explosive plays, and the two together describe how a unit moves the ball. Success rate is shown for offense and defense (where lower is better) and split by passing and rushing on the <a href='/year/{season}/teams/offensive'>offensive</a> and <a href='/year/{season}/teams/defensive'>defensive</a> leaderboards. Other sites define success by yardage instead of EPA, as follows: <table class='table table-sm table-responsive'><thead><tr><th>Down</th><th>Success Criteria</th></tr></thead><tbody><tr><td>1</td><td>50%+ of distance </td></tr><tr><td>2</td><td>70+% of distance</td></tr><tr><td>3+</td><td>100% of distance</td></tr></tbody></table>",
             "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
         },
         {
@@ -148,6 +163,16 @@
             "term": "Stop Rate",
             "definition": "(From <i>The Athletic</i>) the percentage of a defense's drives that end in punts, turnovers or a turnover on downs.",
             "source": "https://theathletic.com/3926800/2022/11/23/college-football-stop-rate-michigan-ohio-state/"
+        },
+        {
+            "term": "Scripted Drives",
+            "definition": "A team's first two possessions of each half -- the drives coaches typically plan in advance -- versus the non-scripted rest. Efficiency on each (EPA per play, success rate, points per drive) shows whether a team wins with the plan or by adjusting.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
+        },
+        {
+            "term": "Scoring Opportunity Touches",
+            "definition": "Rushes, targets and touchdowns on snaps taken inside the opponent's 40-yard line (a scoring opportunity), and inside the 20 (the red zone), per player. Efficiencies per trip (touchdown rate, points per trip) are on the team splits.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
     "T": [
@@ -159,13 +184,28 @@
         {
             "term": "Two-point try recommendations",
             "source": "",
-            "definition": "Our two-point decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of a two-point attempt using conversion and make (for XPs) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, our recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>" 
+            "definition": "Our two-point decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of a two-point attempt using conversion and make (for XPs) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, our recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>"
+        },
+        {
+            "term": "Tackle Share",
+            "definition": "A defender's tackles plus half of their assists, as a share of the team's total, so a player with 8 of a team's 64 tackle points holds 12.5%. Also summed by position group (DL, LB, DB).",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
+        },
+        {
+            "term": "Target Share",
+            "definition": "A receiver's targets as a share of every target the team threw in the game, including throws the play-by-play could not attribute to a receiver.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
+        },
+        {
+            "term": "Third Downs Over Expected",
+            "definition": "Third downs converted minus the number a league-average offense converts from the same yards to go (a bundled per-league curve: about 63% at 3rd-and-1 and 29% at 3rd-and-10 in the NFL; 73% and 28% in college). Positive means the team or player beat the distance.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
     "W": [
         {
             "term": "Win probability (WP%)",
-            "definition": "An instantaneous estimate of a team's chance of winning, updated after every play from the score, time remaining, down, distance, field position, possession and \u2014 before and during the game \u2014 the pregame point spread, so a favorite starts above 50%. The <b>win probability chart</b> on every game page is this number plotted across the game. <b>Win probability added (WPA)</b> is the change in WP caused by a single play; the \"Most Important Plays\" list on a game page is the plays sorted by absolute WPA, which is why a fourth-quarter fourth-down stop ranks above a first-quarter touchdown. Where <a href='#glossary-section-E'>EPA</a> measures how well a team played a snap, WPA measures how much that snap mattered to the outcome. The model is the college version of the nflfastR approach linked here.",
+            "definition": "An instantaneous estimate of a team's chance of winning, updated after every play from the score, time remaining, down, distance, field position, possession and — before and during the game — the pregame point spread, so a favorite starts above 50%. The <b>win probability chart</b> on every game page is this number plotted across the game. <b>Win probability added (WPA)</b> is the change in WP caused by a single play; the \"Most Important Plays\" list on a game page is the plays sorted by absolute WPA, which is why a fourth-quarter fourth-down stop ranks above a first-quarter touchdown. Where <a href='#glossary-section-E'>EPA</a> measures how well a team played a snap, WPA measures how much that snap mattered to the outcome. The model is the college version of the nflfastR approach linked here.",
             "source": "https://www.opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/"
         }
     ]
