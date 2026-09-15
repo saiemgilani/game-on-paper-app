@@ -459,6 +459,10 @@ function markdown(summary) {
       // regressions first: they are what a reviewer has to act on
       const found = PRESETS.flatMap((p) => verdicts(byPreset[p].base, byPreset[p].head, p)).sort((a, b) => b.worse - a.worse);
       lines.push('');
+      const liveNow = summary.live?.[route];
+      if (liveNow) {
+        lines.push(`- ⚠️ **Live game:** base was captured at \`${liveNow.base ?? 'n/a'}\` and PR at \`${liveNow.head ?? 'n/a'}\`. The two pages can show different plays, so deltas below may reflect the game, not this PR. Compare on a final game.`);
+      }
       // frontend mode only: e2e also measures the server, which identical markup says nothing about
       if (mode === 'frontend' && summary.identical?.[route]) {
         // same markup and same built client files: nothing a browser loads differs
@@ -492,6 +496,7 @@ const trees = {};
 const pages = {};
 const failures = [];
 const identical = {};
+const live = {};
 try {
   trees.base = prepareTree('base');
   trees.head = prepareTree('head');
@@ -527,6 +532,11 @@ try {
   for (const route of routes) {
     const read = (t) => normalizeHtml(readFileSync(pages[t][route].file, 'utf8'));
     identical[route] = clientSame && read('base') === read('head');
+    // An in-progress game keeps changing while the base and head previews are built and
+    // captured minutes apart, so the two pages show different plays (#249: base at
+    // "LIVE - 6:09 - 3rd Quarter", head at "5:21", 5 KB more HTML).
+    const status = (t) => readFileSync(pages[t][route].file, 'utf8').match(/\bLIVE - [^<]{1,40}/)?.[0] ?? null;
+    live[route] = status('base') || status('head') ? { base: status('base'), head: status('head') } : null;
   }
   say(`identical output: ${routes.map((r) => `${r}=${identical[r]}`).join(', ')} (client files ${clientSame ? 'match' : 'differ'})`);
 
@@ -553,6 +563,7 @@ const summary = {
   flagsOn: trees.head?.flagsOn ?? [],
   pages: Object.fromEntries(Object.entries(pages).map(([t, ps]) => [t, Object.fromEntries(Object.entries(ps).map(([r, p]) => [r, { title: p.title, bytes: p.bytes, warmMs: p.warmMs }]))])),
   identical,
+  live,
   results: {},
   failures,
 };
