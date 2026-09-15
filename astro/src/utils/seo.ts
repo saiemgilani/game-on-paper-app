@@ -57,8 +57,8 @@ export interface DatasetSpec {
     name: string;
     description: string;
     url: string;
-    /** one season, or an ISO interval ("2002/2025") for a table that pools seasons */
-    season: number | string;
+    /** one season, or an ISO interval ("2019/2024") for a table that pools seasons; omitted when unknown */
+    season?: number | string;
     variables: string[];
     league?: League;
 }
@@ -72,7 +72,7 @@ export function datasetJsonLd(spec: DatasetSpec) {
         name: spec.name,
         description: spec.description,
         url,
-        temporalCoverage: `${spec.season}`,
+        ...(spec.season !== undefined ? { temporalCoverage: `${spec.season}` } : {}),
         keywords: [sportNoun(spec.league), 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
         creator: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN },
         isAccessibleForFree: true,

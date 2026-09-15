@@ -145,13 +145,18 @@ export function coachMetricColumns(): string[] {
     return [...new Set(Object.values(COACH_BOARDS).flatMap((b) => b.columns.map((c) => c.key)))];
 }
 
+/** The board for a slug, or undefined: an own-key lookup, so 'toString' is not a board. */
+export function coachBoard(board: string | undefined): CoachBoard | undefined {
+    return board !== undefined && Object.hasOwn(COACH_BOARDS, board) ? COACH_BOARDS[board] : undefined;
+}
+
 export function coachBoardColumn(board: string, key: string): CoachBoardColumn | undefined {
-    return COACH_BOARDS[board]?.columns.find((c) => c.key === key);
+    return coachBoard(board)?.columns.find((c) => c.key === key);
 }
 
 /** The column to sort by: the `?sort=` value when the board has it, else the board's default. */
 export function resolveCoachSort(board: string, sort: string | null | undefined): string {
-    const b = COACH_BOARDS[board];
+    const b = coachBoard(board);
     if (!b) return '';
     return sort && b.columns.some((c) => c.key === sort) ? sort : b.defaultSort;
 }

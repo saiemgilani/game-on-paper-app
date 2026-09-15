@@ -1,5 +1,4 @@
 ---
-import { retrieveCoachCareers, retrieveCoachTendencies } from '../../resources/sdv';
 import { COACH_BOARDS, COACH_MIN_PLAYS, formatCoachValue, formatSeasonSpan, numericValue, rankCoachRows, resolveCoachSort, sortCoachRows, splitByMinPlays, type CoachRow } from '../../utils/coaches';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { generateColorRampValue } from '../../utils/misc';
@@ -11,19 +10,16 @@ interface Props {
     season?: number
     board: string
     metric: string
+    /** the board's rows, fetched by the page (coach_tendencies or coach_careers) */
+    rows: CoachRow[]
 }
 
-const { season, board, metric } = Astro.props;
+const { season, board, metric, rows } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const careers = season === undefined;
 const def = COACH_BOARDS[board];
 const sortKey = resolveCoachSort(board, metric);
 const sortColumn = def.columns.find((c) => c.key === sortKey) ?? def.columns[0];
-const columnKeys = def.columns.map((c) => c.key);
-
-const rows: CoachRow[] = careers
-    ? await retrieveCoachCareers({ league, columns: columnKeys })
-    : await retrieveCoachTendencies({ season, league, columns: columnKeys });
 
 const minPlays = careers ? COACH_MIN_PLAYS.careers : COACH_MIN_PLAYS.season;
 const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), minPlays);

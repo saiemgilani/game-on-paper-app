@@ -4,6 +4,8 @@ import {
     COACH_BOARDS,
     COACH_BOARD_SLUGS,
     COACH_MIN_PLAYS,
+    coachBoard,
+    coachBoardColumn,
     coachMetricColumns,
     formatCoachValue,
     formatSeasonSpan,
@@ -71,6 +73,13 @@ describe('board definitions', () => {
         expect(resolveCoachSort('pace', null)).toBe('sec_per_play');
         expect(resolveCoachSort('pace', 'plays_per_game; drop table')).toBe('sec_per_play');
         expect(resolveCoachSort('bogus', 'sec_per_play')).toBe('');
+        // inherited names are not boards (an `in` check would have returned Object.prototype.toString)
+        expect(resolveCoachSort('toString', 'sec_per_play')).toBe('');
+        expect(resolveCoachSort('constructor', null)).toBe('');
+        expect(coachBoard('toString')).toBeUndefined();
+        expect(coachBoard('hasOwnProperty')).toBeUndefined();
+        expect(coachBoard('pace')?.slug).toBe('pace');
+        expect(coachBoardColumn('constructor', 'go_rate')).toBeUndefined();
     });
 });
 
@@ -205,6 +214,10 @@ describe('coach loaders', () => {
     test('season board: unknown board or malformed year is a 404, the current season redirects, ?sort is validated', () => {
         expect(prepareCoachBoard(fakeAstro('/year/2024/coaches/bogus', { year: '2024', board: 'bogus' }), 'cfb')).toEqual({ notFound: true });
         expect(prepareCoachBoard(fakeAstro('/year/2024x/coaches/pace', { year: '2024x', board: 'pace' }), 'cfb')).toEqual({ notFound: true });
+        // Object.prototype names: `in` would admit them and the page would crash on .columns
+        for (const inherited of ['toString', 'constructor', 'hasOwnProperty', '__proto__']) {
+            expect(prepareCoachBoard(fakeAstro(`/year/2024/coaches/${inherited}`, { year: '2024', board: inherited }), 'cfb'), inherited).toEqual({ notFound: true });
+        }
         const a = fakeAstro(`/nfl/year/${CURRENT_YEAR}/coaches/pace`, { year: `${CURRENT_YEAR}`, board: 'pace' });
         expect(prepareCoachBoard(a, 'nfl')).toEqual({ redirect: `/nfl/year/${LAST_YEAR}/coaches/pace` });
         expect(a.locals.league).toBe('nfl');
@@ -216,6 +229,9 @@ describe('coach loaders', () => {
 
     test('careers board: no season, same board and sort checks', () => {
         expect(prepareCoachCareers(fakeAstro('/coaches/bogus', { board: 'bogus' }), 'cfb')).toEqual({ notFound: true });
+        for (const inherited of ['toString', 'constructor', 'valueOf']) {
+            expect(prepareCoachCareers(fakeAstro(`/nfl/coaches/${inherited}`, { board: inherited }), 'nfl'), inherited).toEqual({ notFound: true });
+        }
         expect(prepareCoachCareers(fakeAstro('/nfl/coaches/defense?sort=def_success_rate', { board: 'defense' }), 'nfl'))
             .toEqual({ board: 'defense', metric: 'def_success_rate' });
         expect(prepareCoachCareers(fakeAstro('/coaches/pace', { board: 'pace' }), 'cfb')).toEqual({ board: 'pace', metric: 'sec_per_play' });

@@ -10,7 +10,7 @@ import { CURRENT_YEAR, LAST_YEAR } from '../utils/constants';
 import { leaguePath, teamCategoriesFor, type League } from '../utils/league';
 import { modifyMetricForCategory } from '../utils/misc';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
-import { COACH_BOARDS, DEFAULT_COACH_BOARD, resolveCoachSort } from '../utils/coaches';
+import { COACH_BOARD_SLUGS, DEFAULT_COACH_BOARD, resolveCoachSort } from '../utils/coaches';
 
 export interface LeaderboardParams {
     season: number;
@@ -102,7 +102,9 @@ export function prepareCoachIndex(Astro: AstroGlobal, league: League): { redirec
 export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoardPrep {
     Astro.locals.league = league;
     const { board } = Astro.params;
-    if (!board || !(board in COACH_BOARDS)) {
+    // an own-key check: `in` matches inherited names, so /coaches/toString
+    // would pass the guard and crash on COACH_BOARDS.toString.columns
+    if (!board || !COACH_BOARD_SLUGS.includes(board)) {
         return { notFound: true };
     }
     const season = seasonOf(Astro);
@@ -118,7 +120,9 @@ export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoar
 export function prepareCoachCareers(Astro: AstroGlobal, league: League): CoachBoardPrep {
     Astro.locals.league = league;
     const { board } = Astro.params;
-    if (!board || !(board in COACH_BOARDS)) {
+    // an own-key check: `in` matches inherited names, so /coaches/toString
+    // would pass the guard and crash on COACH_BOARDS.toString.columns
+    if (!board || !COACH_BOARD_SLUGS.includes(board)) {
         return { notFound: true };
     }
     const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));

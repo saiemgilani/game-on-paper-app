@@ -1,7 +1,8 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
+import { retrieveCoachCareers, retrieveCoachTendencies } from "../../resources/sdv";
 import { LAST_YEAR } from "../../utils/constants";
-import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS } from "../../utils/coaches";
+import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS, numericValue, type CoachRow } from "../../utils/coaches";
 import { LEAGUES, leaguePath } from "../../utils/league";
 import { COACH_BOARD_COPY, datasetJsonLd } from "../../utils/seo";
 import CoachLeaderboardTable from "./CoachLeaderboardTable.astro";
@@ -30,11 +31,26 @@ const description = copy.description(seasonOrNull, league);
 // the seasons the tables can hold; the current season redirects, so it is not offered
 const seasons = cfg.seasons.filter((y) => y <= LAST_YEAR).toSorted((a, b) => b - a);
 
+// the page fetches so the Dataset's coverage can come from the rows themselves
+const columnKeys = def.columns.map((c) => c.key);
+const rows: CoachRow[] = careers
+    ? await retrieveCoachCareers({ league, columns: columnKeys })
+    : await retrieveCoachTendencies({ season, league, columns: columnKeys });
+
+// The careers table pools whatever seasons the builder has run, which the
+// league's season range does not know; say the interval the rows actually
+// span, and nothing when there are no rows.
+function careerInterval(): string | undefined {
+    const firsts = rows.map((r) => numericValue(r, 'first_season')).filter((v): v is number => v !== null);
+    const lasts = rows.map((r) => numericValue(r, 'last_season')).filter((v): v is number => v !== null);
+    if (firsts.length === 0 || lasts.length === 0) return undefined;
+    return `${Math.min(...firsts)}/${Math.max(...lasts)}`;
+}
 const dataset = datasetJsonLd({
     name: heading,
     description,
     url: pageUrl,
-    season: careers ? `${seasons[seasons.length - 1]}/${LAST_YEAR}` : season,
+    season: careers ? careerInterval() : season,
     league,
     variables: copy.variables,
 });
@@ -101,5 +117,5 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
             </div>
         </div>
     </div>
-    <CoachLeaderboardTable season={season} board={board} metric={metric} />
+    <CoachLeaderboardTable season={season} board={board} metric={metric} rows={rows} />
 </GenericPage>

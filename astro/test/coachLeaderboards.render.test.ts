@@ -132,7 +132,22 @@ describe('careers board', () => {
         // links back to the season boards
         expect(html).toContain('href="/nfl/year/2025/coaches/efficiency"');
         expect(html).toContain('gameonpaper.com/nfl/coaches/efficiency');
-        expect(html).toContain('"temporalCoverage":"2002/2025"');
+        // the Dataset's coverage is what the rows span, not the league's season range
+        expect(html).toContain('"temporalCoverage":"2023/2024"');
+        expect(html).not.toContain('2002/2025');
+    }, 60_000);
+
+    test('with no career rows the Dataset claims no coverage at all', async () => {
+        const saved = feed.careers;
+        feed.careers = [];
+        try {
+            const html = await renderBoard('cfb', 'pace');
+            expect(html).toContain('No head coach data yet');
+            expect(html).toContain('"@type":"Dataset"');
+            expect(html).not.toContain('temporalCoverage');
+        } finally {
+            feed.careers = saved;
+        }
     }, 60_000);
 });
 
