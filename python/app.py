@@ -146,6 +146,32 @@ _BAD_COLS = [
 ]
 
 
+def _game_drives(processed_game):
+    """ESPN's drives grouping in game order, each drive exactly once.
+
+    A live ESPN summary lists the drive in ``drives.current`` inside
+    ``drives.previous`` as well (DEN @ KC 401872931, 2026-09-14), so appending
+    ``current`` to ``previous`` counted that drive twice: an extra drive for
+    the team, a 23rd chart row where 22 drives were played, and every average
+    (scoring %, yards, plays, time of possession) skewed. The frontend's drives
+    table already dedupes by id; the drive summary never did. First occurrence
+    wins, which keeps game order.
+    """
+    grouping = processed_game.get("drives") or {}
+    drives = list(grouping.get("previous") or [])
+    if grouping.get("current"):
+        drives.append(grouping["current"])
+    seen, unique = set(), []
+    for drive in drives:
+        key = drive.get("id") if isinstance(drive, dict) else None
+        if key is not None:
+            if key in seen:
+                continue
+            seen.add(key)
+        unique.append(drive)
+    return unique
+
+
 def _frameless_features(game):
     """The frame-dependent features a request loses when ``plays_frame`` is absent.
 
@@ -374,10 +400,7 @@ def _process_game(league: str, game_id: int):
         # fail-open like everything else on this route.
         try:
             frame = getattr(game, "plays_frame", None)
-            drv = (processed_game.get("drives") or {}).get("previous") or []
-            cur = (processed_game.get("drives") or {}).get("current")
-            if cur:
-                drv = drv + [cur]
+            drv = _game_drives(processed_game)
             if frame is not None and drv:
                 summary = drive_summary.create_drive_summary(
                     drv, frame,
@@ -437,10 +460,7 @@ def _process_game(league: str, game_id: int):
 
         try:
             frame = getattr(game, "plays_frame", None)
-            drv_all = (processed_game.get("drives") or {}).get("previous") or []
-            cur = (processed_game.get("drives") or {}).get("current")
-            if cur:
-                drv_all = drv_all + [cur]
+            drv_all = _game_drives(processed_game)
             if frame is not None:
                 hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
                 ds_spans, sit_spans = {}, {}

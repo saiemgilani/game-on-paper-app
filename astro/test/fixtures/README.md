@@ -47,3 +47,20 @@ passers by TEPA rank from `passing`. Captured 2026-09-10; no hand edits.
 **Used by:** `test/nflLeaderboards.render.test.ts` and `test/explicitRoutes.test.ts`, which mock the SDV client
 with these rows and render the team and
 player leaderboard pages with `locals.league = 'nfl'`.
+
+## `nfl-coaches-2024.json`
+Real rows from the nfl-data head-coach tendency builder, 2024: the full
+`team_tendencies` (32 teams), `coach_tendencies` (32 head-coach seasons) and
+`coach_careers` (42 coaches, 2023–2024 pooled) payloads as the SDV Data API
+returns them (`{data: [...]}` bodies, one key per table; every one of the 266
+columns). Captured 2026-09-15 from the builder's parquet output; no hand edits.
+The careers rows include interim stints under the 1,500-play floor (Giff Smith,
+208 plays; Chris Tabor, 377), which is what the min-plays divider test needs.
+
+**Used by:** `test/coaches.test.ts` (every board column resolves to a column the
+payload carries; sort/rank/format contracts) and
+`test/coachLeaderboards.render.test.ts`, which mocks the SDV client with these
+rows and renders the season and careers boards for both leagues.
+
+**To regenerate** after a builder change: re-export the three tables for 2024
+and replace the arrays; keep 2024 so the render test's URL assertions hold.

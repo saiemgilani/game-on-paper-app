@@ -21,6 +21,11 @@
 //     is also the only mode whose HTML/JS sizes match production.
 //   e2e: Lighthouse against the live preview. both: frontend and e2e.
 //
+// A route the base tree answers 404 to is new in the PR (the first PR that adds a
+// page had nothing to compare against and the whole run aborted): it is captured,
+// shot and measured on head only, its table shows PR numbers without deltas, and
+// the comment marks it as new.
+//
 // Performance swings 10+ points between identical builds, so every metric keeps its
 // min-max run range and a delta is called a regression only when the ranges don't
 // overlap. Writes <out>/summary.json and <out>/lighthouse.md; raw reports go in
@@ -39,11 +44,12 @@ import { spawn, spawnSync, execFileSync, execSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, openSync, closeSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, openSync, closeSync } from 'node:fs';
 import { join, resolve, dirname, extname, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { aggregate, fmt, normalizeHtml, verdicts, withRange } from './lighthouse-verdicts.mjs';
 
 const { values: opt, positionals: routes } = parseArgs({
   allowPositionals: true,
@@ -305,6 +311,12 @@ async function capture(tree, origin) {
       body = await res.text();
     }
     const title = (body.match(/<title>([^<]*)/i)?.[1] ?? '').trim();
+    if (tree.name === 'base' && res.status === 404) {
+      // the page does not exist before this PR: nothing to compare, measure head alone
+      newRoutes.add(route);
+      say(`base ${route}: HTTP 404, so the route is new in this PR; head only`);
+      continue;
+    }
     if (!res.ok) throw new Error(`${tree.name} ${route}: HTTP ${res.status}`);
     // error pages answer 200 on this site ("Game Unprocessable" when the processor is unreachable)
     if (/unprocessable|not found|^error/i.test(title)) throw new Error(`${tree.name} ${route}: rendered an error page ("${title}"); is the processor reachable?`);
@@ -407,6 +419,7 @@ function lighthouse(url, preset, reportPath) {
 }
 
 const results = {}; // results[mode][route][preset][tree] = [run metrics]
+const newRoutes = new Set(); // routes the base tree answers 404 to: new in this PR, head only
 function record(mode, route, preset, tree, run, value) {
   const slot = (((results[mode] ??= {})[route] ??= {})[preset] ??= {});
   (slot[tree] ??= [])[run] = value;
@@ -421,6 +434,7 @@ async function lighthouseLoop(mode, trees, origins) {
         // alternate which tree goes first so drift over the loop lands on both
         const order = run % 2 ? [...trees].reverse() : trees;
         for (const tree of order) {
+          if (tree.name === 'base' && newRoutes.has(route)) continue;
           const report = join(OUT, 'reports', `${mode}-${slug(route)}-${preset}-${tree.name}-${run + 1}.json`);
           record(mode, route, preset, tree.name, run, await lighthouse(origins[tree.name] + route, preset, report));
         }
@@ -430,67 +444,6 @@ async function lighthouseLoop(mode, trees, origins) {
 }
 
 // ---------------------------------------------------------------- summary
-const median = (xs) => {
-  const v = xs.filter((x) => x != null).sort((a, b) => a - b);
-  if (!v.length) return null;
-  const m = v.length >> 1;
-  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
-};
-const KEYS = ['performance', 'accessibility', 'bestPractices', 'seo', 'fcp', 'lcp', 'tbt', 'cls', 'si', 'ttfb', 'htmlKb', 'jsKb', 'dom'];
-
-function aggregate(runs = []) {
-  const ok = runs.filter((r) => r && !r.error);
-  const agg = { runs: ok.length, errors: runs.filter((r) => r?.error).map((r) => r.error) };
-  for (const k of KEYS) {
-    const v = ok.map((r) => r[k]).filter((x) => x != null);
-    agg[k] = { median: median(v), min: v.length ? Math.min(...v) : null, max: v.length ? Math.max(...v) : null };
-  }
-  agg.failingAll = ok.length ? ok[0].failing.filter((id) => ok.every((r) => r.failing.includes(id))) : [];
-  agg.failingAny = [...new Set(ok.flatMap((r) => r.failing))];
-  const shifts = ok.map((r) => r.shift).filter(Boolean);
-  agg.shift = shifts.sort((a, b) => shifts.filter((s) => s === b).length - shifts.filter((s) => s === a).length)[0] ?? null;
-  return agg;
-}
-
-const LOWER_IS_BETTER = new Set(['fcp', 'lcp', 'tbt', 'cls', 'si', 'htmlKb', 'jsKb', 'dom']);
-// deltas smaller than these are not worth a bullet even when ranges separate
-const FLOOR = { performance: 0.01, fcp: 200, lcp: 200, tbt: 50, cls: 0.02, si: 250, htmlKb: 2, jsKb: 2, dom: 50 };
-const LABEL = { performance: 'Performance', fcp: 'FCP', lcp: 'LCP', tbt: 'TBT', cls: 'CLS', si: 'Speed Index', htmlKb: 'HTML transfer', jsKb: 'JS transfer', dom: 'DOM elements' };
-
-function fmt(key, v) {
-  if (v == null) return '–';
-  if (['performance', 'accessibility', 'bestPractices', 'seo'].includes(key)) return String(Math.round(v * 100));
-  if (['fcp', 'lcp', 'si', 'ttfb'].includes(key)) return `${(v / 1000).toFixed(1)} s`;
-  if (key === 'tbt') return `${Math.round(v).toLocaleString('en-US')} ms`;
-  if (key === 'cls') return v.toFixed(3);
-  if (key === 'htmlKb' || key === 'jsKb') return `${Math.round(v).toLocaleString('en-US')} KB`;
-  return Math.round(v).toLocaleString('en-US');
-}
-const withRange = (key, m) => (fmt(key, m.min) === fmt(key, m.max) ? fmt(key, m.median) : `${fmt(key, m.median)} (${fmt(key, m.min)}–${fmt(key, m.max)})`);
-
-function verdicts(base, head, preset) {
-  const out = [];
-  for (const key of Object.keys(FLOOR)) {
-    const b = base[key];
-    const h = head[key];
-    if (b.median == null || h.median == null) continue;
-    const delta = h.median - b.median;
-    if (Math.abs(delta) < FLOOR[key]) continue;
-    const separated = h.min > b.max || h.max < b.min;
-    const sizeKey = key === 'htmlKb' || key === 'jsKb' || key === 'dom';
-    if (!separated || (sizeKey && Math.abs(delta) / Math.max(b.median, 1) < 0.02)) continue;
-    const worse = LOWER_IS_BETTER.has(key) ? delta > 0 : delta < 0;
-    let line = `**${worse ? 'Regression' : 'Improvement'}, ${preset} ${LABEL[key]}:** ${withRange(key, b)} → ${withRange(key, h)}`;
-    if (key === 'cls' && worse && head.shift) line += `. Largest shift: \`${head.shift}\``;
-    out.push({ worse, line });
-  }
-  const newly = head.failingAll.filter((id) => !base.failingAny.includes(id));
-  const fixed = base.failingAll.filter((id) => !head.failingAny.includes(id));
-  if (newly.length) out.push({ worse: true, line: `**Newly failing audits, ${preset}:** ${newly.map((i) => `\`${i}\``).join(', ')}` });
-  if (fixed.length) out.push({ worse: false, line: `**Audits now passing, ${preset}:** ${fixed.map((i) => `\`${i}\``).join(', ')}` });
-  return out;
-}
-
 function markdown(summary) {
   const lines = [];
   const flags = summary.flagsOn.length ? summary.flagsOn.map((f) => `\`${f}\``).join(', ') : 'none';
@@ -500,10 +453,13 @@ function markdown(summary) {
       const byPreset = summary.results[mode]?.[route];
       if (!byPreset) continue;
       lines.push('', `#### \`${route}\`: ${mode === 'frontend' ? 'frontend-only (saved HTML + built assets, gzip, no server wait)' : 'end-to-end (astro preview + local processor; uncompressed)'}`, '');
-      const cols = PRESETS.flatMap((p) => [`base ${p}`, `PR ${p}`]);
+      // a route new in this PR has no base column: PR numbers stand alone, no deltas
+      const isNew = summary.newRoutes?.includes(route);
+      const treesShown = isNew ? ['head'] : ['base', 'head'];
+      const cols = PRESETS.flatMap((p) => treesShown.map((t) => `${t === 'base' ? 'base' : 'PR'} ${p}`));
       lines.push(`| | ${cols.join(' | ')} |`, `|---|${cols.map(() => '---').join('|')}|`);
       const cell = (p, t, key) => (byPreset[p][t][key].median == null ? '–' : withRange(key, byPreset[p][t][key]));
-      const row = (label, fn) => lines.push(`| ${label} | ${PRESETS.flatMap((p) => ['base', 'head'].map((t) => fn(p, t))).join(' | ')} |`);
+      const row = (label, fn) => lines.push(`| ${label} | ${PRESETS.flatMap((p) => treesShown.map((t) => fn(p, t))).join(' | ')} |`);
       row('Performance', (p, t) => cell(p, t, 'performance'));
       row('Accessibility', (p, t) => fmt('accessibility', byPreset[p][t].accessibility.median));
       row('Best Practices', (p, t) => fmt('bestPractices', byPreset[p][t].bestPractices.median));
@@ -515,22 +471,49 @@ function markdown(summary) {
       row('HTML / JS transfer', (p, t) => `${fmt('htmlKb', byPreset[p][t].htmlKb.median)} / ${fmt('jsKb', byPreset[p][t].jsKb.median)}`);
       row('DOM elements', (p, t) => fmt('dom', byPreset[p][t].dom.median));
       if (mode === 'e2e') row('Server response', (p, t) => fmt('ttfb', byPreset[p][t].ttfb.median));
-      const errors = PRESETS.flatMap((p) => ['base', 'head'].flatMap((t) => byPreset[p][t].errors.map((e) => `${t} ${p}: ${e}`)));
+      const errors = PRESETS.flatMap((p) => treesShown.flatMap((t) => byPreset[p][t].errors.map((e) => `${t} ${p}: ${e}`)));
       // regressions first: they are what a reviewer has to act on
-      const found = PRESETS.flatMap((p) => verdicts(byPreset[p].base, byPreset[p].head, p)).sort((a, b) => b.worse - a.worse);
+      const found = isNew ? [] : PRESETS.flatMap((p) => verdicts(byPreset[p].base, byPreset[p].head, p)).sort((a, b) => b.worse - a.worse);
       lines.push('');
-      if (found.length) for (const v of found) lines.push(`- ${v.worse ? '🔴' : '🟢'} ${v.line}`);
-      else lines.push('- No change beyond run-to-run noise (every metric\'s base and PR run ranges overlap).');
+      if (isNew) lines.push('- 🆕 **New route in this PR:** the base tree answers 404 here, so there is nothing to compare against; the PR numbers above are absolute, not deltas.');
+      const liveNow = summary.live?.[route];
+      if (liveNow) {
+        lines.push(`- ⚠️ **Live game:** base was captured at \`${liveNow.base ?? 'n/a'}\` and PR at \`${liveNow.head ?? 'n/a'}\`. The two pages can show different plays, so deltas below may reflect the game, not this PR. Compare on a final game.`);
+      }
+      // frontend mode only: e2e also measures the server, which identical markup says nothing about
+      if (isNew) { /* said above */ } else if (mode === 'frontend' && summary.identical?.[route]) {
+        // same markup and same built client files: nothing a browser loads differs
+        lines.push('- ⚪ **No frontend change:** base and PR serve identical HTML (ignoring Astro\'s random island ids) and identical built client files for this page, so any difference in the table is run-to-run noise.');
+      } else if (found.length) for (const v of found) lines.push(`- ${v.worse ? '🔴' : '🟢'} ${v.line}`);
+      else lines.push('- No change beyond run-to-run noise (run ranges overlap, or the change is below the reporting floor).');
       for (const e of errors) lines.push(`- ⚠️ failed run, ${e}`);
     }
   }
   return lines.join('\n');
 }
 
+// Hash of every file under a tree's built client output (path + bytes). Astro names
+// bundles by content, so identical sources give identical fingerprints.
+function clientFingerprint(tree) {
+  const root = existsSync(join(tree.astro, 'dist', 'client')) ? join(tree.astro, 'dist', 'client') : join(tree.astro, 'dist');
+  const hash = createHash('sha256');
+  const walk = (dir) => {
+    for (const name of readdirSync(dir).sort()) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else hash.update(`${full.slice(root.length)}\0`).update(readFileSync(full));
+    }
+  };
+  walk(root);
+  return hash.digest('hex');
+}
+
 // ---------------------------------------------------------------- main
 const trees = {};
 const pages = {};
 const failures = [];
+const identical = {};
+const live = {};
 try {
   trees.base = prepareTree('base');
   trees.head = prepareTree('head');
@@ -540,6 +523,7 @@ try {
       pages[name] = await capture(trees[name], origin);
       if (MODES.includes('e2e')) {
         for (const route of routes) {
+          if (name === 'base' && newRoutes.has(route)) continue;
           for (const preset of PRESETS) {
             for (let run = 0; run < RUNS; run++) {
               const report = join(OUT, 'reports', `e2e-${slug(route)}-${preset}-${name}-${run + 1}.json`);
@@ -561,6 +545,23 @@ try {
       }
     });
   }
+
+  const clientSame = clientFingerprint(trees.base) === clientFingerprint(trees.head);
+  for (const route of routes) {
+    if (newRoutes.has(route)) {
+      identical[route] = false;
+      live[route] = null;
+      continue;
+    }
+    const read = (t) => normalizeHtml(readFileSync(pages[t][route].file, 'utf8'));
+    identical[route] = clientSame && read('base') === read('head');
+    // An in-progress game keeps changing while the base and head previews are built and
+    // captured minutes apart, so the two pages show different plays (#249: base at
+    // "LIVE - 6:09 - 3rd Quarter", head at "5:21", 5 KB more HTML).
+    const status = (t) => readFileSync(pages[t][route].file, 'utf8').match(/\bLIVE - [^<]{1,40}/)?.[0] ?? null;
+    live[route] = status('base') || status('head') ? { base: status('base'), head: status('head') } : null;
+  }
+  say(`identical output: ${routes.map((r) => `${r}=${identical[r]}`).join(', ')} (client files ${clientSame ? 'match' : 'differ'})`);
 
   if (MODES.includes('frontend')) {
     const servers = [await serveStatic(trees.base, pages.base, STATIC_PORT), await serveStatic(trees.head, pages.head, STATIC_PORT + 1)];
@@ -584,13 +585,16 @@ const summary = {
   routes, presets: PRESETS, modes: MODES, runs: RUNS,
   flagsOn: trees.head?.flagsOn ?? [],
   pages: Object.fromEntries(Object.entries(pages).map(([t, ps]) => [t, Object.fromEntries(Object.entries(ps).map(([r, p]) => [r, { title: p.title, bytes: p.bytes, warmMs: p.warmMs }]))])),
+  identical,
+  live,
+  newRoutes: [...newRoutes],
   results: {},
   failures,
 };
 for (const [mode, byRoute] of Object.entries(results)) {
   for (const [route, byPreset] of Object.entries(byRoute)) {
     for (const [preset, byTree] of Object.entries(byPreset)) {
-      ((summary.results[mode] ??= {})[route] ??= {})[preset] = { base: aggregate(byTree.base), head: aggregate(byTree.head) };
+      ((summary.results[mode] ??= {})[route] ??= {})[preset] = { base: byTree.base ? aggregate(byTree.base) : null, head: aggregate(byTree.head) };
     }
   }
 }
@@ -598,9 +602,11 @@ for (const [mode, byRoute] of Object.entries(results)) {
 // leaves results empty. A run that errored still counts as a failure (exit 1, listed
 // in the comment) even when the rest of the table renders.
 const cells = MODES.flatMap((m) => routes.flatMap((r) => PRESETS.map((p) => [m, r, p, summary.results[m]?.[r]?.[p]])));
-const complete = cells.every(([, , , c]) => c && c.base.runs > 0 && c.head.runs > 0);
+// A route new in this PR has no base side to wait for.
+const sides = (r) => (newRoutes.has(r) ? ['head'] : ['base', 'head']);
+const complete = cells.every(([, r, , c]) => c && sides(r).every((t) => c[t]?.runs > 0));
 for (const [m, r, p, c] of cells) {
-  for (const t of ['base', 'head']) {
+  for (const t of sides(r)) {
     const got = c?.[t].runs ?? 0;
     if (got === RUNS) continue;
     const why = c?.[t].errors.length ? `: ${[...new Set(c[t].errors)].join('; ')}` : '';
