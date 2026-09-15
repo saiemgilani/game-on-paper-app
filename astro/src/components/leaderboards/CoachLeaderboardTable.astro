@@ -66,7 +66,7 @@ const totalColumns = 5 + def.columns.length;
                             )}
                             <th class="text-center" colspan="1"><abbr title="Offensive plays as head coach">Plays</abbr></th>
                             {def.columns.map((c) => (
-                                <th class="text-center text-nowrap" colspan="1">
+                                <th class="text-center" colspan="1">
                                     <a class="text-reset text-decoration-none" href={hrefFor(c.key)}><abbr title={c.hover}>{c.label}</abbr></a>
                                     <i class={`bi bi-arrow-${arrow}`} hidden={c.key !== sortKey}></i>
                                 </th>
@@ -85,7 +85,7 @@ const totalColumns = 5 + def.columns.length;
                                     </Fragment>
                                 ) : (
                                     <Fragment>
-                                        <td class="text-left text-nowrap" colspan="1">
+                                        <td class="text-left" colspan="1">
                                             <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
                                         </td>
                                         <td class="text-center" colspan="1">{row.games}</td>
@@ -113,7 +113,7 @@ const totalColumns = 5 + def.columns.length;
                                     </Fragment>
                                 ) : (
                                     <Fragment>
-                                        <td class="text-left text-nowrap" colspan="1">
+                                        <td class="text-left" colspan="1">
                                             <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
                                         </td>
                                         <td class="text-center" colspan="1">{row.games}</td>
