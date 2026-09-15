@@ -1,0 +1,134 @@
+---
+import { COACH_BOARDS, COACH_MIN_PLAYS, formatCoachValue, formatSeasonSpan, numericValue, rankCoachRows, resolveCoachSort, sortCoachRows, splitByMinPlays, type CoachRow } from '../../utils/coaches';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
+import { generateColorRampValue } from '../../utils/misc';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import "bootstrap-icons/font/bootstrap-icons.css";
+
+interface Props {
+    /** absent on the careers board */
+    season?: number
+    board: string
+    metric: string
+    /** the board's rows, fetched by the page (coach_tendencies or coach_careers) */
+    rows: CoachRow[]
+}
+
+const { season, board, metric, rows } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const careers = season === undefined;
+const def = COACH_BOARDS[board];
+const sortKey = resolveCoachSort(board, metric);
+const sortColumn = def.columns.find((c) => c.key === sortKey) ?? def.columns[0];
+
+const minPlays = careers ? COACH_MIN_PLAYS.careers : COACH_MIN_PLAYS.season;
+const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), minPlays);
+const ranks = rankCoachRows(qualified, sortKey);
+// every metric cell is shaded by its own column's rank, as the team grid does
+const columnRank = new Map<string, Map<CoachRow, number | null>>(def.columns.map((c) => {
+    const sorted = sortCoachRows(qualified, c);
+    const r = rankCoachRows(sorted, c.key);
+    return [c.key, new Map(sorted.map((row, i) => [row, r[i]]))];
+}));
+const shade = (row: CoachRow, key: string) => generateColorRampValue(columnRank.get(key)?.get(row) ?? null, qualified.length, true) ?? '';
+const hrefFor = (key: string) => `?sort=${key}`;
+const arrow = sortColumn.lowerIsBetter ? 'up' : 'down';
+const teamHref = (row: CoachRow) => leaguePath(league, `/year/${row.season}/team/${row.pos_team_id}`);
+const logoSrc = (row: CoachRow) => `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${row.pos_team_id}.png`;
+const teamIds = careers ? [] : [...new Set(qualified.concat(partial).map((r) => String(r.pos_team_id)))];
+// Rk, Coach, Team|Teams, G|Seasons, Plays, then the board's metrics
+const totalColumns = 5 + def.columns.length;
+---
+<DarkModeLogos teamIds={teamIds} />
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            {rows.length === 0 && (
+                <p class="text-muted coach-empty">No head coach data {careers ? 'yet' : `for the ${season} season yet`}. It is published once the season's play-by-play has been processed.</p>
+            )}
+            {rows.length > 0 && (
+            <div class="table-responsive">
+                <table class="table table-sm table-responsive coach-board" data-board={board} data-sort={sortKey}>
+                    <thead>
+                        <tr>
+                            <th class="text-right text-nowrap" colspan="1">Rk</th>
+                            <th class="text-left text-nowrap" colspan="1">Head Coach</th>
+                            {careers ? (
+                                <Fragment>
+                                    <th class="text-left text-nowrap" colspan="1">Teams</th>
+                                    <th class="text-center" colspan="1"><abbr title="First to last season as head coach (seasons)">Seasons</abbr></th>
+                                </Fragment>
+                            ) : (
+                                <Fragment>
+                                    <th class="text-left text-nowrap" colspan="1">Team</th>
+                                    <th class="text-center" colspan="1"><abbr title="Games as head coach">G</abbr></th>
+                                </Fragment>
+                            )}
+                            <th class="text-center" colspan="1"><abbr title="Offensive plays as head coach">Plays</abbr></th>
+                            {def.columns.map((c) => (
+                                <th class="text-center" colspan="1">
+                                    <a class="text-reset text-decoration-none" href={hrefFor(c.key)}><abbr title={c.hover}>{c.label}</abbr></a>
+                                    <i class={`bi bi-arrow-${arrow}`} hidden={c.key !== sortKey}></i>
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {qualified.map((row, i) => (
+                            <tr>
+                                <td class="text-right" colspan="1">{ranks[i] ?? '—'}</td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
+                                {careers ? (
+                                    <Fragment>
+                                        <td class="text-left" colspan="1">{row.teams}</td>
+                                        <td class="text-center text-nowrap" colspan="1">{formatSeasonSpan(row)}</td>
+                                    </Fragment>
+                                ) : (
+                                    <Fragment>
+                                        <td class="text-left" colspan="1">
+                                            <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
+                                        </td>
+                                        <td class="text-center" colspan="1">{row.games}</td>
+                                    </Fragment>
+                                )}
+                                <td class="text-center" colspan="1">{row.plays}</td>
+                                {def.columns.map((c) => (
+                                    <td class={`text-center ${shade(row, c.key)}`} colspan="1">{formatCoachValue(numericValue(row, c.key), c.format)}</td>
+                                ))}
+                            </tr>
+                        ))}
+                        {partial.length > 0 && (
+                            <tr class="table-secondary coach-partial-divider">
+                                <td colspan={totalColumns} class="text-muted small">Fewer than {minPlays} plays{careers ? '' : ' this season'} (interim or partial {careers ? 'careers' : 'seasons'}): shown, not ranked.</td>
+                            </tr>
+                        )}
+                        {partial.map((row) => (
+                            <tr class="coach-partial">
+                                <td class="text-right text-muted" colspan="1">—</td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
+                                {careers ? (
+                                    <Fragment>
+                                        <td class="text-left" colspan="1">{row.teams}</td>
+                                        <td class="text-center text-nowrap" colspan="1">{formatSeasonSpan(row)}</td>
+                                    </Fragment>
+                                ) : (
+                                    <Fragment>
+                                        <td class="text-left" colspan="1">
+                                            <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
+                                        </td>
+                                        <td class="text-center" colspan="1">{row.games}</td>
+                                    </Fragment>
+                                )}
+                                <td class="text-center" colspan="1">{row.plays}</td>
+                                {def.columns.map((c) => (
+                                    <td class="text-center text-muted" colspan="1">{formatCoachValue(numericValue(row, c.key), c.format)}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            )}
+        </div>
+    </div>
+</div>
