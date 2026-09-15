@@ -96,7 +96,8 @@ Why the method is what it is (the script enforces all of it):
   builds, and a game page's CLS swings 0.56–1.13 with hydration timing. Every metric
   keeps its min–max range. A delta is flagged only when the gap between the base and
   PR ranges clears an absolute floor **and** the median moved by a relative floor
-  (`astro/scripts/lighthouse-verdicts.mjs`). Merely non-overlapping ranges produced
+  (`astro/scripts/lighthouse-verdicts.mjs`). Performance is the exception: it is
+  already a 0–100 score, so it needs only the range gap (3 points), with no relative floor. Merely non-overlapping ranges produced
   false flags on identical HTML (TBT in #247, CLS by 0.006 in #250). When base and PR
   serve identical HTML (ignoring Astro's random island `uid`s) and identical built
   client files for a page, frontend results say so instead of listing deltas. A live
