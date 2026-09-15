@@ -114,3 +114,31 @@ def test_all_span_boxes_survives_one_bad_window():
     boxes = span_box.all_span_boxes(G())
     assert "q2" not in boxes
     assert boxes["q1"] == {"n": 1} and boxes["h2"] == {"n": 2}
+
+
+def test_frameless_features_reports_span_boxes_only_when_span_box_skips_them():
+    import app
+
+    class Framed:
+        plays_frame = frame()
+
+    class ListPlays:  # what a real processor leaves: plays_json as dicts
+        plays_frame = None
+        plays_json = frame().to_dicts()
+
+    class FramePlays:  # plays_json still a frame: span_box's fallback renders boxes
+        plays_frame = None
+        plays_json = frame()
+
+        def create_box_score(self, df):
+            return {"n": df.height}
+
+    assert app._frameless_features(Framed()) == []
+    assert app._frameless_features(ListPlays()) == [
+        "drive summary",
+        "situational stats",
+        "span boxes",
+        "paper index",
+    ]
+    assert "span boxes" not in app._frameless_features(FramePlays())
+    assert span_box.all_span_boxes(FramePlays())  # and it really did render them

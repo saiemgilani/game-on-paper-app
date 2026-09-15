@@ -146,6 +146,22 @@ _BAD_COLS = [
 ]
 
 
+def _frameless_features(game):
+    """The frame-dependent features a request loses when ``plays_frame`` is absent.
+
+    Span boxes are listed only when span_box's own lookup also comes up empty:
+    it falls back to ``plays_json`` when that is still a polars frame, so the
+    log must not report a feature skipped that in fact rendered.
+    """
+    if getattr(game, "plays_frame", None) is not None:
+        return []
+    skipped = ["drive summary", "situational stats"]
+    if span_box._plays_frame(game) is None:
+        skipped.append("span boxes")
+    skipped.append("paper index")
+    return skipped
+
+
 def _reshape_records(plays):
     """Fold sdv-py's flat dotted columns back into ESPN's nested shape.
 
@@ -338,6 +354,16 @@ def _process_game(league: str, game_id: int):
 
         _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
+
+        # Every block below reads the processor's enriched polars frame and is
+        # fail-open, so a processor that never exposes one (NFLPlayProcess
+        # before sportsdataverse-py's plays_frame landed) silently drops them.
+        # Say so once per request instead of letting features vanish unlogged.
+        skipped = _frameless_features(game)
+        if skipped:
+            logging.getLogger("root").warning(
+                f"{league} processor exposed no plays_frame for {game_id}: {', '.join(skipped)} skipped"
+            )
 
         # Both of these must precede serialization: the span swap mutates
         # processed_game, and everything after `return` is dead code -- which is
@@ -555,7 +581,8 @@ def _emit_dq(game_id, game, processed_game):
         "type"
     ) or {}
     if status.get("completed") is True:
-        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA):
+        league = (getattr(g, "gop_meta", None) or {}).get("league", "cfb")
+        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA, league=league):
             TEL.push("dq_boxscore", row)
 
 
