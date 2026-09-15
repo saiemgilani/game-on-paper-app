@@ -24,7 +24,10 @@ margin (best Brier 0.0606 but four factors flip negative -- the kitchen
 sink explains scoreboards by unexplaining its own factors). Adding the
 advanced-box forms -- explosiveness as EPA per successful play and scoring
 opportunities as points per opportunity, alongside the rate forms -- is the
-shipped spec: Brier 0.0657, 91.1% winner agreement, all weights positive.
+shipped spec: Brier 0.0657, 91.1% winner agreement, every weight positive.
+The fit is non-negative: a margin whose weight turns negative under
+collinearity is pinned to zero and ships as 0.0 (explosive-play rate in the
+NFL), never with a sign that contradicts its name.
 
 Run (from python/):
     .venv/bin/python tools/fit_paper_index.py                  # college (default)
@@ -33,9 +36,10 @@ Run (from python/):
 
 Each league is its own fit: its own released play-by-play, its own bundled
 field-position EP curve, its own oracle fixture and its own never-lower gates.
-Per-season aggregates are disk-cached under tools/.paper_index_cache/<league>;
-a cache older than its local --pbp-dir parquet is rebuilt, and --refresh
-rebuilds everything (a release URL has no mtime to compare against).
+Per-season aggregates are disk-cached under
+tools/.paper_index_cache/<league>/<hash of the pbp source>, so two --pbp-dir
+trees never share rows; a cache older than its local parquet is rebuilt, and
+--refresh rebuilds everything (a release URL has no mtime to compare against).
 
 NFL (measured 2026-09-15, espn_nfl_pbp rebuilt with scoring_opp keyed to
 start.yardsToEndzone, sportsdataverse-py #495): the same eight-margin spec,
@@ -44,7 +48,11 @@ with made field goals counted in points per opportunity
 vs EPA-only 0.1322 (log-loss 0.3698, 82.6% winner agreement, reliability
 0.0030, resolution 0.1319); explosive-play rate pinned to zero (negative
 under collinearity with explosiveness). Without field-goal points: Brier
-0.1198, league points per opportunity 2.75 instead of 3.64. The fit
+0.1198, league points per opportunity 2.75 instead of 3.64. The bundled
+NFL field-position curve is fitted on 2016-2025 drives, holdout seasons
+included; refitting it on 2016-2023 drives only (max 0.14 EP, mean 0.04 EP
+from the bundled curve) and re-running this fit gives holdout Brier 0.1181,
+so the shared curve does not flatter the evaluation. The fit
 on the pre-#495 data (scoring_opp keyed to the wrong yardline, league
 points per opportunity 0.99) lost to EPA-only, 0.1373 vs 0.1322, with both
 opportunity margins pinned to zero.
@@ -56,6 +64,7 @@ to make it pass is a defect, not a fix.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 import sys
@@ -105,14 +114,21 @@ def configure(league: str, pbp_dir: str | None = None, refresh: bool = False) ->
     if league not in _FIXTURE_NAME:
         raise SystemExit(f"unknown league {league!r}; one of {sorted(_FIXTURE_NAME)}")
     LEAGUE = league
-    CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache" / league
     FIXTURE_PATH = (
         pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / _FIXTURE_NAME[league]
     )
     PBP_URL = (
-        str(pathlib.Path(pbp_dir) / "play_by_play_{season}.parquet")
+        str(pathlib.Path(pbp_dir).resolve() / "play_by_play_{season}.parquet")
         if pbp_dir
         else _RELEASE.format(league=league)
+    )
+    # the cache is keyed by its source as well as its league: rows aggregated
+    # from one --pbp-dir must never serve a fit pointed at another
+    CACHE_DIR = (
+        pathlib.Path(__file__).resolve().parent
+        / ".paper_index_cache"
+        / league
+        / hashlib.sha1(PBP_URL.encode()).hexdigest()[:10]
     )
 
 
@@ -379,22 +395,36 @@ def fit_logistic_no_intercept(X: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 
 def fit_logistic_nonneg(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, list[int]]:
-    """Active-set non-negative logistic fit: a margin whose weight turns
-    negative under collinearity is pinned to zero and the rest refit, until
-    every remaining weight is positive. Returns (beta, dropped column idx).
+    """Active-set non-negative logistic fit with KKT re-entry.
+
+    A margin whose weight turns negative under collinearity is pinned to zero
+    and the rest refit (one at a time: a second margin may turn positive once
+    its collinear partner is gone). A pinned margin re-enters when the
+    log-likelihood gradient at the current solution is positive along it --
+    the KKT condition for a bound at zero -- so the order of removal cannot
+    leave a useful factor pinned. The objective is concave, so the loop ends
+    at the constrained optimum: every active weight positive, every pinned
+    margin with a non-positive gradient. Returns (beta, pinned column idx).
     Identical to the unconstrained fit when that fit is already positive."""
     active = list(range(X.shape[1]))
     dropped: list[int] = []
-    while True:
+    for _ in range(8 * X.shape[1]):
         b = fit_logistic_no_intercept(X[:, active], y)
-        neg = [active[i] for i in np.where(b < 0)[0]]
-        if not neg:
+        if (b < 0).any():
+            worst = active[int(np.argmin(b))]
+            dropped.append(worst)
+            active.remove(worst)
+            continue
+        if not dropped:
             break
-        # drop the most negative one at a time -- a second margin may turn
-        # positive once its collinear partner is gone
-        worst = active[int(np.argmin(b))]
-        dropped.append(worst)
-        active.remove(worst)
+        grad = X[:, dropped].T @ (y - share(X[:, active], b))
+        if grad.max() <= 1e-8:
+            break
+        back = dropped[int(np.argmax(grad))]
+        dropped.remove(back)
+        active = sorted(active + [back])
+    else:
+        raise RuntimeError("non-negative fit did not converge")
     beta = np.zeros(X.shape[1])
     beta[active] = b
     return beta, sorted(dropped)
