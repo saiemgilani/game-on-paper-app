@@ -1,23 +1,20 @@
 ---
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../utils/constants';
-import { espnLogoLeague } from '../utils/league';
+import { teamLogoUrl } from '../utils/league';
 
 interface Props {
     teamIds: (string | number)[]
 }
 const { teamIds } = Astro.props;
 
+// Dark logos through ESPN's resizing combiner. teamLogoUrl picks the path that exists:
+// NFL dark logos live under the team abbreviation, not the numeric id (this used to
+// fall back to the light NFL logo in dark mode for that reason).
 let teamIdCSS = teamIds.map(p => {
-    if (Astro.locals.league == 'nfl') {
-        return `
-            img.team-logo-${p} {
-                content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${p}.png&h=120&w=120')
-            }
-        `
-    }
+    const path = new URL(teamLogoUrl(Astro.locals.league, p, true)).pathname;
     return `
     img.team-logo-${p} {
-        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500-dark/${p}.png&h=120&w=120')
+        content: url('https://a.espncdn.com/combiner/i?img=${path}&h=120&w=120')
     }
     `
 })

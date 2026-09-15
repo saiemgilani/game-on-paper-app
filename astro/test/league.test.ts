@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { LEAGUES, leaguePath, splitLeague } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, leaguePath, splitLeague, teamLogoUrl } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -39,4 +39,25 @@ describe('LEAGUES', () => {
         });
         expect(LEAGUES.nfl.seasons[0]).toBe(2002);
     });
+});
+
+describe('teamLogoUrl', () => {
+  test('NFL dark logos use the abbreviation path (numeric 500-dark is a 404)', () => {
+    expect(teamLogoUrl('nfl', 8, true)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500-dark/det.png');
+    expect(teamLogoUrl('nfl', '18', true)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500-dark/no.png');
+  });
+  test('NFL light logos keep the numeric path', () => {
+    expect(teamLogoUrl('nfl', 8, false)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500/8.png');
+  });
+  test('an NFL id outside the map falls back to the light logo, never a dead dark URL', () => {
+    expect(teamLogoUrl('nfl', 999, true)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500/999.png');
+  });
+  test('CFB keeps numeric ids in both modes', () => {
+    expect(teamLogoUrl('cfb', 251, true)).toBe('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/251.png');
+    expect(teamLogoUrl(undefined, 251, false)).toBe('https://a.espncdn.com/i/teamlogos/ncaa/500/251.png');
+  });
+  test('the map covers all 32 NFL teams with distinct abbreviations', () => {
+    expect(Object.keys(NFL_LOGO_ABBR)).toHaveLength(32);
+    expect(new Set(Object.values(NFL_LOGO_ABBR)).size).toBe(32);
+  });
 });
