@@ -39,11 +39,12 @@ import { spawn, spawnSync, execFileSync, execSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, openSync, closeSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, openSync, closeSync } from 'node:fs';
 import { join, resolve, dirname, extname, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { aggregate, fmt, normalizeHtml, verdicts, withRange } from './lighthouse-verdicts.mjs';
 
 const { values: opt, positionals: routes } = parseArgs({
   allowPositionals: true,
@@ -430,67 +431,6 @@ async function lighthouseLoop(mode, trees, origins) {
 }
 
 // ---------------------------------------------------------------- summary
-const median = (xs) => {
-  const v = xs.filter((x) => x != null).sort((a, b) => a - b);
-  if (!v.length) return null;
-  const m = v.length >> 1;
-  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
-};
-const KEYS = ['performance', 'accessibility', 'bestPractices', 'seo', 'fcp', 'lcp', 'tbt', 'cls', 'si', 'ttfb', 'htmlKb', 'jsKb', 'dom'];
-
-function aggregate(runs = []) {
-  const ok = runs.filter((r) => r && !r.error);
-  const agg = { runs: ok.length, errors: runs.filter((r) => r?.error).map((r) => r.error) };
-  for (const k of KEYS) {
-    const v = ok.map((r) => r[k]).filter((x) => x != null);
-    agg[k] = { median: median(v), min: v.length ? Math.min(...v) : null, max: v.length ? Math.max(...v) : null };
-  }
-  agg.failingAll = ok.length ? ok[0].failing.filter((id) => ok.every((r) => r.failing.includes(id))) : [];
-  agg.failingAny = [...new Set(ok.flatMap((r) => r.failing))];
-  const shifts = ok.map((r) => r.shift).filter(Boolean);
-  agg.shift = shifts.sort((a, b) => shifts.filter((s) => s === b).length - shifts.filter((s) => s === a).length)[0] ?? null;
-  return agg;
-}
-
-const LOWER_IS_BETTER = new Set(['fcp', 'lcp', 'tbt', 'cls', 'si', 'htmlKb', 'jsKb', 'dom']);
-// deltas smaller than these are not worth a bullet even when ranges separate
-const FLOOR = { performance: 0.01, fcp: 200, lcp: 200, tbt: 50, cls: 0.02, si: 250, htmlKb: 2, jsKb: 2, dom: 50 };
-const LABEL = { performance: 'Performance', fcp: 'FCP', lcp: 'LCP', tbt: 'TBT', cls: 'CLS', si: 'Speed Index', htmlKb: 'HTML transfer', jsKb: 'JS transfer', dom: 'DOM elements' };
-
-function fmt(key, v) {
-  if (v == null) return '–';
-  if (['performance', 'accessibility', 'bestPractices', 'seo'].includes(key)) return String(Math.round(v * 100));
-  if (['fcp', 'lcp', 'si', 'ttfb'].includes(key)) return `${(v / 1000).toFixed(1)} s`;
-  if (key === 'tbt') return `${Math.round(v).toLocaleString('en-US')} ms`;
-  if (key === 'cls') return v.toFixed(3);
-  if (key === 'htmlKb' || key === 'jsKb') return `${Math.round(v).toLocaleString('en-US')} KB`;
-  return Math.round(v).toLocaleString('en-US');
-}
-const withRange = (key, m) => (fmt(key, m.min) === fmt(key, m.max) ? fmt(key, m.median) : `${fmt(key, m.median)} (${fmt(key, m.min)}–${fmt(key, m.max)})`);
-
-function verdicts(base, head, preset) {
-  const out = [];
-  for (const key of Object.keys(FLOOR)) {
-    const b = base[key];
-    const h = head[key];
-    if (b.median == null || h.median == null) continue;
-    const delta = h.median - b.median;
-    if (Math.abs(delta) < FLOOR[key]) continue;
-    const separated = h.min > b.max || h.max < b.min;
-    const sizeKey = key === 'htmlKb' || key === 'jsKb' || key === 'dom';
-    if (!separated || (sizeKey && Math.abs(delta) / Math.max(b.median, 1) < 0.02)) continue;
-    const worse = LOWER_IS_BETTER.has(key) ? delta > 0 : delta < 0;
-    let line = `**${worse ? 'Regression' : 'Improvement'}, ${preset} ${LABEL[key]}:** ${withRange(key, b)} → ${withRange(key, h)}`;
-    if (key === 'cls' && worse && head.shift) line += `. Largest shift: \`${head.shift}\``;
-    out.push({ worse, line });
-  }
-  const newly = head.failingAll.filter((id) => !base.failingAny.includes(id));
-  const fixed = base.failingAll.filter((id) => !head.failingAny.includes(id));
-  if (newly.length) out.push({ worse: true, line: `**Newly failing audits, ${preset}:** ${newly.map((i) => `\`${i}\``).join(', ')}` });
-  if (fixed.length) out.push({ worse: false, line: `**Audits now passing, ${preset}:** ${fixed.map((i) => `\`${i}\``).join(', ')}` });
-  return out;
-}
-
 function markdown(summary) {
   const lines = [];
   const flags = summary.flagsOn.length ? summary.flagsOn.map((f) => `\`${f}\``).join(', ') : 'none';
@@ -519,18 +459,38 @@ function markdown(summary) {
       // regressions first: they are what a reviewer has to act on
       const found = PRESETS.flatMap((p) => verdicts(byPreset[p].base, byPreset[p].head, p)).sort((a, b) => b.worse - a.worse);
       lines.push('');
-      if (found.length) for (const v of found) lines.push(`- ${v.worse ? '🔴' : '🟢'} ${v.line}`);
-      else lines.push('- No change beyond run-to-run noise (every metric\'s base and PR run ranges overlap).');
+      if (summary.identical?.[route]) {
+        // same markup and same built client files: nothing a browser loads differs
+        lines.push('- ⚪ **No frontend change:** base and PR serve identical HTML (ignoring Astro\'s random island ids) and identical built client files for this page, so any difference in the table is run-to-run noise.');
+      } else if (found.length) for (const v of found) lines.push(`- ${v.worse ? '🔴' : '🟢'} ${v.line}`);
+      else lines.push('- No change beyond run-to-run noise (run ranges overlap, or the change is below the reporting floor).');
       for (const e of errors) lines.push(`- ⚠️ failed run, ${e}`);
     }
   }
   return lines.join('\n');
 }
 
+// Hash of every file under a tree's built client output (path + bytes). Astro names
+// bundles by content, so identical sources give identical fingerprints.
+function clientFingerprint(tree) {
+  const root = existsSync(join(tree.astro, 'dist', 'client')) ? join(tree.astro, 'dist', 'client') : join(tree.astro, 'dist');
+  const hash = createHash('sha256');
+  const walk = (dir) => {
+    for (const name of readdirSync(dir).sort()) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else hash.update(`${full.slice(root.length)}\0`).update(readFileSync(full));
+    }
+  };
+  walk(root);
+  return hash.digest('hex');
+}
+
 // ---------------------------------------------------------------- main
 const trees = {};
 const pages = {};
 const failures = [];
+const identical = {};
 try {
   trees.base = prepareTree('base');
   trees.head = prepareTree('head');
@@ -562,6 +522,13 @@ try {
     });
   }
 
+  const clientSame = clientFingerprint(trees.base) === clientFingerprint(trees.head);
+  for (const route of routes) {
+    const read = (t) => normalizeHtml(readFileSync(pages[t][route].file, 'utf8'));
+    identical[route] = clientSame && read('base') === read('head');
+  }
+  say(`identical output: ${routes.map((r) => `${r}=${identical[r]}`).join(', ')} (client files ${clientSame ? 'match' : 'differ'})`);
+
   if (MODES.includes('frontend')) {
     const servers = [await serveStatic(trees.base, pages.base, STATIC_PORT), await serveStatic(trees.head, pages.head, STATIC_PORT + 1)];
     try {
@@ -584,6 +551,7 @@ const summary = {
   routes, presets: PRESETS, modes: MODES, runs: RUNS,
   flagsOn: trees.head?.flagsOn ?? [],
   pages: Object.fromEntries(Object.entries(pages).map(([t, ps]) => [t, Object.fromEntries(Object.entries(ps).map(([r, p]) => [r, { title: p.title, bytes: p.bytes, warmMs: p.warmMs }]))])),
+  identical,
   results: {},
   failures,
 };
