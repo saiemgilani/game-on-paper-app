@@ -42,6 +42,12 @@ describe('verdicts', () => {
     expect(lines(base, head)).toEqual([]);
   });
 
+  test('a CLS gap under 10% of a large base is not flagged even when ranges separate', () => {
+    const base = side([{ cls: 0.825 }, { cls: 0.830 }]);
+    const head = side([{ cls: 0.850 }, { cls: 0.860 }]);
+    expect(lines(base, head)).toEqual([]);
+  });
+
   test('improvements read as improvements', () => {
     const base = side([{ tbt: 900 }, { tbt: 1000 }]);
     const head = side([{ tbt: 400 }, { tbt: 450 }]);

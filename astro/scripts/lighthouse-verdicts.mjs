@@ -30,7 +30,10 @@ const LOWER_IS_BETTER = new Set(['fcp', 'lcp', 'tbt', 'cls', 'si', 'htmlKb', 'js
 // on a shared runner, 3 runs per side of byte-identical HTML separated TBT 329 → 232 ms
 // (#247), so timings also need a real share of the base median.
 export const FLOOR = { performance: 0.03, fcp: 200, lcp: 200, tbt: 100, cls: 0.02, si: 250, htmlKb: 2, jsKb: 2, dom: 50 };
-export const REL_FLOOR = { fcp: 0.1, lcp: 0.1, tbt: 0.25, si: 0.1, htmlKb: 0.02, jsKb: 0.02, dom: 0.02 };
+// Performance has no relative floor on purpose: it is already a 0-100 score, and a
+// 3-point drop matters as much on a 40 page as on a 90 one (a relative floor would
+// hide real drops exactly where pages are already slow).
+export const REL_FLOOR = { fcp: 0.1, lcp: 0.1, tbt: 0.25, si: 0.1, cls: 0.1, htmlKb: 0.02, jsKb: 0.02, dom: 0.02 };
 const LABEL = { performance: 'Performance', fcp: 'FCP', lcp: 'LCP', tbt: 'TBT', cls: 'CLS', si: 'Speed Index', htmlKb: 'HTML transfer', jsKb: 'JS transfer', dom: 'DOM elements' };
 
 export function fmt(key, v) {
@@ -53,7 +56,7 @@ export function verdicts(base, head, preset) {
     if (b.median == null || h.median == null) continue;
     const delta = h.median - b.median;
     if (Math.abs(delta) < FLOOR[key]) continue;
-    if (REL_FLOOR[key] && Math.abs(delta) < REL_FLOOR[key] * Math.max(Math.abs(b.median), 1)) continue;
+    if (REL_FLOOR[key] && Math.abs(delta) < REL_FLOOR[key] * Math.abs(b.median)) continue;
     if (!(h.min > b.max || h.max < b.min)) continue;
     const worse = LOWER_IS_BETTER.has(key) ? delta > 0 : delta < 0;
     let line = `**${worse ? 'Regression' : 'Improvement'}, ${preset} ${LABEL[key]}:** ${withRange(key, b)} → ${withRange(key, h)}`;

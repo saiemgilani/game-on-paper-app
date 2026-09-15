@@ -459,7 +459,8 @@ function markdown(summary) {
       // regressions first: they are what a reviewer has to act on
       const found = PRESETS.flatMap((p) => verdicts(byPreset[p].base, byPreset[p].head, p)).sort((a, b) => b.worse - a.worse);
       lines.push('');
-      if (summary.identical?.[route]) {
+      // frontend mode only: e2e also measures the server, which identical markup says nothing about
+      if (mode === 'frontend' && summary.identical?.[route]) {
         // same markup and same built client files: nothing a browser loads differs
         lines.push('- ⚪ **No frontend change:** base and PR serve identical HTML (ignoring Astro\'s random island ids) and identical built client files for this page, so any difference in the table is run-to-run noise.');
       } else if (found.length) for (const v of found) lines.push(`- ${v.worse ? '🔴' : '🟢'} ${v.line}`);
