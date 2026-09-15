@@ -99,6 +99,9 @@ describe('the NFL game page carries the same v2 blocks as the CFB page (#243 ali
         });
         expect(html).toContain('href="#paper-index-panel"');
         expect(html).toContain('Deserved Win %');
+        // the panel's team logos follow the league like every other block
+        expect(html).toContain('teamlogos/nfl/500/');
+        expect(html).not.toContain('teamlogos/ncaa/');
     }, 60_000);
 
 });

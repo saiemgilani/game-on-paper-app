@@ -118,3 +118,23 @@ so later pushes can't change an old comment. No workflow triggers on that branch
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.
 - After merging a GOP PR, the deploy runs on push to `main`; smoke the deployed
   URL (status, and grep the HTML) before calling it shipped.
+
+## Model registry
+Fitted constants that ship in `python/`. Each row's artifact is the source of
+truth for its numbers; the oracle fixture beside it records the split, gates,
+input identities (asset size + `updated_at`, or local size + sha256),
+sportsdataverse version + git sha, calibration and holdout contamination.
+
+| model | artifact(s) | release tag | training data | fitting script | gates at publish | last retrain | cadence |
+|---|---|---|---|---|---|---|---|
+| Paper Index (Deserved Win %), cfb | `python/paper_index.py` `WEIGHTS["cfb"]`, `LEAGUE_PTS_PER_OPP["cfb"]`; oracle `python/tests/fixtures/paper_index_oracle.json` | `sportsdataverse-data` `espn_cfb_pbp` (assets updated 2026-09-07) | train 2016-2023 (6,637 finals), holdout 2024-2025 (1,894) | `python/tools/fit_paper_index.py --league cfb` | `GATES["cfb"]`: holdout >= 1200, Brier < 0.09, resolution > 0.10, reliability < 0.01; paired vs EPA-only mean+2se <= 0 (observed Brier 0.0657 vs 0.0805, paired -0.0147 ± 0.0039) | 2026-09-07 | after each season's final pbp republish |
+| Paper Index (Deserved Win %), nfl | `python/paper_index.py` `WEIGHTS["nfl"]`, `LEAGUE_PTS_PER_OPP["nfl"]`; oracle `python/tests/fixtures/paper_index_oracle_nfl.json` | `nfl-data` `out/espn_nfl/pbp` local build (= `espn_nfl_pbp`, rebuilt 2026-09-15 with sdv-py #495) | train 2016-2021 (1,615 finals), holdout 2022-2025 (1,137); Pro Bowls dropped | `python/tools/fit_paper_index.py --league nfl --pbp-dir <espn_nfl/pbp>` | `GATES["nfl"]`: holdout >= 1000, Brier < 0.13, resolution > 0.10, reliability < 0.01; paired mean+2se <= 0 (observed Brier 0.1174 vs 0.1374, paired -0.0200 ± 0.0054) | 2026-09-15 | after each season's final pbp republish |
+
+Retrain runbook: after each season's final pbp republish, from `python/`:
+`uv run python tools/fit_paper_index.py --league <lg>` (NFL: add `--pbp-dir`),
+then paste the printed `WEIGHTS[<lg>]` / `LEAGUE_PTS_PER_OPP[<lg>]` into
+`paper_index.py` and commit the regenerated oracle fixture. The trainer refuses
+to write a fixture that fails a gate; never lower a gate to make one pass. Both
+oracle tests re-assert the gates and the field-position curve fingerprint
+against the installed sportsdataverse, so a silent upstream curve refit fails
+the suite instead of moving served shares.
