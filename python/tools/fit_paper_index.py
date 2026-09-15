@@ -251,6 +251,8 @@ def season_input(season: int) -> dict:
         return _INPUTS[season]
     src = PBP_URL.format(season=season)
     path = pathlib.Path(src)
+    if not src.startswith("http") and not path.exists():
+        raise SystemExit(f"{src}: no such file under --pbp-dir")
     if path.exists():
         h = hashlib.sha256()
         with path.open("rb") as fh:
@@ -519,7 +521,12 @@ def build_games() -> tuple[pl.DataFrame, float, dict]:
         [season_ext_rows(s).with_columns(season=pl.lit(s)) for s in seasons],
         how="vertical_relaxed",
     )
-    train_ext = ext.filter(pl.col("season") < HOLDOUT_SEASONS[0])
+    # the constant comes from the rows the fit sees: train seasons, and only
+    # games that survived the game-level filters (franchise allowlist, ties,
+    # snap floor) -- a Pro Bowl offense must not shape the neutral either
+    train_ext = ext.filter(pl.col("season") < HOLDOUT_SEASONS[0]).join(
+        games.select("game_id").unique(), on="game_id", how="semi"
+    )
     league_ppo = round(
         float(train_ext.select(pl.col("opp_points").sum() / pl.col("opp_trips").sum()).item()),
         4,

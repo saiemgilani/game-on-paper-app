@@ -6,8 +6,8 @@ itself fitted on seasons that include the trainer's holdout (see
 fit_paper_index.HOLDOUT_CONTAMINATION). This script refits that curve on the
 league's TRAIN seasons only (the same sdv-py estimator that produced the
 bundled artifact) and runs the trainer's build + fit + holdout scoring
-(fit_paper_index.fit_and_evaluate) against it, with the per-season cache
-redirected to a scratch directory. It is a sensitivity probe, not a
+(fit_paper_index.fit_and_evaluate) against it, both runs in scratch cache
+directories that are discarded afterwards. It is a sensitivity probe, not a
 retrain: it runs no parity check, applies no gates and writes no fixture.
 It prints both holdout Briers side by side; paste the result into
 fit_paper_index.CURVE_SENSITIVITY.
@@ -85,14 +85,14 @@ def main(league: str, pbp_dir: str) -> int:
         f"curve refit on {train_seasons.start}-{train_seasons.stop - 1}: "
         f"max |ep - bundled| {diff['d'].max():.4f}, mean {diff['d'].mean():.4f}"
     )
-    # the bundled-curve run first, through the same code path
-    base = trainer.fit_and_evaluate()["prov"]
+    # both runs through the same code path, each in its own scratch cache:
+    # a probe must leave nothing behind for a later fit to pick up
     with tempfile.TemporaryDirectory() as tmp:
-        trainer.CACHE_DIR = pathlib.Path(tmp) / "cache"
+        trainer.CACHE_DIR = pathlib.Path(tmp) / "bundled"
+        base = trainer.fit_and_evaluate()["prov"]
+        trainer.CACHE_DIR = pathlib.Path(tmp) / "train_only"
         trainer._ep_table = lambda league=league: curve
         paper_index._ep_table = functools.cache(lambda league=league: curve)
-        # the ext cache key carries the curve's sha256; a scratch dir keeps
-        # the train-only rows apart regardless
         alt = trainer.fit_and_evaluate()["prov"]
     for label, prov in (("bundled curve", base), ("train-only curve", alt)):
         pe = prov["epa_only_paired"]

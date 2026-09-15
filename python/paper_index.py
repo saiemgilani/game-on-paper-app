@@ -95,9 +95,9 @@ WEIGHTS = {
     },
     "nfl": {
         "success": 8.0168,
-        "explosive": 1.3515,
+        "explosive": 1.3517,
         "explosive_epa": 1.7687,
-        "opp_conversion": 1.9427,
+        "opp_conversion": 1.9426,
         "pts_per_opp": 0.3468,
         "field_position": 2.5097,
         "havoc": 5.7830,
@@ -109,10 +109,10 @@ WEIGHTS = {
 # weights wearing its name.
 FITTED_LEAGUES = frozenset(WEIGHTS)
 
-# league average points per scoring opportunity, train seasons only (the
-# neutral value for a team with no opportunity trips); fitted constants,
-# printed by the trainer alongside the weights
-LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 3.7257}
+# league average points per scoring opportunity over the train seasons'
+# fitted games (the neutral value for a team with no opportunity trips);
+# fitted constants, printed by the trainer alongside the weights
+LEAGUE_PTS_PER_OPP = {"cfb": 3.3603, "nfl": 3.7306}
 
 # Points per opportunity counts the points scored on scoring-opportunity
 # snaps. A made field goal sits on a NON-scrimmage row in both leagues'

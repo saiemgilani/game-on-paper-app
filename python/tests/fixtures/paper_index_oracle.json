@@ -1,18 +1,18 @@
 {
  "weights": {
-  "success": 23.844667586176726,
-  "explosive": 2.8098214466721863,
-  "explosive_epa": 3.270310070106871,
-  "opp_conversion": 3.4279935860710746,
-  "pts_per_opp": 0.18599950237469806,
-  "field_position": 4.004588277797866,
-  "havoc": 5.995812906495098,
-  "turnovers": 0.6005295498301815
+  "success": 23.844669107788008,
+  "explosive": 2.8098100518260463,
+  "explosive_epa": 3.270310793864572,
+  "opp_conversion": 3.427985571827914,
+  "pts_per_opp": 0.18600195381187068,
+  "field_position": 4.004593548338541,
+  "havoc": 5.9958116207259575,
+  "turnovers": 0.6005296241434517
  },
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
   "league": "cfb",
-  "fitted_at": "2026-09-15T17:18:37+00:00",
+  "fitted_at": "2026-09-15T17:27:12+00:00",
   "sportsdataverse": {
    "version": "0.1.4",
    "git_sha": "8dbbfa2eb371218deeac9d50c238d3457dc9ed4e"
@@ -147,7 +147,7 @@
   },
   "train_games": 6637,
   "holdout_games": 1894,
-  "league_pts_per_opp": 3.3566,
+  "league_pts_per_opp": 3.3603,
   "margins_pinned_to_zero": [],
   "holdout_brier": 0.0657,
   "holdout_log_loss": 0.2172,
@@ -283,7 +283,7 @@
     "havocAllowedRate": 0.06557377049180328,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 8.923573291472028e-08
+   "expectedHomeShare": 8.923432155144392e-08
   },
   {
    "gameId": "401628337",
@@ -312,7 +312,7 @@
     "havocAllowedRate": 0.11594202898550725,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.0035956032912769667
+   "expectedHomeShare": 0.0035955939531124572
   },
   {
    "gameId": "401643768",
@@ -341,7 +341,7 @@
     "havocAllowedRate": 0.038461538461538464,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.03641824072036587
+   "expectedHomeShare": 0.036418301321997595
   },
   {
    "gameId": "401636915",
@@ -370,7 +370,7 @@
     "havocAllowedRate": 0.05194805194805195,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.15698609250943588
+   "expectedHomeShare": 0.15698630167367367
   },
   {
    "gameId": "401640997",
@@ -399,7 +399,7 @@
     "havocAllowedRate": 0.07352941176470588,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 0.4508548643432608
+   "expectedHomeShare": 0.4508547172396072
   },
   {
    "gameId": "401636934",
@@ -428,7 +428,7 @@
     "havocAllowedRate": 0.07692307692307693,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 0.7674481328073683
+   "expectedHomeShare": 0.7674477483838223
   },
   {
    "gameId": "401752665",
@@ -457,7 +457,7 @@
     "havocAllowedRate": 0.08333333333333333,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.9177918485386026
+   "expectedHomeShare": 0.917792006469798
   },
   {
    "gameId": "401752847",
@@ -486,7 +486,7 @@
     "havocAllowedRate": 0.10909090909090909,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.9753181586688294
+   "expectedHomeShare": 0.9753182335223012
   },
   {
    "gameId": "401761595",
@@ -515,7 +515,7 @@
     "havocAllowedRate": 0.16,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 0.993826657562268
+   "expectedHomeShare": 0.9938267029169976
   },
   {
    "gameId": "401644764",
@@ -544,7 +544,7 @@
     "havocAllowedRate": 0.10294117647058823,
     "turnoversCommitted": 2.0
    },
-   "expectedHomeShare": 0.9990364239723761
+   "expectedHomeShare": 0.9990364251851838
   },
   {
    "gameId": "401752812",
@@ -573,7 +573,7 @@
     "havocAllowedRate": 0.2830188679245283,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 0.999924641435904
+   "expectedHomeShare": 0.999924642832995
   },
   {
    "gameId": "401756892",
@@ -602,7 +602,7 @@
     "havocAllowedRate": 0.1276595744680851,
     "turnoversCommitted": 2.0
    },
-   "expectedHomeShare": 0.9999999999416229
+   "expectedHomeShare": 0.9999999999416236
   }
  ]
 }
