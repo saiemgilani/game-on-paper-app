@@ -11,6 +11,9 @@
  },
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
+  "league": "cfb",
+  "league_pts_per_opp": 3.3566,
+  "margins_pinned_to_zero": [],
   "train_seasons": "2016-2023",
   "holdout_seasons": [
    2024,

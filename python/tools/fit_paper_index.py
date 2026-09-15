@@ -33,6 +33,21 @@ Run (from python/):
 
 Each league is its own fit: its own released play-by-play, its own bundled
 field-position EP curve, its own oracle fixture and its own never-lower gates.
+Per-season aggregates are disk-cached under tools/.paper_index_cache/<league>;
+a cache older than its local --pbp-dir parquet is rebuilt, and --refresh
+rebuilds everything (a release URL has no mtime to compare against).
+
+NFL (measured 2026-09-15, espn_nfl_pbp rebuilt with scoring_opp keyed to
+start.yardsToEndzone, sportsdataverse-py #495): the same eight-margin spec,
+with made field goals counted in points per opportunity
+(paper_index.OPP_POINTS_INCLUDE_FG). Holdout 2024-2025, n=570. Brier 0.1183
+vs EPA-only 0.1322 (log-loss 0.3698, 82.6% winner agreement, reliability
+0.0030, resolution 0.1319); explosive-play rate pinned to zero (negative
+under collinearity with explosiveness). Without field-goal points: Brier
+0.1198, league points per opportunity 2.75 instead of 3.64. The fit
+on the pre-#495 data (scoring_opp keyed to the wrong yardline, league
+points per opportunity 0.99) lost to EPA-only, 0.1373 vs 0.1322, with both
+opportunity margins pinned to zero.
 
 Gates follow the never-lower rule: every floor is derived from the value
 observed at fit time and documented beside its measured number; lowering one
@@ -50,7 +65,12 @@ import polars as pl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from paper_index import _ep_table  # noqa: E402
-from paper_index import LEAGUE_PTS_PER_OPP, share_from_inputs, team_inputs  # noqa: E402
+from paper_index import (  # noqa: E402
+    OPP_POINTS_INCLUDE_FG,
+    opp_points_mask,
+    share_from_inputs,
+    team_inputs,
+)
 
 TRAIN_SEASONS = range(2016, 2024)  # 2016-2023
 HOLDOUT_SEASONS = (2024, 2025)
@@ -65,19 +85,23 @@ GATES = {
     # cfb, fit 2026-09-07: Brier 0.0657, resolution 0.1660, holdout n=1894,
     # beats EPA-only 0.0805
     "cfb": {"min_holdout": 1200, "brier": 0.09, "resolution": 0.10, "reliability": 0.01},
-    "nfl": None,
+    # nfl, fit 2026-09-15: Brier 0.1183, resolution 0.1319, reliability
+    # 0.0030, holdout n=570 (two 285-game seasons), beats EPA-only 0.1322
+    "nfl": {"min_holdout": 500, "brier": 0.13, "resolution": 0.10, "reliability": 0.01},
 }
 
 # set by configure(); module globals so the cached per-season helpers stay simple
 LEAGUE = "cfb"
+REFRESH = False
 CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache" / "cfb"
 FIXTURE_PATH = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "paper_index_oracle.json"
 PBP_URL = _RELEASE.format(league="cfb")
 
 
-def configure(league: str, pbp_dir: str | None = None) -> None:
+def configure(league: str, pbp_dir: str | None = None, refresh: bool = False) -> None:
     """Point the trainer at one league: its pbp source, cache, fixture."""
-    global LEAGUE, CACHE_DIR, FIXTURE_PATH, PBP_URL
+    global LEAGUE, CACHE_DIR, FIXTURE_PATH, PBP_URL, REFRESH
+    REFRESH = refresh
     if league not in _FIXTURE_NAME:
         raise SystemExit(f"unknown league {league!r}; one of {sorted(_FIXTURE_NAME)}")
     LEAGUE = league
@@ -90,6 +114,20 @@ def configure(league: str, pbp_dir: str | None = None) -> None:
         if pbp_dir
         else _RELEASE.format(league=league)
     )
+
+
+def _cache_fresh(cache: pathlib.Path, season: int) -> bool:
+    """A cached per-season aggregate is reused only if it postdates its
+    source: the NFL refit once read rows aggregated from the pre-#495
+    parquet and reproduced the stale result to the fourth decimal."""
+    if REFRESH or not cache.exists():
+        return False
+    src = pathlib.Path(PBP_URL.format(season=season))
+    if src.exists() and src.stat().st_mtime > cache.stat().st_mtime:
+        return False
+    return True
+
+
 BASE_COLUMNS = [
     "game_id",
     "game_play_number",
@@ -129,6 +167,17 @@ FEATS = [
     "havoc_margin",
     "to_margin",
 ]
+# the same margins under the names paper_index.WEIGHTS ships them by
+WEIGHT_NAMES = [
+    "success",
+    "explosive",
+    "explosive_epa",
+    "opp_conversion",
+    "pts_per_opp",
+    "field_position",
+    "havoc",
+    "turnovers",
+]
 
 
 def _cast_ids(pbp: pl.DataFrame) -> pl.DataFrame:
@@ -142,7 +191,7 @@ def season_game_rows(season: int) -> pl.DataFrame:
     """Per-game base margins (success/explosive/EPA) + winner, disk-cached."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache = CACHE_DIR / f"games_{season}.parquet"
-    if cache.exists():
+    if _cache_fresh(cache, season):
         return pl.read_parquet(cache)
     pbp = _cast_ids(
         pl.read_parquet(PBP_URL.format(season=season), columns=BASE_COLUMNS)
@@ -208,18 +257,26 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     ext_dir = CACHE_DIR / "ext"
     ext_dir.mkdir(parents=True, exist_ok=True)
     cache = ext_dir / f"ext_{season}.parquet"
-    if cache.exists():
+    if _cache_fresh(cache, season):
         return pl.read_parquet(cache)
-    pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=EXT_COLUMNS))
+    cols = EXT_COLUMNS + (["fg_made"] if OPP_POINTS_INCLUDE_FG[LEAGUE] else [])
+    pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=cols))
     scrim = pbp.filter(pl.col("scrimmage_play") == True)  # noqa: E712
     base = scrim.group_by(["game_id", "pos_team_id"]).agg(
         havoc_allowed=pl.col("havoc").cast(pl.Float64).mean(),
         turnovers=pl.col("is_pos_team_turnover").cast(pl.Float64).sum(),
         explosiveness=pl.col("EPA").filter(pl.col("EPA_success") == True).mean(),  # noqa: E712
-        opp_points=pl.col("pos_score_pts")
-        .filter(pl.col("scoring_opp") == True)  # noqa: E712
-        .fill_null(0)
-        .sum(),
+    )
+    # opportunity points from the WHOLE pbp through the shared mask, not the
+    # scrimmage slice: a made field goal is a non-scrimmage row (see
+    # paper_index.opp_points_mask); a team with no such row scored 0
+    opp_points = (
+        pbp.filter(opp_points_mask(LEAGUE))
+        .group_by(["game_id", "pos_team_id"])
+        .agg(opp_points=pl.col("pos_score_pts").fill_null(0).sum())
+    )
+    base = base.join(opp_points, on=["game_id", "pos_team_id"], how="left").with_columns(
+        pl.col("opp_points").fill_null(0)
     )
     drv = (
         scrim.filter(pl.col("drive.id").is_not_null())
@@ -239,22 +296,44 @@ def season_ext_rows(season: int) -> pl.DataFrame:
         avg_start_yte=pl.col("start_yte").mean(),
         avg_start_ep=pl.col("ep").mean(),
     )
+    # pts_per_opp is derived in build_games(): its no-opportunity fill is a
+    # fitted constant, and a cache must not bake in whichever value the
+    # module happened to hold when the rows were aggregated
     out = base.join(drives, on=["game_id", "pos_team_id"], how="inner").with_columns(
         opp_conv_rate=pl.when(pl.col("opp_trips") > 0)
         .then(pl.col("opp_converted") / pl.col("opp_trips"))
         .otherwise(0.5),
-        pts_per_opp=pl.when(pl.col("opp_trips") > 0)
-        .then(pl.col("opp_points") / pl.col("opp_trips"))
-        .otherwise(LEAGUE_PTS_PER_OPP[LEAGUE]),
     )
     out.write_parquet(cache)
     return out
 
 
-def build_games() -> pl.DataFrame:
+def build_games() -> tuple[pl.DataFrame, float]:
+    """-> (per-game margins for every season, league points per opportunity).
+
+    The league average points per scoring opportunity comes from the TRAIN
+    seasons only (the holdout stays unseen) and is the neutral ptsPerOpp for a
+    team with no opportunity trips. It is rounded to the 4 decimals
+    paper_index.LEAGUE_PTS_PER_OPP ships, so the feature is fitted on exactly
+    the value that will serve."""
     seasons = [*TRAIN_SEASONS, *HOLDOUT_SEASONS]
     games = pl.concat([season_game_rows(s) for s in seasons], how="vertical_relaxed")
-    ext = pl.concat([season_ext_rows(s) for s in seasons], how="vertical_relaxed")
+    ext = pl.concat(
+        [season_ext_rows(s).with_columns(season=pl.lit(s)) for s in seasons],
+        how="vertical_relaxed",
+    )
+    train_ext = ext.filter(pl.col("season") < HOLDOUT_SEASONS[0])
+    league_ppo = round(
+        float(
+            train_ext.select(pl.col("opp_points").sum() / pl.col("opp_trips").sum()).item()
+        ),
+        4,
+    )
+    ext = ext.with_columns(
+        pts_per_opp=pl.when(pl.col("opp_trips") > 0)
+        .then(pl.col("opp_points") / pl.col("opp_trips"))
+        .otherwise(league_ppo)
+    ).drop("season")
 
     def ren(pfx):
         return {
@@ -281,7 +360,8 @@ def build_games() -> pl.DataFrame:
             fp_margin=pl.col("h_avg_start_ep") - pl.col("a_avg_start_ep"),
             havoc_margin=pl.col("a_havoc_allowed") - pl.col("h_havoc_allowed"),
             to_margin=pl.col("a_turnovers") - pl.col("h_turnovers"),
-        )
+        ),
+        league_ppo,
     )
 
 
@@ -343,6 +423,8 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
     """Train/serve parity: paper_index.team_inputs on the raw pbp must agree
     with this trainer's vectorized aggregation for sampled games."""
     cols = sorted(set(BASE_COLUMNS + EXT_COLUMNS))
+    if OPP_POINTS_INCLUDE_FG[LEAGUE]:
+        cols.append("fg_made")
     pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=cols))
     pbp = pbp.rename({"pos_team_id": "pos_team"})
     sample = games.filter(pl.col("season") == season).head(n)
@@ -366,7 +448,13 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
 
 
 def main() -> int:
-    games = build_games()
+    import paper_index as _pi
+
+    games, league_ppo = build_games()
+    # the module's fitted constants are the JUST-FITTED ones for the parity
+    # check and the fixture verification below; the committed values are
+    # updated from this printout after
+    _pi.LEAGUE_PTS_PER_OPP[LEAGUE] = league_ppo
     train = games.filter(pl.col("season") < HOLDOUT_SEASONS[0])
     hold = games.filter(pl.col("season") >= HOLDOUT_SEASONS[0])
     Xt = train.select(FEATS).to_numpy()
@@ -376,7 +464,7 @@ def main() -> int:
     print(f"train games: {len(yt)}, holdout: {len(yh)} {HOLDOUT_SEASONS}")
 
     beta, dropped_idx = fit_logistic_nonneg(Xt, yt)
-    dropped = [FEATS[i] for i in dropped_idx]
+    dropped = [WEIGHT_NAMES[i] for i in dropped_idx]
     print("fitted weights:", dict(zip(FEATS, np.round(beta, 4))))
     if dropped:
         print(f"margins pinned to zero (went negative under collinearity): {dropped}")
@@ -402,17 +490,7 @@ def main() -> int:
         f"decomposition: reliability {rel:.4f}, resolution {res:.4f}, uncertainty {unc:.4f}"
     )
 
-    # league average points per scoring opportunity on the TRAIN seasons: the
-    # neutral ptsPerOpp for a team with no opportunity trips (paste into
-    # paper_index.LEAGUE_PTS_PER_OPP alongside the weights)
-    ext_train = pl.concat(
-        [season_ext_rows(s) for s in TRAIN_SEASONS], how="vertical_relaxed"
-    )
-    league_ppo = float(
-        ext_train.select(
-            pl.col("opp_points").sum() / pl.col("opp_trips").sum()
-        ).item()
-    )
+    # paste into paper_index.LEAGUE_PTS_PER_OPP alongside the weights
     print(f"league pts per opportunity (train seasons): {league_ppo:.4f}")
 
     # gates (never-lower; each league's floors were measured at its fit time)
@@ -449,25 +527,11 @@ def main() -> int:
         }
 
     fixture = {
-        "weights": dict(
-            zip(
-                [
-                    "success",
-                    "explosive",
-                    "explosive_epa",
-                    "opp_conversion",
-                    "pts_per_opp",
-                    "field_position",
-                    "havoc",
-                    "turnovers",
-                ],
-                beta,
-            )
-        ),
+        "weights": dict(zip(WEIGHT_NAMES, beta)),
         "provenance": {
             "script": "python/tools/fit_paper_index.py",
             "league": LEAGUE,
-            "league_pts_per_opp": round(league_ppo, 4),
+            "league_pts_per_opp": league_ppo,
             "margins_pinned_to_zero": dropped,
             "train_seasons": f"{TRAIN_SEASONS.start}-{TRAIN_SEASONS.stop - 1}",
             "holdout_seasons": list(HOLDOUT_SEASONS),
@@ -493,10 +557,7 @@ def main() -> int:
             for r in picks.to_dicts()
         ],
     }
-    # the module must reproduce every fixture share with the JUST-FITTED
-    # weights (its committed constants are updated from this printout after)
-    import paper_index as _pi
-
+    # the module must reproduce every fixture share with the JUST-FITTED weights
     _pi.WEIGHTS[LEAGUE] = {k: float(v) for k, v in fixture["weights"].items()}
     for g in fixture["games"]:
         got = share_from_inputs(g["home"], g["away"], LEAGUE)["homeShare"]
@@ -522,6 +583,11 @@ if __name__ == "__main__":
         default=None,
         help="local dir of play_by_play_{season}.parquet (default: the league's release)",
     )
+    ap.add_argument(
+        "--refresh",
+        action="store_true",
+        help="rebuild the per-season cache even when it looks current",
+    )
     args = ap.parse_args()
-    configure(args.league, args.pbp_dir)
+    configure(args.league, args.pbp_dir, refresh=args.refresh)
     sys.exit(main())

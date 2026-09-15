@@ -47,8 +47,13 @@ def _ep_table(league: str = "cfb") -> pl.DataFrame:
 
 
 # Fitted by tools/fit_paper_index.py on 2016-2023 finals of each league
-# (holdout 2024-2025: see each oracle fixture's provenance block).
-# cfb: fitted 2026-09-07. nfl: fitted 2026-09-14 on espn_nfl_pbp.
+# (holdout 2024-2025: see each oracle fixture's provenance block). A margin
+# the active-set fit pinned to zero (it went negative under collinearity)
+# ships as 0.0: it is an observed input, not a fitted one, so
+# share_from_inputs() leaves it out of the margins it reports.
+# cfb: fitted 2026-09-07. nfl: fitted 2026-09-15 on espn_nfl_pbp rebuilt with
+# scoring_opp keyed to start.yardsToEndzone (sportsdataverse-py #495);
+# explosive-play rate pinned to zero.
 WEIGHTS = {
     "cfb": {
         "success": 23.8447,
@@ -61,14 +66,14 @@ WEIGHTS = {
         "turnovers": 0.6005,
     },
     "nfl": {
-        "success": 0.0,
-        "explosive": 0.0,
-        "explosive_epa": 0.0,
-        "opp_conversion": 0.0,
-        "pts_per_opp": 0.0,
-        "field_position": 0.0,
-        "havoc": 0.0,
-        "turnovers": 0.0,
+        "success": 8.6493,
+        "explosive": 0.0,  # pinned: negative under collinearity with explosiveness
+        "explosive_epa": 1.6660,
+        "opp_conversion": 1.6618,
+        "pts_per_opp": 0.4057,
+        "field_position": 2.4942,
+        "havoc": 6.3671,
+        "turnovers": 0.4945,
     },
 }
 
@@ -79,7 +84,15 @@ FITTED_LEAGUES = frozenset(WEIGHTS)
 # league average points per scoring opportunity, train seasons only (the
 # neutral value for a team with no opportunity trips); fitted constants,
 # printed by the trainer alongside the weights
-LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 0.0}
+LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 3.6402}
+
+# Points per opportunity counts the points scored on scoring-opportunity
+# snaps. A made field goal sits on a NON-scrimmage row in both leagues'
+# play-by-play, so the scrimmage filter drops its three points. The NFL fit
+# counts made field goals kicked from inside the 40 (fg_made rows flagged
+# scoring_opp); the college weights were fitted without them, so flipping cfb
+# here needs a refit first (the CFB oracle fixture would catch the drift).
+OPP_POINTS_INCLUDE_FG = {"cfb": False, "nfl": True}
 
 _NEEDED = {
     "scrimmage_play",
@@ -95,6 +108,25 @@ _NEEDED = {
     "EPA",
     "pos_score_pts",
 }
+_NEEDED_FG = {"fg_made"}
+
+
+def opp_points_mask(league: str = "cfb") -> pl.Expr:
+    """Rows whose pos_score_pts count toward points per opportunity.
+
+    Shared by team_inputs() and the trainer so the feature is built one way
+    on both sides: scrimmage snaps flagged scoring_opp, plus -- when the
+    league's fit counts them (OPP_POINTS_INCLUDE_FG) -- made field goals
+    flagged scoring_opp, which are non-scrimmage rows.
+    """
+    on_snap = pl.col("scrimmage_play") == True  # noqa: E712
+    if OPP_POINTS_INCLUDE_FG[league]:
+        on_snap = on_snap | (pl.col("fg_made") == True)  # noqa: E712
+    return (pl.col("scoring_opp") == True) & on_snap  # noqa: E712
+
+
+def _needed(league: str) -> set[str]:
+    return _NEEDED | (_NEEDED_FG if OPP_POINTS_INCLUDE_FG[league] else set())
 
 
 def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | None:
@@ -109,12 +141,10 @@ def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | Non
     """
     if not isinstance(frame, pl.DataFrame) or frame.height == 0:
         return None
-    if not _NEEDED.issubset(set(frame.columns)):
+    if not _needed(league).issubset(set(frame.columns)):
         return None
-    mine = frame.filter(
-        (pl.col("scrimmage_play") == True)  # noqa: E712
-        & (pl.col("pos_team").cast(pl.Utf8) == str(team_id))
-    )
+    is_mine = pl.col("pos_team").cast(pl.Utf8) == str(team_id)
+    mine = frame.filter((pl.col("scrimmage_play") == True) & is_mine)  # noqa: E712
     if mine.height == 0:
         return None
     drives = (
@@ -145,8 +175,10 @@ def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | Non
     expl_epa = succ["EPA"].mean() if succ.height else None
     if expl_epa is None:
         return None  # a slice with zero successful plays has no explosiveness
+    # from the whole frame, not the scrimmage slice: a made field goal is a
+    # non-scrimmage row (see opp_points_mask)
     opp_points = float(
-        mine.filter(pl.col("scoring_opp") == True)["pos_score_pts"].fill_null(0).sum()  # noqa: E712
+        frame.filter(is_mine & opp_points_mask(league))["pos_score_pts"].fill_null(0).sum()
     )
     return {
         "successRate": float(
@@ -171,7 +203,9 @@ def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | Non
 
 
 def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
-    """Margins + the logistic share, from two team_inputs() dicts."""
+    """Margins + the logistic share, from two team_inputs() dicts.
+
+    The returned margins are the league's FITTED inputs only (weight > 0)."""
     margins = {
         "success": home["successRate"] - away["successRate"],
         "explosive": home["explosiveRate"] - away["explosiveRate"],
@@ -187,7 +221,10 @@ def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     }
     weights = WEIGHTS[league]
     z = sum(weights[k] * margins[k] for k in weights)
-    return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": margins}
+    # only the fitted inputs: a margin pinned to zero at fit time carries no
+    # weight in the share, so it is not reported as one of its factors
+    fitted = {k: v for k, v in margins.items() if weights[k] > 0}
+    return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": fitted}
 
 
 def by_period(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict:
