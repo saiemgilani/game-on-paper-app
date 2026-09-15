@@ -130,7 +130,11 @@ describe('usage / situational / special-teams sections', () => {
             rz_touchdown_rate: 1, so_touchdown_rate: 0.5, third_down_rate: 2 / 3, third_down_over_expected: 0.6,
             target_share: 0.3, first_down_share: 0.2, touch_share: 0.1,
         });
-        game.advBoxScore.player_usage = [usage(away, 'Away Receiver', 'a1'), usage(home, 'Home Receiver', 'h1')];
+        game.advBoxScore.player_usage = [
+            usage(away, 'Away Receiver', 'a1'), usage(home, 'Home Receiver', 'h1'),
+            // processor data is never markup: an unexpected group value must render escaped
+            { ...usage(home, 'Odd Group', 'h2'), position_group: '<b>evil</b>' },
+        ];
         game.advBoxScore.tackles = [
             { def_pos_team: away, player_id: 'd1', player_name: 'Away Backer', position_group: 'LB', tackles: 7, assists: 2, tackle_points: 8, team_tackle_points: 8, tackle_share: 1 },
         ];
@@ -200,6 +204,8 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('Away Blocker');
         expect(html).toContain('1 punt blocked.');
         expect(html).toContain('<i>TE</i>');
+        expect(html).toContain('&lt;b&gt;evil&lt;/b&gt;');
+        expect(html).not.toContain('<b>evil</b>');
         expect(html).toContain('<i>DB</i>');
     }, 120_000);
 });

@@ -25,7 +25,8 @@ const returners = sortDesc(teamRows(box.st_returners, teamId), 'kick_return_yard
 const blocks = teamRows(box.st_blocks, teamId, 'def_pos_team');
 
 const GROUP_LABEL: Record<string, string> = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', OL: 'OL', DL: 'DL', LB: 'LB', DB: 'DB', ST: 'ST' };
-const groupTag = (g: string | null | undefined) => (g ? ` <span class="text-muted text-small">${GROUP_LABEL[g] ?? g}</span>` : '');
+// a plain escaped expression: position_group is processor data, never trusted markup
+const groupLabel = (g: string | null | undefined) => (g ? GROUP_LABEL[g] ?? g : null);
 const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} · ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
 ---
 {(usage.length > 0 || groups.length > 0) && (
@@ -48,7 +49,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {usage.map((p: any) => (
                 <tr>
-                    <td><b>{p.player_name ?? p.player_id}</b><Fragment set:html={groupTag(p.position_group)} /></td>
+                    <td><b>{p.player_name ?? p.player_id}</b>{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;" title={`${p.rushes} rush, ${p.targets} tgt, ${p.receptions} rec`}>{p.opportunities}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.target_share, 0)}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.first_down_share, 0)}</td>
@@ -91,7 +92,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {tackles.map((t: any) => (
                 <tr>
-                    <td><b>{t.player_name ?? t.player_id}</b><Fragment set:html={groupTag(t.position_group)} /></td>
+                    <td><b>{t.player_name ?? t.player_id}</b>{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;">{t.tackles}</td>
                     <td class="numeral" style="text-align: center;">{t.assists}</td>
                     <td class="numeral" style="text-align: center;">{pct(t.tackle_share, 0)}</td>
