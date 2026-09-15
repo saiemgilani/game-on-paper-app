@@ -1,0 +1,175 @@
+name: pr-evidence
+
+# Posts the review evidence CLAUDE.md "PR evidence" requires on every PR that
+# touches astro/ or python/: the desktop/mobile x light/dark screenshots of the PR
+# and a Lighthouse comparison against its base, as ONE comment that each push updates.
+#
+# Base = the first parent of GitHub's PR merge commit (the base tip it merged
+# onto); head = that merge commit. The comparison therefore isolates this PR's
+# changes even when main has moved since the branch was cut.
+#
+# Pages come from an `Evidence routes: /a /b` line in the PR description (read at
+# run time, so "Re-run jobs" picks up an edit); DEFAULT_ROUTES otherwise.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'astro/**'
+      - 'python/**'
+
+concurrency:
+  group: pr-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write        # push screenshots to the pr-previews branch
+  pull-requests: write   # post / update the evidence comment
+
+jobs:
+  evidence:
+    # A fork PR gets no secrets and a read-only token: it could neither render the
+    # SDV-backed cards nor post the result. Drafts wait until ready for review.
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # a final game with full play-by-play: the heaviest page on the site
+      DEFAULT_ROUTES: /game/401856682
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # the PR merge commit (default for pull_request); full history for the base worktree
+          fetch-depth: 0
+
+      - name: Evidence directory (outside the checkout, so no build or test globs see it)
+        run: echo "EVIDENCE_DIR=$RUNNER_TEMP/evidence" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+
+      - name: Install review tools (deliberately not repo dependencies)
+        run: npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1
+
+      - name: Local secrets for the preview Worker and the processor
+        env:
+          SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+        run: |
+          # both sides of this token live on this runner, so a throwaway one is enough
+          token="$(openssl rand -hex 24)"
+          echo "::add-mask::$token"
+          echo "PYTHON_HTTP_TOKEN=$token" >> "$GITHUB_ENV"
+          umask 077
+          {
+            printf 'PYTHON_HTTP_TOKEN=%s\n' "$token"
+            printf 'SDV_AUTH_TOKEN=%s\n' "$SDV_AUTH_TOKEN"
+            printf 'ADMIN_USER=%s\nADMIN_PASS=%s\nGOP_INGEST_KEY=%s\n' "$(openssl rand -hex 8)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)"
+          } > astro/.dev.vars
+
+      - name: Resolve routes
+        id: routes
+        run: |
+          body="$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '.body // ""')"
+          line="$(printf '%s\n' "$body" | sed -n 's/^[[:space:]]*Evidence routes:[[:space:]]*//Ip' | head -1 | tr -d '`\r')"
+          # keep only path-shaped tokens (at most 4), so nothing else reaches a command line
+          routes="$(printf '%s\n' "${line:-$DEFAULT_ROUTES}" | tr ' ,' '\n\n' | grep -E '^/[A-Za-z0-9/_.-]*$' | head -4 | tr '\n' ' ' || true)"
+          echo "routes=${routes:-$DEFAULT_ROUTES}" >> "$GITHUB_OUTPUT"
+          echo "routes: ${routes:-$DEFAULT_ROUTES}"
+
+      - name: Screenshots + Lighthouse comparison
+        id: compare
+        working-directory: astro
+        env:
+          ROUTES: ${{ steps.routes.outputs.routes }}
+          CHROME_PATH: /usr/bin/google-chrome
+          VISUAL_CHECK_EXECUTABLE: /usr/bin/google-chrome
+          # Ubuntu 24.04 runners block the unprivileged user namespaces Chrome's sandbox needs
+          LIGHTHOUSE_NO_SANDBOX: '1'
+          VISUAL_CHECK_NO_SANDBOX: '1'
+        run: |
+          export NODE_PATH="$(npm root -g)"
+          set +e
+          # ROUTES is validated above; word splitting into separate args is intended
+          node scripts/lighthouse-compare.mjs --base HEAD^1 --head HEAD --runs 3 --shots \
+            --python-url http://127.0.0.1:5177 \
+            --backend-cmd 'uv sync --locked --quiet && uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' \
+            --out "$EVIDENCE_DIR" $ROUTES
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Keep raw reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-evidence-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
+          path: ${{ env.EVIDENCE_DIR }}
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Publish screenshots to pr-previews
+        id: publish
+        if: always() && steps.compare.outcome == 'success'
+        run: |
+          shots="$EVIDENCE_DIR/shots"
+          if ! ls "$shots"/*.jpg >/dev/null 2>&1; then echo "no screenshots to publish"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          wt="$RUNNER_TEMP/pr-previews"
+          dest="pr$PR/${PR_HEAD_SHA:0:7}"
+          # full fetch: the checkout is complete history, and a shallow fetch would graft it
+          if git fetch -q origin pr-previews; then
+            git worktree add --detach "$wt" FETCH_HEAD
+          else
+            git worktree add --detach "$wt" HEAD
+            git -C "$wt" checkout --orphan pr-previews
+            git -C "$wt" rm -rfq .
+          fi
+          mkdir -p "$wt/$dest"
+          cp "$shots"/*.jpg "$wt/$dest/"
+          git -C "$wt" add "$dest"
+          git -C "$wt" commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
+          # other PRs push here concurrently; their paths never overlap, so rebase and retry
+          for attempt in 1 2 3 4 5; do
+            git -C "$wt" push -q origin HEAD:refs/heads/pr-previews && break
+            git -C "$wt" fetch -q origin pr-previews
+            git -C "$wt" rebase -q FETCH_HEAD
+            [ "$attempt" = 5 ] && exit 1
+          done
+          sha="$(git -C "$wt" rev-parse HEAD)"
+          echo "image_base=https://raw.githubusercontent.com/${{ github.repository }}/$sha/$dest" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update the evidence comment
+        if: always() && !cancelled()
+        env:
+          IMAGE_BASE: ${{ steps.publish.outputs.image_base }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body="$RUNNER_TEMP/comment.md"
+          if [ -f astro/scripts/pr-evidence-comment.mjs ] && [ -d "$EVIDENCE_DIR" ]; then
+            node astro/scripts/pr-evidence-comment.mjs --out "$EVIDENCE_DIR" --image-base "$IMAGE_BASE" \
+              --run-url "$RUN_URL" --pr-head "$PR_HEAD_SHA" --default-routes "$DEFAULT_ROUTES" > "$body"
+          else
+            printf '<!-- pr-evidence -->\n## PR evidence: `%s`\n\nThe evidence run failed before producing results. See the [run log](%s).\n' \
+              "${PR_HEAD_SHA:0:7}" "$RUN_URL" > "$body"
+          fi
+          id="$(gh api --paginate "repos/${{ github.repository }}/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- pr-evidence -->"))) | .id' | tail -1)"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" -F "body=@$body" --jq .html_url
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/$PR/comments" -F "body=@$body" --jq .html_url
+          fi
+
+      - name: Fail when the comparison did not complete
+        if: steps.compare.outputs.exit != '0'
+        run: |
+          echo "lighthouse-compare exited ${{ steps.compare.outputs.exit }}; the posted comment lists what failed."
+          exit 1

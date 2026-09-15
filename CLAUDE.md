@@ -45,10 +45,63 @@ browser) driving your installed Google Chrome, or the chromium at
 page never passes as a valid shot. (Isolated root container that needs the
 Chrome sandbox off: set `VISUAL_CHECK_NO_SANDBOX=1`.)
 
-Attach the four (or the relevant subset) to the PR, or send them to reviewers.
 When a change is league-specific, shoot the `/nfl` route **and** its `cfb` twin —
 the two share components, so a regression usually hits both. `img/visual/` is
 git-ignored; don't commit the PNGs.
+
+## PR evidence — REQUIRED on every PR, posted automatically
+Every PR that touches `astro/` or `python/` carries two pieces of evidence. A
+backend change counts: the processor's output is what the game page renders.
+PRs confined to docs, CI, or repo config are exempt.
+
+1. **The four preview screenshots** of the PR: desktop-light, desktop-dark,
+   mobile-light, mobile-dark (the matrix above), as above-the-fold thumbnails
+   linking to full pages.
+2. **A Lighthouse comparison of the PR against its base**, on the same page(s).
+
+**`.github/workflows/pr-evidence.yml` produces both on every push** to a
+same-repo PR and keeps them in one PR comment. It compares GitHub's PR merge
+commit against the base tip it merged onto, so only this PR's changes differ even
+after `main` moves. Choose pages with an `Evidence routes: /a /b` line in the PR
+description; the default is a final game with full play-by-play (`/game/401856682`),
+the heaviest page. Fork PRs get no secrets, so their evidence is produced locally
+and pasted into the template. When the workflow fails, fix the cause or explain
+in the PR; never paste numbers the workflow didn't measure.
+
+Run the same thing locally with `astro/scripts/lighthouse-compare.mjs`. Its
+header documents the flags, including `LH_ASTRO_PREFIX` for hosts whose glibc
+is too old for workerd:
+
+```bash
+cd astro
+node scripts/lighthouse-compare.mjs --base origin/main --head HEAD --shots \
+  --python-url http://127.0.0.1:5177 \
+  --backend-cmd 'uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' /game/401856682
+node scripts/pr-evidence-comment.mjs --out img/lighthouse/<base>-<head>   # the comment, as markdown
+```
+
+Why the method is what it is (the script enforces all of it):
+- **Builds:** production `astro build` of both trees, never `astro dev`, with every
+  `preview` flag forced on in **both**. Otherwise one side measures the classic page.
+  A `preview` flag normally renders only for a viewer holding the signed preview
+  cookie. Nothing a headless Lighthouse run can present, so the script instead
+  rewrites `'preview'` → `'on'` in `src/utils/features.ts` inside its throwaway
+  worktrees (never in your checkout). `--flags a,b` limits which flags it rewrites.
+- **Frontend-only by default:** uncached local page generation (15–20 s on a game
+  page) swamps frontend differences, so each tree's rendered HTML is served with its
+  own `dist/client` from a gzip server. `astro preview` doesn't compress, so
+  this is also the only place HTML/JS sizes match production. `--mode both` adds
+  end-to-end runs.
+- **Run ranges:** Performance varies by 10+ points between identical builds. Every
+  metric keeps its min–max range, and a delta is called a regression only when the
+  base and PR ranges don't overlap. Base and PR runs alternate.
+- **Findings:** non-overlapping regressions are listed with a likely cause (the
+  largest layout-shift element for CLS), along with audits that newly fail.
+
+**Hosting images:** the GitHub API cannot upload images, so screenshots go on the
+orphan branch `pr-previews` (`pr<N>/<head-sha7>/…`) and are embedded via
+`raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/…`, pinned to the commit
+so later pushes can't change an old comment. No workflow triggers on that branch.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.

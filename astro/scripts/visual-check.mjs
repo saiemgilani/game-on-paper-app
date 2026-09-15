@@ -34,6 +34,13 @@ async function loadChromium() {
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
+// For posting to a PR (see scripts/lighthouse-compare.mjs --shots): JPEG keeps a
+// 10k-px full-page mobile shot to a few hundred KB, and THUMBS adds an
+// above-the-fold `-thumb` shot per combination, since full pages are too tall to inline.
+const JPEG = process.env.VISUAL_CHECK_FORMAT === 'jpeg';
+const THUMBS = Boolean(process.env.VISUAL_CHECK_THUMBS);
+const shotOpts = JPEG ? { type: 'jpeg', quality: 80 } : {};
+const ext = JPEG ? 'jpg' : 'png';
 // pass routes as args; the default set is one scoreboard, one leaderboard, one
 // team page -- enough surfaces that a layout/theme regression shows up.
 const passed = process.argv.slice(2);
@@ -79,9 +86,14 @@ try {
         } catch (e) {
           failures.push(`${where}: ${e.message}`);
         }
-        const path = join(OUT, `${slug(route)}-${device.name}-${colorScheme}.png`);
-        await page.screenshot({ path, fullPage: true });
-        shots.push(path);
+        const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
+        await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
+        shots.push(`${stem}.${ext}`);
+        if (THUMBS) {
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await page.screenshot({ ...shotOpts, path: `${stem}-thumb.${ext}` });
+          shots.push(`${stem}-thumb.${ext}`);
+        }
       }
       await ctx.close();
     }
