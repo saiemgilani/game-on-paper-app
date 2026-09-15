@@ -60,7 +60,7 @@ if (!summary) {
       const thumb = existsSync(join(shots, `${stem}-thumb.jpg`)) ? `${opt['image-base']}/${stem}-thumb.jpg` : full;
       return `<a href="${full}"><img src="${thumb}" width="${width}" alt="${route} ${device} ${scheme}"></a>`;
     };
-    out.push('', `**\`${route}\`**`, '', '| | light | dark |', '|---|---|---|');
+    out.push('', `**\`${route}\`**${summary.newRoutes?.includes(route) ? ' — new in this PR (the base has no such page)' : ''}`, '', '| | light | dark |', '|---|---|---|');
     out.push(`| **desktop 1280×800** | ${cell('desktop', 'light', 440)} | ${cell('desktop', 'dark', 440)} |`);
     out.push(`| **mobile 390×844** | ${cell('mobile', 'light', 195)} | ${cell('mobile', 'dark', 195)} |`);
   }
