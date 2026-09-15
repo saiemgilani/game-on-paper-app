@@ -4,6 +4,7 @@ import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
 import { LEAGUES, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
+import { COACH_BOARD_SLUGS } from '../utils/coaches';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
 // the season list) and costs nothing to serve. Deliberately makes no network
@@ -68,6 +69,7 @@ function buildEntries(): Entry[] {
             out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
             for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
             for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/nfl/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+            for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/nfl/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
         }
         // week 18 arrived with the 17-game schedule in 2021
         const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
@@ -89,11 +91,17 @@ function buildEntries(): Entry[] {
         // SSR routes, so no trailing slash (the slash rule above is for prerendered ones).
         for (const c of LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
         for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+        // Head-coach boards (pace, run/pass, ...): one per season, like the team
+        // categories; CURRENT_YEAR redirects to LAST_YEAR and is skipped above.
+        for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
     }
 
     for (const league of (nflPublic ? ['cfb', 'nfl'] : ['cfb']) as readonly ('cfb' | 'nfl')[]) {
         const lp = (p: string) => (league === 'cfb' ? p : `/nfl${p}`);
         if (league === 'nfl') out.push({ loc: '/nfl/teams', lastmod: today, changefreq: 'weekly', priority: '0.7' });
+        // Coach careers pool every season, so they move whenever a season does.
+        // /coaches itself redirects to the default board and is not listed.
+        for (const b of COACH_BOARD_SLUGS) out.push({ loc: lp(`/coaches/${b}`), lastmod: today, changefreq: 'weekly', priority: '0.6' });
         for (const team of retrieveAllTeams(league)) {
             out.push({
                 loc: lp(`/team/${team.team_id}`),

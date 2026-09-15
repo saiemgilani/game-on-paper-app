@@ -10,6 +10,7 @@ vi.mock('../src/utils/features', async (orig) => {
 
 import { GET } from '../src/pages/sitemap.xml';
 import { CURRENT_YEAR } from '../src/utils/constants';
+import { COACH_BOARD_SLUGS } from '../src/utils/coaches';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
 
@@ -32,4 +33,14 @@ describe('sitemap.xml with the nfl flag on', () => {
     expect(xml).not.toContain('gameonpaper.com/year/2025/teams/tendencies</loc>');
   });
 
+  test('the coach boards are listed per NFL season from 2002 and as careers', () => {
+    for (const b of COACH_BOARD_SLUGS) {
+      expect(xml).toContain(`<loc>https://gameonpaper.com/nfl/year/2025/coaches/${b}</loc>`);
+      expect(xml).toContain(`<loc>https://gameonpaper.com/nfl/year/2002/coaches/${b}</loc>`);
+      expect(xml).toContain(`<loc>https://gameonpaper.com/nfl/coaches/${b}</loc>`);
+    }
+    expect(xml).not.toContain('/nfl/year/2001/coaches/');
+    expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/coaches`);
+    expect(xml).not.toContain('<loc>https://gameonpaper.com/nfl/coaches</loc>');
+  });
 });
