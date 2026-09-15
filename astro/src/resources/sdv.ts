@@ -599,13 +599,19 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
         const req = await wrappedFetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const contentRaw: string = await req.text();
-        if (req.ok && contentRaw && cacheEnabled) {
-            console.info(`SDV API cache update: ${endpointURL}`)
-            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
-        } else if (!req.ok) {
+        if (!req.ok) {
             throw new Error(`Request returned with status ${req.statusText}, content: ${contentRaw}`)
         }
         const content = JSON.parse(contentRaw);
+        // Every SDV table answers { data: [...] }; a 200 carrying anything else (an
+        // `{ error }` body, say) is not worth serving for the TTL, so it is parsed
+        // and checked before it can reach the cache. Was cached first, checked never.
+        if (cacheEnabled && Array.isArray(content?.data)) {
+            console.info(`SDV API cache update: ${endpointURL}`)
+            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
+        } else if (cacheEnabled) {
+            console.warn(`SDV API response without a data array, not cached: ${endpointURL}`)
+        }
         return content;
     } catch (e) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)

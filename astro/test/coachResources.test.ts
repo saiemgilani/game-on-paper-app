@@ -111,10 +111,15 @@ describe('coach tendency reads', () => {
         expect(puts).toHaveLength(0);
     });
 
-    test('a body without a data array is [] too', async () => {
+    test('a 200 without a data array is [] and is never cached (it would otherwise serve for the TTL)', async () => {
         const sdv = await import('../src/resources/sdv');
         respond = () => new Response(JSON.stringify({ error: 'unknown column' }), { status: 200 });
         expect(await sdv.retrieveCoachCareers({ columns: ['go_rate'] })).toEqual([]);
         expect(seen).toHaveLength(1);
+        expect(puts).toHaveLength(0);
+        // nor is a body that does not parse
+        respond = () => new Response('<html>maintenance</html>', { status: 200 });
+        expect(await sdv.retrieveCoachTendencies({ season: 2024, columns: ['go_rate'] })).toEqual([]);
+        expect(puts).toHaveLength(0);
     });
 });
