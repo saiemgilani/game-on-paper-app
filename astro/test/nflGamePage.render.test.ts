@@ -118,8 +118,8 @@ describe('usage / situational / special-teams sections', () => {
         expect(without).not.toContain('id="situational-splits-panel"');
 
         const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
-        const away = parseInt(game.awayTeamId ?? game.boxScore?.teams?.[0]?.team?.id ?? game.advBoxScore.team[0].pos_team);
-        const home = parseInt(game.homeTeamId ?? game.advBoxScore.team[1].pos_team);
+        const away = parseInt(game.teamInfo.away.id);
+        const home = parseInt(game.teamInfo.home.id);
         const usage = (team: number, name: string, id: string) => ({
             pos_team: team, player_id: id, player_name: name, position_group: 'WR',
             rushes: 0, targets: 9, receptions: 6, touches: 6, opportunities: 9, rush_yards: 0, receiving_yards: 88,
@@ -170,6 +170,14 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('Net punt average');
         expect(html).toContain('0 punt, 0 FG');
         expect(html).not.toContain('undefined punt');
+        // the processor attaches the usage sections to every span box too, but
+        // only the full-game box renders them: they must not reach the island props
+        // a fresh window object: the fixture's `all` span aliases advBoxScore itself
+        (game.advBoxScoreSpans as any).q1 = { ...game.advBoxScoreSpans.all, player_usage: [usage(away, 'Span Only Receiver', 's1')] };
+        const withSpans = await render(game);
+        expect(withSpans).toContain('Away Receiver');
+        expect(withSpans).not.toContain('Span Only Receiver');
+        expect(withSpans).not.toContain('player_usage');
         expect(html).toContain('Away Receiver');
         expect(html).toContain('Home Receiver');
         expect(html).toContain('Away Backer');

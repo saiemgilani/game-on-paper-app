@@ -157,11 +157,3 @@ def test_player_usage_rows_carry_the_columns_the_page_reads(body):
     ):
         assert col in row, col
 
-
-def test_usage_sections_survive_a_span_box(body):
-    # the in-place span swap rebuilds the box over a window; the usage
-    # sections must ride along or the tables blank out on a Q1 view
-    spans = body.get("advBoxScoreSpans") or {}
-    assert "h1" in spans, sorted(spans)
-    assert "player_usage" in spans["h1"] and "st_team" in spans["h1"]
-    assert spans["h1"]["player_usage"]

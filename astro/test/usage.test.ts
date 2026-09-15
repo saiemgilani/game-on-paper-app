@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { hasSituationalSplits, hasUsageBox, madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows } from '../src/utils/usage';
+import { hasSituationalSplits, hasUsageBox, madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
 
 describe('usage box helpers', () => {
     test('hasUsageBox needs at least one populated section', () => {
@@ -38,6 +38,17 @@ describe('usage box helpers', () => {
         expect(num(45.25, 1)).toBe('45.3');
         expect(madeOf(2, 3)).toBe('2/3');
         expect(madeOf(null, undefined)).toBe('0/0');
+    });
+    test('withoutUsageSections strips the usage sections from every span box', () => {
+        const spans = {
+            q1: { team: [{ pos_team: 1 }], player_usage: [{ pos_team: 1 }], st_team: [{ pos_team: 1 }] },
+            h1: { team: [], drive_scripting: [{ pos_team: 1, script: 'scripted' }] },
+        };
+        const out = withoutUsageSections(spans as any);
+        expect(Object.keys(out.q1)).toEqual(['team']);
+        expect(Object.keys(out.h1)).toEqual(['team']);
+        expect(withoutUsageSections(undefined)).toEqual({});
+        expect(spans.q1.player_usage).toHaveLength(1); // the input is not mutated
     });
     test('scriptSplit picks both windows for a team', () => {
         const rows = [

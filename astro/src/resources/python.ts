@@ -587,7 +587,7 @@ export interface ProcessedUsageCounts {
   so_touchdowns: number
   third_down_opportunities: number
   third_down_conversions: number
-  third_down_expected: number
+  third_down_expected: number | null
   fd_td_rate: number | null
   explosive_rate: number | null
   success_rate: number | null

@@ -27,6 +27,24 @@ export function hasSituationalSplits(box: Partial<ProcessedBoxScore> | null | un
     return anyRows(box, SITUATIONAL_SECTIONS);
 }
 
+/**
+ * The span boxes without the usage sections. The processor attaches all eleven
+ * to every window, but only the full-game box renders them; the windowed boxes
+ * are serialized into the SituationalSection island's props, where those rows
+ * were pure page weight (+86 KB gzipped on an NFL game in PR #252's evidence).
+ */
+export function withoutUsageSections<T extends Record<string, any>>(spans: Record<string, T> | null | undefined): Record<string, T> {
+    const out: Record<string, T> = {};
+    for (const [span, box] of Object.entries(spans ?? {})) {
+        const kept: Record<string, any> = {};
+        for (const [k, v] of Object.entries(box ?? {})) {
+            if (!(USAGE_SECTIONS as readonly string[]).includes(k)) kept[k] = v;
+        }
+        out[span] = kept as T;
+    }
+    return out;
+}
+
 /** Rows of one team, by the section's team column. */
 export function teamRows<T extends Record<string, any>>(rows: T[] | undefined, teamId: string | number, key = 'pos_team'): T[] {
     if (!Array.isArray(rows)) return [];
