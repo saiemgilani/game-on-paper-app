@@ -809,8 +809,9 @@ export interface ProcessedSTTeam {
   fg_made: number
   fgs_blocked: number
   fg_epa: number
-  punt_blocks_by: number
-  fg_blocks_by: number
+  // the blocks-by columns join in only when a kick was blocked in the game
+  punt_blocks_by?: number
+  fg_blocks_by?: number
   punt_net_yards: number
   kickoff_touchback_rate: number | null
   kickoff_return_avg_allowed: number | null

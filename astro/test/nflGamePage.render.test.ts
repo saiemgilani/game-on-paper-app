@@ -159,7 +159,8 @@ describe('usage / situational / special-teams sections', () => {
             pos_team: team, kickoffs: 5, kickoff_touchbacks: 3, kickoff_returns_allowed: 2, kickoff_return_yards_allowed: 44, kickoff_return_tds_allowed: 0, kickoff_epa: 0.3,
             kick_returns: 2, kick_return_yards: 50, kick_return_tds: 0, kick_return_epa: 0.2, punts: 4, punt_yards: 180, punt_touchbacks: 1, punts_blocked: 0, punt_returns_allowed: 1,
             punt_return_yards_allowed: 8, punt_return_tds_allowed: 0, punt_epa: -0.4, punt_returns: 1, punt_return_yards: 12, punt_return_tds: 0, punt_return_epa: 0.1,
-            fg_attempts: 3, fg_made: 2, fgs_blocked: 0, fg_epa: 1.1, punt_blocks_by: 0, fg_blocks_by: 0, punt_net_yards: 152, kickoff_touchback_rate: 0.6, kickoff_return_avg_allowed: 22,
+            // no punt_blocks_by / fg_blocks_by: the processor omits them when no kick was blocked
+            fg_attempts: 3, fg_made: 2, fgs_blocked: 0, fg_epa: 1.1, punt_net_yards: 152, kickoff_touchback_rate: 0.6, kickoff_return_avg_allowed: 22,
             punt_net_avg: 38, punt_return_avg_allowed: 8, kick_return_avg: 25, punt_return_avg: 12, fg_pct: 2 / 3,
         }));
         const html = await render(game);
@@ -167,6 +168,8 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('3rd downs over expected');
         expect(html).toContain('Scripted drives');
         expect(html).toContain('Net punt average');
+        expect(html).toContain('0 punt, 0 FG');
+        expect(html).not.toContain('undefined punt');
         expect(html).toContain('Away Receiver');
         expect(html).toContain('Home Receiver');
         expect(html).toContain('Away Backer');

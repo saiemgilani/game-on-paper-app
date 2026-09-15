@@ -48,7 +48,7 @@ const stRows: Row[] = st.some(Boolean) ? [
     rows({ label: 'Punt coverage', title: 'Return yards allowed per return (return TDs allowed)', cells: st.map((s) => s ? `${num(s.punt_return_avg_allowed, 1)} / return${s.punt_return_tds_allowed > 0 ? ` (${s.punt_return_tds_allowed} TD)` : ''}` : '—') }),
     rows({ label: 'Kick returns', cells: st.map((s) => s ? `${s.kick_returns} for ${num(s.kick_return_avg, 1)}${s.kick_return_tds > 0 ? ` (${s.kick_return_tds} TD)` : ''}` : '—') }),
     rows({ label: 'Punt returns', cells: st.map((s) => s ? `${s.punt_returns} for ${num(s.punt_return_avg, 1)}${s.punt_return_tds > 0 ? ` (${s.punt_return_tds} TD)` : ''}` : '—') }),
-    rows({ label: 'Blocks made', title: 'Punts and field goals blocked by this team', cells: st.map((s) => s ? `${s.punt_blocks_by} punt, ${s.fg_blocks_by} FG` : '—') }),
+    rows({ label: 'Blocks made', title: 'Punts and field goals blocked by this team', cells: st.map((s) => s ? `${s.punt_blocks_by ?? 0} punt, ${s.fg_blocks_by ?? 0} FG` : '—') }),
 ] : [];
 const blocks: { title: string, rows: Row[] }[] = [
     { title: 'Situational', rows: sit },
