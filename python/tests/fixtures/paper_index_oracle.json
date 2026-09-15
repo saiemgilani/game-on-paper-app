@@ -1,32 +1,259 @@
 {
  "weights": {
   "success": 23.844667586176723,
-  "explosive": 2.80982144667219,
+  "explosive": 2.8098214466721894,
   "explosive_epa": 3.270310070106871,
-  "opp_conversion": 3.4279935860710746,
+  "opp_conversion": 3.427993586071075,
   "pts_per_opp": 0.1859995023746981,
   "field_position": 4.004588277797866,
-  "havoc": 5.9958129064951,
+  "havoc": 5.995812906495099,
   "turnovers": 0.6005295498301815
  },
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
   "league": "cfb",
-  "league_pts_per_opp": 3.3566,
-  "margins_pinned_to_zero": [],
+  "fitted_at": "2026-09-15T16:52:25+00:00",
+  "sportsdataverse": {
+   "version": "0.1.4",
+   "git_sha": "8dbbfa2eb371218deeac9d50c238d3457dc9ed4e"
+  },
+  "pbp_source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_{season}.parquet",
   "train_seasons": "2016-2023",
   "holdout_seasons": [
    2024,
    2025
   ],
+  "seasons": {
+   "2016": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2016.parquet",
+     "bytes": 52074986,
+     "updated_at": "2026-09-07T20:18:42Z"
+    },
+    "games_in_pbp": 858,
+    "non_franchise_dropped": [],
+    "after_join": 857,
+    "after_filters": 856,
+    "games": 856
+   },
+   "2017": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2017.parquet",
+     "bytes": 51743262,
+     "updated_at": "2026-09-07T20:42:20Z"
+    },
+    "games_in_pbp": 872,
+    "non_franchise_dropped": [],
+    "after_join": 872,
+    "after_filters": 868,
+    "games": 868
+   },
+   "2018": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2018.parquet",
+     "bytes": 52499018,
+     "updated_at": "2026-09-07T09:36:22Z"
+    },
+    "games_in_pbp": 884,
+    "non_franchise_dropped": [],
+    "after_join": 884,
+    "after_filters": 881,
+    "games": 881
+   },
+   "2019": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2019.parquet",
+     "bytes": 52072547,
+     "updated_at": "2026-09-07T10:01:46Z"
+    },
+    "games_in_pbp": 890,
+    "non_franchise_dropped": [],
+    "after_join": 890,
+    "after_filters": 888,
+    "games": 888
+   },
+   "2020": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2020.parquet",
+     "bytes": 33396809,
+     "updated_at": "2026-09-07T10:24:44Z"
+    },
+    "games_in_pbp": 565,
+    "non_franchise_dropped": [],
+    "after_join": 565,
+    "after_filters": 565,
+    "games": 565
+   },
+   "2021": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2021.parquet",
+     "bytes": 49143293,
+     "updated_at": "2026-09-07T21:12:20Z"
+    },
+    "games_in_pbp": 842,
+    "non_franchise_dropped": [],
+    "after_join": 842,
+    "after_filters": 829,
+    "games": 829
+   },
+   "2022": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2022.parquet",
+     "bytes": 49831930,
+     "updated_at": "2026-09-07T21:40:10Z"
+    },
+    "games_in_pbp": 861,
+    "non_franchise_dropped": [],
+    "after_join": 861,
+    "after_filters": 851,
+    "games": 851
+   },
+   "2023": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2023.parquet",
+     "bytes": 50819931,
+     "updated_at": "2026-09-07T22:08:37Z"
+    },
+    "games_in_pbp": 903,
+    "non_franchise_dropped": [],
+    "after_join": 903,
+    "after_filters": 899,
+    "games": 899
+   },
+   "2024": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2024.parquet",
+     "bytes": 55269115,
+     "updated_at": "2026-09-07T22:37:16Z"
+    },
+    "games_in_pbp": 946,
+    "non_franchise_dropped": [],
+    "after_join": 946,
+    "after_filters": 943,
+    "games": 943
+   },
+   "2025": {
+    "input": {
+     "source": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_cfb_pbp/play_by_play_2025.parquet",
+     "bytes": 59281459,
+     "updated_at": "2026-09-07T23:08:18Z"
+    },
+    "games_in_pbp": 956,
+    "non_franchise_dropped": [],
+    "after_join": 956,
+    "after_filters": 951,
+    "games": 951
+   }
+  },
   "train_games": 6637,
   "holdout_games": 1894,
+  "league_pts_per_opp": 3.3566,
+  "margins_pinned_to_zero": [],
   "holdout_brier": 0.0657,
   "holdout_log_loss": 0.2172,
   "holdout_accuracy": 0.9108,
   "holdout_resolution": 0.166,
   "holdout_reliability": 0.0011,
-  "epa_only_brier": 0.0805
+  "holdout_uncertainty": 0.2316,
+  "epa_only_brier": 0.0805,
+  "epa_only_paired": {
+   "n": 1894,
+   "mean_delta": -0.0147,
+   "se": 0.0039,
+   "ci95": [
+    -0.0224,
+    -0.0073
+   ],
+   "bootstrap_draws": 1000,
+   "seed": 0,
+   "rule": "mean_delta + 2 * se <= 0"
+  },
+  "calibration": [
+   {
+    "bin": "0.0-0.1",
+    "n": 460,
+    "mean_p": 0.0226,
+    "mean_y": 0.0413
+   },
+   {
+    "bin": "0.1-0.2",
+    "n": 93,
+    "mean_p": 0.1445,
+    "mean_y": 0.2043
+   },
+   {
+    "bin": "0.2-0.3",
+    "n": 64,
+    "mean_p": 0.2432,
+    "mean_y": 0.2188
+   },
+   {
+    "bin": "0.3-0.4",
+    "n": 50,
+    "mean_p": 0.3494,
+    "mean_y": 0.34
+   },
+   {
+    "bin": "0.4-0.5",
+    "n": 40,
+    "mean_p": 0.4503,
+    "mean_y": 0.6
+   },
+   {
+    "bin": "0.5-0.6",
+    "n": 45,
+    "mean_p": 0.5405,
+    "mean_y": 0.6444
+   },
+   {
+    "bin": "0.6-0.7",
+    "n": 61,
+    "mean_p": 0.6539,
+    "mean_y": 0.6885
+   },
+   {
+    "bin": "0.7-0.8",
+    "n": 68,
+    "mean_p": 0.7483,
+    "mean_y": 0.7794
+   },
+   {
+    "bin": "0.8-0.9",
+    "n": 113,
+    "mean_p": 0.8487,
+    "mean_y": 0.8761
+   },
+   {
+    "bin": "0.9-1.0",
+    "n": 900,
+    "mean_p": 0.9837,
+    "mean_y": 0.9867
+   }
+  ],
+  "fp_curve": {
+   "sha256": "b793c8d2ab93004d683c0d2067e33f6919730ee241b355fbe8dbfb0ab41e0fd5",
+   "points": {
+    "1": 0.857407,
+    "20": 1.774698,
+    "50": 2.820492,
+    "80": 3.877698,
+    "99": 6.0
+   }
+  },
+  "holdout_contamination": {
+   "field_position_curve": "cfb_field_position_ep.parquet: isotonic fit on 2018-2021 drives (predates the holdout)",
+   "ep_model": "cfb ep_model.ubj: training_seasons 2004-2025 per its model card, holdout seasons included; the EPA, success and explosiveness inputs carry it",
+   "curve_sensitivity": null
+  },
+  "gates": {
+   "league": {
+    "min_holdout": 1200,
+    "brier": 0.09,
+    "resolution": 0.1,
+    "reliability": 0.01
+   },
+   "paired_rule": "mean_delta + 2 * se <= 0"
+  }
  },
  "games": [
   {
@@ -230,7 +457,7 @@
     "havocAllowedRate": 0.08333333333333333,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.9177918485386026
+   "expectedHomeShare": 0.9177918485386029
   },
   {
    "gameId": "401752847",

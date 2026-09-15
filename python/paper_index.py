@@ -21,11 +21,21 @@ EP-by-yardline curve bundled in sportsdataverse-py.
 from __future__ import annotations
 
 import functools
+import hashlib
 import math
 import pathlib
 
 import polars as pl
 import sportsdataverse
+
+
+def _ep_table_path(league: str = "cfb") -> pathlib.Path:
+    return (
+        pathlib.Path(sportsdataverse.__file__).parent
+        / league
+        / "models"
+        / f"{league}_field_position_ep.parquet"
+    )
 
 
 @functools.cache
@@ -38,22 +48,40 @@ def _ep_table(league: str = "cfb") -> pl.DataFrame:
     imports this module at startup, and a missing parquet must not take the
     server down with it.
     """
-    return pl.read_parquet(
-        pathlib.Path(sportsdataverse.__file__).parent
-        / league
-        / "models"
-        / f"{league}_field_position_ep.parquet"
-    )
+    return pl.read_parquet(_ep_table_path(league))
 
 
-# Fitted by tools/fit_paper_index.py on 2016-2023 finals of each league
-# (holdout 2024-2025: see each oracle fixture's provenance block). A margin
-# the active-set fit pinned to zero (it went negative under collinearity)
-# ships as 0.0: it is an observed input, not a fitted one, so
-# share_from_inputs() leaves it out of the margins it reports.
-# cfb: fitted 2026-09-07. nfl: fitted 2026-09-15 on espn_nfl_pbp rebuilt with
-# scoring_opp keyed to start.yardsToEndzone (sportsdataverse-py #495);
-# explosive-play rate pinned to zero.
+FP_CURVE_ANCHORS = (1, 20, 50, 80, 99)
+
+
+def ep_curve_fingerprint(league: str = "cfb") -> dict:
+    """Identity of the field-position curve the weights were fitted against:
+    the parquet's sha256 and its EP at five anchor yardlines. The trainer
+    writes it into the oracle fixture and the tests assert it against the
+    installed sportsdataverse, so an upstream refit of the curve (sdv-py
+    floats on branch=main) fails loudly instead of quietly moving every
+    served share -- the oracle's avgStartEp inputs are precomputed and would
+    not notice on their own.
+    """
+    ep = dict(_ep_table(league).iter_rows())
+    return {
+        "sha256": hashlib.sha256(_ep_table_path(league).read_bytes()).hexdigest(),
+        "points": {str(y): round(float(ep[y]), 6) for y in FP_CURVE_ANCHORS},
+    }
+
+
+# Fitted by tools/fit_paper_index.py on real finals of each league; the
+# season split, gates, input identities and holdout metrics are in each
+# oracle fixture's provenance block. A margin the active-set fit pinned to
+# zero (it went negative under collinearity) ships as 0.0: it is an observed
+# input, not a fitted one, so share_from_inputs() leaves it out of the
+# margins it reports.
+# cfb: fitted 2026-09-07, train 2016-2023 / holdout 2024-2025.
+# nfl: fitted 2026-09-15, train 2016-2021 / holdout 2022-2025 (holdout
+# widened for power after the 2024-25 holdout failed the paired EPA-only
+# gate), on espn_nfl_pbp rebuilt with scoring_opp keyed to
+# start.yardsToEndzone (sportsdataverse-py #495), made field goals counted
+# in points per opportunity, Pro Bowls dropped.
 WEIGHTS = {
     "cfb": {
         "success": 23.8447,
@@ -66,14 +94,14 @@ WEIGHTS = {
         "turnovers": 0.6005,
     },
     "nfl": {
-        "success": 8.6493,
-        "explosive": 0.0,  # pinned: negative under collinearity with explosiveness
-        "explosive_epa": 1.6660,
-        "opp_conversion": 1.6618,
-        "pts_per_opp": 0.4057,
-        "field_position": 2.4942,
-        "havoc": 6.3671,
-        "turnovers": 0.4945,
+        "success": 8.0168,
+        "explosive": 1.3515,
+        "explosive_epa": 1.7687,
+        "opp_conversion": 1.9427,
+        "pts_per_opp": 0.3468,
+        "field_position": 2.5097,
+        "havoc": 5.7830,
+        "turnovers": 0.4545,
     },
 }
 
@@ -84,7 +112,7 @@ FITTED_LEAGUES = frozenset(WEIGHTS)
 # league average points per scoring opportunity, train seasons only (the
 # neutral value for a team with no opportunity trips); fitted constants,
 # printed by the trainer alongside the weights
-LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 3.6402}
+LEAGUE_PTS_PER_OPP = {"cfb": 3.3566, "nfl": 3.7257}
 
 # Points per opportunity counts the points scored on scoring-opportunity
 # snaps. A made field goal sits on a NON-scrimmage row in both leagues'

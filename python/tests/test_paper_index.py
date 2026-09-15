@@ -11,10 +11,18 @@ documented rounding.
 import json
 import pathlib
 
+import numpy as np
 import polars as pl
 import pytest
 
 import paper_index
+from tools.fit_paper_index import (
+    GATES,
+    fit_logistic_no_intercept,
+    fit_logistic_nonneg,
+    gate_failures,
+    share,
+)
 
 _FIX_DIR = pathlib.Path(__file__).parent / "fixtures"
 FIXTURES = {
@@ -106,8 +114,16 @@ def test_team_inputs_aggregation():
     }
     ti20 = paper_index.team_inputs(_frame(), 20)
     assert ti20["oppConversion"] == 0.5  # no opportunities -> neutral
-    assert ti20["ptsPerOpp"] == paper_index.LEAGUE_PTS_PER_OPP["cfb"]
     assert ti20["havocAllowedRate"] == 0.5
+
+
+@pytest.mark.parametrize("league", ["cfb", "nfl"])
+def test_no_opportunity_fill_is_the_league_neutral(league):
+    # a team with no opportunity trips gets its league's train-season
+    # average points per opportunity, not zero-percent finishing
+    ti20 = paper_index.team_inputs(_frame(), 20, league)
+    assert ti20["ptsPerOpp"] == paper_index.LEAGUE_PTS_PER_OPP[league]
+    assert ti20["ptsPerOpp"] > 0
 
 
 def test_field_goal_points_count_per_league():
@@ -140,12 +156,17 @@ def _fitted(league):
     return {k for k, w in paper_index.WEIGHTS[league].items() if w > 0}
 
 
-def test_margins_are_the_fitted_inputs_only():
-    """A margin the fit pinned to zero (NFL: explosive-play rate) carries no
-    weight, so it is not reported as a factor; the UI lists what it gets."""
-    assert "explosive" in _fitted("cfb")
-    assert "explosive" not in _fitted("nfl")
-    out = paper_index.compute(_frame(), 10, 20, league="nfl")
+def test_margins_are_the_fitted_inputs_only(monkeypatch):
+    """A margin the fit pinned to zero carries no weight, so it is not
+    reported as a factor; the UI lists what it gets. Neither shipped fit pins
+    anything today, so pin one here."""
+    for league in LEAGUES:
+        assert set(paper_index.compute(_frame(), 10, 20, league)["margins"]) == _fitted(league)
+    pinned = {**paper_index.WEIGHTS["nfl"], "explosive": 0.0}
+    monkeypatch.setitem(paper_index.WEIGHTS, "nfl", pinned)
+    assert "explosive" not in _fitted("nfl") and len(_fitted("nfl")) == 7
+    f = _frame().with_columns(pl.Series("period", [1, 1, 2, 2, 1, 1, 2, 2]))
+    out = paper_index.compute(f, 10, 20, league="nfl")
     assert set(out["margins"]) == _fitted("nfl")
     for w in out["byPeriod"].values():
         assert set(w["margins"]) == _fitted("nfl")
@@ -176,19 +197,107 @@ def test_shipped_weights_match_fixture(league):
     output (4-decimal rounding documented in the module). Editing one without
     re-running tools/fit_paper_index.py fails here."""
     fx = FIXTURES[league]
-    assert fx["provenance"].get("league", "cfb") == league
+    prov = fx["provenance"]
+    assert prov["league"] == league
     for k, v in fx["weights"].items():
         assert abs(paper_index.WEIGHTS[league][k] - v) < 5e-5, (league, k, v)
-    assert (
-        abs(paper_index.LEAGUE_PTS_PER_OPP[league] - fx["provenance"]["league_pts_per_opp"])
-        < 5e-5
-    )
+    assert abs(paper_index.LEAGUE_PTS_PER_OPP[league] - prov["league_pts_per_opp"]) < 5e-5
     assert league in paper_index.FITTED_LEAGUES
     # every weight is positive except a margin the trainer recorded as pinned
-    pinned = set(fx["provenance"].get("margins_pinned_to_zero", []))
+    pinned = set(prov["margins_pinned_to_zero"])
     for k, w in paper_index.WEIGHTS[league].items():
         assert w > 0 or (w == 0 and k in pinned), (league, k, w)
     assert len(_fitted(league)) >= 5
+
+
+@pytest.mark.parametrize("league", LEAGUES)
+def test_shipped_curve_is_the_fitted_curve(league):
+    """The weights were fitted against one field-position curve. The oracle
+    stores avgStartEp precomputed, so nothing else would notice an upstream
+    refit of the bundled parquet (sdv-py floats on branch=main): the
+    installed curve must match the fingerprint the trainer recorded."""
+    want = FIXTURES[league]["provenance"]["fp_curve"]
+    got = paper_index.ep_curve_fingerprint(league)
+    assert got["points"] == want["points"], (league, got["points"], want["points"])
+    assert got["sha256"] == want["sha256"], league
+
+
+@pytest.mark.parametrize("league", LEAGUES)
+def test_fixture_metrics_clear_the_gates(league):
+    """The never-lower gates and the paired EPA-only rule, re-asserted on the
+    committed provenance: a fixture that would not pass the trainer today
+    must not sit in the tree."""
+    prov = FIXTURES[league]["provenance"]
+    gates = GATES[league]
+    assert gates is not None, f"{league} ships without pinned gates"
+    assert prov["holdout_games"] >= gates["min_holdout"]
+    assert prov["holdout_brier"] < gates["brier"]
+    assert prov["holdout_resolution"] > gates["resolution"]
+    assert prov["holdout_reliability"] < gates["reliability"]
+    assert prov["holdout_brier"] <= prov["epa_only_brier"]
+    paired = prov["epa_only_paired"]
+    assert paired["mean_delta"] + 2 * paired["se"] <= 0, paired
+    assert paired["ci95"][1] <= 0, paired  # bootstrap agrees
+    assert gate_failures(prov, gates) == []
+    # the record is complete enough to reproduce the fit
+    for key in ("fitted_at", "sportsdataverse", "pbp_source", "seasons", "calibration",
+                "holdout_contamination", "train_seasons", "holdout_seasons"):
+        assert key in prov, key
+    assert prov["sportsdataverse"]["git_sha"]
+    train_first = int(prov["train_seasons"].split("-")[0])
+    train_last = int(prov["train_seasons"].split("-")[1])
+    assert train_last < min(prov["holdout_seasons"])  # disjoint, holdout after train
+    for season, row in prov["seasons"].items():
+        assert train_first <= int(season) <= max(prov["holdout_seasons"])
+        assert row["games"] <= row["after_filters"] <= row["after_join"] <= row["games_in_pbp"]
+        assert row["input"]["bytes"] > 0
+    assert sum(r["n"] for r in prov["calibration"]) == prov["holdout_games"]
+
+
+def test_fit_logistic_nonneg_reenters_a_pinned_margin():
+    """KKT re-entry: on a collinear design the one-way active set pins
+    columns {0, 1}; the KKT loop lets column 0 back in once its partner is
+    gone and ends at {1, 3}, a strictly higher likelihood, with every active
+    weight positive and a non-positive gradient on every pinned one."""
+    rng = np.random.default_rng(384)
+    n, k = 300, 4
+    A = rng.normal(size=(k, k))
+    X = rng.multivariate_normal(np.zeros(k), A @ A.T + 0.05 * np.eye(k), size=n)
+    X /= X.std(axis=0)
+    beta_true = rng.uniform(-1.5, 2.0, size=k)
+    y = (rng.random(n) < 1 / (1 + np.exp(-(X @ beta_true)))).astype(float)
+
+    def one_way(X, y):  # removal only, no re-entry
+        active, dropped = list(range(k)), []
+        while True:
+            b = fit_logistic_no_intercept(X[:, active], y)
+            if not (b < 0).any():
+                break
+            worst = active[int(np.argmin(b))]
+            dropped.append(worst)
+            active.remove(worst)
+        beta = np.zeros(k)
+        beta[active] = b
+        return beta, sorted(dropped)
+
+    def loglik(beta):
+        p = np.clip(share(X, beta), 1e-12, 1 - 1e-12)
+        return float(np.sum(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+    naive_beta, naive_dropped = one_way(X, y)
+    beta, dropped = fit_logistic_nonneg(X, y)
+    assert naive_dropped == [0, 1]
+    assert dropped == [1, 3]  # column 0 re-entered, column 3 left
+    assert (beta[[0, 2]] > 0).all() and (beta[[1, 3]] == 0).all()
+    grad = X[:, dropped].T @ (y - share(X, beta))
+    assert (grad <= 1e-8).all(), grad
+    assert loglik(beta) > loglik(naive_beta) + 1.0
+    # and a design the unconstrained fit already likes is left alone
+    Xp = rng.normal(size=(n, 3))
+    yp = (rng.random(n) < 1 / (1 + np.exp(-(Xp @ np.array([1.0, 0.5, 0.8]))))).astype(float)
+    b_free = fit_logistic_no_intercept(Xp, yp)
+    b_nn, d_nn = fit_logistic_nonneg(Xp, yp)
+    assert d_nn == [] and np.allclose(b_free, b_nn)
 
 
 @pytest.mark.parametrize("league", LEAGUES)
