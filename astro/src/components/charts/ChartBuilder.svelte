@@ -1,6 +1,6 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
-    import { espnLogoLeague, leagueFromLocation, leaguePath } from '../../utils/league';
+    import { espnLogoLeague, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, LAST_YEAR, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
@@ -108,7 +108,7 @@
                             } else if (Object.keys(SPECIAL_IMAGES).includes(String(t.team_id))) {
                                 img.src = SPECIAL_IMAGES[t.team_id];
                             } else {
-                                img.src = (isDarkMode) ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${t.team_id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${t.team_id}.png`
+                                img.src = teamLogoUrl(leagueFromLocation(), t.team_id, isDarkMode)
                             }
                             return img
                         }),
