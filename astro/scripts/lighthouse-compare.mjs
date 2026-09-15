@@ -86,6 +86,15 @@ if (!(RUNS >= 1)) usage('--runs must be >= 1');
 if (!MODES.every((m) => m === 'frontend' || m === 'e2e')) usage(`unknown --mode ${opt.mode}`);
 if (!PRESETS.every((p) => p === 'mobile' || p === 'desktop')) usage(`unknown preset in --presets ${opt.presets}`);
 if (opt['backend-cmd'] && !opt['python-url']) usage('--backend-cmd needs --python-url (the address it serves)');
+// file names derive from routes (the same slug visual-check.mjs uses), so two routes
+// that slug alike would overwrite each other's HTML, reports and screenshots
+const slugOf = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
+const slugOwner = new Map();
+for (const r of routes) {
+  const other = slugOwner.get(slugOf(r));
+  if (other !== undefined && other !== r) usage(`routes ${other} and ${r} map to the same file name "${slugOf(r)}"; pass only one`);
+  slugOwner.set(slugOf(r), r);
+}
 
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8' }).trim();
 const sha = { base: git('rev-parse', `${opt.base}^{commit}`), head: git('rev-parse', `${opt.head}^{commit}`) };
@@ -95,7 +104,7 @@ const WORK = resolve(opt.work ?? join(tmpdir(), 'gop-lighthouse'));
 mkdirSync(join(OUT, 'reports'), { recursive: true });
 mkdirSync(join(OUT, 'logs'), { recursive: true });
 
-const slug = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
+const slug = slugOf;
 const say = (msg) => console.log(`[lighthouse-compare] ${msg}`);
 
 // ---------------------------------------------------------------- lighthouse CLI
@@ -202,6 +211,10 @@ function prepareTree(name) {
     mkdirSync(WORK, { recursive: true });
     say(`${name}: worktree ${short(sha[name])} -> ${dir}`);
     git('worktree', 'add', '--detach', dir, sha[name]);
+  } else {
+    // a reused worktree still carries the previous run's flag rewrite; restore tracked
+    // files so this run's --flags selection starts clean (node_modules/dist are untracked)
+    execFileSync('git', ['-C', dir, 'checkout', '--', '.']);
   }
   const astro = join(dir, 'astro');
   // local secrets (git-ignored) come from the checkout running this script
@@ -581,8 +594,20 @@ for (const [mode, byRoute] of Object.entries(results)) {
     }
   }
 }
-// verdicts need both sides for every preset; a failed setup leaves results empty
-const complete = MODES.every((m) => routes.every((r) => PRESETS.every((p) => summary.results[m]?.[r]?.[p])));
+// A table needs at least one good run on both sides of every preset; a failed setup
+// leaves results empty. A run that errored still counts as a failure (exit 1, listed
+// in the comment) even when the rest of the table renders.
+const cells = MODES.flatMap((m) => routes.flatMap((r) => PRESETS.map((p) => [m, r, p, summary.results[m]?.[r]?.[p]])));
+const complete = cells.every(([, , , c]) => c && c.base.runs > 0 && c.head.runs > 0);
+for (const [m, r, p, c] of cells) {
+  for (const t of ['base', 'head']) {
+    const got = c?.[t].runs ?? 0;
+    if (got === RUNS) continue;
+    const why = c?.[t].errors.length ? `: ${[...new Set(c[t].errors)].join('; ')}` : '';
+    failures.push(`${m} ${r} ${p} ${t}: ${got}/${RUNS} Lighthouse runs succeeded${why}`);
+  }
+}
+summary.failures = failures;
 writeFileSync(join(OUT, 'summary.json'), JSON.stringify(summary, null, 2));
 writeFileSync(join(OUT, 'lighthouse.md'), complete ? markdown(summary) : `Lighthouse comparison incomplete:\n\n${failures.map((f) => `- ${f.split('\n')[0]}`).join('\n')}`);
 say(`wrote ${join(OUT, 'lighthouse.md')} and summary.json`);
