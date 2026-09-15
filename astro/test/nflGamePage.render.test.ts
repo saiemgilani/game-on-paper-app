@@ -79,3 +79,26 @@ describe('GamePage renders a finished NFL game end to end', () => {
         expect(html).not.toContain('/teams/differential');
     });
 });
+
+describe('the NFL game page carries the same v2 blocks as the CFB page (#243 alignment)', () => {
+    test('Deserved Win % renders for an NFL game once the processor emits paperIndex', async () => {
+        // the committed fixture predates sportsdataverse-py #488, which made the
+        // NFL processor emit paperIndex; inject the shape it now returns
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
+        game.paperIndex = {
+            homeShare: 0.62,
+            margins: { success: 0.08, explosive: -0.01, explosive_epa: 0.12, opp_conversion: 0.2, pts_per_opp: 0.5, field_position: 0.1, havoc: 0.02, turnovers: 1 },
+            byPeriod: { q1: { homeShare: 0.55, margins: {} } },
+        };
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const html = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game, league: 'nfl' },
+            request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
+            locals: { league: 'nfl', preview: true },
+        });
+        expect(html).toContain('href="#paper-index-panel"');
+        expect(html).toContain('Deserved Win %');
+    }, 60_000);
+
+});

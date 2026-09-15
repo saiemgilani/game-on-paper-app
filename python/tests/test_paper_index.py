@@ -121,3 +121,12 @@ def test_oracle_real_holdout_games():
 def test_oracle_spans_the_range():
     shares = [g["expectedHomeShare"] for g in FIXTURE["games"]]
     assert min(shares) < 0.15 and max(shares) > 0.85
+
+
+def test_compute_is_none_for_a_league_without_a_fit():
+    # the weights and the field-position EP curve are college fits; the NFL
+    # frame now carries every input, but a college-weighted share must not
+    # ship under an NFL game until an NFL fit lands
+    assert paper_index.compute(_frame(), 10, 20, league="nfl") is None
+    assert paper_index.compute(_frame(), 10, 20, league="cfb") is not None
+    assert paper_index.compute(_frame(), 10, 20) is not None

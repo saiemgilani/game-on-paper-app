@@ -5,14 +5,18 @@ import { leaguePath } from '../../../utils/league';
 import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
+import { LEAGUES, type League } from '../../../utils/league';
 
 interface Props {
     season: number
     advancedBoxScore: ProcessedBoxScore
     percentiles: SDVSeasonPercentile[]
+    league?: League
 }
 
-const {season, advancedBoxScore, percentiles}: Props = $props();
+const {season, advancedBoxScore, percentiles, league = 'cfb'}: Props = $props();
+// the population the percentiles describe: "FBS vs FBS" for college, "NFL" for the pros
+const percentilePool = league === 'cfb' ? `${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool}` : LEAGUES[league].pool;
 const groups = $derived(advancedBoxScore.team.map((group: any) => group.pos_team));
 
 const percentile_title_key_mapping: Record<string, string> = {
@@ -186,7 +190,7 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
     <table class="table table-sm table-responsive">
         <caption class="text-muted small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>). Data from GameOnPaper.com by Akshay Easwaran (<a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a>) and Saiem Gilani (<a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a>) with kneel downs removed.
         {#if percentiles.length > 0}
-            <span> Cell colors reflect the percentile of a team's performance against all single-game FBS vs FBS performances in that stat in {percentileSeason}.</span>
+            <span> Cell colors reflect the percentile of a team's performance against all single-game {percentilePool} performances in that stat in {percentileSeason}.</span>
         {/if}
         </caption>
         <thead>
