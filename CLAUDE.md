@@ -105,6 +105,9 @@ Why the method is what it is (the script enforces all of it):
   alternate.
 - **Findings:** non-overlapping regressions are listed with a likely cause (the
   largest layout-shift element for CLS), along with audits that newly fail.
+- **New routes:** a route the base tree answers 404 to (the PR adds the page) is
+  captured, shot and measured on head only; its table carries absolute PR numbers
+  with no deltas, and the comment marks it as new.
 
 **Hosting images:** the GitHub API cannot upload images, so screenshots go on the
 orphan branch `pr-previews` (`pr<N>/<head-sha7>/…`) and are embedded via
