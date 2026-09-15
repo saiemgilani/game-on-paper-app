@@ -76,7 +76,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
     </table>
 </div>
 )}
-{tackles.length > 0 && (
+{(tackles.length > 0 || tackleGroups.length > 0) && (
 <div class="table-responsive">
     <table class="table table-sm">
         <caption class="text-small text-muted">Tackles: share = (tackles + ½ assists) over the team's total.</caption>

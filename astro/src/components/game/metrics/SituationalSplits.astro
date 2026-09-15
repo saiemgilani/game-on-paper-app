@@ -31,9 +31,11 @@ const sit: Row[] = usage.some(Boolean) ? [
     rows({ label: 'Red-zone TD rate', cells: usage.map((u) => pct(u?.rz_touchdown_rate, 0)) }),
     rows({ label: 'Red-zone points per trip', cells: usage.map((u) => num(u?.rz_points_per_trip, 2)) }),
     rows({ label: 'Red-zone success rate', cells: usage.map((u) => pct(u?.rz_success_rate, 0)) }),
+    rows({ label: 'Red-zone EPA/play', cells: usage.map((u) => num(u?.rz_epa_per_play, 2)) }),
     rows({ label: 'Scoring-opp trips', title: 'Drives with a snap inside the 40', cells: usage.map((u) => u ? `${u.so_trips ?? 0}` : '—') }),
     rows({ label: 'Scoring-opp TD rate', cells: usage.map((u) => pct(u?.so_touchdown_rate, 0)) }),
     rows({ label: 'Scoring-opp points per trip', cells: usage.map((u) => num(u?.so_points_per_trip, 2)) }),
+    rows({ label: 'Scoring-opp success rate', cells: usage.map((u) => pct(u?.so_success_rate, 0)) }),
     rows({ label: 'Scoring-opp EPA/play', cells: usage.map((u) => num(u?.so_epa_per_play, 2)) }),
 ] : [];
 const scriptRows: Row[] = scripts.some((s) => s.scripted || s.non_scripted) ? [

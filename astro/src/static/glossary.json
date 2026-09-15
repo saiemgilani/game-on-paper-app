@@ -156,8 +156,8 @@
         },
         {
             "term": "Scripted drives",
-            "definition": "The opening drives of each game, the ones a head coach plans in the week and calls off a script before adapting to what the defense shows. The scripted columns on the <a href='/year/{season}/coaches/scoring'>head coach scoring board</a> hold EPA per play, success rate and points per drive on those drives; the unscripted columns are every drive after, so the gap between them is a rough read on planning versus in-game adjustment.",
-            "source": "https://gameonpaper.com/coaches/scoring"
+            "definition": "A team's first two drives of each half -- the possessions a head coach plans in the week and calls off a script before adapting to what the defense shows; every drive after is non-scripted. Efficiency on each (EPA per play, success rate, points per drive) appears in the Situational and Special Teams panel of a game page and, summed over a season, in the scripted and unscripted columns of the <a href='/year/{season}/coaches/scoring'>head coach scoring board</a>; the gap between them is a rough read on planning versus in-game adjustment.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         },
         {
             "term": "Scoring opportunity",
@@ -188,11 +188,6 @@
             "term": "Stop Rate",
             "definition": "(From <i>The Athletic</i>) the percentage of a defense's drives that end in punts, turnovers or a turnover on downs.",
             "source": "https://theathletic.com/3926800/2022/11/23/college-football-stop-rate-michigan-ohio-state/"
-        },
-        {
-            "term": "Scripted Drives",
-            "definition": "A team's first two possessions of each half -- the drives coaches typically plan in advance -- versus the non-scripted rest. Efficiency on each (EPA per play, success rate, points per drive) shows whether a team wins with the plan or by adjusting.",
-            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         },
         {
             "term": "Scoring Opportunity Touches",
