@@ -1,10 +1,10 @@
 {
  "weights": {
-  "success": 23.844667586176723,
-  "explosive": 2.8098214466721867,
+  "success": 23.844667586176726,
+  "explosive": 2.8098214466721863,
   "explosive_epa": 3.270310070106871,
   "opp_conversion": 3.4279935860710746,
-  "pts_per_opp": 0.1859995023746981,
+  "pts_per_opp": 0.18599950237469806,
   "field_position": 4.004588277797866,
   "havoc": 5.995812906495098,
   "turnovers": 0.6005295498301815
@@ -12,7 +12,7 @@
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
   "league": "cfb",
-  "fitted_at": "2026-09-15T17:07:45+00:00",
+  "fitted_at": "2026-09-15T17:18:37+00:00",
   "sportsdataverse": {
    "version": "0.1.4",
    "git_sha": "8dbbfa2eb371218deeac9d50c238d3457dc9ed4e"
@@ -283,7 +283,7 @@
     "havocAllowedRate": 0.06557377049180328,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 8.92357329147206e-08
+   "expectedHomeShare": 8.923573291472028e-08
   },
   {
    "gameId": "401628337",
@@ -341,7 +341,7 @@
     "havocAllowedRate": 0.038461538461538464,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.03641824072036588
+   "expectedHomeShare": 0.03641824072036587
   },
   {
    "gameId": "401636915",
@@ -370,7 +370,7 @@
     "havocAllowedRate": 0.05194805194805195,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.15698609250943593
+   "expectedHomeShare": 0.15698609250943588
   },
   {
    "gameId": "401640997",

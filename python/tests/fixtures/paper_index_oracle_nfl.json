@@ -1,18 +1,18 @@
 {
  "weights": {
   "success": 8.016822693115783,
-  "explosive": 1.351512465090437,
-  "explosive_epa": 1.7686923833977102,
-  "opp_conversion": 1.9426815346796587,
+  "explosive": 1.351512465090435,
+  "explosive_epa": 1.7686923833977106,
+  "opp_conversion": 1.9426815346796589,
   "pts_per_opp": 0.3467908981503602,
   "field_position": 2.5096554811502965,
-  "havoc": 5.782960966189234,
-  "turnovers": 0.45452073964546336
+  "havoc": 5.782960966189233,
+  "turnovers": 0.4545207396454633
  },
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
   "league": "nfl",
-  "fitted_at": "2026-09-15T17:07:19+00:00",
+  "fitted_at": "2026-09-15T17:18:08+00:00",
   "sportsdataverse": {
    "version": "0.1.4",
    "git_sha": "8dbbfa2eb371218deeac9d50c238d3457dc9ed4e"
@@ -302,7 +302,7 @@
     "havocAllowedRate": 0.10344827586206896,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.00020206429777180587
+   "expectedHomeShare": 0.00020206429777180622
   },
   {
    "gameId": "401671638",
@@ -316,7 +316,7 @@
     "ptsPerOpp": 1.75,
     "oppConversion": 0.25,
     "avgStartYardsToEndzone": 72.0,
-    "avgStartEp": 1.909928504812464,
+    "avgStartEp": 1.9099285048124635,
     "havocAllowedRate": 0.1864406779661017,
     "turnoversCommitted": 1.0
    },
@@ -331,7 +331,7 @@
     "havocAllowedRate": 0.1076923076923077,
     "turnoversCommitted": 1.0
    },
-   "expectedHomeShare": 0.03082923095184078
+   "expectedHomeShare": 0.03082923095184075
   },
   {
    "gameId": "401772769",
@@ -374,7 +374,7 @@
     "ptsPerOpp": 2.5,
     "oppConversion": 0.8333333333333334,
     "avgStartYardsToEndzone": 69.33333333333333,
-    "avgStartEp": 1.960769594516044,
+    "avgStartEp": 1.9607695945160444,
     "havocAllowedRate": 0.2647058823529412,
     "turnoversCommitted": 2.0
    },
@@ -389,7 +389,7 @@
     "havocAllowedRate": 0.23636363636363636,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.1919661234324343
+   "expectedHomeShare": 0.19196612343243447
   },
   {
    "gameId": "401437796",
@@ -418,7 +418,7 @@
     "havocAllowedRate": 0.2236842105263158,
     "turnoversCommitted": 2.0
    },
-   "expectedHomeShare": 0.3340520153317715
+   "expectedHomeShare": 0.3340520153317714
   },
   {
    "gameId": "401437905",
@@ -476,7 +476,7 @@
     "havocAllowedRate": 0.1694915254237288,
     "turnoversCommitted": 2.0
    },
-   "expectedHomeShare": 0.6107925712338318
+   "expectedHomeShare": 0.6107925712338316
   },
   {
    "gameId": "401437759",

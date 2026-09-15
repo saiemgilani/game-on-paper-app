@@ -299,6 +299,9 @@ def test_fit_logistic_nonneg_reenters_a_pinned_margin():
     b_free = fit_logistic_no_intercept(Xp, yp)
     b_nn, d_nn = fit_logistic_nonneg(Xp, yp)
     assert d_nn == [] and np.allclose(b_free, b_nn)
+    # every margin harmful: the constrained optimum is the zero logit, not a crash
+    b_zero, d_zero = fit_logistic_nonneg(Xp, 1 - yp)
+    assert d_zero == [0, 1, 2] and (b_zero == 0).all()
 
 
 @pytest.mark.parametrize("league", LEAGUES)

@@ -5,9 +5,12 @@ The bundled EP-by-yardline curve a league's weights are fitted against is
 itself fitted on seasons that include the trainer's holdout (see
 fit_paper_index.HOLDOUT_CONTAMINATION). This script refits that curve on the
 league's TRAIN seasons only (the same sdv-py estimator that produced the
-bundled artifact), re-runs the exact trainer code path against it in a
-scratch cache and scratch fixture, and prints both holdout Briers side by
-side. Paste the result into fit_paper_index.CURVE_SENSITIVITY.
+bundled artifact) and runs the trainer's build + fit + holdout scoring
+(fit_paper_index.fit_and_evaluate) against it, with the per-season cache
+redirected to a scratch directory. It is a sensitivity probe, not a
+retrain: it runs no parity check, applies no gates and writes no fixture.
+It prints both holdout Briers side by side; paste the result into
+fit_paper_index.CURVE_SENSITIVITY.
 
 Run (from python/, needs a local pbp dir with the drive columns):
     .venv/bin/python tools/paper_index_curve_sensitivity.py --league nfl \\
@@ -86,7 +89,6 @@ def main(league: str, pbp_dir: str) -> int:
     base = trainer.fit_and_evaluate()["prov"]
     with tempfile.TemporaryDirectory() as tmp:
         trainer.CACHE_DIR = pathlib.Path(tmp) / "cache"
-        trainer.FIXTURE_PATH = pathlib.Path(tmp) / "fixture.json"
         trainer._ep_table = lambda league=league: curve
         paper_index._ep_table = functools.cache(lambda league=league: curve)
         # the ext cache key carries the curve's sha256; a scratch dir keeps

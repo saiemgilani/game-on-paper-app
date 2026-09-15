@@ -270,15 +270,16 @@ def _feature_spec(kind: str) -> str:
     """A hash of the code that builds one kind of cached row: the aggregation
     function's source plus the constants it reads. Any edit to how a row is
     built changes the key, so stale rows cannot serve a refit by default."""
+    shared = [inspect.getsource(_cast_ids), inspect.getsource(_assert_join_kept), str(JOIN_KEEP_FLOOR)]
     if kind == "games":
-        parts = [
+        parts = shared + [
             inspect.getsource(season_game_rows),
             json.dumps(BASE_COLUMNS),
             str(MIN_PLAYS_PER_TEAM),
             json.dumps(sorted(FRANCHISE_ALLOWLIST.get(LEAGUE, ()))),
         ]
     else:
-        parts = [
+        parts = shared + [
             inspect.getsource(season_ext_rows),
             json.dumps(EXT_COLUMNS),
             inspect.getsource(opp_points_mask),
@@ -288,8 +289,11 @@ def _feature_spec(kind: str) -> str:
 
 
 def _cache_path(kind: str, season: int) -> pathlib.Path:
+    # the identity fields only: the same parquet in another directory is the
+    # same input (its path stays in the provenance, not in the key)
+    ident = {k: v for k, v in season_input(season).items() if k != "source"}
     key = hashlib.sha1(
-        (json.dumps(season_input(season), sort_keys=True) + _feature_spec(kind)).encode()
+        (json.dumps(ident, sort_keys=True) + _feature_spec(kind)).encode()
     ).hexdigest()[:12]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return CACHE_DIR / f"{kind}_{season}_{key}.parquet"
@@ -592,7 +596,9 @@ def fit_logistic_nonneg(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, list[
     active = list(range(X.shape[1]))
     dropped: list[int] = []
     for _ in range(8 * X.shape[1]):
-        b = fit_logistic_no_intercept(X[:, active], y)
+        # an empty active set is the zero logit (every share 0.5); the
+        # gradient step below decides whether anything re-enters
+        b = fit_logistic_no_intercept(X[:, active], y) if active else np.zeros(0)
         if (b < 0).any():
             worst = active[int(np.argmin(b))]
             dropped.append(worst)
