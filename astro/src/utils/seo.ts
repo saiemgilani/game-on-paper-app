@@ -336,8 +336,8 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
     scoring: {
         h1: (s, l) => `${coachScope(s, l)} Scoring: Red Zone and Scoring Opportunities`,
         title: (s, l) => `${coachScope(s, l)} Red Zone and Scoring Opportunity Rankings | Game on Paper`,
-        description: (s, l) => `How ${coachPool(s, l)} finishes drives: red-zone touchdown rate and points per trip, scoring-opportunity conversion inside the 40, and the opening scripted drives against the rest of the game.`,
-        intro: 'A scoring opportunity is a drive with a snap inside the opponent\'s 40, a wider net than the red zone that catches field-goal range too. Scripted drives are the opening drives of each game, the ones a head coach plans in the week; the unscripted columns are everything after.',
+        description: (s, l) => `How ${coachPool(s, l)} finishes drives: red-zone touchdown rate and points per trip, scoring-opportunity conversion inside the 40, and the scripted drives (a team\'s first two of each half) against the rest.`,
+        intro: 'A scoring opportunity is a drive with a snap inside the opponent\'s 40, a wider net than the red zone that catches field-goal range too. Scripted drives are a team\'s first two drives of each half, the ones a head coach plans in the week; the unscripted columns are every drive after.',
         variables: ['red-zone touchdown rate', 'red-zone points per trip', 'scoring-opportunity touchdown rate', 'scripted drive EPA per play'],
     },
     'fourth-downs': {

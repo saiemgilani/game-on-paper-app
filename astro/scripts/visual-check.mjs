@@ -41,6 +41,14 @@ const JPEG = process.env.VISUAL_CHECK_FORMAT === 'jpeg';
 const THUMBS = Boolean(process.env.VISUAL_CHECK_THUMBS);
 const shotOpts = JPEG ? { type: 'jpeg', quality: 80 } : {};
 const ext = JPEG ? 'jpg' : 'png';
+// Collapsed panels (`.collapse` blocks behind a [show/hide] toggle) hide their
+// content from a full-page shot. VISUAL_CHECK_EXPAND lists the collapse ids to
+// open before the full-page capture, comma-separated; the default opens a game
+// page's two team-stats panels, whose per-player tables are otherwise never
+// seen. Set it empty to shoot every page exactly as it loads. The above-the-fold
+// thumbnail is taken afterwards from the top and is unaffected.
+const EXPAND = (process.env.VISUAL_CHECK_EXPAND ?? 'away-stats-panel,home-stats-panel')
+  .split(',').map((s) => s.trim()).filter(Boolean);
 // pass routes as args; the default set is one scoreboard, one leaderboard, one
 // team page -- enough surfaces that a layout/theme regression shows up.
 const passed = process.argv.slice(2);
@@ -90,6 +98,19 @@ try {
         // an error page must not be saved under this combination's name (the PR comment
         // would publish it as evidence); the comment shows the combination as missing
         if (failures.length > before) continue;
+        if (EXPAND.length) {
+          // plain class toggles, the same state Bootstrap's collapse leaves behind
+          await page.evaluate((ids) => {
+            for (const id of ids) {
+              const el = document.getElementById(id);
+              if (!el || !el.classList.contains('collapse')) continue;
+              el.classList.add('show');
+              el.classList.remove('hide');
+              document.querySelector(`a[data-bs-toggle="collapse"][href="#${id}"]`)?.setAttribute('aria-expanded', 'true');
+            }
+          }, EXPAND);
+          await page.waitForTimeout(300); // let lazy islands inside the panel paint
+        }
         const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
         await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
         shots.push(`${stem}.${ext}`);

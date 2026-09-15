@@ -32,6 +32,9 @@ import GameHeader from './GameHeader.astro';
 import FilterGroup from '../../layouts/FilterGroup.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
+import SituationalSplits from './metrics/SituationalSplits.astro';
+import UsageBoxScore from './metrics/UsageBoxScore.astro';
+import { hasSituationalSplits, withoutUsageSections } from '../../utils/usage';
 
 interface Props {
    id: string | number
@@ -121,6 +124,8 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#ep-section", title: "EPA Chart" },
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
+    // rendered only when the processor emitted the two-team usage sections
+    ...(hasSituationalSplits(game.advBoxScore) ? [{ href: "#situational-splits-panel", title: "Situational & ST" }] : []),
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
     { href: "#most-important-plays-panel", title: "Most Important Plays" },
@@ -264,12 +269,23 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league} percentiles={percentiles}>
+                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
                             <FallbackSpinner slot="fallback" />
                         </SituationalSection>
                     </Panel>
                 </div>
             </div>
+            {hasSituationalSplits(game.advBoxScore) && (
+            <div class="row mb-3">
+                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                    <Panel id="situational-splits" title="Situational & Special Teams" show={true}>
+                        <div slot="panel-body">
+                            <SituationalSplits box={game.advBoxScore} awayTeam={awayTeam} homeTeam={homeTeam} />
+                        </div>
+                    </Panel>
+                </div>
+            </div>
+            )}
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
@@ -281,6 +297,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
                             />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(awayTeam.id)} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                         </div>
@@ -296,6 +313,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 plays={game.plays}
                                 teamId={parseInt(homeTeam.id)}
                             />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(homeTeam.id)} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                         </div>
