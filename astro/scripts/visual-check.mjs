@@ -79,6 +79,7 @@ try {
       for (const route of routes) {
         const url = BASE + route;
         const where = `${route} (${device.name}/${colorScheme})`;
+        const before = failures.length;
         try {
           const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
           if (res && res.status() >= 400) failures.push(`${where}: HTTP ${res.status()}`);
@@ -86,6 +87,9 @@ try {
         } catch (e) {
           failures.push(`${where}: ${e.message}`);
         }
+        // an error page must not be saved under this combination's name (the PR comment
+        // would publish it as evidence); the comment shows the combination as missing
+        if (failures.length > before) continue;
         const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
         await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
         shots.push(`${stem}.${ext}`);
