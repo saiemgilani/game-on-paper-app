@@ -22,9 +22,14 @@ concurrency:
   group: pr-evidence-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Read-only by default; the evidence job widens it, and even there the token reaches only
+# steps that run workflow-defined shell -- never the PR's own scripts (lighthouse-compare,
+# visual-check, the preview build, the processor, the comment renderer). Checkouts do not
+# persist it. Residual risk: PR code in an earlier step could alter GITHUB_ENV/PATH for a
+# later step; fully isolating that needs a separate workflow_run publisher. This job runs
+# only for same-repository PRs, whose authors already have write access.
 permissions:
-  contents: write        # push screenshots to the pr-previews branch
-  pull-requests: write   # post / update the evidence comment
+  contents: read
 
 jobs:
   evidence:
@@ -33,17 +38,20 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write        # push screenshots to pr-previews (publish step only)
+      pull-requests: write   # post / update the evidence comment (post step only)
     env:
       PR: ${{ github.event.pull_request.number }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       # a final game with full play-by-play: the heaviest page on the site
       DEFAULT_ROUTES: /game/401856682
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
           # the PR merge commit (default for pull_request); full history for the base worktree
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Evidence directory (outside the checkout, so no build or test globs see it)
         run: echo "EVIDENCE_DIR=$RUNNER_TEMP/evidence" >> "$GITHUB_ENV"
@@ -77,6 +85,8 @@ jobs:
 
       - name: Resolve routes
         id: routes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           body="$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '.body // ""')"
           line="$(printf '%s\n' "$body" | sed -n 's/^[[:space:]]*Evidence routes:[[:space:]]*//Ip' | head -1 | tr -d '`\r')"
@@ -105,6 +115,12 @@ jobs:
             --out "$EVIDENCE_DIR" $ROUTES
           echo "exit=$?" >> "$GITHUB_OUTPUT"
 
+      - name: Remove local secrets once the preview is gone
+        # the preview and processor needed them; nothing after this step does. (They were
+        # necessarily readable by the PR code that ran in the comparison step.)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp/gop-lighthouse -name '.dev.vars' -type f -print -delete 2>/dev/null || true
+
       - name: Keep raw reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,6 +133,8 @@ jobs:
       - name: Publish screenshots to pr-previews
         id: publish
         if: always() && steps.compare.outcome == 'success'
+        env:
+          PUSH_TOKEN: ${{ github.token }}
         run: |
           shots="$EVIDENCE_DIR/shots"
           if ! ls "$shots"/*.jpg >/dev/null 2>&1; then echo "no screenshots to publish"; exit 0; fi
@@ -124,8 +142,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
           dest="pr$PR/${PR_HEAD_SHA:0:7}"
+          # one-shot auth for every pr-previews fetch and push (the checkout persists no token);
+          # an unauthenticated fetch failing on a private repo would otherwise fall through to a
+          # fresh orphan branch whose push is then rejected
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
           # full fetch: the checkout is complete history, and a shallow fetch would graft it
-          if git fetch -q origin pr-previews; then
+          if git -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews; then
             git worktree add --detach "$wt" FETCH_HEAD
           else
             git worktree add --detach "$wt" HEAD
@@ -135,18 +158,22 @@ jobs:
           mkdir -p "$wt/$dest"
           cp "$shots"/*.jpg "$wt/$dest/"
           git -C "$wt" add "$dest"
-          git -C "$wt" commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
-          # other PRs push here concurrently; their paths never overlap, so rebase and retry
-          for attempt in 1 2 3 4 5; do
-            git -C "$wt" push -q origin HEAD:refs/heads/pr-previews && break
-            git -C "$wt" fetch -q origin pr-previews
-            git -C "$wt" rebase -q FETCH_HEAD
-            [ "$attempt" = 5 ] && exit 1
-          done
+          # a re-run of the same commit can reproduce identical images: nothing to commit, still publish
+          if ! git -C "$wt" diff --cached --quiet; then
+            git -C "$wt" commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
+            # other PRs push here concurrently; their paths never overlap, so rebase and retry
+            for attempt in 1 2 3 4 5; do
+              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" push -q origin HEAD:refs/heads/pr-previews && break
+              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews
+              git -C "$wt" rebase -q FETCH_HEAD
+              [ "$attempt" = 5 ] && exit 1
+            done
+          fi
           sha="$(git -C "$wt" rev-parse HEAD)"
           echo "image_base=https://raw.githubusercontent.com/${{ github.repository }}/$sha/$dest" >> "$GITHUB_OUTPUT"
 
-      - name: Post or update the evidence comment
+      - name: Render the evidence comment
+        # runs the PR's comment script, so it gets no token
         if: always() && !cancelled()
         env:
           IMAGE_BASE: ${{ steps.publish.outputs.image_base }}
@@ -160,6 +187,14 @@ jobs:
             printf '<!-- pr-evidence -->\n## PR evidence: `%s`\n\nThe evidence run failed before producing results. See the [run log](%s).\n' \
               "${PR_HEAD_SHA:0:7}" "$RUN_URL" > "$body"
           fi
+
+      - name: Post or update the evidence comment
+        # workflow-defined shell only: reads the rendered file, never executes repo code
+        if: always() && !cancelled()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="$RUNNER_TEMP/comment.md"
           id="$(gh api --paginate "repos/${{ github.repository }}/issues/$PR/comments" \
             --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- pr-evidence -->"))) | .id' | tail -1)"
           if [ -n "$id" ]; then
