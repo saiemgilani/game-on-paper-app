@@ -49,7 +49,9 @@ describe('NFL season board', () => {
         const html = await renderBoard('nfl', 'fourth-downs', { season: 2024 });
         expect(html).toContain('2024 NFL Head Coach Fourth Down Decisions: Go Rate and Model Agreement');
         expect(html).toContain('<title>2024 NFL Head Coach Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper</title>');
-        expect(html).toContain('Regular season games only');
+        // the coach tables pool the playoffs (a 2024 row carries 18-21 games), unlike team_summaries
+        expect(html).toContain('Regular season and playoffs');
+        expect(html).not.toContain('Regular season games only');
         expect(html).not.toContain('FBS');
         // 32 head coaches, every one over the 300-play floor: no divider
         expect((html.match(/<tr>/g) ?? []).length).toBeGreaterThanOrEqual(32);
@@ -118,7 +120,7 @@ describe('careers board', () => {
     test('teams and season spans instead of a logo, interim stints under the divider, unranked', async () => {
         const html = await renderBoard('nfl', 'efficiency');
         expect(html).toContain('NFL Head Coach Career Offensive Efficiency: EPA per Play');
-        expect(html).toContain('<th class="text-left" colspan="1">Teams</th>');
+        expect(html).toContain('<th class="text-left text-nowrap" colspan="1">Teams</th>');
         expect(html).toContain('2023–2024 (2)');
         expect(html).not.toContain('teamlogos/');
         expect(html).toContain('coach-partial-divider');

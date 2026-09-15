@@ -51,22 +51,22 @@ const totalColumns = 5 + def.columns.length;
                 <table class="table table-sm table-responsive coach-board" data-board={board} data-sort={sortKey}>
                     <thead>
                         <tr>
-                            <th class="text-right" colspan="1">Rk</th>
-                            <th class="text-left" colspan="1">Head Coach</th>
+                            <th class="text-right text-nowrap" colspan="1">Rk</th>
+                            <th class="text-left text-nowrap" colspan="1">Head Coach</th>
                             {careers ? (
                                 <Fragment>
-                                    <th class="text-left" colspan="1">Teams</th>
+                                    <th class="text-left text-nowrap" colspan="1">Teams</th>
                                     <th class="text-center" colspan="1"><abbr title="First to last season as head coach (seasons)">Seasons</abbr></th>
                                 </Fragment>
                             ) : (
                                 <Fragment>
-                                    <th class="text-left" colspan="1">Team</th>
+                                    <th class="text-left text-nowrap" colspan="1">Team</th>
                                     <th class="text-center" colspan="1"><abbr title="Games as head coach">G</abbr></th>
                                 </Fragment>
                             )}
                             <th class="text-center" colspan="1"><abbr title="Offensive plays as head coach">Plays</abbr></th>
                             {def.columns.map((c) => (
-                                <th class="text-center" colspan="1">
+                                <th class="text-center text-nowrap" colspan="1">
                                     <a class="text-reset text-decoration-none" href={hrefFor(c.key)}><abbr title={c.hover}>{c.label}</abbr></a>
                                     <i class={`bi bi-arrow-${arrow}`} hidden={c.key !== sortKey}></i>
                                 </th>
@@ -77,15 +77,15 @@ const totalColumns = 5 + def.columns.length;
                         {qualified.map((row, i) => (
                             <tr>
                                 <td class="text-right" colspan="1">{ranks[i] ?? '—'}</td>
-                                <td class="text-left" colspan="1"><strong>{row.coach}</strong></td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
                                 {careers ? (
                                     <Fragment>
                                         <td class="text-left" colspan="1">{row.teams}</td>
-                                        <td class="text-center" colspan="1">{formatSeasonSpan(row)}</td>
+                                        <td class="text-center text-nowrap" colspan="1">{formatSeasonSpan(row)}</td>
                                     </Fragment>
                                 ) : (
                                     <Fragment>
-                                        <td class="text-left" colspan="1">
+                                        <td class="text-left text-nowrap" colspan="1">
                                             <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
                                         </td>
                                         <td class="text-center" colspan="1">{row.games}</td>
@@ -105,15 +105,15 @@ const totalColumns = 5 + def.columns.length;
                         {partial.map((row) => (
                             <tr class="coach-partial">
                                 <td class="text-right text-muted" colspan="1">—</td>
-                                <td class="text-left" colspan="1"><strong>{row.coach}</strong></td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
                                 {careers ? (
                                     <Fragment>
                                         <td class="text-left" colspan="1">{row.teams}</td>
-                                        <td class="text-center" colspan="1">{formatSeasonSpan(row)}</td>
+                                        <td class="text-center text-nowrap" colspan="1">{formatSeasonSpan(row)}</td>
                                     </Fragment>
                                 ) : (
                                     <Fragment>
-                                        <td class="text-left" colspan="1">
+                                        <td class="text-left text-nowrap" colspan="1">
                                             <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${row.pos_team}`} title={String(row.pos_team)} />{row.pos_team}</a>
                                         </td>
                                         <td class="text-center" colspan="1">{row.games}</td>

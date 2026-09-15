@@ -80,7 +80,7 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                     {careers
                         ? <Fragment>Every season a coach was the head coach, pooled. Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank. Per-season boards: <a href={leaguePath(league, `/year/${LAST_YEAR}/coaches/${board}`)}>{LAST_YEAR} {def.title.toLowerCase()}</a>.</Fragment>
                         : <Fragment>One row per head coach and team; an in-season change gives each coach his own games. Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank. Career totals: <a href={leaguePath(league, `/coaches/${board}`)}>all seasons, {def.title.toLowerCase()}</a>.</Fragment>}
-                    {league === 'cfb' && " FBS vs FBS games only."}{league === 'nfl' && " Regular season games only."}
+                    {league === 'cfb' && " FBS vs FBS games only."}{league === 'nfl' && " Regular season and playoffs."}
                 </p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per ESPN's game rosters. Click a column heading to sort by it; rows with no clock data show "—".</p>
             </div>
