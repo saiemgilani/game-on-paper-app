@@ -34,7 +34,7 @@ import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
 import SituationalSplits from './metrics/SituationalSplits.astro';
 import UsageBoxScore from './metrics/UsageBoxScore.astro';
-import { hasUsageBox } from '../../utils/usage';
+import { hasSituationalSplits } from '../../utils/usage';
 
 interface Props {
    id: string | number
@@ -273,7 +273,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
             </div>
-            {hasUsageBox(game.advBoxScore) && (
+            {hasSituationalSplits(game.advBoxScore) && (
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="situational-splits" title="Situational & Special Teams" show={true}>

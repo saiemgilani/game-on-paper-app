@@ -28,7 +28,7 @@ const GROUP_LABEL: Record<string, string> = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 
 const groupTag = (g: string | null | undefined) => (g ? ` <span class="text-muted text-small">${GROUP_LABEL[g] ?? g}</span>` : '');
 const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} · ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
 ---
-{usage.length > 0 && (
+{(usage.length > 0 || groups.length > 0) && (
 <div class="table-responsive">
     <table class="table table-sm">
         <caption class="text-small text-muted">Usage: touches, first downs and scoring by ball carrier. Red zone = inside the 20; scoring opportunity = inside the 40. 3D± = third downs converted minus expected at the yards to go.</caption>

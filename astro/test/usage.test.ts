@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { hasUsageBox, madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows } from '../src/utils/usage';
+import { hasSituationalSplits, hasUsageBox, madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows } from '../src/utils/usage';
 
 describe('usage box helpers', () => {
     test('hasUsageBox needs at least one populated section', () => {
@@ -7,6 +7,15 @@ describe('usage box helpers', () => {
         expect(hasUsageBox({} as any)).toBe(false);
         expect(hasUsageBox({ player_usage: [] } as any)).toBe(false);
         expect(hasUsageBox({ st_punters: [{ pos_team: 1 }] } as any)).toBe(true);
+        // every emitted section counts, team-level special teams included
+        expect(hasUsageBox({ st_team: [{ pos_team: 1 }] } as any)).toBe(true);
+        expect(hasUsageBox({ position_group_usage: [{ pos_team: 1 }] } as any)).toBe(true);
+    });
+    test('hasSituationalSplits needs a section the two-team panel reads', () => {
+        expect(hasSituationalSplits({ player_usage: [{ pos_team: 1 }], tackles: [{ def_pos_team: 1 }] } as any)).toBe(false);
+        expect(hasSituationalSplits({ st_team: [{ pos_team: 1 }] } as any)).toBe(true);
+        expect(hasSituationalSplits({ drive_scripting: [{ pos_team: 1, script: 'scripted' }] } as any)).toBe(true);
+        expect(hasSituationalSplits(undefined)).toBe(false);
     });
     test('teamRows compares ids as strings and tolerates missing rows', () => {
         const rows = [{ pos_team: 21, x: 1 }, { pos_team: 6, x: 2 }];

@@ -5,11 +5,26 @@
  */
 import type { ProcessedBoxScore } from '../resources/python';
 
-/** A section is "present" when the processor emitted it with at least one row. */
+/** Every section sportsdataverse.football.usage_box emits. */
+export const USAGE_SECTIONS = [
+    'player_usage', 'position_group_usage', 'tackles', 'position_group_tackles', 'team_usage', 'drive_scripting',
+    'st_kickers', 'st_punters', 'st_returners', 'st_blocks', 'st_team',
+] as const;
+
+/** The sections the two-team Situational & Special Teams panel reads. */
+export const SITUATIONAL_SECTIONS = ['team_usage', 'drive_scripting', 'st_team'] as const;
+
+const anyRows = (box: Partial<ProcessedBoxScore> | null | undefined, keys: readonly string[]): boolean =>
+    !!box && keys.some((k) => Array.isArray((box as any)[k]) && (box as any)[k].length > 0);
+
+/** The usage box is "present" when the processor emitted any section with at least one row. */
 export function hasUsageBox(box: Partial<ProcessedBoxScore> | null | undefined): boolean {
-    if (!box) return false;
-    return ['player_usage', 'team_usage', 'st_kickers', 'st_punters', 'st_returners', 'tackles']
-        .some((k) => Array.isArray((box as any)[k]) && (box as any)[k].length > 0);
+    return anyRows(box, USAGE_SECTIONS);
+}
+
+/** Whether SituationalSplits has a table to render (so the page can skip an empty panel). */
+export function hasSituationalSplits(box: Partial<ProcessedBoxScore> | null | undefined): boolean {
+    return anyRows(box, SITUATIONAL_SECTIONS);
 }
 
 /** Rows of one team, by the section's team column. */
