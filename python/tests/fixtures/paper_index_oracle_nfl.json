@@ -1,18 +1,18 @@
 {
  "weights": {
-  "success": 8.016822693115781,
-  "explosive": 1.3515124650904382,
-  "explosive_epa": 1.76869238339771,
-  "opp_conversion": 1.9426815346796589,
-  "pts_per_opp": 0.34679089815036024,
+  "success": 8.016822693115783,
+  "explosive": 1.351512465090437,
+  "explosive_epa": 1.7686923833977102,
+  "opp_conversion": 1.9426815346796587,
+  "pts_per_opp": 0.3467908981503602,
   "field_position": 2.5096554811502965,
-  "havoc": 5.782960966189233,
-  "turnovers": 0.4545207396454633
+  "havoc": 5.782960966189234,
+  "turnovers": 0.45452073964546336
  },
  "provenance": {
   "script": "python/tools/fit_paper_index.py",
   "league": "nfl",
-  "fitted_at": "2026-09-15T16:53:43+00:00",
+  "fitted_at": "2026-09-15T17:07:19+00:00",
   "sportsdataverse": {
    "version": "0.1.4",
    "git_sha": "8dbbfa2eb371218deeac9d50c238d3457dc9ed4e"
@@ -173,8 +173,8 @@
    "mean_delta": -0.02,
    "se": 0.0054,
    "ci95": [
-    -0.0329,
-    -0.0088
+    -0.031,
+    -0.01
    ],
    "bootstrap_draws": 1000,
    "seed": 0,
@@ -302,7 +302,7 @@
     "havocAllowedRate": 0.10344827586206896,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.00020206429777180622
+   "expectedHomeShare": 0.00020206429777180587
   },
   {
    "gameId": "401671638",
@@ -360,7 +360,7 @@
     "havocAllowedRate": 0.2,
     "turnoversCommitted": 0.0
    },
-   "expectedHomeShare": 0.09053975237717403
+   "expectedHomeShare": 0.090539752377174
   },
   {
    "gameId": "401671812",
@@ -476,7 +476,7 @@
     "havocAllowedRate": 0.1694915254237288,
     "turnoversCommitted": 2.0
    },
-   "expectedHomeShare": 0.6107925712338316
+   "expectedHomeShare": 0.6107925712338318
   },
   {
    "gameId": "401437759",
@@ -519,7 +519,7 @@
     "ptsPerOpp": 5.666666666666667,
     "oppConversion": 1.0,
     "avgStartYardsToEndzone": 70.76923076923077,
-    "avgStartEp": 1.9560870205334275,
+    "avgStartEp": 1.9560870205334273,
     "havocAllowedRate": 0.1780821917808219,
     "turnoversCommitted": 1.0
    },

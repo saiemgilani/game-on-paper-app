@@ -43,9 +43,11 @@ Caching: per-season aggregates live under tools/.paper_index_cache/<league>/,
 one file per (season, input identity, feature spec). A local parquet is
 identified by its size and sha256; a release asset by its size and
 updated_at from the GitHub release API (the espn_*_pbp tags are republished
-in place, so a path is not an identity). The ext rows also carry the
-field-position curve's sha256 and the FG flag in their key, since both are
-baked into the rows. --refresh rebuilds everything. The first NFL refit
+in place, so a path is not an identity). The feature spec is a hash of the
+aggregation code itself (the season_*_rows source, the column lists, the
+filters), so editing how a row is built invalidates the rows without anyone
+remembering to; the ext rows also carry the field-position curve's sha256
+and the FG flag, since both are baked in. --refresh rebuilds everything. The first NFL refit
 served the previous day's cached rows and reproduced the stale result to
 the fourth decimal, which is why the cache is keyed by content.
 
@@ -70,7 +72,7 @@ dropped). Two splits were run, decided once and disclosed:
     widened for power after the 2024-25 holdout failed the paired gate.
     Brier 0.1174 vs EPA-only 0.1374, log-loss 0.3677, 82.8% winner
     agreement, reliability 0.0026, resolution 0.1316; mean(d) -0.0200, se
-    0.0054, mean+2se -0.0092 (bootstrap 95% CI [-0.0312, -0.0096]); every
+    0.0054, mean+2se -0.0092 (bootstrap 95% CI [-0.0310, -0.0100]); every
     weight positive, nothing pinned.
 Without field-goal points (2024-25 split): Brier 0.1198. The fit on the
 pre-#495 data (scoring_opp keyed to the wrong yardline, league points per
@@ -95,6 +97,7 @@ import argparse
 import datetime as dt
 import hashlib
 import importlib.metadata
+import inspect
 import json
 import os
 import pathlib
@@ -195,6 +198,7 @@ FIXTURE_PATH = (
 )
 PBP_URL = _RELEASE.format(league="cfb")
 _INPUTS: dict[int, dict] = {}
+_ASSETS: dict[str, dict[str, dict]] = {}
 
 
 def configure(league: str, pbp_dir: str | None = None, refresh: bool = False) -> None:
@@ -221,7 +225,10 @@ def configure(league: str, pbp_dir: str | None = None, refresh: bool = False) ->
 
 
 def _release_assets(league: str) -> dict[str, dict]:
-    """name -> {size, updated_at} for the league's pbp release (one API call)."""
+    """name -> {size, updated_at} for the league's pbp release (one API call
+    per league per process, memoized)."""
+    if league in _ASSETS:
+        return _ASSETS[league]
     req = urllib.request.Request(
         _RELEASE_API.format(league=league), headers={"Accept": "application/vnd.github+json"}
     )
@@ -230,9 +237,10 @@ def _release_assets(league: str) -> dict[str, dict]:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=60) as resp:
         release = json.load(resp)
-    return {
+    _ASSETS[league] = {
         a["name"]: {"size": a["size"], "updated_at": a["updated_at"]} for a in release["assets"]
     }
+    return _ASSETS[league]
 
 
 def season_input(season: int) -> dict:
@@ -258,9 +266,30 @@ def season_input(season: int) -> dict:
     return ident
 
 
-def _cache_path(kind: str, season: int, extra: str = "") -> pathlib.Path:
+def _feature_spec(kind: str) -> str:
+    """A hash of the code that builds one kind of cached row: the aggregation
+    function's source plus the constants it reads. Any edit to how a row is
+    built changes the key, so stale rows cannot serve a refit by default."""
+    if kind == "games":
+        parts = [
+            inspect.getsource(season_game_rows),
+            json.dumps(BASE_COLUMNS),
+            str(MIN_PLAYS_PER_TEAM),
+            json.dumps(sorted(FRANCHISE_ALLOWLIST.get(LEAGUE, ()))),
+        ]
+    else:
+        parts = [
+            inspect.getsource(season_ext_rows),
+            json.dumps(EXT_COLUMNS),
+            inspect.getsource(opp_points_mask),
+            _ext_key_extra(),
+        ]
+    return hashlib.sha1("\n".join(parts).encode()).hexdigest()
+
+
+def _cache_path(kind: str, season: int) -> pathlib.Path:
     key = hashlib.sha1(
-        (json.dumps(season_input(season), sort_keys=True) + extra).encode()
+        (json.dumps(season_input(season), sort_keys=True) + _feature_spec(kind)).encode()
     ).hexdigest()[:12]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return CACHE_DIR / f"{kind}_{season}_{key}.parquet"
@@ -410,7 +439,7 @@ def _ext_key_extra() -> str:
 
 def season_ext_rows(season: int) -> pl.DataFrame:
     """Per-game-team opp conversion, field position, havoc-allowed; cached."""
-    cache = _cache_path("ext", season, _ext_key_extra())
+    cache = _cache_path("ext", season)
     if (out := _cached(cache)) is not None:
         return out
     cols = EXT_COLUMNS + (["fg_made"] if OPP_POINTS_INCLUDE_FG[LEAGUE] else [])
@@ -458,6 +487,9 @@ def season_ext_rows(season: int) -> pl.DataFrame:
         .then(pl.col("opp_converted") / pl.col("opp_trips"))
         .otherwise(0.5),
     )
+    # a team-game with no drive ids at all would vanish here, unseen by the
+    # game-level joins downstream
+    _assert_join_kept(out, base, f"{season} drive rows")
     out.write_parquet(cache)
     return out
 
@@ -523,6 +555,9 @@ def build_games() -> tuple[pl.DataFrame, float, dict]:
     )
     for s, n in games.group_by("season").len().iter_rows():
         per_season[str(s)]["games"] = n
+    # a fixed row order: the joins above come out of a hash join, and the
+    # seeded bootstrap below must not depend on which thread finished first
+    games = games.sort(["season", "game_id"])
     return games, league_ppo, per_season
 
 
@@ -616,23 +651,37 @@ def calibration_table(p: np.ndarray, y: np.ndarray, bins: int = 10) -> list[dict
 
 def paired_epa_delta(p: np.ndarray, p_epa: np.ndarray, y: np.ndarray, draws: int = 1000) -> dict:
     """The paired per-game Brier difference against the EPA-only baseline:
-    mean, standard error and a bootstrap 95% interval (seeded)."""
+    mean, standard error and a bootstrap 95% interval (seeded; the rows
+    arrive in a fixed order, see build_games). Full precision -- the
+    provenance copy is rounded separately."""
     d = (p - y) ** 2 - (p_epa - y) ** 2
     se = float(d.std(ddof=1) / np.sqrt(len(d)))
     rng = np.random.default_rng(0)
     boot = np.array([rng.choice(d, len(d)).mean() for _ in range(draws)])
     return {
         "n": int(len(d)),
-        "mean_delta": round(float(d.mean()), 4),
-        "se": round(se, 4),
-        "ci95": [
-            round(float(np.percentile(boot, 2.5)), 4),
-            round(float(np.percentile(boot, 97.5)), 4),
-        ],
+        "mean_delta": float(d.mean()),
+        "se": se,
+        "ci95": [float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5))],
         "bootstrap_draws": draws,
         "seed": 0,
         "rule": PAIRED_RULE,
     }
+
+
+def _rounded(metrics: dict, places: int = 4) -> dict:
+    """The serialized copy of a metrics dict: floats to `places`, recursively."""
+    out = {}
+    for k, v in metrics.items():
+        if isinstance(v, float):
+            out[k] = round(v, places)
+        elif isinstance(v, list):
+            out[k] = [round(x, places) if isinstance(x, float) else x for x in v]
+        elif isinstance(v, dict):
+            out[k] = _rounded(v, places)
+        else:
+            out[k] = v
+    return out
 
 
 def sdv_identity() -> dict:
@@ -645,7 +694,9 @@ def sdv_identity() -> dict:
 
 
 def gate_failures(prov: dict, gates: dict | None) -> list[str]:
-    """Every gate the fit fails, as messages; empty means it may ship."""
+    """Every gate the fit fails, as messages; empty means it may ship. The
+    trainer passes full-precision metrics; the tests pass the committed
+    (rounded) provenance as a re-check of the record."""
     out = []
     if gates is not None:
         if prov["holdout_games"] < gates["min_holdout"]:
@@ -661,9 +712,11 @@ def gate_failures(prov: dict, gates: dict | None) -> list[str]:
     paired = prov["epa_only_paired"]
     if paired["mean_delta"] + 2 * paired["se"] > 0:
         out.append(
-            f"EPA-only not beaten at 2 se: mean delta {paired['mean_delta']}, se {paired['se']}, "
+            f"EPA-only not beaten at 2 se: mean delta {paired['mean_delta']:.4f}, se {paired['se']:.4f}, "
             f"mean + 2se = {paired['mean_delta'] + 2 * paired['se']:.4f} > 0"
         )
+    if paired["ci95"][1] > 0:
+        out.append(f"bootstrap 95% interval reaches zero: upper bound {paired['ci95'][1]:.4f}")
     return out
 
 
@@ -718,6 +771,17 @@ def fit_and_evaluate() -> dict:
     )
     pc = np.clip(p_hold, 1e-15, 1 - 1e-15)
     rel, res, unc = brier_decomposition(p_hold, yh)
+    # full precision: the gates read these; the provenance copy is rounded
+    metrics = {
+        "holdout_brier": float(np.mean((p_hold - yh) ** 2)),
+        "holdout_log_loss": float(-np.mean(yh * np.log(pc) + (1 - yh) * np.log(1 - pc))),
+        "holdout_accuracy": float(((p_hold > 0.5) == (yh == 1)).mean()),
+        "holdout_resolution": float(res),
+        "holdout_reliability": float(rel),
+        "holdout_uncertainty": float(unc),
+        "epa_only_brier": float(np.mean((p_epa - yh) ** 2)),
+        "epa_only_paired": paired_epa_delta(p_hold, p_epa, yh),
+    }
     prov = {
         "script": "python/tools/fit_paper_index.py",
         "league": LEAGUE,
@@ -731,14 +795,7 @@ def fit_and_evaluate() -> dict:
         "holdout_games": int(len(yh)),
         "league_pts_per_opp": league_ppo,
         "margins_pinned_to_zero": dropped,
-        "holdout_brier": round(float(np.mean((p_hold - yh) ** 2)), 4),
-        "holdout_log_loss": round(float(-np.mean(yh * np.log(pc) + (1 - yh) * np.log(1 - pc))), 4),
-        "holdout_accuracy": round(float(((p_hold > 0.5) == (yh == 1)).mean()), 4),
-        "holdout_resolution": round(res, 4),
-        "holdout_reliability": round(rel, 4),
-        "holdout_uncertainty": round(unc, 4),
-        "epa_only_brier": round(float(np.mean((p_epa - yh) ** 2)), 4),
-        "epa_only_paired": paired_epa_delta(p_hold, p_epa, yh),
+        **_rounded(metrics),
         "calibration": calibration_table(p_hold, yh),
         "fp_curve": ep_curve_fingerprint(LEAGUE),
         "holdout_contamination": {
@@ -754,6 +811,7 @@ def fit_and_evaluate() -> dict:
         "beta": beta,
         "p_hold": p_hold,
         "prov": prov,
+        "metrics": {**metrics, "holdout_games": int(len(yh))},
     }
 
 
@@ -808,7 +866,7 @@ def main() -> int:
             f"holdout n={prov['holdout_games']}, Brier {prov['holdout_brier']}, resolution "
             f"{prov['holdout_resolution']}, reliability {prov['holdout_reliability']} before shipping"
         )
-    failures = gate_failures(prov, gates)
+    failures = gate_failures(r["metrics"], gates)
     if failures:
         for msg in failures:
             print(f"GATE FAILED: {msg}")

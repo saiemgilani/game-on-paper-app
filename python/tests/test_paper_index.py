@@ -1,8 +1,9 @@
 """Paper Index: unit + real-game oracle tests.
 
-Each league's oracle fixture holds 12 real 2024-2025 holdout games (inputs
-aggregated from the released play-by-play, expected shares computed by the
-trainer at full weight precision). The shipped WEIGHTS are rounded to 4
+Each league's oracle fixture holds 12 real holdout games from that league's
+holdout seasons (college 2024-2025, NFL 2022-2025; inputs aggregated from the
+released play-by-play, expected shares computed by the trainer at full weight
+precision). The shipped WEIGHTS are rounded to 4
 decimals, so the share tolerance is 5e-4 -- tight enough that a wrong sign, a
 dropped margin, or an edited weight fails loudly, loose enough for the
 documented rounding.
