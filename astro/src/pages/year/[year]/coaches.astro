@@ -1,0 +1,12 @@
+---
+import { prepareCoachIndex } from "../../../routes/leaderboards";
+
+// a hub with nothing of its own: send the reader to the default board
+const r = prepareCoachIndex(Astro, 'cfb');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---

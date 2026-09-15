@@ -1,0 +1,14 @@
+---
+import CoachLeaderboardPage from "../../../../../components/leaderboards/CoachLeaderboardPage.astro";
+import { prepareCoachBoard } from "../../../../../routes/leaderboards";
+
+const r = prepareCoachBoard(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+
+<CoachLeaderboardPage season={r.season} board={r.board} metric={r.metric} />

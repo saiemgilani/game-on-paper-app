@@ -1,14 +1,16 @@
 /**
  * Page-side step of the season leaderboards (`/year/[year]/teams[/category]`,
- * `/year/[year]/players[/category]`): the league, the category check and the
- * current-season redirect. Both leagues' pages call these and render the
- * shared leaderboard components.
+ * `/year/[year]/players[/category]`, `/year/[year]/coaches[/board]`,
+ * `/coaches[/board]`): the league, the category check and the current-season
+ * redirect. Both leagues' pages call these and render the shared leaderboard
+ * components.
  */
 import type { AstroGlobal } from 'astro';
 import { CURRENT_YEAR, LAST_YEAR } from '../utils/constants';
 import { leaguePath, teamCategoriesFor, type League } from '../utils/league';
 import { modifyMetricForCategory } from '../utils/misc';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
+import { COACH_BOARDS, DEFAULT_COACH_BOARD, resolveCoachSort } from '../utils/coaches';
 
 export interface LeaderboardParams {
     season: number;
@@ -70,4 +72,55 @@ export function preparePlayerCategory(Astro: AstroGlobal, league: League): Leade
     }
     const metric = Astro.url.searchParams.get("sort") || "TEPA";
     return { season, category, metric };
+}
+
+export interface CoachBoardParams {
+    /** absent on the careers board, which pools every season */
+    season?: number;
+    board: string;
+    metric: string;
+}
+
+export type CoachBoardPrep = { redirect: string } | { notFound: true } | CoachBoardParams;
+
+// /year/[year]/coaches and /coaches are hubs with nothing of their own: they
+// send the reader to the default board (the current season to the last
+// completed one, as the team hub does).
+export function prepareCoachIndex(Astro: AstroGlobal, league: League): { redirect: string } | { notFound: true } {
+    Astro.locals.league = league;
+    if (Astro.params.year === undefined) {
+        return { redirect: leaguePath(league, `/coaches/${DEFAULT_COACH_BOARD}`) };
+    }
+    const season = seasonOf(Astro);
+    if (season === null) return { notFound: true };
+    const target = season === CURRENT_YEAR ? LAST_YEAR : season;
+    return { redirect: leaguePath(league, `/year/${target}/coaches/${DEFAULT_COACH_BOARD}`) };
+}
+
+// /year/[year]/coaches/[board]: an unknown board or a malformed year is a 404,
+// the current season redirects, `?sort=` must name a column the board has.
+export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoardPrep {
+    Astro.locals.league = league;
+    const { board } = Astro.params;
+    if (!board || !(board in COACH_BOARDS)) {
+        return { notFound: true };
+    }
+    const season = seasonOf(Astro);
+    if (season === null) return { notFound: true };
+    if (season === CURRENT_YEAR) {
+        return { redirect: leaguePath(league, `/year/${LAST_YEAR}/coaches/${board}`) };
+    }
+    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));
+    return { season, board, metric };
+}
+
+// /coaches/[board]: careers pool every season, so there is no year to check.
+export function prepareCoachCareers(Astro: AstroGlobal, league: League): CoachBoardPrep {
+    Astro.locals.league = league;
+    const { board } = Astro.params;
+    if (!board || !(board in COACH_BOARDS)) {
+        return { notFound: true };
+    }
+    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));
+    return { board, metric };
 }
