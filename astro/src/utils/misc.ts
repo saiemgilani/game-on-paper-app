@@ -360,6 +360,10 @@ export function cleanField(team: any, field: string): string {
         return ""
     }
 
+    if (team.pos_team_id && MEME_LIST.includes(Number(team.pos_team_id))) {
+        return team[field]?.toLocaleLowerCase() || ""
+    }
+
     if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
         return team[field]?.toLocaleLowerCase() || ""
     }

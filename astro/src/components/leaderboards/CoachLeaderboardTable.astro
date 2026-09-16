@@ -1,5 +1,6 @@
 ---
 import { COACH_BOARDS, COACH_MIN_PLAYS, formatCoachValue, formatSeasonSpan, numericValue, rankCoachRows, resolveCoachSort, sortCoachRows, splitByMinPlays, type CoachRow } from '../../utils/coaches';
+import { MEME_STRING_LIST } from '../../utils/constants';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanField, countRegexMatches, generateColorRampValue } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
@@ -39,6 +40,29 @@ const teamIds = careers ? [] : [...new Set(qualified.concat(partial).map((r) => 
 // Rk, Coach, Team|Teams, G|Seasons, Plays, then the board's metrics
 const totalColumns = 5 + def.columns.length;
 
+function formatCoachString(row: CoachRow): string {
+    if (!row.coach) {
+        return "N/A"
+    }
+    if (typeof(row.coach) == "number") {
+        return "N/A"
+    }
+    if (!row.teams) {
+        return row.coach
+    }
+    if (typeof(row.teams) == "number") {
+        return row.coach
+    }
+
+    for (const s of row.teams.split(",")) {
+        if (MEME_STRING_LIST.includes(s)) {
+            return row.coach?.toString().toLocaleLowerCase()
+        }
+    }
+    
+    return row.coach
+}
+
 function formatTeamStrings(teams?: string | number | null): string {
     if (!teams) {
         return "N/A"
@@ -46,6 +70,12 @@ function formatTeamStrings(teams?: string | number | null): string {
     if (typeof(teams) == "number") {
         return "N/A"
     }
+    for (const s of teams.split(",")) {
+        if (MEME_STRING_LIST.includes(s)) {
+            teams = teams.replace(s, s.toLocaleLowerCase())
+        }
+    }
+    
     const countCommas = countRegexMatches(teams, /,/g);
     return countCommas > 1 ? `<abbr title="${teams}">${countCommas} teams</abbr>` : teams
 }
@@ -88,7 +118,7 @@ function formatTeamStrings(teams?: string | number | null): string {
                         {qualified.map((row, i) => (
                             <tr>
                                 <td class="text-right" colspan="1">{ranks[i] ?? '—'}</td>
-                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{formatCoachString(row)}</strong></td>
                                 {careers ? (
                                     <Fragment>
                                         <td class="text-left" colspan="1"><Fragment set:html={formatTeamStrings(row.teams)} /></td>
@@ -116,7 +146,7 @@ function formatTeamStrings(teams?: string | number | null): string {
                         {partial.map((row) => (
                             <tr class="coach-partial">
                                 <td class="text-right text-muted" colspan="1">—</td>
-                                <td class="text-left text-nowrap" colspan="1"><strong>{row.coach}</strong></td>
+                                <td class="text-left text-nowrap" colspan="1"><strong>{cleanField(row, "coach")}</strong></td>
                                 {careers ? (
                                     <Fragment>
                                         <td class="text-left" colspan="1">{formatTeamStrings(row.teams)}</td>
