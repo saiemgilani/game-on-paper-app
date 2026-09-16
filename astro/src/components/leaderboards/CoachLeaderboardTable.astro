@@ -127,7 +127,7 @@ function formatTeamStrings(teams?: string | number | null): string {
                                 ) : (
                                     <Fragment>
                                         <td class="text-left" colspan="1">
-                                            <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${cleanField(row, "pos_team")}`} title={cleanField(row, "pos_team")} /><strong>{cleanField(row, "pos_team")}</strong></a>
+                                            <a href={teamHref(row)}><img class={`img-fluid team-logo-${row.pos_team_id} me-2`} width="20px" src={logoSrc(row)} alt={`ESPN team id ${row.pos_team_id} ${cleanField(row, "pos_team")}`} title={cleanField(row, "pos_team")} />{cleanField(row, "pos_team")}</a>
                                         </td>
                                         <td class="text-center" colspan="1">{row.games}</td>
                                     </Fragment>
