@@ -1,11 +1,12 @@
 import { describe, expect, test, vi } from 'vitest';
 
-// The sitemap once the NFL is promoted ('nfl': 'on'): the /nfl season,
+// The sitemap once the NFL is promoted ('nfl': 'on', with 'coaches': 'on' too): the /nfl season,
 // leaderboard and team blocks mirror the cfb ones. Kept as its own file so the
 // promotion path stays tested while the flag is still 'preview'.
 vi.mock('../src/utils/features', async (orig) => {
     const real = await orig<typeof import('../src/utils/features')>();
-    return { ...real, FLAGS: { ...real.FLAGS, nfl: 'on' } };
+    // the /nfl coach boards need their own flag public as well
+    return { ...real, FLAGS: { ...real.FLAGS, nfl: 'on', coaches: 'on' } };
 });
 
 import { GET } from '../src/pages/sitemap.xml';

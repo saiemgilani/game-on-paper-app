@@ -29,6 +29,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'
     // when the NFL launches -- nothing else changes.
     'nfl': 'preview',
+    // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
+    // their /nfl twins, the header's Head Coaches section and the sitemap's
+    // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
+    // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
+    'coaches': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {
