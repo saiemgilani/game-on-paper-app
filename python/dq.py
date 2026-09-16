@@ -77,11 +77,17 @@ def _parse_ca(v):
     return _num(parts[0]), _num(parts[1])
 
 
-def _official_box(plays, team_box):
+def _official_box(plays, team_box, league="cfb"):
     """Per-team stats under official conventions, derived from plays.
 
     See the module docstring for the convention list and its measurement.
+    The conventions differ by league on one point: college scoring counts a
+    sack as a rushing attempt with negative rushing yards, while the NFL counts
+    it as neither a rush nor a pass attempt and takes the yardage off net
+    passing -- which is how ESPN's NFL box (``rushingAttempts``,
+    ``completionAttempts``, ``netPassingYards``) is built.
     """
+    nfl = league == "nfl"
     agg = {}
 
     def team(tid):
@@ -105,8 +111,11 @@ def _official_box(plays, team_box):
             a = team(tid)
             yards = _num(p.get("statYardage")) or 0.0
             if p.get("sack") == True:  # noqa: E712
-                a["rush_attempts"] += 1
-                a["rush_yards"] += _num(p.get("yds_sacked")) or 0.0
+                if nfl:
+                    a["pass_yards"] += _num(p.get("yds_sacked")) or 0.0
+                else:
+                    a["rush_attempts"] += 1
+                    a["rush_yards"] += _num(p.get("yds_sacked")) or 0.0
             elif p.get("rush") == True:  # noqa: E712
                 a["rush_attempts"] += 1
                 a["rush_yards"] += yards
@@ -148,7 +157,29 @@ def _official_box(plays, team_box):
     return agg
 
 
-def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
+_CLOCK_TYPES = frozenset(
+    {
+        "Timeout",
+        "Official Timeout",
+        "Two-minute warning",
+        "Two-Minute Warning",
+        "End Period",
+        "End of Half",
+        "End of Game",
+    }
+)
+
+
+def _play_type(play):
+    """ESPN's play type text, whether the record is still flat (``type.text``)
+    or already reshaped by ``app._reshape_records`` (``type: {text}``)."""
+    t = play.get("type")
+    if isinstance(t, dict):
+        return t.get("text")
+    return play.get("type.text")
+
+
+def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None, league="cfb"):
     """Per-team box deltas + game-level lints for one completed game."""
     ts = datetime.now(timezone.utc)
     base = {
@@ -160,7 +191,7 @@ def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     rows = []
     box = processed_game.get("advBoxScore") or {}
     plays = processed_game.get("plays") or []
-    ours_by_team = _official_box(plays, box.get("team"))
+    ours_by_team = _official_box(plays, box.get("team"), league)
     for espn in box.get("espn_team") or []:
         tid = espn.get("team_id")
         if tid is None or int(tid) not in ours_by_team:
@@ -194,17 +225,27 @@ def build_dq_rows(processed_game, game_id, sdv_version=None, sdv_sha=None):
     # Reference-free lints: espn is NULL and the expectation is delta == 0.
     plays = processed_game.get("plays") or []
     scrimmage = [p for p in plays if p.get("scrimmage_play") == True]  # noqa: E712
+    # Clock stoppages ("Timeout", "Official Timeout", "Two-minute warning", end
+    # of period) are not plays: any EPA on them leaks straight into the team
+    # totals (2026 NFL week 1: -0.9 to -18.2 EPA per team-game before the
+    # sportsdataverse-py fix), and the manifest cannot see it.
+    clock_rows = [p for p in plays if _play_type(p) in _CLOCK_TYPES]
     lints = {
         "lint:epa_null": sum(1 for p in scrimmage if p.get("EPA") is None),
+        "lint:clock_scrimmage": sum(1 for p in clock_rows if p.get("scrimmage_play") == True),  # noqa: E712
+        "lint:clock_epa": sum(1 for p in clock_rows if abs(_num(p.get("EPA")) or 0.0) > 1e-9),
         "lint:wp_oob": sum(
             1
             for p in plays
             for v in (p.get("wp_before"), p.get("wp_after"))
             if v is not None and not (0.0 <= v <= 1.0)
         ),
+        # scrimmage plays only: a kickoff after a touchdown legitimately carries
+        # the scoring team's EP_end plus the receiving team's EP_start, so
+        # special-teams rows fired this on every game in both leagues
         "lint:ep_between_big": sum(
             1
-            for p in plays
+            for p in scrimmage
             if p.get("EP_between") is not None and abs(p["EP_between"]) > 3.0
         ),
     }

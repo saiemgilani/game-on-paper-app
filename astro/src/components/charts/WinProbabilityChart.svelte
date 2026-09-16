@@ -1,6 +1,6 @@
 <script>
 import Chart from 'chart.js/auto';
-import { espnLogoLeague, leagueFromLocation } from '../../utils/league';
+import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
@@ -288,9 +288,14 @@ async function generateChart() {
                     }
 
                     if (!homeImage.src) {
-                        homeImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${homeTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${homeTeam.id}.png`;
+                        homeImage.src = teamLogoUrl(leagueFromLocation(), homeTeam.id, isDarkMode);
                     }
 
+                    // a missing dark variant must not cost the chart its logo: retry the light one once
+                    homeImage.onerror = () => {
+                        const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false);
+                        if (homeImage.src !== light) homeImage.src = light;
+                    };
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
@@ -308,9 +313,14 @@ async function generateChart() {
                     }
 
                     if (!awayImage.src) {
-                        awayImage.src = isDarkMode ? `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500-dark/${awayTeam.id}.png` : `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${awayTeam.id}.png`;
+                        awayImage.src = teamLogoUrl(leagueFromLocation(), awayTeam.id, isDarkMode);
                     }
 
+                    // a missing dark variant must not cost the chart its logo: retry the light one once
+                    awayImage.onerror = () => {
+                        const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false);
+                        if (awayImage.src !== light) awayImage.src = light;
+                    };
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it

@@ -5,6 +5,7 @@ import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, teamCategoriesFor } from '../utils/league';
+import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -598,13 +599,19 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
         const req = await wrappedFetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const contentRaw: string = await req.text();
-        if (req.ok && contentRaw && cacheEnabled) {
-            console.info(`SDV API cache update: ${endpointURL}`)
-            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
-        } else if (!req.ok) {
+        if (!req.ok) {
             throw new Error(`Request returned with status ${req.statusText}, content: ${contentRaw}`)
         }
         const content = JSON.parse(contentRaw);
+        // Every SDV table answers { data: [...] }; a 200 carrying anything else (an
+        // `{ error }` body, say) is not worth serving for the TTL, so it is parsed
+        // and checked before it can reach the cache. Was cached first, checked never.
+        if (cacheEnabled && Array.isArray(content?.data)) {
+            console.info(`SDV API cache update: ${endpointURL}`)
+            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
+        } else if (cacheEnabled) {
+            console.warn(`SDV API response without a data array, not cached: ${endpointURL}`)
+        }
         return content;
     } catch (e) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
@@ -967,4 +974,79 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
         record: `${wins}-${losses}`,
         confRecord: (confLosses + confWins) > 0 ? `${confWins}-${confLosses}` : undefined
     }
+}
+
+// ---- head-coach tendencies ------------------------------------------------
+// Three season tables the nfl-data / cfb-data producers build from the same
+// play-by-play as team_summaries, sharing one metric vocabulary: team_tendencies
+// (season x team), coach_tendencies (season x team x head coach) and
+// coach_careers (one row per coach, every season pooled -- no season column).
+// Read like team_summaries: `select` only columns known to exist (an unknown
+// column is a 400 and an empty page), a multi-day KV TTL, [] on any failure.
+// No season fallback loop: a season the tables lack renders as "no data".
+
+const COACH_TENDENCIES_TTL = 60 * 60 * 24 * 3;
+const COACH_ROW_LIMIT = 400;
+
+export interface SDVTeamTendency extends CoachRow {
+    season: number
+    pos_team_id: number | string
+    pos_team: string
+    games: number
+    plays: number
+    drives: number
+}
+
+export interface SDVCoachTendency extends SDVTeamTendency {
+    coach: string
+    role: string
+}
+
+export interface SDVCoachCareer extends CoachRow {
+    coach: string
+    role: string
+    /** comma-joined team display names */
+    teams: string
+    seasons: number
+    first_season: number
+    last_season: number
+    games: number
+    plays: number
+    drives: number
+}
+
+const TEAM_TENDENCY_KEYS = ['season', 'pos_team_id', 'pos_team', 'games', 'plays', 'drives'];
+const COACH_TENDENCY_KEYS = [...TEAM_TENDENCY_KEYS, 'coach', 'role'];
+const COACH_CAREER_KEYS = ['coach', 'role', 'teams', 'seasons', 'first_season', 'last_season', 'games', 'plays', 'drives'];
+
+async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League): Promise<T[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    const metrics = columns && columns.length > 0 ? columns : coachMetricColumns();
+    const payload: Record<string, string> = {
+        ...filters,
+        select: [...new Set([...keys, ...metrics])].join(','),
+        limit: String(COACH_ROW_LIMIT),
+    };
+    try {
+        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, league);
+        return Array.isArray(content?.data) ? content.data : [];
+    } catch (err) {
+        console.error(`ERROR while loading ${table} from SDV (${JSON.stringify(filters)}): ${err}`);
+        return [];
+    }
+}
+
+export interface SDVSeasonTendencyRequest { season: number; league?: League; columns?: string[] }
+
+export async function retrieveTeamTendencies({ season, league = 'cfb', columns }: SDVSeasonTendencyRequest): Promise<SDVTeamTendency[]> {
+    return requestTendencyTable<SDVTeamTendency>('team_tendencies', TEAM_TENDENCY_KEYS, { season: String(season) }, columns, league);
+}
+
+/** Head coaches only (`role=HC`); a coordinator row, if the builder ever emits one, never lands on the HC board. */
+export async function retrieveCoachTendencies({ season, league = 'cfb', columns }: SDVSeasonTendencyRequest): Promise<SDVCoachTendency[]> {
+    return requestTendencyTable<SDVCoachTendency>('coach_tendencies', COACH_TENDENCY_KEYS, { season: String(season), role: 'HC' }, columns, league);
+}
+
+export async function retrieveCoachCareers({ league = 'cfb', columns }: { league?: League; columns?: string[] } = {}): Promise<SDVCoachCareer[]> {
+    return requestTendencyTable<SDVCoachCareer>('coach_careers', COACH_CAREER_KEYS, { role: 'HC' }, columns, league);
 }

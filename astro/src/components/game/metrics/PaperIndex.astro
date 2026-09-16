@@ -2,6 +2,7 @@
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import { adjustTeamColorsForContrast, cleanAbbreviation, roundNumber, rgbToHex } from '../../../utils/misc';
+import { espnLogoLeague } from '../../../utils/league';
 
 interface Props {
     result: {
@@ -52,14 +53,14 @@ const periods = PERIOD_ORDER
     <div class="row mb-3" slot="panel-body">
         <div class="col-lg-8 col-12 d-flex flex-column justify-content-center mb-3 mb-lg-0">
             <div class="d-flex align-items-center gap-2">
-                <img class={`img-fluid team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
+                <img class={`img-fluid team-logo-${awayTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${awayTeam.id}.png`} alt={awayTeam.abbreviation} />
                 <span class="fw-bold" style="min-width: 4ch">{awayPct}%</span>
                 <div class="progress flex-grow-1" style="height: 24px" role="meter" aria-label={meterLabel} aria-valuenow={homePct} aria-valuetext={`${homeTeam.abbreviation} ${homePct}%`} aria-valuemin="0" aria-valuemax="100">
                     <div class="progress-bar" style={`width: ${awayPct}%; background-color: ${barColor(awayTeam, "#888888")}`}></div>
                     <div class="progress-bar" style={`width: ${homePct}%; background-color: ${barColor(homeTeam, "#444444")}`}></div>
                 </div>
                 <span class="fw-bold" style="min-width: 4ch">{homePct}%</span>
-                <img class={`img-fluid team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
+                <img class={`img-fluid team-logo-${homeTeam.id}`} width="28" height="28" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${homeTeam.id}.png`} alt={homeTeam.abbreviation} />
             </div>
             {periods.length > 0 && (
                 <div class="d-flex flex-wrap gap-3 mt-3" aria-label="Deserved Win % by quarter">
@@ -80,7 +81,7 @@ const periods = PERIOD_ORDER
                 <thead>
                     <tr>
                         <th>Margin</th>
-                        <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
+                        <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
                     </tr>
                 </thead>
                 <tbody>

@@ -2,7 +2,7 @@
 import type { ProcessedPlay } from "../../../resources/python"
 import { espnLogoLeague } from '../../../utils/league';
 import { leaguePath } from "../../../utils/league"
-import { TURNOVER_VEC } from "../../../utils/constants";
+import { playShade } from "../../../utils/playShade";
 import { formatDistance, formatYardline, roundNumber, cleanAbbreviation } from "../../../utils/misc";
 import { playIcons } from "../../../utils/playIcons";
 import ExplosivePlayMarkSprite from "./ExplosivePlayMarkSprite.astro";
@@ -16,14 +16,8 @@ interface Props {
 const { play, expandable, prefix } = Astro.props;
 
 
-let classText = "";
-if (TURNOVER_VEC.includes(play.type.text) || (play.text.includes("fumble") && play.change_of_pos_team) || (play.start.down == 4 && play.statYardage < play.start.distance && !play.type.text.includes('Punt') && !play.type.text.includes('Timeout'))) {
-    classText = " table-danger"
-} else if (play.scoringPlay == true || play.scoring_play == true) {
-    classText = " table-success"
-} else if (play.text.toLocaleLowerCase().includes("penalty")) {
-    classText = " table-warning"
-}
+const shade = playShade(play as any);
+let classText = shade ? ` ${shade}` : "";
 
 let gameClock = `Q${play.period}`;
 if (play.period > 5) {

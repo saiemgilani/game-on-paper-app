@@ -57,7 +57,8 @@ export interface DatasetSpec {
     name: string;
     description: string;
     url: string;
-    season: number;
+    /** one season, or an ISO interval ("2019/2024") for a table that pools seasons; omitted when unknown */
+    season?: number | string;
     variables: string[];
     league?: League;
 }
@@ -71,7 +72,7 @@ export function datasetJsonLd(spec: DatasetSpec) {
         name: spec.name,
         description: spec.description,
         url,
-        temporalCoverage: `${spec.season}`,
+        ...(spec.season !== undefined ? { temporalCoverage: `${spec.season}` } : {}),
         keywords: [sportNoun(spec.league), 'EPA', 'expected points added', 'EPA per play', 'success rate', 'advanced stats'],
         creator: { '@type': 'Organization', name: 'Game on Paper', url: ORIGIN },
         isAccessibleForFree: true,
@@ -292,3 +293,65 @@ export const PLAYER_LEADERBOARD_COPY: Record<string, Omit<LeaderboardCopy, 'intr
 };
 
 export const PLAYER_LEADERBOARD_CATEGORIES = Object.keys(PLAYER_LEADERBOARD_COPY);
+
+/**
+ * Copy for the head-coach boards. `season` is null on the careers page, which
+ * pools every season a coach has led. The words here are the words people
+ * search: "head coach", the league, "fourth down", "pace", "pass rate".
+ */
+type CoachBoardCopy = {
+    h1: (season: number | null, l?: League) => string;
+    title: (season: number | null, l?: League) => string;
+    description: (season: number | null, l?: League) => string;
+    intro: string;
+    /** the schema.org variableMeasured names */
+    variables: string[];
+};
+
+const coachScope = (s: number | null, l?: League) => (s === null ? `${sportTitle(l)} Head Coach Career` : `${s} ${sportTitle(l)} Head Coach`);
+const coachPool = (s: number | null, l?: League) => (s === null ? `every ${poolNoun(l)} head coach across every season we have` : `every ${poolNoun(l)} head coach in ${s}`);
+
+export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
+    pace: {
+        h1: (s, l) => `${coachScope(s, l)} Pace: Seconds per Play`,
+        title: (s, l) => `${coachScope(s, l)} Pace Rankings: Seconds per Play, Plays per Game | Game on Paper`,
+        description: (s, l) => `How fast ${coachPool(s, l)} plays: seconds of game clock per offensive play, situation-neutral pace, plays per game and plays per drive. Sortable head coach tendencies.`,
+        intro: 'Seconds per play is game clock elapsed per offensive snap over drives with a usable clock, so the number is the tempo the head coach chose rather than the length of the game. Situation-neutral pace drops the two-minute drill and blowouts, where the score dictates the tempo.',
+        variables: ['seconds per play', 'situation-neutral seconds per play', 'plays per game', 'plays per drive'],
+    },
+    tendencies: {
+        h1: (s, l) => `${coachScope(s, l)} Run/Pass Tendencies: Situation-Neutral Pass Rate`,
+        title: (s, l) => `${coachScope(s, l)} Pass Rate by Down, Score and Situation | Game on Paper`,
+        description: (s, l) => `The run/pass balance of ${coachPool(s, l)}: situation-neutral pass rate, early-down pass rate, pass rate by down and while leading, tied or trailing. Sortable head coach tendencies.`,
+        intro: 'Situation-neutral pass rate counts only snaps where the game is still in the balance (win probability between 20% and 80%, in regulation, outside the last two minutes of a half), so it reflects the head coach\'s philosophy instead of the scoreboard. The down and score splits show where that balance moves.',
+        variables: ['pass rate', 'situation-neutral pass rate', 'early-down pass rate', 'pass rate by down'],
+    },
+    efficiency: {
+        h1: (s, l) => `${coachScope(s, l)} Offensive Efficiency: EPA per Play`,
+        title: (s, l) => `${coachScope(s, l)} Efficiency Rankings: EPA per Play, Success Rate | Game on Paper`,
+        description: (s, l) => `The offense under ${coachPool(s, l)} ranked by EPA per play, with success rate, explosive-play rate, yards per play, third-down conversion over expected and points per drive.`,
+        intro: 'EPA per play is the average number of expected points an offense adds on each snap given down, distance and field position; success rate is the share of snaps that add any. These are the raw team numbers credited to the head coach for the games he coached, not adjusted for opponent.',
+        variables: ['EPA per play', 'success rate', 'explosive-play rate', 'yards per play', 'third-down conversion over expected', 'points per drive'],
+    },
+    scoring: {
+        h1: (s, l) => `${coachScope(s, l)} Scoring: Red Zone and Scoring Opportunities`,
+        title: (s, l) => `${coachScope(s, l)} Red Zone and Scoring Opportunity Rankings | Game on Paper`,
+        description: (s, l) => `How ${coachPool(s, l)} finishes drives: red-zone touchdown rate and points per trip, scoring-opportunity conversion inside the 40, and the scripted drives (a team\'s first two of each half) against the rest.`,
+        intro: 'A scoring opportunity is a drive with a snap inside the opponent\'s 40, a wider net than the red zone that catches field-goal range too. Scripted drives are a team\'s first two drives of each half, the ones a head coach plans in the week; the unscripted columns are every drive after.',
+        variables: ['red-zone touchdown rate', 'red-zone points per trip', 'scoring-opportunity touchdown rate', 'scripted drive EPA per play'],
+    },
+    'fourth-downs': {
+        h1: (s, l) => `${coachScope(s, l)} Fourth Down Decisions: Go Rate and Model Agreement`,
+        title: (s, l) => `${coachScope(s, l)} Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper`,
+        description: (s, l) => `Fourth down decisions by ${coachPool(s, l)}: go rate, agreement with the win-probability model, go rate when the model says go or kick, conversion rate, and win probability left on the field per decision.`,
+        intro: 'On every fourth down the model compares the win probability of going for it, kicking and punting. Agreement rate is how often the head coach made the model\'s call; win probability left on the field is the gap between the chosen play and the best one, summed over the decisions where they differed, so a lower number is better.',
+        variables: ['fourth-down go rate', 'fourth-down agreement rate', 'go rate when the model says go', 'fourth-down conversion rate', 'win probability left on the field'],
+    },
+    defense: {
+        h1: (s, l) => `${coachScope(s, l)} Defense: EPA per Play Allowed`,
+        title: (s, l) => `${coachScope(s, l)} Defensive Rankings: EPA per Play and Success Rate Allowed | Game on Paper`,
+        description: (s, l) => `What the defense allowed under ${coachPool(s, l)}: EPA per play, success rate, explosive-play rate, third-down conversions, red-zone touchdowns and points per drive allowed. Lower is better.`,
+        intro: 'Every column here is what opposing offenses did against the head coach\'s defense, so lower is better throughout. As with the offensive boards, the numbers are raw and cover the games he coached.',
+        variables: ['EPA per play allowed', 'success rate allowed', 'explosive-play rate allowed', 'third-down conversion rate allowed', 'points per drive allowed'],
+    },
+};

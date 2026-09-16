@@ -146,6 +146,48 @@ _BAD_COLS = [
 ]
 
 
+def _game_drives(processed_game):
+    """ESPN's drives grouping in game order, each drive exactly once.
+
+    A live ESPN summary lists the drive in ``drives.current`` inside
+    ``drives.previous`` as well (DEN @ KC 401872931, 2026-09-14), so appending
+    ``current`` to ``previous`` counted that drive twice: an extra drive for
+    the team, a 23rd chart row where 22 drives were played, and every average
+    (scoring %, yards, plays, time of possession) skewed. The frontend's drives
+    table already dedupes by id; the drive summary never did. First occurrence
+    wins, which keeps game order.
+    """
+    grouping = processed_game.get("drives") or {}
+    drives = list(grouping.get("previous") or [])
+    if grouping.get("current"):
+        drives.append(grouping["current"])
+    seen, unique = set(), []
+    for drive in drives:
+        key = drive.get("id") if isinstance(drive, dict) else None
+        if key is not None:
+            if key in seen:
+                continue
+            seen.add(key)
+        unique.append(drive)
+    return unique
+
+
+def _frameless_features(game):
+    """The frame-dependent features a request loses when ``plays_frame`` is absent.
+
+    Span boxes are listed only when span_box's own lookup also comes up empty:
+    it falls back to ``plays_json`` when that is still a polars frame, so the
+    log must not report a feature skipped that in fact rendered.
+    """
+    if getattr(game, "plays_frame", None) is not None:
+        return []
+    skipped = ["drive summary", "situational stats"]
+    if span_box._plays_frame(game) is None:
+        skipped.append("span boxes")
+    skipped.append("paper index")
+    return skipped
+
+
 def _reshape_records(plays):
     """Fold sdv-py's flat dotted columns back into ESPN's nested shape.
 
@@ -339,6 +381,16 @@ def _process_game(league: str, game_id: int):
         _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
 
+        # Every block below reads the processor's enriched polars frame and is
+        # fail-open, so a processor that never exposes one (NFLPlayProcess
+        # before sportsdataverse-py's plays_frame landed) silently drops them.
+        # Say so once per request instead of letting features vanish unlogged.
+        skipped = _frameless_features(game)
+        if skipped:
+            logging.getLogger("root").warning(
+                f"{league} processor exposed no plays_frame for {game_id}: {', '.join(skipped)} skipped"
+            )
+
         # Both of these must precede serialization: the span swap mutates
         # processed_game, and everything after `return` is dead code -- which is
         # exactly where the DQ emit sat unnoticed until CodeRabbit flagged the
@@ -348,10 +400,7 @@ def _process_game(league: str, game_id: int):
         # fail-open like everything else on this route.
         try:
             frame = getattr(game, "plays_frame", None)
-            drv = (processed_game.get("drives") or {}).get("previous") or []
-            cur = (processed_game.get("drives") or {}).get("current")
-            if cur:
-                drv = drv + [cur]
+            drv = _game_drives(processed_game)
             if frame is not None and drv:
                 summary = drive_summary.create_drive_summary(
                     drv, frame,
@@ -400,7 +449,7 @@ def _process_game(league: str, game_id: int):
             frame = getattr(game, "plays_frame", None)
             if frame is not None:
                 pidx = paper_index.compute(
-                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0]
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0], league=league
                 )
                 if pidx:
                     processed_game["paperIndex"] = pidx
@@ -411,10 +460,7 @@ def _process_game(league: str, game_id: int):
 
         try:
             frame = getattr(game, "plays_frame", None)
-            drv_all = (processed_game.get("drives") or {}).get("previous") or []
-            cur = (processed_game.get("drives") or {}).get("current")
-            if cur:
-                drv_all = drv_all + [cur]
+            drv_all = _game_drives(processed_game)
             if frame is not None:
                 hid, aid = frame["homeTeamId"][0], frame["awayTeamId"][0]
                 ds_spans, sit_spans = {}, {}
@@ -555,7 +601,8 @@ def _emit_dq(game_id, game, processed_game):
         "type"
     ) or {}
     if status.get("completed") is True:
-        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA):
+        league = (getattr(g, "gop_meta", None) or {}).get("league", "cfb")
+        for row in dq.build_dq_rows(processed_game, game_id, _SDV_VERSION, _SDV_SHA, league=league):
             TEL.push("dq_boxscore", row)
 
 

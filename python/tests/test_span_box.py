@@ -114,3 +114,44 @@ def test_all_span_boxes_survives_one_bad_window():
     boxes = span_box.all_span_boxes(G())
     assert "q2" not in boxes
     assert boxes["q1"] == {"n": 1} and boxes["h2"] == {"n": 2}
+
+
+def test_frameless_features_reports_span_boxes_only_when_span_box_skips_them():
+    import app
+
+    class Framed:
+        plays_frame = frame()
+
+    class ListPlays:  # what a real processor leaves: plays_json as dicts
+        plays_frame = None
+        plays_json = frame().to_dicts()
+
+    class FramePlays:  # plays_json still a frame: span_box's fallback renders boxes
+        plays_frame = None
+        plays_json = frame()
+
+        def create_box_score(self, df):
+            return {"n": df.height}
+
+    assert app._frameless_features(Framed()) == []
+    assert app._frameless_features(ListPlays()) == [
+        "drive summary",
+        "situational stats",
+        "span boxes",
+        "paper index",
+    ]
+    assert "span boxes" not in app._frameless_features(FramePlays())
+    assert span_box.all_span_boxes(FramePlays())  # and it really did render them
+
+
+def test_game_drives_counts_a_live_current_drive_once():
+    # live ESPN summaries repeat drives.current inside drives.previous (401872931)
+    import app
+
+    d1, d2, d3 = {"id": "1"}, {"id": "2"}, {"id": "3", "description": "7 plays, 68 yards, 4:23"}
+    live = {"drives": {"previous": [d1, d2, d3], "current": dict(d3)}}
+    assert [d["id"] for d in app._game_drives(live)] == ["1", "2", "3"]
+    # current not yet in previous: appended once, in order
+    assert [d["id"] for d in app._game_drives({"drives": {"previous": [d1, d2], "current": d3}})] == ["1", "2", "3"]
+    assert app._game_drives({"drives": {"previous": [d1], "current": None}}) == [d1]
+    assert app._game_drives({}) == []
