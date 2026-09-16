@@ -743,3 +743,10 @@ export function deduplicateByKey(array: any[], key: string): any[] {
         return seen.hasOwnProperty(val) ? false : (seen[val] = true);
     });
 }
+
+export function countRegexMatches(str: string, pattern: RegExp): number {
+    if (!str) {
+        return 0;
+    }
+    return (str.match(pattern) || []).length
+}

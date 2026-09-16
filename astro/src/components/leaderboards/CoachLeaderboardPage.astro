@@ -78,28 +78,26 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                 <p class="m-0 mb-2 text-muted">{copy.intro}</p>
                 <p class="m-0 text-muted text-small">
                     {careers
-                        ? <Fragment>Every season a coach was the head coach, pooled. Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank. Per-season boards: <a href={leaguePath(league, `/year/${LAST_YEAR}/coaches/${board}`)}>{LAST_YEAR} {def.title.toLowerCase()}</a>.</Fragment>
-                        : <Fragment>One row per head coach and team; an in-season change gives each coach his own games. Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank. Career totals: <a href={leaguePath(league, `/coaches/${board}`)}>all seasons, {def.title.toLowerCase()}</a>.</Fragment>}
+                        ? <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank.</Fragment>
+                        : <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank.</Fragment>}
                     {league === 'cfb' && " FBS vs FBS games only."}{league === 'nfl' && " Regular season and playoffs."}
                 </p>
-                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per ESPN's game rosters. Click a column heading to sort by it; rows with no clock data show "—".</p>
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per ESPN's game rosters. Click a column heading to sort by it. Rows with no clock data show "—".</p>
             </div>
             <div class="ms-auto col-lg-5 col-xs-12">
                 <form class="mb-3 d-flex justify-content-xs-start justify-content-lg-end coach-board-form" id="coach-board-form">
                     <div class="row">
-                        {!careers && (
-                            <div class="col-auto mb-3">
-                                <label class="visually-hidden" for="coach-season">Season</label>
-                                {/* no island: a plain select whose values are the destination URLs */}
-                                <select id="coach-season" class="form-select form-select-md" onchange="window.location.href = this.value">
-                                    {seasons.map((y) => (
-                                        <option value={leaguePath(league, `/year/${y}/coaches/${board}`)} selected={y === season}>{y}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
                         <div class="col-auto mb-3">
-                            <label class="visually-hidden" for="coach-board">Board</label>
+                            <label class="visually-hidden" for="coach-season">Season</label>
+                            <select id="coach-season" class="form-select form-select-md" onchange="window.location.href = this.value">
+                                <option value={leaguePath(league, `/coaches/${board}`)}>Career</option>
+                                {seasons.map((y) => (
+                                    <option value={leaguePath(league, `/year/${y}/coaches/${board}`)} selected={y === season}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div class="col-auto mb-3">
+                            <label class="visually-hidden" for="coach-board">Leaderboard option</label>
                             <select id="coach-board" class="form-select form-select-md" onchange="window.location.href = this.value">
                                 {COACH_BOARD_SLUGS.map((b) => (
                                     <option value={`${boardBase}/${b}`} selected={b === board}>{COACH_BOARDS[b].title}</option>
@@ -108,12 +106,6 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                         </div>
                     </div>
                 </form>
-                <ul class="nav nav-pills justify-content-lg-end coach-board-nav" aria-label="Head coach boards">
-                    {COACH_BOARD_SLUGS.map((b) => (
-                        <li class="nav-item"><a class={`nav-link py-1 ${b === board ? 'active' : ''}`} aria-current={b === board ? 'page' : undefined} href={`${boardBase}/${b}`}>{COACH_BOARDS[b].title}</a></li>
-                    ))}
-                    <li class="nav-item"><a class="nav-link py-1" href={careers ? leaguePath(league, `/year/${LAST_YEAR}/coaches/${board}`) : leaguePath(league, `/coaches/${board}`)}>{careers ? `${LAST_YEAR} season` : 'Careers'}</a></li>
-                </ul>
             </div>
         </div>
     </div>
