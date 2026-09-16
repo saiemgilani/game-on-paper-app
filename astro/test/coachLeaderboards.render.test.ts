@@ -101,9 +101,9 @@ describe('NFL season board', () => {
     test('navigation: every board, the careers link, the season select, and the header entry', async () => {
         const html = await renderBoard('nfl', 'tendencies', { season: 2024 });
         for (const b of ['pace', 'tendencies', 'efficiency', 'scoring', 'fourth-downs', 'defense']) {
-            expect(html).toContain(`href="/nfl/year/2024/coaches/${b}"`);
+            expect(html).toContain(`value="/nfl/year/2024/coaches/${b}"`);
         }
-        expect(html).toContain('href="/nfl/coaches/tendencies"');
+        expect(html).toContain('value="/nfl/coaches/tendencies"');
         expect(html).toContain('value="/nfl/year/2023/coaches/tendencies"');
         expect(html).not.toContain('value="/nfl/year/2026/coaches/tendencies"'); // the current season redirects
         // the shared header offers the coach boards to every page
@@ -132,7 +132,7 @@ describe('careers board', () => {
         // the partial rows carry a dash for a rank, never a number
         expect(below).toMatch(/<td class="text-right text-muted" colspan="1">—<\/td>/);
         // links back to the season boards
-        expect(html).toContain('href="/nfl/year/2025/coaches/efficiency"');
+        expect(html).toContain('value="/nfl/year/2025/coaches/efficiency"');
         expect(html).toContain('gameonpaper.com/nfl/coaches/efficiency');
         // the Dataset's coverage is what the rows span, not the league's season range
         expect(html).toContain('"temporalCoverage":"2023/2024"');
