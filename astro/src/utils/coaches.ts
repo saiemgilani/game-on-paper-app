@@ -137,6 +137,17 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
 export const COACH_BOARD_SLUGS = Object.keys(COACH_BOARDS);
 export const DEFAULT_COACH_BOARD = 'pace';
 
+/**
+ * Whether a pathname is one of the head-coach board routes the 'coaches' flag
+ * gates: `/coaches`, `/coaches/<board>`, `/year/<N>/coaches[/<board>]`, and the
+ * same four under `/nfl`. Segment-exact, so `/coachesx` and a team named
+ * "coaches" elsewhere in a path are not matched.
+ */
+export function isCoachBoardPath(pathname: string): boolean {
+    const p = pathname === '/nfl' || pathname.startsWith('/nfl/') ? pathname.slice(4) || '/' : pathname;
+    return /^\/coaches(\/|$)/.test(p) || /^\/year\/[^/]+\/coaches(\/|$)/.test(p);
+}
+
 /** Rows with fewer plays sit below a divider, unranked: interim stints and partial seasons. */
 export const COACH_MIN_PLAYS = { season: 300, careers: 1500 } as const;
 

@@ -37,6 +37,9 @@ function buildEntries(): Entry[] {
     // so the NFL is advertised only once the 'nfl' flag is public; until then
     // every /nfl URL is a 404 and a sitemap must never list one.
     const nflPublic = FLAGS['nfl'] === 'on';
+    // Same rule for the head-coach boards: a gated route answers 404, so no coach
+    // URL is listed until the 'coaches' flag is public.
+    const coachesPublic = FLAGS['coaches'] === 'on';
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
         ...(nflPublic ? [
@@ -69,7 +72,7 @@ function buildEntries(): Entry[] {
             out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
             for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
             for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/nfl/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
-            for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/nfl/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
+            if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/nfl/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
         }
         // week 18 arrived with the 17-game schedule in 2021
         const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
@@ -93,7 +96,7 @@ function buildEntries(): Entry[] {
         for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
         // Head-coach boards (pace, run/pass, ...): one per season, like the team
         // categories; CURRENT_YEAR redirects to LAST_YEAR and is skipped above.
-        for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
+        if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
     }
 
     for (const league of (nflPublic ? ['cfb', 'nfl'] : ['cfb']) as readonly ('cfb' | 'nfl')[]) {
@@ -101,7 +104,7 @@ function buildEntries(): Entry[] {
         if (league === 'nfl') out.push({ loc: '/nfl/teams', lastmod: today, changefreq: 'weekly', priority: '0.7' });
         // Coach careers pool every season, so they move whenever a season does.
         // /coaches itself redirects to the default board and is not listed.
-        for (const b of COACH_BOARD_SLUGS) out.push({ loc: lp(`/coaches/${b}`), lastmod: today, changefreq: 'weekly', priority: '0.6' });
+        if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: lp(`/coaches/${b}`), lastmod: today, changefreq: 'weekly', priority: '0.6' });
         for (const team of retrieveAllTeams(league)) {
             out.push({
                 loc: lp(`/team/${team.team_id}`),

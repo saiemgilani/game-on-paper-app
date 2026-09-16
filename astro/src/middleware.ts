@@ -11,6 +11,7 @@ import {
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
+import { isCoachBoardPath } from './utils/coaches';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -111,6 +112,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // the page file stay one-to-one.
   const effectivePath = previewRewrite ? new URL(previewRewrite, url).pathname : url.pathname;
   if ((effectivePath === '/nfl' || effectivePath.startsWith('/nfl/')) && !isFeatureEnabled('nfl', context.locals)) {
+    previewRewrite = '/404';
+  }
+  // The head-coach boards are a 'preview' feature of their own, for both
+  // leagues -- the same namespace gate, so a public /coaches or
+  // /year/N/coaches/<board> (and the /nfl twins) is the site's 404.
+  if (isCoachBoardPath(effectivePath) && !isFeatureEnabled('coaches', context.locals)) {
     previewRewrite = '/404';
   }
 

@@ -36,7 +36,9 @@ async function renderBoard(league: 'cfb' | 'nfl', board: string, opts: { season?
     return container.renderToString(Page, {
         props: { season: opts.season, board, metric: opts.metric ?? '' },
         request: new Request(`https://gameonpaper.com${path}`),
-        locals: { league },
+        // the boards are behind the 'coaches' flag, so the only viewer who reaches
+        // one holds the preview cookie -- render as that viewer (header entry included)
+        locals: { league, preview: true },
     });
 }
 
@@ -203,7 +205,7 @@ describe('nfl page files render the shared component as NFL', () => {
         const html = await container.renderToString(Page, {
             params: { year: '2024', board: 'fourth-downs' },
             request: new Request('https://gameonpaper.com/nfl/year/2024/coaches/fourth-downs'),
-            locals: {},
+            locals: { preview: true },
         });
         expect(html).toContain('2024 NFL Head Coach Fourth Down Decisions');
         expect(html).toContain('href="/nfl/year/2024/team/12"');
@@ -215,7 +217,7 @@ describe('nfl page files render the shared component as NFL', () => {
         const html = await container.renderToString(Page, {
             params: { board: 'pace' },
             request: new Request('https://gameonpaper.com/nfl/coaches/pace'),
-            locals: {},
+            locals: { preview: true },
         });
         expect(html).toContain('NFL Head Coach Career Pace: Seconds per Play');
         expect(html).toContain('href="/nfl/year/2025/coaches/pace"');
@@ -226,7 +228,7 @@ describe('nfl page files render the shared component as NFL', () => {
         const html = await container.renderToString(Page, {
             params: { year: '2024', board: 'pace' },
             request: new Request('https://gameonpaper.com/year/2024/coaches/pace'),
-            locals: {},
+            locals: { preview: true },
         });
         expect(html).toContain('2024 College Football Head Coach Pace');
         expect(html).toContain('href="/year/2024/team/12"');

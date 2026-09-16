@@ -33,10 +33,15 @@ const METRIC_YEAR = LAST_YEAR;
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
-                            <h6 class="dropdown-header">Head Coaches</h6>
-                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/coaches/pace`)}>Pace &amp; Tendencies</a></li>
-                            <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/coaches/fourth-downs`)}>Fourth Downs</a></li>
-                            <li><a class="dropdown-item" href={lp(`/coaches/pace`)}>Careers</a></li>
+                            {/* the coach boards are behind the 'coaches' flag: middleware 404s them for everyone else */}
+                            {isFeatureEnabled("coaches", Astro.locals) && (
+                                <Fragment>
+                                    <h6 class="dropdown-header">Head Coaches</h6>
+                                    <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/coaches/pace`)}>Pace &amp; Tendencies</a></li>
+                                    <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/coaches/fourth-downs`)}>Fourth Downs</a></li>
+                                    <li><a class="dropdown-item" href={lp(`/coaches/pace`)}>Careers</a></li>
+                                </Fragment>
+                            )}
                             <h6 class="dropdown-header">Standings</h6>
                             {/* Rankings is not lp()-wrapped and is cfb-only: the AP and
                                 Coaches polls have no NFL equivalent. Standings has a twin. */}
