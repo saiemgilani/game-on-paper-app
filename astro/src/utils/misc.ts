@@ -376,6 +376,10 @@ export function cleanField(team: any, field: string): string {
         return ""
     }
 
+    if (team.pos_team_id && MEME_LIST.includes(Number(team.pos_team_id))) {
+        return team[field]?.toLocaleLowerCase() || ""
+    }
+
     if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
         return team[field]?.toLocaleLowerCase() || ""
     }
@@ -758,4 +762,11 @@ export function deduplicateByKey(array: any[], key: string): any[] {
         const val = item[key]
         return seen.hasOwnProperty(val) ? false : (seen[val] = true);
     });
+}
+
+export function countRegexMatches(str: string, pattern: RegExp): number {
+    if (!str) {
+        return 0;
+    }
+    return (str.match(pattern) || []).length
 }
