@@ -66,7 +66,9 @@ proposal, not design guidance — it is a precedent for *proposing before buildi
   *`895b0d74` "header: return to consistent font size" added `header { font-size: 1rem !important }`
   back to `base.css` after a change had let the header inherit the body size.*
 - **Numbers in tables get `class="numeral"`.** That class exists to switch the font for
-  numerals only (`nav-header.css:69`). Every numeric `<td>` in the tree carries it.
+  numerals only (`nav-header.css:69`). New numeric `<td>`s carry it; some older cells
+  (`MatchupView.astro`) still do not, and that is debt to pay when touching them, not a
+  pattern to copy.
 
 ## 3. Colour
 
@@ -92,7 +94,10 @@ proposal, not design guidance — it is a precedent for *proposing before buildi
   `mb-xs-3` with `mb-3` in `game/classic/GamePage.astro` — Bootstrap has **no `xs` infix**, so
   `mb-xs-3` was dead markup that silently applied no margin.
 - **Panels need `mb-md-3`.** Akshay on #224: *"Needs a `mb-md-3` to add margin on smaller screen
-  sizes"* — `PaperIndex.astro` now renders `<Panel … class="mb-md-3">`.
+  sizes"* — `PaperIndex.astro` now renders `<Panel … class="mb-md-3">`. Read the infix
+  literally: Bootstrap's `md-` utilities apply from the `md` breakpoint (≥768px) **up**, so
+  `mb-md-3` spaces stacked panels on tablets and desktops; if a phone layout is the one
+  missing its gap, that is `mb-3` (next bullet), not a bigger infix.
 - **Don't stack redundant responsive margins.** #222 on `RecentForm.astro`: *"Think this just
   needs `mb-3` on mobile, too much whitespace if both are added"*.
 - **Vertically align a logo with its text.** Flagged three separate times: #228 *"All of these
@@ -203,8 +208,9 @@ Akshay rewrote copy more often than markup. The voice is **short, plain, and non
   + AKA post-game win expectancy. Inspired by <a href="…">Bill Connelly</a>'s SP+ PGWE models.
   ```
 
-  and `6e6c422d` on `data-sources.astro`, which cut the subtitle to *"Data souces, freshness,
-  and limitations"* and deleted the duplicated FAQ block outright.
+  and `6e6c422d` on `data-sources.astro`, which cut the subtitle to *"Data sources, freshness,
+  and limitations"* and deleted the duplicated FAQ block outright (the page still spells it
+  "souces" — a public typo fix, unflagged, owed).
   *Tells: em-dash-joined enumerations, hedged sub-clauses ("whichever side it fell on"), British
   spelling ("penalised"), and a sentence that restates the heading. Prefer naming the prior art.*
 - **Punctuation:** colons, not dashes — #226: *"use colons instead of dashes"*. No interpunct/dot
