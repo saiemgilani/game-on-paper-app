@@ -21,6 +21,17 @@ from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
 
+# Source switch (football-sources Stage 4). The allowed values ARE the
+# contract's registry -- nothing here enumerates sources, so `shield` (and the
+# rest) start working the moment this deploy's sportsdataverse-py pin carries
+# their adapter. A pin older than sportsdataverse-py #525 has no contract at
+# all; then only ESPN is offered and every other `source` is a 400.
+try:
+    from sportsdataverse.football.sources.dispatch import SOURCE_ORDER as _SOURCE_ORDER
+    from sportsdataverse.football.sources.dispatch import _process_game as _dispatch_game
+except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
+    _SOURCE_ORDER, _dispatch_game = {}, None
+
 # span key -> drive-summary period windows (drives book to their start quarter)
 _SPAN_PERIODS = {
     "q1": {1}, "q2": {2}, "q3": {3}, "q4": {4},
@@ -351,22 +362,51 @@ def _fill_success(plays):
             )
 
 
-def _process_game(league: str, game_id: int):
+def _process_game(league: str, game_id: int, source: str | None = None):
+    """Process one game. `source` is None for every request the public makes.
+
+    Only Game on Paper's 'source-switch' preview path sends `?source=`, so
+    `source is None` keeps the ESPN path -- request, response and cache key --
+    exactly as it was. A named source goes through the sportsdataverse-py
+    contract's dispatch, which validates the adapted summary and falls through
+    the league's order with ESPN as the terminal fallback.
+    """
     timings = {}
+    order = _SOURCE_ORDER.get(league) or ("espn",)
+    if source is not None and source not in order:
+        return jsonify(
+            {
+                "status": "bad",
+                "message": f"unknown source {source!r} for {league}; known: {list(order)}",
+            }
+        ), 400
     try:
         cls, fetch_name = _PROCESSORS[league]
         g.gop_meta = {"game_id": str(game_id), "league": league}
-        game = cls(gameId=game_id)
-        game.join_participants = True
-        game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
         espn_logged = False
-        with stage(timings, "espn_fetch"):
-            getattr(game, fetch_name)()
+        if source is None or source == "espn":
+            # The unchanged path. Deliberately NOT dispatch's espn adapter: that
+            # one runs the processor with join_participants=False, which would
+            # cost the default response its participant-derived columns.
+            game = cls(gameId=game_id)
+            game.join_participants = True
+            game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+            with stage(timings, "espn_fetch"):
+                getattr(game, fetch_name)()
+            served, fallback_used, processed_game = "espn", False, None
+        else:
+            # dispatch fetches, validates against the contract and runs the
+            # processor in one call; ESPN stays the terminal fallback inside it.
+            with stage(timings, "espn_fetch"):
+                dispatched = _dispatch_game(league, game_id, source=source)
+            game, processed_game = dispatched.processor, dispatched.game
+            served = dispatched.provenance["served"]
+            fallback_used = dispatched.provenance["fallback"]
         TEL.push(
             "upstream_log",
             {
                 "service": "python",
-                "target": "espn_pbp",
+                "target": "espn_pbp" if served == "espn" else f"{served}_pbp",
                 "status": 200,
                 "duration_ms": timings["espn_fetch_ms"],
                 "ok": True,
@@ -375,11 +415,24 @@ def _process_game(league: str, game_id: int):
             },
         )
         espn_logged = True
-        with stage(timings, "pipeline"):
-            processed_game = game.run_processing_pipeline()
+        if processed_game is None:
+            with stage(timings, "pipeline"):
+                processed_game = game.run_processing_pipeline()
 
         _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
+
+        # Additive, and only on the flagged path: a response with no `?source=`
+        # stays byte-for-byte what it is today, so the classic game page and
+        # every other consumer are untouched.
+        if source is not None:
+            processed_game["provenance"] = {
+                "source": served,
+                "requested": source,
+                "fallback_used": fallback_used,
+                "contract_version": _SDV_VERSION,
+                "contract_sha": _SDV_SHA,
+            }
 
         # Every block below reads the processor's enriched polars frame and is
         # fail-open, so a processor that never exposes one (NFLPlayProcess
@@ -561,13 +614,13 @@ def _process_game(league: str, game_id: int):
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process(game_id: int):
-    return _process_game("cfb", game_id)
+    return _process_game("cfb", game_id, request.args.get("source"))
 
 
 @app.route("/nfl/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process_nfl(game_id: int):
-    return _process_game("nfl", game_id)
+    return _process_game("nfl", game_id, request.args.get("source"))
 
 
 def _sdv_identity():
