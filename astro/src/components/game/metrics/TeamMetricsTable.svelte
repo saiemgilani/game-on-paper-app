@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
-import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
+import { espnLogoLeague, leagueFromLocation, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { roundNumber } from '../../../utils/misc';
@@ -14,8 +14,12 @@ interface Props {
     useSuffix: boolean
     decimalPoints: number
     caption?: string
+    league?: League
 }
-const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
+// The page server-renders this island, where there is no location to read the
+// league from, so the league is a prop; leagueFromLocation() stays the default
+// for any caller that still mounts it client-only (MatchupBuilder's pattern).
+const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null, league = leagueFromLocation() } = $props();
 
 const groups = teamBoxScores.map((group: any) => group[teamKey]);
 
@@ -30,6 +34,17 @@ function handleMetricRows(item: string): string {
             let pen_epa = parseFloat(teamData['EPA_penalty'] || 0);
             let val = (overall - off - sp_epa - pen_epa)
             result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+        });
+    } else if (item == "off_yards") {
+        // The row is labelled "Yards" under the overall block and the pass and
+        // rush "Yards" rows sit right under it, so the header promises their
+        // sum. The payload's own off_yards is ESPN's per-play statYardage --
+        // a different universe from the processor's parsed pass/rush yardage,
+        // and off by up to 31 yards on a single game -- so it is shown as the
+        // tooltip instead of as the total.
+        teamBoxScores.forEach((teamData: any) => {
+            let val = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
+            result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
         });
     } else if (item == "avg_field_position") {
         teamBoxScores.forEach((teamData: any) => {
@@ -78,7 +93,7 @@ function handleMetricRows(item: string): string {
             <tr>
                 <th class="box-heading">{title}</th>
                 {#each groups as value}
-                    <th style="text-align: center;"><a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                    <th style="text-align: center;"><a href={leaguePath(league, `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
                 {/each}
             </tr>
         </thead>
