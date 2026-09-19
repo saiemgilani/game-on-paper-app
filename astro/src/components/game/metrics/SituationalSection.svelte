@@ -1,18 +1,7 @@
 <script lang="ts">
-import type { ProcessedBoxScore } from '../../../resources/python';
-import type { League } from '../../../utils/league';
 import { parseSpan } from '../../../utils/span';
-// import { periodSplits, situationalRows } from '../../../utils/situational';
-// import { espnLogoLeague, type League } from '../../../utils/league';
-// import { leaguePath } from '../../../utils/league';
-// import { roundNumber } from '../../../utils/misc';
-// import FilterGroup from '../../../layouts/FilterGroup.astro';
-// import type { ProcessedBoxScore } from '../../../resources/python';
-// import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import TeamMetricsTable from './TeamMetricsTable.svelte';
 import BinionBoxScore from './BinionBoxScore.svelte';
-// import PenaltyBreakdown from './PenaltyBreakdown.astro';
-// import TraditionalTeamStats from './TraditionalTeamStats.astro';
 
 const EMPTY_PROCESSED_BOX_SCORE = {
   defensive: [],
@@ -33,6 +22,7 @@ let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSE
 function onChangeSpan(e: Event) {
     selectedSpan = (e.target as HTMLSelectElement).value
 }
+
 </script>
 <div class="d-flex flex-wrap gap-2 align-items-center mb-2 mt-1">
     <label class="text-small text-muted" for="span-stats">Show only</label>
@@ -146,12 +136,37 @@ function onChangeSpan(e: Event) {
                 "avg_field_position",
                 "plays_per_drive",
                 "yards_per_drive",
-                "drive_total_gained_yards_rate"
+                "drive_total_gained_yards_rate",
             ]}
             teamBoxScores={selectedBoxScore.drives}
             useSuffix={false}
             decimalPoints={2}
         />
+        <!-- <TeamMetricsTable 
+            title="Finishing Drives"
+            teamKey='pos_team'
+            season={season}
+            columns={[
+                "third_down_opportunities",
+                "third_down_conversions",
+                "third_down_expected",
+
+                "rz_trips",
+                "rz_touchdown_rate",
+                "rz_points_per_trip",
+                "rz_success_rate",
+                "rz_epa_per_play",
+
+                "so_trips",
+                "so_touchdown_rate",
+                "so_points_per_trip",
+                "so_success_rate",
+                "so_epa_per_play"
+            ]}
+            teamBoxScores={selectedBoxScore.usage}
+            useSuffix={false}
+            decimalPoints={2}
+        /> -->
         <TeamMetricsTable 
             title="Defensive"
             teamKey='def_pos_team'
@@ -171,6 +186,23 @@ function onChangeSpan(e: Event) {
                 "turnovers","total_fumbles","fumbles_lost","fumbles_recovered","Int","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"
             ]}
             teamBoxScores={selectedBoxScore.turnover}
+            useSuffix={false}
+            decimalPoints={0}
+        />
+        <TeamMetricsTable 
+            title="Special Teams"
+            teamKey='pos_team'
+            season={season}
+            columns={[
+                "fg_attempts",
+                "kickoff_touchback_rate",
+                "kickoff_return_avg_allowed",
+                "punt_net_avg",
+                "kick_return_avg",
+                "punt_blocks_by",
+                "fg_blocks_by"
+            ]}
+            teamBoxScores={selectedBoxScore.st_team}
             useSuffix={false}
             decimalPoints={0}
         />

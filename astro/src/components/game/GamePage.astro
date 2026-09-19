@@ -269,23 +269,12 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
+                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league} percentiles={percentiles}>
                             <FallbackSpinner slot="fallback" />
                         </SituationalSection>
                     </Panel>
                 </div>
             </div>
-            {hasSituationalSplits(game.advBoxScore) && (
-            <div class="row mb-3">
-                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="situational-splits" title="Situational & Special Teams" show={true}>
-                        <div slot="panel-body">
-                            <SituationalSplits box={game.advBoxScore} awayTeam={awayTeam} homeTeam={homeTeam} />
-                        </div>
-                    </Panel>
-                </div>
-            </div>
-            )}
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>

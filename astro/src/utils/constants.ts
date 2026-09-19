@@ -358,7 +358,31 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "EPA_non_explosive_passing" : "&emsp;&emsp;When Passing",
     "EPA_non_explosive_passing_per_play" : "&emsp;&emsp;&emsp;&emsp;EPA/Play",
     "EPA_non_explosive_rushing" : "&emsp;&emsp;When Rushing",
-    "EPA_non_explosive_rushing_per_play" : "&emsp;&emsp;&emsp;&emsp;EPA/Play"
+    "EPA_non_explosive_rushing_per_play" : "&emsp;&emsp;&emsp;&emsp;EPA/Play",
+
+    "third_down_opportunities": "3rd Downs",
+    "third_down_conversions" : "&emsp;&emsp;Conversions",
+    "third_down_expected" : "&emsp;&emsp;Expected",
+
+    "rz_trips": "Red Zone Trips",
+    "rz_touchdown_rate": "&emsp;&emsp;TD Rate",
+    "rz_points_per_trip": "&emsp;&emsp;Pts/Trip",
+    "rz_success_rate": "&emsp;&emsp;Success Rate",
+    "rz_epa_per_play": "&emsp;&emsp;EPA/Play",
+
+    "so_trips": "Scoring Opportunities (Drives inside Opp 40)",
+    "so_touchdown_rate": "&emsp;&emsp;TD Rate",
+    "so_points_per_trip": "&emsp;&emsp;Pts/Trip",
+    "so_success_rate": "&emsp;&emsp;Success Rate",
+    "so_epa_per_play": "&emsp;&emsp;EPA/Play",
+
+    "fg_attempts": "FG Make %",
+    "kickoff_touchback_rate": "Kickoff Touchback %",
+    "punt_net_avg": "Avg Punt Return (yds)",
+    "kick_return_avg": "Avg Kick Return (yds)",
+    "kickoff_return_avg_allowed": "Avg Kick Return Allowed (yds)",
+    "punt_blocks_by": "Punt Blocks",
+    "fg_blocks_by": "FG Blocks",
 };
 
 export const TURNOVER_VEC: string[] = [
@@ -386,9 +410,9 @@ export const TURNOVER_VEC: string[] = [
     "Uncategorized Touchdown"
 ]
 
-export const BOX_SCORE_NON_RATE_DECIMAL_COLUMNS: string[] = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off", "EPA_overall_offense","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play", "EPA_late_down_per_play", "EPA_late_down", "late_down_avg_distance", "EPA_overall_total", "EPA_penalty"];
-export const BOX_SCORE_NON_RATE_COLUMNS: string[] = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
-export const BOX_SCORE_NON_RATE_PERCENT_COLUMNS: string[] = ["drive_total_gained_yards_rate","drive_stopped_rate","EPA_success_rate_third","EPA_success_rate_rz"];
+export const BOX_SCORE_NON_RATE_DECIMAL_COLUMNS: string[] = ["punt_net_avg", "kick_return_avg", "kickoff_return_avg_allowed", "expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off", "EPA_overall_offense","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play", "EPA_late_down_per_play", "EPA_late_down", "late_down_avg_distance", "EPA_overall_total", "EPA_penalty"];
+export const BOX_SCORE_NON_RATE_COLUMNS: string[] = ["punt_blocks_by", "fg_blocks_by", "EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
+export const BOX_SCORE_NON_RATE_PERCENT_COLUMNS: string[] = ["drive_total_gained_yards_rate","drive_stopped_rate","EPA_success_rate_third","EPA_success_rate_rz", "kickoff_touchback_rate"];
 
 
 
@@ -1138,41 +1162,41 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
     "fourth_go_when_recommended": "Went For It When Recommended",
     "luck_fumble_rec_pct": "Fumble Recovery Rate",
     "luck_opp_fg_pct": "Opponent Field Goal Percentage",
-  "plays": "Total Plays",
-  "playsgame": "Plays/Game",
-  "passrate": "Pass %",
-  "rushrate": "Rush %",
-  "havoc": "Havoc %",
-  "explosive": "Explosive %",
-  "TEPA": "Total EPA",
-  "EPAplay": "EPA/Play",
-  "EPAdrive": "EPA/Drive",
-  "EPAgame": "EPA/Game",
-  "yards": "Total Yards",
-  "yardsplay": "Yards/Play",
-  "yardsgame": "Yards/Game",
-  "play_stuffed": "Stuffed %",
-  "drives": "Total Drives",
-  "drivesgame": "Drives/Game",
-  "yardsdrive": "Yards/Drive",
-  "playsdrive": "Plays/Drive",
-  "success": "Success %",
-  "red_zone_success": "Red Zone SR%",
-  "third_down_success": "3rd Down SR%",
-  "third_down_distance": "Avg Distance (3rd)",
-  "late_down_success": "Late Down SR%",
-  "early_down_EPA": "Early Down EPA/Play",
-  "start_position": "Starting Field Position",
-  "nonExplosiveEpaPerPlay": "Non-Expl EPA/Play",
-  "line_yards": "Line Yards/Rush",
-  "opportunity_rate": "Rush Opp %",
-  "total_available_yards": "Total Available Yards",
-  "total_gained_yards": "Total Gained Yards",
-  "available_yards_pct": "Available Yards %",
-  "adj_epa": "Adj EPA/Play",
-  "strength_faced": "Strength Faced",
-  "EPAdropback": "EPA/Dropback",
-  "EPArush": "EPA/Rush"
+    "plays": "Total Plays",
+    "playsgame": "Plays/Game",
+    "passrate": "Pass %",
+    "rushrate": "Rush %",
+    "havoc": "Havoc %",
+    "explosive": "Explosive %",
+    "TEPA": "Total EPA",
+    "EPAplay": "EPA/Play",
+    "EPAdrive": "EPA/Drive",
+    "EPAgame": "EPA/Game",
+    "yards": "Total Yards",
+    "yardsplay": "Yards/Play",
+    "yardsgame": "Yards/Game",
+    "play_stuffed": "Stuffed %",
+    "drives": "Total Drives",
+    "drivesgame": "Drives/Game",
+    "yardsdrive": "Yards/Drive",
+    "playsdrive": "Plays/Drive",
+    "success": "Success %",
+    "red_zone_success": "Red Zone SR%",
+    "third_down_success": "3rd Down SR%",
+    "third_down_distance": "Avg Distance (3rd)",
+    "late_down_success": "Late Down SR%",
+    "early_down_EPA": "Early Down EPA/Play",
+    "start_position": "Starting Field Position",
+    "nonExplosiveEpaPerPlay": "Non-Expl EPA/Play",
+    "line_yards": "Line Yards/Rush",
+    "opportunity_rate": "Rush Opp %",
+    "total_available_yards": "Total Available Yards",
+    "total_gained_yards": "Total Gained Yards",
+    "available_yards_pct": "Available Yards %",
+    "adj_epa": "Adj EPA/Play",
+    "strength_faced": "Strength Faced",
+    "EPAdropback": "EPA/Dropback",
+    "EPArush": "EPA/Rush"
 }
 
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };

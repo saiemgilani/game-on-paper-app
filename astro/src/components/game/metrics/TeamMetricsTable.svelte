@@ -38,10 +38,26 @@ function handleMetricRows(item: string): string {
             let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
         });
-    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) {
+    } else if (["kickoff_touchback_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
-            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
+        });
+    } else if (["kickoff_touchback_rate"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
+        });
+    } else if (["fg_attempts"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let denom = teamData[item] || 0;
+            let num = teamData["fg_made"] || 0;
+            let pct = (denom == 0) ? 0 : num / denom
+            if (denom == 0) {
+                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${num}/${denom} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
+            }
         });
     } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
