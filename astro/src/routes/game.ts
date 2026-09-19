@@ -15,6 +15,7 @@ import { gopStorage } from '../utils/telemetry';
 import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
 import { getGameCacheConfig } from '../utils/config';
 import { isFeatureEnabled } from '../utils/features';
+import { SOURCE_PARAM } from '../utils/adminView';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
 
 export interface GameRouteData {
@@ -48,7 +49,12 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
     // cdn; with the flag off nothing below runs and the page, its request and
     // its cache key are byte-for-byte what they are today.
     const sourceSwitch = isFeatureEnabled('source-switch', Astro.locals);
-    const source = sourceSwitch ? Astro.url.searchParams.get('source') ?? undefined : undefined;
+    // `?source=` is an ADMIN tool (utils/adminView.ts), so it needs BOTH the
+    // flag path and an authenticated admin session. A viewer holding only a
+    // preview cookie sends the same request they send today.
+    const source = (sourceSwitch && Astro.locals.adminAuthed === true)
+        ? Astro.url.searchParams.get(SOURCE_PARAM) ?? undefined
+        : undefined;
     let espnGame: ESPNPlayByPlayResponse | null = null;
     let game: ProcessedGame | null = null;
     let headerFallback = false;

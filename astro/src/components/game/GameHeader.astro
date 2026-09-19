@@ -6,6 +6,7 @@ import { isChampionshipEvent, cleanLocation } from '../../utils/misc';
 import { leaguePath } from '../../utils/league';
 import LocalDate from '../LocalDate.svelte';
 import WatchButton from './WatchButton.astro';
+import AdminGameTools from './AdminGameTools.astro';
 
 interface Props {
    espnGame?: ESPNPlayByPlayResponse
@@ -93,4 +94,8 @@ const gameDate = espnComp.date;
             </div>
         </div>
     </header>
+    {/* Written once here because BOTH game-page twins (components/game and the
+        frozen components/game/classic) import this header, so the admin tools
+        appear whichever one renders and an admin can flip between them. */}
+    <AdminGameTools game={game} />
 </div>

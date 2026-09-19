@@ -13,6 +13,12 @@
 // Usage in a component or page:
 //   import { isFeatureEnabled } from '../utils/features';
 //   { isFeatureEnabled('my-flag', Astro.locals) && <NewThing /> }
+//
+// An authenticated admin can override the resolved state for ONE request from
+// the query string (?view=live|preview, ?flags=name:on,name:off -- see
+// utils/adminView.ts). That is an admin tool, not a flag state: the middleware
+// reads those parameters only on a request carrying a valid admin session
+// cookie, so nothing about a public request changes.
 
 export type FeatureState = 'off' | 'preview' | 'on';
 
@@ -45,7 +51,17 @@ export const FLAGS: Record<string, FeatureState> = {
     'source-switch': 'preview',
 };
 
-export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {
+/** The flags an admin can flip per request -- what the admin tools list. */
+export const PREVIEW_FLAG_NAMES = Object.keys(FLAGS).filter((n) => FLAGS[n] === 'preview');
+
+export function isFeatureEnabled(
+    name: string,
+    locals: { preview?: boolean; flagOverrides?: Record<string, boolean> } | undefined,
+): boolean {
+    // An admin's per-request override wins over both the flag state and the
+    // preview cookie; it is only ever populated for an authenticated admin.
+    const override = locals?.flagOverrides?.[name];
+    if (override !== undefined) return override;
     const state = FLAGS[name] ?? 'off';
     if (state === 'on') return true;
     if (state === 'preview') return locals?.preview === true;

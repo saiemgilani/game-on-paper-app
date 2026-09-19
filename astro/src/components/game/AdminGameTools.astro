@@ -1,0 +1,152 @@
+---
+/**
+ * Admin-only controls on the game page. Rendered from GameHeader.astro, which
+ * both the v2 page and the frozen `classic/` twin import, so it is written
+ * once and an admin can flip between them from either side.
+ *
+ * Nothing here renders without an authenticated admin session
+ * (`locals.adminAuthed`, set in middleware.ts from the `gop_admin` cookie).
+ * These are admin tools, not a preview feature: they are never promoted.
+ *
+ *   View    which flag state renders this request (utils/adminView.ts)
+ *   Flags   one preview flag flipped on top of that base
+ *   Source  which feed the API processed the game from (routes/game.ts)
+ */
+import FilterGroup from '../../layouts/FilterGroup.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import FlagOverrideDropdown from '../dropdowns/FlagOverrideDropdown.svelte';
+import { isFeatureEnabled, PREVIEW_FLAG_NAMES } from '../../utils/features';
+import { adminToolsHref, currentView, SOURCE_PARAM } from '../../utils/adminView';
+import { compareSources, type SourceComparison } from '../../utils/sourceCompare';
+import { retrieveGameSources, retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+import { getGameCacheConfig } from '../../utils/config';
+import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../utils/misc';
+import { espnLogoLeague, type League } from '../../utils/league';
+
+interface Props {
+    game?: ProcessedGame
+}
+const { game } = Astro.props;
+const admin = Astro.locals.adminAuthed === true;
+const league: League = Astro.locals.league ?? 'cfb';
+const id = game?.header?.id;
+
+const view = currentView(Astro.url, Astro.locals);
+const flagOptions = PREVIEW_FLAG_NAMES.map((name) => {
+    const effective = isFeatureEnabled(name, Astro.locals);
+    return { name, effective, href: adminToolsHref(Astro.url, { flags: { [name]: !effective } }) };
+});
+
+// The pill row lists the contract's registry in failover order, from the API.
+// Availability is never probed: that would be one upstream fetch per source
+// per render. A source the pin does not carry answers 400 when selected.
+const sourceSwitch = admin && isFeatureEnabled('source-switch', Astro.locals);
+const registry = sourceSwitch && id ? await retrieveGameSources(id, league) : null;
+const sources = registry?.sources ?? ['espn'];
+const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || 'espn';
+const provenance = game?.provenance;
+
+// ESPN comes from the ordinary processed-game path, so it is the SAME cache
+// entry the page itself fills rather than a second processing run.
+let comparison: SourceComparison | null = null;
+if (sourceSwitch && game && id && selectedSource !== 'espn') {
+    try {
+        const config = getGameCacheConfig(game.header.competitions[0].date, game.header.competitions[0].status);
+        comparison = compareSources(game, await retrieveProcessedGame(id, config.maxAge || 30, league));
+    } catch {
+        comparison = compareSources(game, null);
+    }
+}
+const teamName = (teamId: string) =>
+    cleanAbbreviation(String(game?.teamInfo?.home?.id) === teamId ? game?.teamInfo?.home : game?.teamInfo?.away);
+const cell = (value: number | null, fixed: number, percent?: boolean) =>
+    value === null ? '' : `${roundNumber(value, 2, fixed)}${percent ? '%' : ''}`;
+---
+{admin && (
+    <div class="d-flex justify-content-start align-items-center flex-wrap gap-2 mb-3" data-admin-game-tools>
+        <span class="text-muted text-small">Admin</span>
+        <FilterGroup label="Choose which flag state renders this page">
+            <Fragment slot="filter-body">
+                <a class={`btn btn-sm btn-outline-secondary ${view === 'live' ? 'active' : ''}`}
+                   aria-pressed={view === 'live'}
+                   href={adminToolsHref(Astro.url, { view: 'live' })}>Live</a>
+                <a class={`btn btn-sm btn-outline-secondary ${view === 'preview' ? 'active' : ''}`}
+                   aria-pressed={view === 'preview'}
+                   href={adminToolsHref(Astro.url, { view: 'preview' })}>Preview</a>
+            </Fragment>
+        </FilterGroup>
+        <FlagOverrideDropdown client:idle options={flagOptions} />
+        {sourceSwitch && (
+            <FilterGroup label="Choose the processing source">
+                <Fragment slot="filter-body">
+                    {sources.map((name) => (
+                        <a class={`btn btn-sm btn-outline-secondary ${selectedSource === name ? 'active' : ''}`}
+                           aria-pressed={selectedSource === name}
+                           href={adminToolsHref(Astro.url, { source: name === 'espn' ? null : name })}>{name}</a>
+                    ))}
+                </Fragment>
+            </FilterGroup>
+        )}
+        {provenance && (
+            <span class="text-small text-muted" data-admin-provenance>
+                Served: {provenance.source}{provenance.fallback_used ? ' (fallback)' : ''}
+                {provenance.contract_sha ? `, contract ${provenance.contract_sha.slice(0, 7)}` : ''}
+            </span>
+        )}
+    </div>
+)}
+{admin && comparison && (
+    <div class="row mb-3">
+        <div class="col-md-12 ms-sm-auto col-lg-12">
+            <Panel id="source-compare" title="Source Comparison" show={false} class="mb-md-3">
+                <p class="text-small" slot="panel-subtitle">
+                    {selectedSource} against ESPN, on the aggregates the processor already computed.
+                    Plays: {comparison.playsSelected} against {comparison.playsEspn}.
+                    {comparison.firstDifferingPlayId
+                        ? ` First differing play id: ${comparison.firstDifferingPlayId}.`
+                        : ' Every play id matches in order.'}
+                </p>
+                <div class="row" slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-responsive">
+                            <thead>
+                                <tr>
+                                    <th class="box-heading">Metric</th>
+                                    <th style="text-align: center;">{selectedSource}</th>
+                                    <th style="text-align: center;">ESPN</th>
+                                    <th style="text-align: center;">Delta</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {comparison.teams.map((team) => (
+                                    <Fragment>
+                                        <tr>
+                                            <td class="box-heading" colspan="4" style="text-align: left;">
+                                                <span class="d-flex align-items-center">
+                                                    <img class={`img-fluid team-logo-${team.id} me-2`} width="20px"
+                                                         src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.id}.png`}
+                                                         alt={`ESPN team id ${team.id}`} />
+                                                    {teamName(team.id)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {team.rows.map((row) => (
+                                            <tr>
+                                                <td style="text-align: left;">&emsp;&emsp;{row.label}</td>
+                                                <td class="numeral" style="text-align: center;">{cell(row.selected, row.fixed, row.percent)}</td>
+                                                <td class="numeral" style="text-align: center;">{cell(row.espn, row.fixed, row.percent)}</td>
+                                                <td class="numeral" style="text-align: center;">
+                                                    {row.delta === null ? '' : `${generateMarginalString(row.delta, 2, row.fixed)}${row.percent ? '%' : ''}`}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </Fragment>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </Panel>
+        </div>
+    </div>
+)}
