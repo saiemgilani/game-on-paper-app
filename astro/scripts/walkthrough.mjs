@@ -94,6 +94,7 @@ try {
         }
         await ctx.close(); // flushes the video file
         const [file] = await readdir(tmp).catch(() => []);
+        if (ok && !file) failures.push(`${where}: no video file was written`);
         if (!ok || !file) { await rm(tmp, { recursive: true, force: true }); continue; }
         await rename(join(tmp, file), `${stem}.webm`);
         await rm(tmp, { recursive: true, force: true });

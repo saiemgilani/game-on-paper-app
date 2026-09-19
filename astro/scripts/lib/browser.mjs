@@ -1,7 +1,7 @@
 // Shared browser plumbing for visual-check.mjs and walkthrough.mjs: resolve playwright-core
 // without making it a repo dependency, launch the installed Chrome, and open a context that
 // renders the site the way a visitor on {device, scheme} sees it.
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 
@@ -10,7 +10,7 @@ export async function loadChromium() {
   const req = createRequire(import.meta.url);
   const roots = [];
   try { roots.push(execSync('npm root -g', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch {}
-  roots.push(...(process.env.NODE_PATH ?? '').split(':').filter(Boolean));
+  roots.push(...(process.env.NODE_PATH ?? '').split(delimiter).filter(Boolean));
   for (const base of roots) {
     try { return req(join(base, 'playwright-core')).chromium; } catch {}
   }
