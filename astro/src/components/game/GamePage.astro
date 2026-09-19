@@ -283,6 +283,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
+                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
+                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(awayTeam.id)) || []}
+                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
                             />
@@ -299,6 +303,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
+                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
+                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(homeTeam.id)) || []}
+                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
                                 plays={game.plays}
                                 teamId={parseInt(homeTeam.id)}
                             />
