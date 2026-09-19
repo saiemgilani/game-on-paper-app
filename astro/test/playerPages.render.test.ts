@@ -344,6 +344,15 @@ describe('a player the API does not have', () => {
             .toEqual({ redirect: '/nfl/players/16800?season=2024' });
         expect(await preparePlayer(fake('/nfl/players/00-0000001', { id: '00-0000001' }).astro, 'nfl'))
             .toEqual({ notFound: true });
+        // the redirect carries the validated season TEXT: parsing first makes
+        // `0000` falsy (param dropped) and rewrites `0202` to `202`, and either
+        // way the canonical URL would render the latest season, not 404
+        for (const y of ['0000', '0202']) {
+            expect(await preparePlayer(fake(`/nfl/players/00-0031381?season=${y}`, { id: '00-0031381' }).astro, 'nfl'), y)
+                .toEqual({ redirect: `/nfl/players/16800?season=${y}` });
+            expect(await preparePlayer(fake(`/players/4433971?season=${y}`, { id: '4433971' }).astro, 'cfb'), y)
+                .toEqual({ notFound: true });
+        }
         // a season the player has no rows for is a 404, not an empty page
         expect(await preparePlayer(fake('/players/4433971?season=1999', { id: '4433971' }).astro, 'cfb'))
             .toEqual({ notFound: true });
