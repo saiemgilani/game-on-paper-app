@@ -1272,7 +1272,7 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
             cf: {
                 cacheEverything: true,
                 cacheTtlByStatus: { "200-299": 3600, 404: 1, "500-599": 0 },
-                cacheKey: `${PYTHON_HTTP_URL}/${league}/sources?v=${APP_VERSION}`,
+                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/sources?v=${APP_VERSION}`,
             }
         });
         const body: GameSources = JSON.parse(await req.text());
