@@ -1,0 +1,36 @@
+---
+/**
+ * Wraps a player's name in a link to his page -- and ONLY when the viewer's
+ * 'player-pages' flag admits him. A public link into a gated namespace is a
+ * link to the site's 404, which is worse than no link, so the check lives here
+ * rather than in each of the seven call sites.
+ *
+ * Call sites: the season leaderboard rows (`leaderboards/PlayerLeaderboardTable`)
+ * and every name in the game page's usage/tackles/special-teams box
+ * (`game/metrics/UsageBoxScore`). The CLASSIC game-page twin gets no link, and
+ * that is not an oversight: its advanced box (`ProcessedPassingBoxScore` and
+ * friends) carries player NAMES and no id at all -- the usage box, which is
+ * where the ids are, exists only in the v2 tree. Nothing to link until the
+ * processor puts ids on the advanced box rows.
+ *
+ * `id` is normally an ESPN athlete id -- the id the pages, the game boxes and
+ * the Data API all key on. The NFL season leaderboard rows carry an nflverse
+ * gsis id instead, which the route resolves through the crosswalk and 301s to
+ * the canonical ESPN-id URL, so that shape is linkable too. Anything else -- a
+ * null, a name, a float-ish id -- renders the children unlinked rather than
+ * minting a URL that would 404.
+ */
+import { isFeatureEnabled } from '../../utils/features';
+import { isEspnAthleteId, isGsisId, playerPath } from '../../utils/players';
+
+interface Props {
+    id?: string | number | null
+    /** the season to open the page on; omitted opens the player's latest */
+    season?: number | null
+}
+const { id, season } = Astro.props;
+const key = id === null || id === undefined ? '' : String(id);
+const linkable = isEspnAthleteId(key) || (Astro.locals.league === 'nfl' && isGsisId(key));
+const linked = isFeatureEnabled('player-pages', Astro.locals) && linkable;
+---
+{linked ? <a href={playerPath(Astro.locals.league, key, season)}><slot /></a> : <slot />}

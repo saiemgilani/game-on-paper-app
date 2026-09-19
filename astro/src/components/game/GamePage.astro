@@ -297,7 +297,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
                             />
-                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(awayTeam.id)} />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(awayTeam.id)} season={game.season?.year} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                         </div>
@@ -313,7 +313,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 plays={game.plays}
                                 teamId={parseInt(homeTeam.id)}
                             />
-                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(homeTeam.id)} />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(homeTeam.id)} season={game.season?.year} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                         </div>
