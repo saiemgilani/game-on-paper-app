@@ -370,7 +370,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "rz_success_rate": "&emsp;&emsp;Success Rate",
     "rz_epa_per_play": "&emsp;&emsp;EPA/Play",
 
-    "so_trips": "<abbr title='Drives that got inside the Opp 40'>Scoring Opportunities</abbr>",
+    "so_trips": "<abbr title='Drives with a snap inside the opponent's 40'>Scoring Opportunities</abbr>",
     "so_touchdown_rate": "&emsp;&emsp;TD Rate",
     "so_points_per_trip": "&emsp;&emsp;Pts/Trip",
     "so_success_rate": "&emsp;&emsp;Success Rate",
@@ -389,7 +389,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "scripted.points_per_drive": "&emsp;&emsp;Pts/Drive",
     "scripted.success_rate": "&emsp;&emsp;Success Rate",
 
-    "non_scripted.drives": "Scripted Drives",
+    "non_scripted.drives": "Unscripted Drives",
     "non_scripted.epa_per_play": "&emsp;&emsp;EPA/Play",
     "non_scripted.points_per_drive": "&emsp;&emsp;Pts/Drive",
     "non_scripted.success_rate": "&emsp;&emsp;Success Rate",
