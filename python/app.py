@@ -561,12 +561,14 @@ def _process_game(league: str, game_id: int, source: str | None = None):
                 game, processed_game, league, game_id,
                 provenance=dispatch_prov, sdv_version=_SDV_VERSION, sdv_sha=_SDV_SHA,
             )
+            # ...and onto this request's telemetry row, so the route timing and
+            # the quality of what it served are one sample rather than two
+            # datasets. Inside the same guard: flattening the verdict is still
+            # observability, so it must not be the one qa step that can 500.
+            g.gop_meta = {**getattr(g, "gop_meta", {}), **qa.telemetry_fields(processed_game["qa"])}
         except Exception as e:  # observability must never cost a render
             logging.getLogger("root").warning(f"qa summary failed for {game_id}: {e}")
-            processed_game["qa"] = None
-        # ...and onto this request's telemetry row, so the route timing and the
-        # quality of what it served are one sample rather than two datasets.
-        g.gop_meta = {**getattr(g, "gop_meta", {}), **qa.telemetry_fields(processed_game["qa"])}
+            processed_game.setdefault("qa", None)
 
         try:
             _emit_dq(game_id, game, processed_game)

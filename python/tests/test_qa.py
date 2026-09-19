@@ -170,3 +170,16 @@ def test_a_raising_gate_costs_the_response_nothing(client, monkeypatch):
     monkeypatch.setattr(qa, "build", boom)
     r = client.get("/nfl/401772944/process", headers=auth())
     assert r.status_code == 200 and r.get_json()["qa"] is None
+
+
+def test_a_raising_telemetry_flattener_costs_the_response_nothing(client, monkeypatch):
+    # the OTHER qa call on the route: flattening the verdict onto the request
+    # row. It is observability too, so it must not be the one step that 500s,
+    # and the verdict already computed still ships.
+    def boom(*a, **k):
+        raise RuntimeError("no columns")
+
+    monkeypatch.setattr(qa, "telemetry_fields", boom)
+    r = client.get("/nfl/401772944/process", headers=auth())
+    assert r.status_code == 200
+    assert r.get_json()["qa"]["live"]["polls"] == 1
