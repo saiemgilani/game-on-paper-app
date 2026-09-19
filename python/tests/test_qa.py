@@ -102,6 +102,28 @@ def test_no_validation_package_still_reports_the_live_rules(monkeypatch):
     assert block["live"]["polls"] == 1 and block["live"]["ok"] is True
 
 
+def test_a_raising_gate_leaves_the_live_half_running(monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("polars said no")
+
+    monkeypatch.setattr(qa, "_validate_game", boom)
+    block = qa.build(_game(completed=False, state="in"), _payload(completed=False, state="in"), "cfb", 1)
+    # the halves are independent by contract: a gate that blew up may not cost
+    # the live verdict, and above all may not drop the poll from _STATE -- the
+    # next poll would then compare against a stale summary and invent a prefix
+    # violation
+    assert block is not None and block["n_errors"] is None
+    assert block["live"]["polls"] == 1 and live_qa._STATE.get("1") is not None
+
+
+def test_a_raising_live_half_leaves_the_gate_running(monkeypatch):
+    monkeypatch.setattr(qa, "_validate_game", lambda *a, **k: _report(ok=True))
+    monkeypatch.setattr(live_qa, "summarize", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no")))
+    block = qa.build(_game(completed=False, state="in"), _payload(completed=False, state="in"), "cfb", 2)
+    assert block is not None and block["live"] is None and block["ok"] is True
+    assert block["n_errors"] == 0
+
+
 def test_a_frameless_processor_skips_the_gate(monkeypatch):
     monkeypatch.setattr(qa, "_validate_game", lambda *a, **k: pytest.fail("no frame, no gate"))
     assert qa.build(_game(frame=None), _payload(), "cfb", 1) is None
@@ -113,10 +135,14 @@ def test_telemetry_fields_flatten_gate_and_live_rules_into_one_vocabulary(monkey
     monkeypatch.setattr(qa, "_validate_game",
                         lambda *a, **k: _report(ok=False, errors=[_finding("score.monotone", 3)]))
     block = qa.build(_game(completed=False, state="in"), _payload(completed=False, state="in"), "nfl", 7)
-    block["live"]["findings"] = [{"rule": "live.score_monotone", "n": 1, "sample": "home 7 -> 3"}]
+    block["live"]["findings"] = [{"rule": "live.type_null", "n": 1, "sample": "9", "severity": "error"}]
+    block["live"]["anomalies"] = [{"rule": "live.score_monotone", "n": 1, "sample": "home 7 -> 3",
+                                   "severity": "warn"}]
     row = qa.telemetry_fields(block)
     assert row["qa_ok"] is False and row["qa_errors"] == 1 and row["qa_source"] == "espn"
-    assert row["qa_rules"] == ["score.monotone", "live.score_monotone"]
+    # both tiers reach the histogram: /admin/qa shows what the source did as
+    # well as what we got wrong, and only `qa_ok` tells them apart
+    assert row["qa_rules"] == ["score.monotone", "live.type_null", "live.score_monotone"]
     assert qa.telemetry_fields(None) == {}
 
 
@@ -136,6 +162,15 @@ def client(monkeypatch):
 
 def auth(tok="secret"):
     return {"Authorization": "Bearer " + base64.b64encode(tok.encode()).decode()}
+
+
+def test_an_anomaly_alone_does_not_fail_the_block(monkeypatch):
+    monkeypatch.setattr(qa, "_validate_game", None)
+    monkeypatch.setattr(live_qa, "validate_live", lambda *a, **k: {
+        "ok": True, "findings": [],
+        "anomalies": [{"rule": "live.score_monotone", "n": 1, "sample": None, "severity": "warn"}]})
+    block = qa.build(_game(completed=False, state="in"), _payload(completed=False, state="in"), "cfb", 3)
+    assert block["ok"] is True and block["live"]["anomalies"][0]["rule"] == "live.score_monotone"
 
 
 def test_the_route_carries_the_live_half_on_a_pin_without_the_gate(client):

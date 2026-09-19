@@ -22,6 +22,8 @@ that has to be cheap enough to ship on every response and store on every row.
 The shape is contract, documented in ``docs/qa-payload.md``.
 """
 
+import logging
+
 import live_qa
 
 try:  # a pin older than sportsdataverse-py #553 has no validation package
@@ -62,12 +64,20 @@ def build(game, processed_game, league, game_id, provenance=None, sdv_version=No
     """
     header = (getattr(game, "json", None) or {}).get("header") or processed_game.get("header") or {}
     contract = (provenance or {}).get("contract") or {}
+    # The two halves are independent by contract, so a gate that raises must
+    # not take the live half -- or the poll that the live half would have
+    # remembered -- down with it. Dropping a poll from _STATE is worse than
+    # losing one verdict: the NEXT poll then compares against a stale summary
+    # and can report a prefix violation that never happened.
     report = None
     frame = getattr(game, "plays_frame", None)
     if _validate_game is not None and frame is not None:
-        report = _validate_game(
-            frame, league, header=header, source=(provenance or {}).get("served", "espn")
-        )
+        try:
+            report = _validate_game(
+                frame, league, header=header, source=(provenance or {}).get("served", "espn")
+            )
+        except Exception as exc:
+            logging.getLogger("root").warning("qa gate failed for %s: %s", game_id, exc)
     live = live_qa.track(game_id, processed_game) if _in_progress(header) else None
     if report is None and live is None:
         return None
@@ -96,13 +106,17 @@ def telemetry_fields(qa):
     """The flat columns ``gop.request_log`` keeps for one response's ``qa``.
 
     Rule ids go in as an array so ``/admin/qa``'s per-rule histogram is one
-    ``unnest`` rather than a second table; a live finding is named
-    ``<rule>`` exactly as the gate's are, so the two share the histogram.
+    ``unnest`` rather than a second table; a live rule is named the way the
+    gate's are, so the two share the histogram. BOTH live tiers go in -- the
+    histogram is meant to show what the source did as well as what we got
+    wrong, and ``qa_ok`` is what tells them apart.
     """
     if not qa:
         return {}
+    live = qa.get("live") or {}
     rules = [r["rule"] for r in qa.get("top_rules") or []]
-    rules += [f["rule"] for f in ((qa.get("live") or {}).get("findings") or [])]
+    rules += [f["rule"] for f in (live.get("findings") or [])]
+    rules += [f["rule"] for f in (live.get("anomalies") or [])]
     return {
         "qa_ok": qa.get("ok"),
         "qa_errors": qa.get("n_errors"),
