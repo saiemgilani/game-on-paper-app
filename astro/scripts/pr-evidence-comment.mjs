@@ -69,14 +69,16 @@ if (!summary) {
 
 out.push('', '### Walkthrough');
 const clipsDir = join(opt.out, 'walkthrough');
-const clips = existsSync(clipsDir) ? readdirSync(clipsDir).filter((f) => f.endsWith('.mp4')).sort() : [];
+// mp4 when the conversion ran, else the webm -- the same choice the publish step makes
+const allClips = existsSync(clipsDir) ? readdirSync(clipsDir) : [];
+const clips = allClips.filter((f) => f.endsWith('.mp4') || (f.endsWith('.webm') && !allClips.includes(f.replace(/\.webm$/, '.mp4')))).sort();
 if (!clips.length) {
   out.push('', 'No clips: the walkthrough did not run or every route failed to load. See the run log.');
 } else {
   // one row per flow; a link plays the mp4 in the browser (GitHub does not inline third-party video)
   const byFlow = new Map();
   for (const f of clips) {
-    const m = f.match(/^(.*)-(desktop|mobile)-(light|dark)\.mp4$/);
+    const m = f.match(/^(.*)-(desktop|mobile)-(light|dark)\.(mp4|webm)$/);
     if (!m) continue;
     if (!byFlow.has(m[1])) byFlow.set(m[1], []);
     byFlow.get(m[1]).push({ file: f, label: `${m[2]} ${m[3]}` });
