@@ -199,6 +199,25 @@ function onChangeSpan(e: Event) {
             decimalPoints={2}
         />
         <TeamMetricsTable 
+            title="Game Plan"
+            teamKey='pos_team'
+            season={season}
+            columns={[
+                "scripted.drives",
+                "scripted.success_rate",
+                "scripted.epa_per_play",
+                "scripted.points_per_drive",
+
+                "non_scripted.drives",
+                "non_scripted.success_rate",
+                "non_scripted.epa_per_play",
+                "non_scripted.points_per_drive",
+            ]}
+            teamBoxScores={selectedBoxScore.drive_scripting}
+            useSuffix={false}
+            decimalPoints={2}
+        />
+        <TeamMetricsTable 
             title="Defensive"
             teamKey='def_pos_team'
             season={season}

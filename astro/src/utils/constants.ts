@@ -383,6 +383,16 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "kickoff_return_avg_allowed": "Avg Kick Return Allowed (yds)",
     "punt_blocks_by": "Punt Blocks",
     "fg_blocks_by": "FG Blocks",
+
+    "scripted.drives": "Scripted Drives",
+    "scripted.epa_per_play": "&emsp;&emsp;EPA/Play",
+    "scripted.points_per_drive": "&emsp;&emsp;Pts/Drive",
+    "scripted.success_rate": "&emsp;&emsp;Success Rate",
+
+    "non_scripted.drives": "Scripted Drives",
+    "non_scripted.epa_per_play": "&emsp;&emsp;EPA/Play",
+    "non_scripted.points_per_drive": "&emsp;&emsp;Pts/Drive",
+    "non_scripted.success_rate": "&emsp;&emsp;Success Rate",
 };
 
 export const TURNOVER_VEC: string[] = [

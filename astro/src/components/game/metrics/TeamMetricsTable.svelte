@@ -17,7 +17,9 @@ interface Props {
 }
 const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
 
-const groups = teamBoxScores.map((group: any) => group[teamKey]);
+const groups = [
+    ...new Set(teamBoxScores.map((group: any) => group[teamKey]))
+];
 
 function handleMetricRows(item: string): string {
     const finalDecimalPoints = decimalPoints || 1;
@@ -81,6 +83,29 @@ function handleMetricRows(item: string): string {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${val}</td>`;
         });
+    } else if (item.startsWith("scripted.") || item.startsWith("non_scripted.")) {
+        const script = item.split(".")[0]
+        const metric = item.replace(script + ".", "")
+        for (const teamData of teamBoxScores) {
+            if (teamData["script"] != script) {
+                continue;
+            }
+
+            let val = teamData[metric] || 0;
+            if (["epa_per_play", "points_per_drive"].includes(metric)) {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+            } else if (metric == "success_rate") {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(val * 100, 2, 0)}%</td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${val}</td>`;
+            }
+        }
+        // teamBoxScores.forEach((teamData: any) => {
+        //     if (teamData["script"] == "scripted") {
+        //         let val = teamData[item.replace("scripted.", "")] || 0;
+        //         result += `<td class="numeral" style="text-align: center;">${val}</td>`;
+        //     }
+        // });
     } else {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
