@@ -15,6 +15,15 @@ ALTER TABLE gop.request_log
     -- column rather than a second table
     ADD COLUMN IF NOT EXISTS qa_rules    text[];
 
--- every /admin/qa view filters on "rows carrying a qa verdict, recently"
-CREATE INDEX IF NOT EXISTS request_log_qa_ts_idx
+-- Every /admin/qa view filters on "rows carrying a qa verdict, recently".
+-- CONCURRENTLY: request_log is the hottest write path in the schema (705k rows
+-- / 146MB as of 2026-09-19) and a plain CREATE INDEX holds a write lock for the
+-- whole build. psql -f runs in autocommit, so this is legal here; it cannot run
+-- inside a transaction block.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS request_log_qa_ts_idx
     ON gop.request_log (ts DESC) WHERE qa_ok IS NOT NULL;
+
+-- Applying this is not a deploy gate: telemetry.py probes the live column set
+-- on each connection and inserts only the columns that exist, so the app writes
+-- its pre-migration rows before this runs and picks the qa columns up on its
+-- next reconnect afterwards. Running it is what makes /admin/qa show anything.
