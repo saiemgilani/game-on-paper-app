@@ -106,23 +106,35 @@ _TABLES = {
 # INSERT (psycopg sends str as text; PG won't implicitly cast text->inet/jsonb).
 _CASTS = {"ip": "::inet", "context": "::jsonb", "kickoff_ts": "::timestamptz"}
 
-_SQL = {
-    table: "INSERT INTO gop.%s (%s) VALUES (%s)"
-    % (table, ",".join(cols), ",".join("%s" + _CASTS.get(c, "") for c in cols))
-    for table, cols in _TABLES.items()
-}
+def _build_sql(table, cols):
+    """The INSERT for one table over exactly ``cols``.
 
-# game_meta is a live-updated dimension, not an append log: the same game is
-# seen by every render, so the insert must be an upsert on game_id.
-_SQL["game_meta"] = (
-    _SQL["game_meta"].rstrip()
-    + " ON CONFLICT (game_id) DO UPDATE SET "
-    + ", ".join(
-        f"{c} = COALESCE(EXCLUDED.{c}, gop.game_meta.{c})"
-        for c in _TABLES["game_meta"]
-        if c != "game_id"
+    Built per column set rather than once per table, because the set the live
+    database accepts is not always the set declared above -- see
+    ``Telemetry._probe_columns``.
+    """
+    sql = "INSERT INTO gop.%s (%s) VALUES (%s)" % (
+        table,
+        ",".join(cols),
+        ",".join("%s" + _CASTS.get(c, "") for c in cols),
     )
-)
+    # game_meta is a live-updated dimension, not an append log: the same game is
+    # seen by every render, so the insert must be an upsert on game_id.
+    if table == "game_meta":
+        sql += " ON CONFLICT (game_id) DO UPDATE SET " + ", ".join(
+            f"{c} = COALESCE(EXCLUDED.{c}, gop.game_meta.{c})"
+            for c in cols
+            if c != "game_id"
+        )
+    return sql
+
+
+_SQL = {table: _build_sql(table, cols) for table, cols in _TABLES.items()}
+
+# One query, on the first flush of each connection: which of the columns above
+# the live database actually has.
+_PROBE_SQL = """SELECT table_name, column_name FROM information_schema.columns
+    WHERE table_schema = 'gop' AND table_name = ANY(%s)"""
 
 log = logging.getLogger("app.telemetry")
 
@@ -156,6 +168,8 @@ class Telemetry:
             threading.Lock()
         )  # serializes flushes; _conn only touched under it
         self._wake = threading.Event()  # signals worker to flush early at batch_rows
+        self._live_cols = None  # per-connection probe result; None = not probed yet
+        self._sql_cache = {}
         self.dropped = 0
         self._started = False
         self._host_lock = (
@@ -181,6 +195,52 @@ class Telemetry:
         if buffered >= self.batch_rows:
             self._wake.set()  # worker flushes; no PG I/O on request threads
 
+    def _probe_columns(self, conn):
+        """Which declared columns the live gop tables actually have.
+
+        A telemetry column is added to ``_TABLES`` in one commit and to the live
+        database by a hand-applied migration in another, and the two do not land
+        at the same instant. Between them every INSERT names a column the table
+        does not have, and since ``flush`` batches per table and drops the batch
+        on any error, that costs the WHOLE table -- a qa column nobody has
+        created yet would take route timing, cache status and render outcome
+        down with it, silently, for as long as the migration is pending.
+
+        So the column set is whatever both sides agree on, probed once per
+        connection (a reconnect re-probes, which is how a migration applied
+        while the process is up gets picked up). Fail-open: if the probe itself
+        fails, fall back to the declared set, which is exactly today's
+        behaviour.
+
+        Returns:
+            ``{table: set(columns)}``, or ``{}`` when the probe could not run.
+        """
+        try:
+            with conn.cursor() as cur:
+                cur.execute(_PROBE_SQL, (list(_TABLES),))
+                found = {}
+                for table, column in cur.fetchall():
+                    found.setdefault(table, set()).add(column)
+            return found
+        except Exception:
+            log.warning("gop telemetry could not read the live column set; using the declared one")
+            return {}
+
+    def _columns(self, table):
+        """The declared columns for ``table``, less any the live table lacks."""
+        live = (self._live_cols or {}).get(table)
+        if live is None:  # not probed, or the probe did not see this table
+            return _TABLES[table]
+        return tuple(c for c in _TABLES[table] if c in live)
+
+    def _sql(self, table, cols):
+        key = (table, cols)
+        if key not in self._sql_cache:
+            self._sql_cache[key] = (
+                _SQL[table] if tuple(cols) == tuple(_TABLES[table]) else _build_sql(table, cols)
+            )
+        return self._sql_cache[key]
+
     def flush(self):
         if not self.enabled:
             return {"written": 0, "dropped": self.dropped}
@@ -197,13 +257,22 @@ class Telemetry:
                 by_table.setdefault(table, []).append(r)
             written = 0
             for table, rows in by_table.items():
-                cols = _TABLES[table]
-                values = [tuple(r.get(c) for c in cols) for r in rows]
                 try:
                     if self._conn is None or getattr(self._conn, "closed", False):
                         self._conn = self._conn_factory()
+                        self._live_cols = None
+                    if self._live_cols is None:
+                        self._live_cols = self._probe_columns(self._conn)
+                    cols = self._columns(table)
+                    if not cols:  # the live table has none of our columns
+                        log.warning("gop.%s has none of the declared columns; dropped %d rows",
+                                    table, len(rows))
+                        with self._lock:
+                            self.dropped += len(rows)
+                        continue
+                    values = [tuple(r.get(c) for c in cols) for r in rows]
                     with self._conn.cursor() as cur:
-                        cur.executemany(_SQL[table], values)
+                        cur.executemany(self._sql(table, tuple(cols)), values)
                     self._conn.commit()
                     written += len(rows)
                 except Exception:  # fail-open: drop batch, reset connection
@@ -218,6 +287,7 @@ class Telemetry:
                     except Exception:
                         pass
                     self._conn = None
+                    self._live_cols = None  # re-probe on the next connection
             return {"written": written, "dropped": self.dropped}
 
     def stats(self):
