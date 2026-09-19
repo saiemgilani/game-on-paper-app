@@ -1,0 +1,87 @@
+---
+/**
+ * The player's game log for one season: schedule context, the box stat line,
+ * and the per-game EPA the Data API aggregates from the plays that carry him.
+ *
+ * Mirrors the game page's `metrics/PlayerBoxScore.astro`: a text stat line on
+ * the left and one number per numeric cell after it (Plays, EPA/play, EPA, SR).
+ * Rows link to the game page, which is the whole point of `game_id` riding on
+ * every row.
+ */
+import { cleanField, roundNumber } from '../../utils/misc';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
+import { gameStatLine, numberOrNull, type PlayerGameRow } from '../../utils/players';
+import DarkModeLogos from '../DarkModeLogos.astro';
+
+interface Props {
+    games: PlayerGameRow[]
+    /** nflverse game id -> ESPN event id; the NFL log keys on the former, every GOP game page on the latter */
+    espnGameIds?: Record<string, string>
+}
+const { games, espnGameIds = {} } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+
+/** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
+function gameHref(row: PlayerGameRow): string | null {
+    const id = row.game_id ? String(row.game_id) : null;
+    if (!id) return null;
+    const espn = /^\d+$/.test(id) ? id : espnGameIds[id];
+    return espn ? leaguePath(league, `/game/${espn}`) : null;
+}
+
+const day = (d: unknown): string => (d ? String(d).slice(0, 10) : '—');
+const num = (v: unknown, fixed: number): string => {
+    const x = numberOrNull(v);
+    return x === null ? '—' : roundNumber(x, 2, fixed);
+};
+const opponentIds = [...new Set(games.map((g: PlayerGameRow) => g.opponent_id).filter(Boolean))] as (string | number)[];
+---
+{games.length > 0 && (
+<Fragment>
+<DarkModeLogos teamIds={opponentIds} />
+<div class="table-responsive" id="player-game-log">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Date</th>
+                <th class="text-center" colspan="1">Wk</th>
+                <th class="text-left" colspan="1">Opponent</th>
+                <th class="text-center" colspan="1">Result</th>
+                <th class="text-left" colspan="1">Stat line</th>
+                <th class="text-center" colspan="1">Plays</th>
+                <th class="text-center" colspan="1" title="Expected Points Added per Play">EPA/play</th>
+                <th class="text-center" colspan="1" title="Total Expected Points Added">EPA</th>
+                <th class="text-center" colspan="1" title="Success Rate">SR</th>
+            </tr>
+        </thead>
+        <tbody>
+            {games.map((g: PlayerGameRow) => (
+                <tr>
+                    <td class="text-left text-nowrap numeral" colspan="1">
+                        {gameHref(g) ? <a href={gameHref(g)}>{day(g.game_date)}</a> : day(g.game_date)}
+                    </td>
+                    <td class="text-center numeral" colspan="1">{g.week ?? '—'}</td>
+                    <td class="text-left text-nowrap" colspan="1">
+                        <span class="text-muted me-1">{g.home_away === 'away' ? 'at' : 'vs'}</span>
+                        {g.opponent_id && (
+                            <img class={`img-fluid team-logo-${g.opponent_id} me-2`} width="20px"
+                                src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${g.opponent_id}.png`}
+                                alt={`${g.opponent ?? g.opponent_id} logo`} title={String(g.opponent ?? '')} />
+                        )}
+                        <span>{cleanField(g, 'opponent')}</span>
+                    </td>
+                    <td class="text-center text-nowrap numeral" colspan="1">
+                        {g.result ?? '—'} {g.team_score != null && g.opponent_score != null ? `${g.team_score}-${g.opponent_score}` : ''}
+                    </td>
+                    <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
+                    <td class="text-center numeral" colspan="1">{num(g.plays, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{num(g.epa_per_play, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{num(g.epa, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{g.success_rate == null ? '—' : `${roundNumber(Number(g.success_rate) * 100, 2, 1)}%`}</td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
+</Fragment>
+)}

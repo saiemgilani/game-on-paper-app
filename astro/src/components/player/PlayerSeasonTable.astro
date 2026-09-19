@@ -1,0 +1,111 @@
+---
+/**
+ * The player's season line table: one table per category, with exactly the
+ * columns and formatting the season leaderboards use
+ * (`SDV_PLAYER_METRIC_CATEGORIES` / `..._FORMATTING_VALUES`), so a number reads
+ * identically here and on `/year/N/players/<category>`. That is also where
+ * `EPA/DB` comes from: a passer's `EPAplay` is per dropback, not per play.
+ *
+ * Rows are the producer's own season rows, so they carry `_rank` and `_pct`.
+ * The rank is its own indented row rather than a second number in the value
+ * cell, and the cell is shaded by the percentile on the site's green -> purple
+ * ramp. A traded player has one row per team-season; two or more rows of a
+ * category add a career roll-up whose rates are recomputed from the summed
+ * counts, never averaged (`utils/players.ts` rollUpSeasons).
+ */
+import { cleanField, formatRank, generateColorRampValue } from '../../utils/misc';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
+import { categoryColumns, formatPlayerMetric, numberOrNull, percentileOf, PLAYER_CATEGORIES, rollUpSeasons, type SeasonRow } from '../../utils/players';
+import DarkModeLogos from '../DarkModeLogos.astro';
+
+interface Props {
+    /** every season row the player has, all seasons */
+    rows: SeasonRow[]
+    season: number
+}
+const { rows, season } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+
+const TITLES: Record<string, string> = { passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving' };
+
+interface Block {
+    category: string;
+    columns: [string, string][];
+    shown: SeasonRow[];
+    /** additive columns summed over every season, rates recomputed; null for one row */
+    career: Record<string, number | string> | null;
+}
+
+const blocks: Block[] = PLAYER_CATEGORIES.map((category): Block => {
+    const all = rows.filter((r: SeasonRow) => r.category === category);
+    const shown = all
+        .filter((r: SeasonRow) => Number(r.season) === season)
+        .toSorted((a: SeasonRow, b: SeasonRow) => Number(b.plays ?? 0) - Number(a.plays ?? 0));
+    return { category, columns: categoryColumns(category), shown, career: rollUpSeasons(all) };
+}).filter((b: Block) => b.shown.length > 0);
+
+const teamIds = [...new Set(rows.map((r: SeasonRow) => r.team_id).filter(Boolean))] as (string | number)[];
+const hasRank = (row: SeasonRow, columns: [string, string][]) =>
+    columns.some(([k]) => numberOrNull(row[`${k}_rank`]) !== null);
+// read out here, not in the template: a cast inside JSX trips the template parser
+const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key] : null);
+---
+{blocks.length > 0 && (
+<Fragment>
+<DarkModeLogos teamIds={teamIds} />
+{blocks.map((b) => (
+<div class="table-responsive mb-3" id={`player-season-${b.category}`}>
+    <h3 class="h5">{TITLES[b.category]}</h3>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Season</th>
+                <th class="text-left" colspan="1">Team</th>
+                {b.columns.map(([, label]) => <th class="text-center" colspan="1">{label}</th>)}
+            </tr>
+        </thead>
+        <tbody>
+            {b.shown.map((row: SeasonRow) => (
+                <Fragment>
+                    <tr>
+                        <td class="text-left numeral" colspan="1">{row.season}</td>
+                        <td class="text-left text-nowrap" colspan="1">
+                            <a href={leaguePath(league, `/year/${row.season}/team/${row.team_id}`)}>
+                                <img class={`img-fluid team-logo-${row.team_id} me-2`} width="20px"
+                                    src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${row.team_id}.png`}
+                                    alt={`${row.pos_team ?? row.team_id} logo`} title={String(row.pos_team ?? '')} />
+                                <span>{cleanField(row, 'pos_team')}</span>
+                            </a>
+                        </td>
+                        {b.columns.map(([k]) => (
+                            <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k), 100)]} colspan="1">
+                                {formatPlayerMetric(b.category, k, row[k])}
+                            </td>
+                        ))}
+                    </tr>
+                    {hasRank(row, b.columns) && (
+                        <tr class="text-muted text-small">
+                            <td class="text-left" colspan="1"><Fragment set:html="&emsp;&emsp;Rank" /></td>
+                            <td colspan="1"></td>
+                            {b.columns.map(([k]) => (
+                                <td class="text-center numeral" colspan="1">{formatRank(numberOrNull(row[`${k}_rank`]))}</td>
+                            ))}
+                        </tr>
+                    )}
+                </Fragment>
+            ))}
+            {b.career && (
+                <tr class="table-secondary">
+                    <td class="text-left" colspan="1"><strong>Career</strong></td>
+                    <td class="text-left text-muted text-small" colspan="1">every season</td>
+                    {b.columns.map(([k]) => (
+                        <td class="text-center numeral" colspan="1">{formatPlayerMetric(b.category, k, careerValue(b, k))}</td>
+                    ))}
+                </tr>
+            )}
+        </tbody>
+    </table>
+</div>
+))}
+</Fragment>
+)}

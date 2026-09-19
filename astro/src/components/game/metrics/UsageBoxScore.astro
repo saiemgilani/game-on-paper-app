@@ -8,12 +8,15 @@
  */
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { madeOf, num, pct, signed, sortDesc, teamRows } from '../../../utils/usage';
+import PlayerLink from '../../player/PlayerLink.astro';
 
 interface Props {
     box: Partial<ProcessedBoxScore>,
     teamId: string | number,
+    /** the game's season, so a player link opens on the season being watched */
+    season?: number,
 }
-const { box, teamId } = Astro.props;
+const { box, teamId, season } = Astro.props;
 
 const usage = sortDesc(teamRows(box.player_usage, teamId), 'opportunities');
 const groups = sortDesc(teamRows(box.position_group_usage, teamId), 'opportunities');
@@ -49,7 +52,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {usage.map((p: any) => (
                 <tr>
-                    <td><b>{p.player_name ?? p.player_id}</b>{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
+                    <td><PlayerLink id={p.player_id} season={season}><b>{p.player_name ?? p.player_id}</b></PlayerLink>{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;" title={`${p.rushes} rush, ${p.targets} tgt, ${p.receptions} rec`}>{p.opportunities}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.target_share, 0)}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.first_down_share, 0)}</td>
@@ -92,7 +95,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {tackles.map((t: any) => (
                 <tr>
-                    <td><b>{t.player_name ?? t.player_id}</b>{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
+                    <td><PlayerLink id={t.player_id} season={season}><b>{t.player_name ?? t.player_id}</b></PlayerLink>{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;">{t.tackles}</td>
                     <td class="numeral" style="text-align: center;">{t.assists}</td>
                     <td class="numeral" style="text-align: center;">{pct(t.tackle_share, 0)}</td>
@@ -124,7 +127,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {kickers.map((k: any) => (
                 <tr>
-                    <td><b>{k.player_name ?? k.player_id}</b> <span class="text-muted text-small">K</span></td>
+                    <td><PlayerLink id={k.player_id} season={season}><b>{k.player_name ?? k.player_id}</b></PlayerLink> <span class="text-muted text-small">K</span></td>
                     <td>
                         {k.fg_attempts > 0 && <span>FG {madeOf(k.fg_made, k.fg_attempts)} ({fgByRange(k)}){k.fg_long != null ? `, ${k.fg_long} LNG` : ''}{k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}. </span>}
                         {k.xp_attempts > 0 && <span>XP {madeOf(k.xp_made, k.xp_attempts)}. </span>}
@@ -135,14 +138,14 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
             ))}
             {punters.map((p: any) => (
                 <tr>
-                    <td><b>{p.player_name ?? p.player_id}</b> <span class="text-muted text-small">P</span></td>
+                    <td><PlayerLink id={p.player_id} season={season}><b>{p.player_name ?? p.player_id}</b></PlayerLink> <span class="text-muted text-small">P</span></td>
                     <td>{p.punts} punts, {num(p.punt_avg, 1)} avg, {num(p.punt_net_avg, 1)} net{p.punt_long != null ? `, ${p.punt_long} LNG` : ''}, {p.punt_inside_20} inside 20, {p.punt_touchbacks} TB, {p.punt_fair_catches} FC{p.punt_returns_allowed > 0 ? `, ${num(p.punt_return_avg_allowed, 1)} per return allowed` : ''}{p.punt_blocked > 0 ? `, ${p.punt_blocked} blocked` : ''}.</td>
                     <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
                 </tr>
             ))}
             {returners.map((r: any) => (
                 <tr>
-                    <td><b>{r.player_name ?? r.player_id}</b> <span class="text-muted text-small">RET</span></td>
+                    <td><PlayerLink id={r.player_id} season={season}><b>{r.player_name ?? r.player_id}</b></PlayerLink> <span class="text-muted text-small">RET</span></td>
                     <td>
                         {r.kick_returns > 0 && <span>KR {r.kick_returns}-{r.kick_return_yards}, {num(r.kick_return_avg, 1)} avg{r.kick_return_long != null ? `, ${r.kick_return_long} LNG` : ''}{r.kick_return_tds > 0 ? `, ${r.kick_return_tds} TD` : ''}. </span>}
                         {r.punt_returns > 0 && <span>PR {r.punt_returns}-{r.punt_return_yards}, {num(r.punt_return_avg, 1)} avg{r.punt_return_long != null ? `, ${r.punt_return_long} LNG` : ''}{r.punt_return_tds > 0 ? `, ${r.punt_return_tds} TD` : ''}.</span>}
@@ -152,7 +155,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
             ))}
             {blocks.map((b: any) => (
                 <tr>
-                    <td><b>{b.player_name ?? b.player_id}</b> <span class="text-muted text-small">BLK</span></td>
+                    <td><PlayerLink id={b.player_id} season={season}><b>{b.player_name ?? b.player_id}</b></PlayerLink> <span class="text-muted text-small">BLK</span></td>
                     <td>{b.punt_blocks > 0 ? `${b.punt_blocks} punt${b.punt_blocks > 1 ? 's' : ''} blocked` : ''}{b.punt_blocks > 0 && b.fg_blocks > 0 ? ', ' : ''}{b.fg_blocks > 0 ? `${b.fg_blocks} field goal${b.fg_blocks > 1 ? 's' : ''} blocked` : ''}.</td>
                     <td class="numeral" style="text-align: center;">—</td>
                 </tr>

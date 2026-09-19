@@ -1,0 +1,61 @@
+---
+/**
+ * Percentile bars for the selected season: one bar per metric the producer
+ * computed a `_pct` for, on the site's green -> purple ramp
+ * (`generateColorRampValue` -> `hulk-bg-level-*`, never green/red).
+ *
+ * `generateColorRampValue` returns null for the middle of the ramp (levels 4-5),
+ * which leaves a table cell unshaded -- correct there, but a `.progress-bar` with no
+ * background class falls back to Bootstrap's blue, so the neutral level is named
+ * explicitly here.
+ *
+ * Renders nothing when the rows carry no percentiles, which is the NFL's state
+ * until the `nfl_player_percentiles` thresholds publish with the next refresh
+ * (nfl-data #57) -- an empty section beats a bar drawn from a null.
+ */
+import { generateColorRampValue, roundNumber } from '../../utils/misc';
+import { categoryColumns, formatPlayerMetric, percentileOf, PLAYER_CATEGORIES, type SeasonRow } from '../../utils/players';
+
+interface Props {
+    rows: SeasonRow[]
+    season: number
+}
+const { rows, season } = Astro.props;
+
+const TITLES: Record<string, string> = { passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving' };
+
+const blocks = PLAYER_CATEGORIES.map((category) => {
+    // a traded player has a row per team-season; bar the primary one, which is
+    // the row the season table also puts first -- a 3-game stint is usually
+    // under the producer's qualification gate and carries no percentiles at all
+    const row = rows
+        .filter((r) => r.category === category && Number(r.season) === season)
+        .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0))[0];
+    const bars = row
+        ? categoryColumns(category)
+            .map(([k, label]) => ({ key: k, label, pct: percentileOf(row, k), value: formatPlayerMetric(category, k, row[k]) }))
+            .filter((b) => b.pct !== null)
+        : [];
+    return { category, bars };
+}).filter((b) => b.bars.length > 0);
+---
+{blocks.length > 0 && (
+<Fragment>
+{blocks.map((b) => (
+<div class="mb-3" id={`player-percentiles-${b.category}`}>
+    <h3 class="h5">{TITLES[b.category]}</h3>
+    {b.bars.map((bar) => (
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="col-3 col-md-2 text-left text-small">{bar.label}</div>
+            <div class="col-2 col-md-1 text-center numeral text-small">{bar.value}</div>
+            <div class="progress flex-grow-1" role="progressbar" aria-label={`${bar.label} percentile`}
+                aria-valuenow={Math.round(bar.pct as number)} aria-valuemin="0" aria-valuemax="100">
+                <div class:list={["progress-bar", generateColorRampValue(bar.pct, 100) ?? "hulk-bg-level-4"]} style={`width: ${bar.pct}%`}></div>
+            </div>
+            <div class="col-2 col-md-1 text-center numeral text-small">{roundNumber(bar.pct, 2, 0)}%</div>
+        </div>
+    ))}
+</div>
+))}
+</Fragment>
+)}
