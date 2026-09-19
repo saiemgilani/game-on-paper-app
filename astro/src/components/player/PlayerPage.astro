@@ -31,7 +31,8 @@ import {
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
 import { roundNumber, formatRank } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { numberOrNull, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { espnGameId, numberOrNull, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { liveGameBadges } from '../../utils/liveQa';
 
 interface Props {
     player: SDVPlayer
@@ -49,6 +50,15 @@ const [seasonRows, games, splits, espnGameIds] = await Promise.all([
 ]);
 
 const totals = totalGameLog(games);
+// Provenance + QA for the games in progress right now (plan P5). Returns {}
+// without a fetch for any season but the current one, so a historical page
+// renders byte-for-byte what it rendered before this existed.
+// Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
+// badge can be up to that stale while a game runs. Left alone deliberately --
+// shortening the whole page's policy for one row is the wrong trade; if the
+// badge has to be live, it becomes a fetch on the client, not a cache change.
+const live = await liveGameBadges(
+    games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[], season, league);
 // the season's rows, primary team-season first -- the same order the line table
 // and the percentile bars use, so a traded player's header names the team he
 // actually played most of the season for
@@ -167,7 +177,7 @@ const tiles: { label: string, value: string, title: string }[] = [
 
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={games} espnGameIds={espnGameIds} />
+                <PlayerGameLog games={games} espnGameIds={espnGameIds} live={live} />
                 {games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
             </Fragment>
         </Panel>

@@ -10,23 +10,33 @@
  */
 import { cleanField, roundNumber } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { gameStatLine, numberOrNull, type PlayerGameRow } from '../../utils/players';
+import { espnGameId, gameStatLine, numberOrNull, type PlayerGameRow } from '../../utils/players';
+import { badgeText, type LiveQaBadge } from '../../utils/liveQa';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
     games: PlayerGameRow[]
     /** nflverse game id -> ESPN event id; the NFL log keys on the former, every GOP game page on the latter */
     espnGameIds?: Record<string, string>
+    /** ESPN event id -> the served source and QA verdict, for the games in progress RIGHT NOW */
+    live?: Record<string, LiveQaBadge>
 }
-const { games, espnGameIds = {} } = Astro.props;
+const { games, espnGameIds = {}, live = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
+// the gate's rule list is admin detail, exactly as `AdminGameTools.astro` (#263)
+// shows it: a public reader gets the verdict, not the report
+const admin = Astro.locals.adminAuthed === true;
 
-/** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
+/** The link to a row's game page, or null when the schedule has no crosswalk for it. */
 function gameHref(row: PlayerGameRow): string | null {
-    const id = row.game_id ? String(row.game_id) : null;
-    if (!id) return null;
-    const espn = /^\d+$/.test(id) ? id : espnGameIds[id];
+    const espn = espnGameId(row, espnGameIds);
     return espn ? leaguePath(league, `/game/${espn}`) : null;
+}
+
+/** The live badge for a row, or undefined -- a row whose payload we could not read renders unchanged. */
+function liveOf(row: PlayerGameRow): LiveQaBadge | undefined {
+    const espn = espnGameId(row, espnGameIds);
+    return espn ? live[espn] : undefined;
 }
 
 const day = (d: unknown): string => (d ? String(d).slice(0, 10) : '—');
@@ -71,7 +81,11 @@ const opponentIds = [...new Set(games.map((g: PlayerGameRow) => g.opponent_id).f
                         <span>{cleanField(g, 'opponent')}</span>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
-                        {g.result ?? '—'} {g.team_score != null && g.opponent_score != null ? `${g.team_score}-${g.opponent_score}` : ''}
+                        {g.result ?? '—'} {g.team_score != null && g.opponent_score != null ? `${g.team_score}-${g.opponent_score}` : ''}{liveOf(g) && (<Fragment>
+                            <span class="badge bg-danger ms-1">Live</span>
+                            <span class="d-block text-small text-muted text-wrap" data-live-qa
+                                  title={admin && liveOf(g)!.rules ? liveOf(g)!.rules : undefined}>{badgeText(liveOf(g)!)}</span>
+                        </Fragment>)}
                     </td>
                     <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
                     <td class="text-center numeral" colspan="1">{num(g.plays, 0)}</td>

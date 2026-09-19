@@ -91,6 +91,19 @@ export interface PlayerGameRow {
     [k: string]: unknown;
 }
 
+/**
+ * The ESPN event id for a game-log row, or null when there is none.
+ *
+ * The CFB log already keys on it; the NFL log keys on nflverse game ids, which
+ * the schedule crosswalk maps. Both the row's game link and the live badge
+ * resolve the id here, so they can never disagree about which game a row is.
+ */
+export function espnGameId(row: PlayerGameRow, espnGameIds: Record<string, string> = {}): string | null {
+    const id = row.game_id ? String(row.game_id) : null;
+    if (!id) return null;
+    return (/^\d+$/.test(id) ? id : espnGameIds[id]) ?? null;
+}
+
 export interface PlayerTotals {
     games: number;
     plays: number;
