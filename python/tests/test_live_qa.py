@@ -34,12 +34,17 @@ def pair(game_id, a, b):
     return by_seq[a], by_seq[b]
 
 
+def fired(result):
+    """Every rule that fired, whatever tier it landed in."""
+    return result["findings"] + result["anomalies"]
+
+
 def rules(result):
-    return {f["rule"] for f in result["findings"]}
+    return {f["rule"] for f in fired(result)}
 
 
 def counts(result):
-    return {f["rule"]: f["n"] for f in result["findings"]}
+    return {f["rule"]: f["n"] for f in fired(result)}
 
 
 def check(prev, curr):
@@ -66,9 +71,14 @@ def test_espn_serving_an_older_payload_is_caught():
     # found (docs/game-state-fixtures.md) and invisible from one sample.
     prev, curr = pair("401866532", 5, 6)
     result = check(prev, curr)
-    assert not result["ok"]
     # the regressed payload DROPS 29 finished plays rather than rewriting them
     assert {"live.period_monotone", "live.score_monotone", "live.prefix_dropped"} <= rules(result)
+    # ...and all three are the SOURCE misbehaving, not a page we rendered
+    # wrong, so they are anomalies and `ok` stays true. 114 of the 259 captured
+    # games have a decreasing score; scoring that as an error would put the
+    # alert channel on 87% of games.
+    assert result["ok"] and result["findings"] == []
+    assert {f["severity"] for f in result["anomalies"]} == {"warn"}
 
 
 def test_a_score_running_backwards_across_three_polls():
@@ -76,6 +86,7 @@ def test_a_score_running_backwards_across_three_polls():
     first, second, third = (s["payload"] for s in states("401868962")[:3])
     assert "live.score_monotone" in rules(check(first, second))
     assert "live.score_monotone" in rules(check(second, third))
+    assert check(first, second)["ok"]  # reported, but the page is not wrong
     # ...and the recovery back to 17-0 is not a violation of anything
     assert check(third, states("401868962")[3]["payload"])["ok"]
 
@@ -112,6 +123,28 @@ def test_prefix_changed_fires_when_a_finished_play_is_rewritten(clean):
     assert counts(check(prev, curr))["live.prefix_changed"] == 1
 
 
+def test_track_is_thread_safe_under_the_two_request_threads():
+    import threading as th
+
+    live_qa._STATE.clear()
+    payloads = [s["payload"] for s in states("401856682")]
+    errors = []
+
+    def poll(i):
+        try:
+            for p in payloads:
+                live_qa.track(i % 8, p)
+        except Exception as exc:  # pragma: no cover - the assertion is that it never runs
+            errors.append(exc)
+
+    threads = [th.Thread(target=poll, args=(i,)) for i in range(16)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == [] and len(live_qa._STATE) <= live_qa._MAX_TRACKED
+
+
 def test_prefix_dropped_fires_when_a_finished_play_vanishes(clean):
     prev, curr = clean
     del curr["plays"][5]
@@ -124,6 +157,65 @@ def test_a_revision_the_source_tags_is_counted_not_failed(clean):
     curr["plays"][5]["modified"] = "2026-09-13T04:00Z"  # ...and tagged as revised
     result = check(prev, curr)
     assert result["ok"] and counts(result) == {"live.prefix_revised": 1}
+    assert result["anomalies"][0]["severity"] == "info"
+
+
+def test_every_rule_has_a_severity_and_only_errors_fail_a_poll():
+    import live_qa as mod
+
+    assert set(mod.SEVERITY) == {
+        "live.prefix_changed", "live.prefix_revised", "live.prefix_dropped",
+        "live.clock_monotone", "live.period_monotone", "live.phase_order",
+        "live.score_monotone", "live.type_null", "live.end_state_derived",
+        "live.wp_continuity", "live.timeouts_increased",
+    }
+    assert set(mod.SEVERITY.values()) == {"info", "warn", "error"}
+
+
+@pytest.mark.parametrize("rule", ["live.prefix_changed", "live.prefix_dropped",
+                                  "live.score_monotone", "live.period_monotone",
+                                  "live.clock_monotone", "live.prefix_revised"])
+def test_the_source_anomalies_never_fail_a_poll(rule, clean):
+    prev, curr = clean
+    mutate = {
+        "live.prefix_changed": lambda: curr["plays"].__setitem__(5, {**curr["plays"][5], "text": "x"}),
+        "live.prefix_revised": lambda: curr["plays"].__setitem__(
+            5, {**curr["plays"][5], "text": "x", "modified": "2026-09-13T04:00Z"}),
+        "live.prefix_dropped": lambda: curr["plays"].pop(5),
+        "live.score_monotone": lambda: curr["header"]["competitions"][0]["competitors"][0].update(score="0"),
+        "live.period_monotone": lambda: curr["header"]["competitions"][0]["status"].update(period=2),
+        "live.clock_monotone": lambda: curr["header"]["competitions"][0]["status"].update(displayClock="14:59"),
+    }[rule]
+    mutate()
+    result = check(prev, curr)
+    assert rule in rules(result)
+    assert result["ok"] and result["findings"] == []
+
+
+@pytest.mark.parametrize("rule", ["live.type_null", "live.end_state_derived",
+                                  "live.wp_continuity", "live.timeouts_increased",
+                                  "live.phase_order"])
+def test_the_page_errors_do_fail_a_poll(rule, clean):
+    prev, curr = clean
+    top = curr["plays"][-1]
+    if rule == "live.type_null":
+        top["type"]["id"] = None
+    elif rule == "live.end_state_derived":
+        top["statYardage"] = 7
+        top["end"] = {**top["end"], **{k: top["start"][k] for k in ("down", "distance", "yardsToEndzone")}}
+    elif rule == "live.wp_continuity":
+        for i in (3, 4):
+            prev["plays"][i]["wp_before"], prev["plays"][i]["wp_after"] = 0.5, 0.55
+            curr["plays"][i]["wp_before"], curr["plays"][i]["wp_after"] = 0.5, 0.55
+        curr["plays"][4]["wp_after"] = 0.61
+    elif rule == "live.timeouts_increased":
+        prev["plays"][-1]["start.homeTeamTimeouts"] = 1
+        curr["plays"][-1]["start.homeTeamTimeouts"] = 2
+    else:
+        prev["header"]["competitions"][0]["status"]["type"]["state"] = "post"
+    result = check(prev, curr)
+    assert not result["ok"]
+    assert [f["rule"] for f in result["findings"]] == [rule]
 
 
 def test_clock_running_backwards_within_a_period(clean):
@@ -204,8 +296,11 @@ def test_track_remembers_the_previous_poll_and_counts_them():
         last = live_qa.track("401866532", p)
     assert last["polls"] == len(seq)
     assert last["since"] == first["since"]
-    # seq 5 -> 6 is the regression, so the run cannot have been clean throughout
-    assert not live_qa.track("401866532", seq[2])["ok"]
+    # seq 5 -> 6 is the regression: the anomalies are reported on the poll that
+    # sees it, and the page is not called wrong for what ESPN did
+    regressed = live_qa.track("401866532", seq[2])
+    assert regressed["ok"] and regressed["findings"] == []
+    assert {f["rule"] for f in regressed["anomalies"]} >= {"live.prefix_dropped"}
 
 
 def test_track_is_bounded_and_never_raises():

@@ -18,8 +18,27 @@ carrying `id`, `text`, `type`, `period`, `clock`, `statYardage`, `scoringPlay`,
 
 Captured by `scripts/capture_game_states.py` into `fixtures/game-states/<id>/`
 (gitignored, ~300MB, regenerable — see `docs/game-state-fixtures.md`), then
-trimmed to the fields `live_qa` reads. Regenerate by re-running that capture
-and re-trimming; nothing here is hand-written, and no value was edited.
+converted. No value is hand-written or edited; the conversion is mechanical and
+is exactly this:
+
+1. take `gamepackageJSON` from the captured state;
+2. flatten `drives.previous` + `drives.current` into one play list, **first
+   occurrence of a drive id wins** — the same dedupe `app._game_drives` applies,
+   because a live ESPN summary repeats the current drive inside `previous`. This
+   is why a state here carries fewer plays than the capture manifest's
+   `n_plays` (seq 1 of 401856682: 78 against 83), and it is the count the
+   `/process` payload carries too;
+3. keep, per play, `id`, `text`, `type.{id,text,abbreviation}`,
+   `period.number` → `period`, `clock.displayValue`, `statYardage`,
+   `scoringPlay`, `modified`, and `start`/`end` `{down, distance,
+   yardsToEndzone, yardLine}`, with ESPN's running `homeScore`/`awayScore`
+   attached to `end` (ESPN's play-level score is the state after the play);
+4. keep, per state, `header.competitions[0].status.{period, displayClock,
+   type.{name,state,completed,detail}}` and each competitor's `homeAway`/`score`.
+
+Re-deriving them from a fresh capture means repeating those four steps; the
+rule counts in `tests/test_live_qa.py` are tied to this play set, so a different
+flattening gives different numbers.
 
 ## What these fixtures cannot carry
 

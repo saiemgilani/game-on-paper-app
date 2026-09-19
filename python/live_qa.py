@@ -13,30 +13,66 @@ produced from an earlier poll of the same game; ``curr_payload`` is the
 :func:`track` is the stateful wrapper the route calls, and the state it keeps
 is a bounded in-process dict -- see its docstring for what that costs.
 
-One rule counts rather than fails: a source may legitimately revise a finished
-play (Shield re-revises ~11 plays back), and ESPN tags the revision with the
-play's ``modified`` stamp. A changed row whose ``modified`` also changed is
-counted as ``live.prefix_revised``; a changed row whose ``modified`` did not is
-``live.prefix_changed``, which is the one that means the feed rewrote history.
+Every rule carries a severity (:data:`SEVERITY`) and only the ``error`` tier
+fails a poll, because most of what these rules catch is the SOURCE
+misbehaving on a page that is otherwise fine: a source may legitimately revise
+a finished play (Shield re-revises ~11 plays back, tagged by ESPN's
+``modified`` stamp), and ESPN's own header runs its score, period and clock
+backwards on a third to a half of captured games. Those are counted and
+returned under ``anomalies``; ``findings`` holds only the rules that mean the
+page we rendered is wrong.
 """
 
+import threading
 from collections import OrderedDict
 from datetime import datetime, timezone
 from hashlib import blake2b
 
-#: Rules that are counted but never fail a poll (see the module docstring).
-COUNTERS = frozenset({"live.prefix_revised"})
+#: Severity per rule, the way the packaged gate scopes its own
+#: (``sportsdataverse.validation.RULE_SCOPE``). Only ``error`` fails a poll.
+#:
+#: The split is measured, not guessed. Swept over the 259 captured games in
+#: ``fixtures/game-states`` (7,790 poll pairs): ESPN's own header decreased the
+#: score in 114 games, decreased the period in 81 and increased the clock in
+#: 157, and a regressed payload dropped finished plays in 170. Those are things
+#: the SOURCE does, routinely, to a page that is otherwise fine -- scoring them
+#: as errors put 226 of 259 games (87%) in the alert channel on day one and made
+#: ``ok`` stop discriminating, which is the one thing it exists to do.
+#:
+#: So they are anomalies: counted, carried in ``anomalies``, alertable on their
+#: own rate, and not a claim that the page is wrong. The errors are the rules
+#: that only fire when what we RENDERED is broken -- 16 of 259 games (6.2%) on
+#: the same sweep, all of them ``phase_order``. Full table in
+#: ``docs/qa-payload.md``.
+SEVERITY = {
+    # the source rewrote history, or its header went backwards
+    "live.prefix_revised": "info",   # ...and said so, via `modified`
+    "live.prefix_changed": "warn",
+    "live.prefix_dropped": "warn",
+    "live.score_monotone": "warn",
+    "live.period_monotone": "warn",
+    "live.clock_monotone": "warn",
+    # the page we served is wrong
+    "live.phase_order": "error",
+    "live.type_null": "error",
+    "live.end_state_derived": "error",
+    "live.wp_continuity": "error",
+    "live.timeouts_increased": "error",
+}
 
 #: Games whose previous poll is remembered, oldest evicted first.
 _MAX_TRACKED = 64
 
-# ponytail: per-worker state. gunicorn runs several workers and each keeps its
-# own dict, so `polls` counts the polls THIS worker saw, not the game's total,
-# and a cross-poll rule only fires when consecutive polls land on one worker.
-# That is a sampling rate, not a correctness problem -- every finding is still
-# a real pair of real polls. Move to the Workers KV the Astro side already
-# keeps (`gamestate:<id>`) only if the sample rate proves too thin to alert on.
+# ponytail: per-worker state. gunicorn runs several workers (and two threads
+# each, and recycles them every ~400 requests), so `polls` counts the polls THIS
+# worker saw since ITS last recycle, not the game's total, and a cross-poll rule
+# only fires when consecutive polls land on the same worker. That is a sampling
+# rate, not a correctness problem -- every finding is still a real pair of real
+# polls -- and docs/qa-payload.md tells the poller so. Move to the Workers KV
+# the Astro side already keeps (`gamestate:<id>`) only if the rate proves too
+# thin to alert on. The lock is for the two threads, which share this dict.
 _STATE: "OrderedDict[str, dict]" = OrderedDict()
+_STATE_LOCK = threading.Lock()
 
 
 def _digest(*parts):
@@ -155,15 +191,22 @@ def validate_live(prev_summary, curr_payload):
         curr_payload: the ``/process`` response body for this poll.
 
     Returns:
-        ``{"ok": bool, "findings": [{"rule", "n", "sample"}, ...]}``. ``ok`` is
-        False when any rule outside :data:`COUNTERS` fired.
+        ``{"ok", "findings", "anomalies"}``. Both lists hold
+        ``{rule, n, sample, severity}``; ``findings`` is the ``error`` tier and
+        ``anomalies`` the rest (see :data:`SEVERITY`), and ``ok`` is False when
+        ``findings`` is non-empty. Nothing is discarded -- an anomaly is
+        reported, it just does not claim the page is wrong.
     """
     curr = summarize(curr_payload)
     plays = curr_payload.get("plays") or []
     findings = []
 
+    anomalies = []
+
     def fire(rule, n, sample):
-        findings.append({"rule": rule, "n": n, "sample": sample})
+        severity = SEVERITY[rule]
+        entry = {"rule": rule, "n": n, "sample": sample, "severity": severity}
+        (findings if severity == "error" else anomalies).append(entry)
 
     # --- single-poll rules ---------------------------------------------------
     # `id` and `text` only, deliberately: ESPN ships a null `type.abbreviation`
@@ -245,30 +288,32 @@ def validate_live(prev_summary, curr_payload):
                 if was is not None and now is not None and now > was:
                     fire("live.timeouts_increased", 1, f"{side} {was:g} -> {now:g}")
 
-    return {
-        "ok": not any(f["rule"] not in COUNTERS for f in findings),
-        "findings": findings,
-    }
+    return {"ok": not findings, "findings": findings, "anomalies": anomalies}
 
 
 def track(game_id, payload):
     """Validate this poll against the last one seen for ``game_id`` and remember it.
 
-    Returns the ``qa.live`` block -- ``{ok, findings, polls, since}`` -- where
-    ``polls`` and ``since`` describe this worker's view of the game (see the
-    ``_STATE`` note). Never raises: a live signal must not cost a render.
+    Returns the ``qa.live`` block -- ``{ok, findings, anomalies, polls, since}``
+    -- where ``polls`` and ``since`` describe this worker's view of the game
+    (see the ``_STATE`` note). Never raises, and that has to include the
+    bookkeeping: the read-modify-write below runs under ``_STATE_LOCK``, inside
+    the guard, because two request threads share this dict and one of them
+    evicting a key the other is about to touch must not reach the route.
     """
     key = str(game_id)
-    prev = _STATE.get(key)
     try:
+        with _STATE_LOCK:
+            prev = _STATE.get(key)
         result = validate_live(prev and prev.get("summary"), payload)
         summary = summarize(payload)
-    except Exception:  # pragma: no cover - fail-open, same contract as every block on the route
+        with _STATE_LOCK:
+            polls = (prev or {}).get("polls", 0) + 1
+            since = (prev or {}).get("since") or summary["ts"]
+            _STATE[key] = {"summary": summary, "polls": polls, "since": since}
+            _STATE.move_to_end(key)
+            while len(_STATE) > _MAX_TRACKED:
+                _STATE.popitem(last=False)
+    except Exception:  # fail-open, same contract as every block on the route
         return None
-    polls = (prev or {}).get("polls", 0) + 1
-    since = (prev or {}).get("since") or summary["ts"]
-    _STATE[key] = {"summary": summary, "polls": polls, "since": since}
-    _STATE.move_to_end(key)
-    while len(_STATE) > _MAX_TRACKED:
-        _STATE.popitem(last=False)
     return {**result, "polls": polls, "since": since}
