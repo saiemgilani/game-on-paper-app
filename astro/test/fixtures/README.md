@@ -137,3 +137,17 @@ the table-reconciliation decisions (#264 review).
 
 **To regenerate** after a processor change: re-run that same offline route call
 for both leagues and overwrite the files; the game ids must stay the same.
+
+**Used by:** `test/tableContracts.render.test.ts` — the render-level table
+contract, twin-parity and aggregation-reconciliation tests (plan V3b).
+
+## `cfb-summaries-2024.json`
+Real rows from the published `cfb` `team_summaries` 2024 asset as the SDV Data
+API returns them: the top 4 FBS teams by net adjusted EPA (Ohio State, Notre
+Dame, Indiana, Oregon), all 383 columns. Captured 2026-09-18 from
+`data.sportsdataverse.org/v1/cfb/team_summaries?season=2024`; no hand edits.
+The college twin of `nfl-summaries-2025.json`.
+
+**Used by:** `test/seasonTables.render.test.ts`, which renders the college team
+board from these rows and reconciles each season row against the parts it is
+summed from.
