@@ -50,7 +50,7 @@ the two share components, so a regression usually hits both. `img/visual/` is
 git-ignored; don't commit the PNGs.
 
 ## PR evidence — REQUIRED on every PR, posted automatically
-Every PR that touches `astro/` or `python/` carries two pieces of evidence. A
+Every PR that touches `astro/` or `python/` carries three pieces of evidence. A
 backend change counts: the processor's output is what the game page renders.
 PRs confined to docs, CI, or repo config are exempt.
 
@@ -58,15 +58,35 @@ PRs confined to docs, CI, or repo config are exempt.
    mobile-light, mobile-dark (the matrix above), as above-the-fold thumbnails
    linking to full pages.
 2. **A Lighthouse comparison of the PR against its base**, on the same page(s).
+3. **A walkthrough video** of the change being used, attached by the author
+   (below). Screenshots show what it looks like; the video shows what it does.
+   Both are required — the video is not a substitute for the matrix and the
+   matrix is not a fallback for the video.
 
 **`.github/workflows/pr-evidence.yml` produces both on every push** to a
 same-repo PR and keeps them in one PR comment. It compares GitHub's PR merge
 commit against the base tip it merged onto, so only this PR's changes differ even
 after `main` moves. Choose pages with an `Evidence routes: /a /b` line in the PR
 description; the default is a final game with full play-by-play (`/game/401856682`),
-the heaviest page. Fork PRs get no secrets, so their evidence is produced locally
-and pasted into the template. When the workflow fails, fix the cause or explain
+the heaviest page. Fork PRs get no secrets, so their evidence (screenshots and the
+walkthrough) is produced locally and pasted into the template. When the workflow fails, fix the cause or explain
 in the PR; never paste numbers the workflow didn't measure.
+
+**Walkthrough video:** `cd astro && BASE=<preview or local preview url> npm run walkthrough -- /nfl /game/401856682`
+records a scroll-through of each route; `-- --steps scripts/walkthroughs/<flow>.mjs`
+records a scripted interaction (a plain-Playwright module: `export default async
+(page, base) => { … }`, one flow per file, under ~60 s, kept in the repo so the next
+PR to that flow re-records the same thing). Output is `astro/img/walkthrough/*.mp4`
+(git-ignored; `.webm` too — mp4 needs `ffmpeg` on PATH), desktop + mobile in light
+by default, `WALKTHROUGH_SCHEMES=light,dark` when the change is theme-sensitive.
+Attach the mp4 by dragging it into the PR description under **Walkthrough** —
+GitHub hosts it and renders a player; `raw.githubusercontent` cannot, so this step
+is not automated. Record against a production `astro build` + `npm run preview`
+(or the PR's deployed preview), never `astro dev`, with the same `preview` flags
+forced on as the Lighthouse run. A copy/colour-only change still gets one — the
+scroll-through of the affected route is enough; a change that adds or alters an
+interaction (panel, filter, toggle, nav, flagged page) gets a steps module that
+exercises it. A `python/`-only change records the game page it affects.
 
 Run the same thing locally with `astro/scripts/lighthouse-compare.mjs`. Its
 header documents the flags, including `LH_ASTRO_PREFIX` for hosts whose glibc

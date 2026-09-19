@@ -13,24 +13,7 @@
 // server or a 404 can't pass off an error-page screenshot as valid.
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createRequire } from 'node:module';
-import { execSync } from 'node:child_process';
-
-async function loadChromium() {
-  // 1) a normal resolve (local devDep) 2) the global npm root (npm i -g)
-  // 3) any NODE_PATH entry
-  try { return (await import('playwright-core')).chromium; } catch {}
-  const req = createRequire(import.meta.url);
-  const roots = [];
-  try { roots.push(execSync('npm root -g', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch {}
-  roots.push(...(process.env.NODE_PATH ?? '').split(':').filter(Boolean));
-  for (const base of roots) {
-    try { return req(join(base, 'playwright-core')).chromium; } catch {}
-  }
-  console.error('playwright-core not found. Install it (it downloads no browser): '
-    + '`npm i -g playwright-core` or `npm i -D playwright-core` in astro/, then re-run.');
-  process.exit(2);
-}
+import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slug } from './lib/browser.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
@@ -54,35 +37,15 @@ const EXPAND = (process.env.VISUAL_CHECK_EXPAND ?? 'away-stats-panel,home-stats-
 const passed = process.argv.slice(2);
 const routes = passed.length ? passed : ['/', '/nfl', '/nfl/year/2025/teams/tendencies'];
 
-// the review matrix -- never fewer than these four per route
-const DEVICES = [
-  { name: 'desktop', width: 1280, height: 800 },
-  { name: 'mobile', width: 390, height: 844 },
-];
-const SCHEMES = ['light', 'dark'];
-
-const slug = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
-
 const chromium = await loadChromium();
-// The Chrome sandbox stays ON for a developer's Chrome; only an isolated
-// container running as root needs it off (opt in with VISUAL_CHECK_NO_SANDBOX=1).
-const args = process.env.VISUAL_CHECK_NO_SANDBOX ? ['--no-sandbox'] : [];
-const launch = process.env.VISUAL_CHECK_EXECUTABLE
-  ? { executablePath: process.env.VISUAL_CHECK_EXECUTABLE, args }
-  : { channel: 'chrome', args };
-
 await mkdir(OUT, { recursive: true });
-const browser = await chromium.launch(launch);
+const browser = await chromium.launch(launchOptions());
 const shots = [];
 const failures = [];
 try {
   for (const device of DEVICES) {
     for (const colorScheme of SCHEMES) {
-      const ctx = await browser.newContext({
-        viewport: { width: device.width, height: device.height },
-        colorScheme,
-        deviceScaleFactor: 2,
-      });
+      const ctx = await newThemedContext(browser, device, colorScheme);
       const page = await ctx.newPage();
       for (const route of routes) {
         const url = BASE + route;

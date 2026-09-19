@@ -12,8 +12,14 @@
 
 Evidence routes: /game/401856682
 
+## Walkthrough
+<!-- Drag the mp4 from `cd astro && BASE=<preview url> npm run walkthrough -- <routes>` (or
+     `-- --steps scripts/walkthroughs/<flow>.mjs` for an interaction) here. Required alongside the
+     screenshots, not instead of them. See CLAUDE.md "PR evidence". -->
+
 ## Checklist
 - [ ] vitest + pytest pass locally
 - [ ] `Evidence routes:` names the pages this change affects most
 - [ ] The pr-evidence comment is green, or every regression it flags is explained here
+- [ ] A walkthrough video of the change is attached above (recorded against a production build/preview)
 - [ ] Preview-gated work stays behind its flag in `astro/src/utils/features.ts`
