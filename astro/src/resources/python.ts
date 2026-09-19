@@ -1121,12 +1121,14 @@ export interface ProcessedGame {
         contract_version: string | null
         contract_sha: string | null
     }
-    /** data-quality verdict for THIS response (python/qa.py, docs/qa-payload.md).
-     *  Null when neither the packaged gate nor the live rules could speak: a
-     *  finished game on a deploy whose sportsdataverse-py pin has no
-     *  validation package. Observability only; nothing renders from it. */
+    /** data-quality verdict for THIS response (python/qa.py, docs/qa-payload.md
+     *  on GOP #265). Absent on a deploy that predates it; `null` when neither
+     *  the packaged gate nor the live rules could speak -- a documented state,
+     *  never "clean". Observability: only the player game log's live badge
+     *  renders any of it, and only for an in-progress game. */
     qa?: {
         ok: boolean
+        /** null when the pin carries no `sportsdataverse.validation` */
         n_errors: number | null
         n_warnings: number | null
         top_rules: { rule: string, n: number, severity: string }[]
@@ -1139,9 +1141,13 @@ export interface ProcessedGame {
             sdv_version: string | null
             sdv_sha: string | null
         }
+        /** null unless the game is in progress */
         live: {
             ok: boolean
-            findings: { rule: string, n: number, sample: unknown }[]
+            /** error tier: the page we rendered is wrong */
+            findings: { rule: string, n: number, sample?: unknown, severity?: string }[]
+            /** warn/info tier: the source misbehaved */
+            anomalies?: { rule: string, n: number, sample?: unknown, severity?: string }[]
             polls: number
             since: string
         } | null

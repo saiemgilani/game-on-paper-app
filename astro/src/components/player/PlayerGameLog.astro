@@ -40,8 +40,9 @@
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
-import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { espnGameId, gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
+import { badgeText, type LiveQaBadge } from '../../utils/liveQa';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from 'luxon';
@@ -52,9 +53,14 @@ interface Props {
     espnGameIds?: Record<string, string>
     /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, number[]>
+    /** ESPN event id -> the served source and QA verdict, for the games in progress RIGHT NOW */
+    live?: Record<string, LiveQaBadge>
 }
-const { games, espnGameIds = {}, leagueBreaks = {} } = Astro.props;
+const { games, espnGameIds = {}, leagueBreaks = {}, live = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
+// the gate's rule list is admin detail, exactly as `AdminGameTools.astro` (#263)
+// shows it: a public reader gets the verdict, not the report
+const admin = Astro.locals.adminAuthed === true;
 
 /** An ISO instant luxon can actually render, or null. */
 function kickoff(row: PlayerGameRow): string | null {
@@ -104,11 +110,9 @@ const mode: 'player' | 'league' = ranked >= 3 || !hasLeague ? 'player' : 'league
 const season = games[0]?.season;
 const leagueTitle = `Percentile among every player-game in the ${league === 'cfb' ? 'nation' : 'league'} that season`;
 
-/** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
+/** The link to a row's game page, or null when the schedule has no crosswalk for it. */
 function gameHref(row: PlayerGameRow): string | null {
-    const id = row.game_id ? String(row.game_id) : null;
-    if (!id) return null;
-    const espn = /^\d+$/.test(id) ? id : espnGameIds[id];
+    const espn = espnGameId(row, espnGameIds);
     return espn ? leaguePath(league, `/game/${espn}`) : null;
 }
 
@@ -123,6 +127,12 @@ function opponentId(row: PlayerGameRow): string | number | null {
     if (id === null || id === undefined || id === '') return null;
     if (/^\d+$/.test(String(id))) return id;
     return league === 'nfl' ? nflTeamIdByAbbr(id) : null;
+}
+
+/** The live entry for a row, or undefined -- a row whose payload we could not read renders unchanged. */
+function liveOf(row: PlayerGameRow): LiveQaBadge | undefined {
+    const espn = espnGameId(row, espnGameIds);
+    return espn ? live[espn] : undefined;
 }
 
 const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (string | number)[];
@@ -182,7 +192,11 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
                         {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
-                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
+                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}{liveOf(g) && (<Fragment>
+                            <span class="badge bg-danger ms-1">Live</span>
+                            <span class="d-block text-small text-muted text-wrap" data-live-qa
+                                  title={admin && liveOf(g)!.rules ? liveOf(g)!.rules : undefined}>{badgeText(liveOf(g)!)}</span>
+                        </Fragment>)}
                     </td>
                     <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (

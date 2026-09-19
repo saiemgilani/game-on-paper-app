@@ -42,8 +42,9 @@ import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { formatHeight, playerPath, totalGameLog } from '../../utils/players';
+import { espnGameId, formatHeight, playerPath, totalGameLog } from '../../utils/players';
 import { cfbTeamIdByName } from '../../utils/teams';
+import { liveGameBadges } from '../../utils/liveQa';
 
 interface Props {
     player: SDVPlayer
@@ -59,6 +60,15 @@ const cfg = LEAGUES[league];
 const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
 
 const totals = totalGameLog(games);
+// Provenance + QA for the games in progress right now (plan P5). Returns {}
+// without a fetch for any season but the current one -- and the career view
+// makes no game-log read at all, so there is nothing in progress to badge.
+// Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
+// badge can be up to that stale while a game runs. Left alone deliberately --
+// shortening the whole page's policy for one row is the wrong trade; if the
+// badge has to be live, it becomes a fetch on the client, not a cache change.
+const live = season === null ? {} : await liveGameBadges(
+    games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[], season, league);
 // the rows the header describes: the selected season's, or the latest season's
 // in the career view, primary team-season first -- so a traded player's header
 // names the team he actually played most of that season for
@@ -230,7 +240,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={games} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} />
+                <PlayerGameLog games={games} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} live={live} />
                 {failed.games
                     ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
                     : games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
