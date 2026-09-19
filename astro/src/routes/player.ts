@@ -5,7 +5,8 @@
  *
  * Mirrors `routes/leaderboards.ts` -- the prep is pure-ish and testable, the
  * page file stays three lines, and a malformed id becomes a 404 instead of
- * reaching the Data API as garbage.
+ * reaching the Data API as garbage. It also owns the page's Workers Caching
+ * policy, as `game.ts` / `matchup.ts` / `charts.ts` own theirs.
  */
 import type { AstroGlobal } from 'astro';
 import { leaguePath, type League } from '../utils/league';
@@ -20,10 +21,41 @@ export interface PlayerParams {
 
 export type PlayerPrep = { redirect: string } | { notFound: true } | PlayerParams;
 
+/**
+ * A rendered player page is cacheable per (league, id, season) -- all three are
+ * in the URL, which is the Workers Caching key: the league and the id in the
+ * path, the season in `?season=`. Tagged so `/admin/api/purge-game?tags=player`
+ * can clear every one after a producer republish.
+ */
+const PLAYER_CACHE = { maxAge: 60 * 60, swr: 60 * 60 * 6, tags: ['player'] };
+
+/**
+ * Hand the policy to Workers Caching. Optional-chained and wrapped the way
+ * `middleware.ts` does it: the cache provider is a Cloudflare runtime thing and
+ * is absent in dev and under the Container API.
+ */
+function setCache(Astro: AstroGlobal, config: typeof PLAYER_CACHE | false): void {
+    try { (Astro as any).cache?.set(config); } catch { /* cache provider absent in dev */ }
+}
+
+/**
+ * Never cache this response. `Astro.cache.set(false)` emits NO header, and
+ * Workers Caching holds a header-less 200 for a heuristic ~2 hours -- so a 404
+ * from one bad upstream minute would freeze a real player's page as a 404 with
+ * no way to purge it. Opting out has to be explicit, exactly as `game.ts` says.
+ */
+function uncacheable(Astro: AstroGlobal): void {
+    setCache(Astro, false);
+    try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
+}
+
 export async function preparePlayer(Astro: AstroGlobal, league: League): Promise<PlayerPrep> {
     Astro.locals.league = league;
     const id = Astro.params.id;
-    if (!id) return { notFound: true };
+    if (!id) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
 
     const seasonParam = Astro.url.searchParams.get('season');
     const season = seasonParam && /^\d{4}$/.test(seasonParam) ? parseInt(seasonParam) : null;
@@ -35,21 +67,38 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
     // the only one the Data API's player routes accept.
     if (league === 'nfl' && isGsisId(id)) {
         const espnId = await resolveEspnAthleteId(id);
+        // A crosswalk read that fails answers the same way as a gsis id nobody
+        // has: no ESPN id, so no page. The redirect is likewise not cached --
+        // a 302 frozen on a transient miss would outlive the miss.
+        uncacheable(Astro);
         if (!espnId) return { notFound: true };
         return { redirect: leaguePath(league, `/players/${espnId}`) + query };
     }
 
-    if (!isEspnAthleteId(id)) return { notFound: true };
+    if (!isEspnAthleteId(id)) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
 
     // The one fetch the ROUTE makes: the Data API 404s an id with no rows
     // anywhere, and that 404 has to become the site's 404 -- an identity shell
     // for a player who does not exist would be indexed as a thin page.
     const player = await retrievePlayer(id, league);
-    if (!player) return { notFound: true };
+    if (!player) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
     // a hand-typed season the player has no rows for is a 404 too; the pills
     // only ever offer seasons from `player.seasons`
-    if (season !== null && !player.seasons.includes(season)) return { notFound: true };
+    if (season !== null && !player.seasons.includes(season)) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
     const shown = season ?? player.latest_season ?? player.seasons[0];
-    if (shown === undefined || shown === null) return { notFound: true };
+    if (shown === undefined || shown === null) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
+    setCache(Astro, PLAYER_CACHE);
     return { player, season: Number(shown) };
 }
