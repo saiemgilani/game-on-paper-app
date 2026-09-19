@@ -163,6 +163,15 @@ export function formatPercent(v: unknown, fixed: number = 1): string {
     return x === null ? "—" : `${roundNumber(x * 100, 2, fixed)}%`;
 }
 
+/**
+ * Decimal places for a metric cell: an explicit 0 means zero places, a missing
+ * value means one. Shared by both BinionBoxScore twins so the guard cannot
+ * drift between them (`decimalPoints || 1` silently turns an explicit 0 into 1).
+ */
+export function metricDecimalPoints(decimalPoints: number | null | undefined): number {
+    return (!decimalPoints && decimalPoints != 0) ? 1 : (decimalPoints as number);
+}
+
 export function hexToRgb(hex: string): RGBColor | null {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
