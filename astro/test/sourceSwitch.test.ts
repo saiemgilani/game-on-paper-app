@@ -86,6 +86,16 @@ describe('the processed-game cache key', () => {
         expect(calls[0].url).toContain('source=a%26v%3Dx');
         expect(calls[0].init.cf.cacheKey).toContain('&source=a%26v%3Dx');
     });
+
+    test('the sources list is keyed per game, not per league', async () => {
+        const { retrieveGameSources } = await import('../src/resources/python');
+        await retrieveGameSources(1, 'cfb');
+        await retrieveGameSources(2, 'cfb');
+        const [a, b] = calls;
+        expect(a.init.cf.cacheKey).toMatch(/\/cfb\/1\/sources\?v=/);
+        expect(b.init.cf.cacheKey).toMatch(/\/cfb\/2\/sources\?v=/);
+        expect(a.init.cf.cacheKey).not.toBe(b.init.cf.cacheKey);
+    });
 });
 
 describe('loadGameRoute', () => {
