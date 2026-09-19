@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import live_qa
 from tests.test_nfl_route import _FakeNFL
 
 
@@ -22,6 +23,14 @@ class _FakeCFB(_FakeNFL):
 
     def espn_cfb_pbp(self):
         self.fetched = True
+
+
+@pytest.fixture(autouse=True)
+def _fresh_live_state():
+    # live_qa._STATE is module-global and `polls` is asserted absolutely below,
+    # so any other test that tracked this game id would otherwise decide the
+    # answer for this one.
+    live_qa._STATE.clear()
 
 
 @pytest.fixture
