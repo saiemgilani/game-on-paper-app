@@ -38,6 +38,7 @@ function onChangeSpan(e: Event) {
         <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} />
         <TeamMetricsTable 
             title="Expected Points"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -50,6 +51,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Production"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -61,6 +63,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Rushing"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -74,6 +77,7 @@ function onChangeSpan(e: Event) {
     <div class="col-md-4 ms-sm-auto col-lg-4">
         <TeamMetricsTable 
             title="Explosiveness"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -85,6 +89,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Success"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -96,8 +101,6 @@ function onChangeSpan(e: Event) {
                 "EPA_success_early_down",
                 "EPA_success_late_down",
                 "EPA_middle_8_success",
-
-                
             ]}
             teamBoxScores={selectedBoxScore.situational}
             useSuffix={true}
@@ -105,6 +108,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Early Downs"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -123,6 +127,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Late Downs"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -141,6 +146,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Middle 8"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -160,6 +166,7 @@ function onChangeSpan(e: Event) {
     <div class="col-md-4 ms-sm-auto col-lg-4">
         <TeamMetricsTable 
             title="Drives"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -175,6 +182,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Finishing Drives"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -200,6 +208,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Game Plan"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -219,6 +228,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Defensive"
+            league={league}
             teamKey='def_pos_team'
             season={season}
             columns={[
@@ -230,6 +240,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Turnovers"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[
@@ -241,6 +252,7 @@ function onChangeSpan(e: Event) {
         />
         <TeamMetricsTable 
             title="Special Teams"
+            league={league}
             teamKey='pos_team'
             season={season}
             columns={[

@@ -378,7 +378,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
 
     "fg_attempts": "FG Make %",
     "kickoff_touchback_rate": "Kickoff Touchback %",
-    "punt_net_avg": "Avg Punt Return (yds)",
+    "punt_net_avg": "Net Punt Distance (yds)",
     "kick_return_avg": "Avg Kick Return (yds)",
     "kickoff_return_avg_allowed": "Avg Kick Return Allowed (yds)",
     "punt_blocks_by": "Punt Blocks",

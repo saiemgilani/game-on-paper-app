@@ -266,7 +266,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league} percentiles={percentiles}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league} percentiles={percentiles}>
                             <FallbackSpinner slot="fallback" />
                         </SituationalSection>
                     </Panel>
@@ -280,10 +280,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
-                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
-                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
-                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(awayTeam.id)) || []}
-                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(awayTeam.id)) || []}
+                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
+                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
+                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(awayTeam.id)) ?? []}
+                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
                             />

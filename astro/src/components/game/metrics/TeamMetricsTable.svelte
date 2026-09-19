@@ -1,12 +1,13 @@
 <script lang="ts">
 import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
-import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
+import { espnLogoLeague } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
+    league: string
     teamKey: string
     season: number
     columns: string[]
@@ -15,7 +16,9 @@ interface Props {
     decimalPoints: number
     caption?: string
 }
-const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
+let { title, league, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
+
+teamBoxScores = (teamBoxScores || [])
 
 const groups = [
     ...new Set(teamBoxScores.map((group: any) => group[teamKey]))
@@ -100,12 +103,6 @@ function handleMetricRows(item: string): string {
                 result += `<td class="numeral" style="text-align: center;">${val}</td>`;
             }
         }
-        // teamBoxScores.forEach((teamData: any) => {
-        //     if (teamData["script"] == "scripted") {
-        //         let val = teamData[item.replace("scripted.", "")] || 0;
-        //         result += `<td class="numeral" style="text-align: center;">${val}</td>`;
-        //     }
-        // });
     } else {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
@@ -131,7 +128,7 @@ function handleMetricRows(item: string): string {
             <tr>
                 <th class="box-heading">{title}</th>
                 {#each groups as value}
-                    <th style="text-align: center;"><a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                    <th style="text-align: center;"><a href={leaguePath(league, `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
                 {/each}
             </tr>
         </thead>

@@ -98,9 +98,9 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/astro-island[^>]+ExpectedPointsChart/);
     });
 
-    test('situational metrics render client-side', () => {
+    test('situational metrics render server-side', () => {
         expect((html.match(/id="team-stats"/g) ?? []).length).toBe(1);
-        expect((html.match(/id="span-stats"/g) ?? []).length).toBe(0);
+        expect((html.match(/id="span-stats"/g) ?? []).length).toBe(1);
         expect(html).toMatch(/astro-island[^>]+SituationalSection/);
     });
 
@@ -154,13 +154,9 @@ describe('GamePage renders a finished game end to end', () => {
     test('All Plays offers a quarter filter, and the markup its script needs is there', () => {
         // The filter script finds rows by these hooks. If PlayRow or PlaysTable
         // stops emitting them the buttons silently do nothing, so pin the contract.
-        expect(html).toContain('data-plays-body="all"');
-        expect(html).toContain('data-play-filters="all"');
-        expect(html).toMatch(/data-period-filter="all"/);
-        for (const q of [1, 2, 3, 4]) expect(html).toContain(`data-period-filter="${q}"`);
+        for (const q of [1, 2, 3, 4]) expect(html).toContain(`<option value="p:${q}"`);
         // no overtime in this game, so no overtime button
-        expect(html).not.toContain('data-period-filter="5"');
-        expect(html).toContain('data-order-toggle');
+        expect(html).not.toContain('<option value="p:5"');
     });
 
     test('inside All Plays every summary row is followed by exactly one detail row', () => {

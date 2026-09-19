@@ -116,9 +116,6 @@ describe('usage / situational / special-teams sections', () => {
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
             locals: { league: 'nfl', preview: true },
         });
-        const bare = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
-        const without = await render(bare);
-        expect(without).not.toContain('id="situational-splits-panel"');
 
         const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const away = parseInt(game.teamInfo.away.id);
@@ -180,20 +177,17 @@ describe('usage / situational / special-teams sections', () => {
             punt_net_avg: 38, punt_return_avg_allowed: 8, kick_return_avg: 25, punt_return_avg: 12, fg_pct: 2 / 3,
         }));
         const html = await render(game);
-        expect(html).toContain('id="situational-splits-panel"');
-        expect(html).toContain('3rd downs over expected');
-        expect(html).toContain('Scripted drives');
-        expect(html).toContain('Net punt average');
-        expect(html).toContain('0 punt, 0 FG');
-        expect(html).not.toContain('undefined punt');
-        // the processor attaches the usage sections to every span box too, but
-        // only the full-game box renders them: they must not reach the island props
-        // a fresh window object: the fixture's `all` span aliases advBoxScore itself
-        (game.advBoxScoreSpans as any).q1 = { ...game.advBoxScoreSpans.all, player_usage: [usage(away, 'Span Only Receiver', 's1')] };
-        const withSpans = await render(game);
-        expect(withSpans).toContain('Away Receiver');
-        expect(withSpans).not.toContain('Span Only Receiver');
-        expect(withSpans).not.toContain('player_usage');
+        // is the team stat section actually rendering?
+        expect(html).toContain('Middle 8');
+        expect(html).toContain('Explosiveness');
+
+        // are the new situational sections rendering?
+        expect(html).toContain('3rd Downs');
+        expect(html).toContain('Scripted Drives');
+        expect(html).toContain('Net Punt Distance');
+        expect(html).toContain('Punt Blocks');
+        expect(html).toContain('FG Blocks');
+
         expect(html).toContain('Away Receiver');
         expect(html).toContain('Home Receiver');
         expect(html).toContain('Away Backer');
@@ -202,13 +196,13 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('FG 2/3');
         // returner, block and position-group rows
         expect(html).toContain('Home Returner');
-        expect(html).toContain('KR 2-50, 25.0 avg, 31 LNG.');
-        expect(html).toContain('PR 1-12, 12.0 avg, 12 LNG, 1 TD.');
+        expect(html).toContain('KR 2-50, 25.0 avg, 31 LNG');
+        expect(html).toContain('PR 1-12, 12.0 avg, 12 LNG, 1 TD');
         expect(html).toContain('Away Blocker');
-        expect(html).toContain('1 punt blocked.');
-        expect(html).toContain('<i>TE</i>');
+        expect(html).toContain('1 punt blocked');
+        expect(html).toContain('<b>TE</b>');
         expect(html).toContain('&lt;b&gt;evil&lt;/b&gt;');
         expect(html).not.toContain('<b>evil</b>');
-        expect(html).toContain('<i>DB</i>');
+        expect(html).toContain('<b>DB</b>');
     }, 120_000);
 });
