@@ -274,6 +274,54 @@ def _dq(args):
     }
 
 
+def _qa(args):
+    """The live data-quality signal, as /admin/qa renders it.
+
+    Every row here comes from ``gop.request_log``'s qa columns, which the
+    /process route writes on every request (python/qa.py), so "when was this
+    game last checked" and "when was it last rendered" are the same fact and
+    cannot drift apart. A game with no qa row is a game served by a deploy
+    whose sportsdataverse-py pin has no validation package AND that was not
+    live -- not a game that passed.
+    """
+    days = min(int(args.get("days", 7)), 90)
+    return {
+        # one row per game: its LAST verdict, with how long ago that was
+        "games": _q("""SELECT DISTINCT ON (r.game_id) r.game_id,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup,
+                gm.status, gm.away_score, gm.home_score,
+                r.ts AS last_poll,
+                extract(epoch FROM now() - r.ts)::int AS age_s,
+                r.qa_ok, r.qa_errors, r.qa_warnings, r.qa_source, r.qa_fallback, r.qa_rules
+            FROM gop.request_log r
+            LEFT JOIN gop.game_meta gm ON gm.game_id::text = r.game_id
+            WHERE r.qa_ok IS NOT NULL AND r.ts > now() - interval '24 hours'
+            ORDER BY r.game_id, r.ts DESC LIMIT 60"""),
+        # per-rule histogram: one row per rule per day, for the matrix
+        "rules": _q(
+            """SELECT rule, date_trunc('day', ts)::date AS day, count(*)::int AS n,
+                    count(DISTINCT game_id)::int AS games
+                FROM gop.request_log, unnest(qa_rules) AS rule
+                WHERE qa_rules IS NOT NULL AND ts > now() - make_interval(days => %s)
+                GROUP BY 1, 2 ORDER BY 1, 2""",
+            (days,),
+        ),
+        "totals": (
+            _q(
+                """SELECT count(*)::int AS checks,
+                    count(*) FILTER (WHERE qa_ok)::int AS clean,
+                    count(DISTINCT game_id)::int AS games,
+                    count(*) FILTER (WHERE qa_fallback)::int AS fallbacks
+                FROM gop.request_log
+                WHERE qa_ok IS NOT NULL AND ts > now() - make_interval(days => %s)""",
+                (days,),
+            )
+            or [{}]
+        )[0],
+        "days": days,
+    }
+
+
 def _audit(args):
     return {
         "recent": _q("""SELECT ts, actor, action, detail, ok
@@ -351,6 +399,7 @@ _ADMIN = {
     "upstream": _upstream,
     "errors": _errors,
     "dq": _dq,
+    "qa": _qa,
     "audit": _audit,
     "traffic": _traffic,
     "system": _system,

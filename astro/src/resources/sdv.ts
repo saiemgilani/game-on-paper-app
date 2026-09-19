@@ -621,6 +621,34 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     }
 }
 
+export interface SDVQaRow {
+    game_id: number | string
+    season: number
+    source: string
+    processing_version: string
+    n_errors: number
+    n_warnings: number
+    ok: boolean
+    failed_rule_ids?: string[]
+}
+
+/** The season QA asset the release builds publish as `<family>_qa_{season}`.
+ *
+ *  That asset is V2 of the data-integrity plan and is not published yet, so
+ *  this 404s today and `requestSDV` answers `{data: []}`. /admin/qa renders the
+ *  empty answer as "not published yet" rather than as a season with no
+ *  findings, which is why the caller must not treat [] as a clean season. */
+export async function retrieveQaSeason(season: number, league: League = 'cfb'): Promise<SDVQaRow[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    try {
+        const content = await requestSDV('qa', new URLSearchParams({ season: String(season) }),
+            undefined, 60 * 60, true, league);
+        return Array.isArray(content?.data) ? content.data : [];
+    } catch {
+        return [];
+    }
+}
+
 export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb'): Promise<SDVSeasonPercentile[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !percentile) {

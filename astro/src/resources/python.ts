@@ -1121,6 +1121,31 @@ export interface ProcessedGame {
         contract_version: string | null
         contract_sha: string | null
     }
+    /** data-quality verdict for THIS response (python/qa.py, docs/qa-payload.md).
+     *  Null when neither the packaged gate nor the live rules could speak: a
+     *  finished game on a deploy whose sportsdataverse-py pin has no
+     *  validation package. Observability only; nothing renders from it. */
+    qa?: {
+        ok: boolean
+        n_errors: number | null
+        n_warnings: number | null
+        top_rules: { rule: string, n: number, severity: string }[]
+        contract_ok: boolean | null
+        gop_ok: boolean | null
+        provenance: {
+            source: string
+            requested: string | null
+            fallback_used: boolean
+            sdv_version: string | null
+            sdv_sha: string | null
+        }
+        live: {
+            ok: boolean
+            findings: { rule: string, n: number, sample: unknown }[]
+            polls: number
+            since: string
+        } | null
+    } | null
     broadcasts: ESPNGeoBroadcast[]
     season: ESPNSeason
     gei?: number
