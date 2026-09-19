@@ -147,6 +147,11 @@ describe('formatting', () => {
         const nflGame = nfl.games.data[0];
         expect(gameStatLine(nflGame.box, 'nfl')).toBe('5/6 tgt, 59 yds, 0 TD');
         expect(gameStatLine(undefined, 'cfb')).toBe('');
+        // ESPN's box is STRINGS, so `"0"` and `"0/0"` are truthy: counting on
+        // truthiness printed a phantom line for an empty category
+        expect(gameStatLine({ 'completions/passingAttempts': '0/0', rushingAttempts: '0', receptions: '0' }, 'cfb')).toBe('');
+        expect(gameStatLine({ rushingAttempts: '3', rushingYards: '12', rushingTouchdowns: '0' }, 'cfb'))
+            .toBe('3 car, 12 yds, 0 TD');
         // reading a CFB box as an NFL one must produce nothing, not a wrong line
         expect(gameStatLine(cfbGame.box, 'nfl')).toBe('');
     });
