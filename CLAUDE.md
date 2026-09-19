@@ -87,7 +87,8 @@ adds or alters an interaction (panel, filter, toggle, nav, flagged page) commits
 steps module and names it. A `python/`-only change records the game page it
 affects. Locally: `cd astro && BASE=http://localhost:4321 npm run walkthrough --
 /game/401856682` or `-- --steps scripts/walkthroughs/<flow>.mjs` writes
-`astro/img/walkthrough/*.webm` (+ `*.mp4` with `ffmpeg` on PATH; git-ignored) —
+`astro/img/walkthrough/*.webm` (+ `*.mp4` with `ffmpeg` on PATH; git-ignored; recording
+needs Playwright's own ffmpeg once, `playwright-core install ffmpeg`) —
 against a production `astro build` + `npm run preview`, never `astro dev`;
 `WALKTHROUGH_SCHEMES=light,dark` when the change is theme-sensitive. A clip you
 record by hand (fork PR) is dragged into the PR description under

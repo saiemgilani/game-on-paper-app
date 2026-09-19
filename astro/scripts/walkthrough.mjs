@@ -9,7 +9,8 @@
 // Playwright page API (goto, click, fill, waitFor...). Nothing to learn beyond Playwright.
 //
 // Output: img/walkthrough/<name>-<device>-<scheme>.webm, plus an .mp4 (h264, what GitHub's
-// PR editor accepts by drag-and-drop) when `ffmpeg` is on PATH. Defaults record
+// PR editor accepts by drag-and-drop) when `ffmpeg` is on PATH. Recording itself needs
+// Playwright's own ffmpeg build once: `playwright-core install ffmpeg` (no browser download). Defaults record
 // desktop + mobile in light; WALKTHROUGH_SCHEMES=light,dark widens
 // it, WALKTHROUGH_DEVICES=desktop narrows it. Exits non-zero if any route fails to load.
 import { mkdir, readdir, rename, rm } from 'node:fs/promises';
@@ -78,9 +79,11 @@ try {
         const ctx = await newThemedContext(browser, device, scheme, {
           recordVideo: { dir: tmp, size: { width: device.width, height: device.height } },
         });
-        const page = await ctx.newPage();
         let ok = true;
         try {
+          // newPage is where a missing Playwright ffmpeg surfaces (recordVideo needs Playwright's own
+          // build, `playwright-core install ffmpeg`, not the system one) -- report it, don't crash
+          const page = await ctx.newPage();
           await sc.run(page);
           const applied = await appliedScheme(page);
           if (applied !== scheme) throw new Error(`page rendered ${applied}, not ${scheme}`);
@@ -89,7 +92,7 @@ try {
           failures.push(`${where}: ${e.message}`);
         }
         await ctx.close(); // flushes the video file
-        const [file] = await readdir(tmp);
+        const [file] = await readdir(tmp).catch(() => []);
         if (!ok || !file) { await rm(tmp, { recursive: true, force: true }); continue; }
         await rename(join(tmp, file), `${stem}.webm`);
         await rm(tmp, { recursive: true, force: true });

@@ -68,7 +68,10 @@ jobs:
           cache-dependency-glob: python/uv.lock
 
       - name: Install review tools (deliberately not repo dependencies)
-        run: npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1
+        # recordVideo (walkthrough.mjs) needs Playwright's own ffmpeg build, not the runner's
+        run: |
+          npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1
+          playwright-core install ffmpeg
 
       - name: Local secrets for the preview Worker and the processor
         env:
