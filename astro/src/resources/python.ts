@@ -1245,6 +1245,44 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
+/** What `GET /{league}/{id}/sources` answers: the contract's registry. */
+export interface GameSources {
+    /** the league's failover order, ESPN first and terminal */
+    sources: string[]
+    contract_version: string | null
+    contract_sha: string | null
+}
+
+/**
+ * The processing sources the deployed sportsdataverse-py offers for a league.
+ *
+ * Only the admin tools call this, and it is a small static list per deploy, so
+ * it is keyed on APP_VERSION exactly like the processed-game response: a build
+ * carrying a new adapter invalidates it with no purge. Fail-open -- the admin
+ * toolbar renders with ESPN alone if the API cannot answer.
+ */
+export async function retrieveGameSources(gameId: string | number, league: League = 'cfb'): Promise<GameSources | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/sources`, {
+            headers: {
+                "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`,
+                "Referer": "gameonpaper.com",
+            },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": 3600, 404: 1, "500-599": 0 },
+                cacheKey: `${PYTHON_HTTP_URL}/${league}/sources?v=${APP_VERSION}`,
+            }
+        });
+        const body: GameSources = JSON.parse(await req.text());
+        return Array.isArray(body?.sources) && body.sources.length ? body : null;
+    } catch (e) {
+        console.error(`ERROR while listing sources for ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
 async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")

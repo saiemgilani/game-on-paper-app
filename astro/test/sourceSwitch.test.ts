@@ -109,10 +109,21 @@ describe('loadGameRoute', () => {
         expect(calls[0].url).toMatch(/\/nfl\/401772944\/process$/);
     });
 
-    test('with the flag on, ?source= reaches the API', async () => {
+    test('with the flag on but no admin session, ?source= is still ignored', async () => {
+        // `?source=` is an admin tool: the preview cookie alone must not move
+        // the request or its cache key off the default path.
         guardedPage = { gameId: 401772944, gamepackageJSON: { header: HEADER } };
         const { loadGameRoute } = await import('../src/routes/game');
         const { astro } = fakeAstro('https://gameonpaper.com/nfl/game/401772944?source=shield', { preview: true });
+        await loadGameRoute(astro, 'nfl');
+        expect(calls[0].url).toMatch(/\/nfl\/401772944\/process$/);
+        expect(calls[0].init.cf.cacheKey).not.toContain('source=');
+    });
+
+    test('with the flag on and an admin session, ?source= reaches the API', async () => {
+        guardedPage = { gameId: 401772944, gamepackageJSON: { header: HEADER } };
+        const { loadGameRoute } = await import('../src/routes/game');
+        const { astro } = fakeAstro('https://gameonpaper.com/nfl/game/401772944?source=shield', { preview: true, adminAuthed: true });
         await loadGameRoute(astro, 'nfl');
         expect(calls[0].url).toMatch(/\/nfl\/401772944\/process\?source=shield$/);
     });

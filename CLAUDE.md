@@ -114,6 +114,35 @@ orphan branch `pr-previews` (`pr<N>/<head-sha7>/…`) and are embedded via
 `raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/…`, pinned to the commit
 so later pushes can't change an old comment. No workflow triggers on that branch.
 
+## Feature flags and admin tools
+
+Flags live in `astro/src/utils/features.ts` and the rules for them are
+`docs/design-conventions.md` §9: anything that is not a fix to already-public
+behaviour ships `'preview'`, and promotion to `'on'` is its own reviewed
+one-line commit.
+
+**Admin tools are a different thing and are never promoted.** They render only
+for a request the middleware authenticated with the `gop_admin` session cookie
+(`astro/src/utils/adminSession.ts`), which is distinct from the `gop_preview`
+cookie: a preview viewer is not an admin. For every other viewer the parameters
+below are never read, so the page, the API request and the Workers cache key
+are byte-for-byte what they are today. An admin's render is forced
+uncacheable by `withPreviewCacheGuard`, for the same reason a preview render
+is: a cached copy would be served to the wrong viewer.
+
+The three that exist, all on the game page and all in
+`astro/src/utils/adminView.ts`, composable in any combination:
+
+| Control | Parameter | What it does |
+|---|---|---|
+| View | `?view=live\|preview` | The base flag state for this request only. `live` renders what an anonymous visitor gets (every `'preview'` entry off) even while the admin holds a preview cookie; `preview` renders them all on. It lands on `locals.preview`, so every `isFeatureEnabled` call follows it: the classic/v2 twin choice in `GameRoute.astro` and the middleware's `nfl` / `coaches` namespace gates included |
+| Flags | `?flags=game-page-v2:off,coaches:on` | Per-flag overrides on top of that base, via `locals.flagOverrides`. Anything that is not exactly `name:on` or `name:off` is dropped |
+| Source | `?source=<name>` | Which feed the API processed the game from. Needs an admin session **and** the `'source-switch'` flag; the list is the sportsdataverse-py contract's registry, read from `GET /{league}/{id}/sources` |
+
+The controls render from `astro/src/components/game/AdminGameTools.astro`,
+mounted in `GameHeader.astro` — the one file both game-page twins import, so
+they are written once and an admin can flip between the twins from either side.
+
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.
 - After merging a GOP PR, the deploy runs on push to `main`; smoke the deployed
