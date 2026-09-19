@@ -68,12 +68,12 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
             {b.shown.map((row: SeasonRow) => (
                 <Fragment>
                     <tr>
-                        <td class="text-left" colspan="1"><strong>{row.season}</strong></td>
+                        <td class="text-left numeral" colspan="1">{row.season}</td>
                         <td class="text-left text-nowrap" colspan="1">
                             <a href={leaguePath(league, `/year/${row.season}/team/${row.team_id}`)}>
                                 <img class={`img-fluid team-logo-${row.team_id} me-2`} width="20px"
                                     src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${row.team_id}.png`}
-                                    alt={`ESPN team id ${row.team_id}`} title={String(row.pos_team ?? '')} />
+                                    alt={`${row.pos_team ?? row.team_id} logo`} title={String(row.pos_team ?? '')} />
                                 <span>{cleanField(row, 'pos_team')}</span>
                             </a>
                         </td>

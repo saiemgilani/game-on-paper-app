@@ -203,10 +203,15 @@ export function gameStatLine(box: Record<string, unknown> | undefined, league: L
     const q = (k: string) => numberOrNull(box[k]);
     const parts: string[] = [];
     if (league === 'cfb') {
+        // ESPN's box is strings, so count on the NUMBER: `"0"` and `"0/0"` are
+        // truthy, and printed a phantom "0 car, 0 yds, 0 TD" line for anyone the
+        // box listed with an empty category
         const comp = s('completions/passingAttempts');
-        if (comp) parts.push(`${comp}, ${s('passingYards') ?? 0} yds, ${s('passingTouchdowns') ?? 0} TD, ${s('interceptions') ?? 0} INT`);
-        if (s('rushingAttempts')) parts.push(`${s('rushingAttempts')} car, ${s('rushingYards') ?? 0} yds, ${s('rushingTouchdowns') ?? 0} TD`);
-        if (s('receptions')) parts.push(`${s('receptions')} rec, ${s('receivingYards') ?? 0} yds, ${s('receivingTouchdowns') ?? 0} TD`);
+        if (comp && (q('passingAttempts') ?? Number(comp.split('/')[1] ?? 0)) > 0) {
+            parts.push(`${comp}, ${s('passingYards') ?? 0} yds, ${s('passingTouchdowns') ?? 0} TD, ${s('interceptions') ?? 0} INT`);
+        }
+        if ((q('rushingAttempts') ?? 0) > 0) parts.push(`${s('rushingAttempts')} car, ${s('rushingYards') ?? 0} yds, ${s('rushingTouchdowns') ?? 0} TD`);
+        if ((q('receptions') ?? 0) > 0) parts.push(`${s('receptions')} rec, ${s('receivingYards') ?? 0} yds, ${s('receivingTouchdowns') ?? 0} TD`);
         return parts.join('; ');
     }
     if ((q('attempts') ?? 0) > 0) parts.push(`${q('completions') ?? 0}/${q('attempts')}, ${q('passing_yards') ?? 0} yds, ${q('passing_tds') ?? 0} TD, ${q('interceptions') ?? 0} INT`);

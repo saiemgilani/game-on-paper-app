@@ -18,9 +18,17 @@ interface Props {
     jsonLd?: (object | null)[]
     /** visually-hidden h1 for pages whose body has no h1 of its own. Never adds a visible node. */
     heading?: string
+    /**
+     * Canonical/og:url path, when the page's CONTENT depends on a query param.
+     * Every other page is one path = one page, so the default (the request path,
+     * query stripped) is right; a player page renders a different season for
+     * `?season=`, and canonicalising those onto one URL would advertise a page
+     * that shows a different year than its own JSON-LD says.
+     */
+    canonicalPath?: string
 }
 
-const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading } = Astro.props;
+const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading, canonicalPath } = Astro.props;
 const metaDescription = description || subtitle;
 // One <script> per object: a single tag holding an array is valid JSON-LD, but
 // some validators/extensions read r['@context'] per tag and throw on arrays.
@@ -33,7 +41,7 @@ const structuredData = [breadcrumbListJsonLd(breadcrumbs), ...(jsonLd ?? [])]
 // under a /cfb/ prefix (".../cfb//charts/trends"). Both that and the served
 // path resolve, so it was advertising a duplicate of every page as canonical.
 // Derive it from the actual request path instead.
-const canonicalUrl = new URL(Astro.url.pathname, "https://gameonpaper.com").href
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, "https://gameonpaper.com").href
 
 function generateBreadcrumbHtml(b: PageBreadcrumb): string {
     let anchorContent = b.url ? `<a href="${b.url}">${b.title}</a>` : b.title;
