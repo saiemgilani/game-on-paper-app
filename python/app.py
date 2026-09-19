@@ -28,9 +28,10 @@ import span_box
 # all; then only ESPN is offered and every other `source` is a 400.
 try:
     from sportsdataverse.football.sources.dispatch import SOURCE_ORDER as _SOURCE_ORDER
+    from sportsdataverse.football.sources.dispatch import AllSourcesFailed as _ALL_SOURCES_FAILED
     from sportsdataverse.football.sources.dispatch import _process_game as _dispatch_game
 except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
-    _SOURCE_ORDER, _dispatch_game = {}, None
+    _SOURCE_ORDER, _dispatch_game, _ALL_SOURCES_FAILED = {}, None, None
 
 # span key -> drive-summary period windows (drives book to their start quarter)
 _SPAN_PERIODS = {
@@ -593,6 +594,16 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             }
         ), 404
     except Exception as e:
+        # Every source in the order failed, ESPN included. That is the same
+        # condition the ESPN path reports as a clean 404 (the KeyError branch
+        # above) -- a game id nothing has data for, or an upstream outage. It
+        # is not a bug in this service, so it must not write a stack trace to
+        # the error log or answer 500.
+        if _ALL_SOURCES_FAILED is not None and isinstance(e, _ALL_SOURCES_FAILED):
+            g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
+            return jsonify(
+                {"status": "bad", "message": "No source could produce this game."}
+            ), 404
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 500: %r (%s)" % (e, e)
         )

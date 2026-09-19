@@ -130,6 +130,37 @@ def test_espn_stays_the_terminal_fallback_and_says_so(client, app_mod, monkeypat
     }
 
 
+def test_every_source_failing_is_a_404_not_a_500(client, app_mod, monkeypatch):
+    # "no source has this game" is the same condition the ESPN path reports as
+    # a clean 404. Answering 500 would write a stack trace to the error log on
+    # every admin poke at an unmapped game id.
+    from sportsdataverse.football.sources.dispatch import AllSourcesFailed
+
+    def boom(league, game_id, *, source):
+        raise AllSourcesFailed(league, game_id, {})
+
+    monkeypatch.setattr(app_mod, "_SOURCE_ORDER", {"nfl": ("espn", "shield")})
+    monkeypatch.setattr(app_mod, "_ALL_SOURCES_FAILED", AllSourcesFailed)
+    monkeypatch.setattr(app_mod, "_dispatch_game", boom)
+    logged = []
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
+    r = client.get("/nfl/401772944/process?source=shield", headers=auth())
+    assert r.status_code == 404
+    assert r.get_json()["status"] == "bad"
+    assert logged == []  # not an error in this service; no stack trace row
+
+
+def test_any_other_dispatch_error_is_still_a_500(client, app_mod, monkeypatch):
+    # the 404 clause must not swallow a real bug in an adapter
+    def boom(league, game_id, *, source):
+        raise ValueError("adapter is broken")
+
+    monkeypatch.setattr(app_mod, "_SOURCE_ORDER", {"nfl": ("espn", "shield")})
+    monkeypatch.setattr(app_mod, "_dispatch_game", boom)
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: None)
+    assert client.get("/nfl/401772944/process?source=shield", headers=auth()).status_code == 500
+
+
 # --- the registry is the contract's, not ours -------------------------------
 
 def test_allowed_sources_come_from_the_contract_registry(app_mod):
