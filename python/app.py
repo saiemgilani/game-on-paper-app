@@ -634,6 +634,49 @@ def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
 
+def _sources(league: str, game_id: int):
+    """The sources this deploy can process `league` from, in failover order.
+
+    The list IS the contract's registry -- nothing here enumerates sources, so
+    a pin that carries a new adapter starts offering it with no change to this
+    file or to Game on Paper. A pin older than the contract has no registry at
+    all and this answers ESPN alone, which is exactly what `?source=` accepts.
+
+    Deliberately does NOT probe availability: asking every source whether it
+    holds this game would be one upstream fetch per source per page render.
+    The game id is in the path for the id-map resolution the contract does not
+    expose yet (a follow-up), and so the route reads like /process beside it.
+
+    `game_id` is echoed for the same reason, and echoing it is what makes the
+    caller's cache key per game rather than per league -- one entry per game
+    per deploy instead of one per league. That is the right key for the body as
+    it stands, and the right key once the id map lands and the body genuinely
+    varies per game. Drop the echo (and go back to a per-league key) only if
+    that follow-up is abandoned.
+    """
+    return jsonify(
+        {
+            "league": league,
+            "game_id": game_id,
+            "sources": list(_SOURCE_ORDER.get(league) or ("espn",)),
+            "contract_version": _SDV_VERSION,
+            "contract_sha": _SDV_SHA,
+        }
+    )
+
+
+@app.route("/cfb/<int:game_id>/sources", methods=["GET"])
+@require_auth_token
+def sources(game_id: int):
+    return _sources("cfb", game_id)
+
+
+@app.route("/nfl/<int:game_id>/sources", methods=["GET"])
+@require_auth_token
+def sources_nfl(game_id: int):
+    return _sources("nfl", game_id)
+
+
 def _sdv_identity():
     try:
         with open(

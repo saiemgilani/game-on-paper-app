@@ -9,6 +9,7 @@ import {
   readCookie, verifyPreviewCookie, verifyPreviewLink,
 } from './utils/preview';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
+import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
 import { isCoachBoardPath } from './utils/coaches';
@@ -103,6 +104,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.preview = await verifyPreviewCookie(previewCookie, getSecret('ADMIN_PASS'));
   }
 
+  // Admin session, on EVERY path -- not just /admin. The game page's admin
+  // tools (utils/adminView.ts) need to know who is asking, and the answer has
+  // to be settled before the namespace gates below read isFeatureEnabled.
+  // Only a request that actually carries the cookie pays for the HMAC.
+  const adminCookie = readCookie(context.request.headers.get('cookie'), ADMIN_COOKIE);
+  if (adminCookie) {
+    context.locals.adminAuthed = await verifyAdminCookie(adminCookie, getSecret('ADMIN_PASS'));
+  }
+  // ...and only then may ?view= / ?flags= move the flag state for this one
+  // request. For everyone else those parameters are never read, so the render,
+  // the API request and the cache key are byte-for-byte today's.
+  if (context.locals.adminAuthed === true) {
+    applyAdminView(url, context.locals);
+  }
+
   // The NFL surface is a 'preview' feature (utils/features.ts). The explicit
   // pages/nfl/** tree is reached only by a viewer holding the preview cookie --
   // via /preview/nfl/... (previewRewrite) or the cookie on the public URL, which
@@ -127,8 +143,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // which sends its Authorization header proactively -- no 401 challenge
     // needed, so the browser popup is gone for good).
     const open = url.pathname === '/admin/login' || url.pathname === '/admin/api/login';
-    const cookieOk = await verifyAdminCookie(
-      readCookie(context.request.headers.get('cookie'), ADMIN_COOKIE), getSecret('ADMIN_PASS'));
+    const cookieOk = context.locals.adminAuthed === true;  // verified above, on every path
     const basicOk = checkBasicAuth(context.request.headers.get('authorization'),
       getSecret('ADMIN_USER'), getSecret('ADMIN_PASS'));
     if (!open && !cookieOk && !basicOk) {
@@ -238,7 +253,12 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // regresses, this keeps a keyed URL out of Workers Caching entirely.
   const carriesPreviewKey = url.searchParams.has(PREVIEW_LINK_PARAM);
   const isPreviewPath = url.pathname === PREVIEW_PATH_PREFIX || url.pathname.startsWith(PREVIEW_PATH_PREFIX + '/');
-  if (context.locals?.preview === true || isAdmin || carriesPreviewKey || isPreviewPath) {
+  // An authenticated admin's render carries the admin tools and may have had
+  // its flag state overridden per request (?view=live renders the public page
+  // while locals.preview is false), so the preview test alone no longer covers
+  // it. Same reason as the others: a cached copy would reach the wrong viewer.
+  if (context.locals?.preview === true || context.locals?.adminAuthed === true
+      || isAdmin || carriesPreviewKey || isPreviewPath) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
     if (isPreviewPath) response.headers.set('X-Robots-Tag', 'noindex');
