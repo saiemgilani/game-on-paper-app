@@ -75,7 +75,7 @@ const clips = allClips.filter((f) => f.endsWith('.mp4') || (f.endsWith('.webm') 
 if (!clips.length) {
   out.push('', 'No clips: the walkthrough did not run or every route failed to load. See the run log.');
 } else {
-  // one row per flow; a link plays the mp4 in the browser (GitHub does not inline third-party video)
+  // one row per flow; raw.githubusercontent serves the clip as octet-stream, so a link downloads it
   const byFlow = new Map();
   for (const f of clips) {
     const m = f.match(/^(.*)-(desktop|mobile)-(light|dark)\.(mp4|webm)$/);
@@ -83,7 +83,7 @@ if (!clips.length) {
     if (!byFlow.has(m[1])) byFlow.set(m[1], []);
     byFlow.get(m[1]).push({ file: f, label: `${m[2]} ${m[3]}` });
   }
-  out.push('', 'Recorded against the PR build: a scroll-through of each evidence route, plus any `Walkthrough steps:` flow the PR names.', '', '| flow | clips |', '|---|---|');
+  out.push('', 'Recorded against the PR build: a scroll-through of each evidence route, plus any `Walkthrough steps:` flow the PR names. Each link downloads the clip (a few hundred KB).', '', '| flow | clips |', '|---|---|');
   for (const [flow, list] of byFlow) {
     const links = list.map((c) => (opt['image-base'] ? `[${c.label}](${opt['image-base']}/${c.file})` : `\`walkthrough/${c.file}\``)).join(' · ');
     out.push(`| \`${flow}\` | ${links} |`);

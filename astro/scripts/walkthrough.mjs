@@ -58,7 +58,8 @@ async function scrollThrough(page, base, route) {
 
 const steps = stepsPath ? (await import(pathToFileURL(resolve(stepsPath)).href)).default : null;
 const scenarios = steps
-  ? [{ name: slug(stepsPath.replace(/^.*\//, '').replace(/\.m?js$/, '')), run: (page) => steps(page, BASE) }]
+  // `flow-` keeps a steps module from overwriting the scroll-through of a route with the same name
+  ? [{ name: 'flow-' + slug(stepsPath.replace(/^.*\//, '').replace(/\.m?js$/, '')), run: (page) => steps(page, BASE) }]
   : routes.map((r) => ({ name: slug(r), run: (page) => scrollThrough(page, BASE, r) }));
 
 const chromium = await loadChromium();

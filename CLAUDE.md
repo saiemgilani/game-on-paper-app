@@ -76,8 +76,8 @@ in the PR; never paste numbers the workflow didn't measure.
 **Walkthrough video:** `lighthouse-compare.mjs --walkthrough` runs
 `astro/scripts/walkthrough.mjs` against the head preview it is already serving
 (desktop + mobile, light), the workflow publishes the mp4s beside the screenshots
-on `pr-previews` and links them in the comment (a link plays in the browser;
-GitHub does not inline third-party video). A `Walkthrough steps:
+on `pr-previews` and links them in the comment (each link downloads the clip —
+`raw.githubusercontent` serves octet-stream; GitHub does not inline third-party video). A `Walkthrough steps:
 scripts/walkthroughs/a.mjs` line in the PR description (max 4, committed files)
 records those flows too. A steps module is plain Playwright (`export default
 async (page, base) => { … }`), one flow per file, under ~60 s, kept in the repo
