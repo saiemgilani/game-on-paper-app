@@ -58,8 +58,13 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
     }
 
     const seasonParam = Astro.url.searchParams.get('season');
-    const season = seasonParam && /^\d{4}$/.test(seasonParam) ? parseInt(seasonParam) : null;
-    const query = season ? `?season=${season}` : '';
+    const valid = seasonParam !== null && /^\d{4}$/.test(seasonParam);
+    const season = valid ? parseInt(seasonParam as string) : null;
+    // carry the VALIDATED TEXT through the redirect, not the parsed number:
+    // `?season=0000` parses to 0, which is falsy and would drop the param, and
+    // `?season=0202` would be rewritten to `202`. Either way the canonical URL
+    // would render the latest season instead of the 404 those ask for.
+    const query = valid ? `?season=${seasonParam}` : '';
 
     // The NFL season leaderboards key on gsis, so their rows can only link here
     // with a gsis id. Resolve it through the nflverse crosswalk ONCE and send the
