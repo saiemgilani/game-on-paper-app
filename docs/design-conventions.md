@@ -210,7 +210,7 @@ Akshay rewrote copy more often than markup. The voice is **short, plain, and non
 
   and `6e6c422d` on `data-sources.astro`, which cut the subtitle to *"Data sources, freshness,
   and limitations"* and deleted the duplicated FAQ block outright (the page still spells it
-  "souces" — a public typo fix, unflagged, owed).
+  "souces" [sic] — a live typo on `data-sources.astro`, unflagged, owed a fix).
   *Tells: em-dash-joined enumerations, hedged sub-clauses ("whichever side it fell on"), British
   spelling ("penalised"), and a sentence that restates the heading. Prefer naming the prior art.*
 - **Punctuation:** colons, not dashes — #226: *"use colons instead of dashes"*. No interpunct/dot
@@ -328,7 +328,7 @@ Read your own diff against this list before he has to.
 - [ ] One number per cell; a secondary metric is its own indented row. All numbers via `roundNumber`. Percentages show `%`.
 - [ ] `<thead>` order matches the body cells.
 - [ ] Logo and text are vertically aligned.
-- [ ] Panels, not cards, on the game page; `mb-md-3` for small-screen margin; no stacked redundant margins.
+- [ ] Panels, not cards, on the game page; `mb-md-3` spaces stacked panels from `md` (≥768px) up, `mb-3` if the phone layout needs the gap; no stacked redundant margins.
 - [ ] Filter pills use `FilterGroup`, buttons `btn btn-sm btn-outline-secondary`.
 - [ ] Responsive infixes are real Bootstrap (`sm`/`md`/`lg`/`xl`, **never `xs`**).
 - [ ] Small screens show abbreviations, not full names.
