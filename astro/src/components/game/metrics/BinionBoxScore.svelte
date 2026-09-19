@@ -1,8 +1,8 @@
 <script lang="ts">
 import type { ProcessedBoxScore } from '../../../resources/python';
-import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
+import { espnLogoLeague } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
-import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
+import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue, metricDecimalPoints } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import { LEAGUES, type League } from '../../../utils/league';
@@ -121,7 +121,7 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
         finalTeamInfo.reverse()
     }
 
-    let finalDecimalPoints = decimalPoints || 1;
+    let finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
     if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {
@@ -198,8 +198,8 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
                 <th style="text-align: left;">Overall</th>
                 {#each groups as value}
                 <th style="text-align: center;">
-                    <a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}>
-                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
+                    <a href={leaguePath(league, `/year/${season}/team/${value}`)}>
+                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
                     </a>
                 </th>
                 {/each}

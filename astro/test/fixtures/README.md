@@ -64,3 +64,27 @@ rows and renders the season and careers boards for both leagues.
 
 **To regenerate** after a builder change: re-export the three tables for 2024
 and replace the arrays; keep 2024 so the render test's URL assertions hold.
+
+## `usage-cfb-400869270.json.gz` / `usage-nfl-401872922.json.gz`
+Real `ProcessedGame` payloads — the exact bodies the Python API serves for
+`GET /cfb/400869270/process` (OKST at CMU, 2016, Final) and
+`GET /nfl/401872922/process` (JAX at CLE, 2026 REG, Final). Unlike the two
+`game-*.json.gz` fixtures these carry **every** `advBoxScore` section the game
+page can render — the usage / tackles / special-teams sections
+(`sportsdataverse.football.usage_box`) and a fitted `paperIndex` — at a tenth
+of the size, because the games are smaller.
+
+**Provenance (2026-09-18):** produced offline, no network, by driving
+`python/app.py`'s `/<league>/<id>/process` through the Flask test client with
+the processors replaced by the `_OfflineNFL` / `_OfflineCFB` subclasses in
+`python/tests/test_usage_box_route.py`, which read the ESPN summaries (and, for
+the NFL, the core play items) already committed under `python/tests/fixtures`.
+No hand edits. The NFL game carries play participants, so its tackle and
+position-group sections are populated; the CFB game has none, so those sections
+are legitimately empty.
+
+**Used by:** `test/tableDecisions.render.test.ts` — the render-level guards for
+the table-reconciliation decisions (#264 review).
+
+**To regenerate** after a processor change: re-run that same offline route call
+for both leagues and overwrite the files; the game ids must stay the same.

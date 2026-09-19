@@ -29,6 +29,17 @@ function handleMetricRows(item: string): string {
             let val = (overall - off - sp_epa - pen_epa)
             result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
         });
+    } else if (item == "off_yards") {
+        // The row is labelled "Yards" under the overall block and the pass and
+        // rush "Yards" rows sit right under it, so the header promises their
+        // sum. The payload's own off_yards is ESPN's per-play statYardage --
+        // a different universe from the processor's parsed pass/rush yardage,
+        // and off by up to 31 yards on a single game -- so it is shown as the
+        // tooltip instead of as the total.
+        teamBoxScores.forEach((teamData: any) => {
+            let val = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
+            result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
+        });
     } else if (item == "avg_field_position") {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
