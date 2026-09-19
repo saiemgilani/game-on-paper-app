@@ -232,6 +232,13 @@ describe('NFL player page', () => {
         // Jets, not the 27-play Raiders stint under the qualification gate)
         expect(html).toContain(`width: ${percentileOf(nyj, 'EPAplay')}%`);
         expect(html).toContain('hulk-bg-level-');
+        // EVERY bar is on the ramp. generateColorRampValue returns null through the
+        // middle of the distribution (levels 4-5), which leaves a table cell unshaded
+        // but leaves a .progress-bar on Bootstrap's blue -- two of this player's 2024
+        // bars (TEPA 52.6th, Yards/Tgt 43.2nd) sit in that band.
+        const bars = [...html.matchAll(/<div class="([^"]*progress-bar[^"]*)"/g)].map((m) => m[1]);
+        expect(bars.length).toBeGreaterThan(0);
+        expect(bars.filter((b) => !/hulk-bg-level-\d/.test(b))).toEqual([]);
     }, 60_000);
 });
 

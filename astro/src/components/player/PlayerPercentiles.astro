@@ -4,6 +4,11 @@
  * computed a `_pct` for, on the site's green -> purple ramp
  * (`generateColorRampValue` -> `hulk-bg-level-*`, never green/red).
  *
+ * `generateColorRampValue` returns null for the middle of the ramp (levels 4-5),
+ * which leaves a table cell unshaded -- correct there, but a `.progress-bar` with no
+ * background class falls back to Bootstrap's blue, so the neutral level is named
+ * explicitly here.
+ *
  * Renders nothing when the rows carry no percentiles, which is the NFL's state
  * until the `nfl_player_percentiles` thresholds publish with the next refresh
  * (nfl-data #57) -- an empty section beats a bar drawn from a null.
@@ -45,7 +50,7 @@ const blocks = PLAYER_CATEGORIES.map((category) => {
             <div class="col-2 col-md-1 text-center numeral text-small">{bar.value}</div>
             <div class="progress flex-grow-1" role="progressbar" aria-label={`${bar.label} percentile`}
                 aria-valuenow={Math.round(bar.pct as number)} aria-valuemin="0" aria-valuemax="100">
-                <div class:list={["progress-bar", generateColorRampValue(bar.pct, 100)]} style={`width: ${bar.pct}%`}></div>
+                <div class:list={["progress-bar", generateColorRampValue(bar.pct, 100) ?? "hulk-bg-level-4"]} style={`width: ${bar.pct}%`}></div>
             </div>
             <div class="col-2 col-md-1 text-center numeral text-small">{roundNumber(bar.pct, 2, 0)}%</div>
         </div>
