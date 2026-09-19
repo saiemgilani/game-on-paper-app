@@ -75,7 +75,11 @@ describe('CFB player page', () => {
         expect(html).toContain('<title>QB Kyle McCord 2024 advanced stats: EPA per play, success rate and game log | Game on Paper</title>');
         expect(html).toContain('"@type":"Dataset"');
         expect(html).toContain('"temporalCoverage":"2024"');
-        expect(html).toContain('gameonpaper.com/players/4433971');
+        // canonical, og:url and the Dataset all name the season the page SHOWS:
+        // `?season=` changes the content, so canonicalising every season onto
+        // one URL would advertise a page that renders a different year
+        expect(html).toContain('<link rel="canonical" href="https://gameonpaper.com/players/4433971?season=2024">');
+        expect(html).toContain('"url":"https://gameonpaper.com/players/4433971?season=2024"');
         // the pills offer exactly the seasons the player has rows for, newest first
         for (const y of [2024, 2023, 2022, 2021]) expect(html, `${y}`).toContain(`href="/players/4433971?season=${y}"`);
         expect(html).not.toContain('?season=2020');
@@ -136,10 +140,14 @@ describe('CFB player page', () => {
             expect(c[8]).toBe(`${roundNumber(g.success_rate * 100, 2, 1)}%`);
             expect(rows[i]).toContain(`href="/game/${g.game_id}"`);
         });
-        // a postseason game whose week restarts at 1 still sorts last: the log
-        // orders on the kickoff date
+        // The page renders the API's rows in order and never re-sorts. This pins
+        // that CONTRACT, not GOP code: sdv-db's player_routes sorts on the
+        // kickoff date precisely so a postseason game whose schedule `week`
+        // restarts at 1 still sorts last. A producer that stopped sorting would
+        // break here, which is the point -- nothing in this repo can.
         const dates = rows.map((r) => cells(r)[0]);
         expect([...dates].sort()).toEqual(dates);
+        expect(cfb.games.data[cfb.games.data.length - 1].week).toBe(1);
     }, 60_000);
 
     test('splits: the table is the API\'s rows, and overtime with no plays is left out', async () => {
@@ -185,6 +193,22 @@ describe('CFB player page', () => {
         expect(cells(rows[0])[2]).toBe('48.0%');
         expect(cells(rows[1])[0]).toBe('Rank');
         expect(html).toContain('href="/year/2024/team/183"');
+        expect(html).toContain('alt="Syracuse logo"');
+    }, 60_000);
+
+    test('a team_summaries column the producer did not publish reads as absent, not zero', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const spy = vi.spyOn(sdv, 'retrieveTeamSummaries').mockResolvedValue(
+            [{ team_id: 183, pos_team: 'Syracuse' }] as any);
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            const row = cells(bodyRows(html, 'player-team-context-table')[0]);
+            expect(row.slice(1)).toEqual(['—', '—', '—', '—']);
+            expect(row).not.toContain('0.0%');
+            expect(row).not.toContain('0.00');
+        } finally {
+            spy.mockRestore();
+        }
     }, 60_000);
 });
 
@@ -203,7 +227,7 @@ describe('NFL player page', () => {
         expect(html).not.toContain('teamlogos/ncaa/');
         expect(html).toContain('href="/nfl/year/2024/team/20"');
         expect(html).not.toMatch(/href="\/year\/2024\/team\//);
-        expect(html).toContain('nflverse rosters through the ESPN crosswalk');
+        expect(html).toContain('Rosters from nflverse');
     }, 60_000);
 
     test('game log rows link through the nflverse-to-ESPN crosswalk, or not at all', async () => {
@@ -242,14 +266,67 @@ describe('NFL player page', () => {
     }, 60_000);
 });
 
-describe('a player the API does not have', () => {
-    const fake = (path: string, params: Record<string, string>) =>
-        ({ params, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any }) as any;
+/** An Astro stub that records what the route asked Workers Caching to do. */
+const fake = (path: string, params: Record<string, string>) => {
+    const cache: any[] = [];
+    const headers = new Headers();
+    return {
+        astro: { params, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any,
+            cache: { set: (v: any) => cache.push(v) }, response: { headers } } as any,
+        cache, headers,
+    };
+};
 
+describe('the page tells Workers Caching what to do', () => {
+    // Every other data-backed route owns its policy (game.ts, matchup.ts,
+    // charts.ts); a header-less 200 sits in Workers Caching on a ~2h heuristic
+    // with no way to purge it, so a 404 from one bad upstream minute would
+    // freeze a real player's page. Only matters once the flag is 'on' -- which
+    // is exactly why it has to be right before it flips.
+    test('a rendered page is cacheable per (league, id, season) and purgeable', async () => {
+        const { preparePlayer } = await import('../src/routes/player');
+        const f = fake('/players/4433971?season=2023', { id: '4433971' });
+        await preparePlayer(f.astro, 'cfb');
+        expect(f.cache).toEqual([{ maxAge: 60 * 60, swr: 60 * 60 * 6, tags: ['player'] }]);
+        expect(f.headers.get('Cache-Control')).toBeNull();
+        // the key is the URL: league and id in the path, season in the query
+        expect(f.astro.url.pathname).toBe('/players/4433971');
+        expect(f.astro.url.searchParams.get('season')).toBe('2023');
+    }, 60_000);
+
+    test('the tag is one /admin/api/purge-game accepts', async () => {
+        const src = readFileSync(new URL('../src/pages/admin/api/purge-game.ts', import.meta.url)).toString();
+        const known = src.slice(src.indexOf('const KNOWN_TAGS'), src.indexOf('export const GET'));
+        expect(known).toContain("'player'");
+    });
+
+    test('every branch that does not render a page is explicitly uncacheable', async () => {
+        const { preparePlayer } = await import('../src/routes/player');
+        feed.missing.add('99999999999');
+        const cases: [string, Record<string, string>, 'cfb' | 'nfl'][] = [
+            ['/players/99999999999', { id: '99999999999' }, 'cfb'],   // the API 404s the id
+            ['/players/kyle', { id: 'kyle' }, 'cfb'],                  // malformed id
+            ['/players/4433971?season=1999', { id: '4433971' }, 'cfb'],// season he never played
+            ['/nfl/players/00-0031381', { id: '00-0031381' }, 'nfl'],  // the gsis redirect
+            ['/nfl/players/00-0000001', { id: '00-0000001' }, 'nfl'],  // crosswalk miss
+        ];
+        for (const [path, params, league] of cases) {
+            const f = fake(path, params);
+            await preparePlayer(f.astro, league);
+            expect(f.cache, path).toEqual([false]);
+            // set(false) alone emits NO header, which Workers Caching reads as
+            // "cache me for two hours" -- the opt-out has to say so
+            expect(f.headers.get('Cache-Control'), path).toBe('no-store');
+        }
+        feed.missing.delete('99999999999');
+    }, 60_000);
+});
+
+describe('a player the API does not have', () => {
     test('404s rather than handing the page an identity shell', async () => {
         const { preparePlayer } = await import('../src/routes/player');
         feed.missing.add('99999999999');
-        expect(await preparePlayer(fake('/players/99999999999', { id: '99999999999' }), 'cfb')).toEqual({ notFound: true });
+        expect(await preparePlayer(fake('/players/99999999999', { id: '99999999999' }).astro, 'cfb')).toEqual({ notFound: true });
         feed.missing.delete('99999999999');
         // and the page file branches on it -- rendering the marker object would
         // ship an "undefined" page as HTTP 200
@@ -261,19 +338,19 @@ describe('a player the API does not have', () => {
     test('a malformed id never reaches the API, and the NFL gsis form redirects', async () => {
         const { preparePlayer } = await import('../src/routes/player');
         for (const id of ['kyle', '4433971.0', '', '../../etc']) {
-            expect(await preparePlayer(fake(`/players/${id}`, { id }), 'cfb'), id).toEqual({ notFound: true });
+            expect(await preparePlayer(fake(`/players/${id}`, { id }).astro, 'cfb'), id).toEqual({ notFound: true });
         }
-        expect(await preparePlayer(fake('/nfl/players/00-0031381?season=2024', { id: '00-0031381' }), 'nfl'))
+        expect(await preparePlayer(fake('/nfl/players/00-0031381?season=2024', { id: '00-0031381' }).astro, 'nfl'))
             .toEqual({ redirect: '/nfl/players/16800?season=2024' });
-        expect(await preparePlayer(fake('/nfl/players/00-0000001', { id: '00-0000001' }), 'nfl'))
+        expect(await preparePlayer(fake('/nfl/players/00-0000001', { id: '00-0000001' }).astro, 'nfl'))
             .toEqual({ notFound: true });
         // a season the player has no rows for is a 404, not an empty page
-        expect(await preparePlayer(fake('/players/4433971?season=1999', { id: '4433971' }), 'cfb'))
+        expect(await preparePlayer(fake('/players/4433971?season=1999', { id: '4433971' }).astro, 'cfb'))
             .toEqual({ notFound: true });
-        const ok = await preparePlayer(fake('/players/4433971?season=2023', { id: '4433971' }), 'cfb') as any;
+        const ok = await preparePlayer(fake('/players/4433971?season=2023', { id: '4433971' }).astro, 'cfb') as any;
         expect(ok.season).toBe(2023);
         // no ?season: the player's latest
-        const latest = await preparePlayer(fake('/players/4433971', { id: '4433971' }), 'cfb') as any;
+        const latest = await preparePlayer(fake('/players/4433971', { id: '4433971' }).astro, 'cfb') as any;
         expect(latest.season).toBe(2024);
     }, 60_000);
 });
