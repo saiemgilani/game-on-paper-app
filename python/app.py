@@ -646,6 +646,13 @@ def _sources(league: str, game_id: int):
     holds this game would be one upstream fetch per source per page render.
     The game id is in the path for the id-map resolution the contract does not
     expose yet (a follow-up), and so the route reads like /process beside it.
+
+    `game_id` is echoed for the same reason, and echoing it is what makes the
+    caller's cache key per game rather than per league -- one entry per game
+    per deploy instead of one per league. That is the right key for the body as
+    it stands, and the right key once the id map lands and the body genuinely
+    varies per game. Drop the echo (and go back to a per-league key) only if
+    that follow-up is abandoned.
     """
     return jsonify(
         {

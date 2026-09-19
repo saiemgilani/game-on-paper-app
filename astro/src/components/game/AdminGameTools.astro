@@ -31,8 +31,10 @@ const admin = Astro.locals.adminAuthed === true;
 const league: League = Astro.locals.league ?? 'cfb';
 const id = game?.header?.id;
 
-const view = currentView(Astro.url, Astro.locals);
-const flagOptions = PREVIEW_FLAG_NAMES.map((name) => {
+// Everything below is behind `admin`: a public game-page render must not pay
+// for URL building it then discards.
+const view = admin ? currentView(Astro.url, Astro.locals) : 'live';
+const flagOptions = !admin ? [] : PREVIEW_FLAG_NAMES.map((name) => {
     const effective = isFeatureEnabled(name, Astro.locals);
     return { name, effective, href: adminToolsHref(Astro.url, { flags: { [name]: !effective } }) };
 });
@@ -46,13 +48,27 @@ const sources = registry?.sources ?? ['espn'];
 const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || 'espn';
 const provenance = game?.provenance;
 
-// ESPN comes from the ordinary processed-game path, so it is the SAME cache
-// entry the page itself fills rather than a second processing run.
+// ESPN comes from the ordinary processed-game path, on the no-source cache
+// key -- the SAME entry the page itself fills, so a warm key costs nothing. A
+// COLD key is a full second processing run, which is why it is timeboxed: the
+// panel drops to empty deltas rather than stalling the admin's whole render.
+// ponytail: Promise.race rather than an AbortSignal threaded through
+// retrieveProcessedGame -- the stray request fills a cache entry the page
+// would fill anyway. Thread a signal through if that stops being true.
+// 30 s, not a few: a cold /process on a game page is 15-20 s (see the repo
+// CLAUDE.md), so a tighter box fires on exactly the render that needed the
+// second fetch and leaves an all-empty ESPN column -- which is what the first
+// run of the visual matrix showed.
+const COMPARE_TIMEOUT_MS = 30_000;
 let comparison: SourceComparison | null = null;
 if (sourceSwitch && game && id && selectedSource !== 'espn') {
     try {
         const config = getGameCacheConfig(game.header.competitions[0].date, game.header.competitions[0].status);
-        comparison = compareSources(game, await retrieveProcessedGame(id, config.maxAge || 30, league));
+        comparison = compareSources(game, await Promise.race([
+            retrieveProcessedGame(id, config.maxAge || 30, league),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('source compare: ESPN side timed out')), COMPARE_TIMEOUT_MS)),
+        ]));
     } catch {
         comparison = compareSources(game, null);
     }

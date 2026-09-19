@@ -38,6 +38,18 @@ const passed = process.argv.slice(2);
 const routes = passed.length ? passed : ['/', '/nfl', '/nfl/year/2025/teams/tendencies'];
 
 const chromium = await loadChromium();
+// Admin-only UI (the game page's admin tools) renders for nobody without a
+// session cookie, so a matrix shot without one is a shot of the feature being
+// absent. VISUAL_CHECK_COOKIES carries it: "name=value; name2=value2", scoped
+// to BASE's origin. Mint a gop_admin value with scripts/mint-admin-cookie.mjs.
+const COOKIES = (process.env.VISUAL_CHECK_COOKIES ?? '').split(';')
+  .map((c) => c.trim()).filter(Boolean)
+  .map((c) => {
+    const i = c.indexOf('=');
+    const { hostname, protocol } = new URL(BASE);
+    return { name: c.slice(0, i), value: c.slice(i + 1), domain: hostname, path: '/', secure: protocol === 'https:' };
+  });
+
 await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch(launchOptions());
 const shots = [];
@@ -46,6 +58,7 @@ try {
   for (const device of DEVICES) {
     for (const colorScheme of SCHEMES) {
       const ctx = await newThemedContext(browser, device, colorScheme);
+      if (COOKIES.length) await ctx.addCookies(COOKIES);
       const page = await ctx.newPage();
       for (const route of routes) {
         const url = BASE + route;

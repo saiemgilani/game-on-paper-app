@@ -1272,6 +1272,10 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
             cf: {
                 cacheEverything: true,
                 cacheTtlByStatus: { "200-299": 3600, 404: 1, "500-599": 0 },
+                // Per GAME, not per league: the body echoes `game_id`, so a
+                // league-wide key served /cfb/1/sources for /cfb/2/sources.
+                // See the route's docstring -- the echo is kept for the id-map
+                // follow-up, which makes the body vary per game for real.
                 cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/sources?v=${APP_VERSION}`,
             }
         });
