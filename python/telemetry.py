@@ -31,6 +31,14 @@ _TABLES = {
         "cache_status",
         "render_outcome",
         "missing_datasets",
+        # data-quality signal for this response (python/qa.py). Null for every
+        # row the Astro side ships and for a game the gate could not speak on.
+        "qa_ok",
+        "qa_errors",
+        "qa_warnings",
+        "qa_source",
+        "qa_fallback",
+        "qa_rules",
     ],
     "upstream_log": [
         "ts",
@@ -415,6 +423,12 @@ def init_flask(app, tel):
                     "cache_status": meta.get("cache_status"),
                     "render_outcome": meta.get("render_outcome"),
                     "missing_datasets": meta.get("missing_datasets"),
+                    "qa_ok": meta.get("qa_ok"),
+                    "qa_errors": meta.get("qa_errors"),
+                    "qa_warnings": meta.get("qa_warnings"),
+                    "qa_source": meta.get("qa_source"),
+                    "qa_fallback": meta.get("qa_fallback"),
+                    "qa_rules": meta.get("qa_rules"),
                 },
             )
         except Exception:

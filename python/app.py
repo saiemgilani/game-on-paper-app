@@ -17,6 +17,7 @@ import gop_routes
 import espn_proxy
 import dq
 import paper_index
+import qa
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
@@ -395,14 +396,16 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
             served, fallback_used, processed_game = "espn", False, None
+            dispatch_prov = None
         else:
             # dispatch fetches, validates against the contract and runs the
             # processor in one call; ESPN stays the terminal fallback inside it.
             with stage(timings, "espn_fetch"):
                 dispatched = _dispatch_game(league, game_id, source=source)
             game, processed_game = dispatched.processor, dispatched.game
-            served = dispatched.provenance["served"]
-            fallback_used = dispatched.provenance["fallback"]
+            dispatch_prov = dispatched.provenance
+            served = dispatch_prov["served"]
+            fallback_used = dispatch_prov["fallback"]
         TEL.push(
             "upstream_log",
             {
@@ -547,6 +550,23 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             logging.getLogger("root").warning(
                 f"all-span summaries failed for {game_id}: {e}"
             )
+
+        # Data-quality signal on every response (python/qa.py): the packaged
+        # per-game gate when the pin carries it, plus the live-poll rules while
+        # the game is running. Additive and fail-open -- a null `qa` is a
+        # documented state (docs/qa-payload.md), an exception here is not
+        # allowed to cost the page, and the classic twin never reads it.
+        try:
+            processed_game["qa"] = qa.build(
+                game, processed_game, league, game_id,
+                provenance=dispatch_prov, sdv_version=_SDV_VERSION, sdv_sha=_SDV_SHA,
+            )
+        except Exception as e:  # observability must never cost a render
+            logging.getLogger("root").warning(f"qa summary failed for {game_id}: {e}")
+            processed_game["qa"] = None
+        # ...and onto this request's telemetry row, so the route timing and the
+        # quality of what it served are one sample rather than two datasets.
+        g.gop_meta = {**getattr(g, "gop_meta", {}), **qa.telemetry_fields(processed_game["qa"])}
 
         try:
             _emit_dq(game_id, game, processed_game)
