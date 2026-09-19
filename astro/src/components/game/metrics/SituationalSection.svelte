@@ -84,7 +84,7 @@ function onChangeSpan(e: Event) {
             decimalPoints={2}
         />
         <TeamMetricsTable 
-            title="Situational"
+            title="Success"
             teamKey='pos_team'
             season={season}
             columns={[
@@ -96,6 +96,18 @@ function onChangeSpan(e: Event) {
                 "EPA_success_early_down",
                 "EPA_success_late_down",
                 "EPA_middle_8_success",
+
+                
+            ]}
+            teamBoxScores={selectedBoxScore.situational}
+            useSuffix={true}
+            decimalPoints={2}
+        />
+        <TeamMetricsTable 
+            title="Early Downs"
+            teamKey='pos_team'
+            season={season}
+            columns={[
                 "early_downs",
                 "early_down_first_down",
                 "EPA_early_down",
@@ -104,6 +116,16 @@ function onChangeSpan(e: Event) {
                 "early_down_rush",
                 "EPA_success_early_down_pass",
                 "EPA_success_early_down_rush",
+            ]}
+            teamBoxScores={selectedBoxScore.situational}
+            useSuffix={true}
+            decimalPoints={2}
+        />
+        <TeamMetricsTable 
+            title="Late Downs"
+            teamKey='pos_team'
+            season={season}
+            columns={[
                 "late_downs",
                 "EPA_late_down",
                 "EPA_late_down_per_play",
@@ -112,7 +134,16 @@ function onChangeSpan(e: Event) {
                 "EPA_success_late_down_pass",
                 "EPA_success_late_down_rush",
                 "late_down_avg_distance",
-
+            ]}
+            teamBoxScores={selectedBoxScore.situational}
+            useSuffix={true}
+            decimalPoints={2}
+        />
+        <TeamMetricsTable 
+            title="Middle 8"
+            teamKey='pos_team'
+            season={season}
+            columns={[
                 "middle_8",
                 "EPA_middle_8",
                 "EPA_middle_8_per_play",
@@ -142,7 +173,7 @@ function onChangeSpan(e: Event) {
             useSuffix={false}
             decimalPoints={2}
         />
-        <!-- <TeamMetricsTable 
+        <TeamMetricsTable 
             title="Finishing Drives"
             teamKey='pos_team'
             season={season}
@@ -151,22 +182,22 @@ function onChangeSpan(e: Event) {
                 "third_down_conversions",
                 "third_down_expected",
 
+                "so_trips",
+                "so_touchdown_rate",
+                "so_points_per_trip",
+                "so_success_rate",
+                "so_epa_per_play",
+
                 "rz_trips",
                 "rz_touchdown_rate",
                 "rz_points_per_trip",
                 "rz_success_rate",
                 "rz_epa_per_play",
-
-                "so_trips",
-                "so_touchdown_rate",
-                "so_points_per_trip",
-                "so_success_rate",
-                "so_epa_per_play"
             ]}
-            teamBoxScores={selectedBoxScore.usage}
+            teamBoxScores={selectedBoxScore.team_usage}
             useSuffix={false}
             decimalPoints={2}
-        /> -->
+        />
         <TeamMetricsTable 
             title="Defensive"
             teamKey='def_pos_team'

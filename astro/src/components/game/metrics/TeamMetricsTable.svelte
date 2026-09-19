@@ -38,12 +38,12 @@ function handleMetricRows(item: string): string {
             let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
         });
-    } else if (["kickoff_touchback_rate"].includes(item)) {
+    } else if (["drive_total_gained_yards_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
-            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
         });
-    } else if (["kickoff_touchback_rate"].includes(item)) {
+    }  else if (["kickoff_touchback_rate", "rz_success_rate", "so_success_rate", "rz_touchdown_rate", "so_touchdown_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
@@ -57,6 +57,18 @@ function handleMetricRows(item: string): string {
                 result += `<td class="numeral" style="text-align: center;"> - </td>`;
             } else {
                 result += `<td class="numeral" style="text-align: center;">${num}/${denom} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
+            }
+        });
+    } else if (["third_down_conversions", "third_down_expected"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let denom = teamData["third_down_opportunities"] || 0;
+            let num = teamData[item] || 0;
+            let pct = (denom == 0) ? 0 : num / denom
+            let places = item == "third_down_expected" ? 1 : 0
+            if (denom == 0) {
+                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(num, 2, places)} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
             }
         });
     } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
