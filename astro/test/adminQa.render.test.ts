@@ -1,7 +1,8 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { QaAdmin } from '../src/resources/qa';
 
 // /admin/qa renders the validation signal every /process response now carries.
 // Two things have to hold: it is admin-only whatever the middleware did, and
@@ -10,7 +11,7 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 vi.mock('astro:env/server', () => ({ getSecret: () => undefined }));
 
-const ADMIN = {
+const ADMIN: QaAdmin = {
     games: [
         {
             game_id: '401856682', matchup: 'TEX @ OSU', status: 'STATUS_IN_PROGRESS',
@@ -35,8 +36,12 @@ const ADMIN = {
     ok: true,
 };
 
-vi.mock('../src/resources/qa', () => ({ retrieveQaAdmin: vi.fn(async () => ADMIN) }));
-vi.mock('../src/resources/sdv', () => ({ retrieveQaSeason: vi.fn(async () => []) }));
+let STORE: QaAdmin = ADMIN;
+vi.mock('../src/resources/qa', () => ({ retrieveQaAdmin: vi.fn(async () => STORE) }));
+vi.mock('../src/resources/sdv', () => ({ retrieveQaSeason: vi.fn(async () => SEASON) }));
+let SEASON: { rows: unknown[], ok: boolean } = { rows: [], ok: true };
+
+beforeEach(() => { STORE = ADMIN; SEASON = { rows: [], ok: true }; });
 
 let container: AstroContainer;
 beforeAll(async () => {
@@ -96,6 +101,25 @@ describe('/admin/qa', () => {
         // panels, not cards
         expect(html).toContain('panel-group');
         expect(html).not.toContain('class="card"');
+    });
+
+    test('an empty store says the query answered, not that nothing is wrong', async () => {
+        // day one: the migration has not run, so every table is empty
+        STORE = { games: [], rules: [], totals: {}, days: 7, ok: true };
+        const html = await (await render({ adminAuthed: true })).text();
+        expect(html).toContain('No game has been checked in the past 24 hours');
+        expect(html).toContain('No rule fired in this window');
+        expect(html).toContain('Not published yet');
+    });
+
+    test('a store that did not answer says so rather than showing an empty table', async () => {
+        STORE = { games: [], rules: [], totals: {}, days: 7, ok: false };
+        SEASON = { rows: [], ok: false };
+        const html = await (await render({ adminAuthed: true })).text();
+        expect(html).toContain('The telemetry store did not answer');
+        expect(html).toContain('The data API did not answer');
+        expect(html).not.toContain('Not published yet');   // a different claim
+        expect(html).not.toContain('No rule fired');
     });
 
     test('the window pills are the site filter group, and one is active', async () => {

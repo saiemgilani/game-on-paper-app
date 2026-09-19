@@ -83,6 +83,20 @@ def _q(sql, params=None):
             return []
 
 
+def _days(args, default=14, cap=90):
+    """The `days` window from a query string, clamped, never a 500.
+
+    `int(args.get("days", 14))` raises on `?days=abc`, which Flask answers 500.
+    Admin-only, so not a vulnerability, but it is the same one line in every
+    windowed endpoint and this is the one place to get it right.
+    """
+    try:
+        days = int(args.get("days", default))
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(days, cap))
+
+
 def _overview(args):
     return {
         "reqPerMin": _q("""SELECT date_trunc('minute', ts) AS m, count(*)::int AS n
@@ -214,7 +228,7 @@ def _dq(args):
     """Box-vs-official deltas and lints. Stability across sdv_py_sha is the
     signal; a version-aligned shift in a stat's delta distribution is a parser
     regression."""
-    days = min(int(args.get("days", 14)), 90)
+    days = _days(args, 14)
     return {
         "scorecard": _q(
             """SELECT stat,
@@ -284,7 +298,7 @@ def _qa(args):
     whose sportsdataverse-py pin has no validation package AND that was not
     live -- not a game that passed.
     """
-    days = min(int(args.get("days", 7)), 90)
+    days = _days(args, 7)
     return {
         # one row per game: its LAST verdict, with how long ago that was
         "games": _q("""SELECT DISTINCT ON (r.game_id) r.game_id,

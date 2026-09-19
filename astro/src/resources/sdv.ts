@@ -632,20 +632,26 @@ export interface SDVQaRow {
     failed_rule_ids?: string[]
 }
 
+export interface SDVQaSeason { rows: SDVQaRow[], ok: boolean }
+
 /** The season QA asset the release builds publish as `<family>_qa_{season}`.
  *
  *  That asset is V2 of the data-integrity plan and is not published yet, so
- *  this 404s today and `requestSDV` answers `{data: []}`. /admin/qa renders the
- *  empty answer as "not published yet" rather than as a season with no
- *  findings, which is why the caller must not treat [] as a clean season. */
-export async function retrieveQaSeason(season: number, league: League = 'cfb'): Promise<SDVQaRow[]> {
-    if (!LEAGUES[league].sdvEnabled) return [];
+ *  this 404s today and `requestSDV` answers `{data: []}`. The `ok` flag is what
+ *  keeps those two apart: an empty answer from a service that replied means
+ *  "not published yet", and a service that did not reply means nothing at all.
+ *  /admin/qa says which, because rendering a failed query as an unpublished
+ *  season is the same false claim as rendering it as a clean one. */
+export async function retrieveQaSeason(season: number, league: League = 'cfb'): Promise<SDVQaSeason> {
+    if (!LEAGUES[league].sdvEnabled) return { rows: [], ok: true };
     try {
         const content = await requestSDV('qa', new URLSearchParams({ season: String(season) }),
             undefined, 60 * 60, true, league);
-        return Array.isArray(content?.data) ? content.data : [];
+        // requestSDV swallows its own errors into `{data: []}`, so an absent
+        // array is the only signal left that the request did not come back
+        return Array.isArray(content?.data) ? { rows: content.data, ok: true } : { rows: [], ok: false };
     } catch {
-        return [];
+        return { rows: [], ok: false };
     }
 }
 

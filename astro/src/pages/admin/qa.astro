@@ -23,10 +23,11 @@ const days = WINDOWS.includes(requested) ? requested : 7;
 const season = Number(Astro.url.searchParams.get('season')) || CURRENT_YEAR;
 const league: League = Astro.locals.league ?? 'cfb';
 
-const [qa, seasonRows] = await Promise.all([
+const [qa, seasonQa] = await Promise.all([
     retrieveQaAdmin(days),
     retrieveQaSeason(season, league),
 ]);
+const seasonRows = seasonQa.rows;
 
 // The rule histogram is a matrix: one row per rule, one column per day.
 const ruleDays = [...new Set(qa.rules.map((r) => String(r.day).slice(0, 10)))].sort();
@@ -181,7 +182,12 @@ const subtitle = 'Validation findings by game and by rule';
             Published per-game verdicts for the whole season, from the release builds.
         </p>
         <div slot="panel-body">
-            {seasonRows.length === 0 ? (
+            {!seasonQa.ok ? (
+                <p class="text-muted mb-0">
+                    The data API did not answer. This panel is empty because the query failed, not
+                    because the season has no findings.
+                </p>
+            ) : seasonRows.length === 0 ? (
                 <p class="text-muted mb-0">
                     Not published yet: the season view fills in when the release builds publish their
                     QA asset. Until then the tables above are the only record, and they only cover
