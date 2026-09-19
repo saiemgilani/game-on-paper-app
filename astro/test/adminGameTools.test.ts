@@ -11,7 +11,7 @@ vi.mock('astro:env/server', () => ({ getSecret: (k: string) => (k === 'ADMIN_PAS
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 
 import { onRequest } from '../src/middleware';
-import { mintAdminCookie, ADMIN_COOKIE } from '../src/utils/adminSession';
+import { mintAdminCookie, verifyAdminCookie, ADMIN_COOKIE } from '../src/utils/adminSession';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
     adminToolsHref, applyAdminView, currentView, parseFlagOverrides, serializeFlagOverrides,
@@ -151,6 +151,24 @@ describe('the toggle hrefs compose instead of replacing each other', () => {
         expect(adminToolsHref(withFlags, { flags: { 'game-page-v2': false } }))
             .toBe('/game/1?flags=coaches%3Aon%2Cgame-page-v2%3Aoff');
         expect(adminToolsHref(withFlags, { flags: { coaches: null } })).toBe('/game/1');
+    });
+});
+
+describe('the headless minting script', () => {
+    test('scripts/mint-admin-cookie.mjs produces a cookie verifyAdminCookie accepts', async () => {
+        // The evidence path depends on it: pr-evidence.yml and a local
+        // visual-check shoot admin-only UI by presenting this value, and the
+        // script repeats adminSession.ts's HMAC because it runs under bare
+        // node. If the two ever drift, the screenshots silently go back to
+        // showing a page with none of the admin tools in it.
+        const { execFileSync } = await import('node:child_process');
+        const { fileURLToPath } = await import('node:url');
+        const script = fileURLToPath(new URL('../scripts/mint-admin-cookie.mjs', import.meta.url));
+        const value = execFileSync(process.execPath, [script, 'test-secret'], { encoding: 'utf8' });
+        expect(await verifyAdminCookie(value, 'test-secret')).toBe(true);
+        expect(await verifyAdminCookie(value, 'other-secret')).toBe(false);
+        const expired = execFileSync(process.execPath, [script, 'test-secret', '-10'], { encoding: 'utf8' });
+        expect(await verifyAdminCookie(expired, 'test-secret')).toBe(false);
     });
 });
 

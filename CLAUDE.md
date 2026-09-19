@@ -139,6 +139,13 @@ The three that exist, all on the game page and all in
 | Flags | `?flags=game-page-v2:off,coaches:on` | Per-flag overrides on top of that base, via `locals.flagOverrides`. Anything that is not exactly `name:on` or `name:off` is dropped |
 | Source | `?source=<name>` | Which feed the API processed the game from. Needs an admin session **and** the `'source-switch'` flag; the list is the sportsdataverse-py contract's registry, read from `GET /{league}/{id}/sources` |
 
+One interaction to know: on the uncacheable `/preview/<path>` surface the
+middleware sets `locals.preview = true` before the admin block runs, so
+`?view=live` still wins and the page renders public — including the `nfl` and
+`coaches` namespace gates, so `/preview/nfl/...?view=live` is the site's 404,
+which is exactly what an anonymous visitor gets there. Drop `?view=live` (or
+use `preview`) to get the preview surface back.
+
 The controls render from `astro/src/components/game/AdminGameTools.astro`,
 mounted in `GameHeader.astro` — the one file both game-page twins import, so
 they are written once and an admin can flip between the twins from either side.
