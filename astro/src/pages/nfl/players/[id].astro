@@ -1,0 +1,14 @@
+---
+import PlayerPage from "../../../components/player/PlayerPage.astro";
+import { preparePlayer } from "../../../routes/player";
+
+const r = await preparePlayer(Astro, 'nfl');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+if ('redirect' in r) {
+    return Astro.redirect(r.redirect);
+}
+---
+
+<PlayerPage player={r.player} season={r.season} />

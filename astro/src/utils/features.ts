@@ -34,6 +34,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'preview',
+    // Individual player pages: /players/<espn id> and the /nfl twin, plus the
+    // hrefs the leaderboard rows and the game-page usage box grow to reach them.
+    // Gated in middleware exactly like 'nfl' and 'coaches' (utils/players.ts
+    // isPlayerPath); the links are gated in their components, because a public
+    // link into a 404 namespace is worse than no link. Promote to 'on' once the
+    // player-keyed Data API routes are live and the sitemap block is filled in.
+    'player-pages': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {

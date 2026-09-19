@@ -40,6 +40,14 @@ function buildEntries(): Entry[] {
     // Same rule for the head-coach boards: a gated route answers 404, so no coach
     // URL is listed until the 'coaches' flag is public.
     const coachesPublic = FLAGS['coaches'] === 'on';
+    // TODO(player-pages): when FLAGS['player-pages'] flips to 'on', add the
+    // player URLs here -- `/players/<espn id>` and the /nfl twin, per season.
+    // They are NOT emitted while the flag is 'preview' for the same reason the
+    // NFL and coach URLs are not: a gated route answers 404 and a sitemap must
+    // never list one. The block needs a seasoned, paginated source of ids (the
+    // pages multiply the URL count ~100x, see `gop_seo_authority_gap`), which
+    // this prerendered file cannot fetch -- it makes no network calls by
+    // design. Land that source before flipping the flag.
     const out: Entry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
         ...(nflPublic ? [

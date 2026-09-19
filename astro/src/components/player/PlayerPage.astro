@@ -1,0 +1,261 @@
+---
+/**
+ * An individual player page, both leagues, behind the 'player-pages' flag.
+ *
+ * Every number on it comes from the Data API's player-keyed reads (sdv-db #71),
+ * and the two populations are kept apart on purpose: the summary tiles, the
+ * game log and the splits aggregate the SAME pbp plays, so the tiles are the
+ * game log summed and the game log sums to the `All plays` split; the season
+ * line table is the season leaderboard producer's own rows, which count a
+ * slightly different population and carry the ranks and percentiles.
+ *
+ * What each element mirrors: the header card is `team/TeamPlayerCard.astro`
+ * (headshot in `img-circle-bg`, logo beside the title), the season pills are
+ * `layouts/FilterGroup.astro`, every section is a `GenericPanel`, the line
+ * table is `leaderboards/PlayerLeaderboardTable.astro`'s columns and
+ * formatting, and the game log is `game/metrics/PlayerBoxScore.astro`'s stat
+ * line plus numeric cells.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import FilterGroup from '../../layouts/FilterGroup.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import PlayerSeasonTable from './PlayerSeasonTable.astro';
+import PlayerGameLog from './PlayerGameLog.astro';
+import PlayerSplits from './PlayerSplits.astro';
+import PlayerPercentiles from './PlayerPercentiles.astro';
+import {
+    retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
+    retrieveNflEspnGameIds, retrieveTeamSummaries, type SDVPlayer,
+} from '../../resources/sdv';
+import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
+import { roundNumber, formatRank } from '../../utils/misc';
+import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
+import { playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+
+interface Props {
+    player: SDVPlayer
+    season: number
+}
+const { player, season } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+
+const [seasonRows, games, splits, espnGameIds] = await Promise.all([
+    retrievePlayerSeasons(player.espn_id, league) as Promise<SeasonRow[]>,
+    retrievePlayerGames(player.espn_id, season, league),
+    retrievePlayerSplits(player.espn_id, season, league),
+    league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
+]);
+
+const totals = totalGameLog(games);
+// the season's rows, primary team-season first -- the same order the line table
+// and the percentile bars use, so a traded player's header names the team he
+// actually played most of the season for
+const thisSeason = seasonRows
+    .filter((r) => Number(r.season) === season)
+    .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0));
+// the ESPN team ids for the season -- the NFL identity has none, but its season rows do
+const teamIds = [...new Set(thisSeason.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
+const headerTeamId = teamIds[0] ?? player.team_id ?? null;
+const teamName = String(thisSeason[0]?.pos_team ?? player.team ?? '');
+
+// Team context: how the team he played for did that season, from the same
+// team_summaries rows the team leaderboards read -- one cached call, four
+// numbers, no new producer.
+const teamMetrics = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
+const teamRows = teamIds.length > 0
+    ? await retrieveTeamSummaries({ season, league, columns: teamMetrics })
+    : [];
+const context = teamIds
+    .map((id) => teamRows.find((t) => String(t.team_id) === String(id)))
+    .filter(Boolean) as Record<string, any>[];
+
+const name = player.name ?? `Player ${player.espn_id}`;
+const pageUrl = playerPath(league, player.espn_id);
+const spec = { name, position: player.position, team: teamName || null, season, league };
+const pageTitle = playerTitle(spec);
+const description = playerDescription(spec);
+const heading = `${name} ${season} advanced stats`;
+const seasons = player.seasons.toSorted((a, b) => b - a);
+
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: 'Seasons', active: false },
+    { title: `${season}`, url: leaguePath(league, `/year/${season}`), active: false },
+    { title: 'Players', url: leaguePath(league, `/year/${season}/players/passing`), active: false },
+    { title: name, url: playerPath(league, player.espn_id, season), active: true },
+];
+
+const dataset = datasetJsonLd({
+    name: heading, description, url: pageUrl, season, league, variables: PLAYER_PAGE_VARIABLES,
+});
+
+const headshot = player.headshot_url
+    ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${player.espn_id}.png&w=150`;
+const pct = (v: number | null): string => (v === null ? '—' : `${roundNumber(v * 100, 2, 1)}%`);
+const tiles: { label: string, value: string, title: string }[] = [
+    { label: 'Games', value: `${totals.games}`, title: 'Games with a play carrying this player' },
+    { label: 'Plays', value: `${totals.plays}`, title: 'Plays from scrimmage on a numbered down carrying this player' },
+    { label: 'EPA', value: roundNumber(totals.epa, 2, 2), title: 'Total Expected Points Added over those plays' },
+    { label: 'EPA/play', value: totals.plays > 0 ? roundNumber(totals.epa_per_play, 2, 2) : '—', title: 'Expected Points Added per play' },
+    { label: 'Success Rate', value: pct(totals.success_rate), title: 'Share of those plays with positive EPA' },
+];
+---
+
+<GenericPage title={pageTitle} subtitle={`${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
+    <div class="container">
+        {headerTeamId && <DarkModeLogos teamIds={[headerTeamId]} />}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card border rounded mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img class="img img-fluid img-circle-bg" width="72px" src={headshot} alt={name} />
+                                <div>
+                                    <h2 class="mb-0">{name}</h2>
+                                    <p class="mb-0 text-muted">
+                                        {[player.position, player.jersey ? `#${player.jersey}` : null, teamName].filter(Boolean).join(' / ')}
+                                    </p>
+                                </div>
+                            </div>
+                            {headerTeamId && (
+                                <a href={leaguePath(league, `/year/${season}/team/${headerTeamId}`)}>
+                                    <img class={`h2 img img-fluid team-logo-${headerTeamId}`} width="50px"
+                                        src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${headerTeamId}.png`}
+                                        alt={`${teamName} logo`} />
+                                </a>
+                            )}
+                        </div>
+                        <FilterGroup label="Season">
+                            <Fragment slot="filter-body">
+                                {seasons.map((y) => (
+                                    <a class:list={["btn", "btn-sm", y === season ? "btn-secondary" : "btn-outline-secondary"]}
+                                        href={playerPath(league, player.espn_id, y)} aria-current={y === season ? 'page' : undefined}>{y}</a>
+                                ))}
+                            </Fragment>
+                        </FilterGroup>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <Panel id="player-summary" title={`${season} Season Summary`} show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">
+                Tiles are the game log below, summed. The table is the season leaderboard row, which counts its own population.
+            </p>
+            <Fragment slot="panel-body">
+                <div class="row row-cols-3 row-cols-md-5 g-2 text-center mb-3" id="player-summary-tiles">
+                    {tiles.map((t) => (
+                        <div class="col" title={t.title}>
+                            <p class="mb-0 text-muted text-small">{t.label}</p>
+                            <p class="mb-0 h4 numeral">{t.value}</p>
+                        </div>
+                    ))}
+                </div>
+                <PlayerSeasonTable rows={seasonRows} season={season} />
+                {thisSeason.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard row for {season}.</p>}
+            </Fragment>
+        </Panel>
+
+        <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                <PlayerGameLog games={games} espnGameIds={espnGameIds} />
+                {games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
+            </Fragment>
+        </Panel>
+
+        <Panel id="player-splits-panel" title="Situational Splits" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">
+                Standard and passing downs add up to all plays, as do the halves and overtime.
+            </p>
+            <Fragment slot="panel-body">
+                <PlayerSplits splits={splits} />
+                {splits.length === 0 && <p class="m-0 text-muted text-small">No plays for {season}.</p>}
+            </Fragment>
+        </Panel>
+
+        <Panel id="player-percentiles-panel" title="Percentile Ranks" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">
+                Percentile among qualified players in {season}: green is the top of the league, purple the bottom.
+            </p>
+            <Fragment slot="panel-body">
+                <PlayerPercentiles rows={seasonRows} season={season} />
+                {thisSeason.every((r) => Object.keys(r).every((k) => !k.endsWith('_pct') || r[k] === null)) && (
+                    <p class="m-0 text-muted text-small">No percentiles published for {season}.</p>
+                )}
+            </Fragment>
+        </Panel>
+
+        {context.length > 0 && (
+        <Panel id="player-team-context" title="Team Context" show={false} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">How this player's team did over the whole {season} season.</p>
+            <Fragment slot="panel-body">
+                <div class="table-responsive" id="player-team-context-table">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th class="text-left" colspan="1">Team</th>
+                                <th class="text-center" colspan="1" title="Offensive Expected Points Added per play">EPA/Play</th>
+                                <th class="text-center" colspan="1" title="Offensive Success Rate">Success Rate</th>
+                                <th class="text-center" colspan="1" title="Offensive Explosive Play Rate">Explosive Play Rate</th>
+                                <th class="text-center" colspan="1" title="Defensive Expected Points Added per play allowed">EPA/Play Allowed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {context.map((t) => (
+                                <Fragment>
+                                    <tr>
+                                        <td class="text-left text-nowrap" colspan="1">
+                                            <a href={leaguePath(league, `/year/${season}/team/${t.team_id}`)}>
+                                                <img class={`img-fluid team-logo-${t.team_id} me-2`} width="20px"
+                                                    src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
+                                                    alt={`ESPN team id ${t.team_id}`} />
+                                                <span>{t.pos_team}</span>
+                                            </a>
+                                        </td>
+                                        <td class="text-center numeral" colspan="1">{roundNumber(t.EPAplay_off, 2, 2)}</td>
+                                        <td class="text-center numeral" colspan="1">{roundNumber((t.success_off ?? 0) * 100, 2, 1)}%</td>
+                                        <td class="text-center numeral" colspan="1">{roundNumber((t.explosive_off ?? 0) * 100, 2, 1)}%</td>
+                                        <td class="text-center numeral" colspan="1">{roundNumber(t.EPAplay_def, 2, 2)}</td>
+                                    </tr>
+                                    <tr class="text-muted text-small">
+                                        <td class="text-left" colspan="1"><Fragment set:html="&emsp;&emsp;Rank" /></td>
+                                        <td class="text-center numeral" colspan="1">{formatRank(t.EPAplay_off_rank)}</td>
+                                        <td class="text-center numeral" colspan="1">{formatRank(t.success_off_rank)}</td>
+                                        <td class="text-center numeral" colspan="1">{formatRank(t.explosive_off_rank)}</td>
+                                        <td class="text-center numeral" colspan="1">{formatRank(t.EPAplay_def_rank)}</td>
+                                    </tr>
+                                </Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        <p class="text-muted text-small" id="player-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>: identity from
+            {league === 'nfl' ? ' nflverse rosters through the ESPN crosswalk' : " ESPN rosters"},
+            the game log from the per-game box, and EPA from the play-by-play plays carrying this player.
+            A passer's EPA/DB is per dropback, not per play.
+        </p>
+    </div>
+</GenericPage>
+
+<style>
+.img-circle-bg {
+    background: rgba(0, 0, 0, 0.1);
+    -webkit-clip-path: circle(closest-side);
+    clip-path: circle(closest-side);
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-circle-bg {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+</style>
