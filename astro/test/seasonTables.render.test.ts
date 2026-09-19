@@ -105,6 +105,7 @@ for (const c of CASES) {
                     expect(r[`playsgame_${side}`], `playsgame_${side}`).toBeCloseTo(r[`plays_${side}`] / r.valid_games, 6);
                     expect(r[`yardsgame_${side}`], `yardsgame_${side}`).toBeCloseTo(r[`yards_${side}`] / r.valid_games, 6);
                     expect(r[`yardsdrive_${side}`], `yardsdrive_${side}`).toBeCloseTo(r[`yards_${side}`] / r[`drives_${side}`], 6);
+                    expect(r[`yardsplay_${side}`], `yardsplay_${side}`).toBeCloseTo(r[`yards_${side}`] / r[`plays_${side}`], 6);
                     expect(r[`playsdrive_${side}`], `playsdrive_${side}`).toBeCloseTo(r[`plays_${side}`] / r[`drives_${side}`], 6);
                     expect(r[`available_yards_pct_${side}`], `available_yards_pct_${side}`)
                         .toBeCloseTo(r[`total_gained_yards_${side}`] / r[`total_available_yards_${side}`], 6);
@@ -125,25 +126,6 @@ for (const c of CASES) {
         });
     });
 }
-
-describe('Yards/Play does not share a denominator with Plays in the NFL season tables', () => {
-    // A real, cross-league divergence found by these tests, pinned so it is
-    // visible rather than silent -- see the PR body. The CFB producer's
-    // yardsplay_* is exactly yards_*/plays_*; the NFL producer's is not (its
-    // denominator runs about a fifth short of plays_off), so the "Plays" and
-    // "Yards/Play" numbers on the same NFL season row do not reconcile.
-    // NOT a GOP render bug: the page shows the field its header names.
-    test('cfb: yardsplay_off == yards_off / plays_off', () => {
-        for (const r of cfb.team_summaries) expect(r.yardsplay_off).toBeCloseTo(r.yards_off / r.plays_off, 6);
-    });
-    test('nfl: it does not, and the implied denominator is short of plays_off', () => {
-        for (const r of nfl.team_summaries) {
-            const implied = r.yards_off / r.yardsplay_off;
-            expect(implied).toBeLessThan(r.plays_off);
-            expect(implied / r.plays_off).toBeGreaterThan(0.7);
-        }
-    });
-});
 
 describe('player season board cells equal the column they are headed by', () => {
     test('nfl passing', async () => {
