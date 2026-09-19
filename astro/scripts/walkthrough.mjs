@@ -2,7 +2,7 @@
 // PR reviewer sees the change move, not just the screenshot matrix. See ../CLAUDE.md
 // "PR evidence" — every UI PR carries BOTH the screenshots and a walkthrough.
 //
-//   BASE=https://gameonpaper.com npm run walkthrough -- /nfl /game/401856682   # auto scroll-through per route
+//   BASE=http://localhost:4321 npm run walkthrough -- /nfl /game/401856682   # auto scroll-through per route
 //   BASE=$PREVIEW_URL npm run walkthrough -- --steps scripts/walkthroughs/game-stats-panels.mjs
 //
 // A steps module exports `default async (page, base) => { ... }` written against the plain
@@ -28,6 +28,12 @@ if (!stepsPath && !routes.length) routes.push('/game/401856682');
 
 const pick = (env, all, key) => {
   const want = (process.env[env] ?? '').split(',').filter(Boolean);
+  const unknown = want.filter((v) => !all.some((x) => key(x) === v));
+  if (unknown.length) {
+    // a typo must not become a silent "0 clips, exit 0"
+    console.error(`${env}: unknown value(s) ${unknown.join(', ')}; valid: ${all.map(key).join(', ')}`);
+    process.exit(2);
+  }
   return want.length ? all.filter((x) => want.includes(key(x))) : null;
 };
 const devices = pick('WALKTHROUGH_DEVICES', DEVICES, (d) => d.name) ?? DEVICES;
@@ -64,8 +70,11 @@ try {
     for (const scheme of schemes) {
       for (const sc of scenarios) {
         const where = `${sc.name} (${device.name}/${scheme})`;
+        const stem = join(OUT, `${sc.name}-${device.name}-${scheme}`);
         const tmp = join(OUT, `.rec-${sc.name}-${device.name}-${scheme}`);
-        await rm(tmp, { recursive: true, force: true });
+        // a failed run must leave no clip under this name: a stale one from an earlier run
+        // would otherwise be attached as evidence for a combination that just failed
+        await Promise.all([tmp, `${stem}.webm`, `${stem}.mp4`].map((f) => rm(f, { recursive: true, force: true })));
         const ctx = await newThemedContext(browser, device, scheme, {
           recordVideo: { dir: tmp, size: { width: device.width, height: device.height } },
         });
@@ -81,9 +90,7 @@ try {
         }
         await ctx.close(); // flushes the video file
         const [file] = await readdir(tmp);
-        // a failed run must not be saved under this combination's name (it would be attached as evidence)
         if (!ok || !file) { await rm(tmp, { recursive: true, force: true }); continue; }
-        const stem = join(OUT, `${sc.name}-${device.name}-${scheme}`);
         await rename(join(tmp, file), `${stem}.webm`);
         await rm(tmp, { recursive: true, force: true });
         clips.push(`${stem}.webm`);

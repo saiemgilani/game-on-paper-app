@@ -7,6 +7,8 @@ export default async (page, base) => {
     if (await toggle.count()) {
       await toggle.scrollIntoViewIfNeeded();
       await toggle.click();
+      // assert the panel actually opened, not just that the click completed
+      await page.locator(`#${id}`).waitFor({ state: 'visible', timeout: 5000 });
       await page.waitForTimeout(1200);
     }
   }
