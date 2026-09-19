@@ -57,6 +57,19 @@ export function parseTable(html: string, index = 0): ParsedTable {
     return { headers, rows, rowHtml };
 }
 
+/**
+ * The first `<table>` whose leading header cell reads `heading` — how a section
+ * is located inside a whole rendered page, where the table index is not stable.
+ */
+export function tableWithHeading(html: string, heading: string): string | null {
+    for (const m of html.matchAll(/<table[\s\S]*?<\/table>/g)) {
+        const head = m[0].match(/<thead[\s\S]*?<\/thead>/)?.[0] ?? m[0].match(/<tr[\s\S]*?<\/tr>/)?.[0] ?? '';
+        const first = head.match(/<(?:td|th)\b[\s\S]*?<\/(?:td|th)>/)?.[0] ?? '';
+        if (text(first) === heading) return m[0];
+    }
+    return null;
+}
+
 export function countTables(html: string): number {
     return (html.match(/<table[\s>]/g) ?? []).length;
 }

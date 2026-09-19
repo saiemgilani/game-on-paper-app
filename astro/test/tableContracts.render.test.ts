@@ -23,7 +23,7 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import {
     BOX_SCORE_NON_RATE_COLUMNS,
     BOX_SCORE_NON_RATE_DECIMAL_COLUMNS,
@@ -31,15 +31,37 @@ import {
     METRIC_KEY_TITLE_MAPPING,
 } from '../src/utils/constants';
 import { roundNumber } from '../src/utils/misc';
-import { madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows } from '../src/utils/usage';
+import { madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
 import { isScrimmage } from '../src/utils/situational';
-import { loadGzJson, locals, numbers, parseTable, text } from './helpers/tables';
+import { loadGzJson, locals, parseTable, tableWithHeading, text } from './helpers/tables';
 
 const FIXTURES = {
     cfb: { file: 'usage-cfb-400869270.json.gz', id: 400869270 },
     nfl: { file: 'usage-nfl-401872922.json.gz', id: 401872922 },
 } as const;
 type Lg = keyof typeof FIXTURES;
+
+// The whole-page renders go through `retrieveProcessedGame` exactly as the route
+// does -- it is what adds the "all" span and sorts every box section away-first --
+// by answering the processor fetch with the fixture for the league in the URL.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async (url: string) => {
+        const m = String(url).match(/\/(cfb|nfl)\/(\d+)\/process/);
+        if (!m) throw new Error(`unexpected fetch in test: ${url}`);
+        return new Response(JSON.stringify(loadGzJson(FIXTURES[m[1] as Lg].file)), {
+            status: 200, headers: { 'content-type': 'application/json' },
+        });
+    },
+}));
+
+vi.mock('../src/resources/sdv', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/sdv')>()),
+    retrievePercentiles: async () => [],
+    retrieveTeamSummaries: async () => [],
+    retrieveTeamSeasonInformation: async () => null,
+    retrieveMatchupHistory: async () => [],
+}));
 
 let container: AstroContainer;
 beforeAll(async () => {
@@ -48,6 +70,45 @@ beforeAll(async () => {
 
 const games: Record<string, any> = {};
 const game = (league: Lg) => (games[league] ??= loadGzJson(FIXTURES[league].file));
+
+/**
+ * A whole game page, rendered from the route's own processed game.
+ *
+ * Component-level contract tests supply their own props, so they cannot see a
+ * page that wires a table to the wrong `advBoxScore` section or drops a column
+ * from one. These render the page and check the tables where they actually land.
+ * A fresh game object per call: both page components mutate what they are given.
+ */
+async function renderPage(twin: 'classic' | 'v2', league: Lg): Promise<{ g: any, html: string }> {
+    const { retrieveProcessedGame } = await import('../src/resources/python');
+    const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
+    const Page = twin === 'classic'
+        ? (await import('../src/components/game/classic/GamePage.astro')).default
+        : (await import('../src/components/game/GamePage.astro')).default;
+    const html = await container.renderToString(Page, {
+        props: { id: String(FIXTURES[league].id), game: g, league },
+        request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
+        locals: locals(league),
+    });
+    return { g, html };
+}
+
+/** The v2 Team Stats island, which the page only ever mounts client-side. */
+async function renderSituationalSection(league: Lg): Promise<string> {
+    const { retrieveProcessedGame } = await import('../src/resources/python');
+    const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
+    const { default: SituationalSection } = await import('../src/components/game/metrics/SituationalSection.svelte');
+    return container.renderToString(SituationalSection as any, {
+        props: { season: g.season.year, advBoxScoreSpans: withoutUsageSections(g.advBoxScoreSpans), league, percentiles: [] },
+        locals: locals(league),
+    });
+}
+
+/**
+ * `off_yards` minus the sum of ESPN's per-play `statYardage`, where the fixture
+ * itself disagrees. One team, by one yard; every other team must be exact.
+ */
+const STAT_YARDAGE_GAPS: Record<string, number> = { 'cfb:2117': 1 };
 
 /** The eight team-metric tables, exactly as both GamePage twins configure them. */
 const METRIC_TABLES = [
@@ -82,6 +143,28 @@ function expectedMetricCell(key: string, row: any, useSuffix: boolean, decimalPo
     return `${val} (${roundNumber(rate, 2, 0)}%)`;
 }
 
+/**
+ * The contract for one team-metric table: the row labels are the ones its
+ * columns map to, and every cell reads the payload row it claims. Shared by the
+ * component-level test and the page-level one, so the page is checked against
+ * the same expectation rather than against its own wiring.
+ */
+function assertMetricTable(html: string, cfg: (typeof METRIC_TABLES)[number], rowsData: any[]): void {
+    const { rows } = parseTable(html);
+    // row 0 is the header (title + one logo per team)
+    const body = rows.slice(1);
+    expect(body, `${cfg.title}: one row per configured column`).toHaveLength(cfg.columns.length);
+    cfg.columns.forEach((key, i) => {
+        const [label, ...cells] = body[i];
+        expect(label, `${cfg.title} row ${i} label`).toBe(text(METRIC_KEY_TITLE_MAPPING[key] || key));
+        expect(cells, `${cfg.title} / ${key}: one cell per team`).toHaveLength(rowsData.length);
+        cells.forEach((cell, t) => {
+            expect(cell, `${cfg.title} / ${key} / team ${rowsData[t][cfg.teamKey]}`)
+                .toBe(expectedMetricCell(key, rowsData[t], cfg.useSuffix, cfg.decimalPoints));
+        });
+    });
+}
+
 async function renderMetricTable(twin: 'classic' | 'v2', league: Lg, cfg: (typeof METRIC_TABLES)[number]) {
     const g = game(league);
     const props = {
@@ -106,20 +189,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 const g = game(league);
                 const rowsData: any[] = g.advBoxScore[cfg.section];
                 expect(rowsData.length, `${cfg.section} has rows`).toBeGreaterThan(0);
-                const html = await renderMetricTable('classic', league, cfg);
-                const { rows } = parseTable(html);
-                // row 0 is the header (title + one logo per team)
-                const body = rows.slice(1);
-                expect(body).toHaveLength(cfg.columns.length);
-                cfg.columns.forEach((key, i) => {
-                    const [label, ...cells] = body[i];
-                    expect(label, `row ${i} label`).toBe(text(METRIC_KEY_TITLE_MAPPING[key] || key));
-                    expect(cells).toHaveLength(rowsData.length);
-                    cells.forEach((cell, t) => {
-                        expect(cell, `${cfg.title} / ${key} / team ${rowsData[t][cfg.teamKey]}`)
-                            .toBe(expectedMetricCell(key, rowsData[t], cfg.useSuffix, cfg.decimalPoints));
-                    });
-                });
+                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, rowsData);
             }, 30_000);
         }
 
@@ -280,16 +350,24 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             });
         }, 30_000);
 
-        test('UsageBoxScore: the tackle table reads the tackles section', async () => {
+        test('UsageBoxScore: the tackle table reads the tackles section, or is not emitted at all', async () => {
             const g = game(league);
             const teamId = parseInt(g.header.competitions[0].competitors[0].team.id);
             const tackles = sortDesc(teamRows(g.advBoxScore.tackles, teamId, 'def_pos_team'), 'tackle_share');
-            if (tackles.length === 0) return; // cfb fixture carries no participants
             const html = await container.renderToString(
                 (await import('../src/components/game/metrics/UsageBoxScore.astro')).default,
                 { props: { box: g.advBoxScore, teamId }, locals: locals(league) });
-            const { rows } = parseTable(html, 1);
-            const body = rows.slice(1).slice(0, tackles.length);
+            const table = tableWithHeading(html, 'Defender');
+            if (tackles.length === 0) {
+                // The section is optional and an empty one must render NOTHING
+                // rather than an empty table (UsageBoxScore.astro's own contract).
+                // The CFB fixture has no play participants, so this is its branch.
+                expect(table, 'no tackle rows means no tackle table').toBeNull();
+                expect(html).not.toContain('Tackles: share =');
+                return;
+            }
+            expect(table, 'tackle rows mean a tackle table').toBeTruthy();
+            const body = parseTable(table!).rows.slice(1).slice(0, tackles.length);
             tackles.forEach((t: any, i) => {
                 expect(body[i][0]).toContain(t.player_name);
                 expect(body[i][1]).toBe(String(t.tackles));
@@ -352,7 +430,11 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 // against the plays it actually comes from.
                 expect(row.rush_yards, 'rush_yards').toBe(sum(scrimmage.filter((p: any) => p.rush === true), 'yds_rushed'));
                 expect(row.pass_yards, 'pass_yards').toBe(sum(scrimmage.filter((p: any) => p.pass === true), 'yds_receiving'));
-                expect(Math.abs(row.off_yards - sum(scrimmage, 'statYardage')), 'off_yards vs statYardage').toBeLessThanOrEqual(1);
+                // Exact, not a tolerance: a blanket +/-1 would absorb any future
+                // one-yard drift on any team. The single team where this fixture
+                // already disagrees is named instead.
+                expect(row.off_yards - sum(scrimmage, 'statYardage'), `off_yards vs statYardage, ${league} team ${row.pos_team}`)
+                    .toBe(STAT_YARDAGE_GAPS[`${league}:${row.pos_team}`] ?? 0);
                 // per-play means recompute from the totals the same table shows
                 expect(Number(row.EPA_per_play), 'EPA_per_play').toBeCloseTo(row.EPA_overall_off / row.scrimmage_plays, 2);
                 expect(Number(row.yards_per_play), 'yards_per_play').toBeCloseTo(row.off_yards / row.scrimmage_plays, 2);
@@ -418,6 +500,82 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
         }, 30_000);
     });
 
+    describe(`[${league}] the page wires each section to the payload its heading names`, () => {
+        // The component tests above supply their own props, so they cannot see a
+        // PAGE that hands a table the wrong advBoxScore section or drops a column
+        // from one. These render the real page and re-run the same contract where
+        // the tables actually land.
+        test('classic: all eight team-metric tables, against the sections their titles name', async () => {
+            const { g, html } = await renderPage('classic', league);
+            for (const cfg of METRIC_TABLES) {
+                const table = tableWithHeading(html, cfg.title);
+                expect(table, `the classic page renders a "${cfg.title}" table`).toBeTruthy();
+                assertMetricTable(table!, cfg, g.advBoxScore[cfg.section]);
+            }
+        }, 60_000);
+
+        test('classic: the player box and, for the cfb only, the Binion box', async () => {
+            const { g, html } = await renderPage('classic', league);
+            const away = g.header.competitions[0].competitors.find((c: any) => c.homeAway === 'away').team;
+            const passer = g.advBoxScore.pass
+                .filter((r: any) => r.pos_team == parseInt(away.id) && (r.passer_player_name?.length ?? 0) > 0)
+                .toSorted((a: any, b: any) => b.EPA - a.EPA)[0];
+            expect(passer, 'the fixture has a passer for the away team').toBeTruthy();
+            // his line must appear with the numbers his box row carries
+            const row = html.split('<tr').find((r) => r.includes(String(passer.passer_player_name)) && r.includes('numeral'));
+            expect(row, `a player row for ${passer.passer_player_name}`).toBeTruthy();
+            const cells = [...row!.matchAll(/<td\b[\s\S]*?<\/td>/g)].map((m) => text(m[0]));
+            expect(cells[4]).toBe(roundNumber(passer.EPA, 2, 2));
+            expect(cells[5]).toBe(`${roundNumber(passer.SR * 100, 2, 0)}%`);
+        }, 60_000);
+
+        test('v2: the Paper Index, linescore, situational splits, usage box and drives all read the payload', async () => {
+            const { g, html } = await renderPage('v2', league);
+            const competitors = g.header.competitions[0].competitors;
+            const homeTeam = competitors[0].team, awayTeam = competitors[1].team;
+
+            // Deserved Win %
+            const fmt = (v: number, digits = 1) => `${v >= 0 ? '+' : ''}${roundNumber(v, 2, digits)}`;
+            const margins = tableWithHeading(html, 'Margin');
+            expect(margins, 'the page renders the Paper Index margin table').toBeTruthy();
+            const byMargin = new Map(parseTable(margins!).rows.slice(1).map((r) => [r[0], r[1]]));
+            expect(byMargin.get('Turnovers')).toBe(fmt(g.paperIndex.margins.turnovers, 0));
+            expect(byMargin.get('Havoc Rate')).toBe(`${fmt(g.paperIndex.margins.havoc * 100)}%`);
+
+            // Linescore -- away row first, its periods from the header
+            const line = tableWithHeading(html, 'Linescore');
+            expect(line, 'the page renders the linescore').toBeTruthy();
+            const away = competitors.find((c: any) => c.homeAway === 'away');
+            const lineRow = parseTable(line!).rows[1];
+            away.linescores.forEach((ls: any, q: number) => expect(lineRow[1 + q], `period ${q + 1}`).toBe(String(ls.displayValue)));
+
+            // Situational & Special Teams -- the page passes away, then home
+            const splits = html.slice(html.indexOf('id="situational-splits-table"'));
+            const byLabel = new Map(parseTable(splits).rows.map((r) => [r[0], r.slice(1)]));
+            const usageRows = [awayTeam, homeTeam].map((t: any) => teamRows(g.advBoxScore.team_usage, t.id)[0]);
+            expect(byLabel.get('Red-zone TD rate')).toEqual(usageRows.map((u: any) => pct(u.rz_touchdown_rate, 0)));
+
+            // Usage box -- the away team's leading player, in the away panel
+            const awayPanel = html.slice(html.indexOf('id="away-stats-panel"'), html.indexOf('id="home-stats-panel"'));
+            const top = sortDesc(teamRows(g.advBoxScore.player_usage, awayTeam.id), 'opportunities')[0] as any;
+            const usage = tableWithHeading(awayPanel, 'Player');
+            expect(usage, 'the away panel renders the usage table').toBeTruthy();
+            const first = parseTable(usage!).rows[1];
+            expect(first[0]).toContain(top.player_name);
+            expect(first[1]).toBe(String(top.opportunities));
+
+            // Drives -- the first drive's success rate off its own plays
+            const drives = html.slice(html.indexOf('id="drives"'));
+            const firstDrive = [...drives.matchAll(/<tr[\s\S]*?<\/tr>/g)].map((m) => m[0]).find((r) => r.includes('accordion-toggle'));
+            expect(firstDrive, 'the page renders drive rows').toBeTruthy();
+            const driveId = firstDrive!.match(/#drive-drives-([^"]+)"/)?.[1];
+            const dp = g.plays.filter((pl: any) => String(pl['drive.id']) === driveId).filter(isScrimmage as any);
+            const sr = dp.length === 0 ? 0 : dp.reduce((a: number, pl: any) => a + (Number(pl.EPA_success) || 0), 0) / dp.length;
+            const dCells = [...firstDrive!.matchAll(/<td\b[\s\S]*?<\/td>/g)].map((m) => text(m[0]));
+            expect(dCells[4], `drive ${driveId} SR%`).toBe(`${roundNumber(sr * 100, 3, 0)}%`);
+        }, 60_000);
+    });
+
     describe(`[${league}] Linescore and Paper Index read the header and the fitted result`, () => {
         test('Linescore prints each period from the competitor linescores, and the final from the score', async () => {
             const g = game(league);
@@ -459,41 +617,51 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             expect(byLabel.get('Field position (EP)')).toBe(fmt(m.field_position, 2));
             expect(byLabel.get('Havoc Rate')).toBe(`${fmt(m.havoc * 100)}%`);
             expect(byLabel.get('Turnovers')).toBe(fmt(m.turnovers, 0));
-            // the meter: the home share, clamped to 1..99, and the away side its complement
+            // the meter: the home share, clamped to 1..99, and the away side its
+            // complement. The two bold percentages flank the bar, away first.
             const homePct = Math.min(99, Math.max(1, Math.round(g.paperIndex.homeShare * 100)));
             expect(html).toContain(`aria-valuenow="${homePct}"`);
-            expect(numbers(html.slice(html.indexOf('role="meter"') - 400, html.indexOf('role="meter"')))).toContain(String(100 - homePct));
+            const flanking = [...html.matchAll(/<span class="fw-bold" style="min-width: 4ch">([^<]*)<\/span>/g)].map((x) => x[1]);
+            expect(flanking).toEqual([`${100 - homePct}%`, `${homePct}%`]);
         }, 30_000);
     });
 }
 
 describe('twin inventory: which sections each twin renders', () => {
-    test('the classic twin omits BinionBoxScore for the NFL, the v2 twin renders it for both', async () => {
-        // A real difference between the twins, pinned so a promotion decision is
-        // taken deliberately: classic gates the Binion box on `league == "cfb"`,
-        // the v2 SituationalSection always renders it and passes the league
-        // through for the percentile pool copy.
-        const classic = (await import('../src/components/game/classic/GamePage.astro')).default;
-        const src = (await import('node:fs')).readFileSync(new URL('../src/components/game/classic/GamePage.astro', import.meta.url)).toString();
-        expect(classic).toBeTruthy();
-        expect(src).toMatch(/league == "cfb"\)\s*&&\s*\(<BinionBoxScore/);
-        const v2 = (await import('node:fs')).readFileSync(new URL('../src/components/game/metrics/SituationalSection.svelte', import.meta.url)).toString();
-        expect(v2).toContain('<BinionBoxScore season={season}');
-        expect(v2).not.toContain('league == "cfb"');
-    });
+    // Behavioural, not a source grep: each case renders the twin and looks for
+    // the section's own markup. A reformat, a `===`, or a differently-written
+    // gate changes nothing here; a change in what is RENDERED does.
+    const BINION = 'Concept from Robert Binion';
+    const TRADITIONAL = 'Traditional Stats';
+    const PENALTIES = 'Accepted penalties only.';
 
-    test('TraditionalTeamStats and PenaltyBreakdown are rendered by neither twin', async () => {
-        // Both components are live code with unit tests behind them
-        // (test/traditionalStats.test.ts, test/penalties.test.ts) but their only
-        // call sites are commented out in SituationalSection.svelte. Pinned so
-        // that wiring them back in is a deliberate, reviewed change.
-        const fs = await import('node:fs');
-        const section = fs.readFileSync(new URL('../src/components/game/metrics/SituationalSection.svelte', import.meta.url)).toString();
-        expect(section).toContain('<!-- <TraditionalTeamStats');
-        for (const tree of ['../src/components/game/GamePage.astro', '../src/components/game/classic/GamePage.astro']) {
-            const src = fs.readFileSync(new URL(tree, import.meta.url)).toString();
-            expect(src).not.toContain('TraditionalTeamStats');
-            expect(src).not.toContain('PenaltyBreakdown');
-        }
-    });
+    for (const league of Object.keys(FIXTURES) as Lg[]) {
+        test(`[${league}] the classic twin renders the Binion box for the cfb only`, async () => {
+            // The divergence the PR reports: promoting game-page-v2 would add a
+            // Binion box to every NFL game page. Asserted from the rendered page.
+            const { html } = await renderPage('classic', league);
+            expect(html.includes(BINION), `classic ${league} Binion box`).toBe(league === 'cfb');
+        }, 60_000);
+
+        test(`[${league}] the v2 Team Stats island renders the Binion box for both leagues`, async () => {
+            expect(await renderSituationalSection(league)).toContain(BINION);
+        }, 60_000);
+
+        test(`[${league}] neither twin renders TraditionalTeamStats or PenaltyBreakdown`, async () => {
+            // Both components are live code with unit tests behind them
+            // (test/traditionalStats.test.ts, test/penalties.test.ts) but nothing
+            // renders them: their only call sites are commented out in
+            // SituationalSection.svelte. Pinned by rendering all three surfaces
+            // that could carry them, so uncommenting either one goes red here.
+            const surfaces = [
+                (await renderPage('classic', league)).html,
+                (await renderPage('v2', league)).html,
+                await renderSituationalSection(league),
+            ];
+            for (const html of surfaces) {
+                expect(html).not.toContain(TRADITIONAL);
+                expect(html).not.toContain(PENALTIES);
+            }
+        }, 90_000);
+    }
 });
