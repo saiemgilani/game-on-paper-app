@@ -64,3 +64,30 @@ rows and renders the season and careers boards for both leagues.
 
 **To regenerate** after a builder change: re-export the three tables for 2024
 and replace the arrays; keep 2024 so the render test's URL assertions hold.
+
+## `player-cfb-4433971-2024.json` / `player-nfl-16800-2024.json`
+The exact bodies the Data API's player-keyed routes return for one player each
+(sdv-db #71): `identity` (`/v1/{league}/players/{espn id}`), `seasons`
+(`…/seasons`, **every** season, which is what the career roll-up needs), `games`
+and `splits` for 2024, and the 404 body for an unknown id.
+
+* **CFB** — Kyle McCord (ESPN 4433971), 2024 Syracuse: passing *and* rushing box
+  categories in one game, four seasons of season rows across two schools, and a
+  postseason game whose schedule `week` restarts at 1 (which is why the game log
+  orders on the kickoff date).
+* **NFL** — Davante Adams (ESPN 16800, gsis `00-0031381`), 2024: traded LV → NYJ,
+  so two team-season rows, reachable from the ESPN id only through the nflverse
+  crosswalk. The 27-play LV stint is under the producer's qualification gate and
+  carries null `_rank`/`_pct`; the 114-play NYJ row carries both.
+
+**Provenance (2026-09-19):** captured on the droplet by mounting sdv-db's
+`player_routes.add_player_routes` on a bare FastAPI app over the live read engine
+and calling each route through `TestClient`. No hand edits, no trimming.
+
+**Used by:** `test/players.test.ts` (the reconciliation arithmetic: the game log
+sums to the `all` split, the split groups partition it, the roll-up rates
+recompute) and `test/playerPages.render.test.ts` (the render contract for every
+table on `/players/[id]` and its `/nfl` twin).
+
+**To regenerate** after a route change: repeat the above for the same two ids and
+seasons — the render test asserts on those ids, teams and dates.
