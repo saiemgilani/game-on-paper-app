@@ -1,0 +1,55 @@
+---
+/**
+ * Situational splits over the player's attributed plays: the same flags the
+ * team situational section sums (`utils/situational.ts` population -- plays
+ * from scrimmage on a numbered down), so a player's red-zone row is the same
+ * definition as his team's.
+ *
+ * Standard + passing downs partition `All plays`, as do the three period rows,
+ * which is what makes the section checkable rather than decorative.
+ */
+import { roundNumber } from '../../utils/misc';
+import { numberOrNull, PLAYER_SPLITS } from '../../utils/players';
+import type { SDVPlayerSplit } from '../../resources/sdv';
+
+interface Props { splits: SDVPlayerSplit[] }
+const { splits } = Astro.props;
+
+const by = new Map(splits.map((s) => [s.split, s]));
+const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
+    // overtime is offered only when it was played
+    .filter((s) => s.row && (numberOrNull(s.row.plays) ?? 0) > 0);
+
+const num = (v: unknown, fixed: number): string => {
+    const x = numberOrNull(v);
+    return x === null ? '—' : roundNumber(x, 2, fixed);
+};
+---
+{rows.length > 0 && (
+<div class="table-responsive" id="player-splits-table">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Split</th>
+                <th class="text-center" colspan="1">Plays</th>
+                <th class="text-center" colspan="1" title="Expected Points Added per Play">EPA/play</th>
+                <th class="text-center" colspan="1" title="Total Expected Points Added">EPA</th>
+                <th class="text-center" colspan="1" title="Successful plays">Successes</th>
+                <th class="text-center" colspan="1" title="Success Rate">SR</th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows.map((s) => (
+                <tr class:list={[s.key === 'all' ? 'table-secondary' : null]}>
+                    <td class="text-left" colspan="1" title={s.title}>{s.key === 'all' ? <strong>{s.label}</strong> : s.label}</td>
+                    <td class="text-center numeral" colspan="1">{num(s.row?.plays, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{num(s.row?.epa_per_play, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{num(s.row?.epa, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{num(s.row?.successes, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{s.row?.success_rate == null ? '—' : `${roundNumber(Number(s.row.success_rate) * 100, 2, 1)}%`}</td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
+)}
