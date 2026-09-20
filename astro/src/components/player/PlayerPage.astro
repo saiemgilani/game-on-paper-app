@@ -15,6 +15,15 @@
  * table is `leaderboards/PlayerLeaderboardTable.astro`'s columns and
  * formatting, and the game log is `game/metrics/PlayerBoxScore.astro`'s stat
  * line plus numeric cells.
+ *
+ * **Every section's read stands alone.** The page fans out to four Data API
+ * routes plus the team-summaries read, and `Promise.all` would have let one
+ * upstream hiccup reject the lot and blank a page whose other three sections
+ * were fine. `Promise.allSettled` keeps them independent: a section whose read
+ * failed says so and the rest of the page renders. The one read that CANNOT
+ * degrade is the identity, and it is not made here -- `routes/player.ts` makes
+ * it and turns a miss into the site's 404, so nothing below ever renders a
+ * shell.
  */
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import Panel from '../../layouts/panel/GenericPanel.astro';
@@ -23,15 +32,14 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerSeasonTable from './PlayerSeasonTable.astro';
 import PlayerGameLog from './PlayerGameLog.astro';
 import PlayerSplits from './PlayerSplits.astro';
-import PlayerPercentiles from './PlayerPercentiles.astro';
 import {
     retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
     retrieveNflEspnGameIds, retrieveTeamSummaries, type SDVPlayer,
 } from '../../resources/sdv';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
-import { roundNumber, formatRank } from '../../utils/misc';
+import { roundNumber, formatRank, formatNumber, formatPercent, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { numberOrNull, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
 
 interface Props {
     player: SDVPlayer
@@ -41,12 +49,29 @@ const { player, season } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
-const [seasonRows, games, splits, espnGameIds] = await Promise.all([
+/** The value a settled read produced, or the empty shape when it rejected. */
+function settled<T>(r: PromiseSettledResult<T>, empty: T): T {
+    if (r.status === 'fulfilled') return r.value;
+    console.error(`player page: a section read failed: ${r.reason}`);
+    return empty;
+}
+
+const reads = await Promise.allSettled([
     retrievePlayerSeasons(player.espn_id, league) as Promise<SeasonRow[]>,
     retrievePlayerGames(player.espn_id, season, league),
     retrievePlayerSplits(player.espn_id, season, league),
     league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
 ]);
+const seasonRows = settled(reads[0] as PromiseSettledResult<SeasonRow[]>, []);
+const games = settled(reads[1] as PromiseSettledResult<any[]>, []);
+const splits = settled(reads[2] as PromiseSettledResult<any[]>, []);
+const espnGameIds = settled(reads[3] as PromiseSettledResult<Record<string, string>>, {});
+// which panels have to say "unavailable" instead of "nothing to show"
+const failed = {
+    seasons: reads[0].status === 'rejected',
+    games: reads[1].status === 'rejected',
+    splits: reads[2].status === 'rejected',
+};
 
 const totals = totalGameLog(games);
 // the season's rows, primary team-season first -- the same order the line table
@@ -66,6 +91,7 @@ const teamName = String(thisSeason[0]?.pos_team ?? player.team ?? '');
 const teamMetrics = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
 const teamRows = teamIds.length > 0
     ? await retrieveTeamSummaries({ season, league, columns: teamMetrics })
+        .catch((e) => { console.error(`player page: team context read failed: ${e}`); return [] as any[]; })
     : [];
 const context = teamIds
     .map((id) => teamRows.find((t) => String(t.team_id) === String(id)))
@@ -94,19 +120,22 @@ const dataset = datasetJsonLd({
 
 const headshot = player.headshot_url
     ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${player.espn_id}.png&w=150`;
-const pct = (v: number | null): string => (v === null ? '—' : `${roundNumber(v * 100, 2, 1)}%`);
-// a team_summaries column the producer did not publish reads as absent, not zero
-const teamNum = (v: unknown): string => {
-    const x = numberOrNull(v);
-    return x === null ? '—' : roundNumber(x, 2, 2);
-};
-const teamPct = (v: unknown): string => pct(numberOrNull(v));
 const tiles: { label: string, value: string, title: string }[] = [
     { label: 'Games', value: `${totals.games}`, title: 'Games with a play carrying this player' },
     { label: 'Plays', value: `${totals.plays}`, title: 'Plays from scrimmage on a numbered down carrying this player' },
     { label: 'EPA', value: roundNumber(totals.epa, 2, 2), title: 'Total Expected Points Added over those plays' },
-    { label: 'EPA/play', value: totals.plays > 0 ? roundNumber(totals.epa_per_play, 2, 2) : '—', title: 'Expected Points Added per play' },
-    { label: 'Success Rate', value: pct(totals.success_rate), title: 'Share of those plays with positive EPA' },
+    { label: 'EPA/play', value: totals.plays > 0 ? formatNumber(totals.epa_per_play, 2) : '—', title: 'Expected Points Added per play' },
+    { label: 'Success Rate', value: formatPercent(totals.success_rate), title: 'Share of those plays with positive EPA' },
+];
+/** A section whose read failed says so; one whose read was empty says that instead. */
+const UNAVAILABLE = 'This section is unavailable right now. Everything else on the page is unaffected.';
+// the team-context cells, each a formatter over the summary row plus the rank
+// column that rides inline with it (team/TeamCard.astro's pattern)
+const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
+    [(t) => formatNumber(t.EPAplay_off, 2), 'EPAplay_off_rank'],
+    [(t) => formatPercent(t.success_off), 'success_off_rank'],
+    [(t) => formatPercent(t.explosive_off), 'explosive_off_rank'],
+    [(t) => formatNumber(t.EPAplay_def, 2), 'EPAplay_def_rank'],
 ];
 ---
 
@@ -161,33 +190,27 @@ const tiles: { label: string, value: string, title: string }[] = [
                     ))}
                 </div>
                 <PlayerSeasonTable rows={seasonRows} season={season} />
-                {thisSeason.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard row for {season}.</p>}
+                {failed.seasons
+                    ? <p class="m-0 text-muted text-small" id="player-summary-unavailable">{UNAVAILABLE}</p>
+                    : thisSeason.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard row for {season}.</p>}
             </Fragment>
         </Panel>
 
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
                 <PlayerGameLog games={games} espnGameIds={espnGameIds} />
-                {games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
+                {failed.games
+                    ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
+                    : games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
             </Fragment>
         </Panel>
 
         <Panel id="player-splits-panel" title="Situational Splits" show={true} class="mb-md-3">
             <Fragment slot="panel-body">
                 <PlayerSplits splits={splits} />
-                {splits.length === 0 && <p class="m-0 text-muted text-small">No plays for {season}.</p>}
-            </Fragment>
-        </Panel>
-
-        <Panel id="player-percentiles-panel" title="Percentile Ranks" show={true} class="mb-md-3">
-            <p slot="panel-subtitle" class="m-0 text-muted text-small">
-                Among qualified players in {season}: green is best, purple worst.
-            </p>
-            <Fragment slot="panel-body">
-                <PlayerPercentiles rows={seasonRows} season={season} />
-                {thisSeason.every((r) => Object.keys(r).every((k) => !k.endsWith('_pct') || r[k] === null)) && (
-                    <p class="m-0 text-muted text-small">No percentiles published for {season}.</p>
-                )}
+                {failed.splits
+                    ? <p class="m-0 text-muted text-small" id="player-splits-unavailable">{UNAVAILABLE}</p>
+                    : splits.length === 0 && <p class="m-0 text-muted text-small">No plays for {season}.</p>}
             </Fragment>
         </Panel>
 
@@ -200,37 +223,32 @@ const tiles: { label: string, value: string, title: string }[] = [
                         <thead>
                             <tr>
                                 <th class="text-left" colspan="1">Team</th>
-                                <th class="text-center" colspan="1" title="Offensive Expected Points Added per play">EPA/Play</th>
-                                <th class="text-center" colspan="1" title="Offensive Success Rate">Success Rate</th>
-                                <th class="text-center" colspan="1" title="Offensive Explosive Play Rate">Explosive Play Rate</th>
-                                <th class="text-center" colspan="1" title="Defensive Expected Points Added per play allowed">EPA/Play Allowed</th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Expected Points Added per play">EPA/Play</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Success Rate">Success Rate</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Explosive Play Rate">Explosive Play Rate</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Defensive Expected Points Added per play allowed">EPA/Play Allowed</abbr></th>
                             </tr>
                         </thead>
                         <tbody>
                             {context.map((t) => (
-                                <Fragment>
-                                    <tr>
-                                        <td class="text-left text-nowrap" colspan="1">
-                                            <a href={leaguePath(league, `/year/${season}/team/${t.team_id}`)}>
-                                                <img class={`img-fluid team-logo-${t.team_id} me-2`} width="20px"
-                                                    src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
-                                                    alt={`${t.pos_team} logo`} />
-                                                <span>{t.pos_team}</span>
-                                            </a>
+                                <tr>
+                                    <td class="text-left text-nowrap" colspan="1">
+                                        <a class="d-flex align-items-center gap-1" href={leaguePath(league, `/year/${season}/team/${t.team_id}`)}>
+                                            <img class={`img-fluid team-logo-${t.team_id}`} width="20px"
+                                                src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
+                                                alt={`${t.pos_team} logo`} />
+                                            <span>{t.pos_team}</span>
+                                        </a>
+                                    </td>
+                                    {teamContextColumns.map(([value, rank]) => (
+                                        <td class="text-center numeral" colspan="1">
+                                            {value(t)}
+                                            {numberOrNull(t[rank]) !== null && (
+                                                <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(numberOrNull(t[rank]))}</span>
+                                            )}
                                         </td>
-                                        <td class="text-center numeral" colspan="1">{teamNum(t.EPAplay_off)}</td>
-                                        <td class="text-center numeral" colspan="1">{teamPct(t.success_off)}</td>
-                                        <td class="text-center numeral" colspan="1">{teamPct(t.explosive_off)}</td>
-                                        <td class="text-center numeral" colspan="1">{teamNum(t.EPAplay_def)}</td>
-                                    </tr>
-                                    <tr class="text-muted text-small">
-                                        <td class="text-left" colspan="1"><Fragment set:html="&emsp;&emsp;Rank" /></td>
-                                        <td class="text-center numeral" colspan="1">{formatRank(t.EPAplay_off_rank)}</td>
-                                        <td class="text-center numeral" colspan="1">{formatRank(t.success_off_rank)}</td>
-                                        <td class="text-center numeral" colspan="1">{formatRank(t.explosive_off_rank)}</td>
-                                        <td class="text-center numeral" colspan="1">{formatRank(t.EPAplay_def_rank)}</td>
-                                    </tr>
-                                </Fragment>
+                                    ))}
+                                </tr>
                             ))}
                         </tbody>
                     </table>
@@ -241,7 +259,7 @@ const tiles: { label: string, value: string, title: string }[] = [
 
         <p class="text-muted text-small" id="player-provenance">
             Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>. Rosters from
-            {league === 'nfl' ? ' nflverse' : ' ESPN'}; EPA from the plays carrying this player.
+            {league === 'nfl' ? ' nflverse' : ' ESPN'}.
         </p>
     </div>
 </GenericPage>

@@ -85,10 +85,21 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
         return { notFound: true };
     }
 
-    // The one fetch the ROUTE makes: the Data API 404s an id with no rows
-    // anywhere, and that 404 has to become the site's 404 -- an identity shell
-    // for a player who does not exist would be indexed as a thin page.
-    const player = await retrievePlayer(id, league);
+    // The one fetch the ROUTE makes, and the only one on the page that cannot
+    // degrade: the Data API 404s an id with no rows anywhere, and that 404 has
+    // to become the site's 404 -- an identity shell for a player who does not
+    // exist would be indexed as a thin page. A read that THROWS takes the same
+    // path (as `routes/seasonTeam.ts` does), so an upstream outage serves the
+    // site's error page rather than a 500 from a rejected promise -- and it is
+    // uncacheable, so the outage cannot freeze a real player's page.
+    let player: SDVPlayer | null = null;
+    try {
+        player = await retrievePlayer(id, league);
+    } catch (e: any) {
+        console.error(`ERROR while loading player ${id}: ${e}, ${e?.stack}`);
+        uncacheable(Astro);
+        return { notFound: true };
+    }
     if (!player) {
         uncacheable(Astro);
         return { notFound: true };

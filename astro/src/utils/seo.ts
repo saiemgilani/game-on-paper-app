@@ -371,10 +371,10 @@ export interface PlayerPageSpec {
 
 export function playerTitle(p: PlayerPageSpec): string {
     const who = [p.position, p.name].filter(Boolean).join(' ');
-    return `${who} ${p.season} advanced stats: EPA per play, success rate and game log | Game on Paper`;
+    return `${who} ${p.season} advanced stats: EPA per play, success rate, and game log | Game on Paper`;
 }
 
 export function playerDescription(p: PlayerPageSpec): string {
     const where = p.team ? ` with ${p.team}` : '';
-    return `${p.name}'s ${p.season} ${sportNoun(p.league)} season${where}: EPA per play, success rate, percentile ranks, a full game log and situational splits from Game on Paper.`;
+    return `${p.name}'s ${p.season} ${sportNoun(p.league)} season${where}: EPA per play, success rate, percentile ranks, a full game log, and situational splits from Game on Paper.`;
 }
