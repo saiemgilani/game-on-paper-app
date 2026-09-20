@@ -121,7 +121,7 @@ const canShowSituation = (
     (!(gameStatus.type.completed == true || gameStatus.type.detail.includes("Cancel") || gameStatus.type.detail.includes("Postpone")))
     && (espnGameComp.situation != null && espnGameComp.situation.lastPlay != null)
 )
-const canLoadStats = gameStatus && (
+const canLoadStats = gameStatus && !(
     (gameStatus.type.name.includes("STATUS_DELAYED") && !hasLastPlay) 
     || gameStatus.type.detail.includes("Cancel") 
     || gameStatus.type.detail.includes("Postpone") 
