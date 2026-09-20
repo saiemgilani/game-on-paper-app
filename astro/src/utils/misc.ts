@@ -169,7 +169,7 @@ export function formatPercent(v: unknown, fixed: number = 1): string {
  * drift between them (`decimalPoints || 1` silently turns an explicit 0 into 1).
  */
 export function metricDecimalPoints(decimalPoints: number | null | undefined): number {
-    return (!decimalPoints && decimalPoints != 0) ? 1 : (decimalPoints as number);
+    return decimalPoints == null ? 1 : decimalPoints;
 }
 
 export function hexToRgb(hex: string): RGBColor | null {

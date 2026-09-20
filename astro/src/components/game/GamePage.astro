@@ -33,8 +33,6 @@ import FilterGroup from '../../layouts/FilterGroup.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
 import SituationalSplits from './metrics/SituationalSplits.astro';
-import TraditionalTeamStats from './metrics/TraditionalTeamStats.astro';
-import PenaltyBreakdown from './metrics/PenaltyBreakdown.astro';
 import UsageBoxScore from './metrics/UsageBoxScore.astro';
 import { hasSituationalSplits, withoutUsageSections } from '../../utils/usage';
 
@@ -271,34 +269,9 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <div slot="panel-body">
-                            {/* client:load, not client:only: the eight metric tables and the
-                                Binion box are the panel's whole point, and client:only kept
-                                them out of the served HTML entirely -- invisible to a reader
-                                without JS, to Lighthouse and to the PR evidence workflow. */}
-                            <SituationalSection client:load season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} />
-                            {/* Astro components cannot be rendered from inside the Svelte
-                                island, so the two #252 tables sit under it rather than in
-                                its third column. They are whole-game either way: neither
-                                reads the island's period selector. */}
-                            <div class="row">
-                                <div class="col-md-4 col-lg-4">
-                                    <TraditionalTeamStats
-                                        season={game.season.year}
-                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                        plays={game.plays}
-                                        drives={gameDrives}
-                                    />
-                                </div>
-                                <div class="col-md-4 col-lg-4">
-                                    <PenaltyBreakdown
-                                        season={game.season.year}
-                                        teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                        plays={game.plays}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
+                            <FallbackSpinner slot="fallback" />
+                        </SituationalSection>
                     </Panel>
                 </div>
             </div>
