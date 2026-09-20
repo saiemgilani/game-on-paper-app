@@ -313,10 +313,10 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
             },
         } as any;
         const shown = await container.renderToString(PlayerBoxScore, { props, locals: { league: 'cfb', preview: true } as any });
-        expect(shown).toContain('href="/players/4433971?season=2024"');
-        // the focus-jump button survives: it is what filters the play-by-play,
-        // and PlayFocus disables it by element, so it cannot become an anchor
-        expect(shown).toMatch(/<button type="button" class="focus-jump"[^>]*data-name="J.Payne"/);
+        // ONE interaction per name (review on #267): the name itself is the link,
+        // and focusing the plays on a player is the dropdown above the table
+        expect(shown).toContain('<a href="/players/4433971?season=2024">J.Payne</a>');
+        expect(shown).not.toContain('focus-jump');
 
         const publicHtml = await container.renderToString(PlayerBoxScore, { props, locals: { league: 'cfb' } as any });
         expect(publicHtml).not.toContain('/players/4433971');
@@ -384,8 +384,8 @@ describe('the classic snapshot serves the public while v2 is in preview', () => 
     });
 });
 
-describe('box-score names jump into the play filter', () => {
-    test('name cells carry the jump wiring and the select options carry the match keys', async () => {
+describe('the play filter is the only way to focus the plays on a player', () => {
+    test('the dropdown carries a role option per player, and no name is a second control', async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game: any = await retrieveProcessedGame(GAME_ID, 30);
         const { default: GamePage } = await import('../src/components/game/GamePage.astro');
@@ -393,13 +393,11 @@ describe('box-score names jump into the play filter', () => {
             props: { id: GAME_ID, game },
             request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
         });
-        expect(page).toMatch(/<button type="button" class="focus-jump" data-focus-jump data-name="[^"]+" data-team="[^"]+" data-role="pass"/);
-        expect(page).toMatch(/data-role="rush"/);
-        expect(page).toMatch(/data-role="recv"/);
-        // the same (name, role) pair exists on a select option, so the click can match
-        const btn = page.match(/data-focus-jump data-name="([^"]+)" data-team="[^"]+" data-role="pass"/);
-        expect(btn).toBeTruthy();
-        expect(page).toContain(`<option value="r:pass:`);
-        expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass" data-team="[^"]+">`));
+        for (const role of ['pass', 'rush', 'recv']) {
+            expect(page, role).toMatch(new RegExp(`<option value="r:${role}:[^"]+" data-name="[^"]+" data-role="${role}" data-team="[^"]+">`));
+        }
+        // the box-score jump button is gone, and with it the dead wiring that drove it
+        expect(page).not.toContain('focus-jump');
+        expect(page).not.toContain('data-focus-jump');
     });
 });

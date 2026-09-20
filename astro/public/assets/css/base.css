@@ -216,11 +216,6 @@ Target Matrix
 .pi-explosive { --c: var(--mark-explosive); }
 .play-marks-legend .pi { font-size: 15px; }
 
-/* Box-score player names double as play-by-play filters (PlayFocus). */
-.focus-jump { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-.focus-jump:hover, .focus-jump:focus-visible { text-decoration-style: solid; }
-.focus-jump-dead { text-decoration: none; cursor: default; }
-
 /* Mobile QA (2026-09-03): 44px touch targets on the scoreboard card actions,
    and a grown hit area for the box-score show/hide toggles without moving text. */
 .game-thumb-actions .btn { min-height: 44px; display: inline-flex; align-items: center; }
