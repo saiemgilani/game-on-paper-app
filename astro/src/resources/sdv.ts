@@ -878,7 +878,7 @@ export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promis
     const { league = 'cfb', ...rest } = payload;
     if (!LEAGUES[league].sdvEnabled) return [];
     const params = new URLSearchParams(cleanUpParams({...rest, order: "-start_date"}))
-    const content: SDVAPIResponse<SDVGame>  = await requestSDV("schedule", params, undefined, 60 * 60 * 24, true, league);
+    const content: SDVAPIResponse<SDVGame>  = await requestSDV(LEAGUES[league].scheduleTable, params, undefined, 60 * 60 * 24, true, league);
     return content.data
 }
 

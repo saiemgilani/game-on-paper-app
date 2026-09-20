@@ -27,6 +27,9 @@ export interface LeagueConfig {
     /** KV key for the cached scoreboard; cfb keeps the historical bare key */
     scoreboardCacheKey: string;
     sdvApiBase: string;
+    /** SDV table holding the league's game schedule; the NFL's `schedule` is the
+     *  nflverse frame, so its ESPN-shaped twin is published separately */
+    scheduleTable: 'schedule' | 'espn_schedule';
     /** false until the league's season tables exist on the SDV API */
     sdvEnabled: boolean;
     seasons: number[];
@@ -49,7 +52,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         slug: 'cfb', name: 'College Football', shortName: 'CFB', urlPrefix: '',
         espnPath: 'college-football', espnCoreLeague: 'college-football',
         scoreboardQuery: 'group=80&limit=1000&', defaultGroup: 80, scoreboardCacheKey: 'scoreboard',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true,
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true, scheduleTable: 'schedule',
         // getters, not values: constants.ts -> misc.ts -> league.ts -> constants.ts is a
         // cycle, and an eager read here sees AVAILABLE_SEASONS before it is initialised
         get seasons() { return AVAILABLE_SEASONS; }, regularSeasonWeeks: 15, postseasonWeeks: 1,
@@ -59,7 +62,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         slug: 'nfl', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
         espnPath: 'nfl', espnCoreLeague: 'nfl',
         scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nfl',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true,
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true, scheduleTable: 'espn_schedule',
         // ESPN play-by-play for the NFL is reliable from the 2002 realignment on
         get seasons() { return range(2002, CURRENT_YEAR); }, regularSeasonWeeks: 18, postseasonWeeks: 5,
         logoLeague: 'nfl', teamCount: 32, pool: 'NFL',
