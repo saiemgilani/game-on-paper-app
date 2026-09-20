@@ -26,7 +26,8 @@ const overall = teamSeason.record || "0-0";
 
 let conf = ""
 if (teamSeason.confRecord) {
-    conf = ` (Conf: ${teamSeason.confRecord})`;
+    // nfl.espn_schedule's conference_game is nflverse div_game, so the split is a division record there
+    conf = ` (${league === 'nfl' ? 'Div' : 'Conf'}: ${teamSeason.confRecord})`;
 } else {
     conf = ""
 }
