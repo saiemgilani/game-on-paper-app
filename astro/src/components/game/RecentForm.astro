@@ -2,6 +2,7 @@
 import { DateTime } from 'luxon';
 import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
 import { cleanAbbreviation } from '../../utils/misc';
+import { espnLogoLeague } from '../../utils/league';
 
 interface Props {
     summary: ESPNGameSummary | null
@@ -39,7 +40,7 @@ const home = form(homeTeam.id);
                     {[{ team: awayTeam, events: away }, { team: homeTeam, events: home }].map(({ team, events }) => (
                     <div class="col-md-6 col-12">
                         <p class="fw-bold mb-2">
-                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={team.abbreviation} />
+                            <img class={`team-logo-${team.id} me-1 align-middle`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} alt={team.abbreviation} />
                             {team.abbreviation}
                         </p>
                         {events.length === 0

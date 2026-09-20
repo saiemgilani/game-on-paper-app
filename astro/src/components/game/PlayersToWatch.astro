@@ -9,6 +9,7 @@ import {
     type SDVRushingSummary,
 } from '../../resources/sdv';
 import { cleanAbbreviation, roundNumber } from '../../utils/misc';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
 
 interface Props {
     homeTeam: ESPNTeam
@@ -80,8 +81,8 @@ const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTe
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">
                         <p class="fw-bold mb-2 d-flex align-items-center gap-2">
-                            <a class="text-decoration-none text-reset d-flex align-items-center gap-2" href={`/team/${team.id}`}>
-                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={cleanAbbreviation(team)} />
+                            <a class="text-decoration-none text-reset d-flex align-items-center gap-2" href={leaguePath(Astro.locals.league, `/team/${team.id}`)}>
+                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} alt={cleanAbbreviation(team)} />
                                 <span>{cleanAbbreviation(team)}</span>
                             </a>
                         </p>
