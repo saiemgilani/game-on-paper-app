@@ -103,6 +103,38 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
     return `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${id}.png`;
 }
 
+// `nfl.espn_schedule` carries nflverse week numbering, where the postseason
+// CONTINUES the regular-season count instead of restarting at 1 -- so a game in
+// week 22 is the Super Bowl, and "Week 22" would mean nothing to a reader.
+const NFL_POSTSEASON_ROUNDS: Record<number, string> = {
+    19: 'Wild Card', 20: 'Divisional', 21: 'Conference Championship', 22: 'Super Bowl',
+};
+
+/** How a schedule row's week reads to a person: 'Week 5', 'Wild Card', 'Postseason'. */
+export function weekLabel(league: League | undefined, week?: number | null, seasonType?: string | null): string {
+    const postseason = !!seasonType && seasonType !== 'regular';
+    if (postseason) {
+        const round = (league ?? DEFAULT_LEAGUE) === 'nfl' && week != null ? NFL_POSTSEASON_ROUNDS[week] : undefined;
+        return round ?? 'Postseason';
+    }
+    return week != null ? `Week ${week}` : '';
+}
+
+// A colon, not a dot or an em dash, and the abbreviation over the full name:
+// docs/design-conventions.md §7-8 ("colons instead of dashes", "no interpunct/dot
+// separators", "small screens get the abbreviation").
+/** One completed meeting as a link label: 'Week 5: DEN 24-17 LAC'. */
+export function meetingLabel(game: {
+    week?: number | null; season_type?: string | null;
+    away_abbreviation?: string; away_team: string; away_points: number;
+    home_abbreviation?: string; home_team: string; home_points: number;
+}, league: League | undefined): string {
+    const when = weekLabel(league, game.week, game.season_type);
+    const away = game.away_abbreviation || game.away_team;
+    const home = game.home_abbreviation || game.home_team;
+    return `${when ? `${when}: ` : ''}${away} ${game.away_points}-${game.home_points} ${home}`;
+}
+
 /** Team-leaderboard categories a league serves: the shared three plus its extras. */
 export function teamCategoriesFor(league: League | undefined): string[] {
     return ['differential', 'offensive', 'defensive', ...LEAGUES[league ?? DEFAULT_LEAGUE].extraTeamCategories];

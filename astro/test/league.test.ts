@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { LEAGUES, NFL_LOGO_ABBR, leaguePath, splitLeague, teamLogoUrl } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, leaguePath, meetingLabel, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -60,4 +60,35 @@ describe('teamLogoUrl', () => {
     expect(Object.keys(NFL_LOGO_ABBR)).toHaveLength(32);
     expect(new Set(Object.values(NFL_LOGO_ABBR)).size).toBe(32);
   });
+});
+
+describe('weekLabel', () => {
+    test('names the NFL postseason round rather than its nflverse week number', () => {
+        // nfl.espn_schedule numbers the postseason 19-22, continuing the regular season
+        expect(weekLabel('nfl', 19, 'postseason')).toBe('Wild Card');
+        expect(weekLabel('nfl', 22, 'postseason')).toBe('Super Bowl');
+        expect(weekLabel('nfl', 5, 'regular')).toBe('Week 5');
+        expect(weekLabel('nfl', 18, 'regular')).toBe('Week 18');
+    });
+    test('cfb and an unknown round stay generic', () => {
+        expect(weekLabel('cfb', 12, 'regular')).toBe('Week 12');
+        expect(weekLabel('cfb', 1, 'postseason')).toBe('Postseason');
+        expect(weekLabel('nfl', 40, 'postseason')).toBe('Postseason');
+        expect(weekLabel('nfl', null, null)).toBe('');
+    });
+});
+
+describe('meetingLabel', () => {
+    const game = {
+        week: 11, season_type: 'regular', away_abbreviation: 'CAR', away_team: 'Carolina Panthers',
+        away_points: 30, home_abbreviation: 'ATL', home_team: 'Atlanta Falcons', home_points: 27,
+    };
+    test('reads away-then-home, with the abbreviation and a colon separator', () => {
+        expect(meetingLabel(game, 'nfl')).toBe('Week 11: CAR 30-27 ATL');
+    });
+    test('falls back to the full name and drops the prefix when the week is unknown', () => {
+        expect(meetingLabel({ ...game, away_abbreviation: undefined, home_abbreviation: undefined }, 'nfl'))
+            .toBe('Week 11: Carolina Panthers 30-27 Atlanta Falcons');
+        expect(meetingLabel({ ...game, week: null }, 'nfl')).toBe('CAR 30-27 ATL');
+    });
 });
