@@ -3,8 +3,10 @@ import Chart from 'chart.js/auto'
 import type { ChartItem } from "chart.js";
 import { waitForElement, cleanField } from "../../utils/misc";
 import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
+import { leagueFromLocation } from '../../utils/league';
 
-const { team, teamData, showSeasonPicker } = $props();
+// league comes from the page; leagueFromLocation() is the client:only fallback
+const { team, teamData, showSeasonPicker, league = leagueFromLocation() } = $props();
 const maxSeason = Math.max(...(teamData.map((t: any) => t.season)))
 let season = $state(maxSeason)
 const availableTeamSeasons = [...new Set(teamData.map((t: any) => t.season))]
@@ -27,7 +29,7 @@ async function waitToGenerateChart() {
         offRadarChart = new Chart(
             offRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(selectedTeamData, "Offensive", null, isDarkMode),
+                generateRadarDataset(selectedTeamData, "Offensive", null, isDarkMode, league),
                 `${cleanField(team, "school")} ${season} Offensive Profile`,
                 isDarkMode,
                 false
@@ -42,7 +44,7 @@ async function waitToGenerateChart() {
         defRadarChart = new Chart(
             defRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(selectedTeamData, "Defensive", null, isDarkMode),
+                generateRadarDataset(selectedTeamData, "Defensive", null, isDarkMode, league),
                 `${cleanField(team, "school")} ${season} Defensive Profile`,
                 isDarkMode,
                 false
@@ -81,7 +83,7 @@ function onChangeValue(e: Event) {
     <div class="row mb-3">
         <div class="col-lg-6 col-xs-12">
             <h2 class="d-inline">Profile History</h2>
-            <p class="text-small text-muted">Data shown is from FBS vs FBS games only. Based on <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            <p class="text-small text-muted">{league === 'cfb' ? 'Data shown is from FBS vs FBS games only. ' : ''}Based on <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
         </div>
         <div class="ms-auto col-lg-2 col-xs-12">
             <select class="form-select form-select-md" onchange={onChangeValue}>

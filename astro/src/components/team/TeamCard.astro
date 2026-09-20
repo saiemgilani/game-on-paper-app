@@ -1,6 +1,6 @@
 ---
 import type { ESPNTeam } from '../../resources/espn'
-import { espnLogoLeague } from '../../utils/league';
+import { DEFAULT_LEAGUE, espnLogoLeague, LEAGUES } from '../../utils/league';
 import { leaguePath } from '../../utils/league'
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv'
 import { SESSION_FAVORITES_DEFAULT } from '../../utils/constants'
@@ -15,6 +15,11 @@ interface Props {
 }
 
 const { team, season, teamSeason, summary, hideNavigation } = Astro.props;
+
+const league = Astro.locals.league ?? DEFAULT_LEAGUE;
+// the rank colour ramp scales to the league's team count: on the 134-team CFB
+// scale the WORST of 32 NFL teams still shaded green
+const cfg = LEAGUES[league];
 
 
 const overall = teamSeason.record || "0-0";
@@ -35,7 +40,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
         <div class="card-title mb-0">
             <div class="d-flex align-items-center justify-content-between">
                 <h2>{cleanLocation(team)}</h2>
-                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} /> 
+                <img class={`h2 img img-fluid me-1 team-logo-${team.id}`} width="50px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.id}.png`} /> 
             </div>
         </div>
         <div class="table-responsive">
@@ -48,8 +53,8 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                 <tbody>
                     <tr>
                         <td class="numeral text-center" style="width: 33%">{overall}{conf}</td>
-                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.net_adj_epa_rank, 134, true)}`}>{generateMarginalString(summary?.net_adj_epa, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.net_adj_epa_rank)}</span></td>
-                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.EPAplay_margin_rank, 134, true)}`}>{generateMarginalString(summary?.EPAplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.EPAplay_margin_rank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.net_adj_epa_rank, cfg.teamCount, true)}`}>{generateMarginalString(summary?.net_adj_epa, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.net_adj_epa_rank)}</span></td>
+                        <td style="width: 33%" class={`numeral text-center ${generateColorRampValue(summary?.EPAplay_margin_rank, cfg.teamCount, true)}`}>{generateMarginalString(summary?.EPAplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.EPAplay_margin_rank)}</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -69,9 +74,9 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
                 </thead>
                 <tbody>
                     <tr>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.yardsplay_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString(summary?.yardsplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.yardsplay_margin_rank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.available_yards_pct_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.available_yards_pct_margin || summary?.available_yards_pct_margin == 0) ? (100 * summary?.available_yards_pct_margin) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.available_yards_pct_margin_rank)}</span></td>
-                        <td class={`numeral text-center ${generateColorRampValue(summary?.success_margin_rank, 134, true)}`} style="width: 33%">{generateMarginalString((summary?.success_margin || summary?.success_margin == 0) ? 100 * summary?.success_margin : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.success_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.yardsplay_margin_rank, cfg.teamCount, true)}`} style="width: 33%">{generateMarginalString(summary?.yardsplay_margin, 2, 2)} <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.yardsplay_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.available_yards_pct_margin_rank, cfg.teamCount, true)}`} style="width: 33%">{generateMarginalString((summary?.available_yards_pct_margin || summary?.available_yards_pct_margin == 0) ? (100 * summary?.available_yards_pct_margin) : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.available_yards_pct_margin_rank)}</span></td>
+                        <td class={`numeral text-center ${generateColorRampValue(summary?.success_margin_rank, cfg.teamCount, true)}`} style="width: 33%">{generateMarginalString((summary?.success_margin || summary?.success_margin == 0) ? 100 * summary?.success_margin : null, 2, 1)}% <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(summary?.success_margin_rank)}</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -79,7 +84,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
 
         {
             (summary && !hideNavigation) && (
-                <a href={leaguePath(Astro.locals.league, `/year/${metricSeason.trim()}/team/${team.id}`)}>View full profile</a>
+                <a href={leaguePath(league, `/year/${metricSeason.trim()}/team/${team.id}`)}>View full profile</a>
             )
         }
     </div>
