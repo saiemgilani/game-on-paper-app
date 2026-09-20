@@ -37,6 +37,28 @@ with `locals.league = 'nfl'`).
 **To regenerate:** same call; the game id must stay 401772944 so the test's
 URL assertions hold.
 
+## `pregame-401872933-nfl.json.gz`, `pregame-401858458-cfb.json.gz`
+The two ESPN payloads a *scheduled* game page reads, per league, in one object:
+`{ playbyplay, summary }`.
+
+- NFL: Carolina at Atlanta (401872933), 2026 week 3 — `STATUS_SCHEDULED`.
+- CFB: Purdue at UCLA (401858458), 2026 week 4 — `STATUS_SCHEDULED`.
+
+**Provenance (2026-09-19):** captured verbatim, no hand edits, from
+`cdn.espn.com/core/<espnPath>/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`
+(the body `retrieveGamePage` returns) and
+`site.api.espn.com/apis/site/v2/sports/football/<espnPath>/summary?event=<id>`
+(the body `retrieveGameSummary` returns: `gameInfo.venue`, `pickcenter`,
+`lastFiveGames`).
+
+**Used by:** `test/preGamePage.render.test.ts`, which renders `PreGamePage` for
+both leagues with the SDV client mocked. The game page tests next door use
+*final* games, so before this fixture `PreGamePage` never rendered in the suite.
+
+**To regenerate:** re-capture both URLs for a scheduled game; keep the ids, the
+teams (ESPN ids 1/29 and 26/2509) and the scheduled status, which the test's
+logo, venue and link assertions name.
+
 ## `nfl-summaries-2025.json`
 Real rows from the published `nfl_team_summaries` / `nfl_passing` 2025 assets
 (the nfl-data stage-06 producer's 2026-09-10 rebuild, which added
