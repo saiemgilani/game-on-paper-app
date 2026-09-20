@@ -47,7 +47,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       'Cache-Control': 'no-store',
     });
     if (valid && secret) {
-      headers.append('Set-Cookie', await previewSetCookie(secret));
+      headers.append('Set-Cookie', await previewSetCookie(secret, url));
     }
     try { (context as any).cache?.set(false); } catch { /* cache provider absent in dev */ }
     return new Response(null, { status: 302, headers });

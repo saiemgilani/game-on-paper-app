@@ -69,10 +69,25 @@ export async function verifyPreviewLink(value: string | undefined | null, secret
     return verifyToken(value, secret, 'gop-preview-link', nowS);
 }
 
-// The one Set-Cookie shape for the preview cookie, shared by the /admin toggle
-// and the magic-link redeem so the attributes can never drift apart.
-export async function previewSetCookie(secret: string): Promise<string> {
-    return `${PREVIEW_COOKIE}=${await mintPreviewCookie(secret)}; Path=/; Max-Age=${PREVIEW_TTL_S}; HttpOnly; Secure; SameSite=Lax`;
+// The one Set-Cookie shape for every signed session cookie the site mints --
+// preview and admin alike -- so the attributes can never drift apart.
+//
+// Path=/ because both cookies are read on EVERY path: the preview flags gate
+// public pages, and the middleware resolves the admin session site-wide for
+// the game page's admin tools (utils/adminView.ts). A narrower path silently
+// withholds the cookie from exactly the pages that need it.
+//
+// `Secure` is dropped when the request itself is not https. Production is
+// https so nothing changes there, but a local `astro dev` serves plain http,
+// where a Secure cookie is DISCARDED on arrival -- which is why the admin
+// session never stuck on localhost.
+export function sessionCookie(name: string, value: string, maxAgeS: number, requestUrl: string | URL): string {
+    const secure = new URL(requestUrl).protocol === 'https:' ? ' Secure;' : '';
+    return `${name}=${value}; Path=/; Max-Age=${maxAgeS}; HttpOnly;${secure} SameSite=Lax`;
+}
+
+export async function previewSetCookie(secret: string, requestUrl: string | URL): Promise<string> {
+    return sessionCookie(PREVIEW_COOKIE, await mintPreviewCookie(secret), PREVIEW_TTL_S, requestUrl);
 }
 
 export function readCookie(header: string | null, name: string): string | null {
