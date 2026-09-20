@@ -7,15 +7,16 @@
  * `EPA/DB` comes from: a passer's `EPAplay` is per dropback, not per play.
  *
  * Rows are the producer's own season rows, so they carry `_rank` and `_pct`.
- * The rank is its own indented row rather than a second number in the value
- * cell, and the cell is shaded by the percentile on the site's green -> purple
- * ramp. A traded player has one row per team-season; two or more rows of a
- * category add a career roll-up whose rates are recomputed from the summed
- * counts, never averaged (`utils/players.ts` rollUpSeasons).
+ * Both ride in the metric cell, the way `team/TeamCard.astro` shows a team's:
+ * the cell is shaded by the percentile on the site's green -> purple ramp and
+ * carries the rank as small faded text beside the number. A traded player has
+ * one row per team-season; two or more rows of a category add a career roll-up
+ * whose rates are recomputed from the summed counts, never averaged
+ * (`utils/players.ts` rollUpSeasons).
  */
-import { cleanField, formatRank, generateColorRampValue } from '../../utils/misc';
+import { cleanField, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { categoryColumns, formatPlayerMetric, numberOrNull, percentileOf, PLAYER_CATEGORIES, rollUpSeasons, type SeasonRow } from '../../utils/players';
+import { categoryColumns, formatPlayerMetric, percentileOf, PLAYER_CATEGORIES, rollUpSeasons, type SeasonRow } from '../../utils/players';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
 interface Props {
@@ -45,8 +46,7 @@ const blocks: Block[] = PLAYER_CATEGORIES.map((category): Block => {
 }).filter((b: Block) => b.shown.length > 0);
 
 const teamIds = [...new Set(rows.map((r: SeasonRow) => r.team_id).filter(Boolean))] as (string | number)[];
-const hasRank = (row: SeasonRow, columns: [string, string][]) =>
-    columns.some(([k]) => numberOrNull(row[`${k}_rank`]) !== null);
+const rankOf = (row: SeasonRow, metric: string): number | null => numberOrNull(row[`${metric}_rank`]);
 // read out here, not in the template: a cast inside JSX trips the template parser
 const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key] : null);
 ---
@@ -80,24 +80,18 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
                         {b.columns.map(([k]) => (
                             <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k), 100)]} colspan="1">
                                 {formatPlayerMetric(b.category, k, row[k])}
+                                {rankOf(row, k) !== null && (
+                                    <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(row, k))}</span>
+                                )}
                             </td>
                         ))}
                     </tr>
-                    {hasRank(row, b.columns) && (
-                        <tr class="text-muted text-small">
-                            <td class="text-left" colspan="1"><Fragment set:html="&emsp;&emsp;Rank" /></td>
-                            <td colspan="1"></td>
-                            {b.columns.map(([k]) => (
-                                <td class="text-center numeral" colspan="1">{formatRank(numberOrNull(row[`${k}_rank`]))}</td>
-                            ))}
-                        </tr>
-                    )}
                 </Fragment>
             ))}
             {b.career && (
                 <tr class="table-secondary">
                     <td class="text-left" colspan="1"><strong>Career</strong></td>
-                    <td class="text-left text-muted text-small" colspan="1">every season</td>
+                    <td colspan="1"></td>
                     {b.columns.map(([k]) => (
                         <td class="text-center numeral" colspan="1">{formatPlayerMetric(b.category, k, careerValue(b, k))}</td>
                     ))}

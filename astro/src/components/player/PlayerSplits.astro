@@ -7,9 +7,13 @@
  *
  * Standard + passing downs partition `All plays`, as do the three period rows,
  * which is what makes the section checkable rather than decorative.
+ *
+ * Only the two down-type splits carry an `<abbr title>`: the rest say what they
+ * are. Success rate is the only success column -- the raw count of successful
+ * plays is `plays` times `SR%` and earns no cell of its own.
  */
-import { roundNumber } from '../../utils/misc';
-import { numberOrNull, PLAYER_SPLITS } from '../../utils/players';
+import { formatNumber, formatPercent, numberOrNull } from '../../utils/misc';
+import { PLAYER_SPLITS } from '../../utils/players';
 import type { SDVPlayerSplit } from '../../resources/sdv';
 
 interface Props { splits: SDVPlayerSplit[] }
@@ -19,11 +23,6 @@ const by = new Map(splits.map((s) => [s.split, s]));
 const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
     // overtime is offered only when it was played
     .filter((s) => s.row && (numberOrNull(s.row.plays) ?? 0) > 0);
-
-const num = (v: unknown, fixed: number): string => {
-    const x = numberOrNull(v);
-    return x === null ? '—' : roundNumber(x, 2, fixed);
-};
 ---
 {rows.length > 0 && (
 <div class="table-responsive" id="player-splits-table">
@@ -32,21 +31,21 @@ const num = (v: unknown, fixed: number): string => {
             <tr>
                 <th class="text-left" colspan="1">Split</th>
                 <th class="text-center" colspan="1">Plays</th>
-                <th class="text-center" colspan="1" title="Expected Points Added per Play">EPA/play</th>
-                <th class="text-center" colspan="1" title="Total Expected Points Added">EPA</th>
-                <th class="text-center" colspan="1" title="Successful plays">Successes</th>
-                <th class="text-center" colspan="1" title="Success Rate">SR</th>
+                <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Share of plays with positive EPA">SR%</abbr></th>
             </tr>
         </thead>
         <tbody>
             {rows.map((s) => (
                 <tr class:list={[s.key === 'all' ? 'table-secondary' : null]}>
-                    <td class="text-left" colspan="1" title={s.title}>{s.key === 'all' ? <strong>{s.label}</strong> : s.label}</td>
-                    <td class="text-center numeral" colspan="1">{num(s.row?.plays, 0)}</td>
-                    <td class="text-center numeral" colspan="1">{num(s.row?.epa_per_play, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{num(s.row?.epa, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{num(s.row?.successes, 0)}</td>
-                    <td class="text-center numeral" colspan="1">{s.row?.success_rate == null ? '—' : `${roundNumber(Number(s.row.success_rate) * 100, 2, 1)}%`}</td>
+                    <td class="text-left" colspan="1">
+                        {s.title ? <abbr title={s.title}>{s.label}</abbr> : (s.key === 'all' ? <strong>{s.label}</strong> : s.label)}
+                    </td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.plays, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa_per_play, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatPercent(s.row?.success_rate)}</td>
                 </tr>
             ))}
         </tbody>
