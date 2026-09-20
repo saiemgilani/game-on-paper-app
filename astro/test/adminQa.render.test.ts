@@ -14,22 +14,22 @@ vi.mock('astro:env/server', () => ({ getSecret: () => undefined }));
 const ADMIN: QaAdmin = {
     games: [
         {
-            game_id: '401856682', matchup: 'TEX @ OSU', status: 'STATUS_IN_PROGRESS',
+            game_id: '401856682', league: 'cfb', matchup: 'TEX @ OSU', status: 'STATUS_IN_PROGRESS',
             away_score: 7, home_score: 10, last_poll: '2026-09-19T18:00:00Z', age_s: 45,
             qa_ok: false, qa_errors: 3, qa_warnings: 2, qa_source: 'shield', qa_fallback: true,
             qa_rules: ['score.monotone', 'live.prefix_dropped'],
         },
         {
-            game_id: '401772944', matchup: 'NYJ @ BUF', status: 'STATUS_FINAL',
+            game_id: '401772944', league: 'nfl', matchup: 'NYJ @ BUF', status: 'STATUS_FINAL',
             away_score: 17, home_score: 24, last_poll: '2026-09-19T17:00:00Z', age_s: 3900,
             qa_ok: true, qa_errors: 0, qa_warnings: 1, qa_source: 'espn', qa_fallback: false,
             qa_rules: null,
         },
     ],
     rules: [
-        { rule: 'score.monotone', day: '2026-09-18', n: 4, games: 2 },
-        { rule: 'score.monotone', day: '2026-09-19', n: 9, games: 3 },
-        { rule: 'live.prefix_dropped', day: '2026-09-19', n: 1, games: 1 },
+        { rule: 'score.monotone', day: '2026-09-18T00:00:00Z', n: 4, games: 2 },
+        { rule: 'score.monotone', day: '2026-09-19T00:00:00Z', n: 9, games: 3 },
+        { rule: 'live.prefix_dropped', day: '2026-09-19T00:00:00Z', n: 1, games: 1 },
     ],
     totals: { checks: 120, clean: 96, games: 14, fallbacks: 3 },
     days: 7,
@@ -39,7 +39,8 @@ const ADMIN: QaAdmin = {
 let STORE: QaAdmin = ADMIN;
 vi.mock('../src/resources/qa', () => ({ retrieveQaAdmin: vi.fn(async () => STORE) }));
 vi.mock('../src/resources/sdv', () => ({ retrieveQaSeason: vi.fn(async () => SEASON) }));
-let SEASON: { rows: unknown[], ok: boolean } = { rows: [], ok: true };
+import { retrieveQaSeason } from '../src/resources/sdv';
+let SEASON: { rows: any[], ok: boolean } = { rows: [], ok: true };
 
 beforeEach(() => { STORE = ADMIN; SEASON = { rows: [], ok: true }; });
 
@@ -68,7 +69,6 @@ describe('/admin/qa', () => {
     test('an admin sees every game with its last verdict', async () => {
         const html = await (await render({ adminAuthed: true })).text();
         expect(html).toContain('TEX @ OSU');
-        expect(html).toContain('/game/401856682');
         expect(html).toContain('in progress');          // STATUS_ prefix stripped
         expect(html).toContain('shield (fallback)');    // the failover is visible
         expect(html).toContain('score.monotone');
@@ -78,9 +78,36 @@ describe('/admin/qa', () => {
 
     test('the rule histogram has one column per day and one row per rule', async () => {
         const html = await (await render({ adminAuthed: true })).text();
+        expect(html).toContain('live.prefix_dropped');
         expect(html).toContain('09-18');
         expect(html).toContain('09-19');
-        expect(html).toContain('live.prefix_dropped');
+        // the header carries the bucket's INSTANT, which the inline script
+        // rewrites into the viewer's timezone; the UTC label is the fallback
+        expect(html).toContain('data-qa-utc="2026-09-18T00:00:00Z"');
+        expect(html).toContain('data-qa-utc="2026-09-19T00:00:00Z"');
+        expect(html).toContain("querySelectorAll('[data-qa-utc]')");
+    });
+
+    test('every game row says its league and links league-aware', async () => {
+        // the page is not under /nfl, so nothing but the row can say which
+        // league a game belongs to -- a bare /game/<id> sends every NFL game
+        // to the CFB page
+        const html = await (await render({ adminAuthed: true })).text();
+        expect(html).toContain('href="/game/401856682"');       // cfb: unprefixed
+        expect(html).toContain('href="/nfl/game/401772944"');
+        expect(html).toContain('>CFB<');
+        expect(html).toContain('>NFL<');
+    });
+
+    test('the season panel asks both leagues and tags each row with its own', async () => {
+        SEASON = { rows: [{ game_id: '401772944', source: 'espn', processing_version: '0.1.4', n_errors: 1, n_warnings: 0, failed_rule_ids: ['score.monotone'] }], ok: true };
+        const html = await (await render({ adminAuthed: true })).text();
+        expect(retrieveQaSeason).toHaveBeenCalledWith(expect.any(Number), 'cfb');
+        expect(retrieveQaSeason).toHaveBeenCalledWith(expect.any(Number), 'nfl');
+        // the same row comes back for both leagues here, so the nfl copy is the
+        // proof the link follows the row and not the page
+        expect(html).toContain('href="/nfl/game/401772944"');
+        expect(html).toContain('href="/game/401772944"');
     });
 
     test('the season view says it is not published rather than showing a clean season', async () => {
@@ -117,14 +144,24 @@ describe('/admin/qa', () => {
         SEASON = { rows: [], ok: false };
         const html = await (await render({ adminAuthed: true })).text();
         expect(html).toContain('The telemetry store did not answer');
-        expect(html).toContain('The data API did not answer');
+        expect(html).toContain('The Sportsdataverse API did not answer');
         expect(html).not.toContain('Not published yet');   // a different claim
         expect(html).not.toContain('No rule fired');
     });
 
-    test('the window pills are the site filter group, and one is active', async () => {
+    test('the window filter is a season-selector-style dropdown, right-aligned on desktop', async () => {
         const html = await (await render({ adminAuthed: true }, '?days=14')).text();
-        expect(html).toContain('btn btn-sm btn-outline-secondary active');
-        expect(html).toContain('href="/admin/qa?days=1&amp;season=');
+        expect(html).toContain('justify-content-start justify-content-md-end');
+        expect(html).toContain('class="form-select form-select-md"');
+        expect(html).toMatch(/<option value="14"[^>]*selected/);
+        // the badge and the back link went with the breadcrumb that already has both
+        expect(html).not.toContain('badge text-bg-danger');
+        expect(html).not.toContain('Back to admin');
+    });
+
+    test('the page calls itself QA, the name in its own URL', async () => {
+        const html = await (await render({ adminAuthed: true })).text();
+        expect(html).not.toContain('Validation');
+        expect(html).toContain('<h2 class="mb-0">QA</h2>');
     });
 });

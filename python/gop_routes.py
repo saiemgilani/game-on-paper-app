@@ -302,6 +302,10 @@ def _qa(args):
     return {
         # one row per game: its LAST verdict, with how long ago that was
         "games": _q("""SELECT DISTINCT ON (r.game_id) r.game_id,
+                -- request_log has no league column and /process is mounted once
+                -- per league ('/cfb/<int:game_id>/process'), so the route
+                -- pattern is where the league lives
+                split_part(r.route_pattern, '/', 2) AS league,
                 gm.away_abbr || ' @ ' || gm.home_abbr AS matchup,
                 gm.status, gm.away_score, gm.home_score,
                 r.ts AS last_poll,
@@ -313,7 +317,14 @@ def _qa(args):
             ORDER BY r.game_id, r.ts DESC LIMIT 60"""),
         # per-rule histogram: one row per rule per day, for the matrix
         "rules": _q(
-            """SELECT rule, date_trunc('day', ts)::date AS day, count(*)::int AS n,
+            # the bucket's START INSTANT, as text, not a date: /admin/qa renders
+            # the column header in the viewer's timezone and a bare date has no
+            # instant to convert. Text rather than a timestamptz so the value
+            # crosses jsonify as ISO-8601 instead of an HTTP date string.
+            """SELECT rule,
+                    to_char(date_trunc('day', ts) AT TIME ZONE 'UTC',
+                            'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS day,
+                    count(*)::int AS n,
                     count(DISTINCT game_id)::int AS games
                 FROM gop.request_log, unnest(qa_rules) AS rule
                 WHERE qa_rules IS NOT NULL AND ts > now() - make_interval(days => %s)

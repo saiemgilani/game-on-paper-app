@@ -7,6 +7,9 @@ import { getSecret } from 'astro:env/server';
 
 export interface QaGameRow {
     game_id: string
+    /** 'cfb' | 'nfl', read off the request's route pattern: gop.request_log has
+     *  no league column, and /process is mounted once per league. */
+    league: string | null
     matchup: string | null
     status: string | null
     away_score: number | null

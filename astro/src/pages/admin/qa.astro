@@ -3,12 +3,11 @@ export const prerender = false;
 
 import GenericPage from '../../layouts/GenericPage.astro';
 import Panel from '../../layouts/panel/GenericPanel.astro';
-import FilterGroup from '../../layouts/FilterGroup.astro';
 import { retrieveQaAdmin, type QaRuleRow } from '../../resources/qa';
 import { retrieveQaSeason } from '../../resources/sdv';
 import { generateColorRampValue, roundNumber } from '../../utils/misc';
 import { CURRENT_YEAR } from '../../utils/constants';
-import type { League } from '../../utils/league';
+import { LEAGUES, leaguePath, type League } from '../../utils/league';
 
 // Admin only. The middleware already redirects an unauthenticated /admin/*
 // request, so this is the second lock on the same door: a render path that
@@ -21,19 +20,29 @@ const WINDOWS = [1, 7, 14, 30];
 const requested = Number(Astro.url.searchParams.get('days'));
 const days = WINDOWS.includes(requested) ? requested : 7;
 const season = Number(Astro.url.searchParams.get('season')) || CURRENT_YEAR;
-const league: League = Astro.locals.league ?? 'cfb';
 
-const [qa, seasonQa] = await Promise.all([
+// Both leagues, every time. This page is not under /nfl, so `locals.league` is
+// always cfb here and reading it made the season table a CFB-only view of a
+// two-league site. Every row carries the league it came from instead.
+const LEAGUE_LIST: League[] = ['cfb', 'nfl'];
+const asLeague = (value: string | null | undefined): League =>
+    LEAGUE_LIST.includes(value as League) ? (value as League) : 'cfb';
+
+const [qa, seasonByLeague] = await Promise.all([
     retrieveQaAdmin(days),
-    retrieveQaSeason(season, league),
+    Promise.all(LEAGUE_LIST.map((lg) => retrieveQaSeason(season, lg))),
 ]);
-const seasonRows = seasonQa.rows;
+const seasonOk = seasonByLeague.some((s) => s.ok);
+const seasonRows = LEAGUE_LIST.flatMap((lg, i) =>
+    seasonByLeague[i].rows.map((r) => ({ ...r, league: lg })));
 
-// The rule histogram is a matrix: one row per rule, one column per day.
-const ruleDays = [...new Set(qa.rules.map((r) => String(r.day).slice(0, 10)))].sort();
+// The rule histogram is a matrix: one row per rule, one column per day. The
+// key is the bucket's start INSTANT, so the header can be rewritten into the
+// viewer's timezone rather than left in the database's.
+const ruleDays = [...new Set(qa.rules.map((r) => String(r.day)))].sort();
 const byRule = new Map<string, Map<string, QaRuleRow>>();
 for (const row of qa.rules) {
-    const day = String(row.day).slice(0, 10);
+    const day = String(row.day);
     if (!byRule.has(row.rule)) byRule.set(row.rule, new Map());
     byRule.get(row.rule)!.set(day, row);
 }
@@ -57,30 +66,39 @@ const statusText = (s: string | null) =>
     (s ?? '').replace('STATUS_', '').replaceAll('_', ' ').toLowerCase() || 'unknown';
 const ago = (seconds: number) =>
     seconds < 90 ? `${Math.round(seconds)}s` : seconds < 5400 ? `${Math.round(seconds / 60)}m` : `${Math.round(seconds / 3600)}h`;
-const windowHref = (d: number) => `/admin/qa?days=${d}&season=${season}`;
-
-const title = 'Validation | Game on Paper';
-const subtitle = 'Validation findings by game and by rule';
+const title = 'QA | Game on Paper';
+const subtitle = 'QA findings by game and by rule';
 ---
 <GenericPage title={title} subtitle={subtitle} slug="admin/qa" breadcrumbs={[
     { title: "Home", url: "/", active: false },
     { title: "Admin", url: "/admin", active: false },
-    { title: "Validation", active: true },
+    { title: "QA", active: true },
 ]}>
 <div class="container pb-5">
-    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-        <h2 class="mb-0">Validation</h2>
-        <span class="badge text-bg-danger text-uppercase">ops</span>
-        <a class="btn btn-sm btn-outline-secondary ms-2" href="/admin">Back to admin</a>
+    <div class="row mb-3">
+        <div class="col-12 col-lg-6">
+            <h2 class="mb-0">QA</h2>
+        </div>
+        <div class="col-12 col-lg-6 ms-auto">
+            <form class="d-flex justify-content-start justify-content-md-end mt-3 mt-md-0" method="get" action="/admin/qa">
+                <input type="hidden" name="season" value={season} />
+                <div class="col-auto">
+                    <select class="form-select form-select-md" id="qa-window" name="days"
+                            aria-label="Choose the window these counts cover">
+                        {WINDOWS.map((d) => (
+                            <option value={d} selected={d === days}>{d === 1 ? 'Last 24 hours' : `Last ${d} days`}</option>
+                        ))}
+                    </select>
+                </div>
+                <noscript><button class="btn btn-sm btn-outline-secondary ms-2" type="submit">Apply</button></noscript>
+            </form>
+        </div>
     </div>
-    <FilterGroup label="Choose the window these counts cover">
-        <Fragment slot="filter-body">
-            {WINDOWS.map((d) => (
-                <a class={`btn btn-sm btn-outline-secondary ${d === days ? 'active' : ''}`}
-                   aria-pressed={d === days} href={windowHref(d)}>{d}d</a>
-            ))}
-        </Fragment>
-    </FilterGroup>
+    {/* Submit on change, the way the season selectors navigate. Plain inline
+        script rather than an island: there is one control and no state. */}
+    <script is:inline>
+        document.getElementById('qa-window')?.addEventListener('change', (e) => e.target.form.submit());
+    </script>
 
     <p class="text-small text-muted mt-2 mb-3">
         {qa.ok
@@ -97,6 +115,7 @@ const subtitle = 'Validation findings by game and by rule';
                 <thead>
                     <tr>
                         <th class="box-heading">Game</th>
+                        <th style="text-align: center;">League</th>
                         <th style="text-align: center;">Status</th>
                         <th style="text-align: center;">Source</th>
                         <th style="text-align: center;">Errors</th>
@@ -109,8 +128,9 @@ const subtitle = 'Validation findings by game and by rule';
                     {qa.games.map((row) => (
                         <tr>
                             <td style="text-align: left;" class="text-nowrap">
-                                <a href={`/game/${row.game_id}`}>{row.matchup ?? row.game_id}</a>
+                                <a href={leaguePath(asLeague(row.league), `/game/${row.game_id}`)}>{row.matchup ?? row.game_id}</a>
                             </td>
+                            <td style="text-align: center;">{LEAGUES[asLeague(row.league)].shortName}</td>
                             <td style="text-align: center;">{statusText(row.status)}</td>
                             <td style="text-align: center;">
                                 {row.qa_source ?? '—'}{row.qa_fallback ? ' (fallback)' : ''}
@@ -129,7 +149,7 @@ const subtitle = 'Validation findings by game and by rule';
                         </tr>
                     ))}
                     {qa.games.length === 0 && (
-                        <tr><td colspan="7" class="text-muted" style="text-align: left;">
+                        <tr><td colspan="8" class="text-muted" style="text-align: left;">
                             {qa.ok ? 'No game has been checked in the past 24 hours.' : 'No data.'}
                         </td></tr>
                     )}
@@ -148,7 +168,9 @@ const subtitle = 'Validation findings by game and by rule';
                 <thead>
                     <tr>
                         <th class="box-heading">Rule</th>
-                        {ruleDays.map((day) => <th style="text-align: center;">{day.slice(5)}</th>)}
+                        {ruleDays.map((day) => (
+                            <th style="text-align: center;" data-qa-utc={day}>{day.slice(5, 10)}</th>
+                        ))}
                         <th style="text-align: center;">Total</th>
                         <th style="text-align: center;">Games</th>
                     </tr>
@@ -176,16 +198,31 @@ const subtitle = 'Validation findings by game and by rule';
             </table>
         </div>
     </Panel>
+    {/* The day buckets are UTC, rewritten to the viewer's timezone -- same
+        pattern and same reason as the schedule page's kickoff labels. Runs
+        after the table so the columns exist; the UTC label above stands if it
+        does not. */}
+    <script is:inline>
+        (() => {
+            try {
+                const fmt = new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric' });
+                document.querySelectorAll('[data-qa-utc]').forEach((el) => {
+                    const d = new Date(el.getAttribute('data-qa-utc'));
+                    if (!isNaN(d.getTime())) el.textContent = fmt.format(d);
+                });
+            } catch { /* the UTC labels stand */ }
+        })();
+    </script>
 
     <Panel id="qa-season" title={`Season ${season}`} show={true} class="mb-md-3">
         <p slot="panel-subtitle" class="text-small text-muted mb-0">
             Published per-game verdicts for the whole season, from the release builds.
         </p>
         <div slot="panel-body">
-            {!seasonQa.ok ? (
+            {!seasonOk ? (
                 <p class="text-muted mb-0">
-                    The data API did not answer. This panel is empty because the query failed, not
-                    because the season has no findings.
+                    The Sportsdataverse API did not answer. This panel is empty because the query
+                    failed, not because the season has no findings.
                 </p>
             ) : seasonRows.length === 0 ? (
                 <p class="text-muted mb-0">
@@ -199,6 +236,7 @@ const subtitle = 'Validation findings by game and by rule';
                         <thead>
                             <tr>
                                 <th class="box-heading">Game</th>
+                                <th style="text-align: center;">League</th>
                                 <th style="text-align: center;">Source</th>
                                 <th style="text-align: center;">Version</th>
                                 <th style="text-align: center;">Errors</th>
@@ -210,8 +248,9 @@ const subtitle = 'Validation findings by game and by rule';
                             {seasonRows.map((row) => (
                                 <tr>
                                     <td style="text-align: left;" class="text-nowrap">
-                                        <a href={`/game/${row.game_id}`}>{row.game_id}</a>
+                                        <a href={leaguePath(row.league, `/game/${row.game_id}`)}>{row.game_id}</a>
                                     </td>
+                                    <td style="text-align: center;">{LEAGUES[row.league].shortName}</td>
                                     <td style="text-align: center;">{row.source}</td>
                                     <td style="text-align: center;">{row.processing_version}</td>
                                     <td class={`numeral ${generateColorRampValue(row.n_errors, 5, true) ?? ''}`}
