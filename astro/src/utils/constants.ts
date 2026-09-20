@@ -1179,5 +1179,11 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
   "EPArush": "EPA/Rush"
 }
 
+/**
+ * The NFL's five postseason rounds, in week order -- the schedule dropdown's
+ * week list and the player game log's week cell both name them from here.
+ */
+export const NFL_POST_LABELS: string[] = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
+
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };
 export const EVENT_KEY_TRENDS_METRIC_CHANGED = 'TrendsMetricChanged';

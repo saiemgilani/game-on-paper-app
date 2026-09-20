@@ -126,6 +126,30 @@ export function toPercent(value: unknown): number | null {
     return n === null ? null : n * 100;
 }
 
+/**
+ * Present-and-finite, so a column the producer did not publish reads as absent
+ * rather than as a zero. The three formatters below are the only ones the site
+ * needs for a producer-backed table cell -- they live here, beside
+ * `roundNumber`, rather than being re-declared per component.
+ */
+export function numberOrNull(v: unknown): number | null {
+    if (v === null || v === undefined || v === '' || v === 'NA') return null;
+    const x = typeof v === 'number' ? v : parseFloat(String(v));
+    return Number.isFinite(x) ? x : null;
+}
+
+/** A numeric cell: `roundNumber` when there is a number, an em dash when there is not. */
+export function formatNumber(v: unknown, fixed: number, power10: number = 2): string {
+    const x = numberOrNull(v);
+    return x === null ? "—" : roundNumber(x, power10, fixed);
+}
+
+/** A 0-1 rate as a percentage ("48.0%"), or an em dash when absent. */
+export function formatPercent(v: unknown, fixed: number = 1): string {
+    const x = numberOrNull(v);
+    return x === null ? "—" : `${roundNumber(x * 100, 2, fixed)}%`;
+}
+
 export function hexToRgb(hex: string): RGBColor | null {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
