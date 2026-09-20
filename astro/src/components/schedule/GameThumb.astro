@@ -127,7 +127,7 @@ const canLoadStats = gameStatus && !(
     || gameStatus.type.detail.includes("Postpone") 
     || (gameStatus.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
 )
-const canLoadStatsTheme = canLoadStats ? `disabled` : ``
+const canLoadStatsTheme = canLoadStats ? `` : `disabled`
 ---
 
 <div class="col-xl-3 col-lg-6">
