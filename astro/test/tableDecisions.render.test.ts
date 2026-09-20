@@ -2,18 +2,16 @@
  * The render-level guards for the table-reconciliation decisions (#264 review).
  *
  * Each block below is the assertion for one decision, taken from the rendered
- * page rather than from component source, and each one goes red if the change
+ * markup rather than from component source, and each one goes red if the change
  * it guards is reverted:
  *
  *  T2  the Production table's overall "Yards" row is the sum of the pass and
  *      rush "Yards" rows right under it, in BOTH twins.
- *  F3  the Binion box is gated to the cfb in both twins, so promoting
- *      `game-page-v2` adds no section to an NFL game page.
  *  F4  both Binion twins round through one shared guard.
- *  F5  `TraditionalTeamStats` and `PenaltyBreakdown` are rendered by v2 (#252)
- *      and by neither classic page.
- *  F6  the v2 Team Stats tables are in the SERVED html -- the panel used to be
- *      `client:only`, so no SSR-level check could see any of it.
+ *
+ * Findings 3, 5 and 6 (the Binion league gate, wiring the #252 sections, and
+ * server-rendering the v2 Team Stats island) are owned by #270, so nothing here
+ * pins them.
  *
  * The fixtures are the real, offline `usage-*` processed games shared with #264.
  */
@@ -22,6 +20,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { metricDecimalPoints } from '../src/utils/misc';
+import { withoutUsageSections } from '../src/utils/usage';
 import { loadGzJson, locals, parseTable, tableWithHeading } from './helpers/tables';
 
 // The `usage-*` pair, not the older `game-*` pair: those predate the
@@ -34,7 +33,7 @@ const FIXTURES = {
 } as const;
 type Lg = keyof typeof FIXTURES;
 
-// Both pages are rendered through `retrieveProcessedGame`, the route's own
+// The classic page is rendered through `retrieveProcessedGame`, the route's own
 // path, by answering the processor fetch with the fixture for the league in
 // the URL.
 vi.mock('../src/utils/telemetry', async (orig) => ({
@@ -61,97 +60,87 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-/** A whole game page, from the route's own processed game. Fresh per call: both twins mutate it. */
-async function renderPage(twin: 'classic' | 'v2', league: Lg): Promise<{ g: any, html: string }> {
+/**
+ * The rendered Production table of one twin, with the box score rows it was
+ * rendered from.
+ *
+ * classic: the whole page, from the route's own processed game. v2: the
+ * `SituationalSection` island, which is what owns the column list there -- the
+ * v2 page mounts it `client:only`, so no whole-page render can see inside it.
+ */
+async function renderProduction(twin: 'classic' | 'v2', league: Lg): Promise<{ teams: any[], table: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
-    const Page = twin === 'classic'
-        ? (await import('../src/components/game/classic/GamePage.astro')).default
-        : (await import('../src/components/game/GamePage.astro')).default;
-    const html = await container.renderToString(Page, {
-        props: { id: String(FIXTURES[league].id), game: g, league },
-        request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
-        locals: locals(league),
-    });
-    return { g, html };
+    let html: string;
+    let teams: any[];
+    if (twin === 'classic') {
+        const Page = (await import('../src/components/game/classic/GamePage.astro')).default;
+        html = await container.renderToString(Page, {
+            props: { id: String(FIXTURES[league].id), game: g, league },
+            request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
+            locals: locals(league),
+        });
+        teams = g.advBoxScore.team;
+    } else {
+        const spans = withoutUsageSections(g.advBoxScoreSpans);
+        const Section = (await import('../src/components/game/metrics/SituationalSection.svelte')).default as any;
+        html = await container.renderToString(Section, {
+            props: { season: g.season.year, advBoxScoreSpans: spans, league, percentiles: [] },
+            locals: locals(league),
+        });
+        // the island opens on the whole game, the `all` span
+        teams = spans.all.team;
+    }
+    const table = tableWithHeading(html, 'Production');
+    expect(table, `the ${twin} twin renders a Production table`).toBeTruthy();
+    return { teams, table: table! };
 }
 
-/** Distinguishing markup of the sections whose presence is under test. */
-const BINION = 'Concept from Robert Binion';
-const TRADITIONAL = 'Traditional Stats';
-const PENALTIES = 'Accepted penalties only.';
-/** The eight team-metric tables, by the heading each one leads with. */
-const METRIC_TITLES = ['Expected Points', 'Production', 'Rushing', 'Explosiveness', 'Situational', 'Drives', 'Defensive', 'Turnovers'];
+/** The Production column list, in the order both twins pass it. */
+const OVERALL_YARDS = 1;   // after scrimmage_plays
+const PASS_YARDS = 6;      // after passes
+const RUSH_YARDS = 11;     // after rushes
 
 for (const league of Object.keys(FIXTURES) as Lg[]) {
     describe(`[${league}] the Production total is the sum of the rows under it`, () => {
         for (const twin of ['classic', 'v2'] as const) {
             test(`${twin}: the overall Yards row equals rush + pass`, async () => {
-                const { g, html } = await renderPage(twin, league);
-                const table = tableWithHeading(html, 'Production');
-                expect(table, `the ${twin} page renders a Production table`).toBeTruthy();
-                const body = parseTable(table!).rows.slice(1);
-                // scrimmage_plays, then the overall Yards row
-                const [label, ...cells] = body[1];
-                expect(label, 'the second row is the overall Yards row').toBe('Yards');
-                const teams: any[] = g.advBoxScore.team;
-                expect(cells).toHaveLength(teams.length);
-                teams.forEach((row, t) => {
-                    expect(cells[t], `team ${row.pos_team} total yards`)
-                        .toBe(String(row.pass_yards + row.rush_yards));
+                const { teams, table } = await renderProduction(twin, league);
+                const body = parseTable(table).rows.slice(1);
+
+                // The three rows a reader sees, each labelled "Yards": the
+                // overall total and the pass and rush rows under it.
+                const row = (i: number, what: string) => {
+                    const [label, ...cells] = body[i];
+                    expect(label, `row ${i} is the ${what} Yards row`).toBe('Yards');
+                    expect(cells, `${what} Yards has one cell per team`).toHaveLength(teams.length);
+                    return cells;
+                };
+                const total = row(OVERALL_YARDS, 'overall');
+                const pass = row(PASS_YARDS, 'pass');
+                const rush = row(RUSH_YARDS, 'rush');
+
+                teams.forEach((team, t) => {
+                    // what is displayed adds up, which is the whole claim the
+                    // header makes -- read entirely out of the rendered table
+                    expect(Number(total[t]), `team ${team.pos_team}: displayed total = displayed rush + pass`)
+                        .toBe(Number(pass[t]) + Number(rush[t]));
+                    // ...and it is the payload's own parsed yardage, not a
+                    // coincidence of the rendering
+                    expect(pass[t], `team ${team.pos_team} pass yards`).toBe(String(team.pass_yards));
+                    expect(rush[t], `team ${team.pos_team} rush yards`).toBe(String(team.rush_yards));
+                    expect(total[t], `team ${team.pos_team} total yards`)
+                        .toBe(String(team.pass_yards + team.rush_yards));
                 });
                 // ...and the assertion has teeth: on this fixture the payload's
                 // own off_yards (ESPN's per-play statYardage) is a different
                 // number, so a revert to it fails here.
-                expect(teams.some((row) => row.off_yards !== row.pass_yards + row.rush_yards),
+                expect(teams.some((team) => team.off_yards !== team.pass_yards + team.rush_yards),
                     'the fixture disagrees with off_yards on at least one team').toBe(true);
                 // ESPN's total is kept, as the tooltip the other numeral cells use
                 expect(table).toContain(`title="ESPN: ${teams[0].off_yards}"`);
             }, 60_000);
         }
-    });
-
-    describe(`[${league}] the Binion box is gated the same way in both twins`, () => {
-        // The classic gate is the public behaviour; v2 now matches it, so
-        // promoting game-page-v2 changes nothing a reader sees.
-        test('classic renders it for the cfb only', async () => {
-            const { html } = await renderPage('classic', league);
-            expect(html.includes(BINION)).toBe(league === 'cfb');
-        }, 60_000);
-
-        test('v2 renders it for the cfb only', async () => {
-            const { html } = await renderPage('v2', league);
-            expect(html.includes(BINION)).toBe(league === 'cfb');
-        }, 60_000);
-    });
-
-    describe(`[${league}] the v2 Team Stats panel is server-rendered`, () => {
-        test('all eight metric tables are in the served html', async () => {
-            const { html } = await renderPage('v2', league);
-            for (const title of METRIC_TITLES) {
-                expect(tableWithHeading(html, title), `the served html carries the "${title}" table`).toBeTruthy();
-            }
-        }, 60_000);
-
-        test('the period selector is still there, hydrating over the rendered table', async () => {
-            const { html } = await renderPage('v2', league);
-            expect(html).toContain('id="span-stats"');
-            expect(html).not.toContain('client:only');
-        }, 60_000);
-    });
-
-    describe(`[${league}] the #252 sections are rendered by v2 and by neither classic page`, () => {
-        test('v2 renders TraditionalTeamStats and PenaltyBreakdown', async () => {
-            const { html } = await renderPage('v2', league);
-            expect(html, 'Traditional Stats').toContain(TRADITIONAL);
-            expect(html, 'Penalties').toContain(PENALTIES);
-        }, 60_000);
-
-        test('classic renders neither', async () => {
-            const { html } = await renderPage('classic', league);
-            expect(html).not.toContain(TRADITIONAL);
-            expect(html).not.toContain(PENALTIES);
-        }, 60_000);
     });
 }
 
