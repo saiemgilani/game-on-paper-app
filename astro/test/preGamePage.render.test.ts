@@ -31,6 +31,21 @@ const summaryRow = (teamId: string) => {
     return row;
 };
 
+// Real ATL/CAR rows from nfl.espn_schedule: two completed 2025 meetings (division
+// rivals play twice) and a SCHEDULED 2026 one. The schedule table carries the
+// whole season, so the unplayed game is what leaked into "Previous Meetings".
+const MATCHUP_ROWS = [
+    { game_id: 401772838, season: 2025, week: 3, season_type: 'regular', start_date: '2025-09-21T17:00:00.000Z', completed: true,
+      away_id: 1, away_team: 'Atlanta Falcons', away_abbreviation: 'ATL', away_points: 0,
+      home_id: 29, home_team: 'Carolina Panthers', home_abbreviation: 'CAR', home_points: 30 },
+    { game_id: 401772882, season: 2025, week: 11, season_type: 'regular', start_date: '2025-11-16T18:00:00.000Z', completed: true,
+      away_id: 29, away_team: 'Carolina Panthers', away_abbreviation: 'CAR', away_points: 30,
+      home_id: 1, home_team: 'Atlanta Falcons', home_abbreviation: 'ATL', home_points: 27 },
+    { game_id: 401873172, season: 2026, week: 18, season_type: 'regular', start_date: '2027-01-10T18:00:00.000Z', completed: false,
+      away_id: 1, away_team: 'Atlanta Falcons', away_abbreviation: 'ATL', away_points: null,
+      home_id: 29, home_team: 'Carolina Panthers', home_abbreviation: 'CAR', home_points: null },
+];
+
 const NAME_KEY: Record<string, string> = { passing: 'passer_player_name', rushing: 'rusher_player_name', receiving: 'receiver_player_name' };
 const playerRow = (table: string, teamId: string) => ({
     [NAME_KEY[table]]: `${table} leader ${teamId}`, player_id: `${table}-${teamId}`, team_id: Number(teamId),
@@ -52,10 +67,16 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
         }
         const sdv = u.match(/data\.sportsdataverse\.org\/v1\/(cfb|nfl)\/([a-z_]+)\?(.*)$/);
         if (sdv) {
-            const [, , table, query] = sdv;
-            const teamId = new URLSearchParams(query).get('team_id');
+            const [, league, table, query] = sdv;
+            const params = new URLSearchParams(query);
+            const teamId = params.get('team_id');
             if (table === 'team_summaries' && teamId) return json({ data: [summaryRow(teamId)] });
             if (['passing', 'rushing', 'receiving'].includes(table) && teamId) return json({ data: [playerRow(table, teamId)] });
+            // the matchup-history read: both sides pinned, one orientation per call
+            const [homeId, awayId] = [params.get('home_id'), params.get('away_id')];
+            if (league === 'nfl' && homeId && awayId) {
+                return json({ data: MATCHUP_ROWS.filter(g => String(g.home_id) === homeId && String(g.away_id) === awayId) });
+            }
             return json({ data: [] });
         }
         throw new Error(`unexpected fetch in test: ${u}`);
@@ -112,6 +133,15 @@ describe('PreGamePage renders a scheduled NFL game as an NFL page', () => {
     test('the schedule reads the league-configured table', () => {
         expect(fetched.some(u => u.includes('/v1/nfl/espn_schedule?'))).toBe(true);
         expect(fetched.some(u => u.includes('/v1/nfl/schedule?'))).toBe(false);
+    });
+
+    test('previous meetings list every completed game and no scheduled one', () => {
+        expect(html).toContain('Previous Meetings');
+        // both 2025 meetings, whichever side hosted
+        expect(html).toContain('href="/nfl/game/401772838"');
+        expect(html).toContain('href="/nfl/game/401772882"');
+        // the 2026 game has not been played: it is not history
+        expect(html).not.toContain('401873172');
     });
 
     test('the radar island is told which league it is drawing', () => {

@@ -834,6 +834,7 @@ export interface SDVGame {
     venue: string
     home_id: number
     home_team: string
+    home_abbreviation?: string
     home_conference: string
     home_division: string
     home_points: number
@@ -843,6 +844,7 @@ export interface SDVGame {
 
     away_id: number
     away_team: string
+    away_abbreviation?: string
     away_conference: string
     away_division: string
     away_points: number
@@ -882,18 +884,34 @@ export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promis
     return content.data
 }
 
-export async function retrieveMatchupHistory(team1Id: string | number, team2Id: string | number, limit: number = 10, league: League = 'cfb'): Promise<SDVGame[]> {
+/**
+ * A schedule table holds the WHOLE season, unplayed games included -- history is
+ * a record of what happened, so a scheduled meeting is not part of it. The
+ * filter lives here rather than in `retrieveTeamGames`, which the team-season
+ * schedule panels read and which legitimately wants future games.
+ */
+const wasPlayed = (g: SDVGame): boolean =>
+    g.completed === true && g.home_points != null && g.away_points != null;
+
+/**
+ * Completed meetings between two teams, oldest first. `season` scopes it to one
+ * season -- where a pair can meet more than once (NFL division rivals play twice
+ * in the regular season and can meet again in January), so the caller gets every
+ * meeting rather than an arbitrary one.
+ */
+export async function retrieveMatchupHistory(team1Id: string | number, team2Id: string | number, limit: number = 10, league: League = 'cfb', season?: string | number): Promise<SDVGame[]> {
+    const scope = season ? { season } : {};
     const schedulePromises: Promise<SDVGame[]>[] = [];
-    schedulePromises.push(retrieveTeamGames({ home_id: team1Id, away_id: team2Id, limit: limit * 2, league }))
-    schedulePromises.push(retrieveTeamGames({ home_id: team2Id, away_id: team1Id, limit: limit * 2, league }))
-    
+    schedulePromises.push(retrieveTeamGames({ ...scope, home_id: team1Id, away_id: team2Id, limit: limit * 2, league }))
+    schedulePromises.push(retrieveTeamGames({ ...scope, home_id: team2Id, away_id: team1Id, limit: limit * 2, league }))
+
     let events: SDVGame[] = [];
     const scheduleResults = await Promise.all(schedulePromises);
     for (const sched of scheduleResults) {
         events = events.concat(sched)
     }
 
-    return events.sort((a, b) => a.start_date.localeCompare(b.start_date)).slice(-limit);
+    return events.filter(wasPlayed).sort((a, b) => a.start_date.localeCompare(b.start_date)).slice(-limit);
 }
 
 
