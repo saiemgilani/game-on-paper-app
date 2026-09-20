@@ -28,6 +28,8 @@ import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
 import { CURRENT_SEASON_CONFIG } from './config';
 import { CURRENT_YEAR } from './constants';
 import type { League } from './league';
+import { numberOrNull } from './misc';
+import { espnGameId, type PlayerGameRow } from './players';
 
 export interface LiveQaBadge {
     /** the feed that produced the game; ESPN when nothing says otherwise */
@@ -90,7 +92,49 @@ export interface LiveGameStatus {
 }
 
 /**
- * The in-progress games among a game log's ESPN ids.
+ * A scoreboard event one of the player's teams is playing, as a game-log row.
+ *
+ * The log comes from the Data API, which holds PROCESSED FINALS -- so the game
+ * he is playing right now has no row, and a badge on the rows that do exist can
+ * never fire (review on #268). The row is synthesized from the scoreboard event
+ * instead: opponent, kickoff, week and the live score, with every stat cell
+ * empty because no play of it has been processed yet. When the processor lands
+ * the final, the API's own row takes its place -- same `game_id`, so it is
+ * swapped, never duplicated.
+ */
+export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>): PlayerGameRow | null {
+    const comp = event.competitions?.[0];
+    const mine = comp?.competitors?.find((c) => teamIds.has(String(c.team?.id ?? '')));
+    const them = comp?.competitors?.find((c) => c !== mine);
+    if (!mine || !them) return null;
+    return {
+        from_scoreboard: true,
+        game_id: String(event.id),
+        season: Number(event.season?.year) || undefined,
+        week: event.week?.number ?? null,
+        season_type: String(event.season?.type ?? ''),
+        game_date: comp?.date ?? event.date ?? null,
+        team_id: String(mine.team?.id ?? ''),
+        opponent_id: String(them.team?.id ?? ''),
+        // the scoreboard's short name, which is what the API's own rows carry
+        opponent: them.team?.shortDisplayName ?? them.team?.displayName ?? null,
+        home_away: mine.homeAway ?? null,
+        team_score: numberOrNull(mine.score),
+        opponent_score: numberOrNull(them.score),
+        result: null,
+    };
+}
+
+/** A game log plus what may be said about the game in it that is in progress. */
+export interface LivePlayerGames {
+    /** ESPN event id -> the live claim, and (admin only) the QA verdict */
+    live: Record<string, LiveGameStatus>
+    /** the rows to render: the API's, with a synthetic row on top for a live game */
+    games: PlayerGameRow[]
+}
+
+/**
+ * The game log to render, and the in-progress games in it.
  *
  * Cheap by construction: a past season can have no live game, so it never
  * leaves this function; the current season costs one KV-cached scoreboard read.
@@ -99,21 +143,34 @@ export interface LiveGameStatus {
  * is the processing run the game page would do anyway and never a second one.
  * Every hop fails open, because a badge is never worth a blank page.
  */
-export async function liveGameStatuses(
-    espnIds: string[], season: number, league: League, withQa: boolean = false,
-): Promise<Record<string, LiveGameStatus>> {
-    if (season !== CURRENT_YEAR || espnIds.length === 0) return {};
-    let live: Set<string>;
+export async function livePlayerGames(
+    games: PlayerGameRow[], espnGameIds: Record<string, string>, teamIds: (string | number)[],
+    season: number, league: League, withQa: boolean = false,
+): Promise<LivePlayerGames> {
+    const none: LivePlayerGames = { live: {}, games };
+    if (season !== CURRENT_YEAR) return none;
+    let board: ESPNScheduleEvent[];
     try {
-        const board = await getCurrentScoreboard(true, false, league);
-        live = new Set(board.filter(inProgress).map((g) => String(g.id)));
+        board = (await getCurrentScoreboard(true, false, league)).filter(inProgress);
     } catch {
-        return {}; // no scoreboard, no live claim
+        return none; // no scoreboard, no live claim
     }
+    const liveIds = new Set(board.map((g) => String(g.id)));
+    const logged = new Set(games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[]);
+    // At most one: a team plays one game at a time, and a traded player's other
+    // team is not playing this one.
+    const mine = new Set(teamIds.map(String).filter((id) => id !== ''));
+    const extra = mine.size === 0 ? null : (board
+        .filter((e) => !logged.has(String(e.id)))
+        .map((e) => liveGameRow(e, mine))
+        .find(Boolean) ?? null);
+
+    const ids = [...logged].filter((id) => liveIds.has(id));
+    if (extra) ids.push(String(extra.game_id));
     const out: Record<string, LiveGameStatus> = {};
-    const ids = [...new Set(espnIds)].filter((id) => live.has(id));
     for (const id of ids) out[id] = { live: true };
-    if (!withQa) return out;
+    const rows = extra ? [extra, ...games] : games;
+    if (!withQa || ids.length === 0) return { live: out, games: rows };
     await Promise.all(ids.map(async (id) => {
         try {
             // the game page's live-game maxAge; the cache KEY is TTL-independent
@@ -123,5 +180,5 @@ export async function liveGameStatuses(
             console.warn(`live badge: no processed payload for ${league} ${id}: ${e}`);
         }
     }));
-    return out;
+    return { live: out, games: rows };
 }

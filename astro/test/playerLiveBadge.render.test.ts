@@ -63,8 +63,39 @@ const games = cfb.games.data.map((g: any, i: number) => (i === 0
     : { ...g, season: CURRENT_YEAR }));
 const identity = { ...cfb.identity, seasons: [CURRENT_YEAR], latest_season: CURRENT_YEAR };
 
+/**
+ * The in-progress game that prompted the review: the DB holds processed finals,
+ * so the game the player is in RIGHT NOW is not in his log at all and a badge
+ * on the rows that are could never fire. This is the shape the scoreboard hands
+ * over for one (the live game was Aaron Philo's, athlete 5132812, event
+ * 401856687); the competitors are the fixture player's team and an opponent.
+ */
+const LIVE_EVENT = {
+    id: '401856687',
+    date: `${CURRENT_YEAR}-09-20T23:30:00Z`,
+    season: { year: CURRENT_YEAR, type: 2 },
+    week: { number: 4 },
+    competitions: [{
+        date: `${CURRENT_YEAR}-09-20T23:30:00Z`,
+        status: { type: { state: 'in', name: 'STATUS_IN_PROGRESS', completed: false } },
+        competitors: [
+            { homeAway: 'home', score: '17', team: { id: '183', displayName: 'Syracuse Orange', shortDisplayName: 'Syracuse' } },
+            { homeAway: 'away', score: '14', team: { id: '52', displayName: 'Florida State Seminoles', shortDisplayName: 'Florida State' } },
+        ],
+    }],
+};
+/** the same event, finished -- ESPN's own word for it */
+const FINAL_EVENT = {
+    ...LIVE_EVENT,
+    competitions: [{
+        ...LIVE_EVENT.competitions[0],
+        status: { type: { state: 'post', name: 'STATUS_FINAL', completed: true } },
+    }],
+};
+
 /** what the mocked hops answer; each test sets the two lines it cares about */
-const world: { live: string[], payload: any, fail: boolean } = { live: [], payload: {}, fail: false };
+const world: { live: string[], board: any[], payload: any, fail: boolean } =
+    { live: [], board: [], payload: {}, fail: false };
 const processed = vi.fn();
 
 vi.mock('../src/resources/sdv', async (orig) => ({
@@ -79,9 +110,12 @@ vi.mock('../src/resources/sdv', async (orig) => ({
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
-    getCurrentScoreboard: async () => world.live.map((id) => ({
-        id, competitions: [{ status: { type: { state: 'in', name: 'STATUS_IN_PROGRESS', completed: false } } }],
-    })),
+    getCurrentScoreboard: async () => [
+        ...world.live.map((id) => ({
+            id, competitions: [{ status: { type: { state: 'in', name: 'STATUS_IN_PROGRESS', completed: false } } }],
+        })),
+        ...world.board,
+    ],
 }));
 vi.mock('../src/resources/python', async (orig) => ({
     ...(await orig<typeof import('../src/resources/python')>()),
@@ -97,6 +131,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
     world.live = [];
+    world.board = [];
     world.payload = {};
     world.fail = false;
     processed.mockClear();
@@ -153,7 +188,7 @@ describe('the live badge is public and generic', () => {
         const cells = resultCells(html);
         expect(cells[0]).toContain('<span class="badge bg-danger ms-1" title="This game is in progress">Live</span>');
         // a final row renders EXACTLY the markup it rendered before this change
-        expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1">W 31-28</td>');
+        expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="hulk-text-green">W</span> 31-28</td>');
         expect(cells.filter((c) => c.includes('>Live<'))).toHaveLength(1);
     }, 60_000);
 
@@ -173,7 +208,61 @@ describe('the live badge is public and generic', () => {
         expect(processed).not.toHaveBeenCalled();
         // the pre-change markup of every Result cell, unchanged
         expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1">— 14-10</td>');
-        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1">W 31-28</td>');
+        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="hulk-text-green">W</span> 31-28</td>');
+    }, 60_000);
+});
+
+describe('the game being played right now is not in the log, so it is put there', () => {
+    /** the `<tr>` blocks of the game log, header dropped */
+    const logRows = (html: string): string[] =>
+        html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2);
+
+    test('an in-progress game for his team becomes the top row, with the Live badge', async () => {
+        world.board = [LIVE_EVENT];
+        const html = await renderPage();
+        const rows = logRows(html);
+        // it leads the log, and it is marked as not having come from the API
+        expect(rows[0]).toContain('data-live-row="true"');
+        expect(rows.filter((r) => r.includes('data-live-row')).length).toBe(1);
+        expect(rows.length).toBe(games.length + 1);
+        // opponent, a link to the game page, and the live score
+        expect(rows[0]).toContain('Florida State');
+        expect(rows[0]).toContain('href="/game/401856687"');
+        expect(rows[0]).toContain('17-14');
+        expect(rows[0]).toContain('<span class="badge bg-danger ms-1" title="This game is in progress">Live</span>');
+        // nothing of it has been processed, so every stat cell is an em dash
+        const cells = [...rows[0].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
+        expect(cells.slice(-5)).toEqual(['—', '—', '—', '—', '—']);
+        // and a stored row is untouched by any of it
+        expect(rows[1]).not.toContain('data-live-row');
+        expect(rows[2]).toContain('<span class="hulk-text-green">W</span> 31-28');
+    }, 60_000);
+
+    test('a finished game is left to the processor: no synthetic row', async () => {
+        // ESPN says `post`, so the DB will carry it within the hour; inventing a
+        // row for it would duplicate that one and claim numbers nobody computed.
+        world.board = [FINAL_EVENT];
+        const html = await renderPage();
+        expect(html).not.toContain('data-live-row');
+        expect(html).not.toContain('>Live<');
+        expect(logRows(html).length).toBe(games.length);
+    }, 60_000);
+
+    test('an in-progress game neither of his teams is in produces nothing', async () => {
+        const { liveGameRow } = await import('../src/utils/liveQa');
+        expect(liveGameRow(LIVE_EVENT as any, new Set(['99']))).toBeNull();
+        expect(liveGameRow(LIVE_EVENT as any, new Set(['183']))).toMatchObject({
+            game_id: '401856687', opponent_id: '52', opponent: 'Florida State',
+            home_away: 'home', team_score: 17, opponent_score: 14, result: null,
+        });
+    });
+
+    test('an admin gets the QA verdict on the synthetic row too', async () => {
+        world.board = [LIVE_EVENT];
+        world.payload = { qa: QA_FULL };
+        const html = await renderPage({ adminAuthed: true });
+        expect(logRows(html)[0]).toContain('data-status-detail="live-qa"');
+        expect(processed.mock.calls[0][0]).toBe('401856687');
     }, 60_000);
 });
 

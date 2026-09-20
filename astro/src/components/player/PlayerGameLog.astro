@@ -37,6 +37,17 @@
  *   beside the number as small faded `94th %ile`, the Binion box score's way of
  *   printing one (review on #267). That one works in
  *   week 1, so it is the default whenever the player's own season is too short.
+ *
+ * One row can come from somewhere else entirely. The API serves processed
+ * FINALS, so a game being played right now has no row at all -- and the Live
+ * badge on the rows it does have could never fire (review on #268). When the
+ * scoreboard says one of the player's teams is playing, `livePlayerGames`
+ * synthesizes that row from the scoreboard event and puts it on top: opponent,
+ * kickoff, live score, the Live badge, and an em dash in every stat cell,
+ * because no play of it has been processed yet. It carries `data-live-row` so
+ * it is never mistaken for a stored row, and the API's own row replaces it on
+ * the next render after the processor lands the final. Its nulls are also left
+ * out of the shading ranks, so an unplayed game cannot come out purple.
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
@@ -172,7 +183,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
         <tbody>
             {games.map((g: PlayerGameRow) => (
                 <Fragment>
-                <tr>
+                <tr data-live-row={g.from_scoreboard === true ? 'true' : undefined}>
                     <td class="text-left text-nowrap numeral" colspan="1">
                         {kickoff(g) === null
                             ? (gameHref(g) ? <a href={gameHref(g)}>—</a> : '—')

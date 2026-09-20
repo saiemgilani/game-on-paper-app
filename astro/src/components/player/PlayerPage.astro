@@ -42,9 +42,9 @@ import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { espnGameId, formatHeight, playerPath, totalGameLog } from '../../utils/players';
+import { formatHeight, playerPath, totalGameLog } from '../../utils/players';
 import { cfbTeamIdByName } from '../../utils/teams';
-import { liveGameStatuses } from '../../utils/liveQa';
+import { livePlayerGames } from '../../utils/liveQa';
 
 interface Props {
     player: SDVPlayer
@@ -59,19 +59,9 @@ const cfg = LEAGUES[league];
 
 const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
 
+// the summary tiles count what was PLAYED, so they sum the API's rows and
+// never the synthetic live row below
 const totals = totalGameLog(games);
-// Which of this season's games are being played right now (plan P5). Returns
-// {} without a fetch for any season but the current one, so a historical page
-// renders byte-for-byte what it rendered before this existed -- and the career
-// view makes no game-log read at all, so it has nothing in progress to badge.
-// The QA half is fetched only for an admin, because only an admin is shown it.
-// Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
-// badge can be up to that stale while a game runs. Left alone deliberately --
-// shortening the whole page's policy for one row is the wrong trade; if the
-// badge has to be live, it becomes a fetch on the client, not a cache change.
-const live = season === null ? {} : await liveGameStatuses(
-    games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[],
-    season, league, Astro.locals.adminAuthed === true);
 // the rows the header describes: the selected season's, or the latest season's
 // in the career view, primary team-season first -- so a traded player's header
 // names the team he actually played most of that season for
@@ -87,6 +77,22 @@ const teamIds = [...new Set(headerRows.map((r) => r.team_id).filter(Boolean))] a
 // stays unnamed rather than naming a school he had not joined yet (CodeRabbit on #267)
 const identityTeam = season === null ? player : null;
 const headerTeamId = teamIds[0] ?? identityTeam?.team_id ?? null;
+// Which of this season's games are being played right now (plan P5), and the
+// game log to render: the API holds processed finals, so a game in progress is
+// not among them and gets a synthetic row on top of the log. Returns the rows
+// untouched without a fetch for any season but the current one, so a historical
+// page renders byte-for-byte what it rendered before this existed -- and the
+// CAREER view has no game log to add one to, so it does not ask. The QA half is
+// fetched only for an admin, because only an admin is shown it.
+// Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
+// badge can be up to that stale while a game runs. Left alone deliberately --
+// shortening the whole page's policy for one row is the wrong trade; if the
+// badge has to be live, it becomes a fetch on the client, not a cache change.
+const { live, games: gameLog } = season === null
+    ? { live: {} as Record<string, any>, games }
+    : await livePlayerGames(
+        games, espnGameIds, [...teamIds, player.team_id].filter(Boolean) as (string | number)[],
+        season, league, Astro.locals.adminAuthed === true);
 const realTeamName = String(headerRows[0]?.pos_team ?? identityTeam?.team ?? '');
 // the team beside the jersey number is a team NAME, so the meme list applies to it
 // exactly as it does to his own (review on #267)
@@ -243,10 +249,10 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={games} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} live={live} />
+                <PlayerGameLog games={gameLog} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} live={live} />
                 {failed.games
                     ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
-                    : games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
+                    : gameLog.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
             </Fragment>
         </Panel>
 
