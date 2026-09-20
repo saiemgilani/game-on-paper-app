@@ -17,7 +17,7 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import FlagOverrideDropdown from '../dropdowns/FlagOverrideDropdown.svelte';
 import { isFeatureEnabled, PREVIEW_FLAG_NAMES } from '../../utils/features';
 import { adminToolsHref, currentView, SOURCE_PARAM } from '../../utils/adminView';
-import { compareSources, type SourceComparison } from '../../utils/sourceCompare';
+import { ALIGNMENT_LABEL, compareSources, type SourceComparison } from '../../utils/sourceCompare';
 import { retrieveGameSources, retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
 import { getGameCacheConfig } from '../../utils/config';
 import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../utils/misc';
@@ -68,9 +68,9 @@ if (sourceSwitch && game && id && selectedSource !== 'espn') {
             retrieveProcessedGame(id, config.maxAge || 30, league),
             new Promise<never>((_, reject) =>
                 setTimeout(() => reject(new Error('source compare: ESPN side timed out')), COMPARE_TIMEOUT_MS)),
-        ]));
+        ]), provenance?.source ?? selectedSource);
     } catch {
-        comparison = compareSources(game, null);
+        comparison = compareSources(game, null, provenance?.source ?? selectedSource);
     }
 }
 const teamName = (teamId: string) =>
@@ -117,10 +117,13 @@ const cell = (value: number | null, fixed: number, percent?: boolean) =>
             <Panel id="source-compare" title="Source Comparison" show={false} class="mb-md-3">
                 <p class="text-small" slot="panel-subtitle">
                     {selectedSource} against ESPN, on the aggregates the processor already computed.
-                    Plays: {comparison.playsSelected} against {comparison.playsEspn}.
-                    {comparison.firstDifferingPlayId
-                        ? ` First differing play id: ${comparison.firstDifferingPlayId}.`
-                        : ' Every play id matches in order.'}
+                    Plays: {comparison.playsSelected} against {comparison.playsEspn}, {ALIGNMENT_LABEL[comparison.alignment]}.
+                    {comparison.firstDifference
+                        ? ` First difference: ${comparison.firstDifference}.`
+                        : ' Every play lines up in order.'}
+                    {comparison.unmatchedSelected || comparison.unmatchedEspn
+                        ? ` Unmatched: ${comparison.unmatchedSelected} here, ${comparison.unmatchedEspn} on ESPN.`
+                        : ''}
                 </p>
                 <div class="row" slot="panel-body">
                     <div class="table-responsive">

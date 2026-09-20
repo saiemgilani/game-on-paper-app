@@ -173,9 +173,9 @@ describe('the headless minting script', () => {
 });
 
 describe('the compare table', () => {
-    const payload = (teamFactor: number, playIds: string[]) => ({
+    const payload = (teamFactor: number, plays: any[]) => ({
         teamInfo: { away: { id: '13' }, home: { id: '7' } },
-        plays: playIds.map((id) => ({ id })),
+        plays: plays.map((p) => (typeof p === 'string' ? { id: p } : p)),
         advBoxScore: {
             team: [
                 { pos_team: 13, EPA_plays: 60 * teamFactor, EPA_per_play: 0.1, EPA_explosive_rate: 0.12 },
@@ -197,19 +197,78 @@ describe('the compare table', () => {
         expect(away.rows[2].selected).toBeCloseTo(45);  // 0.45 -> 45%
         expect(away.rows[2].delta).toBe(0);
         expect(c.teams[1].rows.every((r) => r.delta === 0)).toBe(true);
-        expect(c.firstDifferingPlayId).toBeNull();
+        expect(c.firstDifference).toBeNull();
     });
 
     test('a missing ESPN side yields no delta rather than a wrong one', () => {
         const c = compareSources(payload(1, ['a']), null);
         expect(c.teams[0].rows.every((r) => r.espn === null && r.delta === null)).toBe(true);
         expect(c.playsEspn).toBe(0);
-        expect(c.firstDifferingPlayId).toBe('a');
+        expect(c.firstDifference).toBe('play id a');
     });
 
-    test('the first play id that disagrees is reported, in order', () => {
+    test('the first play id that disagrees is reported, in order, ESPN to ESPN', () => {
         const c = compareSources(payload(1, ['a', 'b', 'c']), payload(1, ['a', 'x', 'c']));
-        expect(c.firstDifferingPlayId).toBe('b');
+        expect(c.alignment).toBe('id');
+        expect(c.firstDifference).toBe('play id b');
         expect(c.playsSelected).toBe(3);
+    });
+});
+
+describe('aligning two feeds that do not share play ids', () => {
+    // The reason this exists: Shield/CBS/Yahoo/Fox mint their own play ids, so
+    // an id zip calls every play different and the panel says nothing. The
+    // composite key uses only fields the source contract guarantees every
+    // adapter emits (contract.py PLAY_FIELDS, required/value level).
+    const play = (period: number, clock: string, posTeam: number, down: number, distance: number, id: string) =>
+        ({ id, period, clock: { displayValue: clock }, pos_team: posTeam, start: { down, distance } });
+    const game = (plays: any[]) => ({ teamInfo: { away: { id: '13' }, home: { id: '7' } }, plays, advBoxScore: {} }) as any;
+
+    const SHIELD = [
+        play(1, '15:00', 13, 1, 10, 's1'),
+        play(1, '14:22', 13, 2, 7, 's2'),
+        play(2, '09:41', 7, 3, 4, 's3'),
+    ];
+    const ESPN = [
+        play(1, '15:00', 13, 1, 10, 'e1'),
+        play(1, '14:22', 13, 2, 7, 'e2'),
+        play(2, '09:41', 7, 3, 4, 'e3'),
+    ];
+
+    test('the same plays line up despite every id differing', () => {
+        const c = compareSources(game(SHIELD), game(ESPN), 'shield');
+        expect(c.alignment).toBe('composite');
+        expect(c.firstDifference).toBeNull();
+        expect(c.unmatchedSelected).toBe(0);
+        expect(c.unmatchedEspn).toBe(0);
+        // the same payloads on the id path would call the first play different
+        expect(compareSources(game(SHIELD), game(ESPN), 'espn').firstDifference).toBe('play id s1');
+    });
+
+    test('a real divergence is still reported, labelled without an id', () => {
+        const c = compareSources(game(SHIELD), game([ESPN[0], play(1, '14:22', 13, 2, 9, 'e2'), ESPN[2]]), 'shield');
+        expect(c.firstDifference).toBe('Q1 14:22, 2nd & 7, team 13');
+        expect(c.unmatchedSelected).toBe(1);
+        expect(c.unmatchedEspn).toBe(1);
+    });
+
+    test('a play ESPN does not carry counts as unmatched, not as a whole-game mismatch', () => {
+        const c = compareSources(game(SHIELD), game([ESPN[0], ESPN[2]]), 'shield');
+        expect(c.unmatchedSelected).toBe(1);
+        expect(c.unmatchedEspn).toBe(0);
+    });
+
+    test('a play missing a key field falls back to its ordinal within the period', () => {
+        const partial = [play(1, '15:00', 13, 1, 10, 's1'), { id: 's2', period: 1 }];
+        const c = compareSources(game(partial), game([ESPN[0], { id: 'e2', period: 1 }]), 'shield');
+        expect(c.firstDifference).toBeNull();
+        expect(compareSources(game(partial), game([ESPN[0]]), 'shield').firstDifference).toBe('Q1 play 2');
+    });
+
+    test('a failover to ESPN goes back to ids: the served source decides, not the requested one', () => {
+        // ?source=shield that fell back means both payloads ARE ESPN
+        const c = compareSources(game(ESPN), game(ESPN), 'espn');
+        expect(c.alignment).toBe('id');
+        expect(c.firstDifference).toBeNull();
     });
 });

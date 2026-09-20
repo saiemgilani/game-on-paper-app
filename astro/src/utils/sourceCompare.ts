@@ -5,10 +5,14 @@
  * Nothing is recomputed from the plays here -- every number is read straight
  * out of the advanced box score both payloads carry, so a difference in this
  * table is a difference in the SOURCE, not in this file's arithmetic. The play
- * count and the first play id that disagrees say whether the two feeds even
+ * count and the first play the two feeds disagree on say whether they even
  * describe the same game; a play-by-play diff view is deliberately not here.
+ *
+ * Shared number helpers live in `utils/misc.ts`; only the compare-specific
+ * logic is in this file.
  */
 import type { ProcessedGame } from '../resources/python';
+import { finiteNumber, getNumberWithOrdinal, toPercent } from './misc';
 
 export interface CompareRow {
     label: string;
@@ -22,20 +26,26 @@ export interface CompareRow {
     delta: number | null;
 }
 
+/** How the two play lists were lined up. See `playKeys`. */
+export type PlayAlignment = 'id' | 'composite';
+
+export const ALIGNMENT_LABEL: Record<PlayAlignment, string> = {
+    id: 'aligned by play id',
+    composite: 'aligned by period/clock/possession',
+};
+
 export interface SourceComparison {
     /** one block per team, in the payload's own column order */
     teams: { id: string; rows: CompareRow[] }[];
     playsSelected: number;
     playsEspn: number;
-    /** the first play id the two payloads disagree on, in order */
-    firstDifferingPlayId: string | null;
+    alignment: PlayAlignment;
+    /** the first play the two payloads disagree on, labelled for the alignment in use */
+    firstDifference: string | null;
+    /** plays with no counterpart on the other side, under that alignment */
+    unmatchedSelected: number;
+    unmatchedEspn: number;
 }
-
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-// The box score stores rates as fractions and every team table renders them
-// `100.0 * rate` with a % (TeamMetricsTable). Scale here so the delta column is
-// in percentage points rather than thousandths.
-const pct = (v: unknown): number | null => { const n = num(v); return n === null ? null : n * 100; };
 
 const row = (label: string, fixed: number, selected: number | null, espn: number | null, percent = false): CompareRow => ({
     label, fixed, percent, selected, espn,
@@ -54,7 +64,67 @@ function teamRows(game: ProcessedGame | null | undefined, teamId: string) {
     };
 }
 
-export function compareSources(selected: ProcessedGame, espn: ProcessedGame | null): SourceComparison {
+/**
+ * Line the two play lists up.
+ *
+ * Play ids are source-local: Shield, CBS, Yahoo, Fox and NCAA each mint their
+ * own, so zipping two feeds on `id` reports every play as different and the
+ * panel says nothing. Ids are only a key when BOTH payloads came from ESPN --
+ * which includes a `?source=` request that failed over (`provenance.source`).
+ *
+ * Otherwise the key is composite, and built only from fields the source
+ * contract guarantees every adapter emits at `required`/`value` level
+ * (sportsdataverse/football/sources/contract.py `PLAY_FIELDS`):
+ * `period.number`, `clock.displayValue`, `start.team.id`, `start.down` and
+ * `start.distance`. A play missing any of those falls back to its ordinal
+ * position within its period, which still lines up as long as both feeds carry
+ * the same plays in the same order.
+ */
+function playKeys(plays: any[], alignment: PlayAlignment): { key: string; label: string }[] {
+    const seenInPeriod = new Map<string, number>();
+    return plays.map((p) => {
+        if (alignment === 'id') {
+            const id = String(p?.id ?? '');
+            return { key: id, label: `play id ${id}` };
+        }
+        const period = finiteNumber(p?.period ?? p?.start?.period);
+        const clock = p?.clock?.displayValue ?? null;
+        const posTeam = p?.pos_team ?? p?.start?.pos_team?.id ?? null;
+        const down = finiteNumber(p?.start?.down ?? p?.down);
+        const distance = finiteNumber(p?.start?.distance ?? p?.distance);
+        const periodKey = period === null ? '?' : String(period);
+        const ordinal = (seenInPeriod.get(periodKey) ?? 0) + 1;
+        seenInPeriod.set(periodKey, ordinal);
+        if (period === null || !clock || posTeam == null) {
+            return { key: `p${periodKey}#${ordinal}`, label: `Q${periodKey} play ${ordinal}` };
+        }
+        const downDistance = down === null || distance === null
+            ? '' : `, ${getNumberWithOrdinal(down)} & ${distance}`;
+        return {
+            key: [period, clock, String(posTeam), down ?? '', distance ?? ''].join('|'),
+            label: `Q${period} ${clock}${downDistance}, team ${posTeam}`,
+        };
+    });
+}
+
+/** How many of `a`'s keys have no counterpart left in `b` (multiset difference). */
+function unmatched(a: { key: string }[], b: { key: string }[]): number {
+    const counts = new Map<string, number>();
+    for (const { key } of b) counts.set(key, (counts.get(key) ?? 0) + 1);
+    let n = 0;
+    for (const { key } of a) {
+        const left = counts.get(key) ?? 0;
+        if (left > 0) counts.set(key, left - 1); else n++;
+    }
+    return n;
+}
+
+export function compareSources(
+    selected: ProcessedGame,
+    espn: ProcessedGame | null,
+    /** the feed that actually produced `selected` (provenance.source), not the one requested */
+    servedSource: string = 'espn',
+): SourceComparison {
     // Column order comes from the payload being displayed, so the table lines
     // up with every other team table on the page (away, home).
     const teamIds = [selected.teamInfo?.away?.id, selected.teamInfo?.home?.id]
@@ -66,28 +136,33 @@ export function compareSources(selected: ProcessedGame, espn: ProcessedGame | nu
         return {
             id,
             rows: [
-                row('Plays', 0, num(a.team?.EPA_plays), num(b.team?.EPA_plays)),
-                row('EPA/Play', 2, num(a.team?.EPA_per_play), num(b.team?.EPA_per_play)),
-                row('Success Rate', 1, pct(a.situational?.EPA_success_rate), pct(b.situational?.EPA_success_rate), true),
-                row('Explosive Play Rate', 1, pct(a.team?.EPA_explosive_rate), pct(b.team?.EPA_explosive_rate), true),
-                row('Turnovers', 0, num(a.turnover?.turnovers), num(b.turnover?.turnovers)),
-                row('Drives', 0, num(a.drives?.drives), num(b.drives?.drives)),
+                row('Plays', 0, finiteNumber(a.team?.EPA_plays), finiteNumber(b.team?.EPA_plays)),
+                row('EPA/Play', 2, finiteNumber(a.team?.EPA_per_play), finiteNumber(b.team?.EPA_per_play)),
+                row('Success Rate', 1, toPercent(a.situational?.EPA_success_rate), toPercent(b.situational?.EPA_success_rate), true),
+                row('Explosive Play Rate', 1, toPercent(a.team?.EPA_explosive_rate), toPercent(b.team?.EPA_explosive_rate), true),
+                row('Turnovers', 0, finiteNumber(a.turnover?.turnovers), finiteNumber(b.turnover?.turnovers)),
+                row('Drives', 0, finiteNumber(a.drives?.drives), finiteNumber(b.drives?.drives)),
             ],
         };
     });
 
-    const selectedPlays = selected.plays ?? [];
-    const espnPlays = espn?.plays ?? [];
-    let firstDifferingPlayId: string | null = null;
-    for (let i = 0; i < Math.max(selectedPlays.length, espnPlays.length); i++) {
-        const a = selectedPlays[i]?.id, b = espnPlays[i]?.id;
-        if (String(a ?? '') !== String(b ?? '')) { firstDifferingPlayId = String(a ?? b ?? ''); break; }
+    const alignment: PlayAlignment = servedSource === 'espn' ? 'id' : 'composite';
+    const selectedKeys = playKeys(selected.plays ?? [], alignment);
+    const espnKeys = playKeys(espn?.plays ?? [], alignment);
+
+    let firstDifference: string | null = null;
+    for (let i = 0; i < Math.max(selectedKeys.length, espnKeys.length); i++) {
+        const a = selectedKeys[i], b = espnKeys[i];
+        if (a?.key !== b?.key) { firstDifference = (a ?? b)!.label; break; }
     }
 
     return {
         teams,
-        playsSelected: selectedPlays.length,
-        playsEspn: espnPlays.length,
-        firstDifferingPlayId,
+        playsSelected: selectedKeys.length,
+        playsEspn: espnKeys.length,
+        alignment,
+        firstDifference,
+        unmatchedSelected: unmatched(selectedKeys, espnKeys),
+        unmatchedEspn: unmatched(espnKeys, selectedKeys),
     };
 }
