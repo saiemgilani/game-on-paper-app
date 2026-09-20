@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
-    numberOrNull, percentileOf, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    totalGameLog, type SeasonRow,
+    percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
+    totalGameLog, weekLabel, type SeasonRow,
 } from '../src/utils/players';
+import { numberOrNull } from '../src/utils/misc';
 
 // The arithmetic the player pages do over the Data API's player-keyed reads,
 // against the REAL bodies those routes return (captured 2026-09-19 from the
@@ -159,5 +160,42 @@ describe('formatting', () => {
     test('numberOrNull keeps 0 and rejects the API\'s empty markers', () => {
         expect(numberOrNull(0)).toBe(0);
         for (const v of [null, undefined, '', 'NA', 'x', NaN]) expect(numberOrNull(v), String(v)).toBeNull();
+    });
+});
+
+describe('the week cell', () => {
+    // A postseason `week` restarts at 1 in BOTH leagues, so the bare number
+    // labels a bowl game / a Super Bowl "1". The CFB fixture carries exactly
+    // that row, which is why this is a contract and not a hypothetical.
+    test('a postseason row is named, never numbered', () => {
+        const post = cfb.games.data.find((g: any) => g.season_type === 'postseason');
+        expect(post.week).toBe(1);
+        expect(weekLabel('cfb', post.season_type, post.week)).toBe('Postseason');
+        expect(weekLabel('nfl', 'POST', 1)).toBe('Wild Card');
+        expect(weekLabel('nfl', 'POST', 5)).toBe('Super Bowl');
+        // a round the league has not defined still says postseason, not "1"
+        expect(weekLabel('nfl', 'POST', 9)).toBe('Postseason');
+    });
+
+    test('a regular-season row is its number, and an absent week an em dash', () => {
+        expect(weekLabel('cfb', 'regular', 7)).toBe('7');
+        expect(weekLabel('nfl', 'REG', 18)).toBe('18');
+        expect(weekLabel('nfl', 'REG', null)).toBe('—');
+    });
+});
+
+describe('one href decides every player link', () => {
+    // The leaderboards, the usage box and the advanced box score all name a
+    // player; every one of them asks this, so the flag and the id shape are
+    // checked once rather than per call site.
+    test('the flag and the id shape are both part of the decision', () => {
+        expect(playerHref('4433971', { league: 'cfb', preview: true })).toBe('/players/4433971');
+        expect(playerHref('4433971', { league: 'cfb', preview: true }, 2023)).toBe('/players/4433971?season=2023');
+        expect(playerHref('4433971', { league: 'cfb' })).toBeNull();          // no preview cookie
+        expect(playerHref(null, { league: 'cfb', preview: true })).toBeNull();
+        expect(playerHref('4433971.0', { league: 'cfb', preview: true })).toBeNull();
+        // the NFL leaderboards key on gsis; the route 301s it to the ESPN id
+        expect(playerHref('00-0031381', { league: 'nfl', preview: true })).toBe('/nfl/players/00-0031381');
+        expect(playerHref('00-0031381', { league: 'cfb', preview: true })).toBeNull();
     });
 });

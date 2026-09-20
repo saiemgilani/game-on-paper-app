@@ -17,9 +17,10 @@
  *    plays, which would silently publish a different number.
  */
 
-import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
+import { NFL_POST_LABELS, SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
+import { isFeatureEnabled } from './features';
 import { leaguePath, type League } from './league';
-import { roundNumber } from './misc';
+import { numberOrNull, roundNumber } from './misc';
 
 /** The season-table categories, in the order the page shows them. */
 export const PLAYER_CATEGORIES = ['passing', 'rushing', 'receiving'] as const;
@@ -32,15 +33,20 @@ export const PLAYER_NAME_FIELD: Record<PlayerCategory, string> = {
     receiving: 'receiver_player_name',
 };
 
-/** `/splits` rows, in the order they are shown; `all` is the population the rest partition. */
-export const PLAYER_SPLITS: { key: string; label: string; title: string }[] = [
-    { key: 'all', label: 'All plays', title: 'Every play from scrimmage on a numbered down carrying this player' },
+/**
+ * `/splits` rows, in the order they are shown; `all` is the population the rest
+ * partition. Only the two down-type splits carry a definition -- every other
+ * label says what it is -- and it renders as an `<abbr title>`, which is how
+ * the rest of the site offers hover copy.
+ */
+export const PLAYER_SPLITS: { key: string; label: string; title?: string }[] = [
+    { key: 'all', label: 'All plays' },
     { key: 'standard_downs', label: 'Standard downs', title: '1st down, 2nd and short of 8, 3rd or 4th and short of 5' },
     { key: 'passing_downs', label: 'Passing downs', title: '2nd and 8 or more, 3rd or 4th and 5 or more' },
-    { key: 'red_zone', label: 'Red zone', title: 'Snaps inside the opponent 20' },
-    { key: 'first_half', label: '1st half', title: 'Plays in the first half' },
-    { key: 'second_half', label: '2nd half', title: 'Plays in the second half' },
-    { key: 'overtime', label: 'Overtime', title: 'Plays in overtime' },
+    { key: 'red_zone', label: 'Red zone' },
+    { key: 'first_half', label: '1st half' },
+    { key: 'second_half', label: '2nd half' },
+    { key: 'overtime', label: 'Overtime' },
 ];
 
 /** The two splits that partition `all` by down type, and the three that partition it by period. */
@@ -71,6 +77,37 @@ export const isGsisId = (id: string): boolean => /^\d{2}-\d{7}$/.test(id);
 /** An ESPN athlete id: digits only. Anything else never reaches the API. */
 export const isEspnAthleteId = (id: string): boolean => /^\d{1,12}$/.test(id);
 
+/**
+ * The href a player's name gets, or null when it gets none -- ONE decision for
+ * every surface that names a player (`components/player/PlayerLink.astro`, the
+ * game page's usage box and its advanced box score). A public link into a gated
+ * namespace is a link to the site's 404, so the flag is part of the decision;
+ * so is the id shape, because an id the API cannot key on would 404 too.
+ */
+export function playerHref(
+    id: string | number | null | undefined,
+    locals: { league?: League; preview?: boolean } | undefined,
+    season?: number | null,
+): string | null {
+    const key = id === null || id === undefined ? '' : String(id);
+    const linkable = isEspnAthleteId(key) || (locals?.league === 'nfl' && isGsisId(key));
+    if (!linkable || !isFeatureEnabled('player-pages', locals)) return null;
+    return playerPath(locals?.league, key, season);
+}
+
+/**
+ * The game log's week cell. A postseason `week` restarts at 1 in both leagues,
+ * so printing it bare labels a bowl game "1": the NFL's five rounds have names
+ * (the same list the schedule dropdown offers), and CFB's postseason is one
+ * bucket, since which bowl a game was is the game page's business.
+ */
+export function weekLabel(league: League, seasonType: string | null | undefined, week: number | null | undefined): string {
+    const post = /^(post|post-?season|3)$/i.test(String(seasonType ?? ''));
+    if (!post) return week === null || week === undefined ? '—' : String(week);
+    if (league !== 'nfl') return 'Postseason';
+    return NFL_POST_LABELS[Number(week) - 1] ?? 'Postseason';
+}
+
 export interface PlayerGameRow {
     game_id?: string | null;
     season?: number;
@@ -100,17 +137,8 @@ export interface PlayerTotals {
     success_rate: number | null;
 }
 
-const n = (v: unknown): number => {
-    const x = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
-    return Number.isFinite(x) ? x : 0;
-};
-
-/** Present-and-finite, so a null EPA column is "no data" rather than a zero. */
-export function numberOrNull(v: unknown): number | null {
-    if (v === null || v === undefined || v === '' || v === 'NA') return null;
-    const x = typeof v === 'number' ? v : parseFloat(String(v));
-    return Number.isFinite(x) ? x : null;
-}
+/** A summable reading of a producer column: absent counts as nothing to add. */
+const n = (v: unknown): number => numberOrNull(v) ?? 0;
 
 /**
  * The season summary tiles: the additive game-log columns, summed, with the two
@@ -192,30 +220,54 @@ export function formatPlayerMetric(category: string, key: string, value: unknown
 }
 
 /**
+ * The three stat-line phrases every surface that prints one uses: the player
+ * page's game log (`PlayerGameLog`) and the game page's advanced box score
+ * (`game/metrics/PlayerBoxScore`), which used to spell its own. One formatter,
+ * so "12/19, 158 yds, 1 TD, 0 INT" reads the same on both. A caller with more
+ * to say (xQBR, air yards, fumbles, the game's longest) appends its own tail.
+ */
+export function passingStatLine(v: { comp?: unknown; att?: unknown; yards?: unknown; tds?: unknown; ints?: unknown }): string {
+    const q = (x: unknown) => numberOrNull(x) ?? 0;
+    return `${q(v.comp)}/${q(v.att)}, ${q(v.yards)} yds, ${q(v.tds)} TD, ${q(v.ints)} INT`;
+}
+
+export function rushingStatLine(v: { carries?: unknown; yards?: unknown; tds?: unknown }): string {
+    const q = (x: unknown) => numberOrNull(x) ?? 0;
+    return `${q(v.carries)} car, ${q(v.yards)} yds, ${q(v.tds)} TD`;
+}
+
+/** `targets` present gives "5/8 tgt"; absent (CFB's box has none) gives "5 rec". */
+export function receivingStatLine(v: { receptions?: unknown; targets?: unknown; yards?: unknown; tds?: unknown }): string {
+    const q = (x: unknown) => numberOrNull(x) ?? 0;
+    const tgt = numberOrNull(v.targets);
+    const caught = tgt === null ? `${q(v.receptions)} rec` : `${q(v.receptions)}/${tgt} tgt`;
+    return `${caught}, ${q(v.yards)} yds, ${q(v.tds)} TD`;
+}
+
+/**
  * The game-log stat line, per league, because the two box shapes share nothing:
  * CFB's rows are ESPN's box (camelCase, string values), the NFL's are nflverse
- * weekly stats (snake_case, numeric). Mirrors the game page's `PlayerBoxScore`
- * stat-line column -- text on the left, one number per numeric cell after it.
+ * weekly stats (snake_case, numeric). Both map onto the three phrases above.
  */
 export function gameStatLine(box: Record<string, unknown> | undefined, league: League): string {
     if (!box) return '';
-    const s = (k: string) => (box[k] === null || box[k] === undefined || box[k] === '' ? null : String(box[k]));
     const q = (k: string) => numberOrNull(box[k]);
     const parts: string[] = [];
     if (league === 'cfb') {
         // ESPN's box is strings, so count on the NUMBER: `"0"` and `"0/0"` are
         // truthy, and printed a phantom "0 car, 0 yds, 0 TD" line for anyone the
         // box listed with an empty category
-        const comp = s('completions/passingAttempts');
-        if (comp && (q('passingAttempts') ?? Number(comp.split('/')[1] ?? 0)) > 0) {
-            parts.push(`${comp}, ${s('passingYards') ?? 0} yds, ${s('passingTouchdowns') ?? 0} TD, ${s('interceptions') ?? 0} INT`);
+        const comp = box['completions/passingAttempts'] ? String(box['completions/passingAttempts']) : null;
+        const [c, a] = (comp ?? '/').split('/');
+        if (comp && (q('passingAttempts') ?? Number(a ?? 0)) > 0) {
+            parts.push(passingStatLine({ comp: c, att: a, yards: box.passingYards, tds: box.passingTouchdowns, ints: box.interceptions }));
         }
-        if ((q('rushingAttempts') ?? 0) > 0) parts.push(`${s('rushingAttempts')} car, ${s('rushingYards') ?? 0} yds, ${s('rushingTouchdowns') ?? 0} TD`);
-        if ((q('receptions') ?? 0) > 0) parts.push(`${s('receptions')} rec, ${s('receivingYards') ?? 0} yds, ${s('receivingTouchdowns') ?? 0} TD`);
+        if ((q('rushingAttempts') ?? 0) > 0) parts.push(rushingStatLine({ carries: box.rushingAttempts, yards: box.rushingYards, tds: box.rushingTouchdowns }));
+        if ((q('receptions') ?? 0) > 0) parts.push(receivingStatLine({ receptions: box.receptions, yards: box.receivingYards, tds: box.receivingTouchdowns }));
         return parts.join('; ');
     }
-    if ((q('attempts') ?? 0) > 0) parts.push(`${q('completions') ?? 0}/${q('attempts')}, ${q('passing_yards') ?? 0} yds, ${q('passing_tds') ?? 0} TD, ${q('interceptions') ?? 0} INT`);
-    if ((q('carries') ?? 0) > 0) parts.push(`${q('carries')} car, ${q('rushing_yards') ?? 0} yds, ${q('rushing_tds') ?? 0} TD`);
-    if ((q('targets') ?? 0) > 0) parts.push(`${q('receptions') ?? 0}/${q('targets')} tgt, ${q('receiving_yards') ?? 0} yds, ${q('receiving_tds') ?? 0} TD`);
+    if ((q('attempts') ?? 0) > 0) parts.push(passingStatLine({ comp: box.completions, att: box.attempts, yards: box.passing_yards, tds: box.passing_tds, ints: box.interceptions }));
+    if ((q('carries') ?? 0) > 0) parts.push(rushingStatLine({ carries: box.carries, yards: box.rushing_yards, tds: box.rushing_tds }));
+    if ((q('targets') ?? 0) > 0) parts.push(receivingStatLine({ receptions: box.receptions, targets: box.targets, yards: box.receiving_yards, tds: box.receiving_tds }));
     return parts.join('; ');
 }
