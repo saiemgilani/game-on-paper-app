@@ -44,7 +44,7 @@ import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColo
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { espnGameId, formatHeight, playerPath, totalGameLog } from '../../utils/players';
 import { cfbTeamIdByName } from '../../utils/teams';
-import { liveGameBadges } from '../../utils/liveQa';
+import { liveGameStatuses } from '../../utils/liveQa';
 
 interface Props {
     player: SDVPlayer
@@ -60,15 +60,18 @@ const cfg = LEAGUES[league];
 const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
 
 const totals = totalGameLog(games);
-// Provenance + QA for the games in progress right now (plan P5). Returns {}
-// without a fetch for any season but the current one -- and the career view
-// makes no game-log read at all, so there is nothing in progress to badge.
+// Which of this season's games are being played right now (plan P5). Returns
+// {} without a fetch for any season but the current one, so a historical page
+// renders byte-for-byte what it rendered before this existed -- and the career
+// view makes no game-log read at all, so it has nothing in progress to badge.
+// The QA half is fetched only for an admin, because only an admin is shown it.
 // Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
 // badge can be up to that stale while a game runs. Left alone deliberately --
 // shortening the whole page's policy for one row is the wrong trade; if the
 // badge has to be live, it becomes a fetch on the client, not a cache change.
-const live = season === null ? {} : await liveGameBadges(
-    games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[], season, league);
+const live = season === null ? {} : await liveGameStatuses(
+    games.map((g) => espnGameId(g, espnGameIds)).filter(Boolean) as string[],
+    season, league, Astro.locals.adminAuthed === true);
 // the rows the header describes: the selected season's, or the latest season's
 // in the career view, primary team-season first -- so a traded player's header
 // names the team he actually played most of that season for

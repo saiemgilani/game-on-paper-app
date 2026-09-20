@@ -6,7 +6,11 @@ import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { CURRENT_YEAR } from '../src/utils/constants';
 import { badgeText, qaBadge } from '../src/utils/liveQa';
 
-// The live provenance/QA badge on the player game log (plan P5, marker 7).
+// The live badge and the QA badge on the player game log (plan P5, marker 7).
+//
+// They are two different claims with two different audiences (review on #268):
+// "this game is being played" is public and generic, and anything about the
+// payload's soundness is admin detail. A preview-cookie holder is not an admin.
 //
 // The `qa` shapes below are the ones GOP #265 actually produces -- copied from
 // its `python/tests/test_qa.py` cases and `docs/qa-payload.md` -- INCLUDING the
@@ -141,20 +145,65 @@ describe('the badge copy, over the shapes #265 produces', () => {
     });
 });
 
-describe('the badge on the game log', () => {
-    test('an in-progress game gets the Live tag and one badge; every other row is untouched', async () => {
+describe('the live badge is public and generic', () => {
+    test('an in-progress game gets the Live pill; every other row is untouched', async () => {
         world.live = [LIVE_ID];
         world.payload = { qa: QA_FULL };
         const html = await renderPage();
         const cells = resultCells(html);
-        // the score stays on the cell's `text-nowrap` line; the badge takes its own,
-        // wrapping, so a long verdict cannot widen the column on a phone
-        expect(cells[0]).toContain('<span class="badge bg-danger ms-1">Live</span>');
-        expect(cells[0]).toContain('<span class="d-block text-small text-muted text-wrap" data-live-qa>');
-        expect(cells[0]).toContain('Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly');
-        expect(cells.filter((c) => c.includes('data-live-qa'))).toHaveLength(1);
+        expect(cells[0]).toContain('<span class="badge bg-danger ms-1" title="This game is in progress">Live</span>');
         // a final row renders EXACTLY the markup it rendered before this change
         expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1">W 31-28</td>');
+        expect(cells.filter((c) => c.includes('>Live<'))).toHaveLength(1);
+    }, 60_000);
+
+    test('the live claim costs one scoreboard read and NO processing run', async () => {
+        // The public reader is shown nothing from the payload, so the payload is
+        // never fetched: the split is a real saving, not just a hidden element.
+        world.live = [LIVE_ID];
+        world.payload = { qa: QA_FULL };
+        const html = await renderPage();
+        expect(html).toContain('>Live<');
+        expect(processed).not.toHaveBeenCalled();
+    }, 60_000);
+
+    test('nothing live: the page is byte-identical, and nothing is processed', async () => {
+        const html = await renderPage();
+        expect(html).not.toContain('>Live<');
+        expect(processed).not.toHaveBeenCalled();
+        // the pre-change markup of every Result cell, unchanged
+        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1">— 14-10</td>');
+        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1">W 31-28</td>');
+    }, 60_000);
+});
+
+describe('the QA badge is admin only', () => {
+    test('a reader is shown nothing about the payload, however bad it is', async () => {
+        world.live = [LIVE_ID];
+        world.payload = { qa: QA_FULL };
+        const reader = await renderPage();
+        expect(reader).toContain('>Live<');
+        for (const leak of ['data-status-detail', 'Served:', 'QA ', 'shield', 'ep.ep_range', 'anomaly']) {
+            expect(reader, leak).not.toContain(leak);
+        }
+    }, 60_000);
+
+    test('a preview-cookie holder is not an admin', async () => {
+        // renderPage always passes `preview: true` -- the pages are behind the
+        // flag -- so this is the distinction that matters in practice.
+        world.live = [LIVE_ID];
+        world.payload = { qa: QA_FULL };
+        expect(await renderPage({ preview: true })).not.toContain('data-status-detail');
+    }, 60_000);
+
+    test('an admin gets the source, the verdict and the rule list', async () => {
+        world.live = [LIVE_ID];
+        world.payload = { qa: QA_FULL };
+        const admin = await renderPage({ adminAuthed: true });
+        expect(admin).toContain('>Live<');
+        expect(admin).toContain('data-status-detail="live-qa"');
+        expect(admin).toContain('Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly');
+        expect(admin).toContain('title="ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
         // ...through the game page's own path, on its own cache key: one call, the live game's
         expect(processed).toHaveBeenCalledTimes(1);
         expect(processed.mock.calls[0][0]).toBe(LIVE_ID);
@@ -163,39 +212,27 @@ describe('the badge on the game log', () => {
     test('no `qa` block: the source alone, and no verdict invented', async () => {
         world.live = [LIVE_ID];
         world.payload = { qa: null };
-        const html = await renderPage();
-        expect(resultCells(html)[0]).toContain('>Served: espn</span>');
-        expect(html).not.toContain('QA ');
+        const admin = await renderPage({ adminAuthed: true });
+        expect(admin).toContain('>Served: espn</span>');
+        expect(admin).not.toContain('QA ok');
     }, 60_000);
 
-    test('the payload is unavailable: the row renders unchanged rather than failing', async () => {
+    test('the payload is unavailable: the row keeps its Live pill and gains nothing else', async () => {
         world.live = [LIVE_ID];
         world.fail = true;
-        const html = await renderPage();
-        expect(html).not.toContain('data-live-qa');
-        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1">— 14-10</td>');
+        const html = await renderPage({ adminAuthed: true });
+        expect(html).not.toContain('data-status-detail');
+        expect(resultCells(html)[0]).toContain('>Live<');
     }, 60_000);
+});
 
-    test('nothing live: the page is byte-identical, and nothing is processed', async () => {
-        const html = await renderPage();
-        expect(html).not.toContain('data-live-qa');
-        expect(processed).not.toHaveBeenCalled();
-        // the pre-change markup of every Result cell, unchanged
-        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1">— 14-10</td>');
-        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1">W 31-28</td>');
-    }, 60_000);
-
-    test('the rule list is admin detail: a tooltip for an admin, nothing for a reader', async () => {
-        world.live = [LIVE_ID];
-        world.payload = { qa: QA_FULL };
-        const reader = await renderPage();
-        expect(reader).toContain('data-live-qa');
-        expect(reader).not.toContain('ep.ep_range');
-        expect(reader).not.toContain('title="ep');
-
-        world.live = [LIVE_ID];
-        world.payload = { qa: QA_FULL };
-        const admin = await renderPage({ adminAuthed: true });
-        expect(admin).toContain('title="ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
-    }, 60_000);
+describe('an admin render never enters Workers Caching', () => {
+    // A HIT never runs the middleware, so an admin variant in Workers Caching
+    // would serve the QA detail to everyone -- the bug reviewed on #213.
+    test('withPreviewCacheGuard opts an admin-authed response out', async () => {
+        const { withPreviewCacheGuard } = await import('../src/middleware');
+        const ctx: any = { request: new Request('https://gameonpaper.com/players/4433971'), locals: { adminAuthed: true }, cache: { set: () => {} } };
+        const res = withPreviewCacheGuard(ctx, new Response('ok'));
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
+    });
 });

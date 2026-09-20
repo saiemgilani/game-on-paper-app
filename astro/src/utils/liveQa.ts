@@ -1,7 +1,14 @@
 /**
- * The live provenance/QA badge on a player page's game log (plan P5, wireframe
- * marker 7): for a game that is in progress right now, what the API actually
- * served and whether it says the payload is sound.
+ * Two separate things about a game that is in progress right now, kept apart on
+ * purpose (review on #268: "We should mark if a game is live separate from if
+ * there are any data issues, and even if there are data issues, they should
+ * only be shown to admin"):
+ *
+ *   LIVE  -- ESPN says the game is being played. Public, generic, and free:
+ *            it comes from the KV-cached scoreboard and nothing else.
+ *   QA    -- what the API served and what its gate said about the payload.
+ *            ADMIN ONLY, and only fetched for an admin, so a public reader of
+ *            a live player page costs no processing read at all.
  *
  * It reads the `qa` block GOP #265 attaches to every `/process` response
  * (`docs/qa-payload.md`), through the SAME `retrieveProcessedGame` path and the
@@ -66,7 +73,7 @@ export function qaBadge(game: ProcessedGame): LiveQaBadge {
     };
 }
 
-/** The badge's one line of copy, mirroring #263's `data-admin-provenance` span. */
+/** The QA line's copy, mirroring #263's `data-admin-provenance` span. Admin only. */
 export function badgeText(b: LiveQaBadge): string {
     let text = `Served: ${b.source}${b.fallback ? ' (fallback)' : ''}`;
     if (b.verdict) text += `, QA ${b.verdict}`;
@@ -74,17 +81,27 @@ export function badgeText(b: LiveQaBadge): string {
     return text;
 }
 
+/** What a game-log row knows about a game in progress. */
+export interface LiveGameStatus {
+    /** ESPN says it is being played; the only thing the public badge needs */
+    live: true
+    /** admin only, and absent unless an admin asked and the payload could be read */
+    qa?: LiveQaBadge
+}
+
 /**
- * The in-progress games among a game log's ESPN ids, badged.
+ * The in-progress games among a game log's ESPN ids.
  *
  * Cheap by construction: a past season can have no live game, so it never
- * leaves this function; the current season costs one KV-cached scoreboard read
- * and then a processed-game read per LIVE game only -- at most one for a player.
- * Every hop fails open, because a live badge is never worth a blank page.
+ * leaves this function; the current season costs one KV-cached scoreboard read.
+ * The processed-game read happens ONLY for an admin, and then only for a live
+ * game -- at most one for a player -- on the game page's own cache key, so it
+ * is the processing run the game page would do anyway and never a second one.
+ * Every hop fails open, because a badge is never worth a blank page.
  */
-export async function liveGameBadges(
-    espnIds: string[], season: number, league: League,
-): Promise<Record<string, LiveQaBadge>> {
+export async function liveGameStatuses(
+    espnIds: string[], season: number, league: League, withQa: boolean = false,
+): Promise<Record<string, LiveGameStatus>> {
     if (season !== CURRENT_YEAR || espnIds.length === 0) return {};
     let live: Set<string>;
     try {
@@ -93,15 +110,18 @@ export async function liveGameBadges(
     } catch {
         return {}; // no scoreboard, no live claim
     }
-    const badges: Record<string, LiveQaBadge> = {};
-    await Promise.all([...new Set(espnIds)].filter((id) => live.has(id)).map(async (id) => {
+    const out: Record<string, LiveGameStatus> = {};
+    const ids = [...new Set(espnIds)].filter((id) => live.has(id));
+    for (const id of ids) out[id] = { live: true };
+    if (!withQa) return out;
+    await Promise.all(ids.map(async (id) => {
         try {
             // the game page's live-game maxAge; the cache KEY is TTL-independent
             // (`.../process?v=<APP_VERSION>`), so this shares its entry.
-            badges[id] = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league));
+            out[id].qa = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league));
         } catch (e) {
             console.warn(`live badge: no processed payload for ${league} ${id}: ${e}`);
         }
     }));
-    return badges;
+    return out;
 }
