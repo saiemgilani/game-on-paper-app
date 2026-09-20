@@ -102,6 +102,26 @@ describe('CFB player page', () => {
         expect(totals.plays).toBe(cfb.splits.data.find((s: any) => s.split === 'all').plays);
     }, 60_000);
 
+    test('season line table: the team column is hidden on a phone, and nothing left of it is wide', async () => {
+        // Review on #267: a CFB team name pushed the metric columns off a phone
+        // and made the page unnavigable. The Season cell already names the row,
+        // so the Team column takes the `d-none d-md-table-cell` the drives table
+        // already uses (`game/drives/DriveRow.astro`).
+        const html = await renderPage('cfb', '4433971', 2024);
+        const head = html.split('id="player-season-passing"')[1].split('</thead>')[0];
+        expect(head).toContain('<th class="text-left d-none d-md-table-cell" colspan="1">Team</th>');
+        for (const row of bodyRows(html, 'player-season-passing')) {
+            const tds = [...row.matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)];
+            // exactly one hidden cell per row, the career row's empty placeholder
+            // included -- one row short and the columns fall out of step on a phone
+            expect(tds.filter((m) => m[1].includes('d-none d-md-table-cell'))).toHaveLength(1);
+            for (const m of tds.filter((m) => !m[1].includes('d-none'))) {
+                const text = m[2].replace(/<[^>]*>/g, '').replace(/&nbsp;|&emsp;/g, ' ').trim();
+                expect(text.length, text).toBeLessThanOrEqual(12);
+            }
+        }
+    }, 60_000);
+
     test('season line table: every cell holds the field its header names, with EPA/DB per dropback', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const columns = categoryColumns('passing');

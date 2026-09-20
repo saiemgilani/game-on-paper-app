@@ -13,6 +13,10 @@
  * one row per team-season; two or more rows of a category add a career roll-up
  * whose rates are recomputed from the summed counts, never averaged
  * (`utils/players.ts` rollUpSeasons).
+ *
+ * The Team column is `d-none d-md-table-cell`: a CFB team name is wide enough
+ * to push the metric columns off a phone (review on #267), and the Season cell
+ * already names the row. It comes back at `md` and up.
  */
 import { cleanField, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
@@ -60,7 +64,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
         <thead>
             <tr>
                 <th class="text-left" colspan="1">Season</th>
-                <th class="text-left" colspan="1">Team</th>
+                <th class="text-left d-none d-md-table-cell" colspan="1">Team</th>
                 {b.columns.map(([, label]) => <th class="text-center" colspan="1">{label}</th>)}
             </tr>
         </thead>
@@ -69,7 +73,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
                 <Fragment>
                     <tr>
                         <td class="text-left numeral" colspan="1">{row.season}</td>
-                        <td class="text-left text-nowrap" colspan="1">
+                        <td class="text-left text-nowrap d-none d-md-table-cell" colspan="1">
                             <a href={leaguePath(league, `/year/${row.season}/team/${row.team_id}`)}>
                                 <img class={`img-fluid team-logo-${row.team_id} me-2`} width="20px"
                                     src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${row.team_id}.png`}
@@ -91,7 +95,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
             {b.career && (
                 <tr class="table-secondary">
                     <td class="text-left" colspan="1"><strong>Career</strong></td>
-                    <td colspan="1"></td>
+                    <td class="d-none d-md-table-cell" colspan="1"></td>
                     {b.columns.map(([k]) => (
                         <td class="text-center numeral" colspan="1">{formatPlayerMetric(b.category, k, careerValue(b, k))}</td>
                     ))}
