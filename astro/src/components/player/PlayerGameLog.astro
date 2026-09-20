@@ -4,14 +4,26 @@
  * and the per-game EPA the Data API aggregates from the plays that carry him.
  *
  * Mirrors the game page's `metrics/PlayerBoxScore.astro`: a text stat line on
- * the left and one number per numeric cell after it (Plays, EPA/play, EPA, SR).
+ * the left and one number per numeric cell after it (Plays, EPA/play, EPA, SR%).
  * Rows link to the game page, which is the whole point of `game_id` riding on
- * every row.
+ * every row, and the opponent links to its team page.
+ *
+ * Two things the rows do not hand over straight:
+ *
+ * 1. **Kickoffs are instants.** `game_date` is UTC, so a 7:30pm ET Saturday
+ *    kickoff is Sunday in UTC. It renders through `LocalDate` (`client:only`,
+ *    luxon) -- the same island the scoreboard and the matchup history use -- so
+ *    the reader sees his own date, not the server's.
+ * 2. **A postseason `week` restarts at 1** in both leagues, so the bare number
+ *    labels a bowl game "1". `weekLabel` names the round instead.
  */
-import { cleanField, roundNumber } from '../../utils/misc';
-import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { gameStatLine, numberOrNull, type PlayerGameRow } from '../../utils/players';
+import { cleanField, formatNumber, formatPercent } from '../../utils/misc';
+import { leaguePath, teamLogoUrl } from '../../utils/league';
+import { gameStatLine, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { nflTeamIdByAbbr } from '../../utils/teams';
 import DarkModeLogos from '../DarkModeLogos.astro';
+import LocalDate from '../LocalDate.svelte';
+import { DateTime } from 'luxon';
 
 interface Props {
     games: PlayerGameRow[]
@@ -29,12 +41,20 @@ function gameHref(row: PlayerGameRow): string | null {
     return espn ? leaguePath(league, `/game/${espn}`) : null;
 }
 
-const day = (d: unknown): string => (d ? String(d).slice(0, 10) : '—');
-const num = (v: unknown, fixed: number): string => {
-    const x = numberOrNull(v);
-    return x === null ? '—' : roundNumber(x, 2, fixed);
-};
-const opponentIds = [...new Set(games.map((g: PlayerGameRow) => g.opponent_id).filter(Boolean))] as (string | number)[];
+/**
+ * The opponent's ESPN team id. CFB rows carry it; the NFL's carry the nflverse
+ * abbreviation ("LAC"), which every team URL and every dark-mode logo rule
+ * needs resolved to the id -- an unresolved one is a dead link AND a light
+ * logo on a dark background.
+ */
+function opponentId(row: PlayerGameRow): string | number | null {
+    const id = row.opponent_id;
+    if (id === null || id === undefined || id === '') return null;
+    if (/^\d+$/.test(String(id))) return id;
+    return league === 'nfl' ? nflTeamIdByAbbr(id) : null;
+}
+
+const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (string | number)[];
 ---
 {games.length > 0 && (
 <Fragment>
@@ -49,35 +69,41 @@ const opponentIds = [...new Set(games.map((g: PlayerGameRow) => g.opponent_id).f
                 <th class="text-center" colspan="1">Result</th>
                 <th class="text-left" colspan="1">Stat line</th>
                 <th class="text-center" colspan="1">Plays</th>
-                <th class="text-center" colspan="1" title="Expected Points Added per Play">EPA/play</th>
-                <th class="text-center" colspan="1" title="Total Expected Points Added">EPA</th>
-                <th class="text-center" colspan="1" title="Success Rate">SR</th>
+                <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Share of plays with positive EPA">SR%</abbr></th>
             </tr>
         </thead>
         <tbody>
             {games.map((g: PlayerGameRow) => (
                 <tr>
                     <td class="text-left text-nowrap numeral" colspan="1">
-                        {gameHref(g) ? <a href={gameHref(g)}>{day(g.game_date)}</a> : day(g.game_date)}
+                        {gameHref(g)
+                            ? <a href={gameHref(g)}><LocalDate client:only divClass="m-0" date={g.game_date} format={DateTime.DATE_SHORT} prefix={null} /></a>
+                            : <LocalDate client:only divClass="m-0" date={g.game_date} format={DateTime.DATE_SHORT} prefix={null} />}
                     </td>
-                    <td class="text-center numeral" colspan="1">{g.week ?? '—'}</td>
+                    <td class="text-center text-nowrap" colspan="1">{weekLabel(league, g.season_type, g.week)}</td>
                     <td class="text-left text-nowrap" colspan="1">
-                        <span class="text-muted me-1">{g.home_away === 'away' ? 'at' : 'vs'}</span>
-                        {g.opponent_id && (
-                            <img class={`img-fluid team-logo-${g.opponent_id} me-2`} width="20px"
-                                src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${g.opponent_id}.png`}
-                                alt={`${g.opponent ?? g.opponent_id} logo`} title={String(g.opponent ?? '')} />
-                        )}
-                        <span>{cleanField(g, 'opponent')}</span>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted">{g.home_away === 'away' ? 'at' : 'vs'}</span>
+                            <a class="d-flex align-items-center gap-1" href={opponentId(g) ? leaguePath(league, `/year/${g.season}/team/${opponentId(g)}`) : undefined}>
+                                {opponentId(g) && (
+                                    <img class={`img-fluid team-logo-${opponentId(g)}`} width="20px"
+                                        src={teamLogoUrl(league, opponentId(g) as string | number, false)}
+                                        alt={`${g.opponent ?? opponentId(g)} logo`} />
+                                )}
+                                <span>{cleanField(g, 'opponent')}</span>
+                            </a>
+                        </div>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
                         {g.result ?? '—'} {g.team_score != null && g.opponent_score != null ? `${g.team_score}-${g.opponent_score}` : ''}
                     </td>
                     <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
-                    <td class="text-center numeral" colspan="1">{num(g.plays, 0)}</td>
-                    <td class="text-center numeral" colspan="1">{num(g.epa_per_play, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{num(g.epa, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{g.success_rate == null ? '—' : `${roundNumber(Number(g.success_rate) * 100, 2, 1)}%`}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(g.epa_per_play, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(g.epa, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatPercent(g.success_rate)}</td>
                 </tr>
             ))}
         </tbody>
