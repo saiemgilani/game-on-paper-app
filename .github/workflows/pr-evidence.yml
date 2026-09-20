@@ -176,7 +176,10 @@ jobs:
           mkdir -p "$wt/$dest"
           cp "$shots"/*.jpg "$wt/$dest/" 2>/dev/null || true
           # mp4 when the conversion ran, else the webm (browsers play both from a raw link)
-          for w in "$clips"/*.webm; do [ -f "$w" ] || continue; [ -f "${w%.webm}.mp4" ] && cp "${w%.webm}.mp4" "$wt/$dest/" || cp "$w" "$wt/$dest/"; done
+          for w in "$clips"/*.webm; do
+            [ -f "$w" ] || continue
+            if [ -f "${w%.webm}.mp4" ]; then cp "${w%.webm}.mp4" "$wt/$dest/"; else cp "$w" "$wt/$dest/"; fi
+          done
           git -C "$wt" add "$dest"
           # a re-run of the same commit can reproduce identical images: nothing to commit, still publish
           if ! git -C "$wt" diff --cached --quiet; then
