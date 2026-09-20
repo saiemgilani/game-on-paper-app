@@ -42,7 +42,8 @@ import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, 
 import { leaguePath, teamLogoUrl } from '../../utils/league';
 import { espnGameId, gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
-import { badgeText, type LiveQaBadge } from '../../utils/liveQa';
+import { badgeText, type LiveGameStatus } from '../../utils/liveQa';
+import StatusBadge from '../StatusBadge.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from 'luxon';
@@ -53,13 +54,16 @@ interface Props {
     espnGameIds?: Record<string, string>
     /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, number[]>
-    /** ESPN event id -> the served source and QA verdict, for the games in progress RIGHT NOW */
-    live?: Record<string, LiveQaBadge>
+    /** ESPN event id -> whether it is in progress RIGHT NOW, and (admin only) its QA verdict */
+    live?: Record<string, LiveGameStatus>
 }
 const { games, espnGameIds = {}, leagueBreaks = {}, live = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
-// the gate's rule list is admin detail, exactly as `AdminGameTools.astro` (#263)
-// shows it: a public reader gets the verdict, not the report
+// Two different claims, two different audiences (#268): "this game is being
+// played" is public and generic, while anything about the payload's soundness
+// -- the served source, the gate's verdict, its rule list -- is admin detail,
+// exactly as `AdminGameTools.astro` (#263) has it. A preview-cookie holder is
+// NOT an admin; only a verified admin session is.
 const admin = Astro.locals.adminAuthed === true;
 
 /** An ISO instant luxon can actually render, or null. */
@@ -129,8 +133,8 @@ function opponentId(row: PlayerGameRow): string | number | null {
     return league === 'nfl' ? nflTeamIdByAbbr(id) : null;
 }
 
-/** The live entry for a row, or undefined -- a row whose payload we could not read renders unchanged. */
-function liveOf(row: PlayerGameRow): LiveQaBadge | undefined {
+/** The live entry for a row, or undefined -- every other row renders unchanged. */
+function liveOf(row: PlayerGameRow): LiveGameStatus | undefined {
     const espn = espnGameId(row, espnGameIds);
     return espn ? live[espn] : undefined;
 }
@@ -192,11 +196,11 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
                         {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
-                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}{liveOf(g) && (<Fragment>
-                            <span class="badge bg-danger ms-1">Live</span>
-                            <span class="d-block text-small text-muted text-wrap" data-live-qa
-                                  title={admin && liveOf(g)!.rules ? liveOf(g)!.rules : undefined}>{badgeText(liveOf(g)!)}</span>
-                        </Fragment>)}
+                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}{liveOf(g) && <StatusBadge label="Live" variant="danger" class="ms-1" title="This game is in progress" />}
+                        {admin && liveOf(g)?.qa && (
+                            <StatusBadge label="QA" variant="secondary" class="ms-1" dataAttr="live-qa"
+                                title={liveOf(g)!.qa!.rules || undefined}>{badgeText(liveOf(g)!.qa!)}</StatusBadge>
+                        )}
                     </td>
                     <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (
