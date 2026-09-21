@@ -68,6 +68,8 @@ for (const [key] of SHADED) {
         .toSorted((a, b) => (numberOrNull(b[key as string]) ?? 0) - (numberOrNull(a[key as string]) ?? 0));
     ranks.set(String(key), new Map(ranked.map((g, i) => [g, i + 1])));
 }
+/** W is good, L is bad, on the site's own ramp-end colours. */
+const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-text-purple' };
 const shade = (row: PlayerGameRow, key: string): string => {
     const column = ranks.get(key);
     // two games are not a distribution: shading them would paint one green and
@@ -142,7 +144,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         </div>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
-                        <span class:list={[g.result === 'W' ? 'hulk-text-green' : null, g.result === 'L' ? 'hulk-text-purple' : null]}>{g.result ?? '—'}</span>
+                        {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
                         {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                     </td>
                     <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
