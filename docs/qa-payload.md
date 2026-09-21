@@ -7,7 +7,7 @@ wrong live page was invisible until a person looked at it.
 
 This file is the contract. It is written down because the sdv-orch poller
 (V3 item 3 of `ClaudeCowork/plans/2026-09-18-data-integrity-and-live-monitoring.md`)
-reads it from another repo, and because `/admin/qa` renders it.
+reads it from another repo, and because `/admin#qa` renders it.
 
 Producer: `python/qa.py` (the block) and `python/live_qa.py` (its `live` half).
 The field is additive and behind no flag: it is observability, not UI. The
@@ -129,7 +129,7 @@ the same event as `prefix_dropped` (the feed rewrote history), differing only in
 whether the row was removed or edited, and splitting one phenomenon across two
 tiers would make the tier mean nothing.
 
-The counts are all still there. `/admin/qa` shows both tiers in its rule
+The counts are all still there. `/admin#qa` shows both tiers in its rule
 histogram and only `qa_ok` tells them apart, and a poller that wants to watch
 the source's behaviour should alert on an anomaly RATE, not on an anomaly.
 
@@ -189,6 +189,6 @@ DDL: `python/sql/2026-09-19_qa_columns.sql`. Applying it is **not** a deploy
 gate: the INSERT names only the columns the live table actually has, probed once
 per connection, so the app writes its pre-migration rows unchanged and picks the
 qa columns up on its next reconnect afterwards. Running the migration is what
-makes `/admin/qa` show anything.
+makes `/admin#qa` show anything.
 
-Query: `GET /gop/admin/qa` (`python/gop_routes.py`), which `/admin/qa` renders.
+Query: `GET /gop/admin/qa` (`python/gop_routes.py`), which `/admin#qa` renders.

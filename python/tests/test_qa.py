@@ -140,7 +140,7 @@ def test_telemetry_fields_flatten_gate_and_live_rules_into_one_vocabulary(monkey
                                    "severity": "warn"}]
     row = qa.telemetry_fields(block)
     assert row["qa_ok"] is False and row["qa_errors"] == 1 and row["qa_source"] == "espn"
-    # both tiers reach the histogram: /admin/qa shows what the source did as
+    # both tiers reach the histogram: /admin#qa shows what the source did as
     # well as what we got wrong, and only `qa_ok` tells them apart
     assert row["qa_rules"] == ["score.monotone", "live.type_null", "live.score_monotone"]
     assert qa.telemetry_fields(None) == {}

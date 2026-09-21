@@ -289,7 +289,7 @@ def _dq(args):
 
 
 def _qa(args):
-    """The live data-quality signal, as /admin/qa renders it.
+    """The live data-quality signal, as /admin#qa renders it.
 
     Every row here comes from ``gop.request_log``'s qa columns, which the
     /process route writes on every request (python/qa.py), so "when was this
@@ -317,7 +317,7 @@ def _qa(args):
             ORDER BY r.game_id, r.ts DESC LIMIT 60"""),
         # per-rule histogram: one row per rule per day, for the matrix
         "rules": _q(
-            # the bucket's START INSTANT, as text, not a date: /admin/qa renders
+            # the bucket's START INSTANT, as text, not a date: /admin#qa renders
             # the column header in the viewer's timezone and a bare date has no
             # instant to convert. Text rather than a timestamptz so the value
             # crosses jsonify as ISO-8601 instead of an HTTP date string.

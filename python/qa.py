@@ -105,7 +105,7 @@ def build(game, processed_game, league, game_id, provenance=None, sdv_version=No
 def telemetry_fields(qa):
     """The flat columns ``gop.request_log`` keeps for one response's ``qa``.
 
-    Rule ids go in as an array so ``/admin/qa``'s per-rule histogram is one
+    Rule ids go in as an array so ``/admin#qa``'s per-rule histogram is one
     ``unnest`` rather than a second table; a live rule is named the way the
     gate's are, so the two share the histogram. BOTH live tiers go in -- the
     histogram is meant to show what the source did as well as what we got

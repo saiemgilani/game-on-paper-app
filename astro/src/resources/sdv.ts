@@ -640,7 +640,7 @@ export interface SDVQaSeason { rows: SDVQaRow[], ok: boolean }
  *  this 404s today and `requestSDV` answers `{data: []}`. The `ok` flag is what
  *  keeps those two apart: an empty answer from a service that replied means
  *  "not published yet", and a service that did not reply means nothing at all.
- *  /admin/qa says which, because rendering a failed query as an unpublished
+ *  /admin#qa says which, because rendering a failed query as an unpublished
  *  season is the same false claim as rendering it as a clean one. */
 export async function retrieveQaSeason(season: number, league: League = 'cfb'): Promise<SDVQaSeason> {
     if (!LEAGUES[league].sdvEnabled) return { rows: [], ok: true };
