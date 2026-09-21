@@ -1124,7 +1124,7 @@ export interface SDVPlayer {
     headshot_url: string | null
     latest_season: number | null
     seasons: number[]
-    /** bio, when the league's roster publishes it (sdv-db #73) */
+    /** bio, when the league's roster publishes it (sdv-db #74) */
     height?: string | number | null
     weight?: string | number | null
     hometown?: string | null
