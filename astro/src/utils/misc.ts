@@ -133,8 +133,14 @@ export function toPercent(value: unknown): number | null {
  * `roundNumber`, rather than being re-declared per component.
  */
 export function numberOrNull(v: unknown): number | null {
-    if (v === null || v === undefined || v === '' || v === 'NA') return null;
-    const x = typeof v === 'number' ? v : parseFloat(String(v));
+    if (v === null || v === undefined) return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v !== 'string') return null;
+    // the WHOLE string or nothing: `parseFloat` reads a numeric prefix, so a
+    // malformed producer value ("12abc") used to render and aggregate as 12
+    const text = v.trim();
+    if (text === '' || text === 'NA') return null;
+    const x = Number(text);
     return Number.isFinite(x) ? x : null;
 }
 
@@ -405,24 +411,32 @@ export function calculateCumulativeSums(arr: number[]): number[] {
     return arr.map(cumulativeSum);
 }
 
+/** Is THIS team id on a meme list? The one place the list is consulted. */
+export function isMemeTeam(id: unknown): boolean {
+    if (id === null || id === undefined || id === "") return false
+    return MEME_LIST.includes(Number(id))
+}
+
+/**
+ * A piece of text lowercased when the team it belongs to is on a meme list.
+ *
+ * `cleanField` reads the id off the ROW, which is right when the row is a team
+ * and wrong when it is not: a player's game log row carries HIS team's id, so
+ * every opponent in it was lowercased once his team made the list (review on
+ * #267). Anything that names a team other than the row's own -- an opponent, a
+ * player -- names the id it means here instead.
+ */
+export function cleanTextForTeam(text: unknown, teamId: unknown): string {
+    const s = text === null || text === undefined ? "" : String(text)
+    return isMemeTeam(teamId) ? s.toLocaleLowerCase() : s
+}
+
 export function cleanField(team: any, field: string): string {
     if (!team) {
         return ""
     }
 
-    if (team.pos_team_id && MEME_LIST.includes(Number(team.pos_team_id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (team.teamId && MEME_LIST.includes(Number(team.teamId))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (MEME_LIST.includes(Number(team.id))) {
+    if ([team.pos_team_id, team.team_id, team.teamId, team.id].some(isMemeTeam)) {
         return team[field]?.toLocaleLowerCase() || ""
     }
     return team[field] || ""

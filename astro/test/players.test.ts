@@ -3,9 +3,9 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    totalGameLog, weekLabel, type SeasonRow,
+    PLAYER_STAT_MINIMUMS, totalGameLog, unranked, weekLabel, type SeasonRow,
 } from '../src/utils/players';
-import { numberOrNull } from '../src/utils/misc';
+import { cleanField, cleanTextForTeam, isMemeTeam, numberOrNull } from '../src/utils/misc';
 
 // The arithmetic the player pages do over the Data API's player-keyed reads,
 // against the REAL bodies those routes return (captured 2026-09-19 from the
@@ -197,5 +197,52 @@ describe('one href decides every player link', () => {
         // the NFL leaderboards key on gsis; the route 301s it to the ESPN id
         expect(playerHref('00-0031381', { league: 'nfl', preview: true })).toBe('/nfl/players/00-0031381');
         expect(playerHref('00-0031381', { league: 'cfb', preview: true })).toBeNull();
+    });
+});
+
+describe('the shared readers the player pages centralised', () => {
+    test('numberOrNull takes the WHOLE string or nothing', () => {
+        // CodeRabbit on #267: `parseFloat` reads a numeric prefix, so a malformed
+        // producer value used to render and aggregate as a real statistic.
+        expect(numberOrNull('12abc')).toBeNull();
+        expect(numberOrNull('4433971.0px')).toBeNull();
+        expect(numberOrNull('1,234')).toBeNull();
+        expect(numberOrNull(' 12.5 ')).toBe(12.5);
+        expect(numberOrNull('-0.31')).toBe(-0.31);
+        expect(numberOrNull('NA')).toBeNull();
+        expect(numberOrNull('')).toBeNull();
+        expect(numberOrNull(null)).toBeNull();
+        expect(numberOrNull(NaN)).toBeNull();
+        expect(numberOrNull(Infinity)).toBeNull();
+        expect(numberOrNull({})).toBeNull();
+        expect(numberOrNull(true)).toBeNull();
+        expect(numberOrNull(0)).toBe(0);
+    });
+
+    test('the meme list is read off the team a name BELONGS to, not the row it rides on', () => {
+        // A game-log row carries the player's own team id, so `cleanField` on it
+        // lowercased every opponent once his team made the list (review on #267).
+        expect(cleanTextForTeam('Georgia', 61)).toBe('georgia');
+        expect(cleanTextForTeam('Marshall', 276)).toBe('Marshall');
+        expect(cleanTextForTeam('Kyle McCord', 61)).toBe('kyle mccord');
+        expect(cleanTextForTeam(null, 61)).toBe('');
+        expect(cleanTextForTeam('Georgia', null)).toBe('Georgia');
+        expect(isMemeTeam(61)).toBe(true);
+        expect(isMemeTeam('61')).toBe(true);
+        expect(isMemeTeam(null)).toBe(false);
+        expect(isMemeTeam('')).toBe(false);
+        // cleanField keeps its own behaviour: ANY id on the row being listed counts
+        expect(cleanField({ team_id: 61, name: 'Georgia' }, 'name')).toBe('georgia');
+        expect(cleanField({ team_id: 183, name: 'Syracuse' }, 'name')).toBe('Syracuse');
+        expect(cleanField(null, 'name')).toBe('');
+    });
+
+    test('a category with no published rank is the payload saying "does not qualify"', () => {
+        const rows = [{ category: 'rushing', season: 2026, plays: 6, TEPA_rank: null, yards_rank: null }] as any[];
+        expect(unranked(rows)).toBe(true);
+        expect(unranked([{ ...rows[0], TEPA_rank: 31 }])).toBe(false);
+        expect(unranked([])).toBe(false);
+        // every category the leaderboards rank has a minimum to quote
+        for (const c of ['passing', 'rushing', 'receiving']) expect(PLAYER_STAT_MINIMUMS[c]).toMatch(/^min\. /);
     });
 });

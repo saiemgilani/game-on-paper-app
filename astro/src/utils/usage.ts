@@ -100,11 +100,29 @@ export function madeOf(made: number | null | undefined, att: number | null | und
  * tackle rows of the same game already carry. The name is the only field the
  * two shapes share -- which is also how `PlayerBoxScore` already joins its
  * per-play extremes.
+ *
+ * Nothing makes `player_name` unique within a team, so a name that resolves to
+ * two ids is DROPPED rather than resolved to whichever row came last: an
+ * advanced-box name linking to the wrong player's page is worse than one that
+ * links nowhere.
  */
 export function playerIdsByName(box: Partial<ProcessedBoxScore> | null | undefined, teamId: string | number): Map<string, string> {
     const out = new Map<string, string>();
+    const ambiguous = new Set<string>();
     const add = (rows: any[]) => {
-        for (const r of rows) if (r?.player_name && r?.player_id != null) out.set(String(r.player_name), String(r.player_id));
+        for (const r of rows) {
+            if (!r?.player_name || r?.player_id == null) continue;
+            const name = String(r.player_name);
+            if (ambiguous.has(name)) continue;
+            const id = String(r.player_id);
+            const seen = out.get(name);
+            if (seen !== undefined && seen !== id) {
+                out.delete(name);
+                ambiguous.add(name);
+            } else {
+                out.set(name, id);
+            }
+        }
     };
     add(teamRows(box?.player_usage as any[], teamId));
     add(teamRows(box?.st_kickers as any[], teamId));

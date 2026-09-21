@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { hasSituationalSplits, hasUsageBox, madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
+import { hasSituationalSplits, hasUsageBox, madeOf, num, pct, playerIdsByName, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
 
 describe('usage box helpers', () => {
     test('hasUsageBox needs at least one populated section', () => {
@@ -58,5 +58,39 @@ describe('usage box helpers', () => {
         expect(s.scripted?.drives).toBe(4);
         expect(s.non_scripted?.drives).toBe(8);
         expect(scriptSplit(rows, 9).scripted).toBeUndefined();
+    });
+});
+
+describe('playerIdsByName, the advanced box score\'s only way to link a name', () => {
+    const box = (rows: any[]) => ({ player_usage: rows } as any);
+    test('a name with one id resolves, a name with two is dropped', () => {
+        // Nothing makes `player_name` unique within a team (CodeRabbit on #267),
+        // and linking to the wrong player's page is worse than linking nowhere.
+        expect(playerIdsByName(box([{ pos_team: 1, player_name: 'K. McCord', player_id: '4433971' }]), 1).get('K. McCord'))
+            .toBe('4433971');
+        const clash = playerIdsByName(box([
+            { pos_team: 1, player_name: 'J. Smith', player_id: '1' },
+            { pos_team: 1, player_name: 'J. Smith', player_id: '2' },
+            { pos_team: 1, player_name: 'A. Jones', player_id: '3' },
+        ]), 1);
+        expect(clash.has('J. Smith')).toBe(false);
+        expect(clash.get('A. Jones')).toBe('3');
+    });
+    test('an ambiguous name stays dropped when a later section repeats it', () => {
+        const m = playerIdsByName({
+            player_usage: [
+                { pos_team: 1, player_name: 'J. Smith', player_id: '1' },
+                { pos_team: 1, player_name: 'J. Smith', player_id: '2' },
+            ],
+            st_returners: [{ pos_team: 1, player_name: 'J. Smith', player_id: '1' }],
+        } as any, 1);
+        expect(m.has('J. Smith')).toBe(false);
+    });
+    test('the same id twice is not a clash', () => {
+        const m = playerIdsByName({
+            player_usage: [{ pos_team: 1, player_name: 'K. McCord', player_id: '4433971' }],
+            st_kickers: [{ pos_team: 1, player_name: 'K. McCord', player_id: '4433971' }],
+        } as any, 1);
+        expect(m.get('K. McCord')).toBe('4433971');
     });
 });

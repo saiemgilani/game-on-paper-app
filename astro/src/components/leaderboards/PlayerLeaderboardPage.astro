@@ -5,6 +5,7 @@ import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
 import { PLAYER_LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
+import { PLAYER_STAT_MINIMUMS } from "../../utils/players";
 
 interface Props {
     season: number
@@ -39,14 +40,9 @@ const breadcrumbs: PageBreadcrumb[] = [
 ];
 
 
-let statMinimum = " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."
-if (category == "passing") {
-    statMinimum = "min. 14 dropbacks per team-game" + statMinimum
-} else if (category == "rushing") {
-    statMinimum = "min. 6.25 carries per team-game" + statMinimum
-} else if (category == "receiving") {
-    statMinimum = "min. 1.875 targets per team-game" + statMinimum
-}
+// the same minimums the player page's "does not qualify" caption quotes
+const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
+    + " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."
 
 ---
 

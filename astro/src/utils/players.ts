@@ -26,6 +26,31 @@ import { numberOrNull, roundNumber } from './misc';
 export const PLAYER_CATEGORIES = ['passing', 'rushing', 'receiving'] as const;
 export type PlayerCategory = (typeof PLAYER_CATEGORIES)[number];
 
+/**
+ * What a player has to do to be ranked in a category, in the season
+ * leaderboards' own words (adapted from Pro Football Reference). The producer
+ * publishes `_rank`/`_pct` only for rows that clear it, so a player below the
+ * bar gets numbers with no ranks -- and the page has to say why rather than
+ * show a table of blanks (review on #267).
+ */
+export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
+    passing: 'min. 14 dropbacks per team-game',
+    rushing: 'min. 6.25 carries per team-game',
+    receiving: 'min. 1.875 targets per team-game',
+};
+
+/**
+ * True when the producer published NO rank for any metric on any of these rows,
+ * which is how the payload says "does not qualify" -- the rows themselves are
+ * real, only their ranks and percentiles are withheld.
+ */
+export function unranked(rows: Record<string, unknown>[]): boolean {
+    if (rows.length === 0) return false;
+    return rows.every((r) => Object.keys(r)
+        .filter((k) => k.endsWith('_rank'))
+        .every((k) => numberOrNull(r[k]) === null));
+}
+
 /** The name column each category's rows carry, as the leaderboards read it. */
 export const PLAYER_NAME_FIELD: Record<PlayerCategory, string> = {
     passing: 'passer_player_name',
