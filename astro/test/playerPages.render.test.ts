@@ -45,18 +45,21 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function renderPage(league: 'cfb' | 'nfl', id: string, season: number) {
+async function render(league: 'cfb' | 'nfl', id: string, query: string) {
     const path = league === 'nfl' ? `/nfl/players/${id}` : `/players/${id}`;
     const { default: Page } = await import(
         league === 'nfl' ? '../src/pages/nfl/players/[id].astro' : '../src/pages/players/[id].astro');
     return container.renderToString(Page, {
         params: { id },
-        request: new Request(`https://gameonpaper.com${path}?season=${season}`),
+        request: new Request(`https://gameonpaper.com${path}${query}`),
         // the pages are behind the 'player-pages' flag, so the only viewer who
         // reaches one holds the preview cookie
         locals: { preview: true },
     });
 }
+const renderPage = (league: 'cfb' | 'nfl', id: string, season: number) => render(league, id, `?season=${season}`);
+/** No `?season=`: the page's default, the player's whole career. */
+const renderCareer = (league: 'cfb' | 'nfl', id: string) => render(league, id, '');
 
 /** The `<tr>` blocks of one table, header row dropped. */
 const bodyRows = (html: string, id: string): string[] => {
@@ -80,46 +83,66 @@ describe('CFB player page', () => {
         // one URL would advertise a page that renders a different year
         expect(html).toContain('<link rel="canonical" href="https://gameonpaper.com/players/4433971?season=2024">');
         expect(html).toContain('"url":"https://gameonpaper.com/players/4433971?season=2024"');
-        // the pills offer exactly the seasons the player has rows for, newest first
-        for (const y of [2024, 2023, 2022, 2021]) expect(html, `${y}`).toContain(`href="/players/4433971?season=${y}"`);
-        expect(html).not.toContain('?season=2020');
-        expect(html).toContain('btn btn-sm btn-secondary'); // the selected pill
+        // the dropdown offers Career plus exactly the seasons the player has
+        // rows for, newest first, and the shown one is `selected`
+        const picker = html.split('id="player-season"')[1].split('</select>')[0];
+        expect(picker).toContain('<option value="/players/4433971"');
+        for (const y of [2024, 2023, 2022, 2021]) expect(picker, `${y}`).toContain(`<option value="/players/4433971?season=${y}"`);
+        expect(picker).not.toContain('?season=2020');
+        expect(picker).toContain('<option value="/players/4433971?season=2024" selected');
         expect(html).toContain('headshots/college-football/players/full/4433971.png');
         expect(html).toContain('teamlogos/ncaa/500/183.png');
         expect(html).not.toContain('teamlogos/nfl/');
     }, 60_000);
 
-    test('the summary tiles are the game log summed', async () => {
+    test('the summary row is the game log summed, in the same table format as every other section', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const totals = totalGameLog(cfb.games.data);
-        const tiles = html.split('id="player-summary-tiles"')[1].split('</div>\n')[0];
-        expect(tiles).toContain(`>${totals.games}<`);
-        expect(tiles).toContain(`>${totals.plays}<`);
-        expect(tiles).toContain(`>${roundNumber(totals.epa, 2, 2)}<`);
-        expect(tiles).toContain(`>${roundNumber(totals.epa_per_play, 2, 2)}<`);
-        expect(tiles).toContain(`>${roundNumber((totals.success_rate as number) * 100, 2, 1)}%<`);
+        const table = html.split('id="player-summary-totals"')[1].split('</table>')[0];
+        // a table, not a row of loose tiles, and with margin under it (review on #267)
+        expect(html).toContain('class="table-responsive mb-4" id="player-summary-totals"');
+        expect(cells(table.split(/<tbody[^>]*>/)[1])).toEqual([
+            `${totals.games}`,
+            `${totals.plays}`,
+            roundNumber(totals.epa, 2, 2),
+            roundNumber(totals.epa_per_play, 2, 2),
+            `${roundNumber((totals.success_rate as number) * 100, 2, 1)}%`,
+        ]);
         // and the all-plays split is the same population, so the same play count
         expect(totals.plays).toBe(cfb.splits.data.find((s: any) => s.split === 'all').plays);
     }, 60_000);
 
-    test('season line table: the team column is hidden on a phone, and nothing left of it is wide', async () => {
-        // Review on #267: a CFB team name pushed the metric columns off a phone
-        // and made the page unnavigable. The Season cell already names the row,
-        // so the Team column takes the `d-none d-md-table-cell` the drives table
-        // already uses (`game/drives/DriveRow.astro`).
+    test('season line table: the team cell is the abbreviation on a phone and the full name from md up', async () => {
+        // Review on #267: a CFB team name pushed the metric columns off a phone.
+        // Akshay's call was the abbreviation rather than nothing, so BOTH
+        // spellings ship and Bootstrap picks (`routes/StandingsRoute.astro`'s
+        // pattern); every other visible cell stays short.
         const html = await renderPage('cfb', '4433971', 2024);
         const head = html.split('id="player-season-passing"')[1].split('</thead>')[0];
-        expect(head).toContain('<th class="text-left d-none d-md-table-cell" colspan="1">Team</th>');
+        expect(head).toContain('<th class="text-left" colspan="1">Team</th>');
         for (const row of bodyRows(html, 'player-season-passing')) {
             const tds = [...row.matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)];
-            // exactly one hidden cell per row, the career row's empty placeholder
-            // included -- one row short and the columns fall out of step on a phone
-            expect(tds.filter((m) => m[1].includes('d-none d-md-table-cell'))).toHaveLength(1);
-            for (const m of tds.filter((m) => !m[1].includes('d-none'))) {
-                const text = m[2].replace(/<[^>]*>/g, '').replace(/&nbsp;|&emsp;/g, ' ').trim();
+            for (const m of tds) {
+                // the phone reading of a cell: whatever `d-none d-md-inline` hides is not there
+                const text = m[2].replace(/<span class="d-none d-md-inline">[\s\S]*?<\/span>/g, '')
+                    .replace(/<[^>]*>/g, '').replace(/&nbsp;|&emsp;/g, ' ').trim();
                 expect(text.length, text).toBeLessThanOrEqual(12);
             }
         }
+        // the abbreviation comes from the team index, not from truncating the name
+        const first = bodyRows(html, 'player-season-passing')[0];
+        expect(first).toContain('<span class="d-md-none">SYR</span>');
+        expect(first).toContain('<span class="d-none d-md-inline">Syracuse</span>');
+    }, 60_000);
+
+    test('a category the producer published no ranks for says why, in the table caption', async () => {
+        // Akshay on #267: Darian Mensah's 2026 rushing. The payload says "does
+        // not qualify" by withholding every `_rank`; the table says it in words.
+        const html = await renderPage('cfb', '4433971', 2024);
+        const rushing = html.split('id="player-season-rushing"')[1].split('</table>')[0];
+        expect(rushing).toContain('<caption class="text-small">Does not qualify for rushing ranks (min. 6.25 carries per team-game).</caption>');
+        // ... and a category he IS ranked in carries no caption
+        expect(html.split('id="player-season-passing"')[1].split('</table>')[0]).not.toContain('<caption');
     }, 60_000);
 
     test('season line table: every cell holds the field its header names, with EPA/DB per dropback', async () => {
@@ -182,6 +205,79 @@ describe('CFB player page', () => {
         expect(cells(rows[rows.length - 1])[1]).toBe('Postseason');
     }, 60_000);
 
+    test('game log: W/L is green/purple, and the metric cells are shaded by rank within the season', async () => {
+        const html = await renderPage('cfb', '4433971', 2024);
+        const rows = bodyRows(html, 'player-game-log');
+        cfb.games.data.forEach((g: any, i: number) => {
+            if (g.result === 'W') expect(rows[i], String(g.game_id)).toContain('<span class="hulk-text-green">W</span>');
+            if (g.result === 'L') expect(rows[i], String(g.game_id)).toContain('<span class="hulk-text-purple">L</span>');
+            expect(rows[i], String(g.game_id)).not.toContain('text-danger');
+        });
+        // the best EPA game is green, the worst purple, on the same ramp the
+        // season table uses -- ranked among THIS player's games, the only
+        // distribution the page reads
+        const byEpa = [...cfb.games.data].toSorted((a: any, b: any) => b.epa - a.epa);
+        const rowOf = (g: any) => rows[cfb.games.data.indexOf(g)];
+        expect(rowOf(byEpa[0])).toContain('hulk-bg-level-9');
+        expect(rowOf(byEpa[byEpa.length - 1])).toContain('hulk-bg-level-0');
+    }, 60_000);
+
+    test('a row with no schedule row renders an em dash, never "Invalid DateTime"', async () => {
+        // Akshay on #267: the NFL log showed `Invalid DateTime` for 2025, because
+        // the API adds a game the player has attributed plays in even when
+        // nothing joined a schedule row to it -- luxon renders an absent date as
+        // that literal. An absent date is an em dash, like every other cell.
+        const sdv = await import('../src/resources/sdv');
+        const bare = cfb.games.data.map((g: any) => ({ game_id: g.game_id, season: g.season, plays: g.plays, epa: g.epa }));
+        const spy = vi.spyOn(sdv, 'retrievePlayerGames').mockResolvedValue(bare);
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            const rows = bodyRows(html, 'player-game-log');
+            expect(rows.length).toBe(bare.length);
+            for (const row of rows) {
+                expect(cells(row)[0]).toBe('—');
+                expect(row).not.toContain('LocalDate');
+            }
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('only opponents on a meme list are lowercased, never the whole log', async () => {
+        // Akshay on #267: viewing a player whose OWN team is on the list
+        // lowercased every opponent, because `cleanField` reads the id off the
+        // row and a game-log row carries HIS team's id. The opponent's own id
+        // decides now (`cleanTextForTeam`).
+        const sdv = await import('../src/resources/sdv');
+        const games = cfb.games.data.map((g: any, i: number) => ({
+            ...g, team_id: 61, opponent_id: i === 0 ? 61 : g.opponent_id, opponent: i === 0 ? 'Georgia' : g.opponent,
+        }));
+        const spy = vi.spyOn(sdv, 'retrievePlayerGames').mockResolvedValue(games);
+        try {
+            const rows = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-game-log');
+            expect(cells(rows[0])[2]).toContain('georgia');
+            games.slice(1).forEach((g: any, i: number) => {
+                expect(cells(rows[i + 1])[2], g.opponent).toContain(g.opponent);
+            });
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('a player whose team is on a meme list has his own name lowercased too', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const seasons = cfb.seasons.data.map((r: any) => (r.season === 2024 ? { ...r, team_id: 61, pos_team: 'Georgia' } : r));
+        const spy = vi.spyOn(sdv, 'retrievePlayerSeasons').mockResolvedValue(seasons);
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('<h2 class="mb-0" data-astro-cid-kzafhnxi>kyle mccord</h2>');
+            // ... but the <title> and the schema.org name keep the real spelling
+            expect(html).toContain('<title>QB Kyle McCord 2024 advanced stats');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
     test('splits: the table is the API\'s rows, and overtime with no plays is left out', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const rows = bodyRows(html, 'player-splits-table');
@@ -236,6 +332,12 @@ describe('CFB player page', () => {
         expect(cells(rows[0])[2]).toBe('48.0% #9');
         expect(html).toContain('href="/year/2024/team/183"');
         expect(html).toContain('alt="Syracuse logo"');
+        // shaded by the rank as well as labelled by it, the way TeamCard does
+        // it -- #7 of 134 is green, #103 purple-ish
+        expect(rows[0]).toContain('hulk-bg-level-9');
+        expect(rows[0]).toContain('hulk-bg-level-2');
+        // and the panel is open on arrival (review on #267)
+        expect(html).toContain('<div id="player-team-context" class="collapse show">');
     }, 60_000);
 
     test('a team_summaries column the producer did not publish reads as absent, not zero', async () => {
@@ -411,20 +513,38 @@ describe('one failing section does not blank the page', () => {
         }
     }, 60_000);
 
-    test('the one read that cannot degrade takes the 404 path instead of throwing', async () => {
-        // The identity is the page's reason to exist, so a read that THROWS is
-        // the site's error path, not a 500 from a rejected promise -- and it is
-        // uncacheable, so the outage cannot freeze a real player's page.
+    test('an identity read that FAILED is a 503, never a 404', async () => {
+        // CodeRabbit on #267: a timeout or a 500 answered as "no such player"
+        // tells a crawler the page does not exist and hides the outage from
+        // anything watching status codes. Only a genuine miss is a 404.
         const sdv = await import('../src/resources/sdv');
-        const { preparePlayer } = await import('../src/routes/player');
+        const { preparePlayer, PLAYER_UNAVAILABLE } = await import('../src/routes/player');
         const spy = vi.spyOn(sdv, 'retrievePlayer').mockRejectedValue(new Error('identity route is down'));
         try {
             const f = fake('/players/4433971', { id: '4433971' });
-            expect(await preparePlayer(f.astro, 'cfb')).toEqual({ notFound: true });
+            expect(await preparePlayer(f.astro, 'cfb')).toEqual({ unavailable: true });
             expect(f.cache).toEqual([false]);
             expect(f.headers.get('Cache-Control')).toBe('no-store');
         } finally {
             spy.mockRestore();
+        }
+        // the crosswalk read answers the same way, and a gsis id nobody has still 404s
+        const crosswalk = vi.spyOn(sdv, 'resolveEspnAthleteId').mockRejectedValue(new Error('crosswalk is down'));
+        try {
+            const f = fake('/nfl/players/00-0031381', { id: '00-0031381' });
+            expect(await preparePlayer(f.astro, 'nfl')).toEqual({ unavailable: true });
+            expect(f.headers.get('Cache-Control')).toBe('no-store');
+        } finally {
+            crosswalk.mockRestore();
+        }
+        // and the response the pages return is a 503 with no-store, not the 404 page
+        const res = PLAYER_UNAVAILABLE();
+        expect(res.status).toBe(503);
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
+        for (const p of ['../src/pages/players/[id].astro', '../src/pages/nfl/players/[id].astro']) {
+            const src = readFileSync(new URL(p, import.meta.url)).toString();
+            expect(src, p).toContain("'unavailable' in r");
+            expect(src, p).toContain('PLAYER_UNAVAILABLE()');
         }
     }, 60_000);
 });
@@ -465,8 +585,43 @@ describe('a player the API does not have', () => {
             .toEqual({ notFound: true });
         const ok = await preparePlayer(fake('/players/4433971?season=2023', { id: '4433971' }).astro, 'cfb') as any;
         expect(ok.season).toBe(2023);
-        // no ?season: the player's latest
-        const latest = await preparePlayer(fake('/players/4433971', { id: '4433971' }).astro, 'cfb') as any;
-        expect(latest.season).toBe(2024);
+        // no ?season is the CAREER view, not "the latest season" (review on #267)
+        const career = await preparePlayer(fake('/players/4433971', { id: '4433971' }).astro, 'cfb') as any;
+        expect(career.season).toBeNull();
+    }, 60_000);
+});
+
+describe('the career view is what `?season=` is absent means', () => {
+    test('every season summary, and none of the one-season sections', async () => {
+        const html = await renderCareer('cfb', '4433971');
+        // every season the player has a row for, newest first, in one table
+        const seasons = bodyRows(html, 'player-season-passing')
+            .map((r) => cells(r)[0]).filter((s) => /^\d{4}$/.test(s));
+        expect(seasons).toEqual([...new Set(cfb.seasons.data
+            .filter((r: any) => r.category === 'passing').map((r: any) => String(r.season)))]
+            .toSorted().toReversed());
+        expect(html).toContain('Career Summary');
+        // the three season-only sections are absent, not empty
+        for (const id of ['player-game-log-panel', 'player-splits-panel', 'player-team-context']) {
+            expect(html, id).not.toContain(`id="${id}"`);
+        }
+        expect(html).not.toContain('id="player-summary-totals"');
+        // canonical and the Dataset describe a career, so neither names a year
+        expect(html).toContain('<link rel="canonical" href="https://gameonpaper.com/players/4433971">');
+        expect(html).not.toContain('"temporalCoverage"');
+        expect(html).toContain('career advanced stats');
+        // and the dropdown's Career option is the selected one
+        expect(html.split('id="player-season"')[1].split('</select>')[0])
+            .toContain('<option value="/players/4433971" selected');
+    }, 60_000);
+
+    test('the season view adds the game log, the splits and the team context', async () => {
+        const html = await renderPage('cfb', '4433971', 2024);
+        for (const id of ['player-game-log-panel', 'player-splits-panel', 'player-team-context']) {
+            expect(html, id).toContain(`id="${id}"`);
+        }
+        // and the season table narrows to that one season
+        expect(bodyRows(html, 'player-season-passing').map((r) => cells(r)[0]).filter((s) => /^\d{4}$/.test(s)))
+            .toEqual(['2024']);
     }, 60_000);
 });

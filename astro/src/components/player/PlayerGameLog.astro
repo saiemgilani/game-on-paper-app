@@ -16,8 +16,18 @@
  *    the reader sees his own date, not the server's.
  * 2. **A postseason `week` restarts at 1** in both leagues, so the bare number
  *    labels a bowl game "1". `weekLabel` names the round instead.
+ * 3. **A row can arrive with no schedule context at all.** The API adds a game
+ *    the player has attributed plays in even when nothing joined a schedule row
+ *    to it, so `game_date` can be absent -- and luxon renders an absent date as
+ *    the literal "Invalid DateTime" (review on #267). An absent date is an em
+ *    dash here, like every other absent cell.
+ *
+ * The four metric cells are shaded on the site's green -> purple ramp by where
+ * the game sits among THIS player's games that season, which is the only
+ * distribution the page has read; the season table's cells carry the producer's
+ * league-wide percentile instead.
  */
-import { cleanField, formatNumber, formatPercent } from '../../utils/misc';
+import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
 import { gameStatLine, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
@@ -32,6 +42,39 @@ interface Props {
 }
 const { games, espnGameIds = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
+
+/** An ISO instant luxon can actually render, or null. */
+function kickoff(row: PlayerGameRow): string | null {
+    const raw = row.game_date;
+    if (raw === null || raw === undefined || raw === '') return null;
+    return DateTime.fromISO(String(raw)).isValid ? String(raw) : null;
+}
+
+/**
+ * The shaded metric cells, ranked within the player's own season. `null` values
+ * (a game with no attributed plays) are left unranked rather than sorted to an
+ * end and shaded as if they were a result.
+ */
+const SHADED: [keyof PlayerGameRow, (v: unknown) => string][] = [
+    ['plays', (v) => formatNumber(v, 0)],
+    ['epa_per_play', (v) => formatNumber(v, 2)],
+    ['epa', (v) => formatNumber(v, 2)],
+    ['success_rate', (v) => formatPercent(v)],
+];
+const ranks = new Map<string, Map<PlayerGameRow, number>>();
+for (const [key] of SHADED) {
+    const ranked = games
+        .filter((g) => numberOrNull(g[key as string]) !== null)
+        .toSorted((a, b) => (numberOrNull(b[key as string]) ?? 0) - (numberOrNull(a[key as string]) ?? 0));
+    ranks.set(String(key), new Map(ranked.map((g, i) => [g, i + 1])));
+}
+const shade = (row: PlayerGameRow, key: string): string => {
+    const column = ranks.get(key);
+    // two games are not a distribution: shading them would paint one green and
+    // the other purple over a difference that means nothing
+    if (!column || column.size < 3) return '';
+    return generateColorRampValue(column.get(row) ?? null, column.size, true) ?? '';
+};
 
 /** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
 function gameHref(row: PlayerGameRow): string | null {
@@ -78,9 +121,11 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
             {games.map((g: PlayerGameRow) => (
                 <tr>
                     <td class="text-left text-nowrap numeral" colspan="1">
-                        {gameHref(g)
-                            ? <a href={gameHref(g)}><LocalDate client:only divClass="m-0" date={g.game_date} format={DateTime.DATE_SHORT} prefix={null} /></a>
-                            : <LocalDate client:only divClass="m-0" date={g.game_date} format={DateTime.DATE_SHORT} prefix={null} />}
+                        {kickoff(g) === null
+                            ? (gameHref(g) ? <a href={gameHref(g)}>—</a> : '—')
+                            : (gameHref(g)
+                                ? <a href={gameHref(g)}><LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} /></a>
+                                : <LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} />)}
                     </td>
                     <td class="text-center text-nowrap" colspan="1">{weekLabel(league, g.season_type, g.week)}</td>
                     <td class="text-left text-nowrap" colspan="1">
@@ -92,18 +137,18 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                                         src={teamLogoUrl(league, opponentId(g) as string | number, false)}
                                         alt={`${g.opponent ?? opponentId(g)} logo`} />
                                 )}
-                                <span>{cleanField(g, 'opponent')}</span>
+                                <span>{cleanTextForTeam(g.opponent, opponentId(g))}</span>
                             </a>
                         </div>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
-                        {g.result ?? '—'} {g.team_score != null && g.opponent_score != null ? `${g.team_score}-${g.opponent_score}` : ''}
+                        <span class:list={[g.result === 'W' ? 'hulk-text-green' : null, g.result === 'L' ? 'hulk-text-purple' : null]}>{g.result ?? '—'}</span>
+                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                     </td>
                     <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(g.epa_per_play, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(g.epa, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{formatPercent(g.success_rate)}</td>
+                    {SHADED.map(([key, format]) => (
+                        <td class:list={["text-center", "numeral", shade(g, String(key))]} colspan="1">{format(g[key as string])}</td>
+                    ))}
                 </tr>
             ))}
         </tbody>

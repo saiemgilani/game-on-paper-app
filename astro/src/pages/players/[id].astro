@@ -1,8 +1,11 @@
 ---
 import PlayerPage from "../../components/player/PlayerPage.astro";
-import { preparePlayer } from "../../routes/player";
+import { preparePlayer, PLAYER_UNAVAILABLE } from "../../routes/player";
 
 const r = await preparePlayer(Astro, 'cfb');
+if ('unavailable' in r) {
+    return PLAYER_UNAVAILABLE();
+}
 if ('notFound' in r) {
     return Astro.rewrite("/404");
 }

@@ -15,11 +15,22 @@ import { resolveEspnAthleteId, retrievePlayer, type SDVPlayer } from '../resourc
 
 export interface PlayerParams {
     player: SDVPlayer;
-    /** the season to show; always one the player actually has rows for. */
-    season: number;
+    /**
+     * The season to show, always one the player actually has rows for, or
+     * `null` when `?season=` is absent -- which is the CAREER view, the page's
+     * default (review on #267).
+     */
+    season: number | null;
 }
 
-export type PlayerPrep = { redirect: string } | { notFound: true } | PlayerParams;
+/**
+ * `unavailable` is NOT `notFound`: a crosswalk or identity read that FAILED is
+ * an outage, and answering it with a 404 would tell a crawler the player does
+ * not exist and hide the outage from anything watching status codes. It becomes
+ * a 503 with `no-store`.
+ */
+export type PlayerPrep =
+    { redirect: string } | { notFound: true } | { unavailable: true } | PlayerParams;
 
 /**
  * A rendered player page is cacheable per (league, id, season) -- all three are
@@ -49,6 +60,15 @@ function uncacheable(Astro: AstroGlobal): void {
     try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
 }
 
+/**
+ * The answer to an identity/crosswalk read that failed: a 503 that monitoring
+ * can see, never a 404 that says the player does not exist.
+ */
+export const PLAYER_UNAVAILABLE = (): Response => new Response(
+    'Player data is temporarily unavailable. Please try again shortly.',
+    { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '60' } },
+);
+
 export async function preparePlayer(Astro: AstroGlobal, league: League): Promise<PlayerPrep> {
     Astro.locals.league = league;
     const id = Astro.params.id;
@@ -71,10 +91,17 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
     // reader to the canonical ESPN-id URL -- the id every other surface uses, and
     // the only one the Data API's player routes accept.
     if (league === 'nfl' && isGsisId(id)) {
-        const espnId = await resolveEspnAthleteId(id);
-        // A crosswalk read that fails answers the same way as a gsis id nobody
-        // has: no ESPN id, so no page. The redirect is likewise not cached --
-        // a 302 frozen on a transient miss would outlive the miss.
+        // A gsis id nobody has is a 404; a crosswalk read that FAILED is an
+        // outage and says so. Either way the answer is not cached -- a 302 or a
+        // 404 frozen on a transient miss would outlive the miss.
+        let espnId: string | null;
+        try {
+            espnId = await resolveEspnAthleteId(id);
+        } catch (e: any) {
+            console.error(`ERROR while resolving gsis ${id}: ${e}, ${e?.stack}`);
+            uncacheable(Astro);
+            return { unavailable: true };
+        }
         uncacheable(Astro);
         if (!espnId) return { notFound: true };
         return { redirect: leaguePath(league, `/players/${espnId}`) + query };
@@ -88,33 +115,28 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
     // The one fetch the ROUTE makes, and the only one on the page that cannot
     // degrade: the Data API 404s an id with no rows anywhere, and that 404 has
     // to become the site's 404 -- an identity shell for a player who does not
-    // exist would be indexed as a thin page. A read that THROWS takes the same
-    // path (as `routes/seasonTeam.ts` does), so an upstream outage serves the
-    // site's error page rather than a 500 from a rejected promise -- and it is
-    // uncacheable, so the outage cannot freeze a real player's page.
+    // exist would be indexed as a thin page. A read that THROWS is a different
+    // thing and answers differently (503, see `PlayerPrep`); either way it is
+    // uncacheable, so neither can freeze a real player's page.
     let player: SDVPlayer | null = null;
     try {
         player = await retrievePlayer(id, league);
     } catch (e: any) {
         console.error(`ERROR while loading player ${id}: ${e}, ${e?.stack}`);
         uncacheable(Astro);
-        return { notFound: true };
+        return { unavailable: true };
     }
     if (!player) {
         uncacheable(Astro);
         return { notFound: true };
     }
-    // a hand-typed season the player has no rows for is a 404 too; the pills
-    // only ever offer seasons from `player.seasons`
+    // a hand-typed season the player has no rows for is a 404 too; the dropdown
+    // only ever offers seasons from `player.seasons`
     if (season !== null && !player.seasons.includes(season)) {
         uncacheable(Astro);
         return { notFound: true };
     }
-    const shown = season ?? player.latest_season ?? player.seasons[0];
-    if (shown === undefined || shown === null) {
-        uncacheable(Astro);
-        return { notFound: true };
-    }
     setCache(Astro, PLAYER_CACHE);
-    return { player, season: Number(shown) };
+    // no `?season=` is not "the latest season": it is the career view
+    return { player, season };
 }

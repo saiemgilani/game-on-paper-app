@@ -1124,6 +1124,10 @@ export interface SDVPlayer {
     headshot_url: string | null
     latest_season: number | null
     seasons: number[]
+    /** bio, when the league's roster publishes it (sdv-db #73) */
+    height?: string | number | null
+    weight?: string | number | null
+    hometown?: string | null
     /** NFL only */
     gsis_id?: string
     nflverse_ids?: Record<string, string>
@@ -1179,7 +1183,9 @@ export async function retrievePlayerSplits(espnId: string, season: number, leagu
  * redirects to the canonical `/nfl/players/16800`.
  */
 export async function resolveEspnAthleteId(gsisId: string): Promise<string | null> {
-    const content = await requestSDV('players', new URLSearchParams({ gsis_id: gsisId, select: 'gsis_id,espn_id', limit: '1' }), undefined, 60 * 60 * 24 * 7, true, 'nfl');
+    // strict, so an upstream failure THROWS rather than arriving as `{ data: [] }`
+    // and reading like "no such player" -- the caller answers the two differently
+    const content = await requestPlayer('nfl', 'players', { gsis_id: gsisId, select: 'gsis_id,espn_id', limit: '1' }, 60 * 60 * 24 * 7);
     const espn = content?.data?.[0]?.espn_id;
     return espn ? String(espn) : null;
 }

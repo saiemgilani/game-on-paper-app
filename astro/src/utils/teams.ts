@@ -5,9 +5,21 @@ import type { League } from './league';
 export interface TeamIndex {
     team_id: number
     name: string
-    /** nfl only; the abbreviation the nflverse feeds key on */
+    /** the short form: nflverse's key for the NFL, the school abbreviation for CFB */
     abbr?: string
     seasons: number[]
+}
+
+/**
+ * The team's abbreviation ("UGA", "LAC"), for the places a full school name is
+ * too wide to fit -- a phone's season table, say (review on #267). Falls back
+ * to the caller's own text when the index has no short form for the id.
+ */
+export function teamAbbr(league: League, teamId: string | number | null | undefined, fallback = ''): string {
+    if (teamId === null || teamId === undefined || teamId === '') return fallback;
+    const raw = league === 'nfl' ? nflTeamsRaw : teamsRaw;
+    const hit = ((raw.teams ?? []) as TeamIndex[]).find((t) => String(t.team_id) === String(teamId));
+    return hit?.abbr ?? fallback;
 }
 
 /**

@@ -2,6 +2,13 @@
 /**
  * An individual player page, both leagues, behind the 'player-pages' flag.
  *
+ * **Two pages, one component, `?season=` decides which** (review on #267). With
+ * no season the page is the player's CAREER: every season summary he has, and
+ * nothing that only makes sense inside one year. Picking a season from the
+ * dropdown narrows the summaries to it and ADDS the game log, the situational
+ * splits and his team's context for that year. So the career view makes exactly
+ * one read (the season rows) and the season view four.
+ *
  * Every number on it comes from the Data API's player-keyed reads (sdv-db #71),
  * and the two populations are kept apart on purpose: the summary tiles, the
  * game log and the splits aggregate the SAME pbp plays, so the tiles are the
@@ -10,9 +17,10 @@
  * slightly different population and carry the ranks and percentiles.
  *
  * What each element mirrors: the header card is `team/TeamPlayerCard.astro`
- * (headshot in `img-circle-bg`, logo beside the title), the season pills are
- * `layouts/FilterGroup.astro`, every section is a `GenericPanel`, the line
- * table is `leaderboards/PlayerLeaderboardTable.astro`'s columns and
+ * (headshot in `img-circle-bg`, logo beside the title), the season dropdown is
+ * `leaderboards/CoachLeaderboardPage.astro`'s (a plain `<select>` whose options
+ * are URLs, so it works with no JS island), every section is a `GenericPanel`,
+ * the line table is `leaderboards/PlayerLeaderboardTable.astro`'s columns and
  * formatting, and the game log is `game/metrics/PlayerBoxScore.astro`'s stat
  * line plus numeric cells.
  *
@@ -27,7 +35,6 @@
  */
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import Panel from '../../layouts/panel/GenericPanel.astro';
-import FilterGroup from '../../layouts/FilterGroup.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerSeasonTable from './PlayerSeasonTable.astro';
 import PlayerGameLog from './PlayerGameLog.astro';
@@ -37,13 +44,14 @@ import {
     retrieveNflEspnGameIds, retrieveTeamSummaries, type SDVPlayer,
 } from '../../resources/sdv';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
-import { roundNumber, formatRank, formatNumber, formatPercent, numberOrNull } from '../../utils/misc';
+import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
 
 interface Props {
     player: SDVPlayer
-    season: number
+    /** the season `?season=` asks for, or null for the career view */
+    season: number | null
 }
 const { player, season } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
@@ -56,11 +64,13 @@ function settled<T>(r: PromiseSettledResult<T>, empty: T): T {
     return empty;
 }
 
+// the career view needs only the season rows; the three season-only reads are
+// not made at all rather than made and thrown away
 const reads = await Promise.allSettled([
     retrievePlayerSeasons(player.espn_id, league) as Promise<SeasonRow[]>,
-    retrievePlayerGames(player.espn_id, season, league),
-    retrievePlayerSplits(player.espn_id, season, league),
-    league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
+    season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
+    season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
+    season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
 ]);
 const seasonRows = settled(reads[0] as PromiseSettledResult<SeasonRow[]>, []);
 const games = settled(reads[1] as PromiseSettledResult<any[]>, []);
@@ -74,22 +84,24 @@ const failed = {
 };
 
 const totals = totalGameLog(games);
-// the season's rows, primary team-season first -- the same order the line table
-// and the percentile bars use, so a traded player's header names the team he
-// actually played most of the season for
-const thisSeason = seasonRows
-    .filter((r) => Number(r.season) === season)
+// the rows the header describes: the selected season's, or the latest season's
+// in the career view, primary team-season first -- so a traded player's header
+// names the team he actually played most of that season for
+const latest = seasonRows.length > 0 ? Math.max(...seasonRows.map((r) => Number(r.season))) : null;
+const headerSeason = season ?? latest;
+const headerRows = seasonRows
+    .filter((r) => Number(r.season) === headerSeason)
     .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0));
-// the ESPN team ids for the season -- the NFL identity has none, but its season rows do
-const teamIds = [...new Set(thisSeason.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
+// the ESPN team ids for that season -- the NFL identity has none, but its season rows do
+const teamIds = [...new Set(headerRows.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
 const headerTeamId = teamIds[0] ?? player.team_id ?? null;
-const teamName = String(thisSeason[0]?.pos_team ?? player.team ?? '');
+const teamName = String(headerRows[0]?.pos_team ?? player.team ?? '');
 
-// Team context: how the team he played for did that season, from the same
+// Team context: how the team he played for that season did, from the same
 // team_summaries rows the team leaderboards read -- one cached call, four
-// numbers, no new producer.
+// numbers, no new producer. A career view has no one season to contextualise.
 const teamMetrics = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
-const teamRows = teamIds.length > 0
+const teamRows = season !== null && teamIds.length > 0
     ? await retrieveTeamSummaries({ season, league, columns: teamMetrics })
         .catch((e) => { console.error(`player page: team context read failed: ${e}`); return [] as any[]; })
     : [];
@@ -97,49 +109,68 @@ const context = teamIds
     .map((id) => teamRows.find((t) => String(t.team_id) === String(id)))
     .filter(Boolean) as Record<string, any>[];
 
-const name = player.name ?? `Player ${player.espn_id}`;
+const realName = player.name ?? `Player ${player.espn_id}`;
+// the site lowercases a meme-list team's names wherever it prints them, and a
+// player is named by his team too (review on #267); the schema.org name and the
+// <title> keep the real spelling, as `utils/seo.ts` documents
+const name = cleanTextForTeam(realName, headerTeamId);
 // the season the page SHOWS, so canonical, og:url and the Dataset's
-// temporalCoverage all describe the same year
+// temporalCoverage all describe the same year -- and the career view has none
 const pageUrl = playerPath(league, player.espn_id, season);
-const spec = { name, position: player.position, team: teamName || null, season, league };
+const spec = { name: realName, position: player.position, team: teamName || null, season, league };
 const pageTitle = playerTitle(spec);
 const description = playerDescription(spec);
-const heading = `${name} ${season} advanced stats`;
+const heading = season === null ? `${name} career advanced stats` : `${name} ${season} advanced stats`;
 const seasons = player.seasons.toSorted((a, b) => b - a);
+const crumbSeason = headerSeason ?? seasons[0];
 
 const breadcrumbs: PageBreadcrumb[] = [
     { title: 'Seasons', active: false },
-    { title: `${season}`, url: leaguePath(league, `/year/${season}`), active: false },
-    { title: 'Players', url: leaguePath(league, `/year/${season}/players/passing`), active: false },
+    ...(crumbSeason ? [
+        { title: `${crumbSeason}`, url: leaguePath(league, `/year/${crumbSeason}`), active: false },
+        { title: 'Players', url: leaguePath(league, `/year/${crumbSeason}/players/passing`), active: false },
+    ] : []),
     { title: name, url: pageUrl, active: true },
 ];
 
 const dataset = datasetJsonLd({
-    name: heading, description, url: pageUrl, season, league, variables: PLAYER_PAGE_VARIABLES,
+    name: heading, description, url: pageUrl, league, variables: PLAYER_PAGE_VARIABLES,
+    ...(season === null ? {} : { season }),
 });
 
 const headshot = player.headshot_url
     ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${player.espn_id}.png&w=150`;
-const tiles: { label: string, value: string, title: string }[] = [
+// the bio line: position / number / team, then whatever the roster published
+const bio: [string, string][] = ([
+    ['Ht', player.height], ['Wt', player.weight], ['Hometown', player.hometown],
+    ['College', league === 'nfl' ? player.college : null],
+] as [string, unknown][])
+    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([label, v]) => [label, String(v)]);
+// the season summary, in the same table format as every other section rather
+// than a row of loose tiles (review on #267)
+const summary: { label: string, value: string, title: string }[] = [
     { label: 'Games', value: `${totals.games}`, title: 'Games with a play carrying this player' },
     { label: 'Plays', value: `${totals.plays}`, title: 'Plays from scrimmage on a numbered down carrying this player' },
-    { label: 'EPA', value: roundNumber(totals.epa, 2, 2), title: 'Total Expected Points Added over those plays' },
+    { label: 'EPA', value: formatNumber(totals.epa, 2), title: 'Total Expected Points Added over those plays' },
     { label: 'EPA/play', value: totals.plays > 0 ? formatNumber(totals.epa_per_play, 2) : '—', title: 'Expected Points Added per play' },
-    { label: 'Success Rate', value: formatPercent(totals.success_rate), title: 'Share of those plays with positive EPA' },
+    { label: 'SR%', value: formatPercent(totals.success_rate), title: 'Share of those plays with positive EPA' },
 ];
 /** A section whose read failed says so; one whose read was empty says that instead. */
 const UNAVAILABLE = 'This section is unavailable right now. Everything else on the page is unaffected.';
-// the team-context cells, each a formatter over the summary row plus the rank
-// column that rides inline with it (team/TeamCard.astro's pattern)
+// the team-context cells: a formatter over the summary row, the rank riding
+// inline with it AND shading the cell on the green -> purple ramp, exactly as
+// `team/TeamCard.astro` does it (134 = the FBS field the ranks are out of)
 const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
     [(t) => formatNumber(t.EPAplay_off, 2), 'EPAplay_off_rank'],
     [(t) => formatPercent(t.success_off), 'success_off_rank'],
     [(t) => formatPercent(t.explosive_off), 'explosive_off_rank'],
     [(t) => formatNumber(t.EPAplay_def, 2), 'EPAplay_def_rank'],
 ];
+const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
 ---
 
-<GenericPage title={pageTitle} subtitle={`${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
+<GenericPage title={pageTitle} subtitle={season === null ? 'Every season, summarised' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
     <div class="container">
         {headerTeamId && <DarkModeLogos teamIds={[headerTeamId]} />}
         <div class="row mb-3">
@@ -157,21 +188,31 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                 </div>
                             </div>
                             {headerTeamId && (
-                                <a href={leaguePath(league, `/year/${season}/team/${headerTeamId}`)}>
+                                <a href={leaguePath(league, `/year/${crumbSeason}/team/${headerTeamId}`)}>
                                     <img class={`h2 img img-fluid team-logo-${headerTeamId}`} width="50px"
                                         src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${headerTeamId}.png`}
                                         alt={`${teamName} logo`} />
                                 </a>
                             )}
                         </div>
-                        <FilterGroup label="Season">
-                            <Fragment slot="filter-body">
-                                {seasons.map((y) => (
-                                    <a class:list={["btn", "btn-sm", y === season ? "btn-secondary" : "btn-outline-secondary"]}
-                                        href={playerPath(league, player.espn_id, y)} aria-current={y === season ? 'page' : undefined}>{y}</a>
-                                ))}
-                            </Fragment>
-                        </FilterGroup>
+                        <div class="row align-items-center g-2">
+                            <div class="col-md col-12">
+                                <p class="m-0 text-muted text-small" id="player-bio">
+                                    {bio.length > 0
+                                        ? bio.map(([label, value], i) => <Fragment>{i > 0 ? ' / ' : ''}<span>{label} {value}</span></Fragment>)
+                                        : 'No biographical detail published for this player.'}
+                                </p>
+                            </div>
+                            <div class="col-md-auto col-12">
+                                <label class="visually-hidden" for="player-season">Season</label>
+                                <select id="player-season" class="form-select form-select-md" onchange="window.location.href = this.value">
+                                    <option value={playerPath(league, player.espn_id)} selected={season === null}>Career</option>
+                                    {seasons.map((y) => (
+                                        <option value={playerPath(league, player.espn_id, y)} selected={y === season}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -179,23 +220,29 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
     </div>
 
     <div class="container">
-        <Panel id="player-summary" title={`${season} Season Summary`} show={true} class="mb-md-3">
+        <Panel id="player-summary" title={season === null ? 'Career Summary' : `${season} Season Summary`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <div class="row row-cols-3 row-cols-md-5 g-2 text-center mb-3" id="player-summary-tiles">
-                    {tiles.map((t) => (
-                        <div class="col" title={t.title}>
-                            <p class="mb-0 text-muted text-small">{t.label}</p>
-                            <p class="mb-0 h4 numeral">{t.value}</p>
-                        </div>
-                    ))}
+                {season !== null && (
+                <div class="table-responsive mb-4" id="player-summary-totals">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>{summary.map((t) => <th class="text-center" colspan="1"><abbr title={t.title}>{t.label}</abbr></th>)}</tr>
+                        </thead>
+                        <tbody>
+                            <tr>{summary.map((t) => <td class="text-center numeral" colspan="1">{t.value}</td>)}</tr>
+                        </tbody>
+                    </table>
                 </div>
+                )}
                 <PlayerSeasonTable rows={seasonRows} season={season} />
                 {failed.seasons
                     ? <p class="m-0 text-muted text-small" id="player-summary-unavailable">{UNAVAILABLE}</p>
-                    : thisSeason.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard row for {season}.</p>}
+                    : seasonRows.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard rows for this player.</p>}
             </Fragment>
         </Panel>
 
+        {season !== null && (
+        <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
                 <PlayerGameLog games={games} espnGameIds={espnGameIds} />
@@ -215,7 +262,7 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
         </Panel>
 
         {context.length > 0 && (
-        <Panel id="player-team-context" title="Team Context" show={false} class="mb-md-3">
+        <Panel id="player-team-context" title="Team Context" show={true} class="mb-md-3">
             <p slot="panel-subtitle" class="m-0 text-muted text-small">The team's whole {season} season.</p>
             <Fragment slot="panel-body">
                 <div class="table-responsive" id="player-team-context-table">
@@ -241,7 +288,7 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                         </a>
                                     </td>
                                     {teamContextColumns.map(([value, rank]) => (
-                                        <td class="text-center numeral" colspan="1">
+                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), TEAM_RANK_FIELD, true)]} colspan="1">
                                             {value(t)}
                                             {numberOrNull(t[rank]) !== null && (
                                                 <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(numberOrNull(t[rank]))}</span>
@@ -255,6 +302,8 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                 </div>
             </Fragment>
         </Panel>
+        )}
+        </Fragment>
         )}
 
         <p class="text-muted text-small" id="player-provenance">
