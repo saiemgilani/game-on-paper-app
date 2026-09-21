@@ -40,6 +40,16 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
 };
 
 /**
+ * A roster height, which both leagues publish as INCHES, as the site writes one
+ * ("6-3"). Anything that is not a number of inches reads as absent.
+ */
+export function formatHeight(v: unknown): string | null {
+    const inches = numberOrNull(v);
+    if (inches === null || inches <= 0) return null;
+    return `${Math.floor(inches / 12)}-${Math.round(inches % 12)}`;
+}
+
+/**
  * True when the producer published NO rank for any metric on any of these rows,
  * which is how the payload says "does not qualify" -- the rows themselves are
  * real, only their ranks and percentiles are withheld.

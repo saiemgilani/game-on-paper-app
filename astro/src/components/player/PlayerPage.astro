@@ -46,7 +46,7 @@ import {
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { formatHeight, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
 
 interface Props {
     player: SDVPlayer
@@ -140,13 +140,15 @@ const dataset = datasetJsonLd({
 
 const headshot = player.headshot_url
     ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${player.espn_id}.png&w=150`;
-// the bio line: position / number / team, then whatever the roster published
-const bio: [string, string][] = ([
-    ['Ht', player.height], ['Wt', player.weight], ['Hometown', player.hometown],
-    ['College', league === 'nfl' ? player.college : null],
-] as [string, unknown][])
-    .filter(([, v]) => v !== null && v !== undefined && v !== '')
-    .map(([label, v]) => [label, String(v)]);
+// the bio line, from whatever the league's roster published: both leagues store
+// a height in inches, so it is written the way the site writes one ("6-3")
+const weight = numberOrNull(player.weight);
+const bio: string[] = [
+    formatHeight(player.height),
+    weight === null ? null : `${Math.round(weight)} lb`,
+    player.hometown || null,
+    league === 'nfl' ? (player.college || null) : null,
+].filter(Boolean) as string[];
 // the season summary, in the same table format as every other section rather
 // than a row of loose tiles (review on #267)
 const summary: { label: string, value: string, title: string }[] = [
@@ -198,9 +200,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                         <div class="row align-items-center g-2">
                             <div class="col-md col-12">
                                 <p class="m-0 text-muted text-small" id="player-bio">
-                                    {bio.length > 0
-                                        ? bio.map(([label, value], i) => <Fragment>{i > 0 ? ' / ' : ''}<span>{label} {value}</span></Fragment>)
-                                        : 'No biographical detail published for this player.'}
+                                    {bio.length > 0 ? bio.join(' / ') : 'No biographical detail published for this player.'}
                                 </p>
                             </div>
                             <div class="col-md-auto col-12">

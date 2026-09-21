@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    PLAYER_STAT_MINIMUMS, totalGameLog, unranked, weekLabel, type SeasonRow,
+    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unranked, weekLabel, type SeasonRow,
 } from '../src/utils/players';
 import { cleanField, cleanTextForTeam, isMemeTeam, numberOrNull } from '../src/utils/misc';
 
@@ -244,5 +244,17 @@ describe('the shared readers the player pages centralised', () => {
         expect(unranked([])).toBe(false);
         // every category the leaderboards rank has a minimum to quote
         for (const c of ['passing', 'rushing', 'receiving']) expect(PLAYER_STAT_MINIMUMS[c]).toMatch(/^min\. /);
+    });
+});
+
+describe('the bio line', () => {
+    test('both leagues publish a height in inches; the site writes one as feet-inches', () => {
+        expect(formatHeight(75)).toBe('6-3');
+        expect(formatHeight(75.0)).toBe('6-3');
+        expect(formatHeight(72)).toBe('6-0');
+        expect(formatHeight('73')).toBe('6-1');
+        expect(formatHeight(null)).toBeNull();
+        expect(formatHeight(0)).toBeNull();
+        expect(formatHeight('tall')).toBeNull();
     });
 });
