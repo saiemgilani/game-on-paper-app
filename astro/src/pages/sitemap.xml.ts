@@ -67,13 +67,11 @@ function buildEntries(): Entry[] {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
         out.push({ loc: `/nfl/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
-        if (year !== CURRENT_YEAR) {
-            out.push({ loc: `/nfl/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
-            out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
-            for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
-            for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/nfl/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
-            if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/nfl/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
-        }
+        out.push({ loc: `/nfl/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
+        out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
+        for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+        for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/nfl/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+        if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/nfl/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
         // week 18 arrived with the 17-game schedule in 2021
         const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
         for (let w = 1; w <= regWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
