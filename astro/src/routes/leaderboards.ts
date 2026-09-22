@@ -93,8 +93,10 @@ export function prepareCoachIndex(Astro: AstroGlobal, league: League): { redirec
     }
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    const target = season === CURRENT_YEAR ? METRIC_YEAR : season;
-    return { redirect: leaguePath(league, `/year/${target}/coaches/${DEFAULT_COACH_BOARD}`) };
+    if (season === CURRENT_YEAR && CURRENT_YEAR != METRIC_YEAR) {
+        return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/coaches/${DEFAULT_COACH_BOARD}`) };
+    }
+    return { redirect: leaguePath(league, `/year/${season}/coaches/${DEFAULT_COACH_BOARD}`) };
 }
 
 // /year/[year]/coaches/[board]: an unknown board or a malformed year is a 404,
@@ -109,7 +111,7 @@ export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoar
     }
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    if (season === CURRENT_YEAR) {
+    if (season === CURRENT_YEAR && CURRENT_YEAR != METRIC_YEAR) {
         return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/coaches/${board}`) };
     }
     const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));

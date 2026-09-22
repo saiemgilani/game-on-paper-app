@@ -233,7 +233,7 @@ describe('coach loaders', () => {
         if (METRIC_YEAR != CURRENT_YEAR) {
             expect(prepareCoachBoard(a, 'nfl')).toEqual({ redirect: `/nfl/year/${METRIC_YEAR}/coaches/pace` });
         } else {
-            expect(prepareCoachBoard(a, 'nfl')).toEqual({ redirect: `/nfl/year/${CURRENT_YEAR}/coaches/pace` });
+            expect(prepareCoachBoard(a, 'nfl')).toEqual({ season: 2026, board: 'pace', metric: 'sec_per_play' });
         }
         expect(a.locals.league).toBe('nfl');
         expect(prepareCoachBoard(fakeAstro('/nfl/year/2024/coaches/fourth-downs?sort=fourth_agreement_rate', { year: '2024', board: 'fourth-downs' }), 'nfl'))
@@ -257,9 +257,7 @@ describe('coach loaders', () => {
         expect(prepareCoachIndex(fakeAstro('/nfl/coaches', {}), 'nfl')).toEqual({ redirect: '/nfl/coaches/pace' });
         expect(prepareCoachIndex(fakeAstro('/year/2024/coaches', { year: '2024' }), 'cfb')).toEqual({ redirect: '/year/2024/coaches/pace' });
         if (METRIC_YEAR != CURRENT_YEAR) {
-            expect(prepareCoachIndex(fakeAstro(`/nfl/year/${CURRENT_YEAR}/coaches`, { year: `${CURRENT_YEAR}` }), 'nfl')).toEqual({ redirect: `/nfl/year/${LAST_YEAR}/coaches/pace` });
-        } else {
-            expect(prepareCoachIndex(fakeAstro(`/nfl/year/${CURRENT_YEAR}/coaches`, { year: `${CURRENT_YEAR}` }), 'nfl')).toEqual({ redirect: `/nfl/year/${METRIC_YEAR}/coaches/pace` });
+            expect(prepareCoachIndex(fakeAstro(`/nfl/year/${METRIC_YEAR}/coaches`, { year: `${METRIC_YEAR}` }), 'nfl')).toEqual({ redirect: `/nfl/year/${METRIC_YEAR}/coaches/pace` });
         }
         expect(prepareCoachIndex(fakeAstro('/year/abcd/coaches', { year: 'abcd' }), 'cfb')).toEqual({ notFound: true });
     });
