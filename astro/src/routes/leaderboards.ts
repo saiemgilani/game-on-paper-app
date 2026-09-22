@@ -24,7 +24,7 @@ export type LeaderboardPrep = { redirect: string } | { notFound: true } | Leader
 // season tables as NaN and render an empty page as HTTP 200
 function seasonOf(Astro: AstroGlobal): number | null {
     const y = Astro.params.year;
-    if (y === undefined) return CURRENT_YEAR;
+    if (y === undefined) return METRIC_YEAR;
     return /^\d{4}$/.test(y) ? parseInt(y) : null;
 }
 
@@ -34,7 +34,7 @@ export function prepareLeaderboard(Astro: AstroGlobal, league: League, kind: 'te
     Astro.locals.league = league;
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    if (season === CURRENT_YEAR) {
+    if (season === CURRENT_YEAR && METRIC_YEAR != CURRENT_YEAR) {
         return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/${kind}`) };
     }
     return { season };
@@ -52,7 +52,7 @@ export function prepareTeamCategory(Astro: AstroGlobal, league: League): Leaderb
     }
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    if (season === CURRENT_YEAR) {
+    if (season === CURRENT_YEAR && METRIC_YEAR != CURRENT_YEAR) {
         return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/teams/${category}`) };
     }
     const metric = Astro.url.searchParams.get("sort") || modifyMetricForCategory(category, "net_adj_epa");
@@ -67,7 +67,7 @@ export function preparePlayerCategory(Astro: AstroGlobal, league: League): Leade
     }
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    if (season === CURRENT_YEAR) {
+    if (season === CURRENT_YEAR && METRIC_YEAR != CURRENT_YEAR) {
         return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/players/${category}`) };
     }
     const metric = Astro.url.searchParams.get("sort") || "TEPA";
