@@ -22,7 +22,7 @@ import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import { retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
-import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import { PERCENTILE_YEAR } from '../../utils/constants';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
@@ -70,7 +70,7 @@ for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: an
 
 const fullGamePlays = game.plays;
 
-const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined, undefined, league);
+const percentiles = await retrievePercentiles(PERCENTILE_YEAR, undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;

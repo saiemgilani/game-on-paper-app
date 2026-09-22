@@ -4,6 +4,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { numericValue, type CoachRow } from '../src/utils/coaches';
+import { CURRENT_YEAR, METRIC_YEAR } from '../src/utils/constants';
 
 // The head-coach boards rendered with the real 2024 builder rows
 // (fixtures/nfl-coaches-2024.json). The SDV client is mocked -- the tables are
@@ -107,10 +108,14 @@ describe('NFL season board', () => {
         }
         expect(html).toContain('value="/nfl/coaches/tendencies"');
         expect(html).toContain('value="/nfl/year/2023/coaches/tendencies"');
-        expect(html).not.toContain('value="/nfl/year/2026/coaches/tendencies"'); // the current season redirects
+        if (METRIC_YEAR != CURRENT_YEAR) {
+            expect(html).not.toContain(`value="/nfl/year/${CURRENT_YEAR}/coaches/tendencies"`); // the current season redirects
+        } else {
+            expect(html).toContain(`value="/nfl/year/${CURRENT_YEAR}/coaches/tendencies"`); // the current season should not redirect
+        }
         // the shared header offers the coach boards to every page
         expect(html).toContain('Head Coaches');
-        expect(html).toContain('href="/nfl/year/2025/coaches/pace"');
+        expect(html).toContain(`href="/nfl/year/${METRIC_YEAR}/coaches/pace"`);
         expect(html).toContain('href="/nfl/coaches/pace"');
         // situation-neutral column with its hover
         expect(html).toContain('Neutral Pass Rate');
@@ -220,7 +225,7 @@ describe('nfl page files render the shared component as NFL', () => {
             locals: { preview: true },
         });
         expect(html).toContain('NFL Head Coach Career Pace: Seconds per Play');
-        expect(html).toContain('href="/nfl/year/2025/coaches/pace"');
+        expect(html).toContain(`href="/nfl/year/${METRIC_YEAR}/coaches/pace"`);
     }, 60_000);
 
     test('/year/2024/coaches/pace stays college', async () => {

@@ -1,7 +1,7 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { retrieveCoachCareers, retrieveCoachTendencies } from "../../resources/sdv";
-import { LAST_YEAR } from "../../utils/constants";
+import { METRIC_YEAR } from "../../utils/constants";
 import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS, numericValue, type CoachRow } from "../../utils/coaches";
 import { LEAGUES, leaguePath } from "../../utils/league";
 import { COACH_BOARD_COPY, datasetJsonLd } from "../../utils/seo";
@@ -29,7 +29,7 @@ const pageTitle = copy.title(seasonOrNull, league);
 const heading = copy.h1(seasonOrNull, league);
 const description = copy.description(seasonOrNull, league);
 // the seasons the tables can hold; the current season redirects, so it is not offered
-const seasons = cfg.seasons.filter((y) => y <= LAST_YEAR).toSorted((a, b) => b - a);
+const seasons = cfg.seasons.filter((y) => y <= METRIC_YEAR).toSorted((a, b) => b - a);
 
 // the page fetches so the Dataset's coverage can come from the rows themselves
 const columnKeys = def.columns.map((c) => c.key);

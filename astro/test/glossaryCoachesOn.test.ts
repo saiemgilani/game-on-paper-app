@@ -8,15 +8,15 @@ vi.mock('../src/utils/features', async (orig) => {
 });
 
 import { generateGlossaryItems } from '../src/resources/glossary';
-import { LAST_YEAR } from '../src/utils/constants';
+import { LAST_YEAR, METRIC_YEAR } from '../src/utils/constants';
 
 describe('glossary with the coaches flag on', () => {
     test('the board pointers and the board source are back', () => {
         const entries = [...generateGlossaryItems().values()].flat();
         const spp = entries.find((e) => e.term === 'Seconds per play')!;
-        expect(spp.definition).toContain(`<a href='/year/${LAST_YEAR}/coaches/pace'>head coach pace board</a>`);
+        expect(spp.definition).toContain(`<a href='/year/${METRIC_YEAR}/coaches/pace'>head coach pace board</a>`);
         expect(spp.source).toBe('https://gameonpaper.com/coaches/pace');
         const scripted = entries.find((e) => e.term === 'Scripted drives')!;
-        expect(scripted.definition).toContain(`<a href='/year/${LAST_YEAR}/coaches/scoring'>`);
+        expect(scripted.definition).toContain(`<a href='/year/${METRIC_YEAR}/coaches/scoring'>`);
     });
 });

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
-import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../utils/constants';
+import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
 import { LEAGUES, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
@@ -66,8 +66,8 @@ function buildEntries(): Entry[] {
     for (const year of nflPublic ? nfl.seasons : []) {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
-        out.push({ loc: `/nfl/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
-        if (year !== CURRENT_YEAR) {
+        if (year != CURRENT_YEAR || (year == CURRENT_YEAR && CURRENT_YEAR == METRIC_YEAR)) {
+            out.push({ loc: `/nfl/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
             out.push({ loc: `/nfl/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
             out.push({ loc: `/nfl/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
             for (const c of teamCategoriesFor('nfl')) out.push({ loc: `/nfl/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
@@ -83,20 +83,19 @@ function buildEntries(): Entry[] {
     for (const year of AVAILABLE_SEASONS) {
         const lastmod = seasonLastmod(year);
         const freq = year < CURRENT_YEAR ? 'yearly' : 'daily';
-        out.push({ loc: `/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
-        // The leaderboard routes 302 CURRENT_YEAR to LAST_YEAR until the season has
-        // data; a sitemap must never advertise a redirect.
-        if (year === CURRENT_YEAR) continue;
-        out.push({ loc: `/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
-        out.push({ loc: `/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
-        // The per-category leaderboards are the pages meant to rank for "epa per
-        // play"; until now only the bare /teams and /players hubs were listed.
-        // SSR routes, so no trailing slash (the slash rule above is for prerendered ones).
-        for (const c of LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
-        for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
-        // Head-coach boards (pace, run/pass, ...): one per season, like the team
-        // categories; CURRENT_YEAR redirects to LAST_YEAR and is skipped above.
-        if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
+        if (year != CURRENT_YEAR || (year == CURRENT_YEAR && CURRENT_YEAR == METRIC_YEAR)) {
+            out.push({ loc: `/year/${year}`, lastmod, changefreq: freq, priority: '0.6' });
+            out.push({ loc: `/year/${year}/teams`, lastmod, changefreq: freq, priority: '0.5' });
+            out.push({ loc: `/year/${year}/players`, lastmod, changefreq: freq, priority: '0.5' });
+            // The per-category leaderboards are the pages meant to rank for "epa per
+            // play"; until now only the bare /teams and /players hubs were listed.
+            // SSR routes, so no trailing slash (the slash rule above is for prerendered ones).
+            for (const c of LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/teams/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+            for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: `/year/${year}/players/${c}`, lastmod, changefreq: freq, priority: '0.6' });
+            // Head-coach boards (pace, run/pass, ...): one per season, like the team
+            // categories.
+            if (coachesPublic) for (const b of COACH_BOARD_SLUGS) out.push({ loc: `/year/${year}/coaches/${b}`, lastmod, changefreq: freq, priority: '0.6' });
+        }
     }
 
     for (const league of (nflPublic ? ['cfb', 'nfl'] : ['cfb']) as readonly ('cfb' | 'nfl')[]) {
@@ -113,12 +112,14 @@ function buildEntries(): Entry[] {
             // one entry per season the team actually played, so we never advertise a
             // team-season page that would render empty
             for (const year of team.seasons ?? []) {
-                out.push({
-                    loc: lp(`/year/${year}/team/${team.team_id}`),
-                    lastmod: seasonLastmod(year),
-                    changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
-                    priority: '0.5',
-                });
+                if (year != CURRENT_YEAR || (year == CURRENT_YEAR && CURRENT_YEAR == METRIC_YEAR)) {
+                    out.push({
+                        loc: lp(`/year/${year}/team/${team.team_id}`),
+                        lastmod: seasonLastmod(year),
+                        changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
+                        priority: '0.5',
+                    });
+                }
             }
         }
     }

@@ -13,7 +13,7 @@
 </script>
 <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end" id="dropdown-form">
     <div class="row">
-        <div class="col-auto mb-xs-3 mb-sm-0">
+        <div class="col-auto">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
                 <option value="EPAplay" selected={(metric == "EPAplay")}>EPA/Play</option>

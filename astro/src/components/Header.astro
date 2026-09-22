@@ -1,5 +1,5 @@
 ---
-import { LAST_YEAR } from "../utils/constants";
+import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled } from "../utils/features";
 
@@ -7,7 +7,6 @@ const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 const other: League = league === 'cfb' ? 'nfl' : 'cfb';
 const lp = (p: string) => leaguePath(league, p);
-const METRIC_YEAR = LAST_YEAR;
 ---
 
 <header class="p-2 mb-3 border-bottom">
