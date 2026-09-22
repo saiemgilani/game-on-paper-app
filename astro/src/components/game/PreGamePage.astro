@@ -4,7 +4,7 @@ import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../resource
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
 import { retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveMatchupHistory } from '../../resources/sdv';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
-import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import { METRIC_YEAR } from '../../utils/constants';
 import { cleanLocation, isChampionshipEvent } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
@@ -56,7 +56,6 @@ const canonicalUrl = new URL(leaguePath(league, `/game/${id}`), "https://gameonp
 // tables lag the team tables and the API only falls back on an error, not on an
 // empty result.
 const gameSeason: number = espnGame.gamepackageJSON.header.season.year;
-const metricYear = gameSeason == CURRENT_YEAR ? LAST_YEAR : gameSeason;
 
 let homeTeamSeason: SDVTeamSeasonInformation = {
     team: null,
@@ -100,7 +99,7 @@ const fetchTeamSummaries = async (season: number): Promise<[SDVTeamSummary[], SD
     return [await one(homeTeam.id), await one(awayTeam.id)];
 };
 try {
-    [homeSummaries, awaySummaries] = await fetchTeamSummaries(metricYear);
+    [homeSummaries, awaySummaries] = await fetchTeamSummaries(METRIC_YEAR);
 } catch (e) {
     console.error(e);
     awaySummaries = [];

@@ -78,12 +78,12 @@ function fakeAstro(path: string, params: Record<string, string>) {
 describe('leaderboard loaders', () => {
     test('team category: unknown category is a 404, current season redirects, else params', async () => {
         const { prepareTeamCategory } = await import('../src/routes/leaderboards');
-        const { CURRENT_YEAR, LAST_YEAR } = await import('../src/utils/constants');
+        const { CURRENT_YEAR, METRIC_YEAR } = await import('../src/utils/constants');
         expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/bogus', { year: '2025', category: 'bogus' }), 'nfl')).toEqual({ notFound: true });
         // rbsdm-style extras exist for the nfl only
         expect(prepareTeamCategory(fakeAstro('/year/2025/teams/tendencies', { year: '2025', category: 'tendencies' }), 'cfb')).toEqual({ notFound: true });
         const a = fakeAstro(`/nfl/year/${CURRENT_YEAR}/teams/offensive`, { year: `${CURRENT_YEAR}`, category: 'offensive' });
-        expect(prepareTeamCategory(a, 'nfl')).toEqual({ redirect: `/nfl/year/${LAST_YEAR}/teams/offensive` });
+        expect(prepareTeamCategory(a, 'nfl')).toEqual({ redirect: `/nfl/year/${METRIC_YEAR}/teams/offensive` });
         expect(a.locals.league).toBe('nfl');
         expect(prepareTeamCategory(fakeAstro('/nfl/year/2025/teams/tendencies?sort=proe', { year: '2025', category: 'tendencies' }), 'nfl'))
             .toEqual({ season: 2025, category: 'tendencies', metric: 'proe' });
@@ -96,12 +96,12 @@ describe('leaderboard loaders', () => {
 
     test('player category and the index pages', async () => {
         const { preparePlayerCategory, prepareLeaderboard } = await import('../src/routes/leaderboards');
-        const { CURRENT_YEAR, LAST_YEAR } = await import('../src/utils/constants');
+        const { CURRENT_YEAR, METRIC_YEAR } = await import('../src/utils/constants');
         expect(preparePlayerCategory(fakeAstro('/year/2025/players/kicking', { year: '2025', category: 'kicking' }), 'cfb')).toEqual({ notFound: true });
         expect(preparePlayerCategory(fakeAstro('/year/2025/players/passing', { year: '2025', category: 'passing' }), 'cfb'))
             .toEqual({ season: 2025, category: 'passing', metric: 'TEPA' });
         expect(prepareLeaderboard(fakeAstro(`/nfl/year/${CURRENT_YEAR}/players`, { year: `${CURRENT_YEAR}` }), 'nfl', 'players'))
-            .toEqual({ redirect: `/nfl/year/${LAST_YEAR}/players` });
+            .toEqual({ redirect: `/nfl/year/${METRIC_YEAR}/players` });
         expect(prepareLeaderboard(fakeAstro('/year/2024/teams', { year: '2024' }), 'cfb', 'teams')).toEqual({ season: 2024 });
         // a malformed year never reaches the season tables as NaN
         expect(prepareLeaderboard(fakeAstro('/year/2025junk/teams', { year: '2025junk' }), 'cfb', 'teams')).toEqual({ notFound: true });

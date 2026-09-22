@@ -10,7 +10,7 @@ vi.mock('../src/utils/features', async (orig) => {
 });
 
 import { GET } from '../src/pages/sitemap.xml';
-import { AVAILABLE_SEASONS, CURRENT_YEAR } from '../src/utils/constants';
+import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../src/utils/constants';
 import { COACH_BOARD_SLUGS } from '../src/utils/coaches';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
@@ -29,7 +29,11 @@ describe('sitemap.xml with the coaches flag on', () => {
     }
     expect(AVAILABLE_SEASONS[0]).toBe(2004);
     expect(xml).not.toContain(`/year/${AVAILABLE_SEASONS[0] - 1}/coaches/`);
-    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/coaches`);
+    if (METRIC_YEAR != CURRENT_YEAR) {
+      expect(xml).not.toContain(`/year/${CURRENT_YEAR}/coaches`);
+    } else {
+      expect(xml).toContain(`/year/${CURRENT_YEAR}/coaches`);
+    }
     expect(xml).not.toContain('<loc>https://gameonpaper.com/coaches</loc>');
     expect(xml).not.toContain('<loc>https://gameonpaper.com/year/2025/coaches</loc>');
     expect(xml).not.toContain('/coaches/pace/</loc>');

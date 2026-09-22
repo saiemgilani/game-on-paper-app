@@ -4,7 +4,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamSummaries } from '../resources/sdv';
-import { LAST_YEAR } from '../utils/constants';
+import { METRIC_YEAR } from '../utils/constants';
 import type { League } from '../utils/league';
 
 export interface ChartPoint {
@@ -29,7 +29,7 @@ export interface ChartBuilderData {
 export async function loadChartBuilder(Astro: AstroGlobal, league: League): Promise<ChartBuilderData> {
     Astro.locals.league = league;
     const query = Astro.url.searchParams;
-    const season = query.get("season") || `${LAST_YEAR}`;
+    const season = query.get("season") || `${METRIC_YEAR}`;
     const metricX = query.get("x") || "adj_off_epa";
     const metricY = query.get("y") || "adj_def_epa";
     const teamData = await retrieveTeamSummaries({ season: Number(season), columns: [metricX, metricY], maxLookback: Number(season), league })

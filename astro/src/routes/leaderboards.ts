@@ -6,7 +6,7 @@
  * components.
  */
 import type { AstroGlobal } from 'astro';
-import { CURRENT_YEAR, LAST_YEAR } from '../utils/constants';
+import { CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
 import { leaguePath, teamCategoriesFor, type League } from '../utils/league';
 import { modifyMetricForCategory } from '../utils/misc';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
@@ -35,7 +35,7 @@ export function prepareLeaderboard(Astro: AstroGlobal, league: League, kind: 'te
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
     if (season === CURRENT_YEAR) {
-        return { redirect: leaguePath(league, `/year/${LAST_YEAR}/${kind}`) };
+        return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/${kind}`) };
     }
     return { season };
 }
@@ -53,7 +53,7 @@ export function prepareTeamCategory(Astro: AstroGlobal, league: League): Leaderb
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
     if (season === CURRENT_YEAR) {
-        return { redirect: leaguePath(league, `/year/${LAST_YEAR}/teams/${category}`) };
+        return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/teams/${category}`) };
     }
     const metric = Astro.url.searchParams.get("sort") || modifyMetricForCategory(category, "net_adj_epa");
     return { season, category, metric };
@@ -68,7 +68,7 @@ export function preparePlayerCategory(Astro: AstroGlobal, league: League): Leade
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
     if (season === CURRENT_YEAR) {
-        return { redirect: leaguePath(league, `/year/${LAST_YEAR}/players/${category}`) };
+        return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/players/${category}`) };
     }
     const metric = Astro.url.searchParams.get("sort") || "TEPA";
     return { season, category, metric };
@@ -93,7 +93,7 @@ export function prepareCoachIndex(Astro: AstroGlobal, league: League): { redirec
     }
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
-    const target = season === CURRENT_YEAR ? LAST_YEAR : season;
+    const target = season === CURRENT_YEAR ? METRIC_YEAR : season;
     return { redirect: leaguePath(league, `/year/${target}/coaches/${DEFAULT_COACH_BOARD}`) };
 }
 
@@ -110,7 +110,7 @@ export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoar
     const season = seasonOf(Astro);
     if (season === null) return { notFound: true };
     if (season === CURRENT_YEAR) {
-        return { redirect: leaguePath(league, `/year/${LAST_YEAR}/coaches/${board}`) };
+        return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/coaches/${board}`) };
     }
     const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));
     return { season, board, metric };
