@@ -112,12 +112,14 @@ function buildEntries(): Entry[] {
             // one entry per season the team actually played, so we never advertise a
             // team-season page that would render empty
             for (const year of team.seasons ?? []) {
-                out.push({
-                    loc: lp(`/year/${year}/team/${team.team_id}`),
-                    lastmod: seasonLastmod(year),
-                    changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
-                    priority: '0.5',
-                });
+                if (year != CURRENT_YEAR || (year == CURRENT_YEAR && CURRENT_YEAR == METRIC_YEAR)) {
+                    out.push({
+                        loc: lp(`/year/${year}/team/${team.team_id}`),
+                        lastmod: seasonLastmod(year),
+                        changefreq: year < CURRENT_YEAR ? 'yearly' : 'daily',
+                        priority: '0.5',
+                    });
+                }
             }
         }
     }
