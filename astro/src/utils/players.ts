@@ -280,11 +280,39 @@ export function receivingStatLine(v: { receptions?: unknown; targets?: unknown; 
 }
 
 /**
+ * The whole-number percentile of `value` in a 101-breakpoint distribution
+ * (`players/games/percentiles`, sdv-db): index 0 is the 0th percentile and index
+ * 100 the 100th, so the largest index at or below the value IS its percentile.
+ * `null` when there is no value or no distribution to read it against.
+ */
+export function percentileFromBreaks(breaks: number[] | undefined, value: unknown): number | null {
+    const v = numberOrNull(value);
+    if (v === null || !breaks || breaks.length === 0) return null;
+    let lo = 0, hi = breaks.length - 1, at = 0;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (breaks[mid] <= v) { at = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return Math.min(Math.max(at, 0), breaks.length - 1);
+}
+
+/**
  * The game-log stat line, per league, because the two box shapes share nothing:
  * CFB's rows are ESPN's box (camelCase, string values), the NFL's are nflverse
  * weekly stats (snake_case, numeric). Both map onto the three phrases above.
+ *
+ * **Sacks are pass plays, so they are not carries.** ESPN's COLLEGE box follows the
+ * NCAA scoring convention and books a sack as a rushing attempt with negative rushing
+ * yards -- Kyle McCord's 2024 opener is "5 car, -1 yds" there against four real
+ * carries for +8 -- and nothing else on the site counts it that way: sdv-py's rushing
+ * box is `rush == True`, which a sack never is (review on #267). So the CFB line reads
+ * the play-derived `rusher_carries` / `rusher_yards` / `rusher_tds` the Data API serves
+ * beside the box (sdv-db), and only falls back to ESPN's own rushing columns for a row
+ * that predates them. nflverse already counts the NFL's way, so the NFL line is the
+ * box's.
  */
-export function gameStatLine(box: Record<string, unknown> | undefined, league: League): string {
+export function gameStatLine(row: Record<string, unknown> | undefined, league: League): string {
+    const box = (row?.box ?? undefined) as Record<string, unknown> | undefined;
     if (!box) return '';
     const q = (k: string) => numberOrNull(box[k]);
     const parts: string[] = [];
@@ -297,7 +325,11 @@ export function gameStatLine(box: Record<string, unknown> | undefined, league: L
         if (comp && (q('passingAttempts') ?? Number(a ?? 0)) > 0) {
             parts.push(passingStatLine({ comp: c, att: a, yards: box.passingYards, tds: box.passingTouchdowns, ints: box.interceptions }));
         }
-        if ((q('rushingAttempts') ?? 0) > 0) parts.push(rushingStatLine({ carries: box.rushingAttempts, yards: box.rushingYards, tds: box.rushingTouchdowns }));
+        const carries = numberOrNull(row?.rusher_carries);
+        const rush = carries === null
+            ? { carries: box.rushingAttempts, yards: box.rushingYards, tds: box.rushingTouchdowns }
+            : { carries, yards: row?.rusher_yards, tds: row?.rusher_tds };
+        if ((numberOrNull(rush.carries) ?? 0) > 0) parts.push(rushingStatLine(rush));
         if ((q('receptions') ?? 0) > 0) parts.push(receivingStatLine({ receptions: box.receptions, yards: box.receivingYards, tds: box.receivingTouchdowns }));
         return parts.join('; ');
     }

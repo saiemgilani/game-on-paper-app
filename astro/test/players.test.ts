@@ -143,18 +143,34 @@ describe('formatting', () => {
 
     test('the stat line reads the league its box came from', () => {
         const cfbGame = cfb.games.data[0];
-        expect(gameStatLine(cfbGame.box, 'cfb')).toBe('27/39, 354 yds, 4 TD, 1 INT; 5 car, -1 yds, 0 TD');
+        expect(gameStatLine(cfbGame, 'cfb')).toBe('27/39, 354 yds, 4 TD, 1 INT; 5 car, -1 yds, 0 TD');
         // the NFL box is nflverse weekly stats: different keys, numeric values
         const nflGame = nfl.games.data[0];
-        expect(gameStatLine(nflGame.box, 'nfl')).toBe('5/6 tgt, 59 yds, 0 TD');
+        expect(gameStatLine(nflGame, 'nfl')).toBe('5/6 tgt, 59 yds, 0 TD');
         expect(gameStatLine(undefined, 'cfb')).toBe('');
+        expect(gameStatLine({}, 'cfb')).toBe('');
         // ESPN's box is STRINGS, so `"0"` and `"0/0"` are truthy: counting on
         // truthiness printed a phantom line for an empty category
-        expect(gameStatLine({ 'completions/passingAttempts': '0/0', rushingAttempts: '0', receptions: '0' }, 'cfb')).toBe('');
-        expect(gameStatLine({ rushingAttempts: '3', rushingYards: '12', rushingTouchdowns: '0' }, 'cfb'))
+        expect(gameStatLine({ box: { 'completions/passingAttempts': '0/0', rushingAttempts: '0', receptions: '0' } }, 'cfb')).toBe('');
+        expect(gameStatLine({ box: { rushingAttempts: '3', rushingYards: '12', rushingTouchdowns: '0' } }, 'cfb'))
             .toBe('3 car, 12 yds, 0 TD');
         // reading a CFB box as an NFL one must produce nothing, not a wrong line
-        expect(gameStatLine(cfbGame.box, 'nfl')).toBe('');
+        expect(gameStatLine({ box: cfbGame.box }, 'nfl')).toBe('');
+    });
+
+    test('a CFB rushing line is the plays, not ESPN\'s sack-adjusted box', () => {
+        // ESPN's college box books a sack as a carry for negative yards; the row's
+        // play-derived columns do not, and they win wherever the API serves them
+        const box = { rushingAttempts: '5', rushingYards: '-1', rushingTouchdowns: '0' };
+        expect(gameStatLine({ box, rusher_carries: 4, rusher_yards: 8, rusher_tds: 0 }, 'cfb'))
+            .toBe('4 car, 8 yds, 0 TD');
+        // every "carry" the box listed was a sack: no rushing phrase at all
+        expect(gameStatLine({ box, rusher_carries: 0, rusher_yards: 0, rusher_tds: 0 }, 'cfb')).toBe('');
+        // a row from before the API served them falls back to the box
+        expect(gameStatLine({ box }, 'cfb')).toBe('5 car, -1 yds, 0 TD');
+        // the NFL box is already sack-free (nflverse counts the NFL's way), so it wins
+        expect(gameStatLine({ box: { carries: 14, rushing_yards: 30, rushing_tds: 2 }, rusher_carries: 11 }, 'nfl'))
+            .toBe('14 car, 30 yds, 2 TD');
     });
 
     test('numberOrNull keeps 0 and rejects the API\'s empty markers', () => {

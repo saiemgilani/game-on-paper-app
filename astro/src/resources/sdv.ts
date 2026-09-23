@@ -1171,6 +1171,23 @@ export async function retrievePlayerGames(espnId: string, season: number, league
     return content?.data ?? [];
 }
 
+/**
+ * Percentile breakpoints for the game-log metrics over EVERY player-game in a
+ * league-season (sdv-db `players/games/percentiles`): 101 per metric, 0th..100th.
+ *
+ * One read per season, not per player -- which is the whole reason it is a season
+ * route. It is what lets a game log shade against the league instead of against the
+ * player's own season, the only distribution that exists in week 2 (review on #267).
+ */
+export async function retrievePlayerGamePercentiles(season: number, league: League = 'cfb'): Promise<Record<string, number[]>> {
+    const content = await requestPlayer(league, 'players/games/percentiles', { season: String(season) }, 60 * 60 * 24);
+    const out: Record<string, number[]> = {};
+    for (const row of (content?.data ?? [])) {
+        if (row?.metric && Array.isArray(row?.breaks)) out[String(row.metric)] = row.breaks.map(Number);
+    }
+    return out;
+}
+
 export async function retrievePlayerSplits(espnId: string, season: number, league: League = 'cfb'): Promise<SDVPlayerSplit[]> {
     const content = await requestPlayer(league, `players/${espnId}/splits`, { season: String(season) }, 60 * 60 * 6);
     return content?.data ?? [];

@@ -16,7 +16,7 @@ import { formatPercent, formatRank, generateColorRampValue, roundNumber } from '
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
 
-const feed: any = { cfb, nfl, missing: new Set<string>() };
+const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true };
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -31,6 +31,17 @@ vi.mock('../src/resources/sdv', async (orig) => {
         retrievePlayerSplits: async (_id: string, _season: number, league = 'cfb') => pick(league).splits.data,
         // 2024_01_LV_LAC -> the ESPN event id GOP's game pages are keyed on
         retrieveNflEspnGameIds: async () => ({ '2024_01_LV_LAC': '401671592' }),
+        // the league-season distribution the game log's second shading reads. A
+        // straight ramp per metric, so a value's percentile is arithmetic the test
+        // can redo: `plays` 0..100, `epa` -50..50, the two rates 0..1.
+        retrievePlayerGamePercentiles: async () => (feed.percentiles
+            ? {
+                plays: Array.from({ length: 101 }, (_, i) => i),
+                epa: Array.from({ length: 101 }, (_, i) => i - 50),
+                epa_per_play: Array.from({ length: 101 }, (_, i) => i / 100),
+                success_rate: Array.from({ length: 101 }, (_, i) => i / 100),
+            }
+            : {}),
         retrieveTeamSummaries: async () => [
             { team_id: 183, pos_team: 'Syracuse', EPAplay_off: 0.21, success_off: 0.48, explosive_off: 0.12, EPAplay_def: 0.09, EPAplay_off_rank: 7, success_off_rank: 9, explosive_off_rank: 11, EPAplay_def_rank: 103 },
             { team_id: 13, pos_team: 'LV', EPAplay_off: -0.08, success_off: 0.41, explosive_off: 0.09, EPAplay_def: 0.02, EPAplay_off_rank: 27, success_off_rank: 29, explosive_off_rank: 25, EPAplay_def_rank: 18 },
@@ -67,6 +78,13 @@ const bodyRows = (html: string, id: string): string[] => {
     expect(table, id).toBeTruthy();
     return table.split('</table>')[0].split('<tr').slice(2);
 };
+/**
+ * The game log's numeric cells carry the league percentile as a second span, shown
+ * only in the league shading mode, so the number a reader sees is the cell without it.
+ */
+const logCells = (row: string): string[] =>
+    cells(row.replace(/<span[^>]*data-league-pct[^>]*>[\s\S]*?<\/span>/g, ''));
+
 /** The text of each `<td>` in a row, tags stripped. */
 const cells = (row: string): string[] =>
     [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').replace(/&nbsp;|&emsp;/g, ' ').trim());
@@ -175,14 +193,14 @@ describe('CFB player page', () => {
         const rows = bodyRows(html, 'player-game-log');
         expect(rows.length).toBe(cfb.games.data.length);
         cfb.games.data.forEach((g: any, i: number) => {
-            const c = cells(rows[i]);
+            const c = logCells(rows[i]);
             // the date is a LocalDate island (client:only), so what the server
             // ships is the UTC instant for the viewer's browser to localise --
             // a 7:30pm ET Saturday kickoff must not render as Sunday
             expect(rows[i], String(g.game_id)).toContain(String(g.game_date));
             expect(c[1]).toBe(weekLabel('cfb', g.season_type, g.week));
             expect(c[2]).toContain(g.opponent);
-            expect(c[4]).toBe(gameStatLine(g.box, 'cfb'));
+            expect(c[4]).toBe(gameStatLine(g, 'cfb'));
             expect(c[5]).toBe(String(g.plays));
             expect(c[6]).toBe(roundNumber(g.epa_per_play, 2, 2));
             expect(c[7]).toBe(roundNumber(g.epa, 2, 2));
@@ -384,8 +402,8 @@ describe('NFL player page', () => {
         // and no row ever links to a raw nflverse id
         expect(html).not.toContain('/game/2024_');
         nfl.games.data.forEach((g: any, i: number) => {
-            const c = cells(rows[i]);
-            expect(c[4], String(g.game_id)).toBe(gameStatLine(g.box, 'nfl'));
+            const c = logCells(rows[i]);
+            expect(c[4], String(g.game_id)).toBe(gameStatLine(g, 'nfl'));
             expect(c[5]).toBe(String(g.plays));
             expect(c[7]).toBe(roundNumber(g.epa, 2, 2));
             // the nflverse rows name an opponent by ABBREVIATION; every team URL
@@ -490,7 +508,7 @@ describe('one failing section does not blank the page', () => {
                 expect(html, fn).toContain('<link rel="canonical" href="https://gameonpaper.com/players/4433971?season=2024">');
                 if (fn !== 'retrievePlayerGames') {
                     expect(html, fn).toContain('id="player-game-log"');
-                    expect(html, fn).toContain(gameStatLine(cfb.games.data[0].box, 'cfb'));
+                    expect(html, fn).toContain(gameStatLine(cfb.games.data[0], 'cfb'));
                 }
                 if (fn !== 'retrievePlayerSplits') expect(html, fn).toContain('id="player-splits-table"');
                 if (fn !== 'retrievePlayerSeasons') expect(html, fn).toContain('id="player-season-passing"');
@@ -594,12 +612,14 @@ describe('a player the API does not have', () => {
 describe('the career view is what `?season=` is absent means', () => {
     test('every season summary, and none of the one-season sections', async () => {
         const html = await renderCareer('cfb', '4433971');
-        // every season the player has a row for, newest first, in one table
+        // every season the player has a row for, OLDEST first -- a career reads
+        // forwards (review on #267) -- and each one links to that year's page
         const seasons = bodyRows(html, 'player-season-passing')
             .map((r) => cells(r)[0]).filter((s) => /^\d{4}$/.test(s));
         expect(seasons).toEqual([...new Set(cfb.seasons.data
             .filter((r: any) => r.category === 'passing').map((r: any) => String(r.season)))]
-            .toSorted().toReversed());
+            .toSorted());
+        for (const y of seasons) expect(html, y).toContain(`/players/4433971?season=${y}`);
         expect(html).toContain('Career Summary');
         // the three season-only sections are absent, not empty
         for (const id of ['player-game-log-panel', 'player-splits-panel', 'player-team-context']) {
@@ -623,5 +643,109 @@ describe('the career view is what `?season=` is absent means', () => {
         // and the season table narrows to that one season
         expect(bodyRows(html, 'player-season-passing').map((r) => cells(r)[0]).filter((s) => /^\d{4}$/.test(s)))
             .toEqual(['2024']);
+    }, 60_000);
+});
+
+describe('round-4 review (PR #267)', () => {
+    test('breadcrumbs name what you are looking at: Players / Name [/ season]', async () => {
+        const crumbs = (html: string) => [...html.matchAll(/<li class="breadcrumb-item[^"]*"[^>]*>([\s\S]*?)<\/li>/g)]
+            .map((m) => m[1].replace(/<[^>]*>/g, '').trim());
+        expect(crumbs(await renderCareer('cfb', '4433971'))).toEqual(['Players', 'Kyle McCord']);
+        expect(crumbs(await renderPage('cfb', '4433971', 2024))).toEqual(['Players', 'Kyle McCord', '2024']);
+        // and inside a season the player's own crumb links back to his career page
+        expect(await renderPage('cfb', '4433971', 2024)).toContain('<a href="/players/4433971">Kyle McCord</a>');
+    }, 60_000);
+
+    test('the season selector says what it is', async () => {
+        const html = await renderCareer('cfb', '4433971');
+        expect(html).toMatch(/<label class="form-label[^>]*for="player-season"[^>]*>Season<\/label>/);
+        expect(html).not.toContain('visually-hidden" for="player-season"');
+        // the subtitle is GenericPage's meta-description FALLBACK and the player page
+        // passes its own description, so the string never reaches the document; what
+        // the reader sees is the h1, which already says it
+        expect(html).not.toContain('Every season, summarised');
+        expect(html).toContain('career advanced stats');
+    }, 60_000);
+
+    test('an NFL bio labels the college, and the meme list reaches it', async () => {
+        const identity = { ...nfl.identity, college: 'Georgia; Wyoming', hometown: null };
+        const swap = { ...feed.nfl, identity };
+        const before = feed.nfl;
+        feed.nfl = swap;
+        try {
+            const bio = (await renderCareer('nfl', '16800')).split('id="player-bio"')[1].split('</p>')[0];
+            // Georgia (ESPN 61) is the meme list; Wyoming is not, and both are labelled
+            expect(bio).toContain('College: georgia; Wyoming');
+        } finally {
+            feed.nfl = before;
+        }
+    }, 60_000);
+
+    test('a meme-list team lowercases the name beside the jersey number too', async () => {
+        // the CFB fixture's team is Syracuse (183); rewrite it to Georgia (61)
+        const seasons = cfb.seasons.data.map((r: any) => ({ ...r, team_id: 61, pos_team: 'Georgia' }));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };
+        try {
+            const html = await renderCareer('cfb', '4433971');
+            const head = html.split('id="player-bio"')[0];
+            expect(head).toMatch(/<h2 class="mb-0"[^>]*>kyle mccord<\/h2>/);
+            expect(head).toContain('QB / #6 / georgia');
+            // the <title> keeps the real spelling, as utils/seo.ts documents
+            expect(html).toContain('Kyle McCord');
+            expect(html).toContain('Georgia logo');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('the game log shades against the league as well as the player', async () => {
+        const html = await renderPage('cfb', '4433971', 2024);
+        expect(html).toContain('data-shade-toggle="player-game-log"');
+        expect(html).toContain('data-shade-mode="player"');
+        expect(html).toContain('data-shade-mode="league"');
+        // the player's own season has the games to rank, so that is what it opens on
+        expect(html).toContain('data-shade-mode="player" aria-pressed="true"');
+        const rows = bodyRows(html, 'player-game-log');
+        const g = cfb.games.data[0];
+        const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
+        expect(metrics).toHaveLength(4);
+        // every metric cell carries BOTH shadings, and the league percentile it would
+        // show -- hidden, because the log opened on the player's own season
+        for (const cell of metrics) {
+            expect(cell).toContain('data-shade-league');
+            expect(cell).toContain('data-league-pct');
+            expect(cell).toContain('d-none');
+        }
+        // the ramp is a straight 0..100, so `plays` reads its own value as a percentile
+        expect(metrics[0]).toContain(`${Math.min(g.plays, 100)}th`);
+    }, 60_000);
+
+    test('with no league distribution there is no toggle, only the player shading', async () => {
+        feed.percentiles = false;
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).not.toContain('data-shade-toggle');
+            expect(html).not.toContain('data-league-pct');
+            expect(html).toContain('id="player-game-log"');
+        } finally {
+            feed.percentiles = true;
+        }
+    }, 60_000);
+
+    test('a season too short to rank opens on the league instead', async () => {
+        const two = cfb.games.data.slice(0, 2);
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: two } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('data-shade-mode="league" aria-pressed="true"');
+            // and the percentile text is the one on show
+            const rows = bodyRows(html, 'player-game-log');
+            expect(rows[0]).toContain('data-league-pct');
+            expect(rows[0]).not.toContain('d-none" style="opacity: 50%" data-league-pct');
+        } finally {
+            feed.cfb = before;
+        }
     }, 60_000);
 });

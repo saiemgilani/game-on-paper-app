@@ -792,6 +792,15 @@ export function formatRank(rank: number | undefined | null) {
     return rankString
 }
 
+/** "1st", "22nd", "94th" -- for a percentile, which `formatRank` deliberately does not suffix. */
+export function ordinal(n: number): string {
+    const rem100 = Math.abs(n) % 100;
+    const rem10 = rem100 % 10;
+    const suffix = rem100 >= 11 && rem100 <= 13 ? "th"
+        : rem10 === 1 ? "st" : rem10 === 2 ? "nd" : rem10 === 3 ? "rd" : "th";
+    return `${n}${suffix}`;
+}
+
 export function produceTeamLogoLink(team?: { team_id: string | number, school: string, season?: string | number } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px", league: League = 'cfb'): string {
     if (!team) {
         return `<${headerType} class="d-inline"><a href="${leaguePath(league, "/teams")}"><img class="img-fluid" width="${imgSize}" src="/assets/img/favicon.svg" alt="unknown team"/></a> Unknown Team</${headerType}>`

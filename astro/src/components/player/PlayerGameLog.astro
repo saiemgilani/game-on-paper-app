@@ -22,15 +22,24 @@
  *    the literal "Invalid DateTime" (review on #267). An absent date is an em
  *    dash here, like every other absent cell.
  *
- * The four metric cells are shaded on the site's green -> purple ramp by where
- * the game sits among THIS player's games that season, which is the only
- * distribution the page has read; the season table's cells carry the producer's
- * league-wide percentile instead.
+ * The four metric cells are shaded on the site's green -> purple ramp, and there
+ * are TWO distributions a game can be read against (review on #267), so a filter
+ * row switches between them:
+ *
+ * * **This player** (the default) ranks the game among his own games that season.
+ *   It is the comparison the page can always make, but it needs games to make it:
+ *   in week 2 a player has two, and two is not a distribution -- which is exactly
+ *   why the NFL log looked unshaded in September.
+ * * **The league** reads each number off the season's whole player-game
+ *   distribution (`players/games/percentiles`, sdv-db) and prints the percentile
+ *   beside the number, the way the season table prints a rank. That one works in
+ *   week 1, so it is the default whenever the player's own season is too short.
  */
-import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
-import { gameStatLine, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
+import FilterGroup from '../../layouts/FilterGroup.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from 'luxon';
@@ -39,8 +48,10 @@ interface Props {
     games: PlayerGameRow[]
     /** nflverse game id -> ESPN event id; the NFL log keys on the former, every GOP game page on the latter */
     espnGameIds?: Record<string, string>
+    /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
+    leagueBreaks?: Record<string, number[]>
 }
-const { games, espnGameIds = {} } = Astro.props;
+const { games, espnGameIds = {}, leagueBreaks = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 
 /** An ISO instant luxon can actually render, or null. */
@@ -77,6 +88,16 @@ const shade = (row: PlayerGameRow, key: string): string => {
     if (!column || column.size < 3) return '';
     return generateColorRampValue(column.get(row) ?? null, column.size, true) ?? '';
 };
+/** Where the number sits in the whole league-season, 0..100, or null. */
+const leaguePct = (row: PlayerGameRow, key: string): number | null =>
+    percentileFromBreaks(leagueBreaks[key], row[key as string]);
+const leagueShade = (row: PlayerGameRow, key: string): string =>
+    generateColorRampValue(leaguePct(row, key), 100) ?? '';
+// the player's own season only ranks with three games in it; below that the league
+// is the only distribution there is, so it is what the log opens on
+const ranked = Math.max(...[...ranks.values()].map((c) => c.size), 0);
+const hasLeague = Object.keys(leagueBreaks).length > 0;
+const mode: 'player' | 'league' = ranked >= 3 || !hasLeague ? 'player' : 'league';
 
 /** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
 function gameHref(row: PlayerGameRow): string | null {
@@ -104,6 +125,21 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
 {games.length > 0 && (
 <Fragment>
 <DarkModeLogos teamIds={opponentIds} />
+{hasLeague && (
+<div class="d-flex justify-content-start align-items-center flex-wrap gap-2 mb-2" data-shade-toggle="player-game-log">
+    <span class="text-muted text-small">Shade by</span>
+    <FilterGroup label="Shade the metric cells by">
+        <Fragment slot="filter-body">
+            <button type="button" class:list={["btn", "btn-sm", "btn-outline-secondary", mode === 'player' && "active"]}
+                data-shade-mode="player" aria-pressed={mode === 'player'}
+                title="Rank within this player's own games that season">This player</button>
+            <button type="button" class:list={["btn", "btn-sm", "btn-outline-secondary", mode === 'league' && "active"]}
+                data-shade-mode="league" aria-pressed={mode === 'league'}
+                title="Percentile among every player-game in the league that season">The league</button>
+        </Fragment>
+    </FilterGroup>
+</div>
+)}
 <div class="table-responsive" id="player-game-log">
     <table class="table table-sm">
         <thead>
@@ -147,9 +183,16 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
                         {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                     </td>
-                    <td class="text-left" colspan="1">{gameStatLine(g.box, league)}</td>
+                    <td class="text-left" colspan="1">{gameStatLine(g, league)}</td>
                     {SHADED.map(([key, format]) => (
-                        <td class:list={["text-center", "numeral", shade(g, String(key))]} colspan="1">{format(g[key as string])}</td>
+                        <td class:list={["text-center", "numeral", mode === 'league' ? leagueShade(g, String(key)) : shade(g, String(key))]} colspan="1"
+                            data-shade-player={shade(g, String(key))} data-shade-league={leagueShade(g, String(key))}>
+                            {format(g[key as string])}
+                            {leaguePct(g, String(key)) !== null && (
+                                <span class:list={["align-self-center", "text-small", mode !== 'league' && "d-none"]} style="opacity: 50%"
+                                    data-league-pct> {ordinal(leaguePct(g, String(key)) as number)}</span>
+                            )}
+                        </td>
                     ))}
                 </tr>
             ))}
@@ -158,3 +201,33 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
 </div>
 </Fragment>
 )}
+
+<script>
+    // Deliberately not `is:inline`: the same reason `plays/PlayFilters.astro` gives --
+    // an inline script runs where it sits, and the toggle renders before the table
+    // it drives. Both shadings are already in the markup as data attributes, so this
+    // only ever swaps a class and un-hides a span; with no JS the log keeps whichever
+    // shading the server picked.
+    for (const bar of document.querySelectorAll<HTMLElement>('[data-shade-toggle]')) {
+        const scope = document.getElementById(bar.dataset.shadeToggle ?? '');
+        if (!scope) continue;
+        bar.addEventListener('click', (ev) => {
+            const btn = (ev.target as HTMLElement).closest<HTMLElement>('[data-shade-mode]');
+            if (!btn) return;
+            const mode = btn.dataset.shadeMode === 'league' ? 'league' : 'player';
+            for (const b of bar.querySelectorAll<HTMLElement>('[data-shade-mode]')) {
+                const on = b === btn;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-pressed', String(on));
+            }
+            for (const cell of scope.querySelectorAll<HTMLElement>('[data-shade-player]')) {
+                const next = (mode === 'league' ? cell.dataset.shadeLeague : cell.dataset.shadePlayer) ?? '';
+                for (const c of [...cell.classList]) {
+                    if (c.startsWith('hulk-bg-level-')) cell.classList.remove(c);
+                }
+                if (next) cell.classList.add(next);
+                cell.querySelector('[data-league-pct]')?.classList.toggle('d-none', mode !== 'league');
+            }
+        });
+    }
+</script>
