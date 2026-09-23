@@ -10,8 +10,9 @@
  *
  * `variant` is a Bootstrap SEMANTIC name, never a hex or a hand-rolled colour,
  * so the pill has a dark half for free. Anything the badge needs to say beyond
- * its own word goes in the default slot and renders as a muted line under it,
- * which keeps a long verdict off the pill's `text-nowrap` row.
+ * its own word goes in `title`, which is hover copy and nothing more: a pill
+ * that printed its own detail as a second line put admin text in a public row
+ * (review on #268).
  */
 export type StatusVariant = 'danger' | 'warning' | 'success' | 'secondary' | 'info' | 'primary' | 'dark';
 
@@ -23,13 +24,10 @@ interface Props {
     title?: string | null
     /** utility classes for the pill, e.g. `ms-1` */
     class?: string
-    /** marks the detail line, so a test or a style can find this badge's kind */
+    /** marks the pill, so a test or a style can find this badge's kind */
     dataAttr?: string
 }
 const { label, variant = 'secondary', title, class: className, dataAttr } = Astro.props;
-const hasDetail = Astro.slots.has('default');
 ---
-<span class:list={["badge", `bg-${variant}`, className]} title={title ?? undefined}>{label}</span>
-{hasDetail && (
-    <span class="d-block text-small text-muted text-wrap" data-status-detail={dataAttr}><slot /></span>
-)}
+<span class:list={["badge", `bg-${variant}`, "align-middle", className]}
+    title={title ?? undefined} data-badge={dataAttr}>{label}</span>

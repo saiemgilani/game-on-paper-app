@@ -100,7 +100,8 @@ export interface LiveGameStatus {
  * instead: opponent, kickoff, week and the live score, with every stat cell
  * empty because no play of it has been processed yet. When the processor lands
  * the final, the API's own row takes its place -- same `game_id`, so it is
- * swapped, never duplicated.
+ * swapped, never duplicated. It sits at the BOTTOM of the log, which reads
+ * chronologically forwards, because it is the most recent game played.
  */
 export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>): PlayerGameRow | null {
     const comp = event.competitions?.[0];
@@ -129,7 +130,7 @@ export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>): Pla
 export interface LivePlayerGames {
     /** ESPN event id -> the live claim, and (admin only) the QA verdict */
     live: Record<string, LiveGameStatus>
-    /** the rows to render: the API's, with a synthetic row on top for a live game */
+    /** the rows to render: the API's, with a synthetic row appended for a live game */
     games: PlayerGameRow[]
 }
 
@@ -169,7 +170,10 @@ export async function livePlayerGames(
     if (extra) ids.push(String(extra.game_id));
     const out: Record<string, LiveGameStatus> = {};
     for (const id of ids) out[id] = { live: true };
-    const rows = extra ? [extra, ...games] : games;
+    // LAST, not first: the log reads chronologically forwards, so the game being
+    // played right now is the most recent one and belongs at the bottom of it
+    // (review on #268).
+    const rows = extra ? [...games, extra] : games;
     if (!withQa || ids.length === 0) return { live: out, games: rows };
     await Promise.all(ids.map(async (id) => {
         try {

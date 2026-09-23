@@ -186,9 +186,10 @@ describe('the live badge is public and generic', () => {
         world.payload = { qa: QA_FULL };
         const html = await renderPage();
         const cells = resultCells(html);
-        expect(cells[0]).toContain('<span class="badge bg-danger ms-1" title="This game is in progress">Live</span>');
-        // a final row renders EXACTLY the markup it rendered before this change
-        expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="hulk-text-green">W</span> 31-28</td>');
+        expect(cells[0]).toContain('<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>');
+        // a final row is the result, the score and nothing else -- no dash, and the
+        // pills sit on the text's own line (review on #268)
+        expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span class="hulk-text-green">W</span><span>31-28</span></span></td>');
         expect(cells.filter((c) => c.includes('>Live<'))).toHaveLength(1);
     }, 60_000);
 
@@ -206,9 +207,9 @@ describe('the live badge is public and generic', () => {
         const html = await renderPage();
         expect(html).not.toContain('>Live<');
         expect(processed).not.toHaveBeenCalled();
-        // the pre-change markup of every Result cell, unchanged
-        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1">— 14-10</td>');
-        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="hulk-text-green">W</span> 31-28</td>');
+        // a game with no result is its score alone -- a dash says nothing (review on #268)
+        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span>14-10</span></span></td>');
+        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span class="hulk-text-green">W</span><span>31-28</span></span></td>');
     }, 60_000);
 });
 
@@ -217,25 +218,27 @@ describe('the game being played right now is not in the log, so it is put there'
     const logRows = (html: string): string[] =>
         html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2);
 
-    test('an in-progress game for his team becomes the top row, with the Live badge', async () => {
+    test('an in-progress game for his team becomes the LAST row, with the Live badge', async () => {
         world.board = [LIVE_EVENT];
         const html = await renderPage();
         const rows = logRows(html);
-        // it leads the log, and it is marked as not having come from the API
-        expect(rows[0]).toContain('data-live-row="true"');
+        // the log reads chronologically forwards, so the game being played right now
+        // is the most recent one and sits at the bottom of it (review on #268)
+        const live = rows[rows.length - 1];
+        expect(live).toContain('data-live-row="true"');
         expect(rows.filter((r) => r.includes('data-live-row')).length).toBe(1);
         expect(rows.length).toBe(games.length + 1);
         // opponent, a link to the game page, and the live score
-        expect(rows[0]).toContain('Florida State');
-        expect(rows[0]).toContain('href="/game/401856687"');
-        expect(rows[0]).toContain('17-14');
-        expect(rows[0]).toContain('<span class="badge bg-danger ms-1" title="This game is in progress">Live</span>');
+        expect(live).toContain('Florida State');
+        expect(live).toContain('href="/game/401856687"');
+        expect(live).toContain('17-14');
+        expect(live).toContain('<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>');
         // nothing of it has been processed, so every stat cell is an em dash
-        const cells = [...rows[0].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
+        const cells = [...live.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
         expect(cells.slice(-5)).toEqual(['—', '—', '—', '—', '—']);
         // and a stored row is untouched by any of it
-        expect(rows[1]).not.toContain('data-live-row');
-        expect(rows[2]).toContain('<span class="hulk-text-green">W</span> 31-28');
+        expect(rows[0]).not.toContain('data-live-row');
+        expect(rows[1]).toContain('<span class="hulk-text-green">W</span><span>31-28</span>');
     }, 60_000);
 
     test('a finished game is left to the processor: no synthetic row', async () => {
@@ -261,7 +264,8 @@ describe('the game being played right now is not in the log, so it is put there'
         world.board = [LIVE_EVENT];
         world.payload = { qa: QA_FULL };
         const html = await renderPage({ adminAuthed: true });
-        expect(logRows(html)[0]).toContain('data-status-detail="live-qa"');
+        const rows = logRows(html);
+        expect(rows[rows.length - 1]).toContain('data-badge="live-qa"');
         expect(processed.mock.calls[0][0]).toBe('401856687');
     }, 60_000);
 });
@@ -272,7 +276,7 @@ describe('the QA badge is admin only', () => {
         world.payload = { qa: QA_FULL };
         const reader = await renderPage();
         expect(reader).toContain('>Live<');
-        for (const leak of ['data-status-detail', 'Served:', 'QA ', 'shield', 'ep.ep_range', 'anomaly']) {
+        for (const leak of ['data-badge="live-qa"', 'Served:', 'QA ', 'shield', 'ep.ep_range', 'anomaly']) {
             expect(reader, leak).not.toContain(leak);
         }
     }, 60_000);
@@ -282,7 +286,7 @@ describe('the QA badge is admin only', () => {
         // flag -- so this is the distinction that matters in practice.
         world.live = [LIVE_ID];
         world.payload = { qa: QA_FULL };
-        expect(await renderPage({ preview: true })).not.toContain('data-status-detail');
+        expect(await renderPage({ preview: true })).not.toContain('data-badge="live-qa"');
     }, 60_000);
 
     test('an admin gets the source, the verdict and the rule list', async () => {
@@ -290,9 +294,11 @@ describe('the QA badge is admin only', () => {
         world.payload = { qa: QA_FULL };
         const admin = await renderPage({ adminAuthed: true });
         expect(admin).toContain('>Live<');
-        expect(admin).toContain('data-status-detail="live-qa"');
-        expect(admin).toContain('Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly');
-        expect(admin).toContain('title="ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
+        // the whole verdict is HOVER copy on the pill, never a line in the row
+        expect(admin).toContain('data-badge="live-qa"');
+        expect(admin).toContain('title="Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly'
+            + ' - ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
+        expect(admin).not.toContain('>Served:');
         // ...through the game page's own path, on its own cache key: one call, the live game's
         expect(processed).toHaveBeenCalledTimes(1);
         expect(processed.mock.calls[0][0]).toBe(LIVE_ID);
@@ -302,7 +308,7 @@ describe('the QA badge is admin only', () => {
         world.live = [LIVE_ID];
         world.payload = { qa: null };
         const admin = await renderPage({ adminAuthed: true });
-        expect(admin).toContain('>Served: espn</span>');
+        expect(admin).toContain('title="Served: espn"');
         expect(admin).not.toContain('QA ok');
     }, 60_000);
 
@@ -310,7 +316,7 @@ describe('the QA badge is admin only', () => {
         world.live = [LIVE_ID];
         world.fail = true;
         const html = await renderPage({ adminAuthed: true });
-        expect(html).not.toContain('data-status-detail');
+        expect(html).not.toContain('data-badge="live-qa"');
         expect(resultCells(html)[0]).toContain('>Live<');
     }, 60_000);
 });

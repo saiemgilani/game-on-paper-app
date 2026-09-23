@@ -53,7 +53,7 @@ import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, 
 import { leaguePath, teamLogoUrl } from '../../utils/league';
 import { espnGameId, gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
-import { badgeText, type LiveGameStatus } from '../../utils/liveQa';
+import { badgeText, type LiveGameStatus, type LiveQaBadge } from '../../utils/liveQa';
 import StatusBadge from '../StatusBadge.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
@@ -103,6 +103,12 @@ for (const [key] of SHADED) {
 }
 /** W is good, L is bad, on the site's own ramp-end colours. */
 const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-text-purple' };
+/**
+ * The QA pill's hover copy. It used to print under the pill, which put admin text
+ * in a row the public reads past (review on #268); hovering the pill is where it
+ * belongs, and it is the only place the rule list was ever going to fit anyway.
+ */
+const qaTitle = (b: LiveQaBadge): string => [badgeText(b), b.rules].filter(Boolean).join(' - ');
 const shade = (row: PlayerGameRow, key: string): string => {
     const column = ranks.get(key);
     // two games are not a distribution: shading them would paint one green and
@@ -206,12 +212,15 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         </div>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
-                        {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
-                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}{liveOf(g) && <StatusBadge label="Live" variant="danger" class="ms-1" title="This game is in progress" />}
-                        {admin && liveOf(g)?.qa && (
-                            <StatusBadge label="QA" variant="secondary" class="ms-1" dataAttr="live-qa"
-                                title={liveOf(g)!.qa!.rules || undefined}>{badgeText(liveOf(g)!.qa!)}</StatusBadge>
-                        )}
+                        <span class="d-inline-flex align-items-center gap-1">
+                            {g.result && <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span>}
+                            {g.team_score != null && g.opponent_score != null && <span>{g.team_score}-{g.opponent_score}</span>}
+                            {liveOf(g) && <StatusBadge label="Live" variant="danger" title="This game is in progress" />}
+                            {admin && liveOf(g)?.qa && (
+                                <StatusBadge label="QA" variant="secondary" dataAttr="live-qa"
+                                    title={qaTitle(liveOf(g)!.qa!)} />
+                            )}
+                        </span>
                     </td>
                     <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (
