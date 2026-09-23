@@ -46,6 +46,20 @@ export function nflTeamIdByAbbr(abbr: string | number | null | undefined): numbe
     return NFL_ID_BY_ABBR[key] ?? NFL_ID_BY_ABBR[NFLVERSE_ABBR_ALIASES[key] ?? ''] ?? null;
 }
 
+/**
+ * CFB team id for a school NAME ("Georgia" -> 61). An NFL roster names a player's
+ * college in words and nothing else, so this is the only way to ask whether that
+ * school is on a meme list (review on #267).
+ */
+const CFB_ID_BY_NAME: Record<string, number> = Object.fromEntries(
+    ((teamsRaw.teams ?? []) as TeamIndex[]).map((t) => [t.name.toLocaleLowerCase(), t.team_id]),
+);
+
+export function cfbTeamIdByName(name: string | null | undefined): number | null {
+    const key = String(name ?? '').trim().toLocaleLowerCase();
+    return key ? (CFB_ID_BY_NAME[key] ?? null) : null;
+}
+
 /** Every team the site knows for a league, name-sorted. ESPN ids; cfb is the historical default. */
 export function retrieveAllTeams(league: League = 'cfb'): TeamIndex[] {
     try {

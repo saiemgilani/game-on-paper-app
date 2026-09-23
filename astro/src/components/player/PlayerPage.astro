@@ -7,7 +7,7 @@
  * nothing that only makes sense inside one year. Picking a season from the
  * dropdown narrows the summaries to it and ADDS the game log, the situational
  * splits and his team's context for that year. So the career view makes exactly
- * one read (the season rows) and the season view four.
+ * one read (the season rows) and the season view five.
  *
  * Every number on it comes from the Data API's player-keyed reads (sdv-db #71),
  * and the two populations are kept apart on purpose: the summary tiles, the
@@ -41,12 +41,13 @@ import PlayerGameLog from './PlayerGameLog.astro';
 import PlayerSplits from './PlayerSplits.astro';
 import {
     retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
-    retrieveNflEspnGameIds, retrieveTeamSummaries, type SDVPlayer,
+    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries, type SDVPlayer,
 } from '../../resources/sdv';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { formatHeight, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { cfbTeamIdByName } from '../../utils/teams';
 
 interface Props {
     player: SDVPlayer
@@ -71,11 +72,15 @@ const reads = await Promise.allSettled([
     season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
     season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
     season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
+    season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league),
 ]);
 const seasonRows = settled(reads[0] as PromiseSettledResult<SeasonRow[]>, []);
 const games = settled(reads[1] as PromiseSettledResult<any[]>, []);
 const splits = settled(reads[2] as PromiseSettledResult<any[]>, []);
 const espnGameIds = settled(reads[3] as PromiseSettledResult<Record<string, string>>, {});
+// the league-season distribution the game log's second shading reads; a failed or
+// not-yet-deployed read just leaves the log on its player-level shading
+const leagueBreaks = settled(reads[4] as PromiseSettledResult<Record<string, number[]>>, {});
 // which panels have to say "unavailable" instead of "nothing to show"
 const failed = {
     seasons: reads[0].status === 'rejected',
@@ -95,7 +100,10 @@ const headerRows = seasonRows
 // the ESPN team ids for that season -- the NFL identity has none, but its season rows do
 const teamIds = [...new Set(headerRows.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
 const headerTeamId = teamIds[0] ?? player.team_id ?? null;
-const teamName = String(headerRows[0]?.pos_team ?? player.team ?? '');
+const realTeamName = String(headerRows[0]?.pos_team ?? player.team ?? '');
+// the team beside the jersey number is a team NAME, so the meme list applies to it
+// exactly as it does to his own (review on #267)
+const teamName = cleanTextForTeam(realTeamName, headerTeamId);
 
 // Team context: how the team he played for that season did, from the same
 // team_summaries rows the team leaderboards read -- one cached call, four
@@ -117,20 +125,20 @@ const name = cleanTextForTeam(realName, headerTeamId);
 // the season the page SHOWS, so canonical, og:url and the Dataset's
 // temporalCoverage all describe the same year -- and the career view has none
 const pageUrl = playerPath(league, player.espn_id, season);
-const spec = { name: realName, position: player.position, team: teamName || null, season, league };
+const spec = { name: realName, position: player.position, team: realTeamName || null, season, league };
 const pageTitle = playerTitle(spec);
 const description = playerDescription(spec);
 const heading = season === null ? `${name} career advanced stats` : `${name} ${season} advanced stats`;
 const seasons = player.seasons.toSorted((a, b) => b - a);
 const crumbSeason = headerSeason ?? seasons[0];
 
+// `Players / Name` on the career page, `Players / Name / 2025` inside a season --
+// the trail names what you are looking at, not the year you arrived by (review on
+// #267). The player's own crumb is a link to his career page while a season is open.
 const breadcrumbs: PageBreadcrumb[] = [
-    { title: 'Seasons', active: false },
-    ...(crumbSeason ? [
-        { title: `${crumbSeason}`, url: leaguePath(league, `/year/${crumbSeason}`), active: false },
-        { title: 'Players', url: leaguePath(league, `/year/${crumbSeason}/players/passing`), active: false },
-    ] : []),
-    { title: name, url: pageUrl, active: true },
+    { title: 'Players', ...(crumbSeason ? { url: leaguePath(league, `/year/${crumbSeason}/players/passing`) } : {}), active: false },
+    { title: name, url: playerPath(league, player.espn_id), active: season === null },
+    ...(season === null ? [] : [{ title: `${season}`, url: pageUrl, active: true }]),
 ];
 
 const dataset = datasetJsonLd({
@@ -143,11 +151,16 @@ const headshot = player.headshot_url
 // the bio line, from whatever the league's roster published: both leagues store
 // a height in inches, so it is written the way the site writes one ("6-3")
 const weight = numberOrNull(player.weight);
+// A roster names more than one school when the player transferred ("Wyoming;
+// Reedley"), and each one is a team the meme list can cover -- resolved by NAME,
+// which is all an NFL roster gives (review on #267).
+const college = String(player.college ?? '').split(';').map((c) => c.trim()).filter(Boolean);
 const bio: string[] = [
     formatHeight(player.height),
     weight === null ? null : `${Math.round(weight)} lb`,
     player.hometown || null,
-    league === 'nfl' ? (player.college || null) : null,
+    college.length === 0 ? null
+        : `College: ${college.map((c) => cleanTextForTeam(c, cfbTeamIdByName(c))).join('; ')}`,
 ].filter(Boolean) as string[];
 // the season summary, in the same table format as every other section rather
 // than a row of loose tiles (review on #267)
@@ -172,7 +185,7 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
 const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
 ---
 
-<GenericPage title={pageTitle} subtitle={season === null ? 'Every season, summarised' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
+<GenericPage title={pageTitle} subtitle={season === null ? 'Career advanced stats' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
     <div class="container">
         {headerTeamId && <DarkModeLogos teamIds={[headerTeamId]} />}
         <div class="row mb-3">
@@ -193,7 +206,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                                 <a href={leaguePath(league, `/year/${crumbSeason}/team/${headerTeamId}`)}>
                                     <img class={`h2 img img-fluid team-logo-${headerTeamId}`} width="50px"
                                         src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${headerTeamId}.png`}
-                                        alt={`${teamName} logo`} />
+                                        alt={`${realTeamName} logo`} />
                                 </a>
                             )}
                         </div>
@@ -204,7 +217,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                                 </p>
                             </div>
                             <div class="col-md-auto col-12">
-                                <label class="visually-hidden" for="player-season">Season</label>
+                                <label class="form-label text-muted text-small mb-1" for="player-season">Season</label>
                                 <select id="player-season" class="form-select form-select-md" onchange="window.location.href = this.value">
                                     <option value={playerPath(league, player.espn_id)} selected={season === null}>Career</option>
                                     {seasons.map((y) => (
@@ -234,7 +247,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                     </table>
                 </div>
                 )}
-                <PlayerSeasonTable rows={seasonRows} season={season} />
+                <PlayerSeasonTable rows={seasonRows} season={season} espnId={String(player.espn_id)} />
                 {failed.seasons
                     ? <p class="m-0 text-muted text-small" id="player-summary-unavailable">{UNAVAILABLE}</p>
                     : seasonRows.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard rows for this player.</p>}
@@ -245,7 +258,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={games} espnGameIds={espnGameIds} />
+                <PlayerGameLog games={games} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} />
                 {failed.games
                     ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
                     : games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}

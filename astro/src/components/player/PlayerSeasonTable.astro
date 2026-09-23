@@ -20,14 +20,15 @@
  * an empty cell leaves the row unlabelled (review on #267).
  *
  * With no season selected the page is the player's CAREER, so every season row
- * is shown, newest first; a selected season narrows it to that year. Either way
+ * is shown, oldest first, and each Season cell links to that year's page; a
+ * selected season narrows the table to that year. Either way
  * a category whose ranks the producer withheld -- the player did not clear the
  * leaderboard minimum -- says so in the table's caption rather than showing a
  * column of blanks.
  */
 import { cleanTextForTeam, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { categoryColumns, formatPlayerMetric, percentileOf, PLAYER_CATEGORIES, PLAYER_STAT_MINIMUMS, rollUpSeasons, unranked, type SeasonRow } from '../../utils/players';
+import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, PLAYER_CATEGORIES, PLAYER_STAT_MINIMUMS, rollUpSeasons, unranked, type SeasonRow } from '../../utils/players';
 import { teamAbbr } from '../../utils/teams';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
@@ -36,8 +37,10 @@ interface Props {
     rows: SeasonRow[]
     /** the season to narrow to, or null for the career view (every season) */
     season: number | null
+    /** the player the rows belong to; each Season cell links to his page for that year */
+    espnId: string
 }
-const { rows, season } = Astro.props;
+const { rows, season, espnId } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 
 const TITLES: Record<string, string> = { passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving' };
@@ -55,8 +58,10 @@ interface Block {
 const blocks: Block[] = PLAYER_CATEGORIES.map((category): Block => {
     const all = rows.filter((r: SeasonRow) => r.category === category);
     const shown = (season === null ? all : all.filter((r: SeasonRow) => Number(r.season) === season))
+        // chronological, oldest first: a career reads forwards (review on #267).
+        // A traded player's two rows for one season stay volume-ordered within it.
         .toSorted((a: SeasonRow, b: SeasonRow) =>
-            Number(b.season) - Number(a.season) || Number(b.plays ?? 0) - Number(a.plays ?? 0));
+            Number(a.season) - Number(b.season) || Number(b.plays ?? 0) - Number(a.plays ?? 0));
     return {
         category,
         columns: categoryColumns(category),
@@ -92,7 +97,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
             {b.shown.map((row: SeasonRow) => (
                 <Fragment>
                     <tr>
-                        <td class="text-left numeral" colspan="1">{row.season}</td>
+                        <td class="text-left numeral" colspan="1"><a href={playerPath(league, espnId, Number(row.season))}>{row.season}</a></td>
                         <td class="text-left text-nowrap" colspan="1">
                             <a href={leaguePath(league, `/year/${row.season}/team/${row.team_id}`)}>
                                 <img class={`img-fluid team-logo-${row.team_id} me-2`} width="20px"
