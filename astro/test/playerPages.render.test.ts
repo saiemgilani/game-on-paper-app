@@ -705,7 +705,7 @@ describe('round-4 review (PR #267)', () => {
         expect(html).toContain('data-shade-mode="player"');
         expect(html).toContain('data-shade-mode="league"');
         // the player's own season has the games to rank, so that is what it opens on
-        expect(html).toContain('data-shade-mode="player" aria-pressed="true"');
+        expect(html).toContain('data-shade-mode="player" selected');
         const rows = bodyRows(html, 'player-game-log');
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
@@ -739,7 +739,7 @@ describe('round-4 review (PR #267)', () => {
         feed.cfb = { ...cfb, games: { ...cfb.games, data: two } };
         try {
             const html = await renderPage('cfb', '4433971', 2024);
-            expect(html).toContain('data-shade-mode="league" aria-pressed="true"');
+            expect(html).toContain('data-shade-mode="league" selected');
             // and the percentile text is the one on show
             const rows = bodyRows(html, 'player-game-log');
             expect(rows[0]).toContain('data-league-pct');

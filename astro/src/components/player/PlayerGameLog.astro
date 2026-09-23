@@ -39,7 +39,6 @@ import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, 
 import { leaguePath, teamLogoUrl } from '../../utils/league';
 import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
-import FilterGroup from '../../layouts/FilterGroup.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from 'luxon';
@@ -128,16 +127,12 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
 {hasLeague && (
 <div class="d-flex justify-content-start align-items-center flex-wrap gap-2 mb-2" data-shade-toggle="player-game-log">
     <span class="text-muted text-small">Shade by</span>
-    <FilterGroup label="Shade the metric cells by">
-        <Fragment slot="filter-body">
-            <button type="button" class:list={["btn", "btn-sm", "btn-outline-secondary", mode === 'player' && "active"]}
-                data-shade-mode="player" aria-pressed={mode === 'player'}
-                title="Rank within this player's own games that season">This player</button>
-            <button type="button" class:list={["btn", "btn-sm", "btn-outline-secondary", mode === 'league' && "active"]}
-                data-shade-mode="league" aria-pressed={mode === 'league'}
-                title="Percentile among every player-game in the league that season">The league</button>
-        </Fragment>
-    </FilterGroup>
+    <select class="form-select form-select-sm w-auto" aria-label="Shade the metric cells by" data-shade-select>
+        <option value="player" data-shade-mode="player" selected={mode === 'player'}
+            title="Rank within this player's own games that season">This player</option>
+        <option value="league" data-shade-mode="league" selected={mode === 'league'}
+            title="Percentile among every player-game in the league that season">The league</option>
+    </select>
 </div>
 )}
 <div class="table-responsive" id="player-game-log">
@@ -211,15 +206,10 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
     for (const bar of document.querySelectorAll<HTMLElement>('[data-shade-toggle]')) {
         const scope = document.getElementById(bar.dataset.shadeToggle ?? '');
         if (!scope) continue;
-        bar.addEventListener('click', (ev) => {
-            const btn = (ev.target as HTMLElement).closest<HTMLElement>('[data-shade-mode]');
-            if (!btn) return;
-            const mode = btn.dataset.shadeMode === 'league' ? 'league' : 'player';
-            for (const b of bar.querySelectorAll<HTMLElement>('[data-shade-mode]')) {
-                const on = b === btn;
-                b.classList.toggle('active', on);
-                b.setAttribute('aria-pressed', String(on));
-            }
+        const select = bar.querySelector<HTMLSelectElement>('[data-shade-select]');
+        if (!select) continue;
+        select.addEventListener('change', () => {
+            const mode = select.value === 'league' ? 'league' : 'player';
             for (const cell of scope.querySelectorAll<HTMLElement>('[data-shade-player]')) {
                 const next = (mode === 'league' ? cell.dataset.shadeLeague : cell.dataset.shadePlayer) ?? '';
                 for (const c of [...cell.classList]) {
