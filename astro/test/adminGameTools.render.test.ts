@@ -56,14 +56,20 @@ describe('the admin tools on the game header', () => {
         expect(html).toBe(await renderHeader({ preview: true }));
     });
 
-    test('an admin gets the view pills and the flag dropdown', async () => {
+    test('an admin gets the view dropdown and the flag dropdown', async () => {
         const html = await renderHeader({ adminAuthed: true });
         expect(html).toContain('data-admin-game-tools');
-        expect(html).toContain('btn btn-sm btn-outline-secondary');
-        expect(html).toContain('>Live<');
-        expect(html).toContain('>Preview<');
+        // a select, not a pill group: FilterGroup goes away in #270
+        expect(html).toContain('form-select form-select-sm w-auto');
+        expect(html).not.toContain('btn btn-sm btn-outline-secondary');
+        expect(html).toContain('View: Live');
+        expect(html).toContain('View: Preview');
         expect(html).toContain('view=preview');
-        // source-switch is off for this render (no preview state), so no source pills
+        // the header above already carries the bottom margin; the toolbar only
+        // needs a top one where it wraps onto its own line
+        expect(html).toContain('mt-3 mt-md-0');
+        expect(html).not.toContain('gap-2 mb-3');
+        // source-switch is off for this render (no preview state), so no source select
         expect(html).not.toContain('source=');
     });
 
@@ -79,10 +85,11 @@ describe('the admin tools on the game header', () => {
         expect(html).toContain('Served: espn');
         expect(html).toContain('(fallback)');
         expect(html).toContain('contract abcdef1');
-        // the compare panel is a Panel, collapsed, not a card
-        expect(html).toContain('id="source-compare-panel"');
-        expect(html).toContain('Source Comparison');
-        expect(html).toContain('[show/hide]');
+        // the comparison is a muted paragraph under the tools, not a titled panel
+        expect(html).toContain('data-admin-source-compare');
+        expect(html).toContain('class="text-muted text-small mt-2 mb-1"');
+        expect(html).not.toContain('Source Comparison');
+        expect(html).not.toContain('[show/hide]');
         expect(html).not.toContain('class="card');
         expect(html).toContain('numeral');
     });
