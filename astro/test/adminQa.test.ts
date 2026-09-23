@@ -166,6 +166,12 @@ describe('the admin page', () => {
         expect(html.indexOf('id="qa-window"')).toBeGreaterThan(rulesAt);
         expect(html.indexOf('id="t-qarules"')).toBeGreaterThan(html.indexOf('id="qa-window"'));
         expect(html.indexOf('id="qa-window"')).toBeGreaterThan(html.indexOf('id="t-qagames"'));
+        // right edge on desktop, under the title on mobile: the title column
+        // grows and the control column is auto-width, both full width below md
+        const row = html.slice(rulesAt - 400, html.indexOf('id="t-qarules"'));
+        expect(row).toContain('row align-items-center g-2');
+        expect(row).toContain('col-md col-12');
+        expect(row).toContain('col-md-auto col-12');
     });
 
     test('the old /admin/qa link lands on the tab', async () => {
