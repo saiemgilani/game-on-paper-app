@@ -96,6 +96,11 @@ describe('the player-pages flag', () => {
         const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nfl/players') });
         expect(res.status).toBe(302);
         expect(res.headers.get('Location')).toBe(`/nfl/year/${CURRENT_YEAR}/players/passing`);
+        // ... and the college hub it mirrors, now a page rather than a literal year
+        const { default: Cfb } = await import('../src/pages/players/index.astro');
+        const cfb = await container.renderToResponse(Cfb, { request: new Request('https://gameonpaper.com/players') });
+        expect(cfb.headers.get('Location')).toBe(`/year/${CURRENT_YEAR}/players`);
+        expect((await run('/players', null)).rewrittenTo).toBeUndefined();
         const cookie = await mintPreviewCookie('test-secret');
         expect((await run('/nfl/players', cookie)).rewrittenTo).toBeUndefined();
     }, 30_000);
