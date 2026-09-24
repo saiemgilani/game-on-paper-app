@@ -135,6 +135,12 @@ describe('PreGamePage renders a scheduled NFL game as an NFL page', () => {
         expect(fetched.some(u => u.includes('/v1/nfl/schedule?'))).toBe(false);
     });
 
+    test('players to watch read the NFL summaries, and recent-form links stay in the league', () => {
+        expect(fetched.some(u => u.includes('/v1/nfl/passing?'))).toBe(true);
+        expect(fetched.some(u => u.includes('/v1/cfb/passing?'))).toBe(false);
+        expect(html).not.toMatch(/href="\/game\/\d+"/);
+    });
+
     test('previous meetings list every completed game and no scheduled one', () => {
         expect(html).toContain('Previous Meetings');
         // both 2025 meetings, whichever side hosted

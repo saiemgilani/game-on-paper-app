@@ -2,7 +2,7 @@
 import { DateTime } from 'luxon';
 import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
 import { cleanAbbreviation } from '../../utils/misc';
-import { espnLogoLeague } from '../../utils/league';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
 
 interface Props {
     summary: ESPNGameSummary | null
@@ -57,7 +57,7 @@ const home = form(homeTeam.id);
                                         </span>
                                     );
                                     return e.id
-                                        ? (<a class="text-decoration-none" href={`/game/${e.id}`}>{badge}</a>)
+                                        ? (<a class="text-decoration-none" href={leaguePath(Astro.locals.league, `/game/${e.id}`)}>{badge}</a>)
                                         : badge;
                                 })}
                             </div>
