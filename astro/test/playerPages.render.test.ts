@@ -677,6 +677,12 @@ describe('round-4 review (PR #267)', () => {
         const html = await renderCareer('cfb', '4433971');
         expect(html).toMatch(/<label class="form-label[^>]*for="player-season"[^>]*>Season<\/label>/);
         expect(html).not.toContain('visually-hidden" for="player-season"');
+        // Akshay on #267: the picker shares the bio's row, top-aligned with it,
+        // label beside it so the SELECT is what lines up with the bio's top
+        const row = html.split('id="player-bio-row"')[1].split('</select>')[0];
+        expect(html).toMatch(/<div class="row align-items-start g-2" id="player-bio-row"/);
+        expect(row).toContain('id="player-bio"');
+        expect(row).toMatch(/<div class="col-md-auto col-12 d-flex align-items-center gap-2"[^>]*>\s*<label[^>]*mb-0[^>]*for="player-season"/);
         // the subtitle is GenericPage's meta-description FALLBACK and the player page
         // passes its own description, so the string never reaches the document; what
         // the reader sees is the h1, which already says it
