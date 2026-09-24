@@ -83,7 +83,7 @@ const bodyRows = (html: string, id: string): string[] => {
  * only in the league shading mode, so the number a reader sees is the cell without it.
  */
 const logCells = (row: string): string[] =>
-    cells(row.replace(/<span[^>]*data-league-pct[^>]*>[\s\S]*?<\/span>/g, ''));
+    cells(row.replace(/<small[^>]*data-league-pct[^>]*>[\s\S]*?<\/small>/g, ''));
 
 /** The text of each `<td>` in a row, tags stripped. */
 const cells = (row: string): string[] =>
@@ -706,6 +706,11 @@ describe('round-4 review (PR #267)', () => {
         expect(html).toContain('data-shade-mode="league"');
         // the player's own season has the games to rank, so that is what it opens on
         expect(html).toContain('data-shade-mode="player" selected');
+        // Akshay's copy on #267: the question the control answers, and the season
+        // the league option's distribution is from; college's population is the nation
+        expect(html).toContain('<label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>');
+        expect(html).toMatch(/data-shade-mode="player"[^>]*>Player Games<\/option>/);
+        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every player-game in the nation that season"[^>]*>2024 Percentiles<\/option>/);
         const rows = bodyRows(html, 'player-game-log');
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
@@ -717,8 +722,14 @@ describe('round-4 review (PR #267)', () => {
             expect(cell).toContain('data-league-pct');
             expect(cell).toContain('d-none');
         }
-        // the ramp is a straight 0..100, so `plays` reads its own value as a percentile
-        expect(metrics[0]).toContain(`${Math.min(g.plays, 100)}th`);
+        // the ramp is a straight 0..100, so `plays` reads its own value as a percentile,
+        // printed small and suffixed the way the Binion box score prints one
+        expect(metrics[0]).toMatch(new RegExp(`<small[^>]*data-league-pct[^>]*> ${Math.min(g.plays, 100)}th %tile</small>`));
+    }, 60_000);
+
+    test('the NFL toggle names the league, not the nation', async () => {
+        const html = await renderPage('nfl', '16800', 2024);
+        expect(html).toMatch(/title="Percentile among every player-game in the league that season"[^>]*>2024 Percentiles<\/option>/);
     }, 60_000);
 
     test('with no league distribution there is no toggle, only the player shading', async () => {
@@ -743,7 +754,7 @@ describe('round-4 review (PR #267)', () => {
             // and the percentile text is the one on show
             const rows = bodyRows(html, 'player-game-log');
             expect(rows[0]).toContain('data-league-pct');
-            expect(rows[0]).not.toContain('d-none" style="opacity: 50%" data-league-pct');
+            expect(rows[0]).not.toMatch(/<small[^>]*d-none[^>]*data-league-pct/);
         } finally {
             feed.cfb = before;
         }
