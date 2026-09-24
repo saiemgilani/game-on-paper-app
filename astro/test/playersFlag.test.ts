@@ -41,7 +41,7 @@ async function run(path: string, cookie: string | null) {
 }
 
 const PLAYER_PATHS = [
-    '/players/4433971', '/players/4433971?season=2023', '/players',
+    '/players/4433971', '/players/4433971?season=2023',
     '/nfl/players/16800', '/nfl/players/00-0031381',
 ];
 
@@ -57,7 +57,7 @@ describe('the player-pages flag', () => {
             expect((await run(p, null)).rewrittenTo, p).toBe('/404');
         }
         // the season leaderboards those pages hang off are untouched
-        for (const p of ['/', '/year/2025/players/passing', '/year/2024/players/receiving', '/game/401634304', '/playersx']) {
+        for (const p of ['/', '/players', '/year/2025/players/passing', '/year/2024/players/receiving', '/game/401634304', '/playersx']) {
             expect((await run(p, null)).rewrittenTo, p).toBeUndefined();
         }
         // the NFL leaderboards are gated by the 'nfl' flag, not this one: a
@@ -86,6 +86,19 @@ describe('the player-pages flag', () => {
             expect(isPlayerPath(p), p).toBe(false);
         }
     });
+
+    test('/nfl/players redirects to the NFL passing leaderboard, as /players does for college', async () => {
+        // Akshay on #267: it 404'd -- no index page, and the bare path was gated
+        // as if it were a player page
+        const { CURRENT_YEAR } = await import('../src/utils/constants');
+        const container = await AstroContainer.create();
+        const { default: Page } = await import('../src/pages/nfl/players/index.astro');
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nfl/players') });
+        expect(res.status).toBe(302);
+        expect(res.headers.get('Location')).toBe(`/nfl/year/${CURRENT_YEAR}/players/passing`);
+        const cookie = await mintPreviewCookie('test-secret');
+        expect((await run('/nfl/players', cookie)).rewrittenTo).toBeUndefined();
+    }, 30_000);
 
     test('the sitemap lists no player URL while the flag is gated', async () => {
         const { GET } = await import('../src/pages/sitemap.xml');

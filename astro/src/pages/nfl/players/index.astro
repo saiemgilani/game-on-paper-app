@@ -1,0 +1,10 @@
+---
+import { CURRENT_YEAR } from '../../../utils/constants';
+import { leaguePath } from '../../../utils/league';
+
+// /nfl/players: the college /players redirect (astro.config.mjs) has an NFL twin
+// here rather than there, so the year is the constant and not a literal that goes
+// stale. The season leaderboard then sends the current season on to the last
+// completed one, as every leaderboard hub does (review on #267).
+return Astro.redirect(leaguePath('nfl', `/year/${CURRENT_YEAR}/players/passing`));
+---

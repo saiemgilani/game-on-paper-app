@@ -20,10 +20,11 @@ const CASES = [['cfb', cfb], ['nfl', nfl]] as const;
 
 describe('the gated path shape', () => {
     test('matches both leagues segment-exact', () => {
-        for (const p of ['/players/4433971', '/players/', '/players', '/nfl/players/16800', '/nfl/players/00-0031381']) {
+        for (const p of ['/players/4433971', '/nfl/players/16800', '/nfl/players/00-0031381']) {
             expect(isPlayerPath(p), p).toBe(true);
         }
-        for (const p of ['/', '/nfl', '/playersx', '/year/2025/players/passing', '/nfl/year/2024/players/passing', '/team/183', '/game/401634304']) {
+        // the bare index is the leaderboard redirect, not a player page
+        for (const p of ['/', '/nfl', '/players', '/players/', '/nfl/players', '/nfl/players/', '/playersx', '/year/2025/players/passing', '/nfl/year/2024/players/passing', '/team/183', '/game/401634304']) {
             expect(isPlayerPath(p), p).toBe(false);
         }
     });

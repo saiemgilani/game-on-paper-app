@@ -90,10 +90,14 @@ export const SPLIT_PARTITIONS: string[][] = [
     ['first_half', 'second_half', 'overtime'],
 ];
 
-/** `/players/<id>` and `/nfl/players/<id>`, segment-exact. */
+/**
+ * `/players/<id>` and `/nfl/players/<id>`, segment-exact. The bare `/players` and
+ * `/nfl/players` are NOT player pages: they redirect to the season leaderboards,
+ * which are public, so gating them 404'd a public URL (review on #267).
+ */
 export function isPlayerPath(pathname: string): boolean {
     const p = pathname === '/nfl' || pathname.startsWith('/nfl/') ? pathname.slice(4) || '/' : pathname;
-    return /^\/players(\/|$)/.test(p);
+    return /^\/players\/[^/]+/.test(p);
 }
 
 export function playerPath(league: League | undefined, espnId: string | number, season?: number | null): string {
