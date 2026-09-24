@@ -3,9 +3,9 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unranked, weekLabel, type SeasonRow,
+    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, weekLabel, type SeasonRow,
 } from '../src/utils/players';
-import { cleanField, cleanTextForTeam, isMemeTeam, numberOrNull } from '../src/utils/misc';
+import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
 
 // The arithmetic the player pages do over the Data API's player-keyed reads,
 // against the REAL bodies those routes return (captured 2026-09-19 from the
@@ -254,11 +254,18 @@ describe('the shared readers the player pages centralised', () => {
         expect(cleanField(null, 'name')).toBe('');
     });
 
-    test('a category with no published rank is the payload saying "does not qualify"', () => {
-        const rows = [{ category: 'rushing', season: 2026, plays: 6, TEPA_rank: null, yards_rank: null }] as any[];
-        expect(unranked(rows)).toBe(true);
-        expect(unranked([{ ...rows[0], TEPA_rank: 31 }])).toBe(false);
-        expect(unranked([])).toBe(false);
+    test('a season with no published rank is the payload saying "did not qualify"', () => {
+        const row = { category: 'rushing', season: 2026, plays: 6, TEPA_rank: null, yards_rank: null };
+        expect(unrankedSeasons([row])).toEqual([2026]);
+        expect(unrankedSeasons([{ ...row, TEPA_rank: 31 }])).toEqual([]);
+        expect(unrankedSeasons([])).toEqual([]);
+        // per season, ascending; a traded season qualifies if either team row ranked
+        const career = [row, { ...row, season: 2025, TEPA_rank: 12 }, { ...row, season: 2024 },
+            { ...row, season: 2023 }, { ...row, season: 2023, team_id: 2, TEPA_rank: 40 }];
+        expect(unrankedSeasons(career)).toEqual([2024, 2026]);
+        expect(joinWithAnd([2024])).toBe('2024');
+        expect(joinWithAnd([2024, 2026])).toBe('2024 and 2026');
+        expect(joinWithAnd([2023, 2024, 2026])).toBe('2023, 2024 and 2026');
         // every category the leaderboards rank has a minimum to quote
         for (const c of ['passing', 'rushing', 'receiving']) expect(PLAYER_STAT_MINIMUMS[c]).toMatch(/^min\. /);
     });

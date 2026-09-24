@@ -50,15 +50,17 @@ export function formatHeight(v: unknown): string | null {
 }
 
 /**
- * True when the producer published NO rank for any metric on any of these rows,
- * which is how the payload says "does not qualify" -- the rows themselves are
- * real, only their ranks and percentiles are withheld.
+ * The seasons, ascending, in which the producer published NO rank for any metric
+ * on any of that season's rows -- which is how the payload says "did not qualify";
+ * the rows themselves are real, only their ranks and percentiles are withheld. Per
+ * season, not all-or-nothing: a career with one unqualified year says which one
+ * (review on #267). A traded player's season qualifies if either team row does.
  */
-export function unranked(rows: Record<string, unknown>[]): boolean {
-    if (rows.length === 0) return false;
-    return rows.every((r) => Object.keys(r)
-        .filter((k) => k.endsWith('_rank'))
-        .every((k) => numberOrNull(r[k]) === null));
+export function unrankedSeasons(rows: Record<string, unknown>[]): number[] {
+    const ranked = (r: Record<string, unknown>) => Object.keys(r)
+        .some((k) => k.endsWith('_rank') && numberOrNull(r[k]) !== null);
+    const seasons = [...new Set(rows.map((r) => Number(r.season)))];
+    return seasons.filter((y) => !rows.some((r) => Number(r.season) === y && ranked(r))).sort((a, b) => a - b);
 }
 
 /** The name column each category's rows carry, as the leaderboards read it. */

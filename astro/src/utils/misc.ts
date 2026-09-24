@@ -93,6 +93,11 @@ export function yearRange(seasons: number[]): string {
     return s.length > 1 ? `${s[0]} to ${s[s.length - 1]}` : `${s[0]}`;
 }
 
+/** "2024", "2024 and 2026", "2023, 2024 and 2026": a list the way a sentence says it. */
+export function joinWithAnd(items: (string | number)[]): string {
+    return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 export function roundNumber(value: string | number | undefined | null, power10: number, fixed: number): string {
     if (typeof value == "number") {
         value = `${value}`;

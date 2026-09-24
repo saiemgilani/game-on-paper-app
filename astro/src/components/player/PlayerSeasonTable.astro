@@ -21,14 +21,13 @@
  *
  * With no season selected the page is the player's CAREER, so every season row
  * is shown, oldest first, and each Season cell links to that year's page; a
- * selected season narrows the table to that year. Either way
- * a category whose ranks the producer withheld -- the player did not clear the
- * leaderboard minimum -- says so in the table's caption rather than showing a
- * column of blanks.
+ * selected season narrows the table to that year. Either way, every season whose
+ * ranks the producer withheld -- the player did not clear the leaderboard
+ * minimum -- is named in the table's caption rather than left as a row of blanks.
  */
-import { cleanTextForTeam, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import { cleanTextForTeam, formatRank, generateColorRampValue, joinWithAnd, numberOrNull } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, PLAYER_CATEGORIES, PLAYER_STAT_MINIMUMS, rollUpSeasons, unranked, type SeasonRow } from '../../utils/players';
+import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, PLAYER_CATEGORIES, PLAYER_STAT_MINIMUMS, rollUpSeasons, unrankedSeasons, type SeasonRow } from '../../utils/players';
 import { teamAbbr } from '../../utils/teams';
 import DarkModeLogos from '../DarkModeLogos.astro';
 
@@ -51,7 +50,7 @@ interface Block {
     shown: SeasonRow[];
     /** additive columns summed over every season, rates recomputed; null for one row */
     career: Record<string, number | string> | null;
-    /** the producer published no rank for this category: say why */
+    /** the seasons the producer published no rank for in this category, and why */
     caption: string | null;
 }
 
@@ -67,8 +66,8 @@ const blocks: Block[] = PLAYER_CATEGORIES.map((category): Block => {
         columns: categoryColumns(category),
         shown,
         career: rollUpSeasons(all),
-        caption: unranked(shown)
-            ? `Does not qualify for ${category} ranks (${PLAYER_STAT_MINIMUMS[category]}).`
+        caption: unrankedSeasons(shown).length > 0
+            ? `Did not qualify for ${category} ranks in ${joinWithAnd(unrankedSeasons(shown))}. (${PLAYER_STAT_MINIMUMS[category]})`
             : null,
     };
 }).filter((b: Block) => b.shown.length > 0);

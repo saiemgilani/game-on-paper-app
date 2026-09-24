@@ -158,9 +158,26 @@ describe('CFB player page', () => {
         // not qualify" by withholding every `_rank`; the table says it in words.
         const html = await renderPage('cfb', '4433971', 2024);
         const rushing = html.split('id="player-season-rushing"')[1].split('</table>')[0];
-        expect(rushing).toContain('<caption class="text-small">Does not qualify for rushing ranks (min. 6.25 carries per team-game).</caption>');
+        expect(rushing).toContain('<caption class="text-small">Did not qualify for rushing ranks in 2024. (min. 6.25 carries per team-game)</caption>');
         // ... and a category he IS ranked in carries no caption
         expect(html.split('id="player-season-passing"')[1].split('</table>')[0]).not.toContain('<caption');
+    }, 60_000);
+
+    test('the career caption names every season that did not qualify, not only an all-miss', async () => {
+        // Akshay on #267: 2024 and 2026 unranked, 2025 ranked -> both years, joined
+        const base = cfb.seasons.data.find((r: any) => r.category === 'passing');
+        const rankKeys = Object.keys(base).filter((k) => k.endsWith('_rank'));
+        const unrank = (r: any) => ({ ...r, ...Object.fromEntries(rankKeys.map((k) => [k, null])) });
+        const seasons = [unrank({ ...base, season: 2024 }), { ...base, season: 2025, TEPA_rank: 5 }, unrank({ ...base, season: 2026 })];
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };
+        try {
+            const html = await renderCareer('cfb', '4433971');
+            const passing = html.split('id="player-season-passing"')[1].split('</table>')[0];
+            expect(passing).toContain('<caption class="text-small">Did not qualify for passing ranks in 2024 and 2026. (min. 14 dropbacks per team-game)</caption>');
+        } finally {
+            feed.cfb = before;
+        }
     }, 60_000);
 
     test('season line table: every cell holds the field its header names, with EPA/DB per dropback', async () => {
