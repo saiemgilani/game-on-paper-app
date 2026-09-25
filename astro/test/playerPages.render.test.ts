@@ -680,9 +680,10 @@ describe('round-4 review (PR #267)', () => {
         // Akshay on #267: the picker shares the bio's row, top-aligned with it,
         // label beside it so the SELECT is what lines up with the bio's top
         const row = html.split('id="player-bio-row"')[1].split('</select>')[0];
-        expect(html).toMatch(/<div class="row align-items-start g-2" id="player-bio-row"/);
+        // flex with no gutters, so the picker sits flush on the card's right edge (round 6)
+        expect(html).toMatch(/<div class="d-flex flex-column flex-md-row align-items-md-start justify-content-md-between gap-2" id="player-bio-row"/);
         expect(row).toContain('id="player-bio"');
-        expect(row).toMatch(/<div class="col-md-auto col-12 d-flex align-items-center gap-2"[^>]*>\s*<label[^>]*mb-0[^>]*for="player-season"/);
+        expect(row).toMatch(/<div class="d-flex align-items-center gap-2 ms-md-auto"[^>]*>\s*<label[^>]*mb-0[^>]*for="player-season"/);
         // the subtitle is GenericPage's meta-description FALLBACK and the player page
         // passes its own description, so the string never reaches the document; what
         // the reader sees is the h1, which already says it
@@ -737,7 +738,7 @@ describe('round-4 review (PR #267)', () => {
         const rows = bodyRows(html, 'player-game-log');
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
-        expect(metrics).toHaveLength(4);
+        expect(metrics).toHaveLength(3);
         // every metric cell carries BOTH shadings, and the league percentile it would
         // show -- hidden, because the log opened on the player's own season
         for (const cell of metrics) {
@@ -745,9 +746,10 @@ describe('round-4 review (PR #267)', () => {
             expect(cell).toContain('data-league-pct');
             expect(cell).toContain('d-none');
         }
-        // the ramp is a straight 0..100, so `plays` reads its own value as a percentile,
         // printed small and suffixed the way the Binion box score prints one
-        expect(metrics[0]).toMatch(new RegExp(`<small[^>]*data-league-pct[^>]*> ${Math.min(g.plays, 100)}th %tile</small>`));
+        expect(metrics[0]).toMatch(/<small[^>]*data-league-pct[^>]*> \d+(st|nd|rd|th) %ile<\/small>/);
+        // plays is a count, not a performance: no shading, no percentile
+        expect(html).not.toMatch(/data-shade-player[^>]*>\s*\d+\s*<small/);
     }, 60_000);
 
     test('the NFL toggle names the league, not the nation', async () => {

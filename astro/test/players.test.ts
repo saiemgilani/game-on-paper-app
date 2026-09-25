@@ -265,7 +265,7 @@ describe('the shared readers the player pages centralised', () => {
         expect(unrankedSeasons(career)).toEqual([2024, 2026]);
         expect(joinWithAnd([2024])).toBe('2024');
         expect(joinWithAnd([2024, 2026])).toBe('2024 and 2026');
-        expect(joinWithAnd([2023, 2024, 2026])).toBe('2023, 2024 and 2026');
+        expect(joinWithAnd([2023, 2024, 2026])).toBe('2023, 2024, and 2026');
         // every category the leaderboards rank has a minimum to quote
         for (const c of ['passing', 'rushing', 'receiving']) expect(PLAYER_STAT_MINIMUMS[c]).toMatch(/^min\. /);
     });
