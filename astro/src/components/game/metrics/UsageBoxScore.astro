@@ -120,45 +120,60 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <thead>
             <tr>
                 <th class="box-heading">Player</th>
-                <th class="box-heading">Stat line</th>
                 <th class="box-heading" style="text-align: center;" title="Expected Points Added on these plays">EPA</th>
             </tr>
         </thead>
         <tbody>
             {kickers.map((k: any) => (
+                <Fragment>
                 <tr>
                     <td><PlayerLink id={k.player_id} season={season}><b>{k.player_name ?? k.player_id}</b></PlayerLink> <span class="text-muted text-small">K</span></td>
-                    <td>
+                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="2" class="text-muted">
                         {k.fg_attempts > 0 && <span>FG {madeOf(k.fg_made, k.fg_attempts)} ({fgByRange(k)}){k.fg_long != null ? `, ${k.fg_long} LNG` : ''}{k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}. </span>}
                         {k.xp_attempts > 0 && <span>XP {madeOf(k.xp_made, k.xp_attempts)}. </span>}
                         {k.kickoffs > 0 && <span>{k.kickoffs} KO, {num(k.kickoff_avg, 1)} avg, {pct(k.kickoff_touchback_rate, 0)} TB{k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} per return allowed` : ''}{k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}.</span>}
                     </td>
-                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
                 </tr>
+                </Fragment>
             ))}
             {punters.map((p: any) => (
+                <Fragment>
                 <tr>
                     <td><PlayerLink id={p.player_id} season={season}><b>{p.player_name ?? p.player_id}</b></PlayerLink> <span class="text-muted text-small">P</span></td>
-                    <td>{p.punts} punts, {num(p.punt_avg, 1)} avg, {num(p.punt_net_avg, 1)} net{p.punt_long != null ? `, ${p.punt_long} LNG` : ''}, {p.punt_inside_20} inside 20, {p.punt_touchbacks} TB, {p.punt_fair_catches} FC{p.punt_returns_allowed > 0 ? `, ${num(p.punt_return_avg_allowed, 1)} per return allowed` : ''}{p.punt_blocked > 0 ? `, ${p.punt_blocked} blocked` : ''}.</td>
                     <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
                 </tr>
+                <tr class="stat-line-row">
+                    <td colspan="2" class="text-muted">{p.punts} punts, {num(p.punt_avg, 1)} avg, {num(p.punt_net_avg, 1)} net{p.punt_long != null ? `, ${p.punt_long} LNG` : ''}, {p.punt_inside_20} inside 20, {p.punt_touchbacks} TB, {p.punt_fair_catches} FC{p.punt_returns_allowed > 0 ? `, ${num(p.punt_return_avg_allowed, 1)} per return allowed` : ''}{p.punt_blocked > 0 ? `, ${p.punt_blocked} blocked` : ''}.</td>
+                </tr>
+                </Fragment>
             ))}
             {returners.map((r: any) => (
+                <Fragment>
                 <tr>
                     <td><PlayerLink id={r.player_id} season={season}><b>{r.player_name ?? r.player_id}</b></PlayerLink> <span class="text-muted text-small">RET</span></td>
-                    <td>
+                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="2" class="text-muted">
                         {r.kick_returns > 0 && <span>KR {r.kick_returns}-{r.kick_return_yards}, {num(r.kick_return_avg, 1)} avg{r.kick_return_long != null ? `, ${r.kick_return_long} LNG` : ''}{r.kick_return_tds > 0 ? `, ${r.kick_return_tds} TD` : ''}. </span>}
                         {r.punt_returns > 0 && <span>PR {r.punt_returns}-{r.punt_return_yards}, {num(r.punt_return_avg, 1)} avg{r.punt_return_long != null ? `, ${r.punt_return_long} LNG` : ''}{r.punt_return_tds > 0 ? `, ${r.punt_return_tds} TD` : ''}.</span>}
                     </td>
-                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
                 </tr>
+                </Fragment>
             ))}
             {blocks.map((b: any) => (
+                <Fragment>
                 <tr>
                     <td><PlayerLink id={b.player_id} season={season}><b>{b.player_name ?? b.player_id}</b></PlayerLink> <span class="text-muted text-small">BLK</span></td>
-                    <td>{b.punt_blocks > 0 ? `${b.punt_blocks} punt${b.punt_blocks > 1 ? 's' : ''} blocked` : ''}{b.punt_blocks > 0 && b.fg_blocks > 0 ? ', ' : ''}{b.fg_blocks > 0 ? `${b.fg_blocks} field goal${b.fg_blocks > 1 ? 's' : ''} blocked` : ''}.</td>
                     <td class="numeral" style="text-align: center;">—</td>
                 </tr>
+                <tr class="stat-line-row">
+                    <td colspan="2" class="text-muted">{b.punt_blocks > 0 ? `${b.punt_blocks} punt${b.punt_blocks > 1 ? 's' : ''} blocked` : ''}{b.punt_blocks > 0 && b.fg_blocks > 0 ? ', ' : ''}{b.fg_blocks > 0 ? `${b.fg_blocks} field goal${b.fg_blocks > 1 ? 's' : ''} blocked` : ''}.</td>
+                </tr>
+                </Fragment>
             ))}
         </tbody>
     </table>

@@ -67,7 +67,6 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
         <thead>
             <tr>
             <th rowspan="1" colspan="1"></th>
-            <th rowspan="1" colspan="1" class="box-heading">Stat line</th>
             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;">Yards/play</th>
             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Expected Points Added per Play">EPA/play</th>
             <th rowspan="1" colspan="1" class="box-heading" style="text-align: center;" title="Total Expected Points Added">EPA</th>
@@ -79,81 +78,97 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
             {
                 (pass.length > 0) && (
                     <tr>
-                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;" title="Includes pass attempts and sacks.">Dropbacks</td>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;" title="Includes pass attempts and sacks.">Dropbacks</td>
                     </tr>
                 )
             }
             {
                 (pass.length > 0) && (pass.map((p) => (
+                    <Fragment>
                     <tr>
                         <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.passer_player_name ?? ''))} season={season}>{p.passer_player_name}</PlayerLink></td>
-                        <td style="text-align: left;">{passingStatLine({ comp: p.Comp, att: p.Att, yards: p.Yds, tds: p.Pass_TD, ints: p.Int })}, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
                     </tr>
+                    <tr class="stat-line-row">
+                        <td colspan="6" class="text-muted">{passingStatLine({ comp: p.Comp, att: p.Att, yards: p.Yds, tds: p.Pass_TD, ints: p.Int })}, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
+                    </tr>
+                    </Fragment>
                 )))
             }
             {
                 (rush.length > 0) && (
                     <tr>
-                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
                     </tr>
                 )
             }
             {
                 (rush.length > 0) && (rush.map((p) => (
+                    <Fragment>
                     <tr>
                         <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.rusher_player_name ?? ''))} season={season}>{p.rusher_player_name}</PlayerLink></td>
-                        <td style="text-align: left;">{rushingStatLine({ carries: p.Car, yards: p.Yds, tds: p.Rush_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPC || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
                     </tr>
+                    <tr class="stat-line-row">
+                        <td colspan="6" class="text-muted">{rushingStatLine({ carries: p.Car, yards: p.Yds, tds: p.Rush_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
+                    </tr>
+                    </Fragment>
                 )))
             }
             {
                 (receiver.length > 0) && (
                     <tr>
-                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
                     </tr>
                 )
             }
             {
                 (receiver.length > 0) && (receiver.map((p) => (
+                    <Fragment>
                     <tr>
                         <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.receiver_player_name ?? ''))} season={season}>{p.receiver_player_name}</PlayerLink></td>
-                        <td style="text-align: left;">{receivingStatLine({ receptions: p.Rec, targets: p.Tar, yards: p.Yds, tds: p.Rec_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
                     </tr>
+                    <tr class="stat-line-row">
+                        <td colspan="6" class="text-muted">{receivingStatLine({ receptions: p.Rec, targets: p.Tar, yards: p.Yds, tds: p.Rec_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
+                    </tr>
+                    </Fragment>
                 )))
             }
             {
                 (defense.length > 0) && (
                     <tr>
-                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;" title="Read from the tacklers ESPN names in the play text. Older games carry no tacklers and show nothing here.">Defense</td>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;" title="Read from the tacklers ESPN names in the play text. Older games carry no tacklers and show nothing here.">Defense</td>
                     </tr>
                 )
             }
             {
                 (defense.length > 0) && (defense.map((d) => (
+                    <Fragment>
                     <tr>
                         <td style="text-align: left;"><PlayerLink id={playerIds.get(String(d.name))} season={season}>{d.name}</PlayerLink></td>
-                        <td style="text-align: left;">{d.TOT} tackle{(d.TOT == 1) ? "" : "s"} ({d.SOLO} solo, {d.AST} ast){(d.TFL > 0) ? `, ${d.TFL} TFL` : ""}{(d.SACK > 0) ? `, ${d.SACK} sack` : ""}{(d.INT > 0) ? `, ${d.INT} INT` : ""}{(d.PBU > 0) ? `, ${d.PBU} PBU` : ""}{(d.QBH > 0) ? `, ${d.QBH} QB hurr` : ""}</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                     </tr>
+                    <tr class="stat-line-row">
+                        <td colspan="6" class="text-muted">{d.TOT} tackle{(d.TOT == 1) ? "" : "s"} ({d.SOLO} solo, {d.AST} ast){(d.TFL > 0) ? `, ${d.TFL} TFL` : ""}{(d.SACK > 0) ? `, ${d.SACK} sack` : ""}{(d.INT > 0) ? `, ${d.INT} INT` : ""}{(d.PBU > 0) ? `, ${d.PBU} PBU` : ""}{(d.QBH > 0) ? `, ${d.QBH} QB hurr` : ""}</td>
+                    </tr>
+                    </Fragment>
                 )))
             }
         </tbody>

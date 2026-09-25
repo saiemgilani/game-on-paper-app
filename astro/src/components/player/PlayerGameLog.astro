@@ -3,8 +3,10 @@
  * The player's game log for one season: schedule context, the box stat line,
  * and the per-game EPA the Data API aggregates from the plays that carry him.
  *
- * Mirrors the game page's `metrics/PlayerBoxScore.astro`: a text stat line on
- * the left and one number per numeric cell after it (Plays, EPA/play, EPA, SR%).
+ * Mirrors the game page's `metrics/PlayerBoxScore.astro`: one number per numeric
+ * cell (Plays, EPA/play, EPA, SR%), and the text stat line as a second row under
+ * the game, spanning the table -- as a column it squeezed the numbers off a
+ * phone screen (2026-09-25).
  * Rows link to the game page, which is the whole point of `game_id` riding on
  * every row, and the opponent links to its team page.
  *
@@ -147,7 +149,6 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                 <th class="text-center" colspan="1">Wk</th>
                 <th class="text-left" colspan="1">Opponent</th>
                 <th class="text-center" colspan="1">Result</th>
-                <th class="text-left" colspan="1">Stat line</th>
                 <th class="text-center" colspan="1">Plays</th>
                 <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
                 <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
@@ -156,6 +157,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
         </thead>
         <tbody>
             {games.map((g: PlayerGameRow) => (
+                <Fragment>
                 <tr>
                     <td class="text-left text-nowrap numeral" colspan="1">
                         {kickoff(g) === null
@@ -182,7 +184,6 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
                         {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                     </td>
-                    <td class="text-left" colspan="1">{gameStatLine(g, league)}</td>
                     <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (
                         <td class:list={["text-center", "numeral", mode === 'league' ? leagueShade(g, String(key)) : shade(g, String(key))]} colspan="1"
@@ -195,6 +196,12 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         </td>
                     ))}
                 </tr>
+                {gameStatLine(g, league) && (
+                    <tr class="stat-line-row">
+                        <td colspan="8" class="text-muted">{gameStatLine(g, league)}</td>
+                    </tr>
+                )}
+                </Fragment>
             ))}
         </tbody>
     </table>

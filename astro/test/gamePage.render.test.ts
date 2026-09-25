@@ -70,9 +70,12 @@ describe('GamePage renders a finished game end to end', () => {
         // Extremes come off the plays, so they work on any game, old text or new.
         expect(html).toMatch(/\d+ LNG, -?\d+\.\d+ best EPA, -?\d+\.\d+% best WPA/);
         // a passer's longest is his longest COMPLETION: Cam Miller went 20/29 for
-        // 274 with a long of 36, McIvor 20/32 for 153 with a long of 18
-        expect(html).toMatch(/Cam Miller[\s\S]{0,400}?36 LNG/);
-        expect(html).toMatch(/Maverick McIvor[\s\S]{0,400}?18 LNG/);
+        // 274 with a long of 36, McIvor 20/32 for 153 with a long of 18. The line
+        // is the row under his name row (name + five numbers), not a column in it.
+        const statLineUnder = (name: string) => html.match(new RegExp(
+            `<td style="text-align: left;">${name}</td>(?:<td class="numeral"[^>]*>[^<]*</td>){5}</tr><tr class="stat-line-row">(.*?)</tr>`))?.[1];
+        expect(statLineUnder('Cam Miller')).toMatch(/^<td colspan="6" class="text-muted">20\/29, 274 yds,[^<]*<span[\s\S]*, 36 LNG,/);
+        expect(statLineUnder('Maverick McIvor')).toMatch(/^<td colspan="6" class="text-muted">20\/32, 153 yds,[^<]*<span[\s\S]*, 18 LNG,/);
     });
 
     test('a final game has no Latest strip -- the page IS the recap', () => {
@@ -327,6 +330,108 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
             props: { ...props, box: {} }, locals: { league: 'cfb', preview: true } as any,
         });
         expect(noIds).not.toContain('/players/');
+    });
+});
+
+describe('the player stat line is a row under the name, not a column', () => {
+    // Decided 2026-09-25 with Akshay: as a column the stat line squeezed the
+    // numbers off a phone and made the page unnavigable. Each player is now a
+    // name row (the name and one number per numeric column) followed by one
+    // `stat-line-row` cell spanning the whole table, in BOTH twins -- the public
+    // renders classic/, and the evidence workflow only ever sees v2.
+    /** Every body `<tr>` of a table: whether it is a stat line or a group heading, and its cells. */
+    const trs = (html: string) => html.split('<tbody>')[1].split('</tbody>')[0].split('<tr').slice(1).map((tr) => ({
+        statLine: tr.startsWith(' class="stat-line-row"'),
+        group: tr.includes('gt_group_heading'),
+        html: tr,
+        cells: [...tr.matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)].map((m) => ({
+            colspan: Number(m[1].match(/colspan="(\d+)"/)?.[1] ?? 1),
+            text: m[2].replace(/<[^>]*>/g, '').trim(),
+        })),
+    }));
+    const headers = (html: string) => (html.split('</thead>')[0].match(/<th[\s>]/g) ?? []).length;
+    /** Every player is a name row of `n` single cells with its stat line, one cell spanning `n`, right under it. */
+    const expectSecondRows = (html: string, n: number) => {
+        expect(html).not.toContain('Stat line');
+        expect(headers(html)).toBe(n);
+        const rows = trs(html);
+        expect(rows.filter((r) => r.statLine).length).toBeGreaterThan(0);
+        rows.forEach((r, i) => {
+            if (r.group || r.statLine) {
+                // a heading or a stat line is one cell covering every column
+                expect(r.cells.map((c) => c.colspan), r.html).toEqual([n]);
+                if (r.statLine) expect(rows[i - 1].group || rows[i - 1].statLine, r.html).toBe(false);
+                return;
+            }
+            expect(r.cells.map((c) => c.colspan), r.html).toEqual(Array(n).fill(1));
+            expect(rows[i + 1]?.statLine, r.html).toBe(true);
+        });
+        return rows;
+    };
+
+    let classic = '';
+    let v2 = '';
+    beforeAll(async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30);
+        const teamId = game.advBoxScore.pass[0].pos_team;
+        const side = (rows: any[]) => rows.filter((r) => r.pos_team == teamId);
+        // exactly the props each GamePage passes its own twin
+        const props = { pass: side(game.advBoxScore.pass), rush: side(game.advBoxScore.rush), receiver: side(game.advBoxScore.receiver) };
+        classic = await container.renderToString((await import('../src/components/game/classic/PlayerBoxScore.astro')).default, { props });
+        v2 = await container.renderToString((await import('../src/components/game/metrics/PlayerBoxScore.astro')).default, {
+            props: { ...props, plays: game.plays, teamId, box: game.advBoxScore, season: game.season?.year },
+        });
+    }, 60_000);
+
+    test('classic: the name and five numbers, then the stat line spanning all six columns', () => {
+        expectSecondRows(classic, 6);
+    });
+
+    test('v2: the same, and the air-yards and best-play tooltips move with the text', () => {
+        const rows = expectSecondRows(v2, 6);
+        const lines = rows.filter((r) => r.statLine).map((r) => r.html).join('');
+        const names = rows.filter((r) => !r.statLine && !r.group).map((r) => r.html).join('');
+        expect(lines).toContain('<span title="Air yards on completions');
+        expect(lines).toContain('<span title="Longest carry');
+        expect(names).not.toContain('<span title=');
+    });
+
+    test('twin parity: the same players, in the same order, with the same five numbers', () => {
+        const nameRows = (html: string) => {
+            const rows = trs(html);
+            // v2 adds a Defense section the frozen classic never had; everything above it is shared
+            const end = rows.findIndex((r) => r.group && r.cells[0].text === 'Defense');
+            return rows.slice(0, end === -1 ? rows.length : end)
+                .filter((r) => !r.group && !r.statLine).map((r) => r.cells.map((c) => c.text));
+        };
+        expect(nameRows(classic).length).toBeGreaterThan(5);
+        expect(nameRows(v2)).toEqual(nameRows(classic));
+        // and a passer's line reads the same in both; v2 only appends LNG and the best play
+        const firstLine = (html: string) => trs(html).find((r) => r.statLine)!.cells[0].text;
+        expect(firstLine(classic)).toMatch(/^20\/32, 153 yds, 1 TD, 2 INT, \d+ Sck, [\d.]+ xQBR/);
+        expect(firstLine(v2).startsWith(firstLine(classic))).toBe(true);
+    });
+
+    test('the special-teams usage table: the name and EPA, then the line spanning both', async () => {
+        const { default: Usage } = await import('../src/components/game/metrics/UsageBoxScore.astro');
+        const html = await container.renderToString(Usage, {
+            props: {
+                teamId: 1,
+                box: {
+                    st_kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
+                    st_punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
+                },
+            } as any,
+        });
+        const table = html.slice(html.indexOf('Special teams'));
+        const rows = expectSecondRows(table, 2);
+        expect(rows.map((r) => r.cells.map((c) => c.text))).toEqual([
+            ['K. Kicker K', '0.40'],
+            [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
+            ['P. Punter P', '-0.30'],
+            ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
+        ]);
     });
 });
 
