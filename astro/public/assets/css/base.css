@@ -230,3 +230,9 @@ Target Matrix
   /* anchor jumps must land below the stuck bar, not underneath it */
   html { scroll-padding-top: 56px; }
 }
+/* The player stat line is a second row under the name, spanning the table, not a
+   column: as a column it squeezed the numbers off a phone screen (2026-09-25,
+   agreed with Akshay). The name row drops its bottom border so a player's two
+   rows read as one entry. */
+.stat-line-row td { text-align: left; font-size: .85em; padding-top: 0; }
+tr:has(+ .stat-line-row) > td { border-bottom-width: 0; }

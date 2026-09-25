@@ -79,6 +79,16 @@ const bodyRows = (html: string, id: string): string[] => {
     return table.split('</table>')[0].split('<tr').slice(2);
 };
 /**
+ * The game log's rows, one per game. A game's stat line is a second `<tr>` under
+ * it (`stat-line-row`), so it rides along with the row above: `rows[i]` is game i.
+ */
+const logRows = (html: string): string[] =>
+    bodyRows(html, 'player-game-log').reduce<string[]>((games, tr) => {
+        if (tr.startsWith(' class="stat-line-row"')) games[games.length - 1] += `<tr${tr}`;
+        else games.push(tr);
+        return games;
+    }, []);
+/**
  * The game log's numeric cells carry the league percentile as a second span, shown
  * only in the league shading mode, so the number a reader sees is the cell without it.
  */
@@ -207,21 +217,30 @@ describe('CFB player page', () => {
 
     test('game log: every row carries its stat line, its EPA and a link to the game page', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
-        const rows = bodyRows(html, 'player-game-log');
+        // the stat line is not a column (it squeezed the numbers off a phone,
+        // 2026-09-25): eight headers, one per cell of the game row
+        const head = html.split('id="player-game-log"')[1].split('</thead>')[0];
+        expect(head).not.toContain('Stat line');
+        expect((head.match(/<th[\s>]/g) ?? []).length).toBe(8);
+        const rows = logRows(html);
         expect(rows.length).toBe(cfb.games.data.length);
         cfb.games.data.forEach((g: any, i: number) => {
-            const c = logCells(rows[i]);
+            // ...it is a second row under the game, one cell spanning all eight
+            const [game, line] = rows[i].split('<tr class="stat-line-row">');
+            expect((game.match(/<td[\s>]/g) ?? []).length, String(g.game_id)).toBe(8);
+            expect(line, String(g.game_id)).toMatch(/^\s*<td colspan="8" class="text-muted">/);
+            expect(cells(line)).toEqual([gameStatLine(g, 'cfb')]);
+            const c = logCells(game);
             // the date is a LocalDate island (client:only), so what the server
             // ships is the UTC instant for the viewer's browser to localise --
             // a 7:30pm ET Saturday kickoff must not render as Sunday
             expect(rows[i], String(g.game_id)).toContain(String(g.game_date));
             expect(c[1]).toBe(weekLabel('cfb', g.season_type, g.week));
             expect(c[2]).toContain(g.opponent);
-            expect(c[4]).toBe(gameStatLine(g, 'cfb'));
-            expect(c[5]).toBe(String(g.plays));
-            expect(c[6]).toBe(roundNumber(g.epa_per_play, 2, 2));
-            expect(c[7]).toBe(roundNumber(g.epa, 2, 2));
-            expect(c[8]).toBe(formatPercent(g.success_rate));
+            expect(c[4]).toBe(String(g.plays));
+            expect(c[5]).toBe(roundNumber(g.epa_per_play, 2, 2));
+            expect(c[6]).toBe(roundNumber(g.epa, 2, 2));
+            expect(c[7]).toBe(formatPercent(g.success_rate));
             expect(rows[i]).toContain(`href="/game/${g.game_id}"`);
             // every opponent links to its team page, logo and name in one flex row
             expect(rows[i], `opponent ${g.opponent_id}`).toContain(`href="/year/${g.season}/team/${g.opponent_id}"`);
@@ -242,7 +261,7 @@ describe('CFB player page', () => {
 
     test('game log: W/L is green/purple, and the metric cells are shaded by rank within the season', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
-        const rows = bodyRows(html, 'player-game-log');
+        const rows = logRows(html);
         cfb.games.data.forEach((g: any, i: number) => {
             if (g.result === 'W') expect(rows[i], String(g.game_id)).toContain('<span class="hulk-text-green">W</span>');
             if (g.result === 'L') expect(rows[i], String(g.game_id)).toContain('<span class="hulk-text-purple">L</span>');
@@ -267,11 +286,13 @@ describe('CFB player page', () => {
         const spy = vi.spyOn(sdv, 'retrievePlayerGames').mockResolvedValue(bare);
         try {
             const html = await renderPage('cfb', '4433971', 2024);
-            const rows = bodyRows(html, 'player-game-log');
+            const rows = logRows(html);
             expect(rows.length).toBe(bare.length);
             for (const row of rows) {
                 expect(cells(row)[0]).toBe('—');
                 expect(row).not.toContain('LocalDate');
+                // no box, no stat line, and no empty second row standing in for one
+                expect(row).not.toContain('stat-line-row');
             }
         } finally {
             spy.mockRestore();
@@ -289,7 +310,7 @@ describe('CFB player page', () => {
         }));
         const spy = vi.spyOn(sdv, 'retrievePlayerGames').mockResolvedValue(games);
         try {
-            const rows = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-game-log');
+            const rows = logRows(await renderPage('cfb', '4433971', 2024));
             expect(cells(rows[0])[2]).toContain('georgia');
             games.slice(1).forEach((g: any, i: number) => {
                 expect(cells(rows[i + 1])[2], g.opponent).toContain(g.opponent);
@@ -412,17 +433,18 @@ describe('NFL player page', () => {
 
     test('game log rows link through the nflverse-to-ESPN crosswalk, or not at all', async () => {
         const html = await renderPage('nfl', '16800', 2024);
-        const rows = bodyRows(html, 'player-game-log');
+        const rows = logRows(html);
         expect(rows.length).toBe(nfl.games.data.length);
         // the one game the mocked crosswalk knows becomes a link to the ESPN id
         expect(html).toContain('href="/nfl/game/401671592"');
         // and no row ever links to a raw nflverse id
         expect(html).not.toContain('/game/2024_');
         nfl.games.data.forEach((g: any, i: number) => {
-            const c = logCells(rows[i]);
-            expect(c[4], String(g.game_id)).toBe(gameStatLine(g, 'nfl'));
-            expect(c[5]).toBe(String(g.plays));
-            expect(c[7]).toBe(roundNumber(g.epa, 2, 2));
+            const [game, line] = rows[i].split('<tr class="stat-line-row">');
+            expect(cells(line), String(g.game_id)).toEqual([gameStatLine(g, 'nfl')]);
+            const c = logCells(game);
+            expect(c[4]).toBe(String(g.plays));
+            expect(c[6]).toBe(roundNumber(g.epa, 2, 2));
             // the nflverse rows name an opponent by ABBREVIATION; every team URL
             // and every dark-mode logo rule is keyed on the ESPN id, so it is
             // resolved before it reaches either
@@ -740,7 +762,7 @@ describe('round-4 review (PR #267)', () => {
         expect(html).toContain('<label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>');
         expect(html).toMatch(/data-shade-mode="player"[^>]*>Player Games<\/option>/);
         expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every player-game in the nation that season"[^>]*>2024 Percentiles<\/option>/);
-        const rows = bodyRows(html, 'player-game-log');
+        const rows = logRows(html);
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
         expect(metrics).toHaveLength(3);
@@ -782,7 +804,7 @@ describe('round-4 review (PR #267)', () => {
             const html = await renderPage('cfb', '4433971', 2024);
             expect(html).toContain('data-shade-mode="league" selected');
             // and the percentile text is the one on show
-            const rows = bodyRows(html, 'player-game-log');
+            const rows = logRows(html);
             expect(rows[0]).toContain('data-league-pct');
             expect(rows[0]).not.toMatch(/<small[^>]*d-none[^>]*data-league-pct/);
         } finally {
