@@ -122,8 +122,8 @@ seasons — the render test asserts on those ids, teams and dates.
 
 ## `usage-cfb-400869270.json.gz` / `usage-nfl-401872922.json.gz`
 Real `ProcessedGame` payloads — the exact bodies the Python API serves for
-`GET /cfb/400869270/process` (OKST at CMU, 2016, Final) and
-`GET /nfl/401872922/process` (JAX at CLE, 2026 REG, Final). Unlike the two
+`GET /cfb/400869270/process` (CMU at OKST, 2016 week 2, Final) and
+`GET /nfl/401872922/process` (CLE at JAX, 2026 REG week 1, Final). Unlike the two
 `game-*.json.gz` fixtures these carry **every** `advBoxScore` section the game
 page can render — the usage / tackles / special-teams sections
 (`sportsdataverse.football.usage_box`) and a fitted `paperIndex` — at a tenth
