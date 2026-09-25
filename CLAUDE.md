@@ -12,6 +12,33 @@ leagues: `cfb` (unprefixed, the default) and `nfl` (explicit pages under
 - Never claim a rendered change works from the code alone. Exercise it: vitest
   for logic, and a **visual check** (below) for anything a person sees.
 
+## Design adherence (read before any UI change)
+
+**Match the existing site.** Never introduce a new font, colour, spacing scale,
+table format, or component when one already exists — when unsure, copy the
+closest existing page's pattern. Most of PRs #218–#256 were reworked by the
+design owner (@akeaswaran) for breaking a convention already in the tree.
+
+Before writing UI code: read **`docs/design-conventions.md`** and the
+source-of-truth files it names (`public/assets/css/{base,index,nav-header,dark-*}.css`,
+`src/layouts/**`, `components/DarkModeLogos.astro`, `utils/{misc,constants,playShade}.ts`);
+open the reference page it lists for your surface and build beside it; and check
+`git log --author=akeaswaran -- astro/` for corrections newer than the doc.
+
+**Everything that is not a fix to already-public behaviour ships behind a
+preview flag.** New pages, features, sections, restyles, data surfaces: add a
+`'preview'` entry to `FLAGS` in `src/utils/features.ts` (namespace-wide gating
+goes in `src/middleware.ts`, as `nfl` and `coaches` do; a per-page or per-component
+switch reads `isFeatureEnabled` where it branches, as `game-page-v2` does in
+`components/routes/GameRoute.astro`), mint a
+link from `/admin` → *Copy preview link*, and put it in the PR. Promotion to
+`'on'` is a separate reviewed one-liner that Akshay and Saiem decide. A fix to
+public behaviour must reach the twin the public renders —
+`components/game/classic/**` while `game-page-v2` is `'preview'`.
+
+Self-check before opening a PR: the checklists in `docs/design-conventions.md`
+§10–11, plus the four-shot matrix and the PR evidence workflow below.
+
 ## Visual verification — REQUIRED for any UI change
 Any change that touches a rendered page, an Astro/Svelte component, or CSS —
 including "just a copy/colour tweak" — is not done until it has been seen in
