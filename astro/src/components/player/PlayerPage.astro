@@ -99,8 +99,12 @@ const headerRows = seasonRows
     .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0));
 // the ESPN team ids for that season -- the NFL identity has none, but its season rows do
 const teamIds = [...new Set(headerRows.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
-const headerTeamId = teamIds[0] ?? player.team_id ?? null;
-const realTeamName = String(headerRows[0]?.pos_team ?? player.team ?? '');
+// the identity's team is his CURRENT one: a fair stand-in for the career view, a
+// wrong one for a past season whose rows did not arrive -- that season's team
+// stays unnamed rather than naming a school he had not joined yet (CodeRabbit on #267)
+const identityTeam = season === null ? player : null;
+const headerTeamId = teamIds[0] ?? identityTeam?.team_id ?? null;
+const realTeamName = String(headerRows[0]?.pos_team ?? identityTeam?.team ?? '');
 // the team beside the jersey number is a team NAME, so the meme list applies to it
 // exactly as it does to his own (review on #267)
 const teamName = cleanTextForTeam(realTeamName, headerTeamId);
