@@ -32,11 +32,14 @@ describe('adminAuthed on a public route', () => {
         expect(locals.adminAuthed).toBe(true);
     });
 
-    test('no cookie, a junk cookie and an expired one all leave it unset', async () => {
+    test('no cookie, a junk cookie and an expired one never authenticate', async () => {
+        // no cookie leaves the local unset; a cookie that fails the HMAC or has
+        // expired settles it to false (middleware verifies on every path, #263).
+        // Every consumer reads `=== true`, so both are "not an admin".
         const expired = await mintAdminCookie('test-secret', Math.floor(Date.now() / 1000) - 60 * 60 * 24);
         for (const headers of [{}, { cookie: `${ADMIN_COOKIE}=v1.9999999999.deadbeef` }, { cookie: `${ADMIN_COOKIE}=${expired}` }]) {
             const { locals } = await run('/players/4433971', headers);
-            expect(locals.adminAuthed, JSON.stringify(headers)).toBeUndefined();
+            expect(locals.adminAuthed, JSON.stringify(headers)).not.toBe(true);
         }
     });
 
