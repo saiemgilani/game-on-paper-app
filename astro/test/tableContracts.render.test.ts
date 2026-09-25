@@ -618,11 +618,15 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             expect(byLabel.get('Havoc Rate')).toBe(`${fmt(m.havoc * 100)}%`);
             expect(byLabel.get('Turnovers')).toBe(fmt(m.turnovers, 0));
             // the meter: the home share, clamped to 1..99, and the away side its
-            // complement. The two bold percentages flank the bar, away first.
+            // complement. Read off the role="meter" element itself, then the
+            // visible text either side of it: away's share before the bar, home's after.
             const homePct = Math.min(99, Math.max(1, Math.round(g.paperIndex.homeShare * 100)));
-            expect(html).toContain(`aria-valuenow="${homePct}"`);
-            const flanking = [...html.matchAll(/<span class="fw-bold" style="min-width: 4ch">([^<]*)<\/span>/g)].map((x) => x[1]);
-            expect(flanking).toEqual([`${100 - homePct}%`, `${homePct}%`]);
+            const meters = html.match(/<[^>]*\brole="meter"[^>]*>/g) ?? [];
+            expect(meters, 'exactly one meter').toHaveLength(1);
+            expect(meters[0].match(/\baria-valuenow="([^"]*)"/)?.[1]).toBe(String(homePct));
+            const at = html.indexOf(meters[0]);
+            expect(text(html.slice(0, at)).split(' ').at(-1)).toBe(`${100 - homePct}%`);
+            expect(text(html.slice(at)).split(' ')[0]).toBe(`${homePct}%`);
         }, 30_000);
     });
 }
@@ -634,17 +638,31 @@ describe('twin inventory: which sections each twin renders', () => {
     const BINION = 'Concept from Robert Binion';
     const TRADITIONAL = 'Traditional Stats';
     const PENALTIES = 'Accepted penalties only.';
+    /** The body rows of the table the Binion caption belongs to, or null if none rendered. */
+    const binionRows = (html: string): string[][] | null => {
+        const table = [...html.matchAll(/<table[\s\S]*?<\/table>/g)].map((m) => m[0]).find((t) => t.includes(BINION));
+        return table ? parseTable(table).rows.slice(1) : null;
+    };
 
     for (const league of Object.keys(FIXTURES) as Lg[]) {
         test(`[${league}] the classic twin renders the Binion box for the cfb only`, async () => {
             // The divergence the PR reports: promoting game-page-v2 would add a
             // Binion box to every NFL game page. Asserted from the rendered page.
             const { html } = await renderPage('classic', league);
-            expect(html.includes(BINION), `classic ${league} Binion box`).toBe(league === 'cfb');
+            expect(binionRows(html) !== null, `classic ${league} Binion box`).toBe(league === 'cfb');
         }, 60_000);
 
         test(`[${league}] the v2 Team Stats island renders the Binion box for both leagues`, async () => {
-            expect(await renderSituationalSection(league)).toContain(BINION);
+            // Populated, not just present: its 11 metric rows, a value per team.
+            const v2 = binionRows(await renderSituationalSection(league));
+            expect(v2, `v2 ${league} Binion box`).not.toBeNull();
+            expect(v2).toHaveLength(11);
+            for (const r of v2!) {
+                expect(r, r[0]).toHaveLength(3);
+                expect(r.slice(1).every((c) => /\d/.test(c)), r[0]).toBe(true);
+            }
+            // and where both twins render it, the same fixture gives the same rows
+            if (league === 'cfb') expect(v2).toEqual(binionRows((await renderPage('classic', league)).html));
         }, 60_000);
 
         test(`[${league}] neither twin renders TraditionalTeamStats or PenaltyBreakdown`, async () => {
