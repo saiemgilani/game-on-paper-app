@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import live_qa
 from tests.test_nfl_route import _FakeNFL
 
 
@@ -22,6 +23,14 @@ class _FakeCFB(_FakeNFL):
 
     def espn_cfb_pbp(self):
         self.fetched = True
+
+
+@pytest.fixture(autouse=True)
+def _fresh_live_state():
+    # live_qa._STATE is module-global and `polls` is asserted absolutely below,
+    # so any other test that tracked this game id would otherwise decide the
+    # answer for this one.
+    live_qa._STATE.clear()
 
 
 @pytest.fixture
@@ -70,11 +79,15 @@ def test_no_source_param_never_reaches_the_dispatcher(client, app_mod, monkeypat
         raise AssertionError("the unflagged path must not go through dispatch")
 
     monkeypatch.setattr(app_mod, "_dispatch_game", boom)
-    r = client.get("/nfl/401772944/process", headers=auth())
-    assert r.status_code == 200
-    assert "provenance" not in r.get_json()
-    # and the bytes are stable: nothing was appended non-deterministically
-    assert r.data == client.get("/nfl/401772944/process", headers=auth()).data
+    first = client.get("/nfl/401772944/process", headers=auth()).get_json()
+    second = client.get("/nfl/401772944/process", headers=auth()).get_json()
+    assert "provenance" not in first
+    # and the payload is stable: nothing was appended non-deterministically
+    # EXCEPT `qa`, whose live half counts this game's polls on purpose
+    # (python/qa.py, docs/qa-payload.md) -- so it is compared separately.
+    assert first.pop("qa")["live"]["polls"] == 1
+    assert second.pop("qa")["live"]["polls"] == 2
+    assert first == second
 
 
 def test_source_espn_is_the_same_payload_plus_provenance(client, app_mod, monkeypatch):
@@ -82,6 +95,7 @@ def test_source_espn_is_the_same_payload_plus_provenance(client, app_mod, monkey
     plain = client.get("/cfb/400869270/process", headers=auth()).get_json()
     stamped = client.get("/cfb/400869270/process?source=espn", headers=auth()).get_json()
     prov = stamped.pop("provenance")
+    plain.pop("qa"), stamped.pop("qa")  # per-request by design; see above
     assert stamped == plain
     assert prov["source"] == "espn" and prov["requested"] == "espn"
     assert prov["fallback_used"] is False

@@ -1,0 +1,7 @@
+---
+// QA is a tab on /admin now, not a page of its own. This route stays so old
+// links and bookmarks land on the tab.
+export const prerender = false;
+
+return Astro.redirect('/admin#qa', 302);
+---

@@ -101,6 +101,15 @@ export function roundNumber(value: string | number | undefined | null, power10: 
 }
 
 /**
+ * Text that is safe inside an HTML attribute or a text node. For the handful of
+ * places that build markup as a string (the admin dashboard's tables) rather
+ * than letting Astro escape it.
+ */
+export function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+}
+
+/**
  * A usable number, or null. The one guard for "did this field carry a number":
  * null, undefined, "", "NA" and anything non-finite (NaN, Infinity) read null.
  * Every caller that used to re-declare its own finite-number check uses this.

@@ -2,7 +2,7 @@ import sys, pathlib, time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from telemetry import Telemetry, stage
+from telemetry import _TABLES, Telemetry, stage
 
 
 class FakeConn:
@@ -151,3 +151,79 @@ def test_host_reporter_is_exclusive_and_sane():
     assert row["service"] == "python-host"
     assert row["heap_mb"] >= 1                      # core count
     assert row["cpu_pct"] is None or row["cpu_pct"] >= 0
+
+
+class SchemaConn(FakeConn):
+    """A connection whose gop.request_log is the pre-migration 15-column table.
+
+    Postgres rejects an INSERT naming a column that does not exist, and
+    ``flush`` drops the whole batch on any error -- so a telemetry column added
+    ahead of its migration costs every row of that table, not just its own
+    field. This is that database.
+    """
+
+    LIVE = {
+        "request_log": [c for c in _TABLES["request_log"] if not c.startswith("qa_")],
+        "upstream_log": list(_TABLES["upstream_log"]),
+    }
+
+    def __init__(self, log):
+        super().__init__(log)
+        self.rows = None
+
+    def execute(self, sql, params=None):
+        assert "information_schema.columns" in sql
+        self.rows = [(t, c) for t, cols in self.LIVE.items() for c in cols]
+
+    def fetchall(self):
+        return self.rows
+
+    def executemany(self, sql, rows):
+        named = sql.split("(", 1)[1].split(")", 1)[0].split(",")
+        unknown = [c for c in named if c not in self.LIVE.get(sql.split()[2].split(".")[1], [])]
+        if unknown:
+            raise RuntimeError(f'column "{unknown[0]}" of relation does not exist')
+        self.log.append((sql, list(rows)))
+
+
+def test_a_column_the_live_table_lacks_costs_only_that_column():
+    log = []
+    tel = Telemetry(enabled=True, conn_factory=lambda: SchemaConn(log))
+    tel.push("request_log", {"service": "python", "path": "/cfb/1/process", "status": 200,
+                             "duration_ms": 12.0, "qa_ok": False, "qa_errors": 2,
+                             "qa_rules": ["score.monotone"]})
+    out = tel.flush()
+    assert out["written"] == 1 and out["dropped"] == 0
+    sql, rows = log[0]
+    assert "qa_ok" not in sql and "duration_ms" in sql
+    assert len(rows[0]) == len(SchemaConn.LIVE["request_log"])
+
+
+def test_the_probe_is_one_query_per_connection():
+    log = []
+    conns = []
+
+    def factory():
+        c = SchemaConn(log)
+        conns.append(c)
+        return c
+
+    tel = Telemetry(enabled=True, conn_factory=factory)
+    for _ in range(3):
+        tel.push("request_log", {"service": "python", "status": 200})
+        tel.flush()
+    assert len(conns) == 1 and len(log) == 3
+
+
+def test_a_probe_that_fails_falls_back_to_the_declared_columns():
+    log = []
+
+    class NoProbe(FakeConn):
+        def execute(self, *a):
+            raise RuntimeError("information_schema denied")
+
+    tel = Telemetry(enabled=True, conn_factory=lambda: NoProbe(log))
+    tel.push("upstream_log", {"target": "espn_pbp", "status": 200, "ok": True})
+    assert tel.flush()["written"] == 1
+    assert "qa" not in log[0][0]  # upstream_log has no qa columns either way
+    assert log[0][0].count(",") == len(_TABLES["upstream_log"]) * 2 - 2
