@@ -86,6 +86,16 @@ describe('the processed-game cache key', () => {
         expect(calls[0].url).toContain('source=a%26v%3Dx');
         expect(calls[0].init.cf.cacheKey).toContain('&source=a%26v%3Dx');
     });
+
+    test('the sources list is keyed per game, not per league', async () => {
+        const { retrieveGameSources } = await import('../src/resources/python');
+        await retrieveGameSources(1, 'cfb');
+        await retrieveGameSources(2, 'cfb');
+        const [a, b] = calls;
+        expect(a.init.cf.cacheKey).toMatch(/\/cfb\/1\/sources\?v=/);
+        expect(b.init.cf.cacheKey).toMatch(/\/cfb\/2\/sources\?v=/);
+        expect(a.init.cf.cacheKey).not.toBe(b.init.cf.cacheKey);
+    });
 });
 
 describe('loadGameRoute', () => {
@@ -109,10 +119,21 @@ describe('loadGameRoute', () => {
         expect(calls[0].url).toMatch(/\/nfl\/401772944\/process$/);
     });
 
-    test('with the flag on, ?source= reaches the API', async () => {
+    test('with the flag on but no admin session, ?source= is still ignored', async () => {
+        // `?source=` is an admin tool: the preview cookie alone must not move
+        // the request or its cache key off the default path.
         guardedPage = { gameId: 401772944, gamepackageJSON: { header: HEADER } };
         const { loadGameRoute } = await import('../src/routes/game');
         const { astro } = fakeAstro('https://gameonpaper.com/nfl/game/401772944?source=shield', { preview: true });
+        await loadGameRoute(astro, 'nfl');
+        expect(calls[0].url).toMatch(/\/nfl\/401772944\/process$/);
+        expect(calls[0].init.cf.cacheKey).not.toContain('source=');
+    });
+
+    test('with the flag on and an admin session, ?source= reaches the API', async () => {
+        guardedPage = { gameId: 401772944, gamepackageJSON: { header: HEADER } };
+        const { loadGameRoute } = await import('../src/routes/game');
+        const { astro } = fakeAstro('https://gameonpaper.com/nfl/game/401772944?source=shield', { preview: true, adminAuthed: true });
         await loadGameRoute(astro, 'nfl');
         expect(calls[0].url).toMatch(/\/nfl\/401772944\/process\?source=shield$/);
     });

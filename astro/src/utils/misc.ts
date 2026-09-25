@@ -100,6 +100,23 @@ export function roundNumber(value: string | number | undefined | null, power10: 
     return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
+/**
+ * A usable number, or null. The one guard for "did this field carry a number":
+ * null, undefined, "", "NA" and anything non-finite (NaN, Infinity) read null.
+ * Every caller that used to re-declare its own finite-number check uses this.
+ */
+export function finiteNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '' || value === 'NA') return null;
+    const n = typeof value === 'number' ? value : parseFloat(String(value));
+    return Number.isFinite(n) ? n : null;
+}
+
+/** A rate stored as a fraction, in percentage points. Null stays null. */
+export function toPercent(value: unknown): number | null {
+    const n = finiteNumber(value);
+    return n === null ? null : n * 100;
+}
+
 export function hexToRgb(hex: string): RGBColor | null {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {

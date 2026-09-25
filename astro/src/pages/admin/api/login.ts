@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
 import { ADMIN_COOKIE, ADMIN_SESSION_TTL_S, mintAdminCookie, timingSafeEqual } from '../../../utils/adminSession';
+import { sessionCookie } from '../../../utils/preview';
 
 export const prerender = false;
 
@@ -25,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
         status: 303,
         headers: {
             Location: '/admin',
-            'Set-Cookie': `${ADMIN_COOKIE}=${await mintAdminCookie(pass!)}; Path=/admin; Max-Age=${ADMIN_SESSION_TTL_S}; HttpOnly; Secure; SameSite=Lax`,
+            'Set-Cookie': sessionCookie(ADMIN_COOKIE, await mintAdminCookie(pass!), ADMIN_SESSION_TTL_S, request.url),
             'Cache-Control': 'no-store',
         },
     });
