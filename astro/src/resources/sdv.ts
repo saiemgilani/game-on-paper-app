@@ -1214,7 +1214,8 @@ export async function resolveEspnAthleteId(gsisId: string): Promise<string | nul
  * One cached read per season, not one per row.
  */
 export async function retrieveNflEspnGameIds(season: number): Promise<Record<string, string>> {
-    const content = await requestSDV('schedule', new URLSearchParams({ season: String(season), select: 'game_id,espn', limit: '1000' }), undefined, 60 * 60 * 24, true, 'nfl');
+    // strict: a failed read must reject, so the player page is not cached without its game links
+    const content = await requestPlayer('nfl', 'schedule', { season: String(season), select: 'game_id,espn', limit: '1000' }, 60 * 60 * 24);
     const out: Record<string, string> = {};
     for (const r of (content?.data ?? [])) {
         if (r?.game_id && r?.espn) out[String(r.game_id)] = String(r.espn);

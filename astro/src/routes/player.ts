@@ -10,8 +10,27 @@
  */
 import type { AstroGlobal } from 'astro';
 import { leaguePath, type League } from '../utils/league';
-import { isEspnAthleteId, isGsisId } from '../utils/players';
-import { resolveEspnAthleteId, retrievePlayer, type SDVPlayer } from '../resources/sdv';
+import { isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
+import {
+    resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
+    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries,
+    type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
+} from '../resources/sdv';
+
+/** Every section's data, each the empty shape when its read failed. */
+export interface PlayerSections {
+    seasonRows: SeasonRow[];
+    games: PlayerGameRow[];
+    splits: SDVPlayerSplit[];
+    /** nflverse game id -> ESPN event id (NFL only) */
+    espnGameIds: Record<string, string>;
+    /** the league-season distribution the game log's second shading reads */
+    leagueBreaks: Record<string, number[]>;
+    /** the season's team_summaries rows, for the Team Context panel */
+    teamRows: SDVTeamSummary[];
+    /** which panels have to say "unavailable" instead of "nothing to show" */
+    failed: { seasons: boolean; games: boolean; splits: boolean };
+}
 
 export interface PlayerParams {
     player: SDVPlayer;
@@ -21,6 +40,7 @@ export interface PlayerParams {
      * default (review on #267).
      */
     season: number | null;
+    sections: PlayerSections;
 }
 
 /**
@@ -136,7 +156,50 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
         uncacheable(Astro);
         return { notFound: true };
     }
-    setCache(Astro, PLAYER_CACHE);
     // no `?season=` is not "the latest season": it is the career view
-    return { player, season };
+    const { sections, degraded } = await loadPlayerSections(player, season, league);
+    // A page rendered around a failed read is served, but never cached: frozen
+    // for the TTL it would keep saying "unavailable" long after the upstream
+    // recovered (CodeRabbit on #267). The reads are made HERE, not in the page
+    // component, because the page streams -- by the time a component's reads
+    // settle, the response headers are already gone.
+    if (degraded) uncacheable(Astro);
+    else setCache(Astro, PLAYER_CACHE);
+    return { player, season, sections };
+}
+
+const TEAM_CONTEXT_METRICS = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
+
+/**
+ * Every section's read, settled independently: `Promise.all` would let one
+ * upstream hiccup reject the lot and blank a page whose other sections were
+ * fine. The career view needs only the season rows; the season-only reads are
+ * not made at all rather than made and thrown away.
+ */
+export async function loadPlayerSections(player: SDVPlayer, season: number | null, league: League):
+    Promise<{ sections: PlayerSections, degraded: boolean }> {
+    const reads = await Promise.allSettled([
+        retrievePlayerSeasons(player.espn_id, league),
+        season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
+        season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
+        season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
+        // a not-yet-deployed percentiles route is a 404 -> {}, not a failure
+        season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league),
+        // one cached call for the whole season, filtered to his team(s) by the page
+        season === null ? Promise.resolve([]) : retrieveTeamSummaries({ season, league, columns: TEAM_CONTEXT_METRICS }),
+    ]);
+    const value = (i: number, empty: any): any => {
+        const r = reads[i];
+        if (r.status === 'fulfilled') return r.value;
+        console.error(`player page: a section read failed: ${r.reason}`);
+        return empty;
+    };
+    return {
+        sections: {
+            seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
+            espnGameIds: value(3, {}), leagueBreaks: value(4, {}), teamRows: value(5, []),
+            failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
+        },
+        degraded: reads.some((r) => r.status === 'rejected'),
+    };
 }

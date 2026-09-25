@@ -505,6 +505,33 @@ describe('the page tells Workers Caching what to do', () => {
         }
         feed.missing.delete('99999999999');
     }, 60_000);
+
+    test('a page rendered around a failed section read is served, never cached', async () => {
+        // CodeRabbit on #267: cached for the TTL, a degraded page would keep saying
+        // "unavailable" (or drop its game links) long after the upstream recovered
+        const sdv = await import('../src/resources/sdv');
+        const { preparePlayer } = await import('../src/routes/player');
+        const reads: [keyof typeof sdv, 'cfb' | 'nfl', string, string][] = [
+            ['retrievePlayerSeasons', 'cfb', '/players/4433971', '4433971'],
+            ['retrievePlayerGames', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerSplits', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerGamePercentiles', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveTeamSummaries', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveNflEspnGameIds', 'nfl', '/nfl/players/16800?season=2024', '16800'],
+        ];
+        for (const [fn, league, path, id] of reads) {
+            const spy = vi.spyOn(sdv, fn as any).mockRejectedValue(new Error(`${fn} is down`));
+            try {
+                const f = fake(path, { id });
+                const r = await preparePlayer(f.astro, league) as any;
+                expect(r.player?.espn_id, fn).toBe(id);   // still a page, not a 503
+                expect(f.cache, fn).toEqual([false]);
+                expect(f.headers.get('Cache-Control'), fn).toBe('no-store');
+            } finally {
+                spy.mockRestore();
+            }
+        }
+    }, 60_000);
 });
 
 describe('one failing section does not blank the page', () => {
