@@ -227,9 +227,10 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const v2 = await container.renderToString(
                 (await import('../src/components/game/metrics/PlayerBoxScore.astro')).default,
                 { props: { ...box, plays: g.plays, teamId }, locals: locals(league) });
-            // the last five cells of a player row are Yards/play, EPA/play, EPA, SR, WPA;
-            // the stat-line cell differs by design (v2 appends LNG / best-play extremes)
-            const tail = (h: string) => parseTable(h).rows.filter((r) => r.length === 7).map((r) => r.slice(2).join('|'));
+            // a player's name row is name + Yards/play, EPA/play, EPA, SR, WPA; the stat
+            // line is its own spanning row (#274) and differs by design (v2 appends LNG /
+            // best-play extremes). The header row also has six cells, so drop it by name.
+            const tail = (h: string) => parseTable(h).rows.filter((r) => r.length === 6 && r[1] !== 'Yards/play').map((r) => r.slice(1).join('|'));
             const c = tail(classic);
             expect(c.length).toBeGreaterThan(3);
             // v2 also renders a Defense block the classic twin has no equivalent for;
@@ -251,7 +252,9 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 (await import('../src/components/game/classic/PlayerBoxScore.astro')).default,
                 { props: { pass, rush, receiver }, locals: locals(league) });
             const { rows } = parseTable(html);
-            const body = rows.filter((r) => r.length === 7 && r[1] !== 'Stat line');
+            // name rows are six cells (the stat line is a spanning row of its own, #274);
+            // the header row is six too, so it is dropped by its first label
+            const body = rows.filter((r) => r.length === 6 && r[1] !== 'Yards/play');
             // group headings are single-cell rows, so the player rows arrive in
             // section order: dropbacks, then rushes, then targets
             const expected = [
@@ -264,11 +267,11 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             expected.forEach(([name, perPlay, p]: any, i) => {
                 const c = body[i];
                 expect(c[0], `row ${i} name`).toBe(String(name));
-                expect(c[2], `${name} yards/play`).toBe(roundNumber(perPlay || 0, 2, 2));
-                expect(c[3], `${name} EPA/play`).toBe(roundNumber(p.EPA_per_Play, 2, 2));
-                expect(c[4], `${name} EPA`).toBe(roundNumber(p.EPA, 2, 2));
-                expect(c[5], `${name} SR`).toBe(`${roundNumber(p.SR * 100, 2, 0)}%`);
-                expect(c[6], `${name} WPA`).toBe(`${roundNumber(p.WPA * 100, 2, 1)}%`);
+                expect(c[1], `${name} yards/play`).toBe(roundNumber(perPlay || 0, 2, 2));
+                expect(c[2], `${name} EPA/play`).toBe(roundNumber(p.EPA_per_Play, 2, 2));
+                expect(c[3], `${name} EPA`).toBe(roundNumber(p.EPA, 2, 2));
+                expect(c[4], `${name} SR`).toBe(`${roundNumber(p.SR * 100, 2, 0)}%`);
+                expect(c[5], `${name} WPA`).toBe(`${roundNumber(p.WPA * 100, 2, 1)}%`);
             });
         }, 30_000);
 
@@ -525,8 +528,9 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const row = html.split('<tr').find((r) => r.includes(String(passer.passer_player_name)) && r.includes('numeral'));
             expect(row, `a player row for ${passer.passer_player_name}`).toBeTruthy();
             const cells = [...row!.matchAll(/<td\b[\s\S]*?<\/td>/g)].map((m) => text(m[0]));
-            expect(cells[4]).toBe(roundNumber(passer.EPA, 2, 2));
-            expect(cells[5]).toBe(`${roundNumber(passer.SR * 100, 2, 0)}%`);
+            // name row: name, yards/play, EPA/play, EPA, SR, WPA (the stat line is the next row, #274)
+            expect(cells[3]).toBe(roundNumber(passer.EPA, 2, 2));
+            expect(cells[4]).toBe(`${roundNumber(passer.SR * 100, 2, 0)}%`);
         }, 60_000);
 
         test('v2: the Paper Index, linescore, situational splits, usage box and drives all read the payload', async () => {
