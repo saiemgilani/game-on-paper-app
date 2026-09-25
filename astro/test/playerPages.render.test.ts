@@ -670,7 +670,12 @@ describe('round-4 review (PR #267)', () => {
         expect(crumbs(await renderCareer('cfb', '4433971'))).toEqual(['Players', 'Kyle McCord']);
         expect(crumbs(await renderPage('cfb', '4433971', 2024))).toEqual(['Players', 'Kyle McCord', '2024']);
         // and inside a season the player's own crumb links back to his career page
-        expect(await renderPage('cfb', '4433971', 2024)).toContain('<a href="/players/4433971">Kyle McCord</a>');
+        const cfb = await renderPage('cfb', '4433971', 2024);
+        expect(cfb).toContain('<a href="/players/4433971">Kyle McCord</a>');
+        // "Players" is the season hub for CFB (a rusher is not on the passing board);
+        // the NFL index is its passing board, as /nfl/players redirects
+        expect(cfb).toContain('<a href="/year/2024/players">Players</a>');
+        expect(await renderPage('nfl', '16800', 2024)).toContain('<a href="/nfl/year/2024/players/passing">Players</a>');
     }, 60_000);
 
     test('the season selector says what it is', async () => {

@@ -135,8 +135,11 @@ const crumbSeason = headerSeason ?? seasons[0];
 // `Players / Name` on the career page, `Players / Name / 2025` inside a season --
 // the trail names what you are looking at, not the year you arrived by (review on
 // #267). The player's own crumb is a link to his career page while a season is open.
+// "Players" goes to the season's hub; the NFL's index is its passing board
+// (/nfl/players redirects there), so that league keeps the board as the target.
+const playersIndex = league === 'nfl' ? 'players/passing' : 'players';
 const breadcrumbs: PageBreadcrumb[] = [
-    { title: 'Players', ...(crumbSeason ? { url: leaguePath(league, `/year/${crumbSeason}/players/passing`) } : {}), active: false },
+    { title: 'Players', ...(crumbSeason ? { url: leaguePath(league, `/year/${crumbSeason}/${playersIndex}`) } : {}), active: false },
     { title: name, url: playerPath(league, player.espn_id), active: season === null },
     ...(season === null ? [] : [{ title: `${season}`, url: pageUrl, active: true }]),
 ];
