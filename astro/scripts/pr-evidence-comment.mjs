@@ -8,7 +8,7 @@
 // --image-base is where <out>/shots/*.jpg were published; pin it to a commit SHA
 // so a later push can't change what an old comment shows.
 import { parseArgs } from 'node:util';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const MARKER = '<!-- pr-evidence -->';
@@ -67,6 +67,29 @@ if (!summary) {
   out.push('', 'Thumbnails show the first screen; click one for the full page.');
 }
 
+out.push('', '### Walkthrough');
+const clipsDir = join(opt.out, 'walkthrough');
+// mp4 when the conversion ran, else the webm -- the same choice the publish step makes
+const allClips = existsSync(clipsDir) ? readdirSync(clipsDir) : [];
+const clips = allClips.filter((f) => f.endsWith('.mp4') || (f.endsWith('.webm') && !allClips.includes(f.replace(/\.webm$/, '.mp4')))).sort();
+if (!clips.length) {
+  out.push('', 'No clips: the walkthrough did not run or every route failed to load. See the run log.');
+} else {
+  // one row per flow; raw.githubusercontent serves the clip as octet-stream, so a link downloads it
+  const byFlow = new Map();
+  for (const f of clips) {
+    const m = f.match(/^(.*)-(desktop|mobile)-(light|dark)\.(mp4|webm)$/);
+    if (!m) continue;
+    if (!byFlow.has(m[1])) byFlow.set(m[1], []);
+    byFlow.get(m[1]).push({ file: f, label: `${m[2]} ${m[3]}` });
+  }
+  out.push('', 'Recorded against the PR build: a scroll-through of each evidence route, plus any `Walkthrough steps:` flow the PR names. Each link downloads the clip (a few hundred KB).', '', '| flow | clips |', '|---|---|');
+  for (const [flow, list] of byFlow) {
+    const links = list.map((c) => (opt['image-base'] ? `[${c.label}](${opt['image-base']}/${c.file})` : `\`walkthrough/${c.file}\``)).join(' · ');
+    out.push(`| \`${flow}\` | ${links} |`);
+  }
+}
+
 out.push('', '### Lighthouse: PR vs base', '', lighthouse ?? 'No Lighthouse results: see the run log.');
 
 out.push('', '<details><summary>Method</summary>', '',
@@ -74,7 +97,8 @@ out.push('', '<details><summary>Method</summary>', '',
   '- **Frontend-only:** each tree\'s server-rendered HTML plus its own `dist/client`, served gzip-compressed with no server wait, so the numbers measure what the branch ships. Base and PR runs alternate.',
   '- **Runs:** Lighthouse CLI with simulated throttling, mobile and desktop presets. A delta is flagged only when the gap between the base and PR run ranges clears an absolute floor **and** the median moved by a relative floor (`lighthouse-verdicts.mjs`; Performance, already a 0–100 score, needs only the 3-point gap); Performance moves 10+ points between identical builds.',
   '- **⚪ No frontend change:** printed instead of deltas when base and PR serve identical HTML (ignoring Astro\'s random island ids) and identical built client files for a page.',
-  '- **Tooling:** `astro/scripts/lighthouse-compare.mjs` and `visual-check.mjs`; see CLAUDE.md "PR evidence".',
+  '- **Walkthrough:** `astro/scripts/walkthrough.mjs` records the PR build (desktop + mobile, light) and the clips are published beside the screenshots, pinned to a commit.',
+  '- **Tooling:** `astro/scripts/lighthouse-compare.mjs`, `visual-check.mjs` and `walkthrough.mjs`; see CLAUDE.md "PR evidence".',
   '', '</details>');
 
 process.stdout.write(`${out.join('\n')}\n`);

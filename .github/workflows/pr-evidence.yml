@@ -1,8 +1,10 @@
 name: pr-evidence
 
 # Posts the review evidence CLAUDE.md "PR evidence" requires on every PR that
-# touches astro/ or python/: the desktop/mobile x light/dark screenshots of the PR
-# and a Lighthouse comparison against its base, as ONE comment that each push updates.
+# touches astro/ or python/: the desktop/mobile x light/dark screenshots of the PR,
+# a Lighthouse comparison against its base, and a walkthrough video per evidence route
+# (plus any `Walkthrough steps: scripts/walkthroughs/<flow>.mjs` the PR names), as ONE
+# comment that each push updates.
 #
 # Base = the first parent of GitHub's PR merge commit (the base tip it merged
 # onto); head = that merge commit. The comparison therefore isolates this PR's
@@ -39,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
-      contents: write        # push screenshots to pr-previews (publish step only)
+      contents: write        # push screenshots + clips to pr-previews (publish step only)
       pull-requests: write   # post / update the evidence comment (post step only)
     env:
       PR: ${{ github.event.pull_request.number }}
@@ -66,7 +68,12 @@ jobs:
           cache-dependency-glob: python/uv.lock
 
       - name: Install review tools (deliberately not repo dependencies)
-        run: npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1
+        # recordVideo (walkthrough.mjs) needs Playwright's own ffmpeg build; the mp4 conversion
+        # needs a real one, which ubuntu-latest no longer ships
+        run: |
+          npm i -g --no-audit --no-fund lighthouse@12 playwright-core@1
+          playwright-core install ffmpeg
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg >/dev/null
 
       - name: Local secrets for the preview Worker and the processor
         env:
@@ -94,12 +101,21 @@ jobs:
           routes="$(printf '%s\n' "${line:-$DEFAULT_ROUTES}" | tr ' ,' '\n\n' | grep -E '^/[A-Za-z0-9/_.-]*$' | head -4 | tr '\n' ' ' || true)"
           echo "routes=${routes:-$DEFAULT_ROUTES}" >> "$GITHUB_OUTPUT"
           echo "routes: ${routes:-$DEFAULT_ROUTES}"
+          # optional scripted flows: only committed files under scripts/walkthroughs/ (at most 4)
+          sline="$(printf '%s\n' "$body" | sed -n 's/^[[:space:]]*Walkthrough steps:[[:space:]]*//Ip' | head -1 | tr -d '`\r')"
+          steps=""
+          for f in $(printf '%s\n' "$sline" | tr ' ,' '\n\n' | grep -E '^scripts/walkthroughs/[A-Za-z0-9_-]+\.mjs$' | head -4); do
+            [ -f "astro/$f" ] && steps="$steps,$f"
+          done
+          echo "steps=${steps#,}" >> "$GITHUB_OUTPUT"
+          echo "steps: ${steps:-(none)}"
 
       - name: Screenshots + Lighthouse comparison
         id: compare
         working-directory: astro
         env:
           ROUTES: ${{ steps.routes.outputs.routes }}
+          STEPS: ${{ steps.routes.outputs.steps }}
           CHROME_PATH: /usr/bin/google-chrome
           VISUAL_CHECK_EXECUTABLE: /usr/bin/google-chrome
           # Ubuntu 24.04 runners block the unprivileged user namespaces Chrome's sandbox needs
@@ -110,6 +126,7 @@ jobs:
           set +e
           # ROUTES is validated above; word splitting into separate args is intended
           node scripts/lighthouse-compare.mjs --base HEAD^1 --head HEAD --runs 3 --shots \
+            --walkthrough --steps "$STEPS" \
             --python-url http://127.0.0.1:5177 \
             --backend-cmd 'uv sync --locked --quiet && uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' \
             --out "$EVIDENCE_DIR" $ROUTES
@@ -130,14 +147,15 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Publish screenshots to pr-previews
+      - name: Publish screenshots + walkthrough clips to pr-previews
         id: publish
         if: always() && steps.compare.outcome == 'success'
         env:
           PUSH_TOKEN: ${{ github.token }}
         run: |
           shots="$EVIDENCE_DIR/shots"
-          if ! ls "$shots"/*.jpg >/dev/null 2>&1; then echo "no screenshots to publish"; exit 0; fi
+          clips="$EVIDENCE_DIR/walkthrough"
+          if ! ls "$shots"/*.jpg "$clips"/*.mp4 "$clips"/*.webm >/dev/null 2>&1; then echo "nothing to publish"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
@@ -156,7 +174,12 @@ jobs:
             git -C "$wt" rm -rfq .
           fi
           mkdir -p "$wt/$dest"
-          cp "$shots"/*.jpg "$wt/$dest/"
+          cp "$shots"/*.jpg "$wt/$dest/" 2>/dev/null || true
+          # mp4 when the conversion ran, else the webm (browsers play both from a raw link)
+          for w in "$clips"/*.webm; do
+            [ -f "$w" ] || continue
+            if [ -f "${w%.webm}.mp4" ]; then cp "${w%.webm}.mp4" "$wt/$dest/"; else cp "$w" "$wt/$dest/"; fi
+          done
           git -C "$wt" add "$dest"
           # a re-run of the same commit can reproduce identical images: nothing to commit, still publish
           if ! git -C "$wt" diff --cached --quiet; then

@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 # visual-check.mjs output (screenshots are shared on the PR, not committed)
 img/visual/
+img/walkthrough/
 
 # local Worker secrets for `astro dev` / `astro preview` (never commit)
 .dev.vars*
