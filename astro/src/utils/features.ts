@@ -34,6 +34,15 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'preview',
+    // The play processor's source switch (football-sources Stage 4): the game
+    // page may ask the API to process a game from an alternate feed
+    // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's
+    // registry) and renders from the API's own header when ESPN's cdn is down.
+    // Nothing public changes while this is 'preview': only this path sends
+    // `?source=` to the API, so the request, its cache key and the response are
+    // exactly what they are today for every other viewer. Promote to 'on' once
+    // an alternate adapter is trusted end to end.
+    'source-switch': 'preview',
 };
 
 export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {

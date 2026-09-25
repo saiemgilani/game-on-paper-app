@@ -1112,6 +1112,15 @@ export interface ProcessedGame {
     homeTeamSpread: number
     overUnder: number
     header: ESPNGameHeader
+    /** only present when the request carried `?source=` (the 'source-switch'
+     *  preview path); the API stamps which feed actually produced the game */
+    provenance?: {
+        source: string
+        requested: string
+        fallback_used: boolean
+        contract_version: string | null
+        contract_sha: string | null
+    }
     broadcasts: ESPNGeoBroadcast[]
     season: ESPNSeason
     gei?: number
@@ -1122,8 +1131,8 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb'): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -1236,13 +1245,18 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb'): Promise<ProcessedGame> {
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
 
+    // `source` only ever arrives from the 'source-switch' preview path. It has
+    // to reach the cache key as well as the URL: two sources' payloads for one
+    // game are different responses, and a shared key would pin whichever
+    // landed first for the whole TTL (a year on a completed game).
+    const query = source ? `?source=${encodeURIComponent(source)}` : '';
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process`, {
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process${query}`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
@@ -1254,7 +1268,7 @@ async function processPlays(gameId: string | number, cacheTTL: number, league: L
             // deployed version means a deploy (a parser fix in sportsdataverse-py
             // rides in with every build) invalidates it without any zone purge; the
             // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}`,
+            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}${source ? `&source=${encodeURIComponent(source)}` : ''}`,
         }
     })
     const content = await req.text();
