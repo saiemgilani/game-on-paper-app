@@ -548,6 +548,23 @@ describe('one failing section does not blank the page', () => {
         }
     }, 60_000);
 
+    test('a past season whose rows failed names no team, not the identity\'s current one', async () => {
+        // CodeRabbit on #267: McCord's identity is Syracuse (2024), but 2023 was
+        // Ohio State -- with the season rows down, the header must not guess
+        const sdv = await import('../src/resources/sdv');
+        expect(await renderPage('cfb', '4433971', 2023)).toContain('season with Ohio State:');
+        const spy = vi.spyOn(sdv, 'retrievePlayerSeasons').mockRejectedValue(new Error('seasons route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2023);
+            expect(html).not.toContain('Syracuse');
+            expect(html).not.toContain('teamlogos/ncaa/500/183.png');
+            // the career view still falls back to the identity, which IS current
+            expect(await renderCareer('cfb', '4433971')).toContain('career with Syracuse:');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
     test('an identity read that FAILED is a 503, never a 404', async () => {
         // CodeRabbit on #267: a timeout or a 500 answered as "no such player"
         // tells a crawler the page does not exist and hides the outage from
