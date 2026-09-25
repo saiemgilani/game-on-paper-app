@@ -163,4 +163,23 @@ describe('the Binion box rounds through one guard in both twins', () => {
         const strip = (h: string) => parseTable(h).rows.slice(1).map((r) => r.join('|'));
         expect(strip(v2)).toEqual(strip(classic));
     }, 60_000);
+
+    test('TeamMetricsTable honours an explicit 0 decimal places in both twins', async () => {
+        // CodeRabbit on #269: both twins still read `decimalPoints || 1`, the drift
+        // the shared guard exists to stop. A caller asking for 0 places gets 0.
+        const g = loadGzJson(FIXTURES.cfb.file);
+        const props = {
+            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'],
+            teamBoxScores: g.advBoxScore.team, useSuffix: true, decimalPoints: 0,
+        };
+        const [classic, v2] = await Promise.all([
+            container.renderToString((await import('../src/components/game/classic/TeamMetricsTable.astro')).default, { props, locals: locals('cfb') }),
+            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props, locals: locals('cfb') }),
+        ]);
+        for (const html of [classic, v2]) {
+            const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());
+            expect(cells.length).toBeGreaterThan(0);
+            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?\d+$/);
+        }
+    }, 60_000);
 });

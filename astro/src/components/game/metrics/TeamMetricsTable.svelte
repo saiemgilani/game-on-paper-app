@@ -3,7 +3,7 @@ import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
 import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { roundNumber } from '../../../utils/misc';
+import { metricDecimalPoints, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -20,7 +20,7 @@ const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints
 const groups = teamBoxScores.map((group: any) => group[teamKey]);
 
 function handleMetricRows(item: string): string {
-    const finalDecimalPoints = decimalPoints || 1;
+    const finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
     if (item == "EPA_misc") {
         teamBoxScores.forEach((teamData: any) => {
