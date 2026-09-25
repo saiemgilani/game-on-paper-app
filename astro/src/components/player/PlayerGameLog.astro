@@ -1,0 +1,228 @@
+---
+/**
+ * The player's game log for one season: schedule context, the box stat line,
+ * and the per-game EPA the Data API aggregates from the plays that carry him.
+ *
+ * Mirrors the game page's `metrics/PlayerBoxScore.astro`: a text stat line on
+ * the left and one number per numeric cell after it (Plays, EPA/play, EPA, SR%).
+ * Rows link to the game page, which is the whole point of `game_id` riding on
+ * every row, and the opponent links to its team page.
+ *
+ * Two things the rows do not hand over straight:
+ *
+ * 1. **Kickoffs are instants.** `game_date` is UTC, so a 7:30pm ET Saturday
+ *    kickoff is Sunday in UTC. It renders through `LocalDate` (`client:only`,
+ *    luxon) -- the same island the scoreboard and the matchup history use -- so
+ *    the reader sees his own date, not the server's.
+ * 2. **A postseason `week` restarts at 1** in both leagues, so the bare number
+ *    labels a bowl game "1". `weekLabel` names the round instead.
+ * 3. **A row can arrive with no schedule context at all.** The API adds a game
+ *    the player has attributed plays in even when nothing joined a schedule row
+ *    to it, so `game_date` can be absent -- and luxon renders an absent date as
+ *    the literal "Invalid DateTime" (review on #267). An absent date is an em
+ *    dash here, like every other absent cell.
+ *
+ * The four metric cells are shaded on the site's green -> purple ramp, and there
+ * are TWO distributions a game can be read against (review on #267), so a filter
+ * row switches between them:
+ *
+ * * **Player Games** (the default) ranks the game among his own games that season.
+ *   It is the comparison the page can always make, but it needs games to make it:
+ *   in week 2 a player has two, and two is not a distribution -- which is exactly
+ *   why the NFL log looked unshaded in September.
+ * * **<season> Percentiles** reads each number off the season's whole player-game
+ *   distribution (`players/games/percentiles`, sdv-db) and prints the percentile
+ *   beside the number as small faded `94th %ile`, the Binion box score's way of
+ *   printing one (review on #267). That one works in
+ *   week 1, so it is the default whenever the player's own season is too short.
+ */
+import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
+import { leaguePath, teamLogoUrl } from '../../utils/league';
+import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { nflTeamIdByAbbr } from '../../utils/teams';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import LocalDate from '../LocalDate.svelte';
+import { DateTime } from 'luxon';
+
+interface Props {
+    games: PlayerGameRow[]
+    /** nflverse game id -> ESPN event id; the NFL log keys on the former, every GOP game page on the latter */
+    espnGameIds?: Record<string, string>
+    /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
+    leagueBreaks?: Record<string, number[]>
+}
+const { games, espnGameIds = {}, leagueBreaks = {} } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+
+/** An ISO instant luxon can actually render, or null. */
+function kickoff(row: PlayerGameRow): string | null {
+    const raw = row.game_date;
+    if (raw === null || raw === undefined || raw === '') return null;
+    return DateTime.fromISO(String(raw)).isValid ? String(raw) : null;
+}
+
+/**
+ * The shaded metric cells, ranked within the player's own season. `null` values
+ * (a game with no attributed plays) are left unranked rather than sorted to an
+ * end and shaded as if they were a result.
+ */
+const SHADED: [keyof PlayerGameRow, (v: unknown) => string][] = [
+    ['epa_per_play', (v) => formatNumber(v, 2)],
+    ['epa', (v) => formatNumber(v, 2)],
+    ['success_rate', (v) => formatPercent(v)],
+];
+const ranks = new Map<string, Map<PlayerGameRow, number>>();
+for (const [key] of SHADED) {
+    const ranked = games
+        .filter((g) => numberOrNull(g[key as string]) !== null)
+        .toSorted((a, b) => (numberOrNull(b[key as string]) ?? 0) - (numberOrNull(a[key as string]) ?? 0));
+    ranks.set(String(key), new Map(ranked.map((g, i) => [g, i + 1])));
+}
+/** W is good, L is bad, on the site's own ramp-end colours. */
+const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-text-purple' };
+const shade = (row: PlayerGameRow, key: string): string => {
+    const column = ranks.get(key);
+    // two games are not a distribution: shading them would paint one green and
+    // the other purple over a difference that means nothing
+    if (!column || column.size < 3) return '';
+    return generateColorRampValue(column.get(row) ?? null, column.size, true) ?? '';
+};
+/** Where the number sits in the whole league-season, 0..100, or null. */
+const leaguePct = (row: PlayerGameRow, key: string): number | null =>
+    percentileFromBreaks(leagueBreaks[key], row[key as string]);
+const leagueShade = (row: PlayerGameRow, key: string): string =>
+    generateColorRampValue(leaguePct(row, key), 100) ?? '';
+// the player's own season only ranks with three games in it; below that the league
+// is the only distribution there is, so it is what the log opens on
+const ranked = Math.max(...[...ranks.values()].map((c) => c.size), 0);
+const hasLeague = Object.keys(leagueBreaks).length > 0;
+const mode: 'player' | 'league' = ranked >= 3 || !hasLeague ? 'player' : 'league';
+// the option names the season its distribution is from ("2025 Percentiles"), and
+// its title the population -- the nation's for college, the league's for the NFL
+const season = games[0]?.season;
+const leagueTitle = `Percentile among every player-game in the ${league === 'cfb' ? 'nation' : 'league'} that season`;
+
+/** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
+function gameHref(row: PlayerGameRow): string | null {
+    const id = row.game_id ? String(row.game_id) : null;
+    if (!id) return null;
+    const espn = /^\d+$/.test(id) ? id : espnGameIds[id];
+    return espn ? leaguePath(league, `/game/${espn}`) : null;
+}
+
+/**
+ * The opponent's ESPN team id. CFB rows carry it; the NFL's carry the nflverse
+ * abbreviation ("LAC"), which every team URL and every dark-mode logo rule
+ * needs resolved to the id -- an unresolved one is a dead link AND a light
+ * logo on a dark background.
+ */
+function opponentId(row: PlayerGameRow): string | number | null {
+    const id = row.opponent_id;
+    if (id === null || id === undefined || id === '') return null;
+    if (/^\d+$/.test(String(id))) return id;
+    return league === 'nfl' ? nflTeamIdByAbbr(id) : null;
+}
+
+const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (string | number)[];
+---
+{games.length > 0 && (
+<Fragment>
+<DarkModeLogos teamIds={opponentIds} />
+{hasLeague && (
+<div class="d-flex justify-content-start align-items-center flex-wrap gap-2 mb-2" data-shade-toggle="player-game-log">
+    <label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>
+    <select id="player-game-log-shade" class="form-select form-select-sm w-auto" data-shade-select>
+        <option value="player" data-shade-mode="player" selected={mode === 'player'}
+            title="Rank within this player's own games that season">Player Games</option>
+        <option value="league" data-shade-mode="league" selected={mode === 'league'}
+            title={leagueTitle}>{`${season} Percentiles`}</option>
+    </select>
+</div>
+)}
+<div class="table-responsive" id="player-game-log">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Date</th>
+                <th class="text-center" colspan="1">Wk</th>
+                <th class="text-left" colspan="1">Opponent</th>
+                <th class="text-center" colspan="1">Result</th>
+                <th class="text-left" colspan="1">Stat line</th>
+                <th class="text-center" colspan="1">Plays</th>
+                <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Share of plays with positive EPA">SR%</abbr></th>
+            </tr>
+        </thead>
+        <tbody>
+            {games.map((g: PlayerGameRow) => (
+                <tr>
+                    <td class="text-left text-nowrap numeral" colspan="1">
+                        {kickoff(g) === null
+                            ? (gameHref(g) ? <a href={gameHref(g)}>—</a> : '—')
+                            : (gameHref(g)
+                                ? <a href={gameHref(g)}><LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} /></a>
+                                : <LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} />)}
+                    </td>
+                    <td class="text-center text-nowrap" colspan="1">{weekLabel(league, g.season_type, g.week)}</td>
+                    <td class="text-left text-nowrap" colspan="1">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted">{g.home_away === 'away' ? 'at' : 'vs'}</span>
+                            <a class="d-flex align-items-center gap-1" href={opponentId(g) ? leaguePath(league, `/year/${g.season}/team/${opponentId(g)}`) : undefined}>
+                                {opponentId(g) && (
+                                    <img class={`img-fluid team-logo-${opponentId(g)}`} width="20px"
+                                        src={teamLogoUrl(league, opponentId(g) as string | number, false)}
+                                        alt={`${g.opponent ?? opponentId(g)} logo`} />
+                                )}
+                                <span>{cleanTextForTeam(g.opponent, opponentId(g))}</span>
+                            </a>
+                        </div>
+                    </td>
+                    <td class="text-center text-nowrap numeral" colspan="1">
+                        {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
+                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
+                    </td>
+                    <td class="text-left" colspan="1">{gameStatLine(g, league)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
+                    {SHADED.map(([key, format]) => (
+                        <td class:list={["text-center", "numeral", mode === 'league' ? leagueShade(g, String(key)) : shade(g, String(key))]} colspan="1"
+                            data-shade-player={shade(g, String(key))} data-shade-league={leagueShade(g, String(key))}>
+                            {format(g[key as string])}
+                            {leaguePct(g, String(key)) !== null && (
+                                <small class:list={["align-self-center", mode !== 'league' && "d-none"]} style="opacity: 50%"
+                                    data-league-pct> {ordinal(leaguePct(g, String(key)) as number)} %ile</small>
+                            )}
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
+</Fragment>
+)}
+
+<script>
+    // Deliberately not `is:inline`: the same reason `plays/PlayFilters.astro` gives --
+    // an inline script runs where it sits, and the toggle renders before the table
+    // it drives. Both shadings are already in the markup as data attributes, so this
+    // only ever swaps a class and un-hides a span; with no JS the log keeps whichever
+    // shading the server picked.
+    for (const bar of document.querySelectorAll<HTMLElement>('[data-shade-toggle]')) {
+        const scope = document.getElementById(bar.dataset.shadeToggle ?? '');
+        if (!scope) continue;
+        const select = bar.querySelector<HTMLSelectElement>('[data-shade-select]');
+        if (!select) continue;
+        select.addEventListener('change', () => {
+            const mode = select.value === 'league' ? 'league' : 'player';
+            for (const cell of scope.querySelectorAll<HTMLElement>('[data-shade-player]')) {
+                const next = (mode === 'league' ? cell.dataset.shadeLeague : cell.dataset.shadePlayer) ?? '';
+                for (const c of [...cell.classList]) {
+                    if (c.startsWith('hulk-bg-level-')) cell.classList.remove(c);
+                }
+                if (next) cell.classList.add(next);
+                cell.querySelector('[data-league-pct]')?.classList.toggle('d-none', mode !== 'league');
+            }
+        });
+    }
+</script>

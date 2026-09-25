@@ -1,5 +1,6 @@
 <script>
 	import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
+	import { NFL_POST_LABELS } from '../../utils/constants';
 	import { LEAGUES, leaguePath } from '../../utils/league';
 
 	// `league` is passed from SchedulePage (SSR knows Astro.locals.league);
@@ -8,7 +9,6 @@
 	const cfg = LEAGUES[league];
 	// cfb weeks come from the static schedule map (bowl/CFP weeks vary by
 	// season); the nfl calendar is fixed: 18 regular + 5 postseason rounds.
-	const NFL_POST_LABELS = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
 	function weeksFor(s) {
 		if (league === 'cfb') return GLOBAL_SCHEDULE_MAP[s] || [];
 		const reg = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));

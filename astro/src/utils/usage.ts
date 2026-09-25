@@ -4,6 +4,7 @@
  * stay declarative and the rules are unit-testable.
  */
 import type { ProcessedBoxScore } from '../resources/python';
+import { formatNumber, formatPercent } from './misc';
 
 /** Every section sportsdataverse.football.usage_box emits. */
 export const USAGE_SECTIONS = [
@@ -63,10 +64,14 @@ export function sortDesc<T extends Record<string, any>>(rows: T[], key: string, 
     });
 }
 
-/** 0.4123 -> "41.2%"; null -> "—". */
+/**
+ * 0.4123 -> "41.2%"; null -> "—". Thin aliases over `utils/misc`, which is
+ * where every number the site prints is formatted: the site's rule is that a
+ * number goes through `roundNumber`, and a second copy of that per utils file
+ * is how two surfaces end up rounding the same value differently.
+ */
 export function pct(v: number | null | undefined, digits = 1): string {
-    if (v == null || Number.isNaN(Number(v))) return '—';
-    return `${(Number(v) * 100).toFixed(digits)}%`;
+    return formatPercent(v, digits);
 }
 
 /** A signed count: +1.4 / -0.6 / 0.0; null -> "—". */
@@ -79,13 +84,53 @@ export function signed(v: number | null | undefined, digits = 1): string {
 
 /** A plain number with fixed digits; null -> "—". */
 export function num(v: number | null | undefined, digits = 1): string {
-    if (v == null || Number.isNaN(Number(v))) return '—';
-    return Number(v).toFixed(digits);
+    return formatNumber(v, digits);
 }
 
 /** "made/att" with a null-safe zero. */
 export function madeOf(made: number | null | undefined, att: number | null | undefined): string {
     return `${made ?? 0}/${att ?? 0}`;
+}
+
+/**
+ * player_name -> player_id for one team, from the sections that carry both.
+ *
+ * The ADVANCED box score (`ProcessedPassingBoxScore` and friends) has names and
+ * no ids at all, so it can only link a player by borrowing the id the usage and
+ * tackle rows of the same game already carry. The name is the only field the
+ * two shapes share -- which is also how `PlayerBoxScore` already joins its
+ * per-play extremes.
+ *
+ * Nothing makes `player_name` unique within a team, so a name that resolves to
+ * two ids is DROPPED rather than resolved to whichever row came last: an
+ * advanced-box name linking to the wrong player's page is worse than one that
+ * links nowhere.
+ */
+export function playerIdsByName(box: Partial<ProcessedBoxScore> | null | undefined, teamId: string | number): Map<string, string> {
+    const out = new Map<string, string>();
+    const ambiguous = new Set<string>();
+    const add = (rows: any[]) => {
+        for (const r of rows) {
+            if (!r?.player_name || r?.player_id == null) continue;
+            const name = String(r.player_name);
+            if (ambiguous.has(name)) continue;
+            const id = String(r.player_id);
+            const seen = out.get(name);
+            if (seen !== undefined && seen !== id) {
+                out.delete(name);
+                ambiguous.add(name);
+            } else {
+                out.set(name, id);
+            }
+        }
+    };
+    add(teamRows(box?.player_usage as any[], teamId));
+    add(teamRows(box?.st_kickers as any[], teamId));
+    add(teamRows(box?.st_punters as any[], teamId));
+    add(teamRows(box?.st_returners as any[], teamId));
+    add(teamRows(box?.tackles as any[], teamId, 'def_pos_team'));
+    add(teamRows(box?.st_blocks as any[], teamId, 'def_pos_team'));
+    return out;
 }
 
 /** The scripted / non-scripted pair for a team, keyed by script. */

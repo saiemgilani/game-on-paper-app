@@ -355,3 +355,33 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         variables: ['EPA per play allowed', 'success rate allowed', 'explosive-play rate allowed', 'third-down conversion rate allowed', 'points per drive allowed'],
     },
 };
+
+/** Metrics an individual player page publishes, for its Dataset JSON-LD. */
+export const PLAYER_PAGE_VARIABLES = [
+    'EPA per play', 'success rate', 'total EPA', 'plays', 'percentile', 'rank',
+];
+
+export interface PlayerPageSpec {
+    name: string;
+    position?: string | null;
+    team?: string | null;
+    /** the season the page shows, or null for the career view */
+    season: number | null;
+    league?: League;
+}
+
+export function playerTitle(p: PlayerPageSpec): string {
+    const who = [p.position, p.name].filter(Boolean).join(' ');
+    if (p.season === null) {
+        return `${who} career advanced stats: EPA per play, success rate, and season log | Game on Paper`;
+    }
+    return `${who} ${p.season} advanced stats: EPA per play, success rate, and game log | Game on Paper`;
+}
+
+export function playerDescription(p: PlayerPageSpec): string {
+    const where = p.team ? ` with ${p.team}` : '';
+    if (p.season === null) {
+        return `${p.name}'s ${sportNoun(p.league)} career${where}: season-by-season EPA per play, success rate and percentile ranks from Game on Paper.`;
+    }
+    return `${p.name}'s ${p.season} ${sportNoun(p.league)} season${where}: EPA per play, success rate, percentile ranks, a full game log, and situational splits from Game on Paper.`;
+}

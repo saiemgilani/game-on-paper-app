@@ -1,0 +1,345 @@
+---
+/**
+ * An individual player page, both leagues, behind the 'player-pages' flag.
+ *
+ * **Two pages, one component, `?season=` decides which** (review on #267). With
+ * no season the page is the player's CAREER: every season summary he has, and
+ * nothing that only makes sense inside one year. Picking a season from the
+ * dropdown narrows the summaries to it and ADDS the game log, the situational
+ * splits and his team's context for that year. So the career view makes exactly
+ * one read (the season rows) and the season view five.
+ *
+ * Every number on it comes from the Data API's player-keyed reads (sdv-db #71),
+ * and the two populations are kept apart on purpose: the summary tiles, the
+ * game log and the splits aggregate the SAME pbp plays, so the tiles are the
+ * game log summed and the game log sums to the `All plays` split; the season
+ * line table is the season leaderboard producer's own rows, which count a
+ * slightly different population and carry the ranks and percentiles.
+ *
+ * What each element mirrors: the header card is `team/TeamPlayerCard.astro`
+ * (headshot in `img-circle-bg`, logo beside the title), the season dropdown is
+ * `leaderboards/CoachLeaderboardPage.astro`'s (a plain `<select>` whose options
+ * are URLs, so it works with no JS island), every section is a `GenericPanel`,
+ * the line table is `leaderboards/PlayerLeaderboardTable.astro`'s columns and
+ * formatting, and the game log is `game/metrics/PlayerBoxScore.astro`'s stat
+ * line plus numeric cells.
+ *
+ * **Every section's read stands alone.** The page fans out to four Data API
+ * routes plus the team-summaries read, and `Promise.all` would have let one
+ * upstream hiccup reject the lot and blank a page whose other three sections
+ * were fine. `Promise.allSettled` keeps them independent: a section whose read
+ * failed says so and the rest of the page renders. The one read that CANNOT
+ * degrade is the identity, and it is not made here -- `routes/player.ts` makes
+ * it and turns a miss into the site's 404, so nothing below ever renders a
+ * shell.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import PlayerSeasonTable from './PlayerSeasonTable.astro';
+import PlayerGameLog from './PlayerGameLog.astro';
+import PlayerSplits from './PlayerSplits.astro';
+import {
+    retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
+    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries, type SDVPlayer,
+} from '../../resources/sdv';
+import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
+import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
+import { formatHeight, playerPath, totalGameLog, type SeasonRow } from '../../utils/players';
+import { cfbTeamIdByName } from '../../utils/teams';
+
+interface Props {
+    player: SDVPlayer
+    /** the season `?season=` asks for, or null for the career view */
+    season: number | null
+}
+const { player, season } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+
+/** The value a settled read produced, or the empty shape when it rejected. */
+function settled<T>(r: PromiseSettledResult<T>, empty: T): T {
+    if (r.status === 'fulfilled') return r.value;
+    console.error(`player page: a section read failed: ${r.reason}`);
+    return empty;
+}
+
+// the career view needs only the season rows; the three season-only reads are
+// not made at all rather than made and thrown away
+const reads = await Promise.allSettled([
+    retrievePlayerSeasons(player.espn_id, league) as Promise<SeasonRow[]>,
+    season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
+    season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
+    season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
+    season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league),
+]);
+const seasonRows = settled(reads[0] as PromiseSettledResult<SeasonRow[]>, []);
+const games = settled(reads[1] as PromiseSettledResult<any[]>, []);
+const splits = settled(reads[2] as PromiseSettledResult<any[]>, []);
+const espnGameIds = settled(reads[3] as PromiseSettledResult<Record<string, string>>, {});
+// the league-season distribution the game log's second shading reads; a failed or
+// not-yet-deployed read just leaves the log on its player-level shading
+const leagueBreaks = settled(reads[4] as PromiseSettledResult<Record<string, number[]>>, {});
+// which panels have to say "unavailable" instead of "nothing to show"
+const failed = {
+    seasons: reads[0].status === 'rejected',
+    games: reads[1].status === 'rejected',
+    splits: reads[2].status === 'rejected',
+};
+
+const totals = totalGameLog(games);
+// the rows the header describes: the selected season's, or the latest season's
+// in the career view, primary team-season first -- so a traded player's header
+// names the team he actually played most of that season for
+const latest = seasonRows.length > 0 ? Math.max(...seasonRows.map((r) => Number(r.season))) : null;
+const headerSeason = season ?? latest;
+const headerRows = seasonRows
+    .filter((r) => Number(r.season) === headerSeason)
+    .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0));
+// the ESPN team ids for that season -- the NFL identity has none, but its season rows do
+const teamIds = [...new Set(headerRows.map((r) => r.team_id).filter(Boolean))] as (string | number)[];
+const headerTeamId = teamIds[0] ?? player.team_id ?? null;
+const realTeamName = String(headerRows[0]?.pos_team ?? player.team ?? '');
+// the team beside the jersey number is a team NAME, so the meme list applies to it
+// exactly as it does to his own (review on #267)
+const teamName = cleanTextForTeam(realTeamName, headerTeamId);
+
+// Team context: how the team he played for that season did, from the same
+// team_summaries rows the team leaderboards read -- one cached call, four
+// numbers, no new producer. A career view has no one season to contextualise.
+const teamMetrics = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
+const teamRows = season !== null && teamIds.length > 0
+    ? await retrieveTeamSummaries({ season, league, columns: teamMetrics })
+        .catch((e) => { console.error(`player page: team context read failed: ${e}`); return [] as any[]; })
+    : [];
+const context = teamIds
+    .map((id) => teamRows.find((t) => String(t.team_id) === String(id)))
+    .filter(Boolean) as Record<string, any>[];
+
+const realName = player.name ?? `Player ${player.espn_id}`;
+// the site lowercases a meme-list team's names wherever it prints them, and a
+// player is named by his team too (review on #267); the schema.org name and the
+// <title> keep the real spelling, as `utils/seo.ts` documents
+const name = cleanTextForTeam(realName, headerTeamId);
+// the season the page SHOWS, so canonical, og:url and the Dataset's
+// temporalCoverage all describe the same year -- and the career view has none
+const pageUrl = playerPath(league, player.espn_id, season);
+const spec = { name: realName, position: player.position, team: realTeamName || null, season, league };
+const pageTitle = playerTitle(spec);
+const description = playerDescription(spec);
+const heading = season === null ? `${name} career advanced stats` : `${name} ${season} advanced stats`;
+const seasons = player.seasons.toSorted((a, b) => b - a);
+const crumbSeason = headerSeason ?? seasons[0];
+
+// `Players / Name` on the career page, `Players / Name / 2025` inside a season --
+// the trail names what you are looking at, not the year you arrived by (review on
+// #267). The player's own crumb is a link to his career page while a season is open.
+// "Players" goes to the season's hub; the NFL's index is its passing board
+// (/nfl/players redirects there), so that league keeps the board as the target.
+const playersIndex = league === 'nfl' ? 'players/passing' : 'players';
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: 'Players', ...(crumbSeason ? { url: leaguePath(league, `/year/${crumbSeason}/${playersIndex}`) } : {}), active: false },
+    { title: name, url: playerPath(league, player.espn_id), active: season === null },
+    ...(season === null ? [] : [{ title: `${season}`, url: pageUrl, active: true }]),
+];
+
+const dataset = datasetJsonLd({
+    name: heading, description, url: pageUrl, league, variables: PLAYER_PAGE_VARIABLES,
+    ...(season === null ? {} : { season }),
+});
+
+const headshot = player.headshot_url
+    ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${player.espn_id}.png&w=150`;
+// the bio line, from whatever the league's roster published: both leagues store
+// a height in inches, so it is written the way the site writes one ("6-3")
+const weight = numberOrNull(player.weight);
+// A roster names more than one school when the player transferred ("Wyoming;
+// Reedley"), and each one is a team the meme list can cover -- resolved by NAME,
+// which is all an NFL roster gives (review on #267).
+const college = String(player.college ?? '').split(';').map((c) => c.trim()).filter(Boolean);
+const bio: string[] = [
+    formatHeight(player.height),
+    weight === null ? null : `${Math.round(weight)} lb`,
+    player.hometown || null,
+    college.length === 0 ? null
+        : `College: ${college.map((c) => cleanTextForTeam(c, cfbTeamIdByName(c))).join('; ')}`,
+].filter(Boolean) as string[];
+// the season summary, in the same table format as every other section rather
+// than a row of loose tiles (review on #267)
+const summary: { label: string, value: string, title: string }[] = [
+    { label: 'Games', value: `${totals.games}`, title: 'Games with a play carrying this player' },
+    { label: 'Plays', value: `${totals.plays}`, title: 'Plays from scrimmage on a numbered down carrying this player' },
+    { label: 'EPA', value: formatNumber(totals.epa, 2), title: 'Total Expected Points Added over those plays' },
+    { label: 'EPA/play', value: totals.plays > 0 ? formatNumber(totals.epa_per_play, 2) : '—', title: 'Expected Points Added per play' },
+    { label: 'SR%', value: formatPercent(totals.success_rate), title: 'Share of those plays with positive EPA' },
+];
+/** A section whose read failed says so; one whose read was empty says that instead. */
+const UNAVAILABLE = 'This section is unavailable right now. Everything else on the page is unaffected.';
+// the team-context cells: a formatter over the summary row, the rank riding
+// inline with it AND shading the cell on the green -> purple ramp, exactly as
+// `team/TeamCard.astro` does it (134 = the FBS field the ranks are out of)
+const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
+    [(t) => formatNumber(t.EPAplay_off, 2), 'EPAplay_off_rank'],
+    [(t) => formatPercent(t.success_off), 'success_off_rank'],
+    [(t) => formatPercent(t.explosive_off), 'explosive_off_rank'],
+    [(t) => formatNumber(t.EPAplay_def, 2), 'EPAplay_def_rank'],
+];
+const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
+---
+
+<GenericPage title={pageTitle} subtitle={season === null ? 'Career advanced stats' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
+    <div class="container">
+        {headerTeamId && <DarkModeLogos teamIds={[headerTeamId]} />}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card border rounded mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img class="img img-fluid img-circle-bg" width="72px" src={headshot} alt={name} />
+                                <div>
+                                    <h2 class="mb-0">{name}</h2>
+                                    <p class="mb-0 text-muted">
+                                        {[player.position, player.jersey ? `#${player.jersey}` : null, teamName].filter(Boolean).join(' / ')}
+                                    </p>
+                                </div>
+                            </div>
+                            {headerTeamId && (
+                                <a href={leaguePath(league, `/year/${crumbSeason}/team/${headerTeamId}`)}>
+                                    <img class={`h2 img img-fluid team-logo-${headerTeamId}`} width="50px"
+                                        src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${headerTeamId}.png`}
+                                        alt={`${realTeamName} logo`} />
+                                </a>
+                            )}
+                        </div>
+                        {/* the picker sits on the bio's row, under the team logo, its top on the
+                            bio's top (review on #267): the label rides beside it rather than above,
+                            or the label would be what lines up. A phone stacks it under the bio. */}
+                        <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-md-between gap-2" id="player-bio-row">
+                            <p class="m-0 text-muted text-small" id="player-bio">
+                                {bio.length > 0 ? bio.join(' / ') : 'No biographical detail published for this player.'}
+                            </p>
+                            <div class="d-flex align-items-center gap-2 ms-md-auto">
+                                <label class="form-label text-muted text-small mb-0" for="player-season">Season</label>
+                                <select id="player-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                                    <option value={playerPath(league, player.espn_id)} selected={season === null}>Career</option>
+                                    {seasons.map((y) => (
+                                        <option value={playerPath(league, player.espn_id, y)} selected={y === season}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <Panel id="player-summary" title={season === null ? 'Career Summary' : `${season} Season Summary`} show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                {season !== null && (
+                <div class="table-responsive mb-4" id="player-summary-totals">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>{summary.map((t) => <th class="text-center" colspan="1"><abbr title={t.title}>{t.label}</abbr></th>)}</tr>
+                        </thead>
+                        <tbody>
+                            <tr>{summary.map((t) => <td class="text-center numeral" colspan="1">{t.value}</td>)}</tr>
+                        </tbody>
+                    </table>
+                </div>
+                )}
+                <PlayerSeasonTable rows={seasonRows} season={season} espnId={String(player.espn_id)} />
+                {failed.seasons
+                    ? <p class="m-0 text-muted text-small" id="player-summary-unavailable">{UNAVAILABLE}</p>
+                    : seasonRows.length === 0 && <p class="m-0 text-muted text-small">No season leaderboard rows for this player.</p>}
+            </Fragment>
+        </Panel>
+
+        {season !== null && (
+        <Fragment>
+        <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                <PlayerGameLog games={games} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} />
+                {failed.games
+                    ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
+                    : games.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
+            </Fragment>
+        </Panel>
+
+        <Panel id="player-splits-panel" title="Situational Splits" show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                <PlayerSplits splits={splits} />
+                {failed.splits
+                    ? <p class="m-0 text-muted text-small" id="player-splits-unavailable">{UNAVAILABLE}</p>
+                    : splits.length === 0 && <p class="m-0 text-muted text-small">No plays for {season}.</p>}
+            </Fragment>
+        </Panel>
+
+        {context.length > 0 && (
+        <Panel id="player-team-context" title="Team Context" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">The team's whole {season} season.</p>
+            <Fragment slot="panel-body">
+                <div class="table-responsive" id="player-team-context-table">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th class="text-left" colspan="1">Team</th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Expected Points Added per play">EPA/Play</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Success Rate">Success Rate</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Offensive Explosive Play Rate">Explosive Play Rate</abbr></th>
+                                <th class="text-center" colspan="1"><abbr title="Defensive Expected Points Added per play allowed">EPA/Play Allowed</abbr></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {context.map((t) => (
+                                <tr>
+                                    <td class="text-left text-nowrap" colspan="1">
+                                        <a class="d-flex align-items-center gap-1" href={leaguePath(league, `/year/${season}/team/${t.team_id}`)}>
+                                            <img class={`img-fluid team-logo-${t.team_id}`} width="20px"
+                                                src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
+                                                alt={`${t.pos_team} logo`} />
+                                            <span>{t.pos_team}</span>
+                                        </a>
+                                    </td>
+                                    {teamContextColumns.map(([value, rank]) => (
+                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), TEAM_RANK_FIELD, true)]} colspan="1">
+                                            {value(t)}
+                                            {numberOrNull(t[rank]) !== null && (
+                                                <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(numberOrNull(t[rank]))}</span>
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+        </Fragment>
+        )}
+
+        <p class="text-muted text-small" id="player-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>. Rosters from
+            {league === 'nfl' ? ' nflverse' : ' ESPN'}.
+        </p>
+    </div>
+</GenericPage>
+
+<style>
+.img-circle-bg {
+    background: rgba(0, 0, 0, 0.1);
+    -webkit-clip-path: circle(closest-side);
+    clip-path: circle(closest-side);
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-circle-bg {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+</style>

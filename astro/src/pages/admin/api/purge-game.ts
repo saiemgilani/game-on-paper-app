@@ -16,7 +16,9 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     'game-scheduled-future', 'scoreboard', 'matchup', 'favorites-enabled',
     // week/schedule + chart pages (see the tags: lists in utils/config.ts and pages/)
     'week-complete', 'week-in-progress', 'week-scheduled-current-week',
-    'week-scheduled-current-season', 'chart']);
+    'week-scheduled-current-season', 'chart',
+    // every individual player page (routes/player.ts), after a producer republish
+    'player']);
 
 export const GET: APIRoute = async (context) => purge(context);
 export const POST: APIRoute = async (context) => purge(context);

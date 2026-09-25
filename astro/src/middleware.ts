@@ -13,6 +13,7 @@ import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
 import { isCoachBoardPath } from './utils/coaches';
+import { isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -134,6 +135,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // leagues -- the same namespace gate, so a public /coaches or
   // /year/N/coaches/<board> (and the /nfl twins) is the site's 404.
   if (isCoachBoardPath(effectivePath) && !isFeatureEnabled('coaches', context.locals)) {
+    previewRewrite = '/404';
+  }
+  // Individual player pages are their own 'preview' namespace, for both
+  // leagues: /players/<espn id> and /nfl/players/<espn id>. Same gate again --
+  // the hrefs that reach them are gated in their own components, because a
+  // public link into a 404 namespace is worse than no link at all.
+  if (isPlayerPath(effectivePath) && !isFeatureEnabled('player-pages', context.locals)) {
     previewRewrite = '/404';
   }
 

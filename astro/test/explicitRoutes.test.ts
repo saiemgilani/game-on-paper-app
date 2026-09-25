@@ -47,7 +47,7 @@ describe('explicit /nfl pages', () => {
         // routes/*.ts loaders return {redirect}/{notFound} unions; a page that
         // forgets a branch spreads the marker object into the component and
         // ships an "undefined" page as HTTP 200 (seen on /year/2025junk/teams).
-        const loaders = ['leaderboards', 'matchup', 'seasonTeam', 'teamProfile', 'game']
+        const loaders = ['leaderboards', 'matchup', 'seasonTeam', 'teamProfile', 'game', 'player']
             .map((f) => readFileSync(new URL(`../src/routes/${f}.ts`, import.meta.url)).toString()).join('\n');
         const variants: Record<string, string[]> = {};
         for (const m of loaders.matchAll(/export (?:async )?function (\w+)\([\s\S]*?\n\}/g)) {

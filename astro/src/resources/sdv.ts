@@ -565,7 +565,20 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
     return hexString;
 }
 
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, league: League = 'cfb'): Promise<any> {
+/**
+ * A Data API failure the caller must SEE rather than render around. Every
+ * historical caller wants an empty table on a bad day; the player pages want
+ * the opposite -- a real 404 has to become a 404 page, never an empty shell --
+ * so they pass `strict` and branch on `status`.
+ */
+export class SDVRequestError extends Error {
+    constructor(public status: number, public endpoint: string, message: string) {
+        super(message);
+        this.name = 'SDVRequestError';
+    }
+}
+
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, league: League = 'cfb', strict = false): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
@@ -600,13 +613,16 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         const req = await wrappedFetch(`${SDV_HTTP_URL}/${endpointURL}`, config);
         const contentRaw: string = await req.text();
         if (!req.ok) {
+            if (strict) throw new SDVRequestError(req.status, endpointURL, contentRaw)
             throw new Error(`Request returned with status ${req.statusText}, content: ${contentRaw}`)
         }
         const content = JSON.parse(contentRaw);
         // Every SDV table answers { data: [...] }; a 200 carrying anything else (an
         // `{ error }` body, say) is not worth serving for the TTL, so it is parsed
         // and checked before it can reach the cache. Was cached first, checked never.
-        if (cacheEnabled && Array.isArray(content?.data)) {
+        // The player identity route is the one read that answers a bare object, and
+        // it always carries `espn_id` -- an `{ error }`/`{ detail }` body never does.
+        if (cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined)) {
             console.info(`SDV API cache update: ${endpointURL}`)
             await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
         } else if (cacheEnabled) {
@@ -615,6 +631,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         return content;
     } catch (e) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
+        if (strict) throw e
         return {
             "data": []
         }
@@ -1083,4 +1100,124 @@ export async function retrieveCoachTendencies({ season, league = 'cfb', columns 
 
 export async function retrieveCoachCareers({ league = 'cfb', columns }: { league?: League; columns?: string[] } = {}): Promise<SDVCoachCareer[]> {
     return requestTendencyTable<SDVCoachCareer>('coach_careers', COACH_CAREER_KEYS, { role: 'HC' }, columns, league);
+}
+
+// ---------------------------------------------------------------- player reads
+//
+// `GET /v1/{league}/players/{espn id}[/seasons|/games|/splits]` (sdv-db #71).
+// These are the only reads on the site that must tell "no such player" from
+// "player with no rows": the routes 404 on an unknown id, and the page has to
+// 404 with them rather than render an identity shell. So they go through
+// `requestSDV(..., strict)` and return `null` for a 404 while letting any other
+// failure surface -- an empty page on a bad upstream day would be worse than an
+// error, because it would be indexed.
+
+export interface SDVPlayer {
+    league: League
+    espn_id: string
+    player_id: string
+    name: string | null
+    position: string | null
+    jersey: string | number | null
+    team_id: string | number | null
+    team: string | null
+    headshot_url: string | null
+    latest_season: number | null
+    seasons: number[]
+    /** bio, when the league's roster publishes it (sdv-db #74) */
+    height?: string | number | null
+    weight?: string | number | null
+    hometown?: string | null
+    /** NFL only */
+    gsis_id?: string
+    nflverse_ids?: Record<string, string>
+    college?: string | null
+    draft_year?: number | null
+    rookie_season?: number | null
+}
+
+export interface SDVPlayerSplit {
+    split: string
+    plays: number | null
+    epa: number | null
+    successes: number | null
+    epa_per_play: number | null
+    success_rate: number | null
+}
+
+/** A 404 is "no such player"; anything else is a real failure and is rethrown. */
+async function requestPlayer(league: League, path: string, query: Record<string, string>, ttl: number): Promise<any | null> {
+    try {
+        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, league, true);
+    } catch (e) {
+        if (e instanceof SDVRequestError && e.status === 404) return null;
+        throw e;
+    }
+}
+
+export async function retrievePlayer(espnId: string, league: League = 'cfb'): Promise<SDVPlayer | null> {
+    const content = await requestPlayer(league, `players/${espnId}`, {}, 60 * 60 * 24);
+    return content?.espn_id ? content as SDVPlayer : null;
+}
+
+/** Every season row the player has, all seasons -- the career roll-up needs them all. */
+export async function retrievePlayerSeasons(espnId: string, league: League = 'cfb'): Promise<any[]> {
+    const content = await requestPlayer(league, `players/${espnId}/seasons`, {}, 60 * 60 * 24);
+    return content?.data ?? [];
+}
+
+export async function retrievePlayerGames(espnId: string, season: number, league: League = 'cfb'): Promise<any[]> {
+    const content = await requestPlayer(league, `players/${espnId}/games`, { season: String(season) }, 60 * 60 * 6);
+    return content?.data ?? [];
+}
+
+/**
+ * Percentile breakpoints for the game-log metrics over EVERY player-game in a
+ * league-season (sdv-db `players/games/percentiles`): 101 per metric, 0th..100th.
+ *
+ * One read per season, not per player -- which is the whole reason it is a season
+ * route. It is what lets a game log shade against the league instead of against the
+ * player's own season, the only distribution that exists in week 2 (review on #267).
+ */
+export async function retrievePlayerGamePercentiles(season: number, league: League = 'cfb'): Promise<Record<string, number[]>> {
+    const content = await requestPlayer(league, 'players/games/percentiles', { season: String(season) }, 60 * 60 * 24);
+    const out: Record<string, number[]> = {};
+    for (const row of (content?.data ?? [])) {
+        if (row?.metric && Array.isArray(row?.breaks)) out[String(row.metric)] = row.breaks.map(Number);
+    }
+    return out;
+}
+
+export async function retrievePlayerSplits(espnId: string, season: number, league: League = 'cfb'): Promise<SDVPlayerSplit[]> {
+    const content = await requestPlayer(league, `players/${espnId}/splits`, { season: String(season) }, 60 * 60 * 6);
+    return content?.data ?? [];
+}
+
+/**
+ * gsis id -> ESPN athlete id, through the already-ingested nflverse crosswalk.
+ * The NFL season leaderboard tables key on gsis, so their rows can only link to
+ * a player page by way of this: `/nfl/players/00-0031381` resolves once and
+ * redirects to the canonical `/nfl/players/16800`.
+ */
+export async function resolveEspnAthleteId(gsisId: string): Promise<string | null> {
+    // strict, so an upstream failure THROWS rather than arriving as `{ data: [] }`
+    // and reading like "no such player" -- the caller answers the two differently
+    const content = await requestPlayer('nfl', 'players', { gsis_id: gsisId, select: 'gsis_id,espn_id', limit: '1' }, 60 * 60 * 24 * 7);
+    const espn = content?.data?.[0]?.espn_id;
+    return espn ? String(espn) : null;
+}
+
+/**
+ * nflverse game id -> ESPN event id for one season. The NFL game log keys on
+ * `nfl.schedule.game_id` ("2024_01_LV_LAC"), but every GOP game page is an ESPN
+ * id, so a game-log row can only link through the schedule's `espn` column.
+ * One cached read per season, not one per row.
+ */
+export async function retrieveNflEspnGameIds(season: number): Promise<Record<string, string>> {
+    const content = await requestSDV('schedule', new URLSearchParams({ season: String(season), select: 'game_id,espn', limit: '1000' }), undefined, 60 * 60 * 24, true, 'nfl');
+    const out: Record<string, string> = {};
+    for (const r of (content?.data ?? [])) {
+        if (r?.game_id && r?.espn) out[String(r.game_id)] = String(r.espn);
+    }
+    return out;
 }

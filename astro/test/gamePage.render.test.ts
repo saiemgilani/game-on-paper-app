@@ -4,6 +4,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { rushingStatLine } from '../src/utils/players';
 
 // Why this exists: a TDZ ReferenceError in GamePage's frontmatter shipped in
 // #181 and every finished-game page rendered as a 200 with an empty body.
@@ -288,6 +289,44 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
         expect(html).toContain('1 PBU');
         // the rusher's stat line picks up his longest carry and his best play
         expect(html).toContain('11 LNG, 0.80 best EPA, 1.2% best WPA');
+        // and it is the SHARED formatter, the same one the player page's game
+        // log prints, so one player reads identically on both surfaces
+        expect(html).toContain(rushingStatLine({ carries: 2, yards: 9, tds: 0 }));
+    });
+
+    test('a name the usage sections carry an id for reaches the player page', async () => {
+        // These rows have a name and no id of their own; the usage/tackle rows of
+        // the SAME box do, which is the only bridge from the advanced box score
+        // to a player page. Off without the flag, because a public link into the
+        // gated namespace is a link to the site's 404.
+        const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');
+        const props = {
+            pass: [],
+            rush: [{ rusher_player_name: 'J.Payne', Car: 2, Yds: 9, Rush_TD: 0, Fum: 0, Fum_Lost: 0, YPC: 4.5, EPA: 0.3, EPA_per_Play: 0.15, SR: 0.5, WPA: 0.004 }],
+            receiver: [],
+            teamId: 1,
+            plays: [],
+            season: 2024,
+            box: {
+                player_usage: [{ pos_team: 1, player_id: '4433971', player_name: 'J.Payne' }],
+                tackles: [{ def_pos_team: 1, player_id: '4426338', player_name: 'G.Peterson' }],
+            },
+        } as any;
+        const shown = await container.renderToString(PlayerBoxScore, { props, locals: { league: 'cfb', preview: true } as any });
+        // ONE interaction per name (review on #267): the name itself is the link,
+        // and focusing the plays on a player is the dropdown above the table
+        expect(shown).toContain('<a href="/players/4433971?season=2024">J.Payne</a>');
+        expect(shown).not.toContain('focus-jump');
+
+        const publicHtml = await container.renderToString(PlayerBoxScore, { props, locals: { league: 'cfb' } as any });
+        expect(publicHtml).not.toContain('/players/4433971');
+        expect(publicHtml).toContain('J.Payne');
+
+        // a name with no id anywhere in the box gets no link rather than a guess
+        const noIds = await container.renderToString(PlayerBoxScore, {
+            props: { ...props, box: {} }, locals: { league: 'cfb', preview: true } as any,
+        });
+        expect(noIds).not.toContain('/players/');
     });
 });
 
@@ -345,8 +384,8 @@ describe('the classic snapshot serves the public while v2 is in preview', () => 
     });
 });
 
-describe('box-score names jump into the play filter', () => {
-    test('name cells carry the jump wiring and the select options carry the match keys', async () => {
+describe('the play filter is the only way to focus the plays on a player', () => {
+    test('the dropdown carries a role option per player, and no name is a second control', async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game: any = await retrieveProcessedGame(GAME_ID, 30);
         const { default: GamePage } = await import('../src/components/game/GamePage.astro');
@@ -354,13 +393,11 @@ describe('box-score names jump into the play filter', () => {
             props: { id: GAME_ID, game },
             request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
         });
-        expect(page).toMatch(/<button type="button" class="focus-jump" data-focus-jump data-name="[^"]+" data-team="[^"]+" data-role="pass"/);
-        expect(page).toMatch(/data-role="rush"/);
-        expect(page).toMatch(/data-role="recv"/);
-        // the same (name, role) pair exists on a select option, so the click can match
-        const btn = page.match(/data-focus-jump data-name="([^"]+)" data-team="[^"]+" data-role="pass"/);
-        expect(btn).toBeTruthy();
-        expect(page).toContain(`<option value="r:pass:`);
-        expect(page).toMatch(new RegExp(`<option value="r:pass:[^"]+" data-name="${btn![1]}" data-role="pass" data-team="[^"]+">`));
+        for (const role of ['pass', 'rush', 'recv']) {
+            expect(page, role).toMatch(new RegExp(`<option value="r:${role}:[^"]+" data-name="[^"]+" data-role="${role}" data-team="[^"]+">`));
+        }
+        // the box-score jump button is gone, and with it the dead wiring that drove it
+        expect(page).not.toContain('focus-jump');
+        expect(page).not.toContain('data-focus-jump');
     });
 });
