@@ -112,6 +112,12 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
             tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
         }
 
+        if (p.period && p.period > 4) {
+            sels.push("p:5")
+        } else if (p.period && p.period <= 4) {
+            sels.push(`p:${p.period}`)
+        }
+
         if (sels.length) byPlay[key] = sels;
     }
 

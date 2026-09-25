@@ -1,18 +1,23 @@
 ---
-import type { ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore } from '../../../resources/python';
+import type { ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore, ProcessedSTBlock, ProcessedSTKicker, ProcessedSTPunter, ProcessedSTReturner } from '../../../resources/python';
 import { roundNumber } from "../../../utils/misc";
 import { defensiveBox, playerExtremes } from "../../../utils/defensiveBox";
+import { madeOf, num, pct, signed, sortDesc, teamRows } from '../../../utils/usage';
 
 interface Props {
     pass: ProcessedPassingBoxScore[],
     rush: ProcessedRushingBoxScore[],
     receiver: ProcessedReceivingBoxScore[],
+    kickers?: ProcessedSTKicker[],
+    punters?: ProcessedSTPunter[],
+    blocks?: ProcessedSTBlock[],
+    returners?: ProcessedSTReturner[],
     /** Every play in the game, for the longest gain, the best play, and the defence. */
     plays?: any[],
     /** The team whose defenders to credit; omit to leave the defensive table out. */
     teamId?: string | number,
 }
-let { pass, rush, receiver, plays = [], teamId } = Astro.props;
+let { pass, rush, receiver, kickers, punters, blocks, returners, plays = [], teamId } = Astro.props;
 
 // LNG and the single best play come off the plays themselves: the advanced box carries
 // totals and rates, not extremes.
@@ -44,6 +49,12 @@ const airLine = (p: { aDOT?: number | null, CompAirYds?: number | null, YAC?: nu
 pass = pass.filter(p => (p.passer_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 rush = rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
+kickers = (kickers || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.fg_epa - a.fg_epa);
+punters = (punters || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.punt_epa - a.punt_epa);
+returners = (returners || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.kick_return_yards - a.kick_return_yards);
+blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
+
+const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} / ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} / ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
 
 ---
 <div class="table-responsive">
@@ -71,7 +82,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (pass.length > 0) && (pass.map((p) => (
                     <tr>
                         <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.passer_player_name} data-team={teamId} data-role="pass" title="Filter the play-by-play to this player" style="text-align: left !important;">{p.passer_player_name}</button></td>
-                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
+                        <td style="text-align: left;">{p.Comp}/{p.Att}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Pass_TD} TD, {p.Int} INT, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -91,7 +102,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (rush.length > 0) && (rush.map((p) => (
                     <tr>
                         <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.rusher_player_name} data-team={teamId} data-role="rush" title="Filter the play-by-play to this player" style="text-align: left !important;">{p.rusher_player_name}</button></td>
-                        <td style="text-align: left;">{p.Car} carr{(Math.abs(p.Car) == 1) ? "y" : "ies"}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rush_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
+                        <td style="text-align: left;">{p.Car} carr{(Math.abs(p.Car) == 1) ? "y" : "ies"}, {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rush_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPC || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -111,7 +122,7 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                 (receiver.length > 0) && (receiver.map((p) => (
                     <tr>
                         <td style="text-align: left;"><button type="button" class="focus-jump" data-focus-jump data-name={p.receiver_player_name} data-team={teamId} data-role="recv" title="Filter the play-by-play to this player" style="text-align: left !important;">{p.receiver_player_name}</button></td>
-                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
+                        <td style="text-align: left;">{p.Rec} catch{(Math.abs(p.Rec) == 1) ? "" : "es"} ({p.Tar} target{(Math.abs(p.Tar) == 1) ? "" : "s"}), {p.Yds} yd{(Math.abs(p.Yds) == 1) ? "" : "s"}, {p.Rec_TD} TD, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
                         <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
@@ -140,6 +151,87 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                     </tr>
                 )))
             }
+            {
+                (punters.length > 0) && (
+                    <tr>
+                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Punting</td>
+                    </tr>
+                )
+            }
+            {punters.map((p: any) => (
+                <tr>
+                    <td>{p.player_name ?? p.player_id}</td>
+                    <td>{p.punts} punts, {num(p.punt_avg, 1)} avg, {num(p.punt_net_avg, 1)} <abbr title="Net punt = gross - return yards - 20 per touchback.">net</abbr>{p.punt_long != null ? `, ${p.punt_long} LNG` : ''}, {p.punt_inside_20} inside 20, {p.punt_touchbacks} TB, {p.punt_fair_catches} FC{p.punt_returns_allowed > 0 ? `, ${num(p.punt_return_avg_allowed, 1)} per return allowed` : ''}{p.punt_blocked > 0 ? `, ${p.punt_blocked} blocked` : ''}.</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+            ))}
+            {
+                (kickers.length > 0) && (
+                    <tr>
+                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Kicking</td>
+                    </tr>
+                )
+            }
+            {kickers.map((k: any) => (
+                <tr>
+                    <td>{k.player_name ?? k.player_id}</td>
+                    <td>
+                        {k.fg_attempts > 0 && <span>FG {madeOf(k.fg_made, k.fg_attempts)} <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">({fgByRange(k)})</abbr>{k.fg_long != null ? `, ${k.fg_long} LNG` : ''}{k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}. </span>}
+                        {k.xp_attempts > 0 && <span>XP {madeOf(k.xp_made, k.xp_attempts)}. </span>}
+                        {k.kickoffs > 0 && <span>{k.kickoffs} KO, {num(k.kickoff_avg, 1)} avg, {pct(k.kickoff_touchback_rate, 0)} TB{k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} per return allowed` : ''}{k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}.</span>}
+                    </td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+            ))}
+            {
+                (returners.length > 0) && (
+                    <tr>
+                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Kick Returns</td>
+                    </tr>
+                )
+            }
+            {returners.map((r: any) => (
+                <tr>
+                    <td>{r.player_name ?? r.player_id}</td>
+                    <td>
+                        {r.kick_returns > 0 && <span>KR {r.kick_returns}-{r.kick_return_yards}, {num(r.kick_return_avg, 1)} avg{r.kick_return_long != null ? `, ${r.kick_return_long} LNG` : ''}{r.kick_return_tds > 0 ? `, ${r.kick_return_tds} TD` : ''}. </span>}
+                        {r.punt_returns > 0 && <span>PR {r.punt_returns}-{r.punt_return_yards}, {num(r.punt_return_avg, 1)} avg{r.punt_return_long != null ? `, ${r.punt_return_long} LNG` : ''}{r.punt_return_tds > 0 ? `, ${r.punt_return_tds} TD` : ''}.</span>}
+                    </td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+            ))}
+            {
+                (blocks.length > 0) && (
+                    <tr>
+                        <td colspan="8" class="gt_group_heading" style="color: black; font-weight: bold;">Blocked Kicks</td>
+                    </tr>
+                )
+            }
+            {blocks.map((b: any) => (
+                <tr>
+                    <td><b>{b.player_name ?? b.player_id}</b> <span class="text-muted text-small">BLK</span></td>
+                    <td>{b.punt_blocks > 0 ? `${b.punt_blocks} punt${b.punt_blocks > 1 ? 's' : ''} blocked` : ''}{b.punt_blocks > 0 && b.fg_blocks > 0 ? ', ' : ''}{b.fg_blocks > 0 ? `${b.fg_blocks} field goal${b.fg_blocks > 1 ? 's' : ''} blocked` : ''}.</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+            ))}
+
+
         </tbody>
     </table>
 </div>

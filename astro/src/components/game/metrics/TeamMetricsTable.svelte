@@ -1,12 +1,13 @@
 <script lang="ts">
 import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
-import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
+import { espnLogoLeague } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
+    league: string
     teamKey: string
     season: number
     columns: string[]
@@ -15,9 +16,13 @@ interface Props {
     decimalPoints: number
     caption?: string
 }
-const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
+let { title, league, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
 
-const groups = teamBoxScores.map((group: any) => group[teamKey]);
+teamBoxScores = (teamBoxScores || [])
+
+const groups = [
+    ...new Set(teamBoxScores.map((group: any) => group[teamKey]))
+];
 
 function handleMetricRows(item: string): string {
     const finalDecimalPoints = decimalPoints || 1;
@@ -38,10 +43,38 @@ function handleMetricRows(item: string): string {
             let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
         });
-    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) {
+    } else if (["drive_total_gained_yards_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
+        });
+    }  else if (["kickoff_touchback_rate", "rz_success_rate", "so_success_rate", "rz_touchdown_rate", "so_touchdown_rate"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
+        });
+    } else if (["fg_attempts"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let denom = teamData[item] || 0;
+            let num = teamData["fg_made"] || 0;
+            let pct = (denom == 0) ? 0 : num / denom
+            if (denom == 0) {
+                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${num}/${denom} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
+            }
+        });
+    } else if (["third_down_conversions", "third_down_expected"].includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let denom = teamData["third_down_opportunities"] || 0;
+            let num = teamData[item] || 0;
+            let pct = (denom == 0) ? 0 : num / denom
+            let places = item == "third_down_expected" ? 1 : 0
+            if (denom == 0) {
+                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(num, 2, places)} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
+            }
         });
     } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
@@ -53,6 +86,23 @@ function handleMetricRows(item: string): string {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${val}</td>`;
         });
+    } else if (item.startsWith("scripted.") || item.startsWith("non_scripted.")) {
+        const script = item.split(".")[0]
+        const metric = item.replace(script + ".", "")
+        for (const teamData of teamBoxScores) {
+            if (teamData["script"] != script) {
+                continue;
+            }
+
+            let val = teamData[metric] || 0;
+            if (["epa_per_play", "points_per_drive"].includes(metric)) {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+            } else if (metric == "success_rate") {
+                result += `<td class="numeral" style="text-align: center;">${roundNumber(val * 100, 2, 0)}%</td>`;
+            } else {
+                result += `<td class="numeral" style="text-align: center;">${val}</td>`;
+            }
+        }
     } else {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
@@ -78,7 +128,7 @@ function handleMetricRows(item: string): string {
             <tr>
                 <th class="box-heading">{title}</th>
                 {#each groups as value}
-                    <th style="text-align: center;"><a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
+                    <th style="text-align: center;"><a href={leaguePath(league, `/year/${season}/team/${value}`)}><img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/></a></th>
                 {/each}
             </tr>
         </thead>

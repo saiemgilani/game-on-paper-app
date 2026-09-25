@@ -77,7 +77,7 @@ function formatTeamStrings(teams?: string | number | null): string {
     }
     
     const countCommas = countRegexMatches(teams, /,/g);
-    return countCommas > 1 ? `<abbr title="${teams}">${countCommas} teams</abbr>` : teams
+    return countCommas > 1 ? `<abbr title="${teams}">${countCommas + 1} teams</abbr>` : teams
 }
 ---
 <DarkModeLogos teamIds={teamIds} />

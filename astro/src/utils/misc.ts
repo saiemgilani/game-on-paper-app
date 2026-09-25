@@ -100,13 +100,29 @@ export function roundNumber(value: string | number | undefined | null, power10: 
     return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
-export function hexToRgb(hex: string): RGBColor | null {
+export function hexToRgb(hex?: string): RGBColor | null {
+    if (!hex) {
+        return null;
+    }
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+function componentToHex(c: number): string {
+  var hex = c.toString(16);
+  return hex.length == 1 ? "0" + hex : hex;
+}
+
+export function rgbToHex(color?: RGBColor | null): string | null {
+    if (!color) {
+        return null;
+    }
+    
+    return "#" + componentToHex(color.r) + componentToHex(color.g) + componentToHex(color.b);
 }
 
 export function getNumberWithOrdinal(n: number): string {
@@ -289,7 +305,7 @@ export function teamColorHex(color: string | null | undefined, fallback: string 
     return c.startsWith("#") ? c : `#${c}`;
 }
 
-export function adjustTeamColorsForContrast(awayTeam: { color: string, alternateColor: string }, homeTeam: { color: string, alternateColor: string }): RGBColor[] {
+export function adjustTeamColorsForContrast(awayTeam: { color?: string, alternateColor?: string }, homeTeam: { color?: string, alternateColor?: string }): RGBColor[] {
     let awayTeamColor = hexToRgb(awayTeam.color) || { r: 0, g: 0, b: 255 }
     let homeTeamColor = hexToRgb(homeTeam.color) || { r: 255, g: 0, b: 0 }
 

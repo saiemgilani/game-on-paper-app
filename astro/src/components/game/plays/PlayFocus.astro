@@ -5,14 +5,15 @@ interface Props {
     /** The `prefix` of the PlaysTable this drives. */
     target: string;
     plays: any[];
+    periods: number[];
     /** Team ids, for grouping the player menu by side. */
     teams: (number | string)[];
     teamNames?: Record<string, string>;
 }
-const { target, plays, teams, teamNames = {} } = Astro.props;
+const { target, plays, periods, teams, teamNames = {} } = Astro.props;
 const ix = buildPlayIndex(plays);
 const nameOf = (id: string) => teamNames[String(id)] ?? `Team ${id}`;
-
+const periodLabel = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
 // One option per player-role, so "Cam Miller — dropbacks (63)" and "Cam Miller —
 // carries (5)" are separate picks rather than one lump of everything he touched.
 const options = ix.players.flatMap((p) =>
@@ -35,11 +36,15 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
 {/* Either half is enough to be useful: an early-season game can carry no player ids
     at all yet still have penalties, scoring plays and turnovers worth isolating. */}
 {(options.length > 0 || tags.length > 0) && (
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-focus={target}
-         data-index={JSON.stringify(ix.byPlay)}>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-focus={target} data-index={JSON.stringify(ix.byPlay)}>
         <label class="text-small text-muted" for={`focus-${target}`}>Show only</label>
         <select id={`focus-${target}`} class="form-select form-select-sm" style="width:auto;min-width:250px">
             <option value="">Every play</option>
+            {periods.length > 0 && (
+                <optgroup label="Periods">
+                    {periods.map((t) => <option value={`p:${t}`}>{periodLabel(t)}</option>)}
+                </optgroup>
+            )}
             {tags.length > 0 && (
                 <optgroup label="Play type">
                     {tags.map((t) => <option value={`t:${t}`}>{PLAY_TAGS[t]} ({ix.tagCounts[t]})</option>)}

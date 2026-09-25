@@ -19,23 +19,20 @@ const usage = sortDesc(teamRows(box.player_usage, teamId), 'opportunities');
 const groups = sortDesc(teamRows(box.position_group_usage, teamId), 'opportunities');
 const tackles = sortDesc(teamRows(box.tackles, teamId, 'def_pos_team'), 'tackle_share');
 const tackleGroups = sortDesc(teamRows(box.position_group_tackles, teamId, 'def_pos_team'), 'tackle_share');
-const kickers = teamRows(box.st_kickers, teamId);
-const punters = teamRows(box.st_punters, teamId);
-const returners = sortDesc(teamRows(box.st_returners, teamId), 'kick_return_yards');
-const blocks = teamRows(box.st_blocks, teamId, 'def_pos_team');
+
 
 const GROUP_LABEL: Record<string, string> = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', OL: 'OL', DL: 'DL', LB: 'LB', DB: 'DB', ST: 'ST' };
 // a plain escaped expression: position_group is processor data, never trusted markup
 const groupLabel = (g: string | null | undefined) => (g ? GROUP_LABEL[g] ?? g : null);
-const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} · ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
+
 ---
 {(usage.length > 0 || groups.length > 0) && (
 <div class="table-responsive">
     <table class="table table-sm">
-        <caption class="text-small text-muted">Usage: touches, first downs and scoring by ball carrier. Red zone = inside the 20; scoring opportunity = inside the 40. 3D± = third downs converted minus expected at the yards to go.</caption>
+        <caption class="text-small text-muted">Includes touches, first downs, and scoring by ball carrier. 3D± = third downs converted minus expected at the yards to go.</caption>
         <thead>
             <tr>
-                <th class="box-heading">Player</th>
+                <th class="box-heading">Offensive Usage</th>
                 <th class="box-heading" style="text-align: center;" title="Rushes + targets">Opp</th>
                 <th class="box-heading" style="text-align: center;" title="Share of the team's targets">Tgt%</th>
                 <th class="box-heading" style="text-align: center;" title="Share of the team's first downs">FD%</th>
@@ -49,7 +46,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {usage.map((p: any) => (
                 <tr>
-                    <td><b>{p.player_name ?? p.player_id}</b>{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
+                    <td>{p.player_name ?? p.player_id}{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;" title={`${p.rushes} rush, ${p.targets} tgt, ${p.receptions} rec`}>{p.opportunities}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.target_share, 0)}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.first_down_share, 0)}</td>
@@ -62,7 +59,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
             ))}
             {groups.map((g: any) => (
                 <tr class="table-secondary">
-                    <td><i>{GROUP_LABEL[g.position_group] ?? g.position_group}</i></td>
+                    <td><b>{GROUP_LABEL[g.position_group] ?? g.position_group}</b></td>
                     <td class="numeral" style="text-align: center;">{g.opportunities}</td>
                     <td class="numeral" style="text-align: center;">{pct(g.target_share, 0)}</td>
                     <td class="numeral" style="text-align: center;">{pct(g.first_down_share, 0)}</td>
@@ -80,10 +77,10 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
 {(tackles.length > 0 || tackleGroups.length > 0) && (
 <div class="table-responsive">
     <table class="table table-sm">
-        <caption class="text-small text-muted">Tackles: share = (tackles + ½ assists) over the team's total.</caption>
+        <caption class="text-small text-muted">Tackles: share = (tackles + 0.5 * assists) divided by the team's total.</caption>
         <thead>
             <tr>
-                <th class="box-heading">Defender</th>
+                <th class="box-heading">Defensive Usage</th>
                 <th class="box-heading" style="text-align: center;">Tkl</th>
                 <th class="box-heading" style="text-align: center;">Ast</th>
                 <th class="box-heading" style="text-align: center;" title="Tackle share">Share</th>
@@ -92,7 +89,7 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
         <tbody>
             {tackles.map((t: any) => (
                 <tr>
-                    <td><b>{t.player_name ?? t.player_id}</b>{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
+                    <td>{t.player_name ?? t.player_id}{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;">{t.tackles}</td>
                     <td class="numeral" style="text-align: center;">{t.assists}</td>
                     <td class="numeral" style="text-align: center;">{pct(t.tackle_share, 0)}</td>
@@ -100,61 +97,10 @@ const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} · 
             ))}
             {tackleGroups.map((g: any) => (
                 <tr class="table-secondary">
-                    <td><i>{GROUP_LABEL[g.position_group] ?? g.position_group}</i></td>
+                    <td><b>{GROUP_LABEL[g.position_group] ?? g.position_group}</b></td>
                     <td class="numeral" style="text-align: center;">{g.tackles}</td>
                     <td class="numeral" style="text-align: center;">{g.assists}</td>
                     <td class="numeral" style="text-align: center;">{pct(g.tackle_share, 0)}</td>
-                </tr>
-            ))}
-        </tbody>
-    </table>
-</div>
-)}
-{(kickers.length > 0 || punters.length > 0 || returners.length > 0 || blocks.length > 0) && (
-<div class="table-responsive">
-    <table class="table table-sm">
-        <caption class="text-small text-muted">Special teams. Field goals by range: 0–39 · 40–49 · 50+. Net punt = gross − return yards − 20 per touchback.</caption>
-        <thead>
-            <tr>
-                <th class="box-heading">Player</th>
-                <th class="box-heading">Stat line</th>
-                <th class="box-heading" style="text-align: center;" title="Expected Points Added on these plays">EPA</th>
-            </tr>
-        </thead>
-        <tbody>
-            {kickers.map((k: any) => (
-                <tr>
-                    <td><b>{k.player_name ?? k.player_id}</b> <span class="text-muted text-small">K</span></td>
-                    <td>
-                        {k.fg_attempts > 0 && <span>FG {madeOf(k.fg_made, k.fg_attempts)} ({fgByRange(k)}){k.fg_long != null ? `, ${k.fg_long} LNG` : ''}{k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}. </span>}
-                        {k.xp_attempts > 0 && <span>XP {madeOf(k.xp_made, k.xp_attempts)}. </span>}
-                        {k.kickoffs > 0 && <span>{k.kickoffs} KO, {num(k.kickoff_avg, 1)} avg, {pct(k.kickoff_touchback_rate, 0)} TB{k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} per return allowed` : ''}{k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}.</span>}
-                    </td>
-                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
-                </tr>
-            ))}
-            {punters.map((p: any) => (
-                <tr>
-                    <td><b>{p.player_name ?? p.player_id}</b> <span class="text-muted text-small">P</span></td>
-                    <td>{p.punts} punts, {num(p.punt_avg, 1)} avg, {num(p.punt_net_avg, 1)} net{p.punt_long != null ? `, ${p.punt_long} LNG` : ''}, {p.punt_inside_20} inside 20, {p.punt_touchbacks} TB, {p.punt_fair_catches} FC{p.punt_returns_allowed > 0 ? `, ${num(p.punt_return_avg_allowed, 1)} per return allowed` : ''}{p.punt_blocked > 0 ? `, ${p.punt_blocked} blocked` : ''}.</td>
-                    <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
-                </tr>
-            ))}
-            {returners.map((r: any) => (
-                <tr>
-                    <td><b>{r.player_name ?? r.player_id}</b> <span class="text-muted text-small">RET</span></td>
-                    <td>
-                        {r.kick_returns > 0 && <span>KR {r.kick_returns}-{r.kick_return_yards}, {num(r.kick_return_avg, 1)} avg{r.kick_return_long != null ? `, ${r.kick_return_long} LNG` : ''}{r.kick_return_tds > 0 ? `, ${r.kick_return_tds} TD` : ''}. </span>}
-                        {r.punt_returns > 0 && <span>PR {r.punt_returns}-{r.punt_return_yards}, {num(r.punt_return_avg, 1)} avg{r.punt_return_long != null ? `, ${r.punt_return_long} LNG` : ''}{r.punt_return_tds > 0 ? `, ${r.punt_return_tds} TD` : ''}.</span>}
-                    </td>
-                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
-                </tr>
-            ))}
-            {blocks.map((b: any) => (
-                <tr>
-                    <td><b>{b.player_name ?? b.player_id}</b> <span class="text-muted text-small">BLK</span></td>
-                    <td>{b.punt_blocks > 0 ? `${b.punt_blocks} punt${b.punt_blocks > 1 ? 's' : ''} blocked` : ''}{b.punt_blocks > 0 && b.fg_blocks > 0 ? ', ' : ''}{b.fg_blocks > 0 ? `${b.fg_blocks} field goal${b.fg_blocks > 1 ? 's' : ''} blocked` : ''}.</td>
-                    <td class="numeral" style="text-align: center;">—</td>
                 </tr>
             ))}
         </tbody>
