@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { neighborWindow, playerKey, teamKey } from '../src/utils/neighbors';
+import { neighborWindow, playerKey, playerNeighborLists, teamKey, teamNeighborLists } from '../src/utils/neighbors';
+import { roundNumber } from '../src/utils/misc';
 
 const fx = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
@@ -42,5 +43,28 @@ describe('neighborWindow', () => {
     test('no rank, no window: the LV stint is under the qualifier; an unknown id has nothing', () => {
         expect(neighborWindow(fx.nfl_receiving_2024, playerKey, '00-0031381:13', 'EPAplay')).toEqual([]);
         expect(neighborWindow(fx.nfl_team_summaries_2025, teamKey, 'no-such-team', 'EPAplay_off')).toEqual([]);
+    });
+});
+
+describe('display rows', () => {
+    test('team lists: six metrics in order, canonical titles, league-prefixed hrefs, leaderboard formatting', () => {
+        const rows = fx.nfl_team_summaries_2025;
+        const lists = teamNeighborLists(rows, rows[0].team_id, 'nfl', 2025);
+        expect(lists.map((l) => l.metric)).toEqual(['net_adj_epa', 'EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def', 'success_def']);
+        expect(lists[0].title).toBe('Net Adj EPA/Play');
+        expect(lists[1].title).toBe('Off EPA/Play');
+        for (const l of lists) for (const c of l.rows) expect(c.href).toMatch(/^\/nfl\/year\/2025\/team\/\d+$/);
+        expect(lists[2].rows.find((c) => c.self)!.value).toBe(`${roundNumber(rows[0].success_off * 100, 2, 1)}%`);
+    });
+
+    test('player lists: leaderboard titles, and links only for a viewer the player-pages flag admits', () => {
+        const rows = fx.cfb_passing_2024;
+        const mccord = rows.find((r: any) => String(r.player_id) === '4433971');
+        const key = playerKey(mccord);
+        const pub = playerNeighborLists(rows, key, 'passing', { league: 'cfb' }, 2024);
+        expect(pub.map((l) => l.title)).toEqual(['EPA/DB', 'Pass SR%', 'Yards/DB', 'EPA']);
+        expect(pub.every((l) => l.rows.every((c) => c.href === null))).toBe(true);
+        const prev = playerNeighborLists(rows, key, 'passing', { league: 'cfb', preview: true }, 2024);
+        expect(prev[0].rows.find((c) => c.self)!.href).toBe('/players/4433971?season=2024');
     });
 });
