@@ -14,9 +14,9 @@ interface Props {
 const { awayTeam, homeTeam, awayScore = null, homeScore = null, links, league } = Astro.props;
 const score = (s: string | number | null) => (s == null ? '' : ` ${s}`);
 const teamHref = (t: any) => leaguePath(league, `/team/${t.id}`);
-// a TBD placeholder competitor (an unset bowl or playoff slot) has no team page: id "0" / abbreviation
-// "TBD", the same guard the schedule rows use for the logo, so that side stays plain text
-const real = (t: any) => Boolean(t?.id) && String(t.id) !== '0' && t?.abbreviation !== 'TBD';
+// a placeholder competitor (an unset bowl or playoff slot) has no team page: ESPN gives it a
+// non-positive id ("-1", "-2"; "0" in older payloads) and the abbreviation "TBD", so that side stays plain text
+const real = (t: any) => Number(t?.id) > 0 && t?.abbreviation !== 'TBD';
 ---
 <h1 class="h2 mb-0">{links
     ? <Fragment>{real(awayTeam) ? <a class="text-reset" href={teamHref(awayTeam)}>{cleanLocation(awayTeam)}</a> : cleanLocation(awayTeam)}{`${score(awayScore)} @ `}{real(homeTeam) ? <a class="text-reset" href={teamHref(homeTeam)}>{cleanLocation(homeTeam)}</a> : cleanLocation(homeTeam)}{score(homeScore)}</Fragment>
