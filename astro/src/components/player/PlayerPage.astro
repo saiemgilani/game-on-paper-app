@@ -290,10 +290,12 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         </Panel>
         )}
 
-        {neighborLists.length > 0 && (
+        {(neighborLists.length > 0 || failed.neighbors) && (
         <Panel id="player-neighbor-ranks" title="Nearby Ranks" show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <NeighborRanks lists={neighborLists} logos={false} />
+                {failed.neighbors
+                    ? <p class="m-0 text-muted text-small" id="player-neighbor-ranks-unavailable">{UNAVAILABLE}</p>
+                    : <NeighborRanks lists={neighborLists} logos={false} />}
             </Fragment>
         </Panel>
         )}
