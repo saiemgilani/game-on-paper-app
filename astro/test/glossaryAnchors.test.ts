@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { generateGlossaryItems } from '../src/resources/glossary';
-import { definedTermSetJsonLd, glossaryHref, termSlug, termSlugs } from '../src/utils/seo';
+import { definedTermSetJsonLd, definitionText, glossaryHref, termSlug, termSlugs } from '../src/utils/seo';
 
 describe('glossary term slugs', () => {
     test('readable, lowercase, hyphen-joined', () => {
@@ -49,5 +49,14 @@ describe('glossary term slugs', () => {
         expect(ld.hasDefinedTerm[0].url).toBe('https://gameonpaper.com/glossary/#havoc-rate');
         expect(ld.hasDefinedTerm[0]['@id']).toBe('https://gameonpaper.com/glossary/#havoc-rate');
         expect(ld.hasDefinedTerm[0].inDefinedTermSet).toBe('https://gameonpaper.com/glossary/');
+    });
+    test('the description keeps words that inline tags split, and separates cells', () => {
+        const live = [...generateGlossaryItems().values()].flat();
+        const detmer = live.find((t) => t.term === 'DETMER')!;
+        expect(definitionText(detmer.definition)).toMatch(/^Downfield Eventful Throwing Metric Encouraging Rippin' it\./);
+        expect(definitionText('<table><tr><td>a</td><td>b</td></tr></table>')).toBe('a b');
+        expect(definitionText('<a href="/x">EPA</a>/play<br>next')).toBe('EPA/play next');
+        const ld = definedTermSetJsonLd([detmer], '/glossary/');
+        expect(ld.hasDefinedTerm[0].description.startsWith('Downfield Eventful')).toBe(true);
     });
 });

@@ -68,6 +68,18 @@ export function glossaryHref(entry: Term, terms: Term[]): string {
     return `/glossary/#${termSlugs(terms).get(entry) ?? termSlug(entry.term)}`;
 }
 
+/**
+ * A definition's authored HTML as text: a block boundary (a cell, a row, a break, a list item)
+ * separates words, an inline tag does not, so "<b>D</b>ownfield" stays "Downfield".
+ */
+export function definitionText(html: string): string {
+    return html
+        .replace(/<\/?(?:br|p|div|li|ul|ol|tr|td|th|table|thead|tbody|h[1-6])\b[^>]*>/gi, ' ')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
 export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
     const url = new URL(pageUrl, ORIGIN).href;
@@ -84,7 +96,7 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
             url: `${url}#${slugs.get(t)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
-            description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            description: definitionText(t.definition),
             inDefinedTermSet: url,
         })),
     };
