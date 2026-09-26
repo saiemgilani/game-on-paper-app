@@ -15,6 +15,7 @@ import { formatPercent, formatRank, generateColorRampValue, roundNumber } from '
 // API is a 404 page rather than an identity shell.
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
+const nb = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
 const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true };
 
@@ -48,6 +49,7 @@ vi.mock('../src/resources/sdv', async (orig) => {
             { team_id: 20, pos_team: 'NYJ', EPAplay_off: -0.02, success_off: 0.44, explosive_off: 0.10, EPAplay_def: -0.04, EPAplay_off_rank: 21, success_off_rank: 18, explosive_off_rank: 20, EPAplay_def_rank: 6 },
         ],
         resolveEspnAthleteId: async (gsis: string) => (gsis === '00-0031381' ? '16800' : null),
+        retrieveRankedRows: async (req: any) => (req.league === 'nfl' ? nb.nfl_receiving_2024 : nb.cfb_passing_2024),
     };
 });
 
@@ -854,5 +856,28 @@ describe('round-4 review (PR #267)', () => {
         } finally {
             feed.cfb = before;
         }
+    }, 60_000);
+});
+
+describe('nearby ranks on the player page', () => {
+    test('CFB passer: four lists, marked once each, only when the flag admits the viewer', async () => {
+        const html = await renderPage('cfb', '4433971', 2024);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="table-active"/g) ?? []).length).toBe(4);
+        expect(block).toContain('Kyle McCord');
+        const { default: Page } = await import('../src/pages/players/[id].astro');
+        const off = await container.renderToString(Page, {
+            params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'),
+            locals: { preview: true, flagOverrides: { 'rank-neighbors': false } },
+        });
+        expect(off).not.toContain('data-neighbor-ranks');
+    }, 60_000);
+
+    test('NFL traded receiver: the lists come from his ranked NYJ row', async () => {
+        const html = await renderPage('nfl', '16800', 2024);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect(block).toContain('data-nb-key="00-0031381"');
     }, 60_000);
 });

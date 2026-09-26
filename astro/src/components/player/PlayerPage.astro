@@ -37,6 +37,7 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerSeasonTable from './PlayerSeasonTable.astro';
 import PlayerGameLog from './PlayerGameLog.astro';
 import PlayerSplits from './PlayerSplits.astro';
+import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import type { SDVPlayer } from '../../resources/sdv';
 import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
@@ -56,7 +57,7 @@ const { player, season, sections } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
-const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
+const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, neighborLists, failed } = sections;
 
 const totals = totalGameLog(games);
 // the rows the header describes: the selected season's, or the latest season's
@@ -285,6 +286,14 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                         </tbody>
                     </table>
                 </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        {neighborLists.length > 0 && (
+        <Panel id="player-neighbor-ranks" title="Nearby Ranks" show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                <NeighborRanks lists={neighborLists} logos={false} />
             </Fragment>
         </Panel>
         )}
