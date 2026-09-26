@@ -39,8 +39,8 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
                                 <td class="text-right numeral" colspan="1">{r.rank}</td>
                                 <td class="text-left text-nowrap" colspan="1">
                                     {r.href ? (
-                                        <a href={r.href}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}{r.label}</a>
-                                    ) : r.label}
+                                        <a href={r.href}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
+                                    ) : <strong>{r.label}</strong>}
                                 </td>
                                 <td class="text-center numeral" colspan="1">{r.value}</td>
                             </tr>
@@ -64,5 +64,13 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
         root.addEventListener('mouseover', (e) => light(keyOf(e)));
         root.addEventListener('focusin', (e) => light(keyOf(e)));
         root.addEventListener('mouseleave', () => light());
+        // Keyboard parity: clear the highlight once focus actually leaves this component,
+        // not when it moves between two links inside the same one (relatedTarget is the
+        // element about to receive focus; only rows carry a link, so nothing here needs
+        // a tabindex it wouldn't otherwise have).
+        root.addEventListener('focusout', (e) => {
+            const next = (e as FocusEvent).relatedTarget as Node | null;
+            if (!next || !root.contains(next)) light();
+        });
     }
 </script>

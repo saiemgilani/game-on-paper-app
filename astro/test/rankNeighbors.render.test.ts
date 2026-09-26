@@ -25,5 +25,10 @@ describe('NeighborRanks', () => {
         expect(html).not.toContain('teamlogos/ncaa/');
         expect(html).not.toContain('hulk-');
         expect(html).toContain('>Off EPA/Play<');
+        // the identity column is the row's primary entity: bolded like TeamLeaderboardTable /
+        // PlayerLeaderboardTable do, self row included.
+        const selfRow = html.match(/<tr[^>]*class="table-active"[^>]*>[\s\S]*?<\/tr>/);
+        expect(selfRow).toBeTruthy();
+        expect(selfRow![0]).toMatch(/<strong>LA<\/strong>/);
     }, 60_000);
 });
