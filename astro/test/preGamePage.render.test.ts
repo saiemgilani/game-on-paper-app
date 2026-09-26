@@ -179,6 +179,16 @@ describe('PreGamePage still renders a college game as a college page', () => {
         expect(fetched.some(u => u.includes('/v1/cfb/schedule?'))).toBe(true);
         expect(fetched.some(u => u.includes('espn_schedule'))).toBe(false);
     });
+
+    test("the radar gets the game's light and dark pairs ('game-colours', previewed here)", async () => {
+        // team_info is empty in this mock, so the decision falls back to ESPN's header colours
+        const { pickGameColors } = await import('../src/utils/misc');
+        const [home, away] = payloads.cfb.playbyplay.gamepackageJSON.header.competitions[0].competitors.map((c: any) => c.team);
+        const { light, dark } = pickGameColors(home, away);
+        const pair = (p: { home: string, away: string }) => `[0,{&quot;home&quot;:[0,&quot;${p.home}&quot;],&quot;away&quot;:[0,&quot;${p.away}&quot;]}]`;
+        expect(html).toMatch(/MatchupRadarChart/);
+        expect(html).toContain(`colors&quot;:[0,{&quot;light&quot;:${pair(light)},&quot;dark&quot;:${pair(dark)}}]`);
+    });
 });
 
 describe('radar percentiles scale to the league', () => {

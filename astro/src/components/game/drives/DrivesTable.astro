@@ -2,6 +2,7 @@
 import type { ESPNTeam } from '../../../resources/espn'
 import type { ProcessedDrive, ProcessedPlay } from '../../../resources/python'
 import DriveRow from './DriveRow.astro'
+import type { ThemedGameColors } from '../../../utils/misc'
 
 interface Props {
     drives: ProcessedDrive[]
@@ -12,9 +13,10 @@ interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
     isNeutralSite: boolean
+    colors?: ThemedGameColors
 }
 
-let { drives, gamePlays, prefix, expandable, showGuide, homeTeam, awayTeam, isNeutralSite } = Astro.props;
+let { drives, gamePlays, prefix, expandable, showGuide, homeTeam, awayTeam, isNeutralSite, colors } = Astro.props;
 
 
 // A drive with no processed plays -- `drives.current` the moment a live drive
@@ -69,7 +71,7 @@ const adjDrives = playableDrives.toSorted((a, b) => {
     <tbody>
         {
             adjDrives.map(drive => (
-                <DriveRow drive={drive} drivePlays={gamePlays.filter(p => p['drive.id'] == drive.id)} prefix={prefix} expandable={expandable} isNeutralSite={isNeutralSite} homeTeam={homeTeam} awayTeam={awayTeam} />   
+                <DriveRow drive={drive} drivePlays={gamePlays.filter(p => p['drive.id'] == drive.id)} prefix={prefix} expandable={expandable} isNeutralSite={isNeutralSite} homeTeam={homeTeam} awayTeam={awayTeam} colors={colors} />   
             ))
         }
     </tbody>
