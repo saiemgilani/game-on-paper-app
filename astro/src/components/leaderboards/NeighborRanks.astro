@@ -1,0 +1,68 @@
+---
+/**
+ * Nearby-rank lists (flag 'rank-neighbors'): one small ranked table per metric,
+ * the page's own team or player marked `table-active`. Hovering or focusing a
+ * row lights the same entity in every table (`table-primary`), so one that sits
+ * next to this team on several metrics stands out. Rows come from
+ * `utils/neighbors.ts`; this only renders them, in the `CoachLeaderboardTable`
+ * format: rank right, name left, value centred.
+ */
+import DarkModeLogos from '../DarkModeLogos.astro';
+import { espnLogoLeague } from '../../utils/league';
+import type { NeighborList } from '../../utils/neighbors';
+
+interface Props {
+    lists: NeighborList[]
+    /** team lists show a logo beside each name; player lists do not */
+    logos: boolean
+}
+const { lists, logos } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.teamId)))] : [];
+---
+{logos && <DarkModeLogos teamIds={teamIds} />}
+<div class="row" data-neighbor-ranks>
+    {lists.map((l) => (
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="table-responsive">
+                <table class="table table-sm" data-nb-metric={l.metric}>
+                    <thead>
+                        <tr>
+                            <th class="text-right" colspan="1">Rk</th>
+                            <th class="text-left text-nowrap" colspan="1">{logos ? 'Team' : 'Player'}</th>
+                            <th class="text-center" colspan="1">{l.title}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {l.rows.map((r) => (
+                            <tr data-nb-key={r.key} class:list={[r.self && 'table-active']}>
+                                <td class="text-right numeral" colspan="1">{r.rank}</td>
+                                <td class="text-left text-nowrap" colspan="1">
+                                    {r.href ? (
+                                        <a href={r.href}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}{r.label}</a>
+                                    ) : r.label}
+                                </td>
+                                <td class="text-center numeral" colspan="1">{r.value}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    ))}
+</div>
+
+<script>
+    // Bundled, not is:inline: it runs deferred, once the tables exist (see PlayFilters.astro).
+    for (const root of document.querySelectorAll<HTMLElement>('[data-neighbor-ranks]')) {
+        const light = (key?: string) => {
+            for (const tr of root.querySelectorAll<HTMLElement>('tr[data-nb-key]')) {
+                tr.classList.toggle('table-primary', key !== undefined && tr.dataset.nbKey === key);
+            }
+        };
+        const keyOf = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('tr[data-nb-key]')?.dataset.nbKey;
+        root.addEventListener('mouseover', (e) => light(keyOf(e)));
+        root.addEventListener('focusin', (e) => light(keyOf(e)));
+        root.addEventListener('mouseleave', () => light());
+    }
+</script>
