@@ -538,9 +538,10 @@ describe('chart islands serialize only the fields their charts read', () => {
             const drives = islandProps(renders[twin], 'DriveChart');
             expect(drives.length).toBeGreaterThan(10);
             for (const p of drives) {
-                expect(Object.keys(p.offense[1])).toEqual(['color']);
-                expect(Object.keys(p.defense[1])).toEqual(['color']);
-                expect(p.offense[1].color[1]).toMatch(/^[0-9a-f]{6}$/i);
+                expect(p.offenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
+                expect(p.defenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
+                expect(p.offense).toBeUndefined();
+                expect(p.defense).toBeUndefined();
             }
         });
 
