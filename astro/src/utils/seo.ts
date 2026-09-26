@@ -68,14 +68,25 @@ export function glossaryHref(entry: Term, terms: Term[]): string {
     return `/glossary/#${termSlugs(terms).get(entry) ?? termSlug(entry.term)}`;
 }
 
+// A tag, with quoted attribute values allowed to contain ">" (`<a title="1 > 0">`).
+const TAG_BODY = String.raw`(?:"[^"]*"|'[^']*'|[^'">])*`;
+const BLOCK_TAG = new RegExp(String.raw`<\/?(?:br|p|div|li|ul|ol|tr|td|th|table|thead|tbody|h[1-6])\b${TAG_BODY}>`, 'gi');
+const ANY_TAG = new RegExp(`<${TAG_BODY}>`, 'g');
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
 /**
  * A definition's authored HTML as text: a block boundary (a cell, a row, a break, a list item)
- * separates words, an inline tag does not, so "<b>D</b>ownfield" stays "Downfield".
+ * separates words, an inline tag does not, so "<b>D</b>ownfield" stays "Downfield". Entities
+ * are decoded after the tags go, so an authored `&lt;0 yds` reads `<0 yds` and is not a tag.
  */
 export function definitionText(html: string): string {
     return html
-        .replace(/<\/?(?:br|p|div|li|ul|ol|tr|td|th|table|thead|tbody|h[1-6])\b[^>]*>/gi, ' ')
-        .replace(/<[^>]+>/g, '')
+        .replace(BLOCK_TAG, ' ')
+        .replace(ANY_TAG, '')
+        .replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) =>
+            dec ? String.fromCodePoint(Number(dec))
+                : hex ? String.fromCodePoint(parseInt(hex, 16))
+                : NAMED_ENTITIES[name.toLowerCase()] ?? m)
         .replace(/\s+/g, ' ')
         .trim();
 }

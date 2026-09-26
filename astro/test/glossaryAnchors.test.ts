@@ -59,4 +59,12 @@ describe('glossary term slugs', () => {
         const ld = definedTermSetJsonLd([detmer], '/glossary/');
         expect(ld.hasDefinedTerm[0].description.startsWith('Downfield Eventful')).toBe(true);
     });
+    test('the description decodes entities and ignores a > inside a quoted attribute', () => {
+        const live = [...generateGlossaryItems().values()].flat();
+        const lineYards = live.find((t) => t.term === 'OL Line Yards')!;
+        expect(definitionText(lineYards.definition)).toContain('<0 yds');
+        expect(definitionText(lineYards.definition)).not.toContain('&lt;');
+        expect(definitionText('<a title="1 > 0">EPA</a>')).toBe('EPA');
+        expect(definitionText('A &amp; B &#8212; C&nbsp;D &#x27;E&#x27;')).toBe("A & B — C D 'E'");
+    });
 });
