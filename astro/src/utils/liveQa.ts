@@ -103,7 +103,7 @@ export interface LiveGameStatus {
  * swapped, never duplicated. It sits at the BOTTOM of the log, which reads
  * chronologically forwards, because it is the most recent game played.
  */
-export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>): PlayerGameRow | null {
+export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>, league: League): PlayerGameRow | null {
     const comp = event.competitions?.[0];
     const mine = comp?.competitors?.find((c) => teamIds.has(String(c.team?.id ?? '')));
     const them = comp?.competitors?.find((c) => c !== mine);
@@ -117,8 +117,10 @@ export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>): Pla
         game_date: comp?.date ?? event.date ?? null,
         team_id: String(mine.team?.id ?? ''),
         opponent_id: String(them.team?.id ?? ''),
-        // the scoreboard's short name, which is what the API's own rows carry
-        opponent: them.team?.shortDisplayName ?? them.team?.displayName ?? null,
+        // CFB's API rows carry the scoreboard's short name ("Ohio"); the NFL's carry
+        // the nflverse abbreviation ("LAC"), which the scoreboard's `abbreviation` is.
+        opponent: (league === 'nfl' ? them.team?.abbreviation : them.team?.shortDisplayName)
+            ?? them.team?.shortDisplayName ?? them.team?.displayName ?? null,
         home_away: mine.homeAway ?? null,
         team_score: numberOrNull(mine.score),
         opponent_score: numberOrNull(them.score),
@@ -152,7 +154,13 @@ export async function livePlayerGames(
     if (season !== CURRENT_YEAR) return none;
     let board: ESPNScheduleEvent[];
     try {
-        board = (await getCurrentScoreboard(true, false, league)).filter(inProgress);
+        // Write-enabled, exactly as `routes/scoreboard.ts` reads it: the cron
+        // (`worker.ts`) only ever warms the DEFAULT league's KV entry, so without
+        // this a league nobody visits the scoreboard page for (NFL, in season)
+        // never gets a cached scoreboard and every player-page read misses and
+        // hits ESPN directly. Sharing the read means this fills the same entry a
+        // scoreboard-page visit would (review on #268).
+        board = (await getCurrentScoreboard(true, true, league)).filter(inProgress);
     } catch {
         return none; // no scoreboard, no live claim
     }
@@ -163,7 +171,7 @@ export async function livePlayerGames(
     const mine = new Set(teamIds.map(String).filter((id) => id !== ''));
     const extra = mine.size === 0 ? null : (board
         .filter((e) => !logged.has(String(e.id)))
-        .map((e) => liveGameRow(e, mine))
+        .map((e) => liveGameRow(e, mine, league))
         .find(Boolean) ?? null);
 
     const ids = [...logged].filter((id) => liveIds.has(id));
