@@ -34,9 +34,10 @@ describe('game-links: the header text links into the site', () => {
                 expect(h).toContain(`href="${prefix}/team/${game.teamInfo.away.id}"`);
                 expect(h).toContain(`href="${prefix}/team/${game.teamInfo.home.id}"`);
             }
-            const { year, type } = game.header.season;
-            const week = `href="${prefix}/year/${year}/type/${type}/week/${game.header.week}"`;
+            // pinned literally: header.season.type is the numeric route type (2 = regular season in both fixtures)
+            const week = `href="${prefix}/year/${game.header.season.year}/type/2/week/${game.header.week}"`;
             expect(html.split(week).length - 1).toBe(2); // both Back buttons
+            expect(html).not.toContain('[object Object]');
         });
         test(`[${league}] flag off: the header the public gets today`, async () => {
             const { html } = await renderHeader(league, false);
