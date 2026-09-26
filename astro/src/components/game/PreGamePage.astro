@@ -137,7 +137,7 @@ const gameSpec = {
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription({ ...gameSpec, league });
 const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]);
-// one colour decision for the game: team_info first, ESPN's header where team_info has none
+// one colour decision for the game (a light and a dark pair): team_info first, ESPN's header where team_info has none
 const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors([homeTeamSeason?.team, homeTeam], [awayTeamSeason?.team, awayTeam]) : undefined;
 
 ---

@@ -424,15 +424,18 @@ export function adjustColorForContrast(primaryColor: RGBColor, altColor: RGBColo
 
 // ---------------------------------------------------------------------------
 // One colour decision per game (flag 'game-colours'). The page decides once
-// and hands the same { home, away } pair to every chart, so the drive chart,
-// the WP/EP charts and the radar can no longer disagree.
+// and hands the same pairs to every chart, so the drive chart, the WP/EP
+// charts, the radar and the Deserved Win % bars can no longer disagree.
 //
 // A pair is usable when the two colours are far enough apart (CIE ΔE2000) and
-// each is readable on BOTH page backgrounds -- one pair is decided on the
-// server, before anyone knows the viewer's theme.
+// each reads on the page background. The light and dark themes get a pair
+// each, so a dark team colour stays true on the light theme and is only lifted
+// where the dark theme needs it. Consumers pick the pair with the site's own
+// theme switch, `prefers-color-scheme` (dark-game.css, DarkModeLogos).
 // ---------------------------------------------------------------------------
 
 export type GameColors = { home: string, away: string };
+export type ThemedGameColors = { light: GameColors, dark: GameColors };
 /** The page backgrounds: `body` in bootstrap/base.css (light) and dark-game.css (dark). */
 export const GAME_BACKGROUNDS = { light: "#ffffff", dark: "#181a1b" } as const;
 /**
@@ -442,7 +445,7 @@ export const GAME_BACKGROUNDS = { light: "#ffffff", dark: "#181a1b" } as const;
  * of games, where the old ΔE94 <= 49 rule flagged 64%.
  */
 export const GAME_COLOR_MIN_DELTA_E = 20;
-/** Each colour against each background (WCAG ratio). */
+/** Each colour against its theme's background (WCAG ratio). */
 export const GAME_COLOR_MIN_CONTRAST = 2.5;
 
 type TeamColorSource = { color?: string | null, alternateColor?: string | null, alt_color?: string | null } | null | undefined;
@@ -516,25 +519,26 @@ export function contrastRatio(hexA: string, hexB: string): number {
 }
 
 /**
- * The home and away colours for a game: one decision, used by every chart.
+ * The home and away colours for a game, one pair per theme: one decision, used
+ * by every chart.
  *
  * Each team's `primary` / `alt` is the first valid colour across its sources,
  * so pass `[teamInfoRow, espnHeaderTeam]` to let ESPN fill a team_info 'null'.
- * Candidates, in order: both primaries, away alt, home alt, both alts. The
- * first pair that is ΔE2000 >= GAME_COLOR_MIN_DELTA_E apart with each colour
- * >= GAME_COLOR_MIN_CONTRAST against both backgrounds wins. Failing that, the
- * same candidates, in the same order, with each unreadable colour's L* moved
- * just far enough to read on both backgrounds (most team primaries are too
- * dark for the dark theme). Failing that, the away colour's L* is walked away
- * from the home colour's until they separate. Deterministic, and never the
- * clashing pair.
+ * Each theme runs the same scorer against its own background. Candidates, in
+ * order: both primaries, away alt, home alt, both alts. The first pair that is
+ * ΔE2000 >= GAME_COLOR_MIN_DELTA_E apart with each colour >= GAME_COLOR_MIN_CONTRAST
+ * against the background wins, so the primaries are kept whenever they work.
+ * Failing that, the same candidates with each unreadable colour's L* moved
+ * just far enough from the background to read; failing that, the away
+ * colour's L* is walked away from the home colour's until they separate.
+ * Deterministic, and never the clashing pair.
  */
 export function pickGameColors(
     home: TeamColorSource | TeamColorSource[],
     away: TeamColorSource | TeamColorSource[],
     backgrounds: { light: string, dark: string } = GAME_BACKGROUNDS,
     minDeltaE: number = GAME_COLOR_MIN_DELTA_E,
-): GameColors {
+): ThemedGameColors {
     const slots = (src: TeamColorSource | TeamColorSource[]) => {
         const list = Array.isArray(src) ? src : [src];
         const first = (pick: (s: NonNullable<TeamColorSource>) => unknown[]) =>
@@ -545,16 +549,22 @@ export function pickGameColors(
     const h = slots(home), a = slots(away);
     const candidates = [[h.primary, a.primary], [h.primary, a.alt], [h.alt, a.primary], [h.alt, a.alt]]
         .filter((p): p is [string, string] => p[0] !== null && p[1] !== null);
+    return {
+        light: pickPairOn(candidates, backgrounds.light, minDeltaE),
+        dark: pickPairOn(candidates, backgrounds.dark, minDeltaE),
+    };
+}
 
-    const readable = (c: string) => contrastRatio(c, backgrounds.light) >= GAME_COLOR_MIN_CONTRAST
-        && contrastRatio(c, backgrounds.dark) >= GAME_COLOR_MIN_CONTRAST;
+function pickPairOn(candidates: [string, string][], background: string, minDeltaE: number): GameColors {
+    const readable = (c: string) => contrastRatio(c, background) >= GAME_COLOR_MIN_CONTRAST;
     const apart = (x: string, y: string) => deltaE2000(x, y) >= minDeltaE;
     const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbToHex(lab2rgb([L, lab[1], lab[2]])); };
-    // nearest L* at which the colour reads on both backgrounds (too dark -> lighter, too light -> darker)
+    // the side with room to read: darker on a light background, lighter on a dark one
+    const dir = hexToLab(background)[0] >= 50 ? -1 : 1;
+    // nearest L* at which the colour reads on this background
     const readableVariant = (c: string) => {
         if (readable(c)) return c;
         const L0 = hexToLab(c)[0];
-        const dir = contrastRatio(c, backgrounds.dark) < GAME_COLOR_MIN_CONTRAST ? 1 : -1;
         for (let k = 1; k <= 100; k++) {
             const v = withLightness(c, L0 + dir * k);
             if (readable(v)) return v;

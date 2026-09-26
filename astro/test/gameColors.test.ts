@@ -14,16 +14,19 @@ const BC_TEAM_INFO = { color: '#8c2232', alt_color: '#dbcca6' };
 const VT_TEAM_INFO = { color: '#861f41', alt_color: '#e87722' };
 
 const hex = (c: { r: number, g: number, b: number }) => '#' + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, '0')).join('');
-const readable = (c: string) => contrastRatio(c, GAME_BACKGROUNDS.light) >= GAME_COLOR_MIN_CONTRAST
-    && contrastRatio(c, GAME_BACKGROUNDS.dark) >= GAME_COLOR_MIN_CONTRAST;
+type Theme = keyof typeof GAME_BACKGROUNDS;
+const THEMES: Theme[] = ['light', 'dark'];
 
-function expectUsable(pair: { home: string, away: string }) {
+// usable on a theme: apart, and each colour reads on that theme's background
+function expectUsable(pair: { home: string, away: string }, theme: Theme) {
     expect(pair.home).toMatch(/^#[0-9a-f]{6}$/);
     expect(pair.away).toMatch(/^#[0-9a-f]{6}$/);
     expect(deltaE2000(pair.home, pair.away)).toBeGreaterThanOrEqual(GAME_COLOR_MIN_DELTA_E);
-    expect(readable(pair.home), `${pair.home} on both backgrounds`).toBe(true);
-    expect(readable(pair.away), `${pair.away} on both backgrounds`).toBe(true);
+    for (const c of [pair.home, pair.away]) {
+        expect(contrastRatio(c, GAME_BACKGROUNDS[theme]), `${c} on ${theme}`).toBeGreaterThanOrEqual(GAME_COLOR_MIN_CONTRAST);
+    }
 }
+const expectUsableBoth = (colors: ReturnType<typeof pickGameColors>) => THEMES.forEach((t) => expectUsable(colors[t], t));
 
 describe('colour maths', () => {
     it('ΔE2000: zero on identity, symmetric, ~100 from black to white', () => {
@@ -38,26 +41,30 @@ describe('colour maths', () => {
 });
 
 describe('pickGameColors', () => {
-    it('BC vs VT: the two maroons are not what the page paints', () => {
+    it('BC vs VT: the two maroons are not what the page paints, on either theme', () => {
         // the legacy rule leaves them together: ΔE2000 between the primaries
         expect(deltaE2000('#8c2232', '#6a2c3e')).toBeLessThan(GAME_COLOR_MIN_DELTA_E);
         const [away, home] = adjustTeamColorsForContrast(VT_ESPN, BC_ESPN).map(hex);
         expect(deltaE2000(home, away)).toBeLessThan(GAME_COLOR_MIN_DELTA_E);
 
-        // No raw pair works: both maroons (and BC's maroon against anything) are
-        // too dark for the dark theme, and BC's gold too light for the light one.
-        // Lifted to read on both, BC maroon vs VT orange is 18 apart, so the next
-        // candidate in order (home alt + away primary) wins: BC gold, VT maroon,
-        // each moved just far enough in L* to read on both backgrounds.
-        const pair = pickGameColors(BC_ESPN, VT_ESPN);
-        expectUsable(pair);
-        expect(pair).toEqual({ home: '#aea17c', away: '#874657' });
+        // Light: BC keeps its maroon and VT takes its orange alt, both true colours.
+        // Dark: BC's maroon is too dark for #181a1b, so BC takes its gold alt
+        // (the last candidate, both alts). Nothing is recoloured on either theme.
+        const colors = pickGameColors(BC_ESPN, VT_ESPN);
+        expectUsableBoth(colors);
+        expect(colors).toEqual({
+            light: { home: '#8c2232', away: '#cf4520' },
+            dark: { home: '#dbcca6', away: '#cf4520' },
+        });
     });
 
-    it("BC vs VT from team_info: VT's lighter orange clears, so BC keeps its maroon", () => {
-        const pair = pickGameColors(BC_TEAM_INFO, VT_TEAM_INFO);
-        expectUsable(pair);
-        expect(pair).toEqual({ home: '#a03542', away: '#e87722' });
+    it('BC vs VT from team_info reaches the same shape of answer', () => {
+        const colors = pickGameColors(BC_TEAM_INFO, VT_TEAM_INFO);
+        expectUsableBoth(colors);
+        expect(colors).toEqual({
+            light: { home: '#8c2232', away: '#e87722' },
+            dark: { home: '#dbcca6', away: '#e87722' },
+        });
     });
 
     it('is deterministic', () => {
@@ -65,29 +72,38 @@ describe('pickGameColors', () => {
     });
 
     it('keeps both primaries when they already work', () => {
-        // Georgia Tech gold vs a mid blue: far apart, both readable
-        expect(pickGameColors({ color: 'b3a369' }, { color: '2394fd' })).toEqual({ home: '#b3a369', away: '#2394fd' });
+        // Georgia Tech gold vs a mid blue: far apart, readable on both backgrounds
+        const pair = { home: '#b3a369', away: '#2394fd' };
+        expect(pickGameColors({ color: 'b3a369' }, { color: '2394fd' })).toEqual({ light: pair, dark: pair });
+    });
+
+    it('keeps the primaries on the theme they work on, even when the other theme cannot', () => {
+        // navy vs Georgia red: fine on white; navy is unreadable on #181a1b
+        const colors = pickGameColors({ color: '041e42', alternateColor: 'a2aaad' }, { color: 'ba0c2f', alternateColor: '000000' });
+        expect(colors.light).toEqual({ home: '#041e42', away: '#ba0c2f' });
+        expect(colors.dark.home).not.toBe('#041e42');
+        expectUsableBoth(colors);
     });
 
     it('tries the away alt before the home alt', () => {
         // identical primaries; both alts readable and distinct from the primary
-        const pair = pickGameColors({ color: 'c8102e', alternateColor: 'e87722' }, { color: 'c8102e', alternateColor: '2394fd' });
-        expect(pair).toEqual({ home: '#c8102e', away: '#2394fd' });
+        const pair = { home: '#c8102e', away: '#2394fd' };
+        expect(pickGameColors({ color: 'c8102e', alternateColor: 'e87722' }, { color: 'c8102e', alternateColor: '2394fd' })).toEqual({ light: pair, dark: pair });
     });
 
     it("treats team_info's 'null' strings as missing and falls back to ESPN", () => {
         for (const missing of ['null', '#null', '', null, undefined]) {
-            const pair = pickGameColors(
+            const colors = pickGameColors(
                 [{ color: missing, alt_color: missing }, BC_ESPN],
                 [{ color: missing, alt_color: missing }, VT_ESPN],
             );
-            expect(pair).toEqual(pickGameColors(BC_ESPN, VT_ESPN));
+            expect(colors).toEqual(pickGameColors(BC_ESPN, VT_ESPN));
         }
     });
 
     it('never throws and never clashes when a team has no colour at all', () => {
-        expectUsable(pickGameColors({ color: 'null', alt_color: 'null' }, undefined));
-        expectUsable(pickGameColors(null, null));
+        expectUsableBoth(pickGameColors({ color: 'null', alt_color: 'null' }, undefined));
+        expectUsableBoth(pickGameColors(null, null));
     });
 
     // The lowest-ΔE2000 primary pairs in ESPN's own headers, three per era,
@@ -106,20 +122,20 @@ describe('pickGameColors', () => {
         { game: '401858224', season: 2026, homeName: 'Purdue Boilermakers', home: { color: 'ceb888', alternateColor: '000000' }, awayName: 'Wake Forest Demon Deacons', away: { color: 'ceb888', alternateColor: '2c2a29' } },
         { game: '401643744', season: 2024, homeName: 'San Diego State Aztecs', home: { color: 'a6192e', alternateColor: '000000' }, awayName: 'Washington State Cougars', away: { color: 'a60f2d', alternateColor: '4d4d4d' } },
     ];
-    it.each(WORST)('$game ($season) $homeName vs $awayName: separated and readable in both themes', ({ home, away }) => {
+    it.each(WORST)('$game ($season) $homeName vs $awayName: separated and readable on each theme', ({ home, away }) => {
         expect(deltaE2000(`#${home.color}`, `#${away.color}`)).toBeLessThan(1);
-        expectUsable(pickGameColors(home, away));
+        expectUsableBoth(pickGameColors(home, away));
     });
 });
 
-describe('the radar takes the decided pair', () => {
+describe('the radar takes the decided pair for its theme', () => {
     // breakdowns are [away, home], as MatchupView builds them
     const teams = [{ teamName: 'Virginia Tech', ...VT_ESPN }, { teamName: 'Boston College', ...BC_ESPN }];
     const rgb = (c: { r: number, g: number, b: number }) => `rgb(${c.r}, ${c.g}, ${c.b})`;
-    it('paints the pair when given one', () => {
-        const pair = pickGameColors(BC_ESPN, VT_ESPN);
-        const data = generateRadarDataset(teams, 'Offensive', 'Defensive', false, 'cfb', pair);
-        expect(data.datasets.map((d) => d.borderColor)).toEqual([pair.away, pair.home].map((c) => rgb(hexToRgb(c)!)));
+    it.each(THEMES)('paints the %s pair', (theme) => {
+        const colors = pickGameColors(BC_ESPN, VT_ESPN);
+        const data = generateRadarDataset(teams, 'Offensive', 'Defensive', theme === 'dark', 'cfb', colors);
+        expect(data.datasets.map((d) => d.borderColor)).toEqual([colors[theme].away, colors[theme].home].map((c) => rgb(hexToRgb(c)!)));
     });
     it('keeps the legacy rule without one', () => {
         const data = generateRadarDataset(teams, 'Offensive', 'Defensive', false, 'cfb');

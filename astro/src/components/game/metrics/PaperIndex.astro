@@ -2,7 +2,7 @@
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import { espnLogoLeague } from '../../../utils/league';
-import { cleanAbbreviation, roundNumber, type GameColors } from '../../../utils/misc';
+import { cleanAbbreviation, roundNumber, type ThemedGameColors } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -13,7 +13,7 @@ interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
     completed: boolean
-    colors?: GameColors
+    colors?: ThemedGameColors
 }
 
 const { result, homeTeam, awayTeam, completed, colors } = Astro.props;
@@ -21,8 +21,11 @@ const { result, homeTeam, awayTeam, completed, colors } = Astro.props;
 const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 100)));
 const homePct = clampPct(result.homeShare);
 const awayPct = 100 - homePct;
-// the page's colour decision when there is one ('game-colours'), else each team's own
-const barColor = (t: ESPNTeam, fallback: string) => colors ? (t === homeTeam ? colors.home : colors.away) : `#${t.color ?? fallback}`;
+// the page's colour decision when there is one ('game-colours'), as custom properties that
+// switch with prefers-color-scheme like the rest of the site's dark mode; else each team's own
+const barColor = (t: ESPNTeam, fallback: string) => colors ? `var(--pi-${t === homeTeam ? "home" : "away"})` : `#${t.color ?? fallback}`;
+const barVars = colors && `#paper-index-panel { --pi-home: ${colors.light.home}; --pi-away: ${colors.light.away}; }
+@media (prefers-color-scheme: dark) { #paper-index-panel { --pi-home: ${colors.dark.home}; --pi-away: ${colors.dark.away}; } }`;
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
@@ -46,6 +49,7 @@ const periods = PERIOD_ORDER
         return { label: k.toUpperCase(), homePct: p, awayPct: 100 - p };
     });
 ---
+{barVars && <style set:html={barVars}></style>}
 <Panel id="paper-index" title="Deserved Win %" show={true} class="mb-md-3">
     <div slot="panel-subtitle">
         <p class="mb-0">AKA post-game win expectancy. Inspired by <a href="https://bsky.app/profile/espnbillc.bsky.social">Bill Connelly</a>'s <a href="https://www.espn.com/college-football/story/_/id/48288665/college-football-2026-turnovers-lucky-bounces">SP+ PGWE</a>.</p>

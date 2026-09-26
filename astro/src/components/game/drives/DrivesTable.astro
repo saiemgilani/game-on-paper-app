@@ -2,7 +2,7 @@
 import type { ESPNTeam } from '../../../resources/espn'
 import type { ProcessedDrive, ProcessedPlay } from '../../../resources/python'
 import DriveRow from './DriveRow.astro'
-import type { GameColors } from '../../../utils/misc'
+import type { ThemedGameColors } from '../../../utils/misc'
 
 interface Props {
     drives: ProcessedDrive[]
@@ -13,7 +13,7 @@ interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
     isNeutralSite: boolean
-    colors?: GameColors
+    colors?: ThemedGameColors
 }
 
 let { drives, gamePlays, prefix, expandable, showGuide, homeTeam, awayTeam, isNeutralSite, colors } = Astro.props;

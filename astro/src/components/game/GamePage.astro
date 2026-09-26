@@ -79,9 +79,10 @@ const awayTeam = awayComp.team;
 const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = game.header.competitions[0].status;
-// One colour decision for the whole page ('game-colours'): every chart gets
-// this pair. Off, each chart keeps its own legacy colours and the islands'
-// props are exactly what they were (no `colors` key at all).
+// One colour decision for the whole page ('game-colours'): a light and a dark
+// pair, and every chart paints the one for the theme in effect. Off, each chart
+// keeps its own legacy colours and the islands' props are exactly what they
+// were (no `colors` key at all).
 const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.teamInfo.home, game.teamInfo.away) : undefined;
 const colorProps = gameColors ? { colors: gameColors } : {};
 

@@ -72,8 +72,9 @@ describe.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s game page, game-
     let html = '';
     beforeAll(async () => { html = await render(twin, { flagOverrides: { 'game-colours': true } }); }, 60_000);
 
-    test('the WP chart, the EP chart and every drive chart get the same pair', () => {
+    test('the WP chart, the EP chart and every drive chart get the same light and dark pairs', () => {
         const expected = pickGameColors(game.teamInfo.home, game.teamInfo.away);
+        expect(expected.light).not.toEqual(expected.dark);   // this fixture exercises both pairs
         const [wp] = islands(html, 'WinProbabilityChart');
         const [ep] = islands(html, 'ExpectedPointsChart');
         expect(wp.colors).toEqual(expected);
@@ -81,12 +82,41 @@ describe.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s game page, game-
 
         const drives = islands(html, 'DriveChart');
         expect(drives.length).toBeGreaterThan(10);
-        const colourOf = (team: any) => (String(team.id) === String(game.teamInfo.home.id) ? expected.home : expected.away);
+        const side = (team: any) => (String(team.id) === String(game.teamInfo.home.id) ? 'home' : 'away');
         for (const d of drives) {
-            expect(d.offense.color).toBe(colourOf(d.offense));
-            expect(d.defense.color).toBe(colourOf(d.defense));
-            expect(d.offense.color).not.toBe(d.defense.color);
+            for (const theme of ['light', 'dark'] as const) {
+                expect(d.colors[theme].offense).toBe(expected[theme][side(d.offense)]);
+                expect(d.colors[theme].defense).toBe(expected[theme][side(d.defense)]);
+            }
+            // the team objects themselves are untouched
+            expect(d.offense.color).toBe(side(d.offense) === 'home' ? game.teamInfo.home.color : game.teamInfo.away.color);
         }
+    });
+});
+
+describe('Deserved Win % bars switch pair with prefers-color-scheme', () => {
+    // the fixture game has no paperIndex, so the panel is rendered on its own
+    const result = { homeShare: 0.62, margins: { success: 0.06 } };
+    const renderPanel = async (colors?: ReturnType<typeof pickGameColors>) => {
+        const { default: PaperIndex } = await import('../src/components/game/metrics/PaperIndex.astro');
+        return container.renderToString(PaperIndex, {
+            props: { result, homeTeam: game.teamInfo.home, awayTeam: game.teamInfo.away, completed: true, ...(colors ? { colors } : {}) },
+        });
+    };
+
+    test('with the flag, the bars read custom properties set per theme', async () => {
+        const colors = pickGameColors(game.teamInfo.home, game.teamInfo.away);
+        const html = await renderPanel(colors);
+        expect(html).toContain(`#paper-index-panel { --pi-home: ${colors.light.home}; --pi-away: ${colors.light.away}; }`);
+        expect(html).toContain(`@media (prefers-color-scheme: dark) { #paper-index-panel { --pi-home: ${colors.dark.home}; --pi-away: ${colors.dark.away}; } }`);
+        expect(html).toContain('background-color: var(--pi-away)');
+        expect(html).toContain('background-color: var(--pi-home)');
+    });
+
+    test('without it, the bars keep the teams\' raw colours', async () => {
+        const html = await renderPanel();
+        expect(html).not.toContain('--pi-');
+        expect(html).toContain(`background-color: #${game.teamInfo.home.color}`);
     });
 });
 

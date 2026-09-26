@@ -59,6 +59,10 @@ async function waitToGenerateChart() {
     }
 }
 
+// with the page's per-theme colours, redraw in the other pair when the theme flips
+// (waitToGenerateChart destroys the old charts first)
+if (colors) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', waitToGenerateChart);
+
 if (document.readyState !== 'loading') {
     console.log(`DOM ready state`)
     waitToGenerateChart()

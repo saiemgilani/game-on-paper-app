@@ -1,6 +1,6 @@
 ---
 import type { SDVGame, SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
-import { formatYardline, roundNumber, generateColorRampValue, generateMarginalString, produceTeamLogoLink, pickGameColors, type GameColors } from '../../utils/misc';
+import { formatYardline, roundNumber, generateColorRampValue, generateMarginalString, produceTeamLogoLink, pickGameColors, type ThemedGameColors } from '../../utils/misc';
 import { isFeatureEnabled } from '../../utils/features';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 import FallbackSpinner from '../FallbackSpinner.astro';
@@ -14,7 +14,7 @@ interface Props {
     awayTeamSummary: SDVTeamSummary | null
     matchupHistory: SDVGame[]
     /** the game page's colour decision; the matchup page makes its own from team_info */
-    colors?: GameColors
+    colors?: ThemedGameColors
 }
 
 const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary, matchupHistory } = Astro.props;

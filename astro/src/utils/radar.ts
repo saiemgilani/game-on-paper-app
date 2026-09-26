@@ -1,6 +1,6 @@
 import type { ChartConfiguration, ChartData } from "chart.js";
 import { DEFAULT_LEAGUE, LEAGUES, type League } from "./league";
-import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal, cleanField, type GameColors } from "./misc";
+import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal, cleanField, type ThemedGameColors } from "./misc";
 
 
 function generatePercentile(input: number, max: number): number {
@@ -44,8 +44,8 @@ export function generateRadarPercentiles(breakdown: any, titleKey: string, leagu
     return base
 }
 
-// `colors` is the page's one colour decision for a two-team matchup ('game-colours'); breakdowns are [away, home].
-export function generateRadarDataset(breakdowns: any[], titleKey: string, opponentKey: string | null = null, isDarkMode: boolean = false, league: League = DEFAULT_LEAGUE, colors: GameColors | null = null): ChartData<'radar'> {
+// `colors` is the page's colour decision for a two-team matchup ('game-colours'), per theme; breakdowns are [away, home].
+export function generateRadarDataset(breakdowns: any[], titleKey: string, opponentKey: string | null = null, isDarkMode: boolean = false, league: League = DEFAULT_LEAGUE, colors: ThemedGameColors | null = null): ChartData<'radar'> {
     const sample = generateRadarPercentiles({}, titleKey, league);
     opponentKey = opponentKey || titleKey;
     
@@ -55,7 +55,8 @@ export function generateRadarDataset(breakdowns: any[], titleKey: string, oppone
 
     const compColor = (isDarkMode) ? hexToRgb("#000000")! : hexToRgb("#FFFFFF")!
 
-    const adjTeamColors = (colors && teamColors.length > 1) ? [hexToRgb(colors.away)!, hexToRgb(colors.home)!] : (teamColors.length > 1) ? adjustTeamColorsForContrast(teamColors[0], teamColors[1]) : [adjustColorForContrast(hexToRgb(teamColors[0].color) || hexToRgb(STANDARD_THEME_COLOR)!, hexToRgb(teamColors[0].alternateColor) || hexToRgb(STANDARD_THEME_COLOR)!, compColor)]
+    const pair = colors && (isDarkMode ? colors.dark : colors.light);
+    const adjTeamColors = (pair && teamColors.length > 1) ? [hexToRgb(pair.away)!, hexToRgb(pair.home)!] : (teamColors.length > 1) ? adjustTeamColorsForContrast(teamColors[0], teamColors[1]) : [adjustColorForContrast(hexToRgb(teamColors[0].color) || hexToRgb(STANDARD_THEME_COLOR)!, hexToRgb(teamColors[0].alternateColor) || hexToRgb(STANDARD_THEME_COLOR)!, compColor)]
 
     return {
         labels: sample.map(p => p.title),

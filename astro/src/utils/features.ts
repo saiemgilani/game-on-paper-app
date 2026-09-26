@@ -56,9 +56,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
     'player-pages': 'preview',
-    // One team-colour decision per game (utils/misc.ts pickGameColors), handed
-    // to every chart on the game page (WP, EP, drive charts, Deserved Win %)
-    // and the matchup radar. Off: each chart keeps its own legacy colours.
+    // One team-colour decision per game (utils/misc.ts pickGameColors), a pair
+    // per theme, handed to every chart on the game page (WP, EP, drive charts,
+    // Deserved Win %) and the matchup radar. Off: each chart keeps its own
+    // legacy colours.
     'game-colours': 'preview',
 };
 

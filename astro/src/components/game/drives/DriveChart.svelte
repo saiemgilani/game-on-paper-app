@@ -1,7 +1,7 @@
 
 <script>
 import { determineLuminance, teamColorHex } from "../../../utils/misc";
-const { id, subtitle, result, plays, offense, defense, isNeutralSite } = $props();
+const { id, subtitle, result, plays, offense, defense, isNeutralSite, colors = null } = $props();
 
 let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
 // if (!isNeutralSite && homeTeam.id == 68) {
@@ -245,12 +245,15 @@ class FootballField {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function drawDrive() {
+    // the page's colours for this theme when it made them ('game-colours'), else each team's own
+    const pair = colors && (window.matchMedia('(prefers-color-scheme: dark)').matches ? colors.dark : colors.light);
+    const offenseColor = pair ? pair.offense : teamColorHex(offense.color);
     const field = new FootballField(
         `football-field-${id}`,
         fieldColor,
-        offense,
-        defense,
+        pair ? { ...offense, color: pair.offense } : offense,
+        pair ? { ...defense, color: pair.defense } : defense,
         10,
         subtitle
     )
@@ -268,12 +271,16 @@ document.addEventListener('DOMContentLoaded', () => {
         endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone
         endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone;
         if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
+            field.markPlay(offenseColor, play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
         } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
+            field.markPlay(offenseColor, play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
         }
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', drawDrive);
+// a new FootballField resizes (and so clears) the canvas: redraw in the other theme's colours when it flips
+if (colors) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawDrive);
 
 </script>
 

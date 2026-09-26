@@ -2,7 +2,7 @@
 import type { ESPNTeam } from "../../../resources/espn"
 import { espnLogoLeague } from '../../../utils/league';
 import type { ProcessedDrive, ProcessedPlay } from "../../../resources/python"
-import { formatDistance, formatYardline, roundNumber, cleanAbbreviation, type GameColors } from "../../../utils/misc"
+import { formatDistance, formatYardline, roundNumber, cleanAbbreviation, type ThemedGameColors } from "../../../utils/misc"
 import { isScrimmage } from "../../../utils/situational"
 import FallbackSpinner from "../../FallbackSpinner.astro"
 import DriveChart from "./DriveChart.svelte"
@@ -15,7 +15,7 @@ interface Props {
     isNeutralSite: boolean
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
-    colors?: GameColors
+    colors?: ThemedGameColors
 }
 
 const { drive, prefix, expandable, drivePlays, isNeutralSite, homeTeam, awayTeam, colors } = Astro.props;
@@ -35,8 +35,12 @@ const firstPlay = drivePlays[0]
 
 const offense = (firstPlay.pos_team == parseInt(homeTeam.id)) ? homeTeam : awayTeam;
 const defense = (firstPlay.pos_team == parseInt(homeTeam.id)) ? awayTeam : homeTeam;
-// the chart paints the page's colour decision when there is one ('game-colours'), else each team's own
-const painted = (t: ESPNTeam) => colors ? { ...t, color: t === homeTeam ? colors.home : colors.away } : t;
+// the page's colour decision ('game-colours'), per theme, as this drive's offense/defense
+const side = (t: ESPNTeam) => (t === homeTeam ? 'home' : 'away');
+const driveColors = colors && {
+    light: { offense: colors.light[side(offense)], defense: colors.light[side(defense)] },
+    dark: { offense: colors.dark[side(offense)], defense: colors.dark[side(defense)] },
+};
 
 var period = `Q${firstPlay.period}`;
 if (firstPlay.period > 5) {
@@ -98,7 +102,7 @@ const endWP = endWPPlays[endWPPlays.length - 1];
             <div class="row p-1">
                 <div class="ms-sm-auto col-12 mb-3">
                 <p class="m-0 mb-1"><strong>Drive Chart</strong> <span>(Direction of play - left to right)</span>:</p>
-                <DriveChart client:only id={drive.id} subtitle={`${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`} plays={chartPlays} offense={painted(offense)} defense={painted(defense)} isNeutralSite={isNeutralSite} result={drive.result}>
+                <DriveChart client:only id={drive.id} subtitle={`${offense.abbreviation} - ${drive.result || drive.displayResult || 'In Progress'} - ${drive.description}`} plays={chartPlays} offense={offense} defense={defense} isNeutralSite={isNeutralSite} result={drive.result} {...(driveColors ? { colors: driveColors } : {})}>
                     <FallbackSpinner slot="fallback" />
                 </DriveChart>
                 <p class="m-0 text-muted"><small>Note: vertical position of plays on chart does not indicate actual vertical position on field.</small></p>
