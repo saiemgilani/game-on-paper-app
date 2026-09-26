@@ -3,9 +3,11 @@
  * producer ranked within `span` places of this one. Ranks are the producer's
  * `<metric>_rank` (null for a non-qualifier) and are never recomputed here.
  *
- * Keys are strings on purpose: NFL team ids arrive as numbers, CFB team ids as
- * strings, NFL player ids as gsis strings, CFB player ids as numbers. A traded
- * player has one row per team, so a player key is `player:team`.
+ * Keys are strings on purpose: ids arrive inconsistently typed across leagues
+ * and endpoints -- CFB team ids arrive as numbers too, not strings, and NFL
+ * player ids as gsis strings -- so every key is coerced via `String()` rather
+ * than compared by its source type. A traded player has one row per team, so
+ * a player key is `player:team`.
  */
 import { cleanField, formatRank, generateCategoryForMetric, generateMarginalString, generateTeamMetricTitle, numberOrNull, roundNumber } from './misc';
 import { SDV_PLAYER_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_PERCENT_COLUMNS } from './constants';
