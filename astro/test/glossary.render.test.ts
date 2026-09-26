@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { generateGlossaryItems } from '../src/resources/glossary';
-import { termSlug } from '../src/utils/seo';
+import { termSlugs } from '../src/utils/seo';
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create(); });
@@ -13,7 +13,7 @@ describe('glossary term anchors', () => {
         const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/glossary/') });
         const terms = [...generateGlossaryItems().values()].flat();
         expect([...html.matchAll(/<h3 class="col-sm-3 glossary-term"/g)]).toHaveLength(terms.length);
-        for (const t of terms) expect(html).toContain(`id="${termSlug(t.term)}"`);
+        for (const slug of termSlugs(terms).values()) expect(html).toContain(`id="${slug}"`);
         expect(html).not.toContain('<dt');
         expect(html).not.toContain('<dd');
         expect(html).toContain('id="glossary-section-S"');

@@ -1,15 +1,16 @@
 ---
 import type { GlossaryEntry } from '../../resources/glossary';
-import { termSlug } from '../../utils/seo';
 
 interface Props {
 	entry: GlossaryEntry;
+	/** the term's deep-link id, resolved over the whole glossary by termSlugs() */
+	slug: string;
 }
 
-const { entry } = Astro.props;
+const { entry, slug } = Astro.props;
 ---
 
-<div class="row mb-3" id={termSlug(entry.term)}>
+<div class="row mb-3" id={slug}>
     <h3 class="col-sm-3 glossary-term">{entry.source ? <a href={entry.source}>{entry.term}</a> : entry.term}</h3>
     <div class="col-sm-9 mb-2"><Fragment set:html={entry.definition}/></div>
 </div>
