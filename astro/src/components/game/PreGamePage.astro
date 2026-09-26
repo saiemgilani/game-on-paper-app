@@ -45,7 +45,7 @@ const header = espnGame.gamepackageJSON.header;
 // game context (venue, weather, line, leaders, recent form) lives on the
 // summary endpoint only; started here, awaited after the SDV fetches so an
 // ESPN retry/relay episode overlaps them instead of stacking onto page latency
-const gameSummaryPromise = retrieveGameSummary(id);
+const gameSummaryPromise = retrieveGameSummary(id, league);
 
 // Canonical is /game/<id>, the served path; /cfb/game/<id> is Disallowed in
 // robots.txt, so the old value told Google the authoritative URL was one it may not crawl.

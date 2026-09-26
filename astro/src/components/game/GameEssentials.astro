@@ -2,6 +2,7 @@
 import type { ESPNGameSummary, ESPNTeam } from '../../resources/espn';
 import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../../resources/sdv';
 import { cleanAbbreviation, roundNumber } from '../../utils/misc';
+import { espnLogoLeague } from '../../utils/league';
 
 interface Props {
     summary: ESPNGameSummary | null
@@ -61,7 +62,7 @@ const hasAnything = favorite != null || line != null || venue != null;
                     <div class="col-md-4 col-12">
                         <p class="small text-muted text-uppercase mb-1">Projection</p>
                         <p class="mb-0 fw-bold d-flex align-items-center justify-content-center gap-1">
-                            <img class={`team-logo-${favorite.id}`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${favorite.id}.png`} alt={cleanAbbreviation(favorite)} />
+                            <img class={`team-logo-${favorite.id}`} width="24" height="24" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${favorite.id}.png`} alt={cleanAbbreviation(favorite)} />
                             <span>{cleanAbbreviation(favorite)} by {roundNumber(Math.abs(margin!), 2, 1)}</span>
                         </p>
                         <p class="small text-muted m-0">{roundNumber(favProb! * 100, 2, 0)}% by Net Adj EPA/play, {metricYear}</p>
