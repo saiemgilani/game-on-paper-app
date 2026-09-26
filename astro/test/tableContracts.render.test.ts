@@ -30,7 +30,7 @@ import {
     BOX_SCORE_NON_RATE_PERCENT_COLUMNS,
     METRIC_KEY_TITLE_MAPPING,
 } from '../src/utils/constants';
-import { roundNumber } from '../src/utils/misc';
+import { roundNumber, metricDecimalPoints } from '../src/utils/misc';
 import { madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
 import { isScrimmage } from '../src/utils/situational';
 import { loadGzJson, locals, parseTable, tableWithHeading, text } from './helpers/tables';
@@ -130,7 +130,10 @@ const METRIC_TABLES = [
  * else is "count (rate%)".
  */
 function expectedMetricCell(key: string, row: any, useSuffix: boolean, decimalPoints: number): string {
-    const dp = decimalPoints || 1;
+    // the shared guard (#269): an explicit 0 means zero places, a missing value means one
+    const dp = metricDecimalPoints(decimalPoints);
+    // Production's total is rush + pass, not ESPN's per-play statYardage (#269)
+    if (key === 'off_yards') return String(parseFloat(row['pass_yards'] || 0) + parseFloat(row['rush_yards'] || 0));
     if (key === 'avg_field_position') {
         const v = row[key] || 0;
         return `${v >= 50 ? 'Own' : 'Opp'} ${roundNumber(v >= 50 ? 100 - parseFloat(v) : v, 2, 0)}`;
