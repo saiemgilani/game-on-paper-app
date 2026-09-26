@@ -1,0 +1,20 @@
+---
+import { cleanLocation } from '../../utils/misc';
+import { leaguePath, type League } from '../../utils/league';
+
+interface Props {
+    awayTeam: any
+    homeTeam: any
+    /** null before kickoff: the title is then "away @ home" */
+    awayScore?: string | number | null
+    homeScore?: string | number | null
+    links: boolean
+    league?: League
+}
+const { awayTeam, homeTeam, awayScore = null, homeScore = null, links, league } = Astro.props;
+const score = (s: string | number | null) => (s == null ? '' : ` ${s}`);
+const teamHref = (t: any) => leaguePath(league, `/team/${t.id}`);
+---
+<h1 class="h2 mb-0">{links
+    ? <Fragment><a class="text-reset" href={teamHref(awayTeam)}>{cleanLocation(awayTeam)}</a>{`${score(awayScore)} @ `}<a class="text-reset" href={teamHref(homeTeam)}>{cleanLocation(homeTeam)}</a>{score(homeScore)}</Fragment>
+    : `${cleanLocation(awayTeam)}${score(awayScore)} @ ${cleanLocation(homeTeam)}${score(homeScore)}`}</h1>
