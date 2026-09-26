@@ -527,6 +527,33 @@ describe('the page tells Workers Caching what to do', () => {
         }
         feed.missing.delete('99999999999');
     }, 60_000);
+
+    test('a page rendered around a failed section read is served, never cached', async () => {
+        // CodeRabbit on #267: cached for the TTL, a degraded page would keep saying
+        // "unavailable" (or drop its game links) long after the upstream recovered
+        const sdv = await import('../src/resources/sdv');
+        const { preparePlayer } = await import('../src/routes/player');
+        const reads: [keyof typeof sdv, 'cfb' | 'nfl', string, string][] = [
+            ['retrievePlayerSeasons', 'cfb', '/players/4433971', '4433971'],
+            ['retrievePlayerGames', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerSplits', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerGamePercentiles', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveTeamSummaries', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveNflEspnGameIds', 'nfl', '/nfl/players/16800?season=2024', '16800'],
+        ];
+        for (const [fn, league, path, id] of reads) {
+            const spy = vi.spyOn(sdv, fn as any).mockRejectedValue(new Error(`${fn} is down`));
+            try {
+                const f = fake(path, { id });
+                const r = await preparePlayer(f.astro, league) as any;
+                expect(r.player?.espn_id, fn).toBe(id);   // still a page, not a 503
+                expect(f.cache, fn).toEqual([false]);
+                expect(f.headers.get('Cache-Control'), fn).toBe('no-store');
+            } finally {
+                spy.mockRestore();
+            }
+        }
+    }, 60_000);
 });
 
 describe('one failing section does not blank the page', () => {
@@ -565,6 +592,23 @@ describe('one failing section does not blank the page', () => {
             expect(html).toContain('id="player-game-log-unavailable"');
             // "No games for 2024" would be a lie about a player who played 13
             expect(html).not.toContain('No games for 2024');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('a past season whose rows failed names no team, not the identity\'s current one', async () => {
+        // CodeRabbit on #267: McCord's identity is Syracuse (2024), but 2023 was
+        // Ohio State -- with the season rows down, the header must not guess
+        const sdv = await import('../src/resources/sdv');
+        expect(await renderPage('cfb', '4433971', 2023)).toContain('season with Ohio State:');
+        const spy = vi.spyOn(sdv, 'retrievePlayerSeasons').mockRejectedValue(new Error('seasons route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2023);
+            expect(html).not.toContain('Syracuse');
+            expect(html).not.toContain('teamlogos/ncaa/500/183.png');
+            // the career view still falls back to the identity, which IS current
+            expect(await renderCareer('cfb', '4433971')).toContain('career with Syracuse:');
         } finally {
             spy.mockRestore();
         }
