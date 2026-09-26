@@ -38,9 +38,12 @@ const links = isFeatureEnabled('game-links', Astro.locals);
 const scheduled = statusDescription.includes("Schedule");
 const season = espnHeader?.season;
 // the game's own week when linking is on; the scoreboard (today's week) otherwise
-const backHref = (links && season?.year && espnHeader?.week != null)
+const backToWeek = links && season?.year && espnHeader?.week != null;
+const backHref = backToWeek
     ? leaguePath(league, `/year/${season.year}/type/${season.type}/week/${espnHeader.week}`)
     : leaguePath(league, "/");
+// the phone button says where it goes
+const backLabel = backToWeek ? `Back to Week ${espnHeader.week}` : 'Back to Scoreboard';
 
 ---
 
@@ -88,7 +91,7 @@ const backHref = (links && season?.year && espnHeader?.week != null)
         </div>
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <a class="btn btn-sm btn-outline-primary align-middle p-2" href={backHref}><i class="bi-arrow-left"></i> Back to Scoreboard</a>
+                <a class="btn btn-sm btn-outline-primary align-middle p-2" href={backHref}><i class="bi-arrow-left"></i> {backLabel}</a>
             </div>
             <div>
                 <WatchButton game={espnComp} />

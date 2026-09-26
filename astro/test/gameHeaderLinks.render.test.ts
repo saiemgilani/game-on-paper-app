@@ -38,12 +38,29 @@ describe('game-links: the header text links into the site', () => {
             const week = `href="${prefix}/year/${game.header.season.year}/type/2/week/${game.header.week}"`;
             expect(html.split(week).length - 1).toBe(2); // both Back buttons
             expect(html).not.toContain('[object Object]');
+            // the phone button says where it goes
+            expect(html).toContain(`Back to Week ${game.header.week}`);
+            expect(html).not.toContain('Back to Scoreboard');
+        });
+        test(`[${league}] flag on: a TBD placeholder side stays plain text`, async () => {
+            const game = structuredClone(loadGzJson(FIXTURES[league]));
+            const comps = game.header.competitions[0].competitors;
+            const away = comps.find((c: any) => c.homeAway === 'away');
+            away.team = { ...away.team, id: '0', abbreviation: 'TBD' };
+            const { default: GameHeader } = await import('../src/components/game/GameHeader.astro');
+            const html = await container.renderToString(GameHeader, {
+                props: { game },
+                locals: { league, flagOverrides: { 'game-links': true } } as any,
+            });
+            expect(html).not.toContain('/team/0"');
+            for (const h of h1s(html)) expect(h).toContain(`href="${prefix}/team/${game.teamInfo.home.id}"`);
         });
         test(`[${league}] flag off: the header the public gets today`, async () => {
             const { html } = await renderHeader(league, false);
             for (const h of h1s(html)) expect(h).not.toContain('href=');
             expect(html.split(`href="${prefix || '/'}"`).length - 1).toBe(2);
             expect(html).not.toContain('/team/');
+            expect(html).toContain('Back to Scoreboard');
         });
     }
 });
