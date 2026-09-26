@@ -19,7 +19,7 @@ describe('NeighborRanks', () => {
         const lists = teamNeighborLists(fx.nfl_team_summaries_2025, 14, 'nfl', 2025);
         const html = await container.renderToString(NeighborRanks, { props: { lists, logos: true }, locals: { league: 'nfl' } });
         expect((html.match(/data-nb-metric=/g) ?? []).length).toBe(lists.length);
-        expect((html.match(/class="table-active"/g) ?? []).length).toBe(lists.length);
+        expect((html.match(/class="table-secondary"/g) ?? []).length).toBe(lists.length);
         expect(html).toMatch(/href="\/nfl\/year\/2025\/team\/\d+"/);
         expect(html).toContain('teamlogos/nfl/500/');
         expect(html).not.toContain('teamlogos/ncaa/');
@@ -27,9 +27,11 @@ describe('NeighborRanks', () => {
         expect(html).toContain('>Off EPA/Play<');
         // the identity column is the row's primary entity: bolded like TeamLeaderboardTable /
         // PlayerLeaderboardTable do, self row included.
-        const selfRow = html.match(/<tr[^>]*class="table-active"[^>]*>[\s\S]*?<\/tr>/);
+        const selfRow = html.match(/<tr[^>]*class="table-secondary"[^>]*>[\s\S]*?<\/tr>/);
         expect(selfRow).toBeTruthy();
         expect(selfRow![0]).toMatch(/<strong>LA<\/strong>/);
+        // the mark isn't colour-only: aria-current names the own row too
+        expect(selfRow![0]).toContain('aria-current="page"');
     }, 60_000);
 });
 

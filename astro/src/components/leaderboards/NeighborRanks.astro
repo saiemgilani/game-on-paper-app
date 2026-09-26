@@ -1,11 +1,16 @@
 ---
 /**
  * Nearby-rank lists (flag 'rank-neighbors'): one small ranked table per metric,
- * the page's own team or player marked `table-active`. Hovering or focusing a
- * row lights the same entity in every table (`table-primary`), so one that sits
- * next to this team on several metrics stands out. Rows come from
- * `utils/neighbors.ts`; this only renders them, in the `CoachLeaderboardTable`
- * format: rank right, name left, value centred.
+ * the page's own team or player marked `table-secondary` (matching
+ * `PlayerSeasonTable`/`PlayerSplits`), plus `aria-current="page"` on its link
+ * (or name cell, if it has none) so the mark isn't colour-only. Hovering or
+ * focusing a row lights the same entity in every table (`table-info`), so one
+ * that sits next to this team on several metrics stands out -- except the own
+ * row, which never takes `table-info`: combining it with `table-secondary`
+ * read as unreadable in dark mode (final review), and the own row is already
+ * identifiable by its persistent marking, so it just stays as it is while lit.
+ * Rows come from `utils/neighbors.ts`; this only renders them, in the
+ * `CoachLeaderboardTable` format: rank right, name left, value centred.
  */
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { espnLogoLeague } from '../../utils/league';
@@ -35,11 +40,11 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
                     </thead>
                     <tbody>
                         {l.rows.map((r) => (
-                            <tr data-nb-key={r.key} class:list={[r.self && 'table-active']}>
+                            <tr data-nb-key={r.key} data-nb-self={String(r.self)} class:list={[r.self && 'table-secondary']}>
                                 <td class="text-right numeral" colspan="1">{r.rank}</td>
-                                <td class="text-left text-nowrap" colspan="1">
+                                <td class="text-left text-nowrap" colspan="1" aria-current={!r.href && r.self ? 'page' : undefined}>
                                     {r.href ? (
-                                        <a href={r.href}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
+                                        <a href={r.href} aria-current={r.self ? 'page' : undefined}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
                                     ) : <strong>{r.label}</strong>}
                                 </td>
                                 <td class="text-center numeral" colspan="1">{r.value}</td>
@@ -57,7 +62,11 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
     for (const root of document.querySelectorAll<HTMLElement>('[data-neighbor-ranks]')) {
         const light = (key?: string) => {
             for (const tr of root.querySelectorAll<HTMLElement>('tr[data-nb-key]')) {
-                tr.classList.toggle('table-primary', key !== undefined && tr.dataset.nbKey === key);
+                // the own row keeps its permanent table-secondary mark and never
+                // also takes table-info -- combining the two read as unreadable
+                // in dark mode (final review); it is already identifiable while lit.
+                if (tr.dataset.nbSelf === 'true') continue;
+                tr.classList.toggle('table-info', key !== undefined && tr.dataset.nbKey === key);
             }
         };
         const keyOf = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('tr[data-nb-key]')?.dataset.nbKey;
