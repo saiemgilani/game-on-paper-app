@@ -838,14 +838,15 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
  * (the producer leaves their ranks null). The URL is the same for every page of
  * that season, so it is one KV entry however many pages read it. Strict: a
  * failed read throws, so the page says the section failed instead of showing
- * an empty list as the truth.
+ * an empty list as the truth. Cached 1 day, matching the player season rows
+ * (`retrievePlayerSeasons`) it is read alongside.
  */
 export async function retrieveRankedRows({ table, season, metrics, idColumns, league = 'cfb' }:
     { table: string; season: number; metrics: string[]; idColumns: string[]; league?: League }): Promise<Record<string, any>[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     const select = [...new Set([...idColumns, 'season', ...metrics, ...metrics.map((m) => `${m}_rank`)])].join(',');
     const query = new URLSearchParams({ season: String(season), select, [`${metrics[0]}_rank__gte`]: '1', order: `${metrics[0]}_rank`, limit: '1000' });
-    const content = await requestSDV(table, query, undefined, 60 * 60 * 24 * 3, true, league, true);
+    const content = await requestSDV(table, query, undefined, 60 * 60 * 24, true, league, true);
     return content?.data ?? [];
 }
 
