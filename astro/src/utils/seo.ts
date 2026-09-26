@@ -34,6 +34,16 @@ export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
 
 export interface Term { term: string; definition: string; source?: string }
 
+/** Deep-link id for a glossary term: "Successful play / Success Rate" -> "successful-play-success-rate". */
+export function termSlug(term: string): string {
+    return term.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** Link to one term on the single glossary page (#226: no per-term pages). */
+export function glossaryHref(term: string): string {
+    return `/glossary/#${termSlug(term)}`;
+}
+
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
 export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
     const url = new URL(pageUrl, ORIGIN).href;
@@ -45,6 +55,8 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         url,
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
+            '@id': `${url}#${termSlug(t.term)}`,
+            url: `${url}#${termSlug(t.term)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
             description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
