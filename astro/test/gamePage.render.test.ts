@@ -28,9 +28,10 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     },
 }));
 
+const sdvState = vi.hoisted(() => ({ percentiles: [] as any[] }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    retrievePercentiles: async () => [],
+    retrievePercentiles: async () => sdvState.percentiles,
     retrieveTeamSummaries: async () => [],
     retrieveTeamSeasonInformation: async () => null,
     retrieveMatchupHistory: async () => [],
@@ -505,4 +506,49 @@ describe('the play filter is the only way to focus the plays on a player', () =>
         expect(page).not.toContain('focus-jump');
         expect(page).not.toContain('data-focus-jump');
     });
+});
+describe('chart islands serialize only the fields their charts read', () => {
+    // Every client:only prop is serialized into the HTML. Each drive chart
+    // carried both full ESPN team objects (~8.8KB a drive, ~212KB a game) to
+    // read one colour apiece, and the WP chart carried the whole percentile
+    // table (~103KB) to rank one number, the excitement index.
+    const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const islandProps = (html: string, component: string) => [...html.matchAll(/<astro-island ([^>]*)>/g)]
+        .map((m) => m[1])
+        .filter((attrs) => attrs.includes(component))
+        .map((attrs) => JSON.parse(unescape(attrs.match(/ props="([^"]*)"/)![1])));
+    const renders: Record<string, string> = {};
+    beforeAll(async () => {
+        sdvState.percentiles = Array.from({ length: 101 }, (_, i) => ({ season: 2025, pctile: i / 100, GEI: i / 20, EPAplay: i / 100 - 0.5 }));
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: v2 } = await import('../src/components/game/GamePage.astro');
+        const { default: classic } = await import('../src/components/game/classic/GamePage.astro');
+        for (const [name, Page] of [['v2', v2], ['classic', classic]] as const) {
+            renders[name] = await container.renderToString(Page, {
+                props: { id: GAME_ID, game },
+                request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+            });
+        }
+        sdvState.percentiles = [];
+    }, 60_000);
+
+    for (const twin of ['v2', 'classic']) {
+        test(`${twin}: each drive chart gets a team colour, not the team`, () => {
+            const drives = islandProps(renders[twin], 'DriveChart');
+            expect(drives.length).toBeGreaterThan(10);
+            for (const p of drives) {
+                expect(Object.keys(p.offense[1])).toEqual(['color']);
+                expect(Object.keys(p.defense[1])).toEqual(['color']);
+                expect(p.offense[1].color[1]).toMatch(/^[0-9a-f]{6}$/i);
+            }
+        });
+
+        test(`${twin}: the WP chart gets the excitement column, not the percentile table`, () => {
+            const [wp] = islandProps(renders[twin], 'WinProbabilityChart');
+            const rows = wp.percentiles[1].map((r: any) => r[1]);
+            expect(rows).toHaveLength(101);
+            expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
+        });
+    }
 });
