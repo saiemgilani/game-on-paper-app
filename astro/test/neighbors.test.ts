@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { neighborWindow, playerKey, playerNeighborLists, teamKey, teamNeighborLists } from '../src/utils/neighbors';
-import { roundNumber } from '../src/utils/misc';
+import { generateMarginalString, roundNumber } from '../src/utils/misc';
 
 const fx = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
@@ -55,6 +55,18 @@ describe('display rows', () => {
         expect(lists[1].title).toBe('Off EPA/Play');
         for (const l of lists) for (const c of l.rows) expect(c.href).toMatch(/^\/nfl\/year\/2025\/team\/\d+$/);
         expect(lists[2].rows.find((c) => c.self)!.value).toBe(`${roundNumber(rows[0].success_off * 100, 2, 1)}%`);
+
+        // net_adj_epa is a differential, exactly like TeamLeaderboardTable/TeamCard/MatchupView:
+        // a positive value gets generateMarginalString's leading '+', never a bare roundNumber
+        const topTeam = rows.find((r: any) => r.net_adj_epa_rank === 1);
+        expect(topTeam.net_adj_epa).toBeGreaterThan(0);
+        const topSelf = teamNeighborLists(rows, topTeam.team_id, 'nfl', 2025)[0].rows.find((c) => c.self)!;
+        expect(topSelf.value.startsWith('+')).toBe(true);
+        expect(topSelf.value).toBe(generateMarginalString(topTeam.net_adj_epa, 2, 2));
+
+        // a percent metric (explosive_off, which has no SDV_TEAM_METRIC_FORMATTING_VALUES entry
+        // of its own) still ends with '%' after the differential fix
+        expect(lists[3].rows.find((c) => c.self)!.value.endsWith('%')).toBe(true);
     });
 
     test('player lists: leaderboard titles, and links only for a viewer the player-pages flag admits', () => {

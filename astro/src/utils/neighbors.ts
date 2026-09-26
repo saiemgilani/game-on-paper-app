@@ -7,8 +7,8 @@
  * strings, NFL player ids as gsis strings, CFB player ids as numbers. A traded
  * player has one row per team, so a player key is `player:team`.
  */
-import { cleanField, formatRank, generateTeamMetricTitle, numberOrNull, roundNumber } from './misc';
-import { SDV_PLAYER_METRIC_CATEGORIES } from './constants';
+import { cleanField, formatRank, generateCategoryForMetric, generateMarginalString, generateTeamMetricTitle, numberOrNull, roundNumber } from './misc';
+import { SDV_PLAYER_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_PERCENT_COLUMNS } from './constants';
 import { formatPlayerMetric, PLAYER_NAME_FIELD, playerHref, type PlayerCategory } from './players';
 import { leaguePath, type League } from './league';
 
@@ -33,15 +33,18 @@ export function neighborWindow(rows: Row[], keyOf: (r: Row) => string, selfKey: 
     return out.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key));
 }
 
-/** The six team metrics the team-season page lists, each in the leaderboards' own format. */
-export const TEAM_NEIGHBOR_METRICS: { key: string; format: [number, number, number]; pct: boolean }[] = [
-    { key: 'net_adj_epa', format: [1, 2, 2], pct: false },
-    { key: 'EPAplay_off', format: [1, 2, 2], pct: false },
-    { key: 'success_off', format: [100, 2, 1], pct: true },
-    { key: 'explosive_off', format: [100, 2, 1], pct: true },
-    { key: 'EPAplay_def', format: [1, 2, 2], pct: false },
-    { key: 'success_def', format: [100, 2, 1], pct: true },
-];
+/** The six team metrics the team-season page lists, in the leaderboards' own order. */
+export const TEAM_NEIGHBOR_METRICS: string[] = ['net_adj_epa', 'EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def', 'success_def'];
+
+/**
+ * explosive_off/explosive_def carry no entry in SDV_TEAM_METRIC_FORMATTING_VALUES under
+ * either the offensive or defensive category -- fall back to the same [mult, power10,
+ * fixed] every other percent-rate metric in their category uses (e.g. success_off/success_def).
+ */
+const TEAM_METRIC_FORMAT_FALLBACK: Record<string, [number, number, number]> = {
+    explosive_off: [100, 2, 1],
+    explosive_def: [100, 2, 1],
+};
 
 /** Per player category, the metrics listed; keys and titles are the season leaderboards'. */
 export const PLAYER_NEIGHBOR_METRICS: Record<PlayerCategory, string[]> = {
@@ -54,19 +57,31 @@ export interface NeighborCell { key: string; rank: string; label: string; href: 
 export interface NeighborList { metric: string; title: string; rows: NeighborCell[] }
 
 export function teamNeighborLists(rows: any[], teamId: string | number, league: League, season: number): NeighborList[] {
-    return TEAM_NEIGHBOR_METRICS.map(({ key, format: [mult, p10, fixed], pct }) => ({
-        metric: key,
-        title: generateTeamMetricTitle(key),
-        rows: neighborWindow(rows, teamKey, teamId, key).map((n) => ({
-            key: n.key,
-            rank: formatRank(n.rank),
-            label: cleanField(n.row, 'pos_team'),
-            href: leaguePath(league, `/year/${season}/team/${n.row.team_id}`),
-            teamId: String(n.row.team_id),
-            value: roundNumber(n.value * mult, p10, fixed) + (pct ? '%' : ''),
-            self: n.self,
-        })),
-    })).filter((l) => l.rows.length > 0);
+    return TEAM_NEIGHBOR_METRICS.map((key) => {
+        // mirrors TeamLeaderboardTable.astro's generateMetricCell: category comes from the
+        // metric name, the leaderboard's own [mult, power10, fixed] comes from that category,
+        // and a differential renders with generateMarginalString (the leading "+"/"-"), never roundNumber
+        const category = generateCategoryForMetric(key).toLowerCase();
+        const [mult, p10, fixed] = SDV_TEAM_METRIC_FORMATTING_VALUES[category]?.[key] ?? TEAM_METRIC_FORMAT_FALLBACK[key] ?? [1, 2, 2];
+        const pct = SDV_TEAM_PERCENT_COLUMNS.includes(key);
+        return {
+            metric: key,
+            title: generateTeamMetricTitle(key),
+            rows: neighborWindow(rows, teamKey, teamId, key).map((n) => {
+                const value = n.value * mult;
+                const valString = category === 'differential' ? generateMarginalString(value, p10, fixed) : roundNumber(value, p10, fixed);
+                return {
+                    key: n.key,
+                    rank: formatRank(n.rank),
+                    label: cleanField(n.row, 'pos_team'),
+                    href: leaguePath(league, `/year/${season}/team/${n.row.team_id}`),
+                    teamId: String(n.row.team_id),
+                    value: valString + (pct ? '%' : ''),
+                    self: n.self,
+                };
+            }),
+        };
+    }).filter((l) => l.rows.length > 0);
 }
 
 export function playerNeighborLists(rows: any[], selfKey: string, category: PlayerCategory,
