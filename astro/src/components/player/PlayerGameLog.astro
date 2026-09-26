@@ -37,11 +37,24 @@
  *   beside the number as small faded `94th %ile`, the Binion box score's way of
  *   printing one (review on #267). That one works in
  *   week 1, so it is the default whenever the player's own season is too short.
+ *
+ * One row can come from somewhere else entirely. The API serves processed
+ * FINALS, so a game being played right now has no row at all -- and the Live
+ * badge on the rows it does have could never fire (review on #268). When the
+ * scoreboard says one of the player's teams is playing, `livePlayerGames`
+ * synthesizes that row from the scoreboard event and puts it on top: opponent,
+ * kickoff, live score, the Live badge, and an em dash in every stat cell,
+ * because no play of it has been processed yet. It carries `data-live-row` so
+ * it is never mistaken for a stored row, and the API's own row replaces it on
+ * the next render after the processor lands the final. Its nulls are also left
+ * out of the shading ranks, so an unplayed game cannot come out purple.
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
-import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { espnGameId, gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
+import { badgeText, type LiveGameStatus, type LiveQaBadge } from '../../utils/liveQa';
+import StatusBadge from '../StatusBadge.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import { DateTime } from 'luxon';
@@ -52,9 +65,17 @@ interface Props {
     espnGameIds?: Record<string, string>
     /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, number[]>
+    /** ESPN event id -> whether it is in progress RIGHT NOW, and (admin only) its QA verdict */
+    live?: Record<string, LiveGameStatus>
 }
-const { games, espnGameIds = {}, leagueBreaks = {} } = Astro.props;
+const { games, espnGameIds = {}, leagueBreaks = {}, live = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
+// Two different claims, two different audiences (#268): "this game is being
+// played" is public and generic, while anything about the payload's soundness
+// -- the served source, the gate's verdict, its rule list -- is admin detail,
+// exactly as `AdminGameTools.astro` (#263) has it. A preview-cookie holder is
+// NOT an admin; only a verified admin session is.
+const admin = Astro.locals.adminAuthed === true;
 
 /** An ISO instant luxon can actually render, or null. */
 function kickoff(row: PlayerGameRow): string | null {
@@ -82,6 +103,12 @@ for (const [key] of SHADED) {
 }
 /** W is good, L is bad, on the site's own ramp-end colours. */
 const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-text-purple' };
+/**
+ * The QA pill's hover copy. It used to print under the pill, which put admin text
+ * in a row the public reads past (review on #268); hovering the pill is where it
+ * belongs, and it is the only place the rule list was ever going to fit anyway.
+ */
+const qaTitle = (b: LiveQaBadge): string => [badgeText(b), b.rules].filter(Boolean).join(' - ');
 const shade = (row: PlayerGameRow, key: string): string => {
     const column = ranks.get(key);
     // two games are not a distribution: shading them would paint one green and
@@ -104,11 +131,9 @@ const mode: 'player' | 'league' = ranked >= 3 || !hasLeague ? 'player' : 'league
 const season = games[0]?.season;
 const leagueTitle = `Percentile among every player-game in the ${league === 'cfb' ? 'nation' : 'league'} that season`;
 
-/** The ESPN event id for a row, or null when the schedule has no crosswalk for it. */
+/** The link to a row's game page, or null when the schedule has no crosswalk for it. */
 function gameHref(row: PlayerGameRow): string | null {
-    const id = row.game_id ? String(row.game_id) : null;
-    if (!id) return null;
-    const espn = /^\d+$/.test(id) ? id : espnGameIds[id];
+    const espn = espnGameId(row, espnGameIds);
     return espn ? leaguePath(league, `/game/${espn}`) : null;
 }
 
@@ -123,6 +148,12 @@ function opponentId(row: PlayerGameRow): string | number | null {
     if (id === null || id === undefined || id === '') return null;
     if (/^\d+$/.test(String(id))) return id;
     return league === 'nfl' ? nflTeamIdByAbbr(id) : null;
+}
+
+/** The live entry for a row, or undefined -- every other row renders unchanged. */
+function liveOf(row: PlayerGameRow): LiveGameStatus | undefined {
+    const espn = espnGameId(row, espnGameIds);
+    return espn ? live[espn] : undefined;
 }
 
 const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (string | number)[];
@@ -158,7 +189,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
         <tbody>
             {games.map((g: PlayerGameRow) => (
                 <Fragment>
-                <tr>
+                <tr data-live-row={g.from_scoreboard === true ? 'true' : undefined}>
                     <td class="text-left text-nowrap numeral" colspan="1">
                         {kickoff(g) === null
                             ? (gameHref(g) ? <a href={gameHref(g)}>—</a> : '—')
@@ -181,8 +212,15 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                         </div>
                     </td>
                     <td class="text-center text-nowrap numeral" colspan="1">
-                        {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
-                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
+                        <span class="d-inline-flex align-items-center gap-1">
+                            {g.result && <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span>}
+                            {g.team_score != null && g.opponent_score != null && <span>{g.team_score}-{g.opponent_score}</span>}
+                            {liveOf(g) && <StatusBadge label="Live" variant="danger" title="This game is in progress" />}
+                            {admin && liveOf(g)?.qa && (
+                                <StatusBadge label="QA" variant="secondary" dataAttr="live-qa"
+                                    title={qaTitle(liveOf(g)!.qa!)} />
+                            )}
+                        </span>
                     </td>
                     <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (

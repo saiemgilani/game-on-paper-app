@@ -1,0 +1,33 @@
+---
+/**
+ * A status pill: the site's one badge component.
+ *
+ * Bootstrap's `badge bg-*` was being spelled out inline everywhere it was
+ * wanted (`Footer.astro`'s PREVIEW, `BroadcastButton`'s network, the play
+ * page's `DecisionCard`), and the player game log was about to add a fourth.
+ * This is that markup, once, so a new caller gets the same pill, the same
+ * `title` handling and the same detail line rather than approximating them.
+ *
+ * `variant` is a Bootstrap SEMANTIC name, never a hex or a hand-rolled colour,
+ * so the pill has a dark half for free. Anything the badge needs to say beyond
+ * its own word goes in `title`, which is hover copy and nothing more: a pill
+ * that printed its own detail as a second line put admin text in a public row
+ * (review on #268).
+ */
+export type StatusVariant = 'danger' | 'warning' | 'success' | 'secondary' | 'info' | 'primary' | 'dark';
+
+interface Props {
+    /** the pill's word -- short, one or two words */
+    label: string
+    variant?: StatusVariant
+    /** hover copy on the pill */
+    title?: string | null
+    /** utility classes for the pill, e.g. `ms-1` */
+    class?: string
+    /** marks the pill, so a test or a style can find this badge's kind */
+    dataAttr?: string
+}
+const { label, variant = 'secondary', title, class: className, dataAttr } = Astro.props;
+---
+<span class:list={["badge", `bg-${variant}`, "align-middle", className]}
+    title={title ?? undefined} data-badge={dataAttr}>{label}</span>
