@@ -1,12 +1,14 @@
 ---
 import { DateTime } from 'luxon';
-import { EMPTY_ESPN_COMPETITION, type ESPNCompetition, type ESPNPlayByPlayResponse, type ESPNScheduleEvent } from '../../resources/espn';
+import { EMPTY_ESPN_COMPETITION, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import type { ProcessedGame } from '../../resources/python';
-import { isChampionshipEvent, cleanLocation } from '../../utils/misc';
+import { isChampionshipEvent } from '../../utils/misc';
 import { leaguePath } from '../../utils/league';
 import LocalDate from '../LocalDate.svelte';
 import WatchButton from './WatchButton.astro';
 import AdminGameTools from './AdminGameTools.astro';
+import GameTitle from './GameTitle.astro';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props {
    espnGame?: ESPNPlayByPlayResponse
@@ -31,22 +33,26 @@ const isGameInactive = (gameStatus.type.completed == true || statusDescription.i
 
 const gameDate = espnComp.date;
 
+const league = Astro.locals.league;
+const links = isFeatureEnabled('game-links', Astro.locals);
+const scheduled = statusDescription.includes("Schedule");
+const season = espnHeader?.season;
+// the game's own week when linking is on; the scoreboard (today's week) otherwise
+const backHref = (links && season?.year && espnHeader?.week != null)
+    ? leaguePath(league, `/year/${season.year}/type/${season.type}/week/${espnHeader.week}`)
+    : leaguePath(league, "/");
+
 ---
 
 <div class="py-3">
     <header class="blog-header d-none d-lg-inline">
         <div class="row d-flex flex-wrap justify-content-between align-items-center">
             <div class="col-2 pt-1">
-                <a class="btn btn-sm btn-outline-primary align-middle" href={leaguePath(Astro.locals.league, "/")}><i class="bi-arrow-left"></i></a>
+                <a class="btn btn-sm btn-outline-primary align-middle" href={backHref}><i class="bi-arrow-left"></i></a>
             </div>
             <div class="col-8 text-center">
                 <div>
-                    {
-                        (statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
-                    }
-                    {
-                        (!statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
-                    }
+                    <GameTitle awayTeam={awayTeam} homeTeam={homeTeam} awayScore={scheduled ? null : awayComp.score} homeScore={scheduled ? null : homeComp.score} links={links} league={league} />
                     {
                         (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                     }
@@ -67,12 +73,7 @@ const gameDate = espnComp.date;
         <div class="row mb-3">
             <div class="col-12 text-center">
                 <div>
-                    {
-                        (statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} @ ${cleanLocation(homeTeam)}`}</h1>
-                    }
-                    {
-                        (!statusDescription.includes("Schedule")) && <h1 class="h2 mb-0">{`${cleanLocation(awayTeam)} ${awayComp.score} @ ${cleanLocation(homeTeam)} ${homeComp.score}`}</h1>
-                    }
+                    <GameTitle awayTeam={awayTeam} homeTeam={homeTeam} awayScore={scheduled ? null : awayComp.score} homeScore={scheduled ? null : homeComp.score} links={links} league={league} />
                     {
                         (gameNote != "") && <p class={`text-small mt-0 mb-3 ${isChampEvent ? "championship-text" : "text-primary"}`}><strong>{gameNote}</strong></p>
                     }
@@ -87,7 +88,7 @@ const gameDate = espnComp.date;
         </div>
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <a class="btn btn-sm btn-outline-primary align-middle p-2" href={leaguePath(Astro.locals.league, "/")}><i class="bi-arrow-left"></i> Back to Scoreboard</a>
+                <a class="btn btn-sm btn-outline-primary align-middle p-2" href={backHref}><i class="bi-arrow-left"></i> Back to Scoreboard</a>
             </div>
             <div>
                 <WatchButton game={espnComp} />

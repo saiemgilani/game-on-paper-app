@@ -56,6 +56,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
     'player-pages': 'preview',
+    // Game-page header links: the team names in the h1 go to /team/<id>, and the
+    // Back button goes to the game's own week. Links on text the page already
+    // shows, no new element. Read in GameHeader.astro, which both game-page
+    // twins and the pregame page import.
+    'game-links': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

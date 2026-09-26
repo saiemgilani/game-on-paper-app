@@ -31,10 +31,11 @@ describe('GamePage renders a finished NFL game end to end', () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        // these v2 renders assert the public header; game-links (flag on) is covered by gameHeaderLinks.render.test.ts
         html = await container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true },
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
         if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);
@@ -95,7 +96,7 @@ describe('the NFL game page carries the same v2 blocks as the CFB page (#243 ali
         const html = await container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true },
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
         expect(html).toContain('href="#paper-index-panel"');
         expect(html).toContain('Deserved Win %');
@@ -114,7 +115,7 @@ describe('usage / situational / special-teams sections', () => {
         const render = async (game: any) => container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true },
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
         const bare = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const without = await render(bare);
