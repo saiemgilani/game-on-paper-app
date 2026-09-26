@@ -19,8 +19,11 @@ class FootballField {
 
         this.sourceElement = document.getElementById(elementId);
 
+        // the bitmap stays 720x300; on a narrower screen the element shrinks to fit and keeps its
+        // ratio (the border is inside the width: Bootstrap makes every element border-box)
         this.sourceElement.style.width = "720px";
-        this.sourceElement.style.height = "300px";
+        this.sourceElement.style.maxWidth = "100%";
+        this.sourceElement.style.height = "auto";
         this.sourceElement.style.border = `12px white solid`;
 
         // Set actual size in memory (scaled to account for extra pixel density).
