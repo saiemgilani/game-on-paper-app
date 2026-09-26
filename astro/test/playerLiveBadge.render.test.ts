@@ -215,8 +215,10 @@ describe('the live badge is public and generic', () => {
 
 describe('the game being played right now is not in the log, so it is put there', () => {
     /** the `<tr>` blocks of the game log, header dropped */
+    // a game's name row only: its stat line is a spanning row of its own (#274)
     const logRows = (html: string): string[] =>
-        html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2);
+        html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2)
+            .filter((r) => !r.startsWith(' class="stat-line-row"'));
 
     test('an in-progress game for his team becomes the LAST row, with the Live badge', async () => {
         world.board = [LIVE_EVENT];
@@ -233,9 +235,10 @@ describe('the game being played right now is not in the log, so it is put there'
         expect(live).toContain('href="/game/401856687"');
         expect(live).toContain('17-14');
         expect(live).toContain('<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>');
-        // nothing of it has been processed, so every stat cell is an em dash
+        // nothing of it has been processed, so every stat cell is an em dash: plays and
+        // the three shaded metrics (the stat line is its own row now, #274)
         const cells = [...live.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
-        expect(cells.slice(-5)).toEqual(['—', '—', '—', '—', '—']);
+        expect(cells.slice(-4)).toEqual(['—', '—', '—', '—']);
         // and a stored row is untouched by any of it
         expect(rows[0]).not.toContain('data-live-row');
         expect(rows[1]).toContain('<span class="hulk-text-green">W</span><span>31-28</span>');
