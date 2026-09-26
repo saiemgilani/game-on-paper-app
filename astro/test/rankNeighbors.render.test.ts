@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { teamNeighborLists } from '../src/utils/neighbors';
 
 // The nearby-rank lists rendered from real ranked rows (fixtures/neighbors-ranked-rows.json).
@@ -30,5 +30,41 @@ describe('NeighborRanks', () => {
         const selfRow = html.match(/<tr[^>]*class="table-active"[^>]*>[\s\S]*?<\/tr>/);
         expect(selfRow).toBeTruthy();
         expect(selfRow![0]).toMatch(/<strong>LA<\/strong>/);
+    }, 60_000);
+});
+
+const calls: any[] = [];
+vi.mock('../src/resources/sdv', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/sdv')>()),
+    retrieveTeamSummaries: async (req: any) => {
+        calls.push(req);
+        const rows = fx.nfl_team_summaries_2025;
+        return req.team_id ? rows.filter((r: any) => String(r.team_id) === String(req.team_id)) : rows;
+    },
+    retrieveTeamSeasonInformation: async () => null,
+    retrievePlayerSummaries: async () => [],
+}));
+vi.mock('../src/resources/espn', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/espn')>()),
+    retrieveTeamInformation: async (id: string) => ({ id, location: 'Los Angeles', name: 'Rams', abbreviation: 'LAR', color: '003594', alternateColor: 'ffd100' }),
+}));
+
+const fakeAstro = (preview: boolean) => ({
+    params: { year: '2025', id: '14' }, locals: { preview } as any,
+    url: new URL('https://gameonpaper.com/nfl/year/2025/team/14'), cache: { set: () => {} },
+}) as any;
+
+describe('loadSeasonTeam', () => {
+    test('reads the season-wide neighbour rows only for a viewer the flag admits', async () => {
+        const { loadSeasonTeam } = await import('../src/routes/seasonTeam');
+        calls.length = 0;
+        const pub: any = await loadSeasonTeam(fakeAstro(false), 'nfl');
+        expect(pub.neighborLists).toEqual([]);
+        expect(calls.some((c) => c.columns?.includes('explosive_off'))).toBe(false);
+        calls.length = 0;
+        const prev: any = await loadSeasonTeam(fakeAstro(true), 'nfl');
+        expect(calls.some((c) => c.columns?.includes('explosive_off') && !c.team_id)).toBe(true);
+        expect(prev.neighborLists).toHaveLength(6);
+        expect(prev.neighborLists.every((l: any) => l.rows.filter((r: any) => r.self).length === 1)).toBe(true);
     }, 60_000);
 });
