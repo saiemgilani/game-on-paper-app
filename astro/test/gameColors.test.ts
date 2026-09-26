@@ -101,6 +101,26 @@ describe('pickGameColors', () => {
         }
     });
 
+    // Last resort: when no candidate or readable variant separates, both colours move.
+    // At ΔE 30 on the dark theme, walking only the away colour tops out at 28.21 for
+    // this pair; moving the home colour a few L* too clears it.
+    it('moves both colours, not just away, when that is what separates them', () => {
+        const dark = pickGameColors({ color: '#77aaaa' }, { color: '#44aaaa' }, GAME_BACKGROUNDS, 30).dark;
+        expect(deltaE2000(dark.home, dark.away)).toBeGreaterThanOrEqual(30);
+        for (const c of [dark.home, dark.away]) expect(contrastRatio(c, GAME_BACKGROUNDS.dark)).toBeGreaterThanOrEqual(GAME_COLOR_MIN_CONTRAST);
+        expect(dark.home).not.toBe('#77aaaa');
+    });
+
+    it('returns the widest readable pair, quickly, when no pair can separate', () => {
+        const t0 = performance.now();
+        const colors = pickGameColors({ color: '#77aaaa' }, { color: '#44aaaa' }, GAME_BACKGROUNDS, 150);
+        expect(performance.now() - t0).toBeLessThan(2000);
+        for (const t of THEMES) for (const c of [colors[t].home, colors[t].away]) {
+            expect(contrastRatio(c, GAME_BACKGROUNDS[t])).toBeGreaterThanOrEqual(GAME_COLOR_MIN_CONTRAST);
+        }
+        expect(pickGameColors({ color: '#77aaaa' }, { color: '#44aaaa' }, GAME_BACKGROUNDS, 150)).toEqual(colors);
+    });
+
     it('never throws and never clashes when a team has no colour at all', () => {
         expectUsableBoth(pickGameColors({ color: 'null', alt_color: 'null' }, undefined));
         expectUsableBoth(pickGameColors(null, null));

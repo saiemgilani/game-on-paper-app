@@ -529,8 +529,10 @@ export function contrastRatio(hexA: string, hexB: string): number {
  * ΔE2000 >= GAME_COLOR_MIN_DELTA_E apart with each colour >= GAME_COLOR_MIN_CONTRAST
  * against the background wins, so the primaries are kept whenever they work.
  * Failing that, the same candidates with each unreadable colour's L* moved
- * just far enough from the background to read; failing that, the away
- * colour's L* is walked away from the home colour's until they separate.
+ * just far enough from the background to read; failing that, both colours'
+ * L* move, within the range where each still reads, least total movement
+ * first (ties keep home's closer to its own), until they separate. If no
+ * readable pair separates, the widest readable separation found.
  * Deterministic, and never the clashing pair.
  */
 export function pickGameColors(
@@ -576,19 +578,28 @@ function pickPairOn(candidates: [string, string][], background: string, minDelta
     const variants = candidates.map(([x, y]) => [readableVariant(x), readableVariant(y)]);
     for (const [x, y] of variants) if (apart(x, y)) return { home: x, away: y };
 
-    // walk the away colour's L* away from home's, then back past its start;
-    // keep the widest readable separation seen in case nothing clears
+    // move both colours' L* within the range where each still reads, least total
+    // movement first; keep the widest readable separation seen in case nothing clears
     const [x, y] = variants[0];
-    const Lx = hexToLab(x)[0], Ly = hexToLab(y)[0];
-    const out = Ly >= Lx ? 1 : -1;
+    const readableShifts = (c: string) => {
+        const L0 = hexToLab(c)[0];
+        const byShift: string[][] = []; // byShift[|k|] = readable variants moved |k| in L*
+        for (let k = -100; k <= 100; k++) {
+            if (L0 + k < 0 || L0 + k > 100) continue;
+            const v = k === 0 ? c : withLightness(c, L0 + k);
+            if (readable(v)) (byShift[Math.abs(k)] ??= []).push(v);
+        }
+        return byShift;
+    };
+    const xs = readableShifts(x), ys = readableShifts(y);
     let best: GameColors = { home: x, away: y }, bestDE = deltaE2000(x, y);
-    for (const dir of [out, -out]) {
-        for (let k = 1; k <= 100; k++) {
-            const v = withLightness(y, Ly + dir * k);
-            if (!readable(v)) break;
-            const d = deltaE2000(x, v);
-            if (d >= minDeltaE) return { home: x, away: v };
-            if (d > bestDE) { best = { home: x, away: v }; bestDE = d; }
+    for (let total = 1; total <= 200; total++) {
+        for (let i = 0; i <= total; i++) {
+            for (const hx of xs[i] ?? []) for (const hy of ys[total - i] ?? []) {
+                const d = deltaE2000(hx, hy);
+                if (d >= minDeltaE) return { home: hx, away: hy };
+                if (d > bestDE) { best = { home: hx, away: hy }; bestDE = d; }
+            }
         }
     }
     return best;
