@@ -88,13 +88,13 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-const render = async (league: 'cfb' | 'nfl') => {
+const render = async (league: 'cfb' | 'nfl', flagOverrides: Record<string, boolean> = {}) => {
     const { id } = FIXTURES[league];
     const { default: PreGamePage } = await import('../src/components/game/PreGamePage.astro');
     const html = await container.renderToString(PreGamePage, {
         props: { id, espnGame: payloads[league].playbyplay, league },
         request: new Request(`https://gameonpaper.com${league === 'nfl' ? '/nfl' : ''}/game/${id}`),
-        locals: { league, preview: true },
+        locals: { league, preview: true, flagOverrides },
     });
     if (process.env.DUMP_HTML) writeFileSync(`${process.env.DUMP_HTML}.${league}.html`, html);
     return html;
@@ -154,6 +154,14 @@ describe('PreGamePage renders a scheduled NFL game as an NFL page', () => {
         expect(html).toContain('MatchupRadarChart');
         expect(html).toMatch(/league&quot;:\[0,&quot;nfl&quot;\]/);
     });
+
+    test('game-colours: the radar island gets the per-theme pair with the flag on, and no colours prop without it', async () => {
+        const on = await render('nfl', { 'game-colours': true });
+        expect(on).toMatch(/colors&quot;:\[0,\{&quot;light&quot;/);
+        const off = await render('nfl', { 'game-colours': false });
+        expect(off).not.toContain('colors&quot;');
+        expect(off).not.toContain('light&quot;');
+    }, 120_000);
 });
 
 describe('PreGamePage still renders a college game as a college page', () => {
