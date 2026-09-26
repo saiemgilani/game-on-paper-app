@@ -2,7 +2,7 @@
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import { espnLogoLeague } from '../../../utils/league';
-import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
+import { cleanAbbreviation, roundNumber, type GameColors } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -13,14 +13,16 @@ interface Props {
     homeTeam: ESPNTeam
     awayTeam: ESPNTeam
     completed: boolean
+    colors?: GameColors
 }
 
-const { result, homeTeam, awayTeam, completed } = Astro.props;
+const { result, homeTeam, awayTeam, completed, colors } = Astro.props;
 
 const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 100)));
 const homePct = clampPct(result.homeShare);
 const awayPct = 100 - homePct;
-const barColor = (t: ESPNTeam, fallback: string) => `#${t.color ?? fallback}`;
+// the page's colour decision when there is one ('game-colours'), else each team's own
+const barColor = (t: ESPNTeam, fallback: string) => colors ? (t === homeTeam ? colors.home : colors.away) : `#${t.color ?? fallback}`;
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;

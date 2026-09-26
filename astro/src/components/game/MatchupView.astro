@@ -1,6 +1,7 @@
 ---
 import type { SDVGame, SDVTeam, SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
-import { formatYardline, roundNumber, generateColorRampValue, generateMarginalString, produceTeamLogoLink } from '../../utils/misc';
+import { formatYardline, roundNumber, generateColorRampValue, generateMarginalString, produceTeamLogoLink, pickGameColors, type GameColors } from '../../utils/misc';
+import { isFeatureEnabled } from '../../utils/features';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 import FallbackSpinner from '../FallbackSpinner.astro';
 import MatchupHistoryTable from './MatchupHistoryTable.astro';
@@ -12,9 +13,12 @@ interface Props {
     homeTeamSummary: SDVTeamSummary | null
     awayTeamSummary: SDVTeamSummary | null
     matchupHistory: SDVGame[]
+    /** the game page's colour decision; the matchup page makes its own from team_info */
+    colors?: GameColors
 }
 
 const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary, matchupHistory } = Astro.props;
+const colors = Astro.props.colors ?? (isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(homeTeamSeason?.team, awayTeamSeason?.team) : undefined);
 
 const league = Astro.locals.league ?? DEFAULT_LEAGUE;
 // the rank colour ramp scales to the league's team count: on the 134-team CFB
@@ -257,7 +261,7 @@ const matchupData = [
 
 ---
 <div class="container mb-3">
-    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} league={league}>
+    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} league={league} {...(colors ? { colors } : {})}>
         <FallbackSpinner slot="fallback" />
     </MatchupRadarChart>
     <div class="row">

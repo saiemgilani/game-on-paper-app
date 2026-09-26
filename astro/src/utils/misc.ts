@@ -422,6 +422,168 @@ export function adjustColorForContrast(primaryColor: RGBColor, altColor: RGBColo
     return teamColor
 }
 
+// ---------------------------------------------------------------------------
+// One colour decision per game (flag 'game-colours'). The page decides once
+// and hands the same { home, away } pair to every chart, so the drive chart,
+// the WP/EP charts and the radar can no longer disagree.
+//
+// A pair is usable when the two colours are far enough apart (CIE ΔE2000) and
+// each is readable on BOTH page backgrounds -- one pair is decided on the
+// server, before anyone knows the viewer's theme.
+// ---------------------------------------------------------------------------
+
+export type GameColors = { home: string, away: string };
+/** The page backgrounds: `body` in bootstrap/base.css (light) and dark-game.css (dark). */
+export const GAME_BACKGROUNDS = { light: "#ffffff", dark: "#181a1b" } as const;
+/**
+ * Pairs closer than this read as one team. Calibrated on every 2004-2026 CFB
+ * game's ESPN header colours: below 20, same-hue pairs (maroon/red,
+ * navy/royal) still look like one colour at chart line width; it flags 22%
+ * of games, where the old ΔE94 <= 49 rule flagged 64%.
+ */
+export const GAME_COLOR_MIN_DELTA_E = 20;
+/** Each colour against each background (WCAG ratio). */
+export const GAME_COLOR_MIN_CONTRAST = 2.5;
+
+type TeamColorSource = { color?: string | null, alternateColor?: string | null, alt_color?: string | null } | null | undefined;
+
+/** '#rrggbb' or null. team_info carries the literal strings 'null' / '#null' for a missing colour. */
+function validTeamHex(value: unknown): string | null {
+    const m = /^#?([a-f\d]{6})$/i.exec(String(value ?? "").trim());
+    return m ? `#${m[1].toLowerCase()}` : null;
+}
+
+function rgbToHex(rgb: number[]): string {
+    return "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+}
+
+function hexToLab(hex: string): number[] {
+    const c = hexToRgb(hex)!;
+    return rgb2lab([c.r, c.g, c.b]);
+}
+
+// inverse of rgb2lab (D65, sRGB), clamped into gamut
+function lab2rgb([L, A, B]: number[]): number[] {
+    const fy = (L + 16) / 116, fx = A / 500 + fy, fz = fy - B / 200;
+    const f = (t: number) => (t ** 3 > 0.008856) ? t ** 3 : (t - 16 / 116) / 7.787;
+    const x = 0.95047 * f(fx), y = f(fy), z = 1.08883 * f(fz);
+    const lin = [
+        x * 3.2406 + y * -1.5372 + z * -0.4986,
+        x * -0.9689 + y * 1.8758 + z * 0.0415,
+        x * 0.0557 + y * -0.2040 + z * 1.0570,
+    ];
+    return lin.map((v) => {
+        const s = v > 0.0031308 ? 1.055 * Math.pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
+        return Math.max(0, Math.min(1, s)) * 255;
+    });
+}
+
+/** CIEDE2000 colour difference between two hex colours. */
+export function deltaE2000(hexA: string, hexB: string): number {
+    const [L1, a1, b1] = hexToLab(hexA), [L2, a2, b2] = hexToLab(hexB);
+    const rad = Math.PI / 180;
+    const Cm = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;
+    const G = 0.5 * (1 - Math.sqrt(Cm ** 7 / (Cm ** 7 + 25 ** 7)));
+    const a1p = (1 + G) * a1, a2p = (1 + G) * a2;
+    const C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
+    const hue = (ap: number, bp: number) => (ap === 0 && bp === 0) ? 0 : ((Math.atan2(bp, ap) / rad) + 360) % 360;
+    const h1 = hue(a1p, b1), h2 = hue(a2p, b2);
+    const dL = L2 - L1, dC = C2p - C1p;
+    let dh = 0;
+    if (C1p * C2p !== 0) dh = Math.abs(h2 - h1) <= 180 ? h2 - h1 : (h2 - h1 > 180 ? h2 - h1 - 360 : h2 - h1 + 360);
+    const dH = 2 * Math.sqrt(C1p * C2p) * Math.sin(dh * rad / 2);
+    const Lm = (L1 + L2) / 2, Cmp = (C1p + C2p) / 2;
+    let Hm = h1 + h2;
+    if (C1p * C2p !== 0) Hm = Math.abs(h1 - h2) <= 180 ? (h1 + h2) / 2 : (h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2);
+    const T = 1 - 0.17 * Math.cos((Hm - 30) * rad) + 0.24 * Math.cos(2 * Hm * rad) + 0.32 * Math.cos((3 * Hm + 6) * rad) - 0.20 * Math.cos((4 * Hm - 63) * rad);
+    const dTheta = 30 * Math.exp(-(((Hm - 275) / 25) ** 2));
+    const Rc = 2 * Math.sqrt(Cmp ** 7 / (Cmp ** 7 + 25 ** 7));
+    const Sl = 1 + 0.015 * (Lm - 50) ** 2 / Math.sqrt(20 + (Lm - 50) ** 2);
+    const Sc = 1 + 0.045 * Cmp, Sh = 1 + 0.015 * Cmp * T;
+    const Rt = -Math.sin(2 * dTheta * rad) * Rc;
+    return Math.sqrt((dL / Sl) ** 2 + (dC / Sc) ** 2 + (dH / Sh) ** 2 + Rt * (dC / Sc) * (dH / Sh));
+}
+
+/** WCAG 2 contrast ratio between two hex colours. */
+export function contrastRatio(hexA: string, hexB: string): number {
+    const lum = (hex: string) => {
+        const c = hexToRgb(hex)!;
+        const [r, g, b] = [c.r, c.g, c.b].map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const [hi, lo] = [lum(hexA), lum(hexB)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * The home and away colours for a game: one decision, used by every chart.
+ *
+ * Each team's `primary` / `alt` is the first valid colour across its sources,
+ * so pass `[teamInfoRow, espnHeaderTeam]` to let ESPN fill a team_info 'null'.
+ * Candidates, in order: both primaries, away alt, home alt, both alts. The
+ * first pair that is ΔE2000 >= GAME_COLOR_MIN_DELTA_E apart with each colour
+ * >= GAME_COLOR_MIN_CONTRAST against both backgrounds wins. Failing that, the
+ * same candidates, in the same order, with each unreadable colour's L* moved
+ * just far enough to read on both backgrounds (most team primaries are too
+ * dark for the dark theme). Failing that, the away colour's L* is walked away
+ * from the home colour's until they separate. Deterministic, and never the
+ * clashing pair.
+ */
+export function pickGameColors(
+    home: TeamColorSource | TeamColorSource[],
+    away: TeamColorSource | TeamColorSource[],
+    backgrounds: { light: string, dark: string } = GAME_BACKGROUNDS,
+    minDeltaE: number = GAME_COLOR_MIN_DELTA_E,
+): GameColors {
+    const slots = (src: TeamColorSource | TeamColorSource[]) => {
+        const list = Array.isArray(src) ? src : [src];
+        const first = (pick: (s: NonNullable<TeamColorSource>) => unknown[]) =>
+            list.flatMap((s) => (s ? pick(s) : [])).map(validTeamHex).find((c) => c !== null) ?? null;
+        const alt = first((s) => [s.alternateColor, s.alt_color]);
+        return { primary: first((s) => [s.color]) ?? alt ?? STANDARD_THEME_COLOR, alt };
+    };
+    const h = slots(home), a = slots(away);
+    const candidates = [[h.primary, a.primary], [h.primary, a.alt], [h.alt, a.primary], [h.alt, a.alt]]
+        .filter((p): p is [string, string] => p[0] !== null && p[1] !== null);
+
+    const readable = (c: string) => contrastRatio(c, backgrounds.light) >= GAME_COLOR_MIN_CONTRAST
+        && contrastRatio(c, backgrounds.dark) >= GAME_COLOR_MIN_CONTRAST;
+    const apart = (x: string, y: string) => deltaE2000(x, y) >= minDeltaE;
+    const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbToHex(lab2rgb([L, lab[1], lab[2]])); };
+    // nearest L* at which the colour reads on both backgrounds (too dark -> lighter, too light -> darker)
+    const readableVariant = (c: string) => {
+        if (readable(c)) return c;
+        const L0 = hexToLab(c)[0];
+        const dir = contrastRatio(c, backgrounds.dark) < GAME_COLOR_MIN_CONTRAST ? 1 : -1;
+        for (let k = 1; k <= 100; k++) {
+            const v = withLightness(c, L0 + dir * k);
+            if (readable(v)) return v;
+        }
+        return c;
+    };
+
+    for (const [x, y] of candidates) if (readable(x) && readable(y) && apart(x, y)) return { home: x, away: y };
+    const variants = candidates.map(([x, y]) => [readableVariant(x), readableVariant(y)]);
+    for (const [x, y] of variants) if (apart(x, y)) return { home: x, away: y };
+
+    // walk the away colour's L* away from home's, then back past its start;
+    // keep the widest readable separation seen in case nothing clears
+    const [x, y] = variants[0];
+    const Lx = hexToLab(x)[0], Ly = hexToLab(y)[0];
+    const out = Ly >= Lx ? 1 : -1;
+    let best: GameColors = { home: x, away: y }, bestDE = deltaE2000(x, y);
+    for (const dir of [out, -out]) {
+        for (let k = 1; k <= 100; k++) {
+            const v = withLightness(y, Ly + dir * k);
+            if (!readable(v)) break;
+            const d = deltaE2000(x, v);
+            if (d >= minDeltaE) return { home: x, away: v };
+            if (d > bestDE) { best = { home: x, away: v }; bestDE = d; }
+        }
+    }
+    return best;
+}
+
 export function calculateCumulativeSums(arr: number[]): number[] {
     const cumulativeSum = (sum => (value: number) => sum += value)(0);
     return arr.map(cumulativeSum);

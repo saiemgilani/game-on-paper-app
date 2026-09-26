@@ -8,7 +8,8 @@ import NavScroller, { type ScrollerItem } from '../../../components/NavScroller.
 import { type ProcessedGame } from '../../../resources/python';
 import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../../utils/manifest';
 import { gopStorage } from '../../../utils/telemetry';
-import { cleanLocation, isChampionshipEvent, deduplicateByKey } from '../../../utils/misc';
+import { cleanLocation, isChampionshipEvent, deduplicateByKey, pickGameColors } from '../../../utils/misc';
+import { isFeatureEnabled } from '../../../utils/features';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import Scripts from '../../Scripts.astro';
 import PlaysTable from './PlaysTable.astro';
@@ -69,6 +70,11 @@ const awayTeam = awayComp.team;
 const gameNote = game.header?.gameNote ?? "";
 const isChampEvent = isChampionshipEvent(gameNote);
 const gameStatus = game.header.competitions[0].status;
+// One colour decision for the whole page ('game-colours'): every chart gets
+// this pair. Off, each chart keeps its own legacy colours and the islands'
+// props are exactly what they were (no `colors` key at all).
+const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.teamInfo.home, game.teamInfo.away) : undefined;
+const colorProps = gameColors ? { colors: gameColors } : {};
 
 // Title/description/JSON-LD say what the page is (final, week, "EPA per play",
 // "win probability") -- "Game: X, Y" and "Advanced stats for X vs Y" gave Google
@@ -204,12 +210,12 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <div class="container-fluid">
             <div class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei} {...colorProps}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
-                    <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away}>
+                    <ExpectedPointsChart client:only id={id} plays={epPlays} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} {...colorProps}>
                         <FallbackSpinner slot="fallback" />
                     </ExpectedPointsChart>
                 </div>
@@ -431,7 +437,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 (gameDrives.length == 0) && (<p class="text-center text-muted">No drives in this game.</p>)
                             }
                             {
-                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} />
+                                (gameDrives.length > 0) && <DrivesTable drives={gameDrives} gamePlays={game.plays} prefix='drives' expandable={true} homeTeam={game.teamInfo.home} awayTeam={game.teamInfo.away} isNeutralSite={game.header.competitions[0].neutralSite} showGuide={true} colors={gameColors} />
                             }
                         </div>
                     </Panel>

@@ -1,8 +1,8 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, calculateCumulativeSums, roundNumber, waitForElement } from '../../utils/misc';
-const { id, plays, homeTeam, awayTeam } = $props();
+import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, calculateCumulativeSums, roundNumber, waitForElement } from '../../utils/misc';
+const { id, plays, homeTeam, awayTeam, colors = null } = $props();
 
 async function generateChart() {
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -20,7 +20,8 @@ async function generateChart() {
         y: 0
     });
 
-    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
+    // the page's one colour decision when it made one ('game-colours'), else the legacy per-chart rule
+    const [awayTeamColor, homeTeamColor] = colors ? [hexToRgb(colors.away), hexToRgb(colors.home)] : adjustTeamColorsForContrast(awayTeam, homeTeam)
 
     const epChart = new Chart(document.getElementById("epChart"), {
         type: 'scatter',

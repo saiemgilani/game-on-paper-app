@@ -2,11 +2,11 @@
 import Chart from 'chart.js/auto';
 import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
-import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -177,7 +177,8 @@ async function generateChart() {
     Chart.register(GradientFillLineController);
 
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
+    // the page's one colour decision when it made one ('game-colours'), else the legacy per-chart rule
+    const [awayTeamColor, homeTeamColor] = colors ? [hexToRgb(colors.away), hexToRgb(colors.home)] : adjustTeamColorsForContrast(awayTeam, homeTeam)
 
     var timestamps = [...Array(plays.length).keys()];
     let periodMarkers = []
