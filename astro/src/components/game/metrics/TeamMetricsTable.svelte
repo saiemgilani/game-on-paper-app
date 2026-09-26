@@ -3,7 +3,7 @@ import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
 import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { roundNumber } from '../../../utils/misc';
+import { metricDecimalPoints, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -20,7 +20,7 @@ const { title, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints
 const groups = teamBoxScores.map((group: any) => group[teamKey]);
 
 function handleMetricRows(item: string): string {
-    const finalDecimalPoints = decimalPoints || 1;
+    const finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
     if (item == "EPA_misc") {
         teamBoxScores.forEach((teamData: any) => {
@@ -30,6 +30,17 @@ function handleMetricRows(item: string): string {
             let pen_epa = parseFloat(teamData['EPA_penalty'] || 0);
             let val = (overall - off - sp_epa - pen_epa)
             result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
+        });
+    } else if (item == "off_yards") {
+        // The row is labelled "Yards" under the overall block and the pass and
+        // rush "Yards" rows sit right under it, so the header promises their
+        // sum. The payload's own off_yards is ESPN's per-play statYardage --
+        // a different universe from the processor's parsed pass/rush yardage,
+        // and off by up to 31 yards on a single game -- so it is shown as the
+        // tooltip instead of as the total.
+        teamBoxScores.forEach((teamData: any) => {
+            let val = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
+            result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
         });
     } else if (item == "avg_field_position") {
         teamBoxScores.forEach((teamData: any) => {
