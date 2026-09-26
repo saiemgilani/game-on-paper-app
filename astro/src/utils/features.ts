@@ -56,6 +56,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
     'player-pages': 'preview',
+    // Nearby-rank lists on the team-season and player pages: for each key
+    // metric, the teams or players ranked within five places, the page's own
+    // row marked. Promote once both leagues' lists have been reviewed.
+    'rank-neighbors': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
