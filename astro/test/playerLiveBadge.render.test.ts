@@ -108,14 +108,18 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrieveTeamSummaries: async () => [],
     resolveEspnAthleteId: async () => null,
 }));
+const scoreboardCalls: unknown[][] = [];
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
-    getCurrentScoreboard: async () => [
-        ...world.live.map((id) => ({
-            id, competitions: [{ status: { type: { state: 'in', name: 'STATUS_IN_PROGRESS', completed: false } } }],
-        })),
-        ...world.board,
-    ],
+    getCurrentScoreboard: async (...args: unknown[]) => {
+        scoreboardCalls.push(args);
+        return [
+            ...world.live.map((id) => ({
+                id, competitions: [{ status: { type: { state: 'in', name: 'STATUS_IN_PROGRESS', completed: false } } }],
+            })),
+            ...world.board,
+        ];
+    },
 }));
 vi.mock('../src/resources/python', async (orig) => ({
     ...(await orig<typeof import('../src/resources/python')>()),
@@ -135,6 +139,7 @@ beforeEach(() => {
     world.payload = {};
     world.fail = false;
     processed.mockClear();
+    scoreboardCalls.length = 0;
 });
 
 async function renderPage(locals: Record<string, unknown> = {}): Promise<string> {
@@ -256,11 +261,28 @@ describe('the game being played right now is not in the log, so it is put there'
 
     test('an in-progress game neither of his teams is in produces nothing', async () => {
         const { liveGameRow } = await import('../src/utils/liveQa');
-        expect(liveGameRow(LIVE_EVENT as any, new Set(['99']))).toBeNull();
-        expect(liveGameRow(LIVE_EVENT as any, new Set(['183']))).toMatchObject({
+        expect(liveGameRow(LIVE_EVENT as any, new Set(['99']), 'cfb')).toBeNull();
+        expect(liveGameRow(LIVE_EVENT as any, new Set(['183']), 'cfb')).toMatchObject({
             game_id: '401856687', opponent_id: '52', opponent: 'Florida State',
             home_away: 'home', team_score: 17, opponent_score: 14, result: null,
         });
+    });
+
+    test('the NFL synthetic row names its opponent the way the API rows do: an abbreviation', async () => {
+        // `test/fixtures/player-nfl-*.json` rows carry `opponent: "LAC"`, not
+        // "Chargers" or "LA Chargers" -- `shortDisplayName` would print the latter
+        // and read as a different team on the same page (review on #268).
+        const { liveGameRow } = await import('../src/utils/liveQa');
+        const nflEvent = { ...LIVE_EVENT, competitions: [{
+            ...LIVE_EVENT.competitions[0],
+            competitors: [
+                { homeAway: 'home', score: '17', team: { id: '183', abbreviation: 'SYR', displayName: 'Syracuse Orange', shortDisplayName: 'Syracuse' } },
+                { homeAway: 'away', score: '14', team: { id: '52', abbreviation: 'FSU', displayName: 'Florida State Seminoles', shortDisplayName: 'Florida State' } },
+            ],
+        }] };
+        expect(liveGameRow(nflEvent as any, new Set(['183']), 'nfl')).toMatchObject({ opponent: 'FSU' });
+        // CFB keeps the short display name, exactly as its own fixture rows do
+        expect(liveGameRow(nflEvent as any, new Set(['183']), 'cfb')).toMatchObject({ opponent: 'Florida State' });
     });
 
     test('an admin gets the QA verdict on the synthetic row too', async () => {
@@ -271,6 +293,81 @@ describe('the game being played right now is not in the log, so it is put there'
         expect(rows[rows.length - 1]).toContain('data-badge="live-qa"');
         expect(processed.mock.calls[0][0]).toBe('401856687');
     }, 60_000);
+});
+
+describe('the scoreboard KV entry gets warmed for every league', () => {
+    // worker.ts's cron only ever calls `getCurrentScoreboard(false, true)`,
+    // which warms the DEFAULT league ('cfb'). Nothing else wrote to
+    // `scoreboard:nfl` before this fix, so an NFL player page in season fetched
+    // ESPN directly on every render (review on #268). The fix is in the shared
+    // `livePlayerGames` read, so it covers every league that calls it, not just
+    // NFL -- this asserts the seam directly: the call this function itself
+    // makes to `getCurrentScoreboard`, not the network behaviour behind it.
+    test('the read asks for a write-back, not just a read, for the NFL league', async () => {
+        const { livePlayerGames } = await import('../src/utils/liveQa');
+        await livePlayerGames(games, {}, ['183'], CURRENT_YEAR, 'nfl', false);
+        expect(scoreboardCalls.at(-1)).toEqual([true, true, 'nfl']);
+    });
+
+    test('the CFB read still writes back too', async () => {
+        const { livePlayerGames } = await import('../src/utils/liveQa');
+        await livePlayerGames(games, {}, ['183'], CURRENT_YEAR, 'cfb', false);
+        expect(scoreboardCalls.at(-1)).toEqual([true, true, 'cfb']);
+    });
+});
+
+describe('the dedup guard: a board event already in the log is never duplicated', () => {
+    // `!logged.has` in `livePlayerGames` is what stops this: without it, a game
+    // that both HAS a stored row (the API's own, final) and is still on the
+    // live scoreboard (a delayed status flip, a re-poll) would get a second,
+    // synthetic row for the same `game_id`.
+    test('a CFB board event for an already-logged game produces no extra row', async () => {
+        const { livePlayerGames } = await import('../src/utils/liveQa');
+        // games[1]'s real game_id/team_id, reused as the board event's id and
+        // one of its competitors -- the guard has to see this id as "logged"
+        const loggedId = String(games[1].game_id);
+        const dupEvent = {
+            ...LIVE_EVENT,
+            id: loggedId,
+            competitions: [{
+                ...LIVE_EVENT.competitions[0],
+                competitors: [
+                    { homeAway: 'home', score: '17', team: { id: '183', displayName: 'Syracuse Orange', shortDisplayName: 'Syracuse' } },
+                    { homeAway: 'away', score: '14', team: { id: '999', displayName: 'Nobody', shortDisplayName: 'Nobody' } },
+                ],
+            }],
+        };
+        world.board = [dupEvent];
+        const deduped = await livePlayerGames(games, {}, ['183'], CURRENT_YEAR, 'cfb', false);
+        expect(deduped.games.length).toBe(games.length);
+        expect(deduped.games.some((g: any) => g.from_scoreboard)).toBe(false);
+    });
+
+    test('the same dedup holds for an NFL game reached through the espnGameIds crosswalk', async () => {
+        // players.ts:179-183 -- the NFL log keys on nflverse ids, resolved to an
+        // ESPN event id through `espnGameIds`; the guard has to dedup on the
+        // RESOLVED id, not the nflverse one, or every NFL crosswalk game would
+        // duplicate whenever it was also on the live board.
+        const { livePlayerGames } = await import('../src/utils/liveQa');
+        const nflverseId = '2024_04_SYR_FSU';
+        const espnId = '401635534';
+        const nflGames = [{ game_id: nflverseId, team_id: '183' }] as any[];
+        const espnGameIds = { [nflverseId]: espnId };
+        world.board = [{
+            ...LIVE_EVENT,
+            id: espnId,
+            competitions: [{
+                ...LIVE_EVENT.competitions[0],
+                competitors: [
+                    { homeAway: 'home', score: '17', team: { id: '183', abbreviation: 'SYR' } },
+                    { homeAway: 'away', score: '14', team: { id: '999', abbreviation: 'NA' } },
+                ],
+            }],
+        }];
+        const deduped = await livePlayerGames(nflGames, espnGameIds, ['183'], CURRENT_YEAR, 'nfl', false);
+        expect(deduped.games.length).toBe(1);
+        expect(deduped.games.some((g: any) => g.from_scoreboard)).toBe(false);
+    });
 });
 
 describe('the QA badge is admin only', () => {
@@ -300,7 +397,7 @@ describe('the QA badge is admin only', () => {
         // the whole verdict is HOVER copy on the pill, never a line in the row
         expect(admin).toContain('data-badge="live-qa"');
         expect(admin).toContain('title="Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly'
-            + ' - ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
+            + ': ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
         expect(admin).not.toContain('>Served:');
         // ...through the game page's own path, on its own cache key: one call, the live game's
         expect(processed).toHaveBeenCalledTimes(1);
@@ -326,11 +423,25 @@ describe('the QA badge is admin only', () => {
 
 describe('an admin render never enters Workers Caching', () => {
     // A HIT never runs the middleware, so an admin variant in Workers Caching
-    // would serve the QA detail to everyone -- the bug reviewed on #213.
+    // would serve the QA detail to everyone -- the bug reviewed on #213. The
+    // header is not the control that matters against Cloudflare's cache
+    // provider: `cache.set(false)` is what stops `Cloudflare-CDN-Cache-Control`
+    // from being written, so the spy is the real assertion (review on #268).
     test('withPreviewCacheGuard opts an admin-authed response out', async () => {
         const { withPreviewCacheGuard } = await import('../src/middleware');
-        const ctx: any = { request: new Request('https://gameonpaper.com/players/4433971'), locals: { adminAuthed: true }, cache: { set: () => {} } };
+        const cacheSet = vi.fn();
+        const ctx: any = { request: new Request('https://gameonpaper.com/players/4433971'), locals: { adminAuthed: true }, cache: { set: cacheSet } };
         const res = withPreviewCacheGuard(ctx, new Response('ok'));
         expect(res.headers.get('Cache-Control')).toBe('no-store');
+        expect(cacheSet).toHaveBeenCalledWith(false);
+    });
+
+    test('a non-admin, non-preview response is left alone', async () => {
+        const { withPreviewCacheGuard } = await import('../src/middleware');
+        const cacheSet = vi.fn();
+        const ctx: any = { request: new Request('https://gameonpaper.com/players/4433971'), locals: {}, cache: { set: cacheSet } };
+        const res = withPreviewCacheGuard(ctx, new Response('ok'));
+        expect(res.headers.get('Cache-Control')).not.toBe('no-store');
+        expect(cacheSet).not.toHaveBeenCalledWith(false);
     });
 });

@@ -15,14 +15,15 @@ import { PREVIEW_COOKIE, mintPreviewCookie } from '../src/utils/preview';
 
 async function run(path: string, headers: Record<string, string> = {}) {
     const locals: Record<string, unknown> = {};
+    const cacheSet = vi.fn();
     const ctx: any = {
         request: new Request(`https://gameonpaper.com${path}`, { headers }),
         locals,
-        cache: { set: () => {} },
+        cache: { set: cacheSet },
         redirect: (l: string, status = 302) => new Response(null, { status, headers: { Location: l } }),
     };
     const res = await (onRequest as any)(ctx, async () => new Response('ok'));
-    return { locals, res };
+    return { locals, res, cacheSet };
 }
 
 describe('adminAuthed on a public route', () => {
@@ -58,7 +59,16 @@ describe('adminAuthed on a public route', () => {
 
     test('an admin render is forced out of Workers Caching', async () => {
         const cookie = await mintAdminCookie('test-secret');
-        const { res } = await run('/players/4433971', { cookie: `${ADMIN_COOKIE}=${cookie}` });
+        const { res, cacheSet } = await run('/players/4433971', { cookie: `${ADMIN_COOKIE}=${cookie}` });
         expect(res.headers.get('Cache-Control')).toBe('no-store');
+        // the header alone is not the control that matters against Cloudflare's
+        // cache provider -- `cache.set(false)` is what stops
+        // `Cloudflare-CDN-Cache-Control` from being written (review on #268)
+        expect(cacheSet).toHaveBeenCalledWith(false);
+    });
+
+    test('a non-admin render never turns cache.set(false) on', async () => {
+        const { cacheSet } = await run('/players/4433971');
+        expect(cacheSet).not.toHaveBeenCalledWith(false);
     });
 });
