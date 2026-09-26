@@ -45,26 +45,27 @@ export function termSlug(term: string): string {
 }
 
 /**
- * One unique, non-empty slug per term of a list, in list order: a collision takes "-2", "-3", ...;
- * an empty slug becomes "term-<position>". The glossary page ids and the DefinedTermSet both read
- * this map, so every term's deep link lands on its own definition.
+ * One unique, non-empty slug per entry of a list, in list order: a collision takes "-2", "-3", ...;
+ * an empty slug becomes "term-<position>". Keyed by the entry itself, so two entries that share a
+ * name still get their own slugs. The glossary page ids and the DefinedTermSet both read this map,
+ * so every entry's deep link lands on its own definition.
  */
-export function termSlugs(terms: Term[]): Map<string, string> {
-    const out = new Map<string, string>();
+export function termSlugs(terms: Term[]): Map<Term, string> {
+    const out = new Map<Term, string>();
     const used = new Set<string>();
     terms.forEach((t, i) => {
         const base = termSlug(t.term) || `term-${i + 1}`;
         let slug = base;
         for (let k = 2; used.has(slug); k++) slug = `${base}-${k}`;
         used.add(slug);
-        out.set(t.term, slug);
+        out.set(t, slug);
     });
     return out;
 }
 
-/** Link to one term on the single glossary page (#226: no per-term pages), resolved against the list it sits in. */
-export function glossaryHref(term: string, terms: Term[]): string {
-    return `/glossary/#${termSlugs(terms).get(term) ?? termSlug(term)}`;
+/** Link to one entry on the single glossary page (#226: no per-term pages), resolved against the list it sits in. */
+export function glossaryHref(entry: Term, terms: Term[]): string {
+    return `/glossary/#${termSlugs(terms).get(entry) ?? termSlug(entry.term)}`;
 }
 
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
@@ -79,8 +80,8 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         url,
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
-            '@id': `${url}#${slugs.get(t.term)}`,
-            url: `${url}#${slugs.get(t.term)}`,
+            '@id': `${url}#${slugs.get(t)}`,
+            url: `${url}#${slugs.get(t)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
             description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),

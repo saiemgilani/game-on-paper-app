@@ -15,7 +15,7 @@ describe('glossary term slugs', () => {
         const slugs = termSlugs(terms);
         expect([...slugs.values()]).toEqual(['c', 'c-2', 'term-3', 'c-3']);
         expect(new Set(slugs.values()).size).toBe(terms.length);
-        expect(glossaryHref('C#', terms)).toBe('/glossary/#c-2');
+        expect(glossaryHref(terms[1], terms)).toBe('/glossary/#c-2');
         const ld = definedTermSetJsonLd(terms, '/glossary/');
         expect(ld.hasDefinedTerm.map((t) => t.url)).toEqual([...slugs.values()].map((s) => `https://gameonpaper.com/glossary/#${s}`));
     });
@@ -31,7 +31,18 @@ describe('glossary term slugs', () => {
         }
     });
     test('glossaryHref deep-links the canonical page', () => {
-        expect(glossaryHref('Havoc Rate', [...generateGlossaryItems().values()].flat())).toBe('/glossary/#havoc-rate');
+        const live = [...generateGlossaryItems().values()].flat();
+        expect(glossaryHref(live.find((t) => t.term === 'Havoc Rate')!, live)).toBe('/glossary/#havoc-rate');
+    });
+    test('two entries that share a name keep distinct slugs', () => {
+        const terms = [{ term: 'Havoc Rate', definition: 'offense' }, { term: 'Havoc Rate', definition: 'defense' }];
+        const slugs = termSlugs(terms);
+        expect([...slugs.values()]).toEqual(['havoc-rate', 'havoc-rate-2']);
+        expect(glossaryHref(terms[1], terms)).toBe('/glossary/#havoc-rate-2');
+        expect(definedTermSetJsonLd(terms, '/glossary/').hasDefinedTerm.map((t) => t.url)).toEqual([
+            'https://gameonpaper.com/glossary/#havoc-rate',
+            'https://gameonpaper.com/glossary/#havoc-rate-2',
+        ]);
     });
     test('each DefinedTerm carries its own URL and @id', () => {
         const ld = definedTermSetJsonLd([{ term: 'Havoc Rate', definition: 'x' }], '/glossary/');

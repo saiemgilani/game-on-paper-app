@@ -1,14 +1,15 @@
 ---
 import type { GlossaryEntry } from '../../resources/glossary';
+import type { Term } from '../../utils/seo';
 import GlossaryItem from './GlossaryItem.astro';
 
 interface Props {
     letter: string
 	entries?: GlossaryEntry[];
 
-	/** term -> deep-link id, from termSlugs() over the whole glossary */
+	/** entry -> deep-link id, from termSlugs() over the whole glossary */
 
-	slugs: Map<string, string>;
+	slugs: Map<Term, string>;
 }
 
 const { letter, entries, slugs } = Astro.props;
@@ -17,6 +18,6 @@ const { letter, entries, slugs } = Astro.props;
 <h2 id={`glossary-section-${letter}`}>{letter.toLocaleUpperCase()}</h2>
 {
     entries?.map((e) => (
-        <GlossaryItem entry={e} slug={slugs.get(e.term)!} />
+        <GlossaryItem entry={e} slug={slugs.get(e)!} />
     ))
 }
