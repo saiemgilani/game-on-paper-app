@@ -42,12 +42,14 @@
  * FINALS, so a game being played right now has no row at all -- and the Live
  * badge on the rows it does have could never fire (review on #268). When the
  * scoreboard says one of the player's teams is playing, `livePlayerGames`
- * synthesizes that row from the scoreboard event and puts it on top: opponent,
- * kickoff, live score, the Live badge, and an em dash in every stat cell,
- * because no play of it has been processed yet. It carries `data-live-row` so
- * it is never mistaken for a stored row, and the API's own row replaces it on
- * the next render after the processor lands the final. Its nulls are also left
- * out of the shading ranks, so an unplayed game cannot come out purple.
+ * synthesizes that row from the scoreboard event and appends it at the BOTTOM
+ * of the log: opponent, kickoff, live score, the Live badge, and an em dash in
+ * every stat cell, because no play of it has been processed yet -- the log
+ * reads chronologically forwards, and the game being played right now is the
+ * most recent one. It carries `data-live-row` so it is never mistaken for a
+ * stored row, and the API's own row replaces it on the next render after the
+ * processor lands the final. Its nulls are also left out of the shading ranks,
+ * so an unplayed game cannot come out purple.
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
@@ -108,7 +110,7 @@ const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-te
  * in a row the public reads past (review on #268); hovering the pill is where it
  * belongs, and it is the only place the rule list was ever going to fit anyway.
  */
-const qaTitle = (b: LiveQaBadge): string => [badgeText(b), b.rules].filter(Boolean).join(' - ');
+const qaTitle = (b: LiveQaBadge): string => [badgeText(b), b.rules].filter(Boolean).join(': ');
 const shade = (row: PlayerGameRow, key: string): string => {
     const column = ranks.get(key);
     // two games are not a distribution: shading them would paint one green and

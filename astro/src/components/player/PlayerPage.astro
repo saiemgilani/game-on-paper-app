@@ -84,10 +84,12 @@ const headerTeamId = teamIds[0] ?? identityTeam?.team_id ?? null;
 // page renders byte-for-byte what it rendered before this existed -- and the
 // CAREER view has no game log to add one to, so it does not ask. The QA half is
 // fetched only for an admin, because only an admin is shown it.
-// Ceiling: the page itself is cached for an hour (`routes/player.ts`), so a
-// badge can be up to that stale while a game runs. Left alone deliberately --
-// shortening the whole page's policy for one row is the wrong trade; if the
-// badge has to be live, it becomes a fetch on the client, not a cache change.
+// Ceiling: `routes/player.ts`'s PLAYER_CACHE is maxAge 1h, swr 6h, so a cached
+// page can serve a badge up to ~7h stale (maxAge + swr, the window Cloudflare
+// serves the old copy from while revalidating) while a game runs. Left alone
+// deliberately -- shortening the whole page's policy for one row is the wrong
+// trade; if the badge has to be live, it becomes a fetch on the client, not a
+// cache change.
 const { live, games: gameLog } = season === null
     ? { live: {} as Record<string, any>, games }
     : await livePlayerGames(

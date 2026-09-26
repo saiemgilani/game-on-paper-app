@@ -5,8 +5,8 @@
  * Bootstrap's `badge bg-*` was being spelled out inline everywhere it was
  * wanted (`Footer.astro`'s PREVIEW, `BroadcastButton`'s network, the play
  * page's `DecisionCard`), and the player game log was about to add a fourth.
- * This is that markup, once, so a new caller gets the same pill, the same
- * `title` handling and the same detail line rather than approximating them.
+ * This is that markup, once, so a new caller gets the same pill and the same
+ * `title` handling rather than approximating them.
  *
  * `variant` is a Bootstrap SEMANTIC name, never a hex or a hand-rolled colour,
  * so the pill has a dark half for free. Anything the badge needs to say beyond
@@ -14,7 +14,10 @@
  * that printed its own detail as a second line put admin text in a public row
  * (review on #268).
  */
-export type StatusVariant = 'danger' | 'warning' | 'success' | 'secondary' | 'info' | 'primary' | 'dark';
+// Narrowed to the variants an actual caller uses (Live: danger, QA: secondary) --
+// grep before adding one back; `warning`/`info` render white-on-yellow or
+// cyan at ~2:1 contrast and were never used.
+export type StatusVariant = 'danger' | 'secondary';
 
 interface Props {
     /** the pill's word -- short, one or two words */
