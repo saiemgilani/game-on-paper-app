@@ -34,9 +34,43 @@ export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
 
 export interface Term { term: string; definition: string; source?: string }
 
+/**
+ * Deep-link id for one glossary term: "Successful play / Success Rate" -> "successful-play-success-rate".
+ * Diacritics fold to their base letter ("Élan" -> "elan"); anything else outside a-z0-9 joins with a
+ * hyphen, so on its own this can collide ("C++" and "C#" are both "c") or come out empty. The page and
+ * its structured data resolve a whole list with termSlugs(), which is what a deep link has to match.
+ */
+export function termSlug(term: string): string {
+    return term.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * One unique, non-empty slug per term of a list, in list order: a collision takes "-2", "-3", ...;
+ * an empty slug becomes "term-<position>". The glossary page ids and the DefinedTermSet both read
+ * this map, so every term's deep link lands on its own definition.
+ */
+export function termSlugs(terms: Term[]): Map<string, string> {
+    const out = new Map<string, string>();
+    const used = new Set<string>();
+    terms.forEach((t, i) => {
+        const base = termSlug(t.term) || `term-${i + 1}`;
+        let slug = base;
+        for (let k = 2; used.has(slug); k++) slug = `${base}-${k}`;
+        used.add(slug);
+        out.set(t.term, slug);
+    });
+    return out;
+}
+
+/** Link to one term on the single glossary page (#226: no per-term pages), resolved against the list it sits in. */
+export function glossaryHref(term: string, terms: Term[]): string {
+    return `/glossary/#${termSlugs(terms).get(term) ?? termSlug(term)}`;
+}
+
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
 export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
     const url = new URL(pageUrl, ORIGIN).href;
+    const slugs = termSlugs(terms);
     return {
         '@context': 'https://schema.org',
         '@type': 'DefinedTermSet',
@@ -45,6 +79,8 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         url,
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
+            '@id': `${url}#${slugs.get(t.term)}`,
+            url: `${url}#${slugs.get(t.term)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
             description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),

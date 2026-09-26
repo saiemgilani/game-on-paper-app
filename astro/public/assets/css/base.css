@@ -236,3 +236,14 @@ Target Matrix
    rows read as one entry. */
 .stat-line-row td { text-align: left; font-size: .85em; padding-top: 0; }
 tr:has(+ .stat-line-row) > td { border-bottom-width: 0; }
+
+/* Glossary terms are h3s (document outline + deep-link anchors), drawn exactly
+   as the <dt>s they replaced: the page body is Bootstrap's system stack, not
+   the Chivo that nav-header.css gives headings. */
+.glossary-term {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  margin: 0;
+}

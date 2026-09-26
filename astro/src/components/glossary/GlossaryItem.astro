@@ -3,14 +3,14 @@ import type { GlossaryEntry } from '../../resources/glossary';
 
 interface Props {
 	entry: GlossaryEntry;
+	/** the term's deep-link id, resolved over the whole glossary by termSlugs() */
+	slug: string;
 }
 
-const { entry } = Astro.props;
+const { entry, slug } = Astro.props;
 ---
 
-<dl class="row">
-{
-    (entry.source) ? <dt class="col-sm-3"><a href={entry.source}>{entry.term}</a></dt> : <dt class="col-sm-3">{entry.term}</dt>
-}
-<dd class="col-sm-9"><Fragment set:html={entry.definition}/></dd>
-</dl>
+<div class="row mb-3" id={slug}>
+    <h3 class="col-sm-3 glossary-term">{entry.source ? <a href={entry.source}>{entry.term}</a> : entry.term}</h3>
+    <div class="col-sm-9 mb-2"><Fragment set:html={entry.definition}/></div>
+</div>
