@@ -11,8 +11,12 @@
  *     pass/rush split of every total, the per-play and per-game means, and the
  *     off/def margins.
  *
- * Fixtures are real published rows: `cfb-summaries-2024.json` (top 4 FBS teams
- * by net adjusted EPA) and `nfl-summaries-2025.json`.
+ * Fixtures: `cfb-summaries-2024.json` is real published rows (top 4 FBS teams by
+ * net adjusted EPA). `nfl-summaries-2025.json` is the published 2025 rows with the
+ * 27 `yards_gained` columns re-cut under nfl-data's yardsplay-denominator fix
+ * (#54), so it leads the published asset on those columns until 2025 is rebuilt;
+ * see `fixtures/README.md`. The reconciliation checks below are internal
+ * arithmetic, so they hold for both.
  */
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
