@@ -30,6 +30,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
     // 768px. Desktop keeps the card grid either way.
     'scoreboard-compact': 'preview',
+    // Scoreboard conference filter per season (static/season_groups.json):
+    // the conferences that existed that season, under that season's names
+    // (UAC, Big South-OVC, ...). Public traffic keeps the one static list.
+    'scoreboard-season-groups': 'preview',
     // The whole NFL surface (pages/nfl/**, the header's league switch, the
     // sitemap's /nfl URLs). Gated once in middleware: a viewer without the
     // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'

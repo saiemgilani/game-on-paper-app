@@ -1,11 +1,12 @@
 <script>
-	import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
+	import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP, groupsForSeason } from '../../resources/schedule';
 	import { NFL_POST_LABELS } from '../../utils/constants';
 	import { LEAGUES, leaguePath } from '../../utils/league';
 
 	// `league` is passed from SchedulePage (SSR knows Astro.locals.league);
 	// it defaults to cfb so every existing caller is unchanged.
-	const { season, week, seasontype, group, league = 'cfb' } = $props()
+	// `seasonGroups` is the 'scoreboard-season-groups' preview flag, resolved by SchedulePage.
+	const { season, week, seasontype, group, league = 'cfb', seasonGroups = false } = $props()
 	const cfg = LEAGUES[league];
 	// cfb weeks come from the static schedule map (bowl/CFP weeks vary by
 	// season); the nfl calendar is fixed: 18 regular + 5 postseason rounds.
@@ -20,6 +21,7 @@
 	let selectedSeasonWeeks = $derived({ value: weeksFor(selectedSeason.value) });
 	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : (group || cfg.defaultGroup) });
 	let selectedWeek = $state({ value: (week && seasontype) ? `${seasontype};${week}`: "-1;-1" });
+	let groupList = $derived(seasonGroups ? groupsForSeason(selectedSeason.value) : GLOBAL_GROUP_LIST);
 
 
 	function onChangeSeason(e) {
@@ -27,6 +29,10 @@
 
 		document.getElementById("weekSelect").selectedIndex = 0;
 		selectedWeek.value = "-1;-1"
+		// a conference the new season lacks would submit a filter with no games
+		if (seasonGroups && !groupList.some((g) => g.id == selectedGroup.value)) {
+			selectedGroup.value = cfg.defaultGroup;
+		}
 	}
 
 	function onSubmit(e) {
@@ -71,7 +77,7 @@
 		{#if cfg.defaultGroup !== null}
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-lg" onchange={(e) => selectedGroup.value = e.target.value}>
-				{#each GLOBAL_GROUP_LIST as g}
+				{#each groupList as g}
 					<option value={g.id} selected={selectedGroup.value == g.id}>{g.name}</option>
 				{/each}
             </select>
