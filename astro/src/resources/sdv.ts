@@ -565,6 +565,45 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
     return hexString;
 }
 
+// `GET /v1/meta` (sdv-db #85) answers when each table's data last changed:
+// `datasets["cfb.team_summaries"] = "<ISO time>"`, stamped by the loader only
+// after the new rows commit. That stamp goes into the table's cache key, so
+// the first read after an ingest misses instead of serving pre-ingest numbers
+// for the rest of a multi-day TTL; entries under an old stamp are never read
+// again and expire on their own TTL. A table meta doesn't list (qa, the player
+// routes) or a failed meta read keeps the unversioned key -- the behaviour
+// before this. Meta is held in memory per isolate and shared through KV, both
+// for SDV_META_TTL: one small Data API call per colo per 5 minutes, never one
+// per request. A new ingest therefore shows within ~10 minutes (both windows).
+const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
+const SDV_META_KEY = 'sdv-meta:datasets';
+const SDV_META_TTL = 60 * 5;
+// a plain value, not a shared promise: Workers can't await I/O started by another request
+let sdvMeta: { at: number, datasets: Record<string, string> | null } | undefined;
+
+async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
+    try {
+        const cached = await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
+        if (cached) return cached as Record<string, string>;
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        if (!req.ok) throw new Error(`status ${req.status}`);
+        const datasets = (await req.json() as any)?.datasets;
+        if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
+        await safeCachePut(env.SDV_API_CACHE, SDV_META_KEY, JSON.stringify(datasets), SDV_META_TTL);
+        return datasets;
+    } catch (e) {
+        console.warn(`SDV meta unavailable, cache keys stay unversioned: ${e}`);
+        return null;
+    }
+}
+
+async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
+    if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
+        sdvMeta = { at: Date.now(), datasets: await fetchSDVDatasets() };
+    }
+    return sdvMeta.datasets?.[`${league}.${table}`];
+}
+
 /**
  * A Data API failure the caller must SEE rather than render around. Every
  * historical caller wants an empty table on a bad day; the player pages want
@@ -590,7 +629,9 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     }
 
     // cfb keeps its historical cache keys; other leagues are namespaced
-    const cacheKey = await generateSDVCacheKey(league === 'cfb' ? endpointURL : `${league}/${endpointURL}`);
+    const unversioned = league === 'cfb' ? endpointURL : `${league}/${endpointURL}`;
+    const stamp = cacheEnabled ? await sdvIngestStamp(league, endpoint) : undefined;
+    const cacheKey = await generateSDVCacheKey(stamp ? `${unversioned}#${stamp}` : unversioned);
 
     // check cache first
     if (cacheEnabled) { 
