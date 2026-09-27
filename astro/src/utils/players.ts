@@ -78,13 +78,13 @@ export const PLAYER_NAME_FIELD: Record<PlayerCategory, string> = {
  * the rest of the site offers hover copy.
  */
 export const PLAYER_SPLITS: { key: string; label: string; title?: string }[] = [
-    { key: 'all', label: 'All plays' },
     { key: 'standard_downs', label: 'Standard downs', title: '1st down, 2nd and short of 8, 3rd or 4th and short of 5' },
     { key: 'passing_downs', label: 'Passing downs', title: '2nd and 8 or more, 3rd or 4th and 5 or more' },
     { key: 'red_zone', label: 'Red zone' },
     { key: 'first_half', label: '1st half' },
     { key: 'second_half', label: '2nd half' },
     { key: 'overtime', label: 'Overtime' },
+    { key: 'all', label: 'All plays' },
 ];
 
 /** The two splits that partition `all` by down type, and the three that partition it by period. */
