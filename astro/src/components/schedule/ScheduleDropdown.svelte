@@ -19,9 +19,12 @@
 	// svelte-ignore state_referenced_locally
 	let selectedSeason = $state({ value: String(season) });
 	let selectedSeasonWeeks = $derived({ value: weeksFor(selectedSeason.value) });
-	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : (group || cfg.defaultGroup) });
-	let selectedWeek = $state({ value: (week && seasontype) ? `${seasontype};${week}`: "-1;-1" });
 	let groupList = $derived(seasonGroups ? groupsForSeason(selectedSeason.value) : GLOBAL_GROUP_LIST);
+	// a conference the season lacks (a bookmarked ?group=, or a season change) would
+	// submit a filter with no games while the select shows a different one
+	const validGroup = (id) => (seasonGroups && !groupList.some((g) => g.id == id)) ? cfg.defaultGroup : id;
+	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : validGroup(group || cfg.defaultGroup) });
+	let selectedWeek = $state({ value: (week && seasontype) ? `${seasontype};${week}`: "-1;-1" });
 
 
 	function onChangeSeason(e) {
@@ -29,10 +32,7 @@
 
 		document.getElementById("weekSelect").selectedIndex = 0;
 		selectedWeek.value = "-1;-1"
-		// a conference the new season lacks would submit a filter with no games
-		if (seasonGroups && !groupList.some((g) => g.id == selectedGroup.value)) {
-			selectedGroup.value = cfg.defaultGroup;
-		}
+		selectedGroup.value = validGroup(selectedGroup.value);
 	}
 
 	function onSubmit(e) {

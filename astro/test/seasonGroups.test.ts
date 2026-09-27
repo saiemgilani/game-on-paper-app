@@ -63,11 +63,11 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function render(locals: Record<string, unknown>) {
+async function render(locals: Record<string, unknown>, group = 177) {
     const { default: SchedulePage } = await import('../src/components/schedule/SchedulePage.astro');
     return container.renderToString(SchedulePage, {
-        props: { season: 2024, seasontype: 2, week: 5, group: 177, isScoreboard: false, games: [] },
-        request: new Request('https://gameonpaper.com/year/2024/type/2/week/5?group=177'),
+        props: { season: 2024, seasontype: 2, week: 5, group, isScoreboard: false, games: [] },
+        request: new Request(`https://gameonpaper.com/year/2024/type/2/week/5?group=${group}`),
         locals: locals as any,
     });
 }
@@ -78,6 +78,12 @@ describe('the season-aware conference filter is preview-gated', () => {
         expect(html).toMatch(/<option value="177"[^>]*selected[^>]*>UAC<\/option>/);
         expect(html).toContain('>Big South-OVC</option>');
         expect(html).not.toContain('>ASUN</option>');
+    });
+
+    test('a ?group= the season lacks falls back to the default instead of submitting it unseen', async () => {
+        // 26 is the OVC only up to 2022; kept, the select would show FBS and submit 26
+        const html = await render({ preview: true }, 26);
+        expect(html).toMatch(/<option value="80"[^>]*selected[^>]*>FBS \(I-A\)<\/option>/);
     });
 
     test('the public page keeps the static list', async () => {
