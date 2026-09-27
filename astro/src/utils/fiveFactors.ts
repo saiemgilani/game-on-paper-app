@@ -21,7 +21,7 @@ export const FIVE_FACTORS: FiveFactor[] = [
     { label: 'Explosiveness', hover: 'Explosive Play Rate', off: 'explosive_off', def: 'explosive_def', margin: 'explosive_margin', format: 'pct' },
     { label: 'Field Position', hover: 'Starting Field Position (yards to goal)', off: 'start_position_off', def: 'start_position_def', margin: 'start_position_margin', format: 'num1' },
     { label: 'Finishing Drives', hover: 'Points per Scoring Opportunity', off: 'pts_per_opp_off', def: 'pts_per_opp_def', margin: 'pts_per_opp_margin', format: 'num2' },
-    { label: 'Turnovers', hover: 'Turnovers per Game', off: 'turnovers_off', def: 'turnovers_def', margin: 'turnover_margin', format: 'num2' },
+    { label: 'Turnovers', hover: 'Giveaways per Game (Offense) / Takeaways per Game (Defense)', off: 'turnovers_off', def: 'turnovers_def', margin: 'turnover_margin', format: 'num2' },
 ];
 
 /**

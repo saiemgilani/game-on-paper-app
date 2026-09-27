@@ -13,7 +13,8 @@ const fixture = (league: string) =>
     JSON.parse(readFileSync(new URL(`./fixtures/team-summaries-${league}-2025.json`, import.meta.url)).toString()).data;
 const rows: Record<string, any[]> = { cfb: fixture('cfb'), nfl: fixture('nfl') };
 
-const feed: { override: any | null; calls: any[] } = { override: null, calls: [] };
+// `override`, when set, is the whole row list the API returns (`[]` = no row for the team)
+const feed: { override: any[] | null; calls: any[] } = { override: null, calls: [] };
 
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
@@ -26,7 +27,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async () => [],
     retrieveTeamSummaries: async (req: any) => {
         feed.calls.push(req);
-        return feed.override ? [feed.override] : rows[req.league].filter((r) => r.team_id === req.team_id);
+        return feed.override ?? rows[req.league].filter((r) => r.team_id === req.team_id);
     },
 }));
 
@@ -109,10 +110,27 @@ describe('cfb season team page, Five Factors edge cases', () => {
         expect(cells[3 * 4 + 2].text).toBe('3.97 #T-61');
     }, 60_000);
 
+    test('a good rank is green and a poor one purple', async () => {
+        // literals from Alabama's real row, not re-derived with the ramp call the
+        // component makes: turnovers_off_rank 12, start_position_off_rank 109
+        const cells = tds(panelOf(await render('cfb', '333', true)));
+        expect(cells[4 * 4 + 1].text).toBe('0.79 #12');
+        expect(cells[4 * 4 + 1].cls).toContain('hulk-bg-level-9');
+        expect(cells[2 * 4 + 1].text).toBe('73.6 #109');
+        expect(cells[2 * 4 + 1].cls).toContain('hulk-bg-level-2');
+    }, 60_000);
+
+    test('no team_summaries row: no panel at all, rather than fifteen dashes', async () => {
+        feed.override = [];
+        const html = await render('cfb', '333', true);
+        expect(html).toContain('Alabama'); // the page itself still renders
+        expect(html).not.toContain('five-factors-panel');
+    }, 60_000);
+
     test('a null value renders an em dash with no rank and no shading', async () => {
         const row = rows.cfb.find((r) => r.team_id === 333);
         // the rank is left in place: a null value must not be shaded or ranked by it
-        feed.override = { ...row, pts_per_opp_off: null, turnover_margin: null };
+        feed.override = [{ ...row, pts_per_opp_off: null, turnover_margin: null }];
         const cells = tds(panelOf(await render('cfb', '333', true)));
         for (const cell of [cells[3 * 4 + 1], cells[4 * 4 + 3]]) {
             expect(cell.text).toBe('—');

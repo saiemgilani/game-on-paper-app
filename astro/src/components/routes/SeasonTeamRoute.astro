@@ -95,9 +95,10 @@ const breadcrumbs: PageBreadcrumb[] = [
             </TeamRadarChart>
         </GenericPanel>
     </div>
-    {isFeatureEnabled('five-factors', Astro.locals) && (
+    {/* no summary row, no panel: fifteen dashes say nothing */}
+    {isFeatureEnabled('five-factors', Astro.locals) && teamSummaries[0] && (
         <div class="container mb-3">
-            <FiveFactorsTable summary={teamSummaries[0] ?? null} />
+            <FiveFactorsTable summary={teamSummaries[0]} />
         </div>
     )}
     <div class="container">
