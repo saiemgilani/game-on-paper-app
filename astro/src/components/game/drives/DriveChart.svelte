@@ -1,5 +1,6 @@
 
 <script>
+import { onMount } from "svelte";
 import { determineLuminance, teamColorHex } from "../../../utils/misc";
 const { id, subtitle, result, plays, offense, defense, isNeutralSite } = $props();
 
@@ -245,7 +246,10 @@ class FootballField {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// onMount, not DOMContentLoaded: a client:only island often mounts after that event
+// has fired, and the listener then never runs (blank 300x150 canvas); onMount also
+// guarantees the canvas below exists
+onMount(() => {
     const field = new FootballField(
         `football-field-${id}`,
         fieldColor,
