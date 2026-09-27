@@ -19,12 +19,21 @@ class FootballField {
 
         this.sourceElement = document.getElementById(elementId);
 
-        // the bitmap stays 720x300; on a narrower screen the element shrinks to fit and keeps its
-        // ratio (the border is inside the width: Bootstrap makes every element border-box)
         this.sourceElement.style.width = "720px";
-        this.sourceElement.style.maxWidth = "100%";
-        this.sourceElement.style.height = "auto";
+        this.sourceElement.style.height = "300px";
         this.sourceElement.style.border = `12px white solid`;
+
+        // below md the element shrinks to the screen and keeps the bitmap's 2.4:1 ratio (the border
+        // is inside the width: Bootstrap makes every element border-box). Desktop keeps the fixed
+        // 720x300: a percentage max-width there drops the canvas from the drives table's
+        // min-content width and shrinks the whole table.
+        const narrow = window.matchMedia("(max-width: 767.98px)");
+        const fit = () => {
+            this.sourceElement.style.maxWidth = narrow.matches ? "100%" : "";
+            this.sourceElement.style.height = narrow.matches ? "auto" : "300px";
+        };
+        fit();
+        narrow.addEventListener("change", fit);
 
         // Set actual size in memory (scaled to account for extra pixel density).
         const dpi = window.devicePixelRatio; // Change to 1 on retina screens to see blurry canvas.
