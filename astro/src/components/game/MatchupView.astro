@@ -4,6 +4,7 @@ import { formatYardline, roundNumber, generateColorRampValue, generateMarginalSt
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 import FallbackSpinner from '../FallbackSpinner.astro';
 import MatchupHistoryTable from './MatchupHistoryTable.astro';
+import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
 
 interface Props {
     homeTeamSeason: SDVTeamSeasonInformation | null
@@ -14,6 +15,11 @@ interface Props {
 }
 
 const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary, matchupHistory } = Astro.props;
+
+const league = Astro.locals.league ?? DEFAULT_LEAGUE;
+// the rank colour ramp scales to the league's team count: on the 134-team CFB
+// scale the WORST of 32 NFL teams still shaded green
+const cfg = LEAGUES[league];
 
 const showSeasons = awayTeamSummary?.season && homeTeamSummary?.season && homeTeamSummary?.season != awayTeamSummary?.season;
 
@@ -39,7 +45,7 @@ function produceRankHtml(rank?: number, addClass: string = "", addStyle: string 
         rankString = "N/A"
     }
 
-    return `<td class="${generateColorRampValue(rank, 134, true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
+    return `<td class="${generateColorRampValue(rank, cfg.teamCount, true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
 }
 
 function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any, awaySideOfBall: string, category: string, statKey: string): string {
@@ -85,7 +91,7 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
             <table class="table table-sm table-responsive">
                 <thead>
                     <tr>
-                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px", Astro.locals.league)}</div></th>
+                        <th class="w-75" style="text-align: left;" colspan="2"><div class="text-left mb-0">${produceTeamLogoLink(team, "span", true, "14px", league)}</div></th>
                         <th class="text-center w-25" style="text-align: center;" colspan="1">${seasonLabel}</th>
                     </tr>
                 </thead>
@@ -251,13 +257,13 @@ const matchupData = [
 
 ---
 <div class="container mb-3">
-    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData}>
+    <MatchupRadarChart client:only awayTeam={awayTeamSeason?.team} homeTeam={homeTeamSeason?.team} teamData={matchupData} league={league}>
         <FallbackSpinner slot="fallback" />
     </MatchupRadarChart>
     <div class="row">
         <Fragment set:html={produceTeamSector(awayTeamSeason?.team, awayTeamBreakdown)} />
         <div class="col-md-12 ms-sm-auto col-lg-6">
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Defense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", league)} /> Offense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", league)} /> Defense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>
@@ -280,7 +286,7 @@ const matchupData = [
                     </tbody>
                 </table>
             </div>
-            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", Astro.locals.league)} /> Offense</div>
+            <div class="h3 text-center"><Fragment set:html={produceTeamLogoLink(awayTeamSeason?.team, "h3", false, "35px", league)} /> Defense vs <Fragment set:html={produceTeamLogoLink(homeTeamSeason?.team, "h3", false, "35px", league)} /> Offense</div>
             <div class="table-responsive">
                 <table class="table table-sm table-responsive">
                     <thead>

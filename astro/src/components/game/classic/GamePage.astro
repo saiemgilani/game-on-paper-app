@@ -23,7 +23,7 @@ import ExpectedPointsChart from '../../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../../charts/WinProbabilityChart.svelte';
 import { retrievePercentiles } from '../../../resources/sdv';
 import DarkModeLogos from '../../DarkModeLogos.astro';
-import { CURRENT_YEAR, LAST_YEAR, SESSION_FAVORITES_DEFAULT } from '../../../utils/constants';
+import { PERCENTILE_YEAR } from '../../../utils/constants';
 import Footer from '../../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../../FallbackSpinner.astro';
@@ -61,7 +61,7 @@ const requiredMissing = verdict.requiredMissing.length > 0;
 if (requiredMissing && gop) gop.render_outcome = 'failed';
 salvageGame(game);
 
-const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined, undefined, league);
+const percentiles = await retrievePercentiles(PERCENTILE_YEAR, undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
@@ -188,7 +188,12 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />
-        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <!-- Privacy-friendly analytics by Plausible -->
+        <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
+        <script is:inline>
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init()
+        </script>
         <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>

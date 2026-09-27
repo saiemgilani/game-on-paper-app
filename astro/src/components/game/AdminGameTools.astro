@@ -1,0 +1,156 @@
+---
+/**
+ * Admin-only controls on the game page. Rendered from GameHeader.astro, which
+ * both the v2 page and the frozen `classic/` twin import, so it is written
+ * once and an admin can flip between them from either side.
+ *
+ * Nothing here renders without an authenticated admin session
+ * (`locals.adminAuthed`, set in middleware.ts from the `gop_admin` cookie).
+ * These are admin tools, not a preview feature: they are never promoted.
+ *
+ *   View    which flag state renders this request (utils/adminView.ts)
+ *   Flags   one preview flag flipped on top of that base
+ *   Source  which feed the API processed the game from (routes/game.ts)
+ */
+import FlagOverrideDropdown from '../dropdowns/FlagOverrideDropdown.svelte';
+import { isFeatureEnabled, PREVIEW_FLAG_NAMES } from '../../utils/features';
+import { adminToolsHref, currentView, SOURCE_PARAM } from '../../utils/adminView';
+import { ALIGNMENT_LABEL, compareSources, type SourceComparison } from '../../utils/sourceCompare';
+import { retrieveGameSources, retrieveProcessedGame, type ProcessedGame } from '../../resources/python';
+import { getGameCacheConfig } from '../../utils/config';
+import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../utils/misc';
+import { espnLogoLeague, type League } from '../../utils/league';
+
+interface Props {
+    game?: ProcessedGame
+}
+const { game } = Astro.props;
+const admin = Astro.locals.adminAuthed === true;
+const league: League = Astro.locals.league ?? 'cfb';
+const id = game?.header?.id;
+
+// Everything below is behind `admin`: a public game-page render must not pay
+// for URL building it then discards.
+const view = admin ? currentView(Astro.url, Astro.locals) : 'live';
+const flagOptions = !admin ? [] : PREVIEW_FLAG_NAMES.map((name) => {
+    const effective = isFeatureEnabled(name, Astro.locals);
+    return { name, effective, href: adminToolsHref(Astro.url, { flags: { [name]: !effective } }) };
+});
+
+// The pill row lists the contract's registry in failover order, from the API.
+// Availability is never probed: that would be one upstream fetch per source
+// per render. A source the pin does not carry answers 400 when selected.
+const sourceSwitch = admin && isFeatureEnabled('source-switch', Astro.locals);
+const registry = sourceSwitch && id ? await retrieveGameSources(id, league) : null;
+const sources = registry?.sources ?? ['espn'];
+const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || 'espn';
+const provenance = game?.provenance;
+
+// ESPN comes from the ordinary processed-game path, on the no-source cache
+// key -- the SAME entry the page itself fills, so a warm key costs nothing. A
+// COLD key is a full second processing run, which is why it is timeboxed: the
+// panel drops to empty deltas rather than stalling the admin's whole render.
+// ponytail: Promise.race rather than an AbortSignal threaded through
+// retrieveProcessedGame -- the stray request fills a cache entry the page
+// would fill anyway. Thread a signal through if that stops being true.
+// 30 s, not a few: a cold /process on a game page is 15-20 s (see the repo
+// CLAUDE.md), so a tighter box fires on exactly the render that needed the
+// second fetch and leaves an all-empty ESPN column -- which is what the first
+// run of the visual matrix showed.
+const COMPARE_TIMEOUT_MS = 30_000;
+let comparison: SourceComparison | null = null;
+if (sourceSwitch && game && id && selectedSource !== 'espn') {
+    try {
+        const config = getGameCacheConfig(game.header.competitions[0].date, game.header.competitions[0].status);
+        comparison = compareSources(game, await Promise.race([
+            retrieveProcessedGame(id, config.maxAge || 30, league),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('source compare: ESPN side timed out')), COMPARE_TIMEOUT_MS)),
+        ]), provenance?.source ?? selectedSource);
+    } catch {
+        comparison = compareSources(game, null, provenance?.source ?? selectedSource);
+    }
+}
+const teamName = (teamId: string) =>
+    cleanAbbreviation(String(game?.teamInfo?.home?.id) === teamId ? game?.teamInfo?.home : game?.teamInfo?.away);
+const cell = (value: number | null, fixed: number, percent?: boolean) =>
+    value === null ? '' : `${roundNumber(value, 2, fixed)}${percent ? '%' : ''}`;
+---
+{admin && (
+    <div class="d-flex justify-content-start align-items-center flex-wrap gap-2 mt-3 mt-md-0" data-admin-game-tools>
+        <span class="text-muted text-small">Admin</span>
+        <select class="form-select form-select-sm w-auto" aria-label="Choose which flag state renders this page"
+                onchange="window.location.href = this.value">
+            <option value={adminToolsHref(Astro.url, { view: 'live' })} selected={view === 'live'}>View: Live</option>
+            <option value={adminToolsHref(Astro.url, { view: 'preview' })} selected={view === 'preview'}>View: Preview</option>
+        </select>
+        <FlagOverrideDropdown client:idle options={flagOptions} />
+        {sourceSwitch && (
+            <select class="form-select form-select-sm w-auto" aria-label="Choose the processing source"
+                    onchange="window.location.href = this.value">
+                {sources.map((name) => (
+                    <option value={adminToolsHref(Astro.url, { source: name === 'espn' ? null : name })}
+                            selected={selectedSource === name}>Source: {name}</option>
+                ))}
+            </select>
+        )}
+        {provenance && (
+            <span class="text-small text-muted" data-admin-provenance>
+                Served: {provenance.source}{provenance.fallback_used ? ' (fallback)' : ''}
+                {provenance.contract_sha ? `, contract ${provenance.contract_sha.slice(0, 7)}` : ''}
+            </span>
+        )}
+    </div>
+)}
+{admin && comparison && (
+    <div class="mb-3" id="source-compare" data-admin-source-compare>
+        <p class="text-muted text-small mt-2 mb-1">
+            {selectedSource} against ESPN, on the aggregates the processor already computed.
+            Plays: {comparison.playsSelected} against {comparison.playsEspn}, {ALIGNMENT_LABEL[comparison.alignment]}.
+            {comparison.firstDifference
+                ? ` First difference: ${comparison.firstDifference}.`
+                : ' Every play lines up in order.'}
+            {comparison.unmatchedSelected || comparison.unmatchedEspn
+                ? ` Unmatched: ${comparison.unmatchedSelected} here, ${comparison.unmatchedEspn} on ESPN.`
+                : ''}
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="box-heading">Metric</th>
+                        <th style="text-align: center;">{selectedSource}</th>
+                        <th style="text-align: center;">ESPN</th>
+                        <th style="text-align: center;">Delta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {comparison.teams.map((team) => (
+                        <Fragment>
+                            <tr>
+                                <td class="box-heading" colspan="4" style="text-align: left;">
+                                    <span class="d-flex align-items-center">
+                                        <img class={`img-fluid team-logo-${team.id} me-2`} width="20px"
+                                             src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.id}.png`}
+                                             alt={`ESPN team id ${team.id}`} />
+                                        {teamName(team.id)}
+                                    </span>
+                                </td>
+                            </tr>
+                            {team.rows.map((row) => (
+                                <tr>
+                                    <td style="text-align: left;">&emsp;&emsp;{row.label}</td>
+                                    <td class="numeral" style="text-align: center;">{cell(row.selected, row.fixed, row.percent)}</td>
+                                    <td class="numeral" style="text-align: center;">{cell(row.espn, row.fixed, row.percent)}</td>
+                                    <td class="numeral" style="text-align: center;">
+                                        {row.delta === null ? '' : `${generateMarginalString(row.delta, 2, row.fixed)}${row.percent ? '%' : ''}`}
+                                    </td>
+                                </tr>
+                            ))}
+                        </Fragment>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+)}

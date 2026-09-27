@@ -80,7 +80,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
     <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData} percentiles={allPctls}>
         <FallbackSpinner slot="fallback" />
     </TeamTrendsChart>
-    <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true}>
+    <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} league={league}>
         <FallbackSpinner slot="fallback" />
     </TeamRadarChart>
     <div class="container mb-3">

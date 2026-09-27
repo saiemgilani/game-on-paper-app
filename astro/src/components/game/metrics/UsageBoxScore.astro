@@ -8,12 +8,15 @@
  */
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { madeOf, num, pct, signed, sortDesc, teamRows } from '../../../utils/usage';
+import PlayerLink from '../../player/PlayerLink.astro';
 
 interface Props {
     box: Partial<ProcessedBoxScore>,
     teamId: string | number,
+    /** the game's season, so a player link opens on the season being watched */
+    season?: number,
 }
-const { box, teamId } = Astro.props;
+const { box, teamId, season } = Astro.props;
 
 const usage = sortDesc(teamRows(box.player_usage, teamId), 'opportunities');
 const groups = sortDesc(teamRows(box.position_group_usage, teamId), 'opportunities');
@@ -46,7 +49,7 @@ const groupLabel = (g: string | null | undefined) => (g ? GROUP_LABEL[g] ?? g : 
         <tbody>
             {usage.map((p: any) => (
                 <tr>
-                    <td>{p.player_name ?? p.player_id}{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
+                    <td><PlayerLink id={p.player_id} season={season}>{p.player_name ?? p.player_id}</PlayerLink>{groupLabel(p.position_group) && <span class="text-muted text-small ms-1">{groupLabel(p.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;" title={`${p.rushes} rush, ${p.targets} tgt, ${p.receptions} rec`}>{p.opportunities}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.target_share, 0)}</td>
                     <td class="numeral" style="text-align: center;">{pct(p.first_down_share, 0)}</td>
@@ -89,7 +92,7 @@ const groupLabel = (g: string | null | undefined) => (g ? GROUP_LABEL[g] ?? g : 
         <tbody>
             {tackles.map((t: any) => (
                 <tr>
-                    <td>{t.player_name ?? t.player_id}{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
+                    <td><PlayerLink id={t.player_id} season={season}>{t.player_name ?? t.player_id}</PlayerLink>{groupLabel(t.position_group) && <span class="text-muted text-small ms-1">{groupLabel(t.position_group)}</span>}</td>
                     <td class="numeral" style="text-align: center;">{t.tackles}</td>
                     <td class="numeral" style="text-align: center;">{t.assists}</td>
                     <td class="numeral" style="text-align: center;">{pct(t.tackle_share, 0)}</td>

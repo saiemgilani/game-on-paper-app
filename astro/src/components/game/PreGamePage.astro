@@ -4,7 +4,7 @@ import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../resource
 import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/sdv';
 import { retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveMatchupHistory } from '../../resources/sdv';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
-import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import { CURRENT_YEAR, METRIC_YEAR } from '../../utils/constants';
 import { cleanLocation, isChampionshipEvent } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
@@ -45,7 +45,7 @@ const header = espnGame.gamepackageJSON.header;
 // game context (venue, weather, line, leaders, recent form) lives on the
 // summary endpoint only; started here, awaited after the SDV fetches so an
 // ESPN retry/relay episode overlaps them instead of stacking onto page latency
-const gameSummaryPromise = retrieveGameSummary(id);
+const gameSummaryPromise = retrieveGameSummary(id, league);
 
 // Canonical is /game/<id>, the served path; /cfb/game/<id> is Disallowed in
 // robots.txt, so the old value told Google the authoritative URL was one it may not crawl.
@@ -56,7 +56,7 @@ const canonicalUrl = new URL(leaguePath(league, `/game/${id}`), "https://gameonp
 // tables lag the team tables and the API only falls back on an error, not on an
 // empty result.
 const gameSeason: number = espnGame.gamepackageJSON.header.season.year;
-const metricYear = gameSeason == CURRENT_YEAR ? LAST_YEAR : gameSeason;
+const summaryYear = (gameSeason == CURRENT_YEAR && CURRENT_YEAR != METRIC_YEAR) ? METRIC_YEAR : gameSeason;
 
 let homeTeamSeason: SDVTeamSeasonInformation = {
     team: null,
@@ -100,7 +100,7 @@ const fetchTeamSummaries = async (season: number): Promise<[SDVTeamSummary[], SD
     return [await one(homeTeam.id), await one(awayTeam.id)];
 };
 try {
-    [homeSummaries, awaySummaries] = await fetchTeamSummaries(metricYear);
+    [homeSummaries, awaySummaries] = await fetchTeamSummaries(summaryYear);
 } catch (e) {
     console.error(e);
     awaySummaries = [];
@@ -178,7 +178,12 @@ const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />
-        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <!-- Privacy-friendly analytics by Plausible -->
+        <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
+        <script is:inline>
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init()
+        </script>
         <DarkModeLogos teamIds={[homeTeam.id, awayTeam.id]} />
     </head>
     <body>
@@ -201,7 +206,7 @@ const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]
         {
             (isFeatureEnabled('game-page-v2', Astro.locals)) && (
                 <div class="container-fluid">
-                    <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={metricYear} />
+                    <GameEssentials summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} neutralSite={game.neutralSite} homeAdjEpa={homeSummary?.net_adj_epa} awayAdjEpa={awaySummary?.net_adj_epa} metricYear={summaryYear} />
                     <PlayersToWatch homeTeam={homeTeam} awayTeam={awayTeam} metricYear={gameSeason} />
                     <RecentForm summary={gameSummary} homeTeam={homeTeam} awayTeam={awayTeam} />
                 </div>

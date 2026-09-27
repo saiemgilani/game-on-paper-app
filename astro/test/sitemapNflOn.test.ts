@@ -10,7 +10,7 @@ vi.mock('../src/utils/features', async (orig) => {
 });
 
 import { GET } from '../src/pages/sitemap.xml';
-import { CURRENT_YEAR } from '../src/utils/constants';
+import { CURRENT_YEAR, METRIC_YEAR } from '../src/utils/constants';
 import { COACH_BOARD_SLUGS } from '../src/utils/coaches';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
@@ -27,9 +27,15 @@ describe('sitemap.xml with the nfl flag on', () => {
     expect(xml).toContain('<loc>https://gameonpaper.com/nfl/year/2002/team/12</loc>');
     expect(xml).toContain('<loc>https://gameonpaper.com/nfl/year/2020/type/2/week/17</loc>');
     expect(xml).not.toContain('/nfl/year/2020/type/2/week/18');
-    // 2026 has no season table yet: no team-season page, and the leaderboards redirect
-    expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/team/`);
-    expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/teams`);
+    if (METRIC_YEAR != CURRENT_YEAR) {
+      expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/team/`);
+      expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/teams`);
+      expect(xml).toContain(`/nfl/year/${METRIC_YEAR}/team/`);
+      expect(xml).toContain(`/nfl/year/${METRIC_YEAR}/teams`);
+    } else {
+      expect(xml).toContain(`/nfl/year/${CURRENT_YEAR}/team/`);
+      expect(xml).toContain(`/nfl/year/${CURRENT_YEAR}/teams`);
+    }
     // the rbsdm extras are NFL-only
     expect(xml).not.toContain('gameonpaper.com/year/2025/teams/tendencies</loc>');
   });
@@ -41,7 +47,12 @@ describe('sitemap.xml with the nfl flag on', () => {
       expect(xml).toContain(`<loc>https://gameonpaper.com/nfl/coaches/${b}</loc>`);
     }
     expect(xml).not.toContain('/nfl/year/2001/coaches/');
-    expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/coaches`);
+    if (METRIC_YEAR != CURRENT_YEAR) {
+      expect(xml).not.toContain(`/nfl/year/${CURRENT_YEAR}/coaches`);
+      expect(xml).toContain(`/nfl/year/${METRIC_YEAR}/coaches`);
+    } else {
+      expect(xml).toContain(`/nfl/year/${CURRENT_YEAR}/coaches`);
+    }
     expect(xml).not.toContain('<loc>https://gameonpaper.com/nfl/coaches</loc>');
   });
 });

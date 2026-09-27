@@ -93,6 +93,13 @@ export function yearRange(seasons: number[]): string {
     return s.length > 1 ? `${s[0]} to ${s[s.length - 1]}` : `${s[0]}`;
 }
 
+/** "2024", "2024 and 2026", "2023, 2024, and 2026": a list the way a sentence says it, Oxford comma included. */
+export function joinWithAnd(items: (string | number)[]): string {
+    if (items.length < 2) return items.join('');
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
 export function roundNumber(value: string | number | undefined | null, power10: number, fixed: number): string {
     if (typeof value == "number") {
         value = `${value}`;
@@ -100,10 +107,75 @@ export function roundNumber(value: string | number | undefined | null, power10: 
     return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
 }
 
-export function hexToRgb(hex?: string): RGBColor | null {
+/**
+ * Text that is safe inside an HTML attribute or a text node. For the handful of
+ * places that build markup as a string (the admin dashboard's tables) rather
+ * than letting Astro escape it.
+ */
+export function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+}
+
+/**
+ * A usable number, or null. The one guard for "did this field carry a number":
+ * null, undefined, "", "NA" and anything non-finite (NaN, Infinity) read null.
+ * Every caller that used to re-declare its own finite-number check uses this.
+ */
+export function finiteNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '' || value === 'NA') return null;
+    const n = typeof value === 'number' ? value : parseFloat(String(value));
+    return Number.isFinite(n) ? n : null;
+}
+
+/** A rate stored as a fraction, in percentage points. Null stays null. */
+export function toPercent(value: unknown): number | null {
+    const n = finiteNumber(value);
+    return n === null ? null : n * 100;
+}
+
+/**
+ * Present-and-finite, so a column the producer did not publish reads as absent
+ * rather than as a zero. The three formatters below are the only ones the site
+ * needs for a producer-backed table cell -- they live here, beside
+ * `roundNumber`, rather than being re-declared per component.
+ */
+export function numberOrNull(v: unknown): number | null {
+    if (v === null || v === undefined) return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v !== 'string') return null;
+    // the WHOLE string or nothing: `parseFloat` reads a numeric prefix, so a
+    // malformed producer value ("12abc") used to render and aggregate as 12
+    const text = v.trim();
+    if (text === '' || text === 'NA') return null;
+    const x = Number(text);
+    return Number.isFinite(x) ? x : null;
+}
+
+/** A numeric cell: `roundNumber` when there is a number, an em dash when there is not. */
+export function formatNumber(v: unknown, fixed: number, power10: number = 2): string {
+    const x = numberOrNull(v);
+    return x === null ? "—" : roundNumber(x, power10, fixed);
+}
+
+/** A 0-1 rate as a percentage ("48.0%"), or an em dash when absent. */
+export function formatPercent(v: unknown, fixed: number = 1): string {
+    const x = numberOrNull(v);
+    return x === null ? "—" : `${roundNumber(x * 100, 2, fixed)}%`;
+}
+
+/**
+ * Decimal places for a metric cell: an explicit 0 means zero places, a missing
+ * value means one. Shared by both BinionBoxScore twins so the guard cannot
+ * drift between them (`decimalPoints || 1` silently turns an explicit 0 into 1).
+ */
+export function metricDecimalPoints(decimalPoints: number | null | undefined): number {
+    return decimalPoints ?? 1;
+}
+
+export function hexToRgb(hex: string): RGBColor | null {
     if (!hex) {
         return null;
-    }
+    }    
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
@@ -371,24 +443,32 @@ export function calculateCumulativeSums(arr: number[]): number[] {
     return arr.map(cumulativeSum);
 }
 
+/** Is THIS team id on a meme list? The one place the list is consulted. */
+export function isMemeTeam(id: unknown): boolean {
+    if (id === null || id === undefined || id === "") return false
+    return MEME_LIST.includes(Number(id))
+}
+
+/**
+ * A piece of text lowercased when the team it belongs to is on a meme list.
+ *
+ * `cleanField` reads the id off the ROW, which is right when the row is a team
+ * and wrong when it is not: a player's game log row carries HIS team's id, so
+ * every opponent in it was lowercased once his team made the list (review on
+ * #267). Anything that names a team other than the row's own -- an opponent, a
+ * player -- names the id it means here instead.
+ */
+export function cleanTextForTeam(text: unknown, teamId: unknown): string {
+    const s = text === null || text === undefined ? "" : String(text)
+    return isMemeTeam(teamId) ? s.toLocaleLowerCase() : s
+}
+
 export function cleanField(team: any, field: string): string {
     if (!team) {
         return ""
     }
 
-    if (team.pos_team_id && MEME_LIST.includes(Number(team.pos_team_id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (team.team_id && MEME_LIST.includes(Number(team.team_id))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (team.teamId && MEME_LIST.includes(Number(team.teamId))) {
-        return team[field]?.toLocaleLowerCase() || ""
-    }
-
-    if (MEME_LIST.includes(Number(team.id))) {
+    if ([team.pos_team_id, team.team_id, team.teamId, team.id].some(isMemeTeam)) {
         return team[field]?.toLocaleLowerCase() || ""
     }
     return team[field] || ""
@@ -742,6 +822,15 @@ export function formatRank(rank: number | undefined | null) {
         rankString = "N/A"
     }
     return rankString
+}
+
+/** "1st", "22nd", "94th" -- for a percentile, which `formatRank` deliberately does not suffix. */
+export function ordinal(n: number): string {
+    const rem100 = Math.abs(n) % 100;
+    const rem10 = rem100 % 10;
+    const suffix = rem100 >= 11 && rem100 <= 13 ? "th"
+        : rem10 === 1 ? "st" : rem10 === 2 ? "nd" : rem10 === 3 ? "rd" : "th";
+    return `${n}${suffix}`;
 }
 
 export function produceTeamLogoLink(team?: { team_id: string | number, school: string, season?: string | number } | null, headerType: string = "h4", showNickname: boolean = false, imgSize: string = "35px", league: League = 'cfb'): string {

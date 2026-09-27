@@ -2,7 +2,7 @@
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
-import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue } from '../../../utils/misc';
+import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue, metricDecimalPoints } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import { LEAGUES, type League } from '../../../utils/league';
@@ -121,7 +121,7 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
         finalTeamInfo.reverse()
     }
 
-    let finalDecimalPoints = decimalPoints || 1;
+    let finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
     if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {

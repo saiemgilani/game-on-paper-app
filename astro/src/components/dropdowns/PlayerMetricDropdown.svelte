@@ -25,7 +25,7 @@
     }
 
 </script>
-<form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
+<form class="mb-0 mb-sm-3 d-flex justify-content-xs-start justify-content-md-end">
     <div class="row flex-lg-nowrap">
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-md" onchange={onChangeSeason}>
@@ -35,7 +35,7 @@
 				{/each}
             </select>
         </div>
-        <div class="col-auto mb-xs-3 mb-sm-0">
+        <div class="col-auto mb-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeCategory}>
                 <option value="-1" disabled>Choose Category...</option>
                 {#each Object.keys(SDV_PLAYER_METRIC_CATEGORIES) as s}
@@ -43,7 +43,7 @@
 				{/each}
             </select>
         </div>
-        <div class="col-auto mb-xs-3 mb-sm-0">
+        <div class="col-auto mb-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
                 {#each Object.entries(SDV_PLAYER_METRIC_CATEGORIES) as [c, metrics]}

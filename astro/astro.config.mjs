@@ -17,7 +17,8 @@ export default defineConfig({
     // middleware covers every legacy path, including ones never enumerated here.
     redirects: {
         "/trends": "/charts/trends",
-        "/players": "/year/2026/players",
+        // "/players" is a page (pages/players/index.astro) with an /nfl twin, so the
+        // year comes from CURRENT_YEAR instead of a literal that goes stale
     },
     trailingSlash: 'ignore',
     cache: { 

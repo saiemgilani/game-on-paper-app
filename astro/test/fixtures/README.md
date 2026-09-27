@@ -37,6 +37,28 @@ with `locals.league = 'nfl'`).
 **To regenerate:** same call; the game id must stay 401772944 so the test's
 URL assertions hold.
 
+## `pregame-401872933-nfl.json.gz`, `pregame-401858458-cfb.json.gz`
+The two ESPN payloads a *scheduled* game page reads, per league, in one object:
+`{ playbyplay, summary }`.
+
+- NFL: Carolina at Atlanta (401872933), 2026 week 3 — `STATUS_SCHEDULED`.
+- CFB: Purdue at UCLA (401858458), 2026 week 4 — `STATUS_SCHEDULED`.
+
+**Provenance (2026-09-19):** captured verbatim, no hand edits, from
+`cdn.espn.com/core/<espnPath>/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`
+(the body `retrieveGamePage` returns) and
+`site.api.espn.com/apis/site/v2/sports/football/<espnPath>/summary?event=<id>`
+(the body `retrieveGameSummary` returns: `gameInfo.venue`, `pickcenter`,
+`lastFiveGames`).
+
+**Used by:** `test/preGamePage.render.test.ts`, which renders `PreGamePage` for
+both leagues with the SDV client mocked. The game page tests next door use
+*final* games, so before this fixture `PreGamePage` never rendered in the suite.
+
+**To regenerate:** re-capture both URLs for a scheduled game; keep the ids, the
+teams (ESPN ids 1/29 and 26/2509) and the scheduled status, which the test's
+logo, venue and link assertions name.
+
 ## `nfl-summaries-2025.json`
 Real rows from the published `nfl_team_summaries` / `nfl_passing` 2025 assets
 (the nfl-data stage-06 producer's 2026-09-10 rebuild, which added
@@ -64,3 +86,54 @@ rows and renders the season and careers boards for both leagues.
 
 **To regenerate** after a builder change: re-export the three tables for 2024
 and replace the arrays; keep 2024 so the render test's URL assertions hold.
+
+## `player-cfb-4433971-2024.json` / `player-nfl-16800-2024.json`
+The exact bodies the Data API's player-keyed routes return for one player each
+(sdv-db #71): `identity` (`/v1/{league}/players/{espn id}`), `seasons`
+(`…/seasons`, **every** season, which is what the career roll-up needs), `games`
+and `splits` for 2024, and the 404 body for an unknown id.
+
+* **CFB** — Kyle McCord (ESPN 4433971), 2024 Syracuse: passing *and* rushing box
+  categories in one game, four seasons of season rows across two schools, and a
+  postseason game whose schedule `week` restarts at 1 (which is why the game log
+  orders on the kickoff date).
+* **NFL** — Davante Adams (ESPN 16800, gsis `00-0031381`), 2024: traded LV → NYJ,
+  so two team-season rows, reachable from the ESPN id only through the nflverse
+  crosswalk. The 27-play LV stint is under the producer's qualification gate and
+  carries null `_rank`/`_pct`; the 114-play NYJ row carries both.
+
+**Provenance (2026-09-19):** captured on the droplet by mounting sdv-db's
+`player_routes.add_player_routes` on a bare FastAPI app over the live read engine
+and calling each route through `TestClient`. No hand edits, no trimming.
+
+**Used by:** `test/players.test.ts` (the reconciliation arithmetic: the game log
+sums to the `all` split, the split groups partition it, the roll-up rates
+recompute) and `test/playerPages.render.test.ts` (the render contract for every
+table on `/players/[id]` and its `/nfl` twin).
+
+**To regenerate** after a route change: repeat the above for the same two ids and
+seasons — the render test asserts on those ids, teams and dates.
+
+## `usage-cfb-400869270.json.gz` / `usage-nfl-401872922.json.gz`
+Real `ProcessedGame` payloads — the exact bodies the Python API serves for
+`GET /cfb/400869270/process` (OKST at CMU, 2016, Final) and
+`GET /nfl/401872922/process` (JAX at CLE, 2026 REG, Final). Unlike the two
+`game-*.json.gz` fixtures these carry **every** `advBoxScore` section the game
+page can render — the usage / tackles / special-teams sections
+(`sportsdataverse.football.usage_box`) and a fitted `paperIndex` — at a tenth
+of the size, because the games are smaller.
+
+**Provenance (2026-09-18):** produced offline, no network, by driving
+`python/app.py`'s `/<league>/<id>/process` through the Flask test client with
+the processors replaced by the `_OfflineNFL` / `_OfflineCFB` subclasses in
+`python/tests/test_usage_box_route.py`, which read the ESPN summaries (and, for
+the NFL, the core play items) already committed under `python/tests/fixtures`.
+No hand edits. The NFL game carries play participants, so its tackle and
+position-group sections are populated; the CFB game has none, so those sections
+are legitimately empty.
+
+**Used by:** `test/tableDecisions.render.test.ts` — the render-level guards for
+the table-reconciliation decisions (#264 review).
+
+**To regenerate** after a processor change: re-run that same offline route call
+for both leagues and overwrite the files; the game ids must stay the same.

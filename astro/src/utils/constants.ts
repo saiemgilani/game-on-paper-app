@@ -2,6 +2,10 @@ import { range } from "./misc";
 
 export const CURRENT_YEAR = 2026;
 export const LAST_YEAR = 2025;
+
+export const METRIC_YEAR = 2026;
+export const PERCENTILE_YEAR = 2025;
+
 export const AVAILABLE_SEASONS = range(2004, CURRENT_YEAR);
 export const ALPHABET = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 export const MEME_LIST = [61];
@@ -1208,6 +1212,12 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
     "EPAdropback": "EPA/Dropback",
     "EPArush": "EPA/Rush"
 }
+
+/**
+ * The NFL's five postseason rounds, in week order -- the schedule dropdown's
+ * week list and the player game log's week cell both name them from here.
+ */
+export const NFL_POST_LABELS: string[] = ['Wild Card', 'Divisional', 'Conference Championships', 'Pro Bowl', 'Super Bowl'];
 
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };
 export const EVENT_KEY_TRENDS_METRIC_CHANGED = 'TrendsMetricChanged';

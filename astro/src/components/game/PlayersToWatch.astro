@@ -9,6 +9,7 @@ import {
     type SDVRushingSummary,
 } from '../../resources/sdv';
 import { cleanAbbreviation, roundNumber } from '../../utils/misc';
+import { espnLogoLeague, leaguePath } from '../../utils/league';
 
 interface Props {
     homeTeam: ESPNTeam
@@ -38,9 +39,9 @@ const best = <T,>(rows: T[]): T | null =>
 
 async function watchRows(teamId: string | number): Promise<WatchRow[]> {
     const [pass, rush, rec] = await Promise.all([
-        retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "TEPA", false, 10, metricYear),
-        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "TEPA", false, 20, metricYear),
-        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "TEPA", false, 25, metricYear),
+        retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "TEPA", false, 10, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "TEPA", false, 20, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "TEPA", false, 25, metricYear, Astro.locals.league),
     ]);
     const p = best(named(pass, "passer_player_name") as SDVPassingSummary[]);
     const r = best(named(rush, "rusher_player_name") as SDVRushingSummary[]);
@@ -80,8 +81,8 @@ const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTe
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">
                         <p class="fw-bold mb-2 d-flex align-items-center gap-2">
-                            <a class="text-decoration-none text-reset d-flex align-items-center gap-2" href={`/team/${team.id}`}>
-                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`} alt={cleanAbbreviation(team)} />
+                            <a class="text-decoration-none text-reset d-flex align-items-center gap-2" href={leaguePath(Astro.locals.league, `/team/${team.id}`)}>
+                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${team.id}.png`} alt={cleanAbbreviation(team)} />
                                 <span>{cleanAbbreviation(team)}</span>
                             </a>
                         </p>

@@ -1,6 +1,6 @@
 // import logger from '../../utils/logger.js';
 import glossaryRaw from '../static/glossary.json' with { type: 'json' };
-import { LAST_YEAR } from '../utils/constants';
+import { METRIC_YEAR } from '../utils/constants';
 import { FLAGS } from '../utils/features';
 
 // The head-coach boards sit behind the 'coaches' flag and middleware 404s them
@@ -40,7 +40,7 @@ export function generateGlossaryItems(): Glossary {
                 const coachesPublic = FLAGS['coaches'] === 'on';
                 let copyRec = records
                     .map((r) => (coachesPublic ? r : withoutCoachBoards(r)))
-                    .map((r) => ({ ...r, definition: r.definition.replaceAll('{season}', String(LAST_YEAR)) }));
+                    .map((r) => ({ ...r, definition: r.definition.replaceAll('{season}', String(METRIC_YEAR)) }));
                 copyRec.sort((a, b) => {
                     return a.term.localeCompare(b.term)
                 });

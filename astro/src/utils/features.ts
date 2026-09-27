@@ -13,6 +13,12 @@
 // Usage in a component or page:
 //   import { isFeatureEnabled } from '../utils/features';
 //   { isFeatureEnabled('my-flag', Astro.locals) && <NewThing /> }
+//
+// An authenticated admin can override the resolved state for ONE request from
+// the query string (?view=live|preview, ?flags=name:on,name:off -- see
+// utils/adminView.ts). That is an admin tool, not a flag state: the middleware
+// reads those parameters only on a request carrying a valid admin session
+// cookie, so nothing about a public request changes.
 
 export type FeatureState = 'off' | 'preview' | 'on';
 
@@ -34,9 +40,35 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'preview',
+    // The play processor's source switch (football-sources Stage 4): the game
+    // page may ask the API to process a game from an alternate feed
+    // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's
+    // registry) and renders from the API's own header when ESPN's cdn is down.
+    // Nothing public changes while this is 'preview': only this path sends
+    // `?source=` to the API, so the request, its cache key and the response are
+    // exactly what they are today for every other viewer. Promote to 'on' once
+    // an alternate adapter is trusted end to end.
+    'source-switch': 'preview',
+    // Individual player pages: /players/<espn id> and the /nfl twin, plus the
+    // hrefs the leaderboard rows and the game-page usage box grow to reach them.
+    // Gated in middleware exactly like 'nfl' and 'coaches' (utils/players.ts
+    // isPlayerPath); the links are gated in their components, because a public
+    // link into a 404 namespace is worse than no link. Promote to 'on' once the
+    // player-keyed Data API routes are live and the sitemap block is filled in.
+    'player-pages': 'preview',
 };
 
-export function isFeatureEnabled(name: string, locals: { preview?: boolean } | undefined): boolean {
+/** The flags an admin can flip per request -- what the admin tools list. */
+export const PREVIEW_FLAG_NAMES = Object.keys(FLAGS).filter((n) => FLAGS[n] === 'preview');
+
+export function isFeatureEnabled(
+    name: string,
+    locals: { preview?: boolean; flagOverrides?: Record<string, boolean> } | undefined,
+): boolean {
+    // An admin's per-request override wins over both the flag state and the
+    // preview cookie; it is only ever populated for an authenticated admin.
+    const override = locals?.flagOverrides?.[name];
+    if (override !== undefined) return override;
     const state = FLAGS[name] ?? 'off';
     if (state === 'on') return true;
     if (state === 'preview') return locals?.preview === true;

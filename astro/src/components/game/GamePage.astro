@@ -21,7 +21,7 @@ import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
 import { retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
-import { CURRENT_YEAR, LAST_YEAR } from '../../utils/constants';
+import { PERCENTILE_YEAR } from '../../utils/constants';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
@@ -67,7 +67,7 @@ for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: an
 
 const fullGamePlays = game.plays;
 
-const percentiles = await retrievePercentiles((CURRENT_YEAR == game.season.year) ? LAST_YEAR : game.season.year, undefined, undefined, league);
+const percentiles = await retrievePercentiles(PERCENTILE_YEAR, undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
@@ -211,7 +211,12 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />
-        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <!-- Privacy-friendly analytics by Plausible -->
+        <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
+        <script is:inline>
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init()
+        </script>
         <DarkModeLogos teamIds={[game.teamInfo.home.id, game.teamInfo.away.id]} />
     </head>
     <body>
@@ -286,8 +291,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
+                                box={game.advBoxScore}
+                                season={game.season?.year}
                             />
-                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(awayTeam.id)} />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(awayTeam.id)} season={game.season?.year} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(awayTeam.id))} />
                         </div>
@@ -306,8 +313,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
                                 plays={game.plays}
                                 teamId={parseInt(homeTeam.id)}
+                                box={game.advBoxScore}
+                                season={game.season?.year}
                             />
-                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(homeTeam.id)} />
+                            <UsageBoxScore box={game.advBoxScore} teamId={parseInt(homeTeam.id)} season={game.season?.year} />
                             <PassingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                             <RushingChart plays={game.plays.filter(p => p.pos_team == parseInt(homeTeam.id))} />
                         </div>

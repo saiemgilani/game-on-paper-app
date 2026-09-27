@@ -1112,6 +1112,40 @@ export interface ProcessedGame {
     homeTeamSpread: number
     overUnder: number
     header: ESPNGameHeader
+    /** only present when the request carried `?source=` (the 'source-switch'
+     *  preview path); the API stamps which feed actually produced the game */
+    provenance?: {
+        source: string
+        requested: string
+        fallback_used: boolean
+        contract_version: string | null
+        contract_sha: string | null
+    }
+    /** data-quality verdict for THIS response (python/qa.py, docs/qa-payload.md).
+     *  Null when neither the packaged gate nor the live rules could speak: a
+     *  finished game on a deploy whose sportsdataverse-py pin has no
+     *  validation package. Observability only; nothing renders from it. */
+    qa?: {
+        ok: boolean
+        n_errors: number | null
+        n_warnings: number | null
+        top_rules: { rule: string, n: number, severity: string }[]
+        contract_ok: boolean | null
+        gop_ok: boolean | null
+        provenance: {
+            source: string
+            requested: string | null
+            fallback_used: boolean
+            sdv_version: string | null
+            sdv_sha: string | null
+        }
+        live: {
+            ok: boolean
+            findings: { rule: string, n: number, sample: unknown }[]
+            polls: number
+            since: string
+        } | null
+    } | null
     broadcasts: ESPNGeoBroadcast[]
     season: ESPNSeason
     gei?: number
@@ -1122,8 +1156,8 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb'): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -1236,13 +1270,60 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
     return normalizeFactor * gei
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb'): Promise<ProcessedGame> {
+/** What `GET /{league}/{id}/sources` answers: the contract's registry. */
+export interface GameSources {
+    /** the league's failover order, ESPN first and terminal */
+    sources: string[]
+    contract_version: string | null
+    contract_sha: string | null
+}
+
+/**
+ * The processing sources the deployed sportsdataverse-py offers for a league.
+ *
+ * Only the admin tools call this, and it is a small static list per deploy, so
+ * it is keyed on APP_VERSION exactly like the processed-game response: a build
+ * carrying a new adapter invalidates it with no purge. Fail-open -- the admin
+ * toolbar renders with ESPN alone if the API cannot answer.
+ */
+export async function retrieveGameSources(gameId: string | number, league: League = 'cfb'): Promise<GameSources | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/sources`, {
+            headers: {
+                "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`,
+                "Referer": "gameonpaper.com",
+            },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": 3600, 404: 1, "500-599": 0 },
+                // Per GAME, not per league: the body echoes `game_id`, so a
+                // league-wide key served /cfb/1/sources for /cfb/2/sources.
+                // See the route's docstring -- the echo is kept for the id-map
+                // follow-up, which makes the body vary per game for real.
+                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/sources?v=${APP_VERSION}`,
+            }
+        });
+        const body: GameSources = JSON.parse(await req.text());
+        return Array.isArray(body?.sources) && body.sources.length ? body : null;
+    } catch (e) {
+        console.error(`ERROR while listing sources for ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
 
+    // `source` only ever arrives from the 'source-switch' preview path. It has
+    // to reach the cache key as well as the URL: two sources' payloads for one
+    // game are different responses, and a shared key would pin whichever
+    // landed first for the whole TTL (a year on a completed game).
+    const query = source ? `?source=${encodeURIComponent(source)}` : '';
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process`, {
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process${query}`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
@@ -1254,7 +1335,7 @@ async function processPlays(gameId: string | number, cacheTTL: number, league: L
             // deployed version means a deploy (a parser fix in sportsdataverse-py
             // rides in with every build) invalidates it without any zone purge; the
             // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}`,
+            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}${source ? `&source=${encodeURIComponent(source)}` : ''}`,
         }
     })
     const content = await req.text();

@@ -61,7 +61,12 @@ const structuredData = jsonLdScript([definedTermSetJsonLd(allTerms, canonical)])
         <meta name="title" content={ title }>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />
-        <script defer is:inline crossorigin="anonymous" data-domain="gameonpaper.com" src="https://plausible.io/js/script.js"></script>
+        <!-- Privacy-friendly analytics by Plausible -->
+        <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
+        <script is:inline>
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init()
+        </script>
     </head>
     <body>
         <Header />

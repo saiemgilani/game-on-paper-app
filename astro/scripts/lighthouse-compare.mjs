@@ -30,7 +30,8 @@
 // min-max run range and a delta is called a regression only when the ranges don't
 // overlap. Writes <out>/summary.json and <out>/lighthouse.md; raw reports go in
 // <out>/reports/. --shots also runs visual-check.mjs (JPEG + above-the-fold thumbs)
-// against the head preview into <out>/shots/.
+// against the head preview into <out>/shots/; --walkthrough runs walkthrough.mjs there
+// too (route scroll-throughs, plus --steps modules) into <out>/walkthrough/.
 //
 // Not repo dependencies (keeps `npm ci` lean): lighthouse is resolved from
 // astro/node_modules, `npm root -g`, or NODE_PATH (`npm i -g lighthouse`). Chrome
@@ -64,6 +65,8 @@ const { values: opt, positionals: routes } = parseArgs({
     'backend-cmd': { type: 'string' },
     expect: { type: 'string' },
     shots: { type: 'boolean', default: false },
+    walkthrough: { type: 'boolean', default: false },
+    steps: { type: 'string', default: '' },
     out: { type: 'string' },
     work: { type: 'string' },
     port: { type: 'string', default: '4321' },
@@ -83,6 +86,7 @@ const STATIC_PORT = Number(opt['static-port']);
 function usage(msg) {
   console.error(`${msg}\nusage: node scripts/lighthouse-compare.mjs [--base ref] [--head ref] [--runs 3] [--mode frontend|e2e|both]
   [--presets mobile,desktop] [--flags a,b] [--python-url url] [--backend-cmd cmd] [--expect text] [--shots]
+  [--walkthrough] [--steps scripts/walkthroughs/a.mjs,scripts/walkthroughs/b.mjs]
   [--out dir] [--work dir] [--keep] <route> [route...]`);
   process.exit(2);
 }
@@ -542,6 +546,22 @@ try {
           child.on('exit', ok);
         });
         if (code !== 0) failures.push(`visual-check exited ${code}`);
+      }
+      if (opt.walkthrough && name === 'head') {
+        // one recorder run per flow: the routes' scroll-throughs, then each steps module
+        const steps = opt.steps.split(',').map((f) => f.trim()).filter(Boolean);
+        const runs = [routes, ...steps.map((f) => ['--steps', f])];
+        for (const args of runs) {
+          say(`head: walkthrough ${args[0] === '--steps' ? args[1] : 'of ' + args.join(' ')}`);
+          const code = await new Promise((ok) => {
+            const child = spawn(process.execPath, [join(ASTRO, 'scripts', 'walkthrough.mjs'), ...args], {
+              stdio: 'inherit',
+              env: { ...process.env, BASE: origin, OUT: join(OUT, 'walkthrough') },
+            });
+            child.on('exit', ok);
+          });
+          if (code !== 0) failures.push(`walkthrough ${args.join(' ')} exited ${code}`);
+        }
       }
     });
   }

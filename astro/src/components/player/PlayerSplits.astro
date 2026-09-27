@@ -1,0 +1,54 @@
+---
+/**
+ * Situational splits over the player's attributed plays: the same flags the
+ * team situational section sums (`utils/situational.ts` population -- plays
+ * from scrimmage on a numbered down), so a player's red-zone row is the same
+ * definition as his team's.
+ *
+ * Standard + passing downs partition `All plays`, as do the three period rows,
+ * which is what makes the section checkable rather than decorative.
+ *
+ * Only the two down-type splits carry an `<abbr title>`: the rest say what they
+ * are. Success rate is the only success column -- the raw count of successful
+ * plays is `plays` times `SR%` and earns no cell of its own.
+ */
+import { formatNumber, formatPercent, numberOrNull } from '../../utils/misc';
+import { PLAYER_SPLITS } from '../../utils/players';
+import type { SDVPlayerSplit } from '../../resources/sdv';
+
+interface Props { splits: SDVPlayerSplit[] }
+const { splits } = Astro.props;
+
+const by = new Map(splits.map((s) => [s.split, s]));
+const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
+    // overtime is offered only when it was played
+    .filter((s) => s.row && (numberOrNull(s.row.plays) ?? 0) > 0);
+---
+{rows.length > 0 && (
+<div class="table-responsive" id="player-splits-table">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Split</th>
+                <th class="text-center" colspan="1">Plays</th>
+                <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Share of plays with positive EPA">SR%</abbr></th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows.map((s) => (
+                <tr class:list={[s.key === 'all' ? 'table-secondary' : null]}>
+                    <td class="text-left" colspan="1">
+                        {s.title ? <abbr title={s.title}>{s.label}</abbr> : (s.key === 'all' ? <strong>{s.label}</strong> : s.label)}
+                    </td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.plays, 0)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa_per_play, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa, 2)}</td>
+                    <td class="text-center numeral" colspan="1">{formatPercent(s.row?.success_rate)}</td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
+)}

@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import GenericPage from "../../layouts/GenericPage.astro";
+import { QA_WINDOWS } from "../../utils/adminQa";
 
 const title = `Admin | Game on Paper`;
 const subtitle = "Operational dashboards for Game on Paper";
@@ -25,6 +26,7 @@ const subtitle = "Operational dashboards for Game on Paper";
     <li class="nav-item"><button class="nav-link" data-t="upstream">ESPN / upstream</button></li>
     <li class="nav-item"><button class="nav-link" data-t="errors">Errors</button></li>
     <li class="nav-item"><button class="nav-link" data-t="dq">Data quality</button></li>
+    <li class="nav-item"><button class="nav-link" data-t="qa">QA</button></li>
     <li class="nav-item"><button class="nav-link" data-t="traffic">Traffic</button></li>
     <li class="nav-item"><button class="nav-link" data-t="system">System</button></li>
     <li class="nav-item"><button class="nav-link" data-t="staleness">Staleness</button></li>
@@ -98,6 +100,36 @@ const subtitle = "Operational dashboards for Game on Paper";
     <h6 class="admin-label">Worst games (click a row for per-stat detail)</h6>
     <div class="card twrap"><table class="table table-sm mb-0" id="t-dqgames"></table></div>
     <div id="dq-detail"></div>
+  </section>
+  <section id="qa">
+    <div class="card"><p class="admin-muted m-0">The validation verdict every /process response carries
+      (<code>qa</code> in the payload), per game and per rule. The Data quality tab is the box-score
+      comparison, which is a different check.</p></div>
+    <h6 class="admin-label">Last verdict per game, last 24 hours</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-qagames"></table></div>
+    <p class="small admin-muted mt-1 mb-0" id="qa-games-note"></p>
+    {/* The window control sits at the right edge on desktop and drops under the
+        section title on mobile -- the season-selector row from PlayerPage.astro
+        (`col-md` grows, `col-md-auto` is pushed to the right edge, both are
+        `col-12` below md). */}
+    <div class="row align-items-center g-2 mb-2">
+      <div class="col-md col-12 d-flex align-items-center flex-wrap gap-2">
+        <h6 class="admin-label mb-0">Findings by rule</h6>
+        <span class="small admin-muted" id="qa-summary"></span>
+      </div>
+      <div class="col-md-auto col-12">
+        <select class="form-select form-select-sm w-auto" id="qa-window" aria-label="Choose the window these findings cover">
+          {QA_WINDOWS.map((d) => (
+            <option value={d} selected={d === 7}>{d === 1 ? 'Last 24 hours' : `Last ${d} days`}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-qarules"></table></div>
+    <p class="small admin-muted mt-1 mb-0" id="qa-rules-note"></p>
+    <h6 class="admin-label">Published verdicts <span id="qa-season-year"></span></h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-qaseason"></table></div>
+    <p class="small admin-muted mt-1 mb-0" id="qa-season-note"></p>
   </section>
   <section id="traffic">
     <div class="card"><p class="admin-muted m-0">Visitor analytics live in
@@ -185,6 +217,8 @@ const subtitle = "Operational dashboards for Game on Paper";
 <script>
   import Chart from 'chart.js/auto';
   import { assess, scoresFromTitle } from '../../utils/staleness';
+  import { escapeHtml } from '../../utils/misc';
+  import { qaGamesTable, qaRulesTable, qaSeasonTable, qaSummary } from '../../utils/adminQa';
 
   const S = ['#4d8df0', '#c97a20', '#1d9e7c', '#a95cc6'];
   const STATUS = { good: '#3fae72', warn: '#d9a441', crit: '#e05561' };
@@ -192,7 +226,7 @@ const subtitle = "Operational dashboards for Game on Paper";
   const TICK = DARK ? '#98a1ad' : '#6c757d';
   const GRID = DARK ? '#232933' : '#eceff2';
   const charts = {};
-  const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = escapeHtml;
   const fmt = (x, d = 0) => (x == null ? '—' : Number(x).toFixed(d));
   const hhmm = (t) => new Date(t).toTimeString().slice(0, 5);
   const api = (name, qs = '') => fetch(`/admin/api/${name}${qs}`).then((r) => r.json());
@@ -246,10 +280,16 @@ const subtitle = "Operational dashboards for Game on Paper";
                   y: { ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true } } },
     });
   }
+  // A cell is HTML, or `{ v, cls }` when it also needs a class on the <td>
+  // (the QA tab shades its counts).
   function table(el, head, rows) {
+    const cell = (c, i) => {
+      const cls = [i ? 'num' : '', typeof c === 'object' ? c.cls : ''].filter(Boolean).join(' ');
+      return `<td${cls ? ` class="${cls}"` : ''}>${typeof c === 'object' ? c.v : c}</td>`;
+    };
     document.getElementById(el).innerHTML =
       '<thead><tr>' + head.map((h, i) => `<th${i ? ' class="num"' : ''}>${h}</th>`).join('') + '</tr></thead>' +
-      '<tbody>' + rows.map((r) => `<tr${r.attr ?? ''}>` + r.cells.map((c, i) => `<td${i ? ' class="num"' : ''}>${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      '<tbody>' + rows.map((r) => `<tr${r.attr ?? ''}>` + r.cells.map(cell).join('') + '</tr>').join('') + '</tbody>';
   }
   function segbar(el, legEl, parts) {
     const total = parts.reduce((a, p) => a + p.v, 0) || 1;
@@ -429,6 +469,35 @@ const subtitle = "Operational dashboards for Game on Paper";
       d.game.map((r) => ({ cells: [r.team_id ?? '—', `<span class="mono">${esc(r.stat)}</span>`, r.ours, r.espn ?? '—', r.delta ?? '—'] })));
   }
 
+  // ---- QA: the validation verdict every /process response carries ----
+  // Only the rule histogram is window-scoped, so the window lives in that
+  // section. The season comes from the Sportsdataverse API via /admin/api/qa-season
+  // and does not move, so it is fetched once per page.
+  let qaDays = 7;
+  let qaSeason = null;
+  const qaFetch = (path) => fetch(path).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  async function refreshQa() {
+    const [live, season] = await Promise.all([
+      qaFetch(`/admin/api/qa?days=${qaDays}`),
+      (qaSeason ??= qaFetch('/admin/api/qa-season')),
+    ]);
+    const d = live ?? { games: [], rules: [], totals: {}, days: qaDays };
+    const s = season ?? { rows: [], season: null, ok: false };
+    const put = (id, noteId, t) => {
+      table(id, t.head, t.rows);
+      document.getElementById(noteId).textContent = t.note;
+    };
+    put('t-qagames', 'qa-games-note', qaGamesTable(d, live !== null));
+    put('t-qarules', 'qa-rules-note', qaRulesTable(d, live !== null));
+    put('t-qaseason', 'qa-season-note', qaSeasonTable(s));
+    document.getElementById('qa-summary').textContent = qaSummary(d, live !== null);
+    document.getElementById('qa-season-year').textContent = s.season ? `(season ${s.season})` : '';
+  }
+  document.getElementById('qa-window').addEventListener('change', (e) => {
+    qaDays = Number(e.target.value);
+    refreshQa().catch((err) => console.error(err));
+  });
+
   async function refreshTraffic() {
     const d = await api('traffic');
     table('t-routes', ['Route', 'Req', 'p95 ms'], d.routes.map((r) => ({ cells: [`<span class="mono">${esc(r.route_pattern)}</span>`, r.n, fmt(r.p95)] })));
@@ -508,16 +577,21 @@ const subtitle = "Operational dashboards for Game on Paper";
   }
   document.getElementById('st-probe').addEventListener('click', () => probeStaleness().catch((e) => console.error(e)));
 
-  const refreshers = { overview: () => Promise.all([refreshOverview(), refreshAudit()]), games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
+  const refreshers = { overview: () => Promise.all([refreshOverview(), refreshAudit()]), games: refreshGames, upstream: refreshUpstream, errors: refreshErrors, dq: refreshDq, qa: refreshQa, traffic: refreshTraffic, system: refreshSystem, staleness: refreshStaleness };
+  // The tab is in the URL fragment, so a tab can be linked and a reload comes
+  // back to it. An unknown fragment falls back to the overview.
   let active = 'overview';
+  function show(name) {
+    active = refreshers[name] ? name : 'overview';
+    document.querySelectorAll('#tabs .nav-link').forEach((x) => x.classList.toggle('active', x.dataset.t === active));
+    document.querySelectorAll('.admin-root section').forEach((s) => s.classList.toggle('on', s.id === active));
+    if (location.hash.slice(1) !== active) history.replaceState(null, '', `#${active}`);
+    refreshers[active]().catch(() => {});
+  }
   document.getElementById('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('button');
-    if (!b) return;
-    active = b.dataset.t;
-    document.querySelectorAll('#tabs .nav-link').forEach((x) => x.classList.toggle('active', x === b));
-    document.querySelectorAll('.admin-root section').forEach((s) => s.classList.toggle('on', s.id === active));
-    refreshers[active]().catch(() => {});
+    if (b) show(b.dataset.t);
   });
-  refreshOverview().catch(() => {});
+  show(location.hash.slice(1));
   setInterval(() => refreshers[active]().catch((e) => { console.error(e)}), 45000);
 </script>

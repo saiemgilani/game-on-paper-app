@@ -1,0 +1,8 @@
+---
+import { CURRENT_YEAR } from '../../utils/constants';
+
+// /players: the season leaderboard hub. Was a literal "/year/2026/players" in
+// astro.config.mjs; a page so the year follows CURRENT_YEAR and /nfl/players
+// can be its twin (review on #267).
+return Astro.redirect(`/year/${CURRENT_YEAR}/players`);
+---

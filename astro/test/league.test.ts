@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { LEAGUES, NFL_LOGO_ABBR, leaguePath, splitLeague, teamLogoUrl } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -60,4 +60,69 @@ describe('teamLogoUrl', () => {
     expect(Object.keys(NFL_LOGO_ABBR)).toHaveLength(32);
     expect(new Set(Object.values(NFL_LOGO_ABBR)).size).toBe(32);
   });
+});
+
+describe('nflRegularSeasonWeeks', () => {
+    test('17 through 2020, 18 from 2021, 18 when the season is unknown', () => {
+        expect(nflRegularSeasonWeeks(1999)).toBe(17);
+        expect(nflRegularSeasonWeeks(2020)).toBe(17);
+        expect(nflRegularSeasonWeeks(2021)).toBe(18);
+        expect(nflRegularSeasonWeeks(2025)).toBe(18);
+        expect(nflRegularSeasonWeeks('2020')).toBe(17);
+        expect(nflRegularSeasonWeeks(undefined)).toBe(18);
+    });
+});
+
+describe('weekLabel', () => {
+    test('names the NFL postseason round rather than its nflverse week number', () => {
+        // 2021 onwards: regular season 1-18, postseason 19-22
+        expect(weekLabel('nfl', 19, 'postseason', 2024)).toBe('Wild Card');
+        expect(weekLabel('nfl', 20, 'postseason', 2024)).toBe('Divisional');
+        expect(weekLabel('nfl', 21, 'postseason', 2024)).toBe('Conference Championship');
+        expect(weekLabel('nfl', 22, 'postseason', 2024)).toBe('Super Bowl');
+        expect(weekLabel('nfl', 5, 'regular', 2024)).toBe('Week 5');
+        expect(weekLabel('nfl', 18, 'regular', 2024)).toBe('Week 18');
+    });
+    test('a 17-week season shifts every round down one', () => {
+        // 1999-2020: regular season 1-17, postseason 18-21 -- week 19 is the
+        // DIVISIONAL round in 2019, not the Wild Card round
+        expect(weekLabel('nfl', 18, 'postseason', 2019)).toBe('Wild Card');
+        expect(weekLabel('nfl', 19, 'postseason', 2019)).toBe('Divisional');
+        expect(weekLabel('nfl', 20, 'postseason', 2019)).toBe('Conference Championship');
+        expect(weekLabel('nfl', 21, 'postseason', 2019)).toBe('Super Bowl');
+        expect(weekLabel('nfl', 21, 'postseason', 2020)).toBe('Super Bowl');
+        // and the 2021 boundary is the other way round
+        expect(weekLabel('nfl', 18, 'postseason', 2021)).toBe('Postseason');
+    });
+    test('cfb and an unknown round stay generic', () => {
+        expect(weekLabel('cfb', 12, 'regular')).toBe('Week 12');
+        expect(weekLabel('cfb', 1, 'postseason')).toBe('Postseason');
+        expect(weekLabel('nfl', 40, 'postseason', 2024)).toBe('Postseason');
+        expect(weekLabel('nfl', 22, 'postseason', 2019)).toBe('Postseason');
+        expect(weekLabel('nfl', null, null)).toBe('');
+    });
+    test('no season reads as the current era', () => {
+        expect(weekLabel('nfl', 19, 'postseason')).toBe('Wild Card');
+        expect(weekLabel('nfl', 22, 'postseason')).toBe('Super Bowl');
+    });
+});
+
+describe('meetingLabel', () => {
+    const game = {
+        season: 2025, week: 11, season_type: 'regular', away_abbreviation: 'CAR', away_team: 'Carolina Panthers',
+        away_points: 30, home_abbreviation: 'ATL', home_team: 'Atlanta Falcons', home_points: 27,
+    };
+    test('reads away-then-home, with the abbreviation and a colon separator', () => {
+        expect(meetingLabel(game, 'nfl')).toBe('Week 11: CAR 30-27 ATL');
+    });
+    test('falls back to the full name and drops the prefix when the week is unknown', () => {
+        expect(meetingLabel({ ...game, away_abbreviation: undefined, home_abbreviation: undefined }, 'nfl'))
+            .toBe('Week 11: Carolina Panthers 30-27 Atlanta Falcons');
+        expect(meetingLabel({ ...game, week: null }, 'nfl')).toBe('CAR 30-27 ATL');
+    });
+    test('takes the postseason round from the game season, not the week alone', () => {
+        const post = { ...game, season_type: 'postseason', week: 19 };
+        expect(meetingLabel(post, 'nfl')).toBe('Wild Card: CAR 30-27 ATL');
+        expect(meetingLabel({ ...post, season: 2019 }, 'nfl')).toBe('Divisional: CAR 30-27 ATL');
+    });
 });

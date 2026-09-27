@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { GET } from '../src/pages/sitemap.xml';
-import { CURRENT_YEAR } from '../src/utils/constants';
+import { CURRENT_YEAR, METRIC_YEAR } from '../src/utils/constants';
 
 const xml: string = await ((GET as any)({} as any) as Response).text();
 
@@ -44,8 +44,13 @@ describe('sitemap.xml', () => {
     }
     expect(xml).not.toContain('/teams/differential/</loc>');
     // CURRENT_YEAR leaderboards redirect to LAST_YEAR; never list a redirect
-    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/teams`);
-    expect(xml).not.toContain(`/year/${CURRENT_YEAR}/players`);
+    if (METRIC_YEAR != CURRENT_YEAR) {
+      expect(xml).not.toContain(`/year/${CURRENT_YEAR}/teams`);
+      expect(xml).not.toContain(`/year/${CURRENT_YEAR}/players`);
+    } else {
+      expect(xml).toContain(`/year/${CURRENT_YEAR}/teams`);
+      expect(xml).toContain(`/year/${CURRENT_YEAR}/players`);
+    }
   });
 
   // The head-coach boards sit behind the 'coaches' flag: a gated route answers

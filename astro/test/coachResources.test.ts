@@ -123,3 +123,17 @@ describe('coach tendency reads', () => {
         expect(puts).toHaveLength(0);
     });
 });
+
+// Not a coach read, but the same harness: the player page's NFL game-link crosswalk.
+describe('the NFL schedule crosswalk read', () => {
+    test('maps game_id -> espn, answers a 404 with {}, and REJECTS any other failure', async () => {
+        const sdv = await import('../src/resources/sdv');
+        respond = () => new Response(JSON.stringify({ data: [{ game_id: '2024_01_LV_LAC', espn: 401671592 }] }), { status: 200 });
+        expect(await sdv.retrieveNflEspnGameIds(2024)).toEqual({ '2024_01_LV_LAC': '401671592' });
+        respond = () => new Response('missing', { status: 404 });
+        expect(await sdv.retrieveNflEspnGameIds(2023)).toEqual({});
+        // a swallowed 500 would let the player page cache itself without its game links
+        respond = () => new Response('nope', { status: 500, statusText: 'Internal Server Error' });
+        await expect(sdv.retrieveNflEspnGameIds(2022)).rejects.toThrow();
+    });
+});

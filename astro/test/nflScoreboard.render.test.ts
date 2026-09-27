@@ -2,6 +2,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { CURRENT_YEAR, METRIC_YEAR } from '../src/utils/constants';
 
 // The scoreboard page rendered with locals.league = 'nfl': the title, every
 // game link and the header must be the NFL ones, and the season-table nav
@@ -57,7 +58,12 @@ describe('SchedulePage renders the NFL scoreboard', () => {
     });
 
     test('season-table nav is prefixed, weeks and the switch to cfb are offered', () => {
-        expect(html).toContain('href="/nfl/year/2025/teams/differential"');
+        if (METRIC_YEAR != CURRENT_YEAR) {
+            expect(html).not.toContain(`href="/nfl/year/${CURRENT_YEAR}/teams/differential"`);
+            expect(html).toContain(`href="/nfl/year/${METRIC_YEAR}/teams/differential"`);
+        } else {
+            expect(html).toContain(`href="/nfl/year/${CURRENT_YEAR}/teams/differential"`);
+        }
         expect(html).toContain('href="/nfl/charts/builder"');
         expect(html).not.toMatch(/href="\/year\/\d{4}\/teams\//);
         expect(html).toMatch(/league-switch[^>]*href="\/"|href="\/"[^>]*league-switch/);

@@ -27,6 +27,9 @@ export interface LeagueConfig {
     /** KV key for the cached scoreboard; cfb keeps the historical bare key */
     scoreboardCacheKey: string;
     sdvApiBase: string;
+    /** SDV table holding the league's game schedule; the NFL's `schedule` is the
+     *  nflverse frame, so its ESPN-shaped twin is published separately */
+    scheduleTable: 'schedule' | 'espn_schedule';
     /** false until the league's season tables exist on the SDV API */
     sdvEnabled: boolean;
     seasons: number[];
@@ -49,7 +52,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         slug: 'cfb', name: 'College Football', shortName: 'CFB', urlPrefix: '',
         espnPath: 'college-football', espnCoreLeague: 'college-football',
         scoreboardQuery: 'group=80&limit=1000&', defaultGroup: 80, scoreboardCacheKey: 'scoreboard',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true,
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true, scheduleTable: 'schedule',
         // getters, not values: constants.ts -> misc.ts -> league.ts -> constants.ts is a
         // cycle, and an eager read here sees AVAILABLE_SEASONS before it is initialised
         get seasons() { return AVAILABLE_SEASONS; }, regularSeasonWeeks: 15, postseasonWeeks: 1,
@@ -59,7 +62,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         slug: 'nfl', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
         espnPath: 'nfl', espnCoreLeague: 'nfl',
         scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nfl',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true,
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true, scheduleTable: 'espn_schedule',
         // ESPN play-by-play for the NFL is reliable from the 2002 realignment on
         get seasons() { return range(2002, CURRENT_YEAR); }, regularSeasonWeeks: 18, postseasonWeeks: 5,
         logoLeague: 'nfl', teamCount: 32, pool: 'NFL',
@@ -98,6 +101,58 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
         return abbr ? `https://a.espncdn.com/i/teamlogos/nfl/500-dark/${abbr}.png` : light;
     }
     return `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${id}.png`;
+}
+
+// `nfl.espn_schedule` carries nflverse week numbering, where the postseason
+// CONTINUES the regular-season count instead of restarting at 1 -- so a game in
+// week 22 is the Super Bowl, and "Week 22" would mean nothing to a reader.
+// The count it continues FROM moved when the regular season went to 17 games:
+// week 19 is the Divisional round in 2019 and the Wild Card round in 2021, so
+// the round is the week minus that season's regular-season length, never the
+// week alone. Both `nfl.schedule` and `nfl.espn_schedule` show exactly two eras
+// and no exceptions: 1999-2020 regular 1-17 / postseason 18-21, 2021 onwards
+// regular 1-18 / postseason 19-22.
+const NFL_SEVENTEEN_GAME_SEASON = 2021;
+const NFL_POSTSEASON_ROUNDS = ['Wild Card', 'Divisional', 'Conference Championship', 'Super Bowl'];
+
+/**
+ * Regular-season weeks in an NFL season: 17 through 2020, 18 from 2021. An
+ * unknown season reads as the current era, which is what a live page wants.
+ */
+export function nflRegularSeasonWeeks(season?: number | string | null): number {
+    return season != null && Number(season) < NFL_SEVENTEEN_GAME_SEASON ? 17 : 18;
+}
+
+/** How a schedule row's week reads to a person: 'Week 5', 'Wild Card', 'Postseason'. */
+export function weekLabel(
+    league: League | undefined,
+    week?: number | null,
+    seasonType?: string | null,
+    season?: number | string | null,
+): string {
+    const postseason = !!seasonType && seasonType !== 'regular';
+    if (postseason) {
+        const round = (league ?? DEFAULT_LEAGUE) === 'nfl' && week != null
+            ? NFL_POSTSEASON_ROUNDS[week - nflRegularSeasonWeeks(season) - 1]
+            : undefined;
+        return round ?? 'Postseason';
+    }
+    return week != null ? `Week ${week}` : '';
+}
+
+// A colon, not a dot or an em dash, and the abbreviation over the full name:
+// docs/design-conventions.md §7-8 ("colons instead of dashes", "no interpunct/dot
+// separators", "small screens get the abbreviation").
+/** One completed meeting as a link label: 'Week 5: DEN 24-17 LAC'. */
+export function meetingLabel(game: {
+    season?: number | string | null; week?: number | null; season_type?: string | null;
+    away_abbreviation?: string; away_team: string; away_points: number;
+    home_abbreviation?: string; home_team: string; home_points: number;
+}, league: League | undefined): string {
+    const when = weekLabel(league, game.week, game.season_type, game.season);
+    const away = game.away_abbreviation || game.away_team;
+    const home = game.home_abbreviation || game.home_team;
+    return `${when ? `${when}: ` : ''}${away} ${game.away_points}-${game.home_points} ${home}`;
 }
 
 /** Team-leaderboard categories a league serves: the shared three plus its extras. */

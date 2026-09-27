@@ -83,6 +83,20 @@ def _q(sql, params=None):
             return []
 
 
+def _days(args, default=14, cap=90):
+    """The `days` window from a query string, clamped, never a 500.
+
+    `int(args.get("days", 14))` raises on `?days=abc`, which Flask answers 500.
+    Admin-only, so not a vulnerability, but it is the same one line in every
+    windowed endpoint and this is the one place to get it right.
+    """
+    try:
+        days = int(args.get("days", default))
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(days, cap))
+
+
 def _overview(args):
     return {
         "reqPerMin": _q("""SELECT date_trunc('minute', ts) AS m, count(*)::int AS n
@@ -214,7 +228,7 @@ def _dq(args):
     """Box-vs-official deltas and lints. Stability across sdv_py_sha is the
     signal; a version-aligned shift in a stat's delta distribution is a parser
     regression."""
-    days = min(int(args.get("days", 14)), 90)
+    days = _days(args, 14)
     return {
         "scorecard": _q(
             """SELECT stat,
@@ -271,6 +285,65 @@ def _dq(args):
         )
         if args.get("game_id")
         else [],
+    }
+
+
+def _qa(args):
+    """The live data-quality signal, as /admin#qa renders it.
+
+    Every row here comes from ``gop.request_log``'s qa columns, which the
+    /process route writes on every request (python/qa.py), so "when was this
+    game last checked" and "when was it last rendered" are the same fact and
+    cannot drift apart. A game with no qa row is a game served by a deploy
+    whose sportsdataverse-py pin has no validation package AND that was not
+    live -- not a game that passed.
+    """
+    days = _days(args, 7)
+    return {
+        # one row per game: its LAST verdict, with how long ago that was
+        "games": _q("""SELECT DISTINCT ON (r.game_id) r.game_id,
+                -- request_log has no league column and /process is mounted once
+                -- per league ('/cfb/<int:game_id>/process'), so the route
+                -- pattern is where the league lives
+                split_part(r.route_pattern, '/', 2) AS league,
+                gm.away_abbr || ' @ ' || gm.home_abbr AS matchup,
+                gm.status, gm.away_score, gm.home_score,
+                r.ts AS last_poll,
+                extract(epoch FROM now() - r.ts)::int AS age_s,
+                r.qa_ok, r.qa_errors, r.qa_warnings, r.qa_source, r.qa_fallback, r.qa_rules
+            FROM gop.request_log r
+            LEFT JOIN gop.game_meta gm ON gm.game_id::text = r.game_id
+            WHERE r.qa_ok IS NOT NULL AND r.ts > now() - interval '24 hours'
+            ORDER BY r.game_id, r.ts DESC LIMIT 60"""),
+        # per-rule histogram: one row per rule per day, for the matrix
+        "rules": _q(
+            # the bucket's START INSTANT, as text, not a date: /admin#qa renders
+            # the column header in the viewer's timezone and a bare date has no
+            # instant to convert. Text rather than a timestamptz so the value
+            # crosses jsonify as ISO-8601 instead of an HTTP date string.
+            """SELECT rule,
+                    to_char(date_trunc('day', ts) AT TIME ZONE 'UTC',
+                            'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS day,
+                    count(*)::int AS n,
+                    count(DISTINCT game_id)::int AS games
+                FROM gop.request_log, unnest(qa_rules) AS rule
+                WHERE qa_rules IS NOT NULL AND ts > now() - make_interval(days => %s)
+                GROUP BY 1, 2 ORDER BY 1, 2""",
+            (days,),
+        ),
+        "totals": (
+            _q(
+                """SELECT count(*)::int AS checks,
+                    count(*) FILTER (WHERE qa_ok)::int AS clean,
+                    count(DISTINCT game_id)::int AS games,
+                    count(*) FILTER (WHERE qa_fallback)::int AS fallbacks
+                FROM gop.request_log
+                WHERE qa_ok IS NOT NULL AND ts > now() - make_interval(days => %s)""",
+                (days,),
+            )
+            or [{}]
+        )[0],
+        "days": days,
     }
 
 
@@ -351,6 +424,7 @@ _ADMIN = {
     "upstream": _upstream,
     "errors": _errors,
     "dq": _dq,
+    "qa": _qa,
     "audit": _audit,
     "traffic": _traffic,
     "system": _system,

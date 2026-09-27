@@ -48,9 +48,9 @@
     }
 
 </script>
-<form class="mb-3 d-flex justify-content-xs-start justify-content-md-end" id="dropdown-form">
+<form class="mb-0 mb-sm-3 d-flex justify-content-xs-start justify-content-md-end" id="dropdown-form">
     <div class="row">
-        <div class="col-auto mb-xs-3 mb-sm-0">
+        <div class="col-auto mb-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeCategory}>
                 <option value="-1" disabled>Choose Category...</option>
                 <option value="differential" selected={(category == 'differential')}>Net Statistics</option>
@@ -58,7 +58,7 @@
                 <option value="defensive" selected={(category == 'defensive')}>Defensive</option>
             </select>
         </div>
-        <div class="col-auto mb-xs-3 mb-sm-0">
+        <div class="col-auto mb-3 mb-sm-0">
             <select class="form-select form-select-md" onchange={onChangeMetric}>
                 <option value="-1" disabled>Choose Metric...</option>
                 {#each Object.entries(optGroupMap) as [subcat, metrics]}

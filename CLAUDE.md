@@ -12,6 +12,33 @@ leagues: `cfb` (unprefixed, the default) and `nfl` (explicit pages under
 - Never claim a rendered change works from the code alone. Exercise it: vitest
   for logic, and a **visual check** (below) for anything a person sees.
 
+## Design adherence (read before any UI change)
+
+**Match the existing site.** Never introduce a new font, colour, spacing scale,
+table format, or component when one already exists — when unsure, copy the
+closest existing page's pattern. Most of PRs #218–#256 were reworked by the
+design owner (@akeaswaran) for breaking a convention already in the tree.
+
+Before writing UI code: read **`docs/design-conventions.md`** and the
+source-of-truth files it names (`public/assets/css/{base,index,nav-header,dark-*}.css`,
+`src/layouts/**`, `components/DarkModeLogos.astro`, `utils/{misc,constants,playShade}.ts`);
+open the reference page it lists for your surface and build beside it; and check
+`git log --author=akeaswaran -- astro/` for corrections newer than the doc.
+
+**Everything that is not a fix to already-public behaviour ships behind a
+preview flag.** New pages, features, sections, restyles, data surfaces: add a
+`'preview'` entry to `FLAGS` in `src/utils/features.ts` (namespace-wide gating
+goes in `src/middleware.ts`, as `nfl` and `coaches` do; a per-page or per-component
+switch reads `isFeatureEnabled` where it branches, as `game-page-v2` does in
+`components/routes/GameRoute.astro`), mint a
+link from `/admin` → *Copy preview link*, and put it in the PR. Promotion to
+`'on'` is a separate reviewed one-liner that Akshay and Saiem decide. A fix to
+public behaviour must reach the twin the public renders —
+`components/game/classic/**` while `game-page-v2` is `'preview'`.
+
+Self-check before opening a PR: the checklists in `docs/design-conventions.md`
+§10–11, plus the four-shot matrix and the PR evidence workflow below.
+
 ## Visual verification — REQUIRED for any UI change
 Any change that touches a rendered page, an Astro/Svelte component, or CSS —
 including "just a copy/colour tweak" — is not done until it has been seen in
@@ -50,7 +77,7 @@ the two share components, so a regression usually hits both. `img/visual/` is
 git-ignored; don't commit the PNGs.
 
 ## PR evidence — REQUIRED on every PR, posted automatically
-Every PR that touches `astro/` or `python/` carries two pieces of evidence. A
+Every PR that touches `astro/` or `python/` carries three pieces of evidence. A
 backend change counts: the processor's output is what the game page renders.
 PRs confined to docs, CI, or repo config are exempt.
 
@@ -58,15 +85,41 @@ PRs confined to docs, CI, or repo config are exempt.
    mobile-light, mobile-dark (the matrix above), as above-the-fold thumbnails
    linking to full pages.
 2. **A Lighthouse comparison of the PR against its base**, on the same page(s).
+3. **Walkthrough videos** of the change being used (below): a scroll-through of
+   every evidence route, plus any scripted flow the PR names. Screenshots show
+   what it looks like; the video shows what it does. Both are required — the
+   video is not a substitute for the matrix and the matrix is not a fallback
+   for the video.
 
-**`.github/workflows/pr-evidence.yml` produces both on every push** to a
+**`.github/workflows/pr-evidence.yml` produces all three on every push** to a
 same-repo PR and keeps them in one PR comment. It compares GitHub's PR merge
 commit against the base tip it merged onto, so only this PR's changes differ even
 after `main` moves. Choose pages with an `Evidence routes: /a /b` line in the PR
 description; the default is a final game with full play-by-play (`/game/401856682`),
-the heaviest page. Fork PRs get no secrets, so their evidence is produced locally
-and pasted into the template. When the workflow fails, fix the cause or explain
+the heaviest page. Fork PRs get no secrets, so their evidence (screenshots and the
+walkthrough) is produced locally and pasted into the template. When the workflow fails, fix the cause or explain
 in the PR; never paste numbers the workflow didn't measure.
+
+**Walkthrough video:** `lighthouse-compare.mjs --walkthrough` runs
+`astro/scripts/walkthrough.mjs` against the head preview it is already serving
+(desktop + mobile, light), the workflow publishes the mp4s beside the screenshots
+on `pr-previews` and links them in the comment (each link downloads the clip —
+`raw.githubusercontent` serves octet-stream; GitHub does not inline third-party video). A `Walkthrough steps:
+scripts/walkthroughs/a.mjs` line in the PR description (max 4, committed files)
+records those flows too. A steps module is plain Playwright (`export default
+async (page, base) => { … }`), one flow per file, under ~60 s, kept in the repo
+so the next PR to that flow re-records the same thing. A copy/colour-only change
+needs only the route scroll-through the workflow already records; a change that
+adds or alters an interaction (panel, filter, toggle, nav, flagged page) commits a
+steps module and names it. A `python/`-only change records the game page it
+affects. Locally: `cd astro && BASE=http://localhost:4321 npm run walkthrough --
+/game/401856682` or `-- --steps scripts/walkthroughs/<flow>.mjs` writes
+`astro/img/walkthrough/*.webm` (+ `*.mp4` with `ffmpeg` on PATH; git-ignored; recording
+needs Playwright's own ffmpeg once, `playwright-core install ffmpeg`) —
+against a production `astro build` + `npm run preview`, never `astro dev`;
+`WALKTHROUGH_SCHEMES=light,dark` when the change is theme-sensitive. A clip you
+record by hand (fork PR) is dragged into the PR description under
+**Walkthrough** — mp4 or webm, GitHub accepts both.
 
 Run the same thing locally with `astro/scripts/lighthouse-compare.mjs`. Its
 header documents the flags, including `LH_ASTRO_PREFIX` for hosts whose glibc
@@ -113,6 +166,42 @@ Why the method is what it is (the script enforces all of it):
 orphan branch `pr-previews` (`pr<N>/<head-sha7>/…`) and are embedded via
 `raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/…`, pinned to the commit
 so later pushes can't change an old comment. No workflow triggers on that branch.
+
+## Feature flags and admin tools
+
+Flags live in `astro/src/utils/features.ts` and the rules for them are
+`docs/design-conventions.md` §9: anything that is not a fix to already-public
+behaviour ships `'preview'`, and promotion to `'on'` is its own reviewed
+one-line commit.
+
+**Admin tools are a different thing and are never promoted.** They render only
+for a request the middleware authenticated with the `gop_admin` session cookie
+(`astro/src/utils/adminSession.ts`), which is distinct from the `gop_preview`
+cookie: a preview viewer is not an admin. For every other viewer the parameters
+below are never read, so the page, the API request and the Workers cache key
+are byte-for-byte what they are today. An admin's render is forced
+uncacheable by `withPreviewCacheGuard`, for the same reason a preview render
+is: a cached copy would be served to the wrong viewer.
+
+The three that exist, all on the game page and all in
+`astro/src/utils/adminView.ts`, composable in any combination:
+
+| Control | Parameter | What it does |
+|---|---|---|
+| View | `?view=live\|preview` | The base flag state for this request only. `live` renders what an anonymous visitor gets (every `'preview'` entry off) even while the admin holds a preview cookie; `preview` renders them all on. It lands on `locals.preview`, so every `isFeatureEnabled` call follows it: the classic/v2 twin choice in `GameRoute.astro` and the middleware's `nfl` / `coaches` namespace gates included |
+| Flags | `?flags=game-page-v2:off,coaches:on` | Per-flag overrides on top of that base, via `locals.flagOverrides`. Anything that is not exactly `name:on` or `name:off` is dropped |
+| Source | `?source=<name>` | Which feed the API processed the game from. Needs an admin session **and** the `'source-switch'` flag; the list is the sportsdataverse-py contract's registry, read from `GET /{league}/{id}/sources` |
+
+One interaction to know: on the uncacheable `/preview/<path>` surface the
+middleware sets `locals.preview = true` before the admin block runs, so
+`?view=live` still wins and the page renders public — including the `nfl` and
+`coaches` namespace gates, so `/preview/nfl/...?view=live` is the site's 404,
+which is exactly what an anonymous visitor gets there. Drop `?view=live` (or
+use `preview`) to get the preview surface back.
+
+The controls render from `astro/src/components/game/AdminGameTools.astro`,
+mounted in `GameHeader.astro` — the one file both game-page twins import, so
+they are written once and an admin can flip between the twins from either side.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.

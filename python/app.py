@@ -17,9 +17,22 @@ import gop_routes
 import espn_proxy
 import dq
 import paper_index
+import qa
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
+
+# Source switch (football-sources Stage 4). The allowed values ARE the
+# contract's registry -- nothing here enumerates sources, so `shield` (and the
+# rest) start working the moment this deploy's sportsdataverse-py pin carries
+# their adapter. A pin older than sportsdataverse-py #525 has no contract at
+# all; then only ESPN is offered and every other `source` is a 400.
+try:
+    from sportsdataverse.football.sources.dispatch import SOURCE_ORDER as _SOURCE_ORDER
+    from sportsdataverse.football.sources.dispatch import AllSourcesFailed as _ALL_SOURCES_FAILED
+    from sportsdataverse.football.sources.dispatch import _process_game as _dispatch_game
+except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
+    _SOURCE_ORDER, _dispatch_game, _ALL_SOURCES_FAILED = {}, None, None
 
 # span key -> drive-summary period windows (drives book to their start quarter)
 _SPAN_PERIODS = {
@@ -351,22 +364,53 @@ def _fill_success(plays):
             )
 
 
-def _process_game(league: str, game_id: int):
+def _process_game(league: str, game_id: int, source: str | None = None):
+    """Process one game. `source` is None for every request the public makes.
+
+    Only Game on Paper's 'source-switch' preview path sends `?source=`, so
+    `source is None` keeps the ESPN path -- request, response and cache key --
+    exactly as it was. A named source goes through the sportsdataverse-py
+    contract's dispatch, which validates the adapted summary and falls through
+    the league's order with ESPN as the terminal fallback.
+    """
     timings = {}
+    order = _SOURCE_ORDER.get(league) or ("espn",)
+    if source is not None and source not in order:
+        return jsonify(
+            {
+                "status": "bad",
+                "message": f"unknown source {source!r} for {league}; known: {list(order)}",
+            }
+        ), 400
     try:
         cls, fetch_name = _PROCESSORS[league]
         g.gop_meta = {"game_id": str(game_id), "league": league}
-        game = cls(gameId=game_id)
-        game.join_participants = True
-        game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
         espn_logged = False
-        with stage(timings, "espn_fetch"):
-            getattr(game, fetch_name)()
+        if source is None or source == "espn":
+            # The unchanged path. Deliberately NOT dispatch's espn adapter: that
+            # one runs the processor with join_participants=False, which would
+            # cost the default response its participant-derived columns.
+            game = cls(gameId=game_id)
+            game.join_participants = True
+            game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+            with stage(timings, "espn_fetch"):
+                getattr(game, fetch_name)()
+            served, fallback_used, processed_game = "espn", False, None
+            dispatch_prov = None
+        else:
+            # dispatch fetches, validates against the contract and runs the
+            # processor in one call; ESPN stays the terminal fallback inside it.
+            with stage(timings, "espn_fetch"):
+                dispatched = _dispatch_game(league, game_id, source=source)
+            game, processed_game = dispatched.processor, dispatched.game
+            dispatch_prov = dispatched.provenance
+            served = dispatch_prov["served"]
+            fallback_used = dispatch_prov["fallback"]
         TEL.push(
             "upstream_log",
             {
                 "service": "python",
-                "target": "espn_pbp",
+                "target": "espn_pbp" if served == "espn" else f"{served}_pbp",
                 "status": 200,
                 "duration_ms": timings["espn_fetch_ms"],
                 "ok": True,
@@ -375,11 +419,24 @@ def _process_game(league: str, game_id: int):
             },
         )
         espn_logged = True
-        with stage(timings, "pipeline"):
-            processed_game = game.run_processing_pipeline()
+        if processed_game is None:
+            with stage(timings, "pipeline"):
+                processed_game = game.run_processing_pipeline()
 
         _fill_success(processed_game["plays"])
         _reshape_records(processed_game["plays"])
+
+        # Additive, and only on the flagged path: a response with no `?source=`
+        # stays byte-for-byte what it is today, so the classic game page and
+        # every other consumer are untouched.
+        if source is not None:
+            processed_game["provenance"] = {
+                "source": served,
+                "requested": source,
+                "fallback_used": fallback_used,
+                "contract_version": _SDV_VERSION,
+                "contract_sha": _SDV_SHA,
+            }
 
         # Every block below reads the processor's enriched polars frame and is
         # fail-open, so a processor that never exposes one (NFLPlayProcess
@@ -494,6 +551,25 @@ def _process_game(league: str, game_id: int):
                 f"all-span summaries failed for {game_id}: {e}"
             )
 
+        # Data-quality signal on every response (python/qa.py): the packaged
+        # per-game gate when the pin carries it, plus the live-poll rules while
+        # the game is running. Additive and fail-open -- a null `qa` is a
+        # documented state (docs/qa-payload.md), an exception here is not
+        # allowed to cost the page, and the classic twin never reads it.
+        try:
+            processed_game["qa"] = qa.build(
+                game, processed_game, league, game_id,
+                provenance=dispatch_prov, sdv_version=_SDV_VERSION, sdv_sha=_SDV_SHA,
+            )
+            # ...and onto this request's telemetry row, so the route timing and
+            # the quality of what it served are one sample rather than two
+            # datasets. Inside the same guard: flattening the verdict is still
+            # observability, so it must not be the one qa step that can 500.
+            g.gop_meta = {**getattr(g, "gop_meta", {}), **qa.telemetry_fields(processed_game["qa"])}
+        except Exception as e:  # observability must never cost a render
+            logging.getLogger("root").warning(f"qa summary failed for {game_id}: {e}")
+            processed_game.setdefault("qa", None)
+
         try:
             _emit_dq(game_id, game, processed_game)
         except Exception as e:  # observability must never cost a render
@@ -540,6 +616,16 @@ def _process_game(league: str, game_id: int):
             }
         ), 404
     except Exception as e:
+        # Every source in the order failed, ESPN included. That is the same
+        # condition the ESPN path reports as a clean 404 (the KeyError branch
+        # above) -- a game id nothing has data for, or an upstream outage. It
+        # is not a bug in this service, so it must not write a stack trace to
+        # the error log or answer 500.
+        if _ALL_SOURCES_FAILED is not None and isinstance(e, _ALL_SOURCES_FAILED):
+            g.gop_meta = {**getattr(g, "gop_meta", {}), "render_outcome": "failed"}
+            return jsonify(
+                {"status": "bad", "message": "No source could produce this game."}
+            ), 404
         logging.getLogger("root").error(
             "Error while processing PBP on Python side, threw 500: %r (%s)" % (e, e)
         )
@@ -561,13 +647,56 @@ def _process_game(league: str, game_id: int):
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process(game_id: int):
-    return _process_game("cfb", game_id)
+    return _process_game("cfb", game_id, request.args.get("source"))
 
 
 @app.route("/nfl/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 def process_nfl(game_id: int):
-    return _process_game("nfl", game_id)
+    return _process_game("nfl", game_id, request.args.get("source"))
+
+
+def _sources(league: str, game_id: int):
+    """The sources this deploy can process `league` from, in failover order.
+
+    The list IS the contract's registry -- nothing here enumerates sources, so
+    a pin that carries a new adapter starts offering it with no change to this
+    file or to Game on Paper. A pin older than the contract has no registry at
+    all and this answers ESPN alone, which is exactly what `?source=` accepts.
+
+    Deliberately does NOT probe availability: asking every source whether it
+    holds this game would be one upstream fetch per source per page render.
+    The game id is in the path for the id-map resolution the contract does not
+    expose yet (a follow-up), and so the route reads like /process beside it.
+
+    `game_id` is echoed for the same reason, and echoing it is what makes the
+    caller's cache key per game rather than per league -- one entry per game
+    per deploy instead of one per league. That is the right key for the body as
+    it stands, and the right key once the id map lands and the body genuinely
+    varies per game. Drop the echo (and go back to a per-league key) only if
+    that follow-up is abandoned.
+    """
+    return jsonify(
+        {
+            "league": league,
+            "game_id": game_id,
+            "sources": list(_SOURCE_ORDER.get(league) or ("espn",)),
+            "contract_version": _SDV_VERSION,
+            "contract_sha": _SDV_SHA,
+        }
+    )
+
+
+@app.route("/cfb/<int:game_id>/sources", methods=["GET"])
+@require_auth_token
+def sources(game_id: int):
+    return _sources("cfb", game_id)
+
+
+@app.route("/nfl/<int:game_id>/sources", methods=["GET"])
+@require_auth_token
+def sources_nfl(game_id: int):
+    return _sources("nfl", game_id)
 
 
 def _sdv_identity():
