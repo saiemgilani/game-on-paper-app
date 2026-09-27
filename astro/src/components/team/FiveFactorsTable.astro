@@ -1,0 +1,43 @@
+---
+import type { SDVTeamSummary } from '../../resources/sdv';
+import { FIVE_FACTORS, formatFactor } from '../../utils/fiveFactors';
+import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
+import { formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import TeamPlayerTable from './tables/TeamPlayerTable.astro';
+
+interface Props {
+    summary: SDVTeamSummary | null
+}
+
+const { summary } = Astro.props;
+// the rank colour ramp scales to the league's team count, as in TeamCard
+const cfg = LEAGUES[Astro.locals.league ?? DEFAULT_LEAGUE];
+const row = (summary ?? {}) as Record<string, unknown>;
+// a missing value carries no rank and no shading, even if a rank came with it
+const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNull(row[`${k}_rank`]));
+---
+
+<TeamPlayerTable id="five-factors" title="Five Factors" show={true}>
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="text-center">Offense</th>
+        <th rowspan="1" colspan="1" class="text-center">Defense</th>
+        <th rowspan="1" colspan="1" class="text-center">Margin</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {FIVE_FACTORS.map((f) => (
+            <tr>
+                <td class="text-left text-nowrap"><abbr title={f.hover}>{f.label}</abbr></td>
+                {[f.off, f.def, f.margin].map((k) => (
+                    <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
+                        {formatFactor(row[k], f.format, k === f.margin)}
+                        {rankOf(k) !== null && (
+                            <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(k))}</span>
+                        )}
+                    </td>
+                ))}
+            </tr>
+        ))}
+    </Fragment>
+</TeamPlayerTable>

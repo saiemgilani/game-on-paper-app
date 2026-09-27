@@ -56,6 +56,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
     'player-pages': 'preview',
+    // The Five Factors panel on the season team page (/year/N/team/<id> and the
+    // /nfl twin), under Profile. Only this path adds the factor columns to the
+    // team_summaries `select`, so for every other viewer the request, its cache
+    // key and the page are exactly what they are today. Promote to 'on' once the
+    // table has been reviewed on production data.
+    'five-factors': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

@@ -13,6 +13,8 @@ import type { SDVPassingSummary, SDVReceivingSummary, SDVRushingSummary } from "
 import type { SeasonTeamData } from "../../routes/seasonTeam";
 import { cleanLocation, roundNumber } from "../../utils/misc";
 import TeamCard from "../../components/team/TeamCard.astro";
+import FiveFactorsTable from "../../components/team/FiveFactorsTable.astro";
+import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
@@ -93,6 +95,11 @@ const breadcrumbs: PageBreadcrumb[] = [
             </TeamRadarChart>
         </GenericPanel>
     </div>
+    {isFeatureEnabled('five-factors', Astro.locals) && (
+        <div class="container mb-3">
+            <FiveFactorsTable summary={teamSummaries[0] ?? null} />
+        </div>
+    )}
     <div class="container">
         <TeamPassingTable players={passers.filter(p => p.passer_player_name != "NA" && p.passer_player_name != null && p.passer_player_name).toSorted((a, b) => b.plays - a.plays)} />
         <TeamRushingTable players={rushers.filter(p => p.rusher_player_name != "NA" && p.rusher_player_name != null && p.rusher_player_name).toSorted((a, b) => b.plays - a.plays)} />
