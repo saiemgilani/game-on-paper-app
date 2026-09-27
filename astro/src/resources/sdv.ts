@@ -707,6 +707,34 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     }
 }
 
+/**
+ * One season baseline row from sdv-db `league_averages`: the distribution of a
+ * published metric over its entity rows (teams, qualified players, team-games).
+ * `qualifier_min` is the per-team-game gate on player rows (14 / 6.25 / 1.875),
+ * null on team rows; `sd` is null when `n` is 1.
+ */
+export interface SDVLeagueAverage {
+    season: number
+    level: string
+    entity: 'team' | 'player'
+    category: string
+    metric: string
+    mean: number | null
+    median: number | null
+    sd: number | null
+    n: number
+    qualifier_min: number | null
+}
+
+export async function retrieveLeagueAverages(season: number, filters: { entity?: 'team' | 'player'; category?: string; level?: string } = {}, league: League = 'cfb'): Promise<SDVLeagueAverage[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    // the API defaults to 1000 rows; one season across every level can run past that
+    const query: Record<string, string> = { season: String(season), limit: '5000' };
+    for (const [k, v] of Object.entries(filters)) if (v) query[k] = v;
+    const content = await requestSDV('league_averages', new URLSearchParams(query), undefined, 60 * 60 * 24, true, league);
+    return content?.data ?? [];
+}
+
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
 export interface SDVTeamSummaryRequest {
     season?: number
