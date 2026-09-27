@@ -840,7 +840,13 @@ const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
 };
 
 // Mirrors: https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_game_predict.py
-export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false): number | null {
+export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false, league: League = 'cfb'): number | null {
+    // The scale, home edge and margin spread were fitted on CFB games; applying them to
+    // NFL ratings gives numbers with no calibration behind them, so the NFL gets no
+    // projection until it has its own fit.
+    if (league !== 'cfb') {
+        return null
+    }
     // null-checks, not falsiness: 0 is a legitimate Net Adj EPA rating
     if (away_adj_epa == null || home_adj_epa == null || !Number.isFinite(away_adj_epa) || !Number.isFinite(home_adj_epa)) {
         return null

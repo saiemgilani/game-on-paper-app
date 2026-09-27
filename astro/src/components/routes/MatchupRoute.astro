@@ -42,7 +42,7 @@ if (homeTeamId && awayTeamId) {
     }
 }
 
-const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
+const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true, league)
 const predWinProb = calculatePredictedWinProb(predMargin)
 
 const projection = (homeTeamSummary && awayTeamSummary && predWinProb) ? {
