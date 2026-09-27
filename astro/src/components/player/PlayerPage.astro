@@ -269,7 +269,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                                             <img class={`img-fluid team-logo-${t.team_id}`} width="20px"
                                                 src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
                                                 alt={`${t.pos_team} logo`} />
-                                            <span>{t.pos_team}</span>
+                                            <span class="d-none d-md-inline">{t.pos_team}</span>
                                         </a>
                                     </td>
                                     {teamContextColumns.map(([value, rank]) => (
