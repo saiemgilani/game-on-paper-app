@@ -76,9 +76,9 @@ const SHADED: [keyof PlayerGameRow, (v: unknown) => string][] = [
 const ranks = new Map<string, Map<PlayerGameRow, number>>();
 for (const [key] of SHADED) {
     const ranked = games
-        .filter((g) => numberOrNull(g[key as string]) !== null)
-        .toSorted((a, b) => (numberOrNull(b[key as string]) ?? 0) - (numberOrNull(a[key as string]) ?? 0));
-    ranks.set(String(key), new Map(ranked.map((g, i) => [g, i + 1])));
+        .filter((g: any) => numberOrNull(g[key as string]) !== null)
+        .toSorted((a: any, b: any) => (numberOrNull(b[key as string]) ?? 0) - (numberOrNull(a[key as string]) ?? 0));
+    ranks.set(String(key), new Map(ranked.map((g: any, i: number) => [g, i + 1])));
 }
 /** W is good, L is bad, on the site's own ramp-end colours. */
 const RESULT_CLASS: Record<string, string> = { W: 'hulk-text-green', L: 'hulk-text-purple' };
@@ -146,9 +146,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
         <thead>
             <tr>
                 <th class="text-left" colspan="1">Date</th>
-                <th class="text-center" colspan="1">Wk</th>
-                <th class="text-left" colspan="1">Opponent</th>
-                <th class="text-center" colspan="1">Result</th>
+                <th class="text-left" colspan="1">Performance</th>
                 <th class="text-center" colspan="1">Plays</th>
                 <th class="text-center" colspan="1"><abbr title="Expected Points Added per Play">EPA/play</abbr></th>
                 <th class="text-center" colspan="1"><abbr title="Total Expected Points Added">EPA</abbr></th>
@@ -159,16 +157,18 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
             {games.map((g: PlayerGameRow) => (
                 <Fragment>
                 <tr>
-                    <td class="text-left text-nowrap numeral" colspan="1">
+                    <td class="text-left text-nowrap numeral align-middle" colspan="1">
                         {kickoff(g) === null
                             ? (gameHref(g) ? <a href={gameHref(g)}>—</a> : '—')
                             : (gameHref(g)
                                 ? <a href={gameHref(g)}><LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} /></a>
                                 : <LocalDate client:only divClass="m-0" date={kickoff(g)} format={DateTime.DATE_SHORT} prefix={null} />)}
                     </td>
-                    <td class="text-center text-nowrap" colspan="1">{weekLabel(league, g.season_type, g.week)}</td>
-                    <td class="text-left text-nowrap" colspan="1">
+                    <td class="text-left text-nowrap align-middle" colspan="1">
                         <div class="d-flex align-items-center gap-1">
+                            {weekLabel(league, g.season_type, g.week)} - 
+                            {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
+                            {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                             <span class="text-muted">{g.home_away === 'away' ? 'at' : 'vs'}</span>
                             <a class="d-flex align-items-center gap-1" href={opponentId(g) ? leaguePath(league, `/year/${g.season}/team/${opponentId(g)}`) : undefined}>
                                 {opponentId(g) && (
@@ -179,28 +179,20 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                                 <span>{cleanTextForTeam(g.opponent, opponentId(g))}</span>
                             </a>
                         </div>
+                        {gameStatLine(g, league) && (<span class="d-block text-muted small">{gameStatLine(g, league)}</span>)}
                     </td>
-                    <td class="text-center text-nowrap numeral" colspan="1">
-                        {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
-                        {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
-                    </td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(g.plays, 0)}</td>
+                    <td class="text-center numeral align-middle" colspan="1">{formatNumber(g.plays, 0)}</td>
                     {SHADED.map(([key, format]) => (
-                        <td class:list={["text-center", "numeral", mode === 'league' ? leagueShade(g, String(key)) : shade(g, String(key))]} colspan="1"
+                        <td class:list={["text-center", "align-middle", "numeral", mode === 'league' ? leagueShade(g, String(key)) : shade(g, String(key))]} colspan="1"
                             data-shade-player={shade(g, String(key))} data-shade-league={leagueShade(g, String(key))}>
                             {format(g[key as string])}
                             {leaguePct(g, String(key)) !== null && (
-                                <small class:list={["align-self-center", mode !== 'league' && "d-none"]} style="opacity: 50%"
+                                <small class:list={["align-self-center", "d-block", mode !== 'league' && "d-none"]} style="opacity: 50%"
                                     data-league-pct> {ordinal(leaguePct(g, String(key)) as number)} %ile</small>
                             )}
                         </td>
                     ))}
                 </tr>
-                {gameStatLine(g, league) && (
-                    <tr class="stat-line-row">
-                        <td colspan="8" class="text-muted">{gameStatLine(g, league)}</td>
-                    </tr>
-                )}
                 </Fragment>
             ))}
         </tbody>
