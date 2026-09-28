@@ -837,9 +837,11 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
 // in sportsdataverse/cfbfastR-cfb-data ("gop_net_adj_epa" in models/pregame_fit.json):
 // margin = scale * (home - away) + hfa off neutral sites, fit on 2014-2023 as-of games.
 // These are NOT sportsdataverse-py's cfb_prediction_constants. Those are fitted to
-// cfb_ratings' adj_net, a different rating about 1.45x wider. Applied to net_adj_epa they
-// compressed every projection about 1.7x (calibration slope 1.73 on 2024-25).
-// 2024-25 holdout, 1,202 games: MAE 13.39 -> 13.00, Brier 0.2056 -> 0.1967.
+// cfb_ratings' adj_net, a different rating 1.37x wider (team-game sd 0.2633 vs 0.1916).
+// Applied to net_adj_epa they compressed every projection (calibration slope 1.73).
+// 2024-25 near-holdout (never in the fit; sportsdataverse-py #598 tuned net_adj_epa on
+// 2023-25), 1,202 games: MAE 13.39 -> 13.00, Brier 0.2056 -> 0.1967, calibration slope
+// 0.885 (this scale runs about 10% steep on those seasons).
 const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
     net_points_scale: 48.4590,
     hfa_points: 2.7110,
