@@ -578,8 +578,12 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
 const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
 const SDV_META_KEY = 'sdv-meta:datasets';
 const SDV_META_TTL = 60 * 5;
-// a plain value, not a shared promise: Workers can't await I/O started by another request
-let sdvMeta: { at: number, datasets: Record<string, string> | null } | undefined;
+// Single-flight: the in-flight read is shared, so a burst on a fresh isolate makes one
+// meta call, not one per request. Sharing a promise across requests is safe under
+// `handle_cross_request_promise_resolution` (default since compatibility_date
+// 2024-10-14; ours is later). fetchSDVDatasets never rejects: a failure resolves to
+// null, which holds for the window, then retries -- no per-request retry storm on a down API.
+let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
 
 async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
     try {
@@ -599,9 +603,9 @@ async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
 
 async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
     if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
-        sdvMeta = { at: Date.now(), datasets: await fetchSDVDatasets() };
+        sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
     }
-    return sdvMeta.datasets?.[`${league}.${table}`];
+    return (await sdvMeta.datasets)?.[`${league}.${table}`];
 }
 
 /**

@@ -117,6 +117,29 @@ describe('the ingest stamp is cached, not fetched per request', () => {
         expect(metaCalls()).toBe(2);
     });
 
+    test('concurrent reads in a fresh isolate share one in-flight meta fetch', async () => {
+        const sdv = await load();
+        await Promise.all([2025, 2024, 2023, 2022, 2021, 2020].map(s => sdv.retrievePercentiles(s, 50)));
+        expect(metaCalls()).toBe(1);
+        expect(gets.filter(k => k.startsWith('sdv-meta'))).toHaveLength(1);
+        expect(tableCalls()).toBe(6);
+    });
+
+    test('a failed meta read is retried once the window has passed', async () => {
+        meta = () => new Response('down', { status: 503 });
+        const sdv = await load();
+        await Promise.all([2025, 2024, 2023].map(s => sdv.retrievePercentiles(s, 50)));
+        expect(metaCalls()).toBe(1); // concurrent callers share the failure, no per-request retry storm
+        const unversioned = await Promise.all([2025, 2024, 2023].map(s => sha256(`percentiles?season=${s}&pctile=50`)));
+        expect(gets.filter(k => !k.startsWith('sdv-meta')).sort()).toEqual(unversioned.sort());
+
+        meta = stamped('2026-09-27T12:05:07+00:00');
+        vi.setSystemTime(new Date('2026-09-27T12:05:01Z'));
+        await sdv.retrievePercentiles(2025, 50);
+        expect(metaCalls()).toBe(2);
+        expect(tableKey()).toBe(await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`));
+    });
+
     test('a new isolate reads the stamp from KV instead of the Data API', async () => {
         await (await load()).retrievePercentiles(2025, 50);
         await (await load()).retrievePercentiles(2025, 50);
