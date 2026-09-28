@@ -39,8 +39,8 @@
  *   week 1, so it is the default whenever the player's own season is too short.
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
-import { leaguePath, teamLogoUrl } from '../../utils/league';
-import { gameStatLine, percentileFromBreaks, weekLabel, type PlayerGameRow } from '../../utils/players';
+import { leaguePath, teamLogoUrl, weekLabel } from '../../utils/league';
+import { gameStatLine, percentileFromBreaks, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
@@ -166,7 +166,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                     </td>
                     <td class="text-left text-nowrap align-middle" colspan="1">
                         <div class="d-flex align-items-center gap-1">
-                            {weekLabel(league, g.season_type, g.week)} - 
+                            {weekLabel(league, g.week, g.season_type, g.season)} - 
                             {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
                             {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
                             <span class="text-muted">{g.home_away === 'away' ? 'at' : 'vs'}</span>

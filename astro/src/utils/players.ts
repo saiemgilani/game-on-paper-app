@@ -17,7 +17,7 @@
  *    plays, which would silently publish a different number.
  */
 
-import { NFL_POST_LABELS, SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
+import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
 import { isFeatureEnabled } from './features';
 import { leaguePath, type League } from './league';
 import { numberOrNull, roundNumber } from './misc';
@@ -135,19 +135,6 @@ export function playerHref(
     const linkable = isEspnAthleteId(key) || (locals?.league === 'nfl' && isGsisId(key));
     if (!linkable || !isFeatureEnabled('player-pages', locals)) return null;
     return playerPath(locals?.league, key, season);
-}
-
-/**
- * The game log's week cell. A postseason `week` restarts at 1 in both leagues,
- * so printing it bare labels a bowl game "1": the NFL's five rounds have names
- * (the same list the schedule dropdown offers), and CFB's postseason is one
- * bucket, since which bowl a game was is the game page's business.
- */
-export function weekLabel(league: League, seasonType: string | null | undefined, week: number | null | undefined): string {
-    const post = /^(post|post-?season|3)$/i.test(String(seasonType ?? ''));
-    if (!post) return week === null || week === undefined ? '—' : `Week ${String(week)}`;
-    if (league !== 'nfl') return 'Postseason';
-    return NFL_POST_LABELS[Number(week) - 1] ?? 'Postseason';
 }
 
 export interface PlayerGameRow {
