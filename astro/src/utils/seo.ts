@@ -235,19 +235,19 @@ export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
         h1: (s, l) => `${s} ${sportTitle(l)} Offensive EPA per Play Rankings`,
         title: (s, l) => `${s} ${sportTitle(l)} Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
-        intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance and field position. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field, so it is the fairest single number for how good an offense really is.',
+        intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance, and field position. Adjusted EPA/play corrects for opponent strength, so it is the fairest single number for how good an offense really is.',
     },
     defensive: {
         h1: (s, l) => `${s} ${sportTitle(l)} Defensive EPA per Play Rankings`,
         title: (s, l) => `${s} ${sportTitle(l)} Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
-        intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
+        intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play corrects for opponent strength.',
     },
     differential: {
         h1: (s, l) => `${s} ${sportTitle(l)} Team Rankings by Net EPA per Play`,
         title: (s, l) => `${s} ${sportTitle(l)} Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
-        intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. Adjusted for opponent, home field and garbage time.',
+        intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. The adjusted version corrects for opponent strength.',
     },
     // NFL-only categories (rbsdm.com parity); the college grid has no such columns
     tendencies: {
