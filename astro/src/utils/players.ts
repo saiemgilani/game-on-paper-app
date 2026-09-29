@@ -273,23 +273,23 @@ export function receivingStatLine(v: { receptions?: unknown; targets?: unknown; 
     return `${caught}, ${q(v.yards)} yds, ${q(v.tds)} TD`;
 }
 
-export function kickerStatLine(k: { fg_attempts: number, fg_made: number, fg_long: number | null,  fg_blocked: number, fg_0_39_made: number, fg_0_39_attempts: number, fg_40_49_made: number, fg_40_49_attempts: number, fg_50_plus_made: number, fg_50_plus_attempts: number, xp_made: number, xp_attempts: number, kickoffs: number, kickoff_avg: number, kickoff_return_avg_allowed: number, kickoff_touchback_rate: number, kickoff_returns_allowed: number, kickoff_return_tds_allowed: number }): string {
+export function kickerStatLine(k: { fg_attempts: number, fg_made: number, fg_long: number | null,  fg_blocked?: number, fg_0_39_made?: number, fg_0_39_attempts?: number, fg_40_49_made?: number, fg_40_49_attempts?: number, fg_50_plus_made?: number, fg_50_plus_attempts?: number, xp_made: number, xp_attempts: number, kickoffs: number, kickoff_avg?: number, kickoff_return_avg_allowed?: number, kickoff_touchback_rate?: number, kickoff_returns_allowed?: number, kickoff_return_tds_allowed?: number }): string {
     let content: string[] = []
     const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} / ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} / ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
     if (k.fg_attempts) {
-        content = content.concat(`FG: ${madeOf(k.fg_made, k.fg_attempts)} <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">(${fgByRange(k)})</abbr>${k.fg_long != null ? `, ${k.fg_long} LNG` : ''}${k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}`)
+        content = content.concat(`FG: ${madeOf(k.fg_made, k.fg_attempts)} <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">(${fgByRange(k)})</abbr>${k.fg_long != null ? `, ${k.fg_long} LNG` : ''}${!!k.fg_blocked && k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}`)
     }
     if (k.xp_attempts) {
         content = content.concat(`XP: ${madeOf(k.xp_made, k.xp_attempts)}`)
     }
 
     if (k.kickoffs) {
-        content = content.concat(`KO: ${k.kickoffs}, ${num(k.kickoff_avg, 1)} yds avg, ${pct(k.kickoff_touchback_rate, 0)} TB${k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} yds/return allowed` : ''}${k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}`)   
+        content = content.concat(`KO: ${k.kickoffs}, ${num(k.kickoff_avg, 1)} yds avg, ${pct(k.kickoff_touchback_rate, 0)} TB${!!k.kickoff_returns_allowed && k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} yds/return allowed` : ''}${!!k.kickoff_return_tds_allowed && k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}`)   
     }
     return content.map((p: string) => `<span>${p}</span>`).join("\n");
 }
 
-export function punterStatLine(v: { punts: number, punt_avg: number, punt_net_avg: number, punt_long: number | null, punt_inside_20: number, punt_touchbacks: number, punt_fair_catches: number, punt_returns_allowed: number, punt_return_avg_allowed: number, punt_blocked: number }): string {
+export function punterStatLine(v: { punts: number, punt_avg: number, punt_net_avg: number, punt_long: number | null, punt_inside_20: number, punt_touchbacks: number, punt_fair_catches: number, punt_returns_allowed?: number, punt_return_avg_allowed?: number, punt_blocked?: number }): string {
     let baseBox = `${v.punts} punts, ${num(v.punt_avg, 1)} yds avg, ${num(v.punt_net_avg, 1)} <abbr title="Net punt = gross - return yards - 20 per touchback">net</abbr>`;
     if (v.punt_long) {
         baseBox += `, ${v.punt_long} LNG`

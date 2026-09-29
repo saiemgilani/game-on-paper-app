@@ -334,8 +334,8 @@ describe('CFB player page', () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const rows = bodyRows(html, 'player-splits-table');
         const played = [
-            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.key != "all"),
-            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.key == "all")
+            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.split != "all"),
+            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.split == "all")
         ];
         expect(rows.length).toBe(played.length);
         played.forEach((s: any, i: number) => {

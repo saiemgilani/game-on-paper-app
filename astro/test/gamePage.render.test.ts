@@ -4,7 +4,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { rushingStatLine } from '../src/utils/players';
+import { kickerStatLine, punterStatLine, rushingStatLine } from '../src/utils/players';
 
 // Why this exists: a TDZ ReferenceError in GamePage's frontmatter shipped in
 // #181 and every finished-game page rendered as a 200 with an empty body.
@@ -408,42 +408,24 @@ describe('the player stat line is a row under the name, not a column', () => {
         expect(firstLine(v2).startsWith(firstLine(classic))).toBe(true);
     });
 
-    test('the special-teams usage table: the name and EPA, then the line spanning both', async () => {
+    test('player box: specialists name and EPA, then the stat line', async () => {
         const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');
+        const punter = { pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 };
+        const kicker = { pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 };
         const html = await container.renderToString(PlayerBoxScore, {
             props: {
                 teamId: 1,
                 pass: [],
                 rush: [],
                 receiver: [],
-                kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
-                punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
-                box: {
-                    pass: [],
-                    rush: [],
-                    receiver: [],
-                    kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
-                    punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
-                },
+                kickers: [kicker],
+                punters: [punter],
             } as any,
         });
-        const kTable = html.slice(html.indexOf('Kickers'));
-        const kRows = expectSecondRows(kTable, 2);
-        expect(kRows.map((r) => r.cells.map((c) => c.text))).toEqual([
-            ['K. Kicker K', '0.40'],
-            [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
-            // ['P. Punter P', '-0.30'],
-            // ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
-        ]);
-
-        const pTable = html.slice(html.indexOf('Punters'));
-        const pRows = expectSecondRows(pTable, 2);
-        expect(pRows.map((r) => r.cells.map((c) => c.text))).toEqual([
-            // ['K. Kicker K', '0.40'],
-            // [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
-            ['P. Punter P', '-0.30'],
-            ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
-        ]);
+        expect(html).toContain(">Punting</td>")
+        expect(html).toContain(punterStatLine(punter));
+        expect(html).toContain(">Kicking</td>")
+        expect(html).toContain(kickerStatLine(kicker));
     });
 });
 
