@@ -80,17 +80,23 @@ describe.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s game page, game-
         expect(wp.colors).toEqual(expected);
         expect(ep.colors).toEqual(expected);
 
+        // the drive chart takes plain colour strings (#276): the light pair, plus
+        // the dark pair it switches to; the subtitle opens with the offense
         const drives = islands(html, 'DriveChart');
         expect(drives.length).toBeGreaterThan(10);
-        const side = (team: any) => (String(team.id) === String(game.teamInfo.home.id) ? 'home' : 'away');
+        const offenseSide = (d: any) => (d.subtitle.startsWith(`${game.teamInfo.home.abbreviation} - `) ? 'home' : 'away');
+        const other = { home: 'away', away: 'home' } as const;
+        const seen = new Set<string>();
         for (const d of drives) {
-            for (const theme of ['light', 'dark'] as const) {
-                expect(d.colors[theme].offense).toBe(expected[theme][side(d.offense)]);
-                expect(d.colors[theme].defense).toBe(expected[theme][side(d.defense)]);
-            }
-            // the team objects themselves are untouched
-            expect(d.offense.color).toBe(side(d.offense) === 'home' ? game.teamInfo.home.color : game.teamInfo.away.color);
+            const off = offenseSide(d);
+            seen.add(off);
+            expect(d.offenseColor).toBe(expected.light[off]);
+            expect(d.defenseColor).toBe(expected.light[other[off]]);
+            expect(d.darkOffenseColor).toBe(expected.dark[off]);
+            expect(d.darkDefenseColor).toBe(expected.dark[other[off]]);
+            expect(d.offense ?? d.defense ?? d.colors).toBeUndefined();
         }
+        expect(seen.size).toBe(2);
     });
 });
 
@@ -121,16 +127,16 @@ describe('Deserved Win % bars switch pair with prefers-color-scheme', () => {
 });
 
 describe('game-colours off: the page is byte-for-byte what main renders', () => {
-    // Hashes of the flag-off render of this fixture on origin/main 8c8b4e40,
+    // Hashes of the flag-off render of this fixture on origin/main 4a62cc2a,
     // before 'game-colours' existed (same test body, run there). The flag's
-    // only footprint is a `colors` prop that is absent when it is off. Another
+    // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
     // PR that changes the game page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { v2: 'f2702f41670043dc', classic: '94791e4d1bb12b05' };
+    const GOLDEN = { v2: 'e36979aefb5f3c3c', classic: '46ef48dfa528f091' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});
-        expect(html).not.toMatch(/&quot;colors&quot;/);
+        expect(html).not.toMatch(/&quot;(colors|darkOffenseColor|darkDefenseColor)&quot;/);
         if (process.env.PRINT_GOLDEN) console.log(`GOLDEN ${twin} ${sha(normalise(html))}`);
         expect(sha(normalise(html))).toBe(GOLDEN[twin]);
     }, 60_000);
