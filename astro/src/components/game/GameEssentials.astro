@@ -30,7 +30,7 @@ const cleanLineDetails = (details?: string | null): string => {
 };
 
 const margin = calculatePredictedPointMargin(awayAdjEpa ?? undefined, homeAdjEpa ?? undefined, neutralSite, Astro.locals.league);
-const winProb = calculatePredictedWinProb(margin);
+const winProb = calculatePredictedWinProb(margin, Astro.locals.league);
 const favorite = margin == null ? null : (margin >= 0 ? homeTeam : awayTeam);
 const favProb = winProb == null ? null : (margin != null && margin >= 0 ? winProb : 1 - winProb);
 

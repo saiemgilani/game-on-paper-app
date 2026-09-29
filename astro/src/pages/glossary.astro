@@ -7,7 +7,7 @@ import GlossarySection from '../components/glossary/GlossarySection.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Scripts from '../components/Scripts.astro';
-import { definedTermSetJsonLd, jsonLdScript } from '../utils/seo';
+import { definedTermSetJsonLd, jsonLdScript, termSlugs } from '../utils/seo';
 
 const glossary = generateGlossaryItems();
 const title = `College Football Advanced Stats Glossary: EPA, Success Rate, Win Probability | Game on Paper`;
@@ -19,6 +19,7 @@ const subtitle = 'Definitions of EPA (expected points added), EPA per play, adju
 // ranking page was one it may not crawl. Measured 2026-08-29.
 const canonical = 'https://gameonpaper.com/glossary/';
 const allTerms = [...glossary.values()].flat();
+const slugs = termSlugs(allTerms);
 const structuredData = jsonLdScript([definedTermSetJsonLd(allTerms, canonical)]);
 
 ---
@@ -75,7 +76,7 @@ const structuredData = jsonLdScript([definedTermSetJsonLd(allTerms, canonical)])
             <h1 class="visually-hidden">College Football Advanced Stats Glossary</h1>
 			{
 				glossary.keys().map((k) => (
-					<GlossarySection letter={k} entries={glossary.get(k)} />
+					<GlossarySection letter={k} entries={glossary.get(k)} slugs={slugs} />
 				)) 
 			}
         </div>

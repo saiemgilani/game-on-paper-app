@@ -1,0 +1,2884 @@
+{
+ "2004": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "I-A Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 19,
+   "name": "Atlantic 10"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 21,
+   "name": "Gateway"
+  },
+  {
+   "id": 32,
+   "name": "I-AA Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 23,
+   "name": "MAAC"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2005": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "I-A Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 19,
+   "name": "Atlantic 10"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 21,
+   "name": "Gateway"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 32,
+   "name": "I-AA Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 23,
+   "name": "MAAC"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2006": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 19,
+   "name": "Atlantic 10"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 21,
+   "name": "Gateway"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 23,
+   "name": "MAAC"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2007": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 21,
+   "name": "Gateway"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 23,
+   "name": "MAAC"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2008": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2009": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2010": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-10"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2011": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 43,
+   "name": "Great West"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2012": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 10,
+   "name": "Big East"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2013": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2014": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2015": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2016": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2017": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2018": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2019": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2020": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2021": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 175,
+   "name": "ASUN-WAC"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2022": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 176,
+   "name": "ASUN"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 40,
+   "name": "Big South"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 26,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 16,
+   "name": "WAC"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2023": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 179,
+   "name": "Big South-OVC"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 177,
+   "name": "UAC"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2024": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American Athletic"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 179,
+   "name": "Big South-OVC"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 177,
+   "name": "UAC"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2025": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 179,
+   "name": "OVC-Big South"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 177,
+   "name": "UAC"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ],
+ "2026": [
+  {
+   "id": 80,
+   "name": "FBS (I-A)"
+  },
+  {
+   "id": -1,
+   "name": "Top 25"
+  },
+  {
+   "id": 1,
+   "name": "ACC"
+  },
+  {
+   "id": 151,
+   "name": "American"
+  },
+  {
+   "id": 4,
+   "name": "Big 12"
+  },
+  {
+   "id": 5,
+   "name": "Big Ten"
+  },
+  {
+   "id": 12,
+   "name": "C-USA"
+  },
+  {
+   "id": 18,
+   "name": "FBS Independents"
+  },
+  {
+   "id": 15,
+   "name": "MAC"
+  },
+  {
+   "id": 17,
+   "name": "Mountain West"
+  },
+  {
+   "id": 9,
+   "name": "Pac-12"
+  },
+  {
+   "id": 8,
+   "name": "SEC"
+  },
+  {
+   "id": 37,
+   "name": "Sun Belt"
+  },
+  {
+   "id": 81,
+   "name": "FCS (I-AA)"
+  },
+  {
+   "id": 20,
+   "name": "Big Sky"
+  },
+  {
+   "id": 48,
+   "name": "CAA"
+  },
+  {
+   "id": 32,
+   "name": "FCS Independents"
+  },
+  {
+   "id": 22,
+   "name": "Ivy"
+  },
+  {
+   "id": 24,
+   "name": "MEAC"
+  },
+  {
+   "id": 21,
+   "name": "MVFC"
+  },
+  {
+   "id": 25,
+   "name": "NEC"
+  },
+  {
+   "id": 179,
+   "name": "OVC"
+  },
+  {
+   "id": 27,
+   "name": "Patriot"
+  },
+  {
+   "id": 28,
+   "name": "Pioneer"
+  },
+  {
+   "id": 31,
+   "name": "SWAC"
+  },
+  {
+   "id": 29,
+   "name": "Southern"
+  },
+  {
+   "id": 30,
+   "name": "Southland"
+  },
+  {
+   "id": 177,
+   "name": "UAC"
+  },
+  {
+   "id": 90,
+   "name": "All Division I"
+  },
+  {
+   "id": 35,
+   "name": "Div II/III"
+  }
+ ]
+}

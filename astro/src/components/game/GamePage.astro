@@ -252,7 +252,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
      inside the Svelte charts, and a duplicate id makes getElementById hand
      Chart.js the wrapper div -- both charts then silently never draw. -->
                 <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles} gei={game.gei}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles.map(({ GEI }) => ({ GEI }))} gei={game.gei}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
