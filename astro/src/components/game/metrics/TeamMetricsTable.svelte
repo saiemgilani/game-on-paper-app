@@ -87,6 +87,11 @@ function handleMetricRows(item: string): string {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(num, 2, places)} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
             }
         });
+    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) {
+        teamBoxScores.forEach((teamData: any) => {
+            let val = teamData[item] || 0;
+            result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
+        });
     } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;
