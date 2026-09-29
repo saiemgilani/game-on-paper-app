@@ -2,7 +2,7 @@
 <script>
 import { onMount } from "svelte";
 import { determineLuminance, teamColorHex } from "../../../utils/misc";
-const { id, subtitle, result, plays, offense, defense, isNeutralSite } = $props();
+const { id, subtitle, result, plays, offenseColor, defenseColor, isNeutralSite } = $props();
 
 let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
 // if (!isNeutralSite && homeTeam.id == 68) {
@@ -13,7 +13,7 @@ let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to a
 
 /* Based off https://github.com/criscokid/Canvas-Field */
 class FootballField {
-    constructor(elementId, fieldColor = "rgb(0, 153, 41)", team1 = { color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png" }, team2 = { color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png" }, baseLineWidth = 10, subtitle = null) {
+    constructor(elementId, fieldColor = "rgb(0, 153, 41)", team1Color = "#B3A369", team2Color = "#80000A", baseLineWidth = 10, subtitle = null) {
         this.currentPoint = 0;
         this.currentPlayY = 15;
         this.isDrawn = false;
@@ -203,9 +203,9 @@ class FootballField {
         };
 
         this.fillEndZones = function () {
-            this.ctx.fillStyle = teamColorHex(team1.color);
+            this.ctx.fillStyle = teamColorHex(team1Color);
             this.ctx.fillRect(0, 0, this.fieldSegment, this.fieldHeight);
-            this.ctx.fillStyle = teamColorHex(team2.color);
+            this.ctx.fillStyle = teamColorHex(team2Color);
             this.ctx.fillRect(this.fieldWidth - this.fieldSegment, 0, this.fieldSegment, this.fieldHeight);
         };
 
@@ -253,8 +253,8 @@ onMount(() => {
     const field = new FootballField(
         `football-field-${id}`,
         fieldColor,
-        offense,
-        defense,
+        offenseColor,
+        defenseColor,
         10,
         subtitle
     )
@@ -272,9 +272,9 @@ onMount(() => {
         endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone
         endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone;
         if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offenseColor), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
         } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offenseColor), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
         }
     }
 });

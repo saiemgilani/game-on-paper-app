@@ -299,10 +299,17 @@ export interface ESPNWinProbability {
     playId: string
 }
 
+/** The summary header's season: the year and the numeric season type (1 pre, 2 regular, 3 post), not the scoreboard's ESPNSeason object. */
+export interface ESPNGameHeaderSeason {
+  year: number
+  type: number
+  current?: boolean
+}
+
 export interface ESPNGameHeader {
   id: string
   uid: string
-  season: ESPNSeason
+  season: ESPNGameHeaderSeason
   timeValid: boolean
   competitions: ESPNCompetition[]
 //   links: Link10[]

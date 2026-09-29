@@ -42,8 +42,8 @@ if (homeTeamId && awayTeamId) {
     }
 }
 
-const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
-const predWinProb = calculatePredictedWinProb(predMargin)
+const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true, league)
+const predWinProb = calculatePredictedWinProb(predMargin, league)
 
 const projection = (homeTeamSummary && awayTeamSummary && predWinProb) ? {
     winner: ((predMargin || 0) > 0) ? `${homeSeason} ${homeTeamSummary.pos_team}` : `${awaySeason} ${awayTeamSummary.pos_team}`,
