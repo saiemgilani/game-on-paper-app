@@ -218,11 +218,11 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('Away Backer');
         expect(html).toContain('Home Kicker');
         expect(html).toContain('Away Punter');
-        expect(html).toContain('FG 2/3');
+        expect(html).toContain('FG: 2/3');
         // returner, block and position-group rows
         expect(html).toContain('Home Returner');
-        expect(html).toContain('KR 2-50, 25.0 avg, 31 LNG');
-        expect(html).toContain('PR 1-12, 12.0 avg, 12 LNG, 1 TD');
+        expect(html).toContain('KR: 2 for 50 yds (25.0 yds avg, 31 LNG)');
+        expect(html).toContain('PR: 1 for 12 yds (12.0 yds avg, 12 LNG), 1 TD');
         expect(html).toContain('Away Blocker');
         expect(html).toContain('1 punt blocked');
         expect(html).toContain('<b>TE</b>');

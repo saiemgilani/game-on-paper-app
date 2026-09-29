@@ -346,7 +346,6 @@ describe('the player stat line is a row under the name, not a column', () => {
         })),
     }));
     const headers = (html: string) => (html.split('</thead>')[0].match(/<th[\s>]/g) ?? []).length;
-    /** Every player is a name row of `n` single cells with its stat line, one cell spanning `n`, right under it. */
     const expectSecondRows = (html: string, n: number) => {
         expect(html).not.toContain('Stat line');
         expect(headers(html)).toBe(n);
@@ -410,21 +409,38 @@ describe('the player stat line is a row under the name, not a column', () => {
     });
 
     test('the special-teams usage table: the name and EPA, then the line spanning both', async () => {
-        const { default: Usage } = await import('../src/components/game/metrics/UsageBoxScore.astro');
-        const html = await container.renderToString(Usage, {
+        const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');
+        const html = await container.renderToString(PlayerBoxScore, {
             props: {
                 teamId: 1,
+                pass: [],
+                rush: [],
+                receiver: [],
+                kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
+                punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
                 box: {
-                    st_kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
-                    st_punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
+                    pass: [],
+                    rush: [],
+                    receiver: [],
+                    kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
+                    punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
                 },
             } as any,
         });
-        const table = html.slice(html.indexOf('Special teams'));
-        const rows = expectSecondRows(table, 2);
-        expect(rows.map((r) => r.cells.map((c) => c.text))).toEqual([
+        const kTable = html.slice(html.indexOf('Kickers'));
+        const kRows = expectSecondRows(kTable, 2);
+        expect(kRows.map((r) => r.cells.map((c) => c.text))).toEqual([
             ['K. Kicker K', '0.40'],
             [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
+            // ['P. Punter P', '-0.30'],
+            // ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
+        ]);
+
+        const pTable = html.slice(html.indexOf('Punters'));
+        const pRows = expectSecondRows(pTable, 2);
+        expect(pRows.map((r) => r.cells.map((c) => c.text))).toEqual([
+            // ['K. Kicker K', '0.40'],
+            // [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
             ['P. Punter P', '-0.30'],
             ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
         ]);
