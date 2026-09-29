@@ -243,11 +243,11 @@ describe('the game being played right now is not in the log, so it is put there'
         expect(live).toContain('data-live-row="true"');
         expect(rows.filter((r) => r.includes('data-live-row')).length).toBe(1);
         expect(rows.length).toBe(games.length + 1);
-        // a link to the game page, and the Performance line: its week, the live
-        // score, the Live pill, then the opponent -- and no stat line
+        // a link to the game page, and the Performance line: its (regular-season)
+        // week, the live score, the Live pill, then the opponent -- and no stat line
         expect(live).toContain('href="/game/401856687"');
         const perf = perfRows(html).at(-1)!;
-        expect(perf).toMatch(new RegExp(` - 17-14${LIVE}${OPP}vs</span>`));
+        expect(perf).toMatch(new RegExp(`^Week 4 - 17-14${LIVE}${OPP}vs</span>`));
         expect(perf).toContain('Florida State');
         expect(live).not.toContain('d-block text-muted small');
         // nothing of it has been processed, so every stat cell is an em dash: plays and
