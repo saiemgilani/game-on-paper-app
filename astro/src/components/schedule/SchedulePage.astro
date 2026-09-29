@@ -91,9 +91,6 @@ const allTeamIds = games.map(g => {
 // cards are ~40% of a phone viewport each); the card grid stays the >=768px
 // rendering either way.
 const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
-// Preview: the conference filter lists the conferences of the season in the
-// season picker, under that season's names.
-const seasonGroups = isFeatureEnabled('scoreboard-season-groups', Astro.locals);
 const etFmt = (d: string, opts: Intl.DateTimeFormatOptions) => {
     try {
         return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...opts }).format(new Date(d));
@@ -164,7 +161,7 @@ if (compactRows) {
         <Header />
         <div class="container">
             <h1 class="visually-hidden">{title || titleText}</h1>
-            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} seasonGroups={seasonGroups} />
+            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} />
             {
                 (compactRows && games.length > 0) && (
                     <div class="game-compact-list d-md-none mb-3">

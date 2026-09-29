@@ -1,4 +1,4 @@
-// The scoreboard's conference filter follows the season picker ('scoreboard-season-groups').
+// The scoreboard's conference filter follows the season picker.
 export default async (page, base) => {
   await page.goto(base + '/year/2024', { waitUntil: 'networkidle', timeout: 90_000 });
   // the picker is a client:idle island: a selection made before it hydrates changes nothing

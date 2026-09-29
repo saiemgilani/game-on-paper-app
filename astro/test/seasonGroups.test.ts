@@ -72,9 +72,9 @@ async function render(locals: Record<string, unknown>, group = 177) {
     });
 }
 
-describe('the season-aware conference filter is preview-gated', () => {
-    test('preview lists the viewed season\'s conferences', async () => {
-        const html = await render({ preview: true });
+describe('the conference filter follows the season', () => {
+    test('a public viewer gets the viewed season\'s conferences', async () => {
+        const html = await render({});
         expect(html).toMatch(/<option value="177"[^>]*selected[^>]*>UAC<\/option>/);
         expect(html).toContain('>Big South-OVC</option>');
         expect(html).not.toContain('>ASUN</option>');
@@ -82,14 +82,7 @@ describe('the season-aware conference filter is preview-gated', () => {
 
     test('a ?group= the season lacks falls back to the default instead of submitting it unseen', async () => {
         // 26 is the OVC only up to 2022; kept, the select would show FBS and submit 26
-        const html = await render({ preview: true }, 26);
+        const html = await render({}, 26);
         expect(html).toMatch(/<option value="80"[^>]*selected[^>]*>FBS \(I-A\)<\/option>/);
-    });
-
-    test('the public page keeps the static list', async () => {
-        const html = await render({});
-        expect(html).toContain('>ASUN</option>');
-        expect(html).toContain('>OVC</option>');
-        expect(html).not.toContain('>UAC</option>');
     });
 });
