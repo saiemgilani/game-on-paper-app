@@ -40,6 +40,14 @@ FCS_HEAD = [{"id": 81, "name": "FCS (I-AA)"}]
 TAIL = [{"id": 90, "name": "All Division I"}, {"id": 35, "name": "Div II/III"}]
 
 
+# FBS/FCS conference-seasons ESPN never grouped (checked in ESPN's per-season group walk), so the
+# scoreboard has no group id to filter them by. Any other conference-season without an ESPN id fails.
+NO_ESPN_GROUP = {
+    ("cfb:great-west", 2004): "ESPN's Great West group (43) first appears in 2005",
+    ("cfb:wac", 2021): "ESPN's 2021 group lists place none of the WAC's football teams",
+}
+
+
 def read(table: str) -> pl.DataFrame:
     resp = requests.get(f"{RELEASE}/{table}.parquet", timeout=60)
     resp.raise_for_status()
@@ -57,13 +65,29 @@ def build(group_seasons: pl.DataFrame, aliases: pl.DataFrame) -> dict[str, list[
         )
         .unique()
     )
-    confs = (
-        group_seasons.filter(
-            pl.col("level") == "conference",
-            pl.col("parent_group_id").is_in(["cfb:fbs", "cfb:fcs"]),
-            pl.col("n_teams") > 0,
-            pl.col("season") >= FIRST_SEASON,
+    served = group_seasons.filter(
+        pl.col("level") == "conference",
+        pl.col("parent_group_id").is_in(["cfb:fbs", "cfb:fcs"]),
+        pl.col("n_teams") > 0,
+        pl.col("season") >= FIRST_SEASON,
+    )
+    # every FBS/FCS conference-season must reach an ESPN id: the scoreboard filters by it,
+    # so a missing or mis-dated alias would silently drop a real conference from the list
+    matched = served.join(espn, on="group_id", how="inner").filter(
+        pl.col("season") >= pl.col("valid_from"),
+        pl.col("valid_to").is_null() | (pl.col("season") <= pl.col("valid_to")),
+    )
+    missing = served.join(matched.select("group_id", "season"), on=["group_id", "season"], how="anti").filter(
+        ~pl.struct("group_id", "season").map_elements(
+            lambda r: (r["group_id"], r["season"]) in NO_ESPN_GROUP, return_dtype=pl.Boolean
         )
+    )
+    if missing.height:
+        raise ValueError(
+            f"FBS/FCS conference-seasons with no ESPN group id in cfb_group_aliases:\n{missing.select('season', 'group_id', 'short_name')}"
+        )
+    confs = (
+        served
         .join(espn, on="group_id", how="inner")
         .filter(
             pl.col("season") >= pl.col("valid_from"),
