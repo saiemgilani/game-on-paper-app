@@ -67,7 +67,7 @@ describe('definitions say what the code computes', () => {
         const neutral = byTerm('Situation-neutral pass rate')!;
         expect(neutral.source).not.toContain('opensourcefootball.com/posts/2020-08-20-what-is-neutral-situation');
         expect(neutral.source).toBe('https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/tendencies.py');
-        expect(neutral.definition).toContain('The NFL team Neutral Pass Rate follows');
+        expect(neutral.definition).toContain('This definition is the same in both leagues. The Neutral Pass Rate column on the NFL team leaderboard is narrower');
         expect(neutral.definition).toContain('first and second down only, first three quarters');
     });
 });
