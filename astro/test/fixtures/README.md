@@ -141,16 +141,20 @@ for both leagues and overwrite the files; the game ids must stay the same.
 ## `team-summaries-cfb-2025.json` / `team-summaries-nfl-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_summaries?season=2025&limit=200` bodies
 (every team: 136 CFB, 32 NFL), trimmed by `select` to `team_id`, `pos_team`,
-`season` and the 15 Five Factors value columns plus their `_rank`s. Ranks are
-Float64 with ties averaged, so some are `x.5` (Alabama's `pts_per_opp_def_rank`
-is 61.5).
+`season` and the 30 Team Factors value columns (`fiveFactorColumns()`, in table
+order) followed by their `_rank`s. Ranks are Float64 with ties averaged, so some
+are `x.5` (Auburn's `turnovers_off_rank` is 13.5).
 
-**Provenance (2026-09-27):** captured from the live API after the Five Factors
-producer columns were republished; rows sorted by `team_id`, no other edits.
+**Provenance (2026-09-30):** captured from the live API after the 2025 team
+summaries were rebuilt with cfbfastR-cfb-data#115 / nfl-data#72 (per-drive
+`start_position`, drive start EP, havoc margin and EPA, expected turnovers and
+turnover luck) and sdv-db#102 added those columns to the API's schema snapshot;
+rows sorted by `team_id`, no other edits.
 
 **Used by:** `test/fiveFactors.test.ts` (every `FIVE_FACTORS` key and its `_rank`
 exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
-`/year/2025/team/333` and `/nfl/year/2025/team/12`).
+`/year/2025/team/333` and `/nfl/year/2025/team/12`, and the tied rank on
+`/year/2025/team/2`).
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
-teams 333 (CFB) and 12 (NFL).
+teams 333 and 2 (CFB) and 12 (NFL).

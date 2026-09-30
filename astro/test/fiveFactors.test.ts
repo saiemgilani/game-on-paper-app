@@ -8,13 +8,20 @@ const fixture = (league: string) =>
     JSON.parse(readFileSync(new URL(`./fixtures/team-summaries-${league}-2025.json`, import.meta.url)).toString()).data;
 
 describe('FIVE_FACTORS', () => {
-    test('five rows, each an offense/defense/margin triple', () => {
-        expect(FIVE_FACTORS.map((f) => f.label)).toEqual(['Efficiency', 'Explosiveness', 'Field Position', 'Finishing Drives', 'Turnovers']);
+    test('ten rows: the five factors, four of them followed by a sub-row', () => {
+        expect(FIVE_FACTORS.map((f) => f.label)).toEqual([
+            'Efficiency', 'Explosiveness', 'Field Position', 'Start (yds)', 'Finishing Drives',
+            'Turnovers', 'Expected', 'Luck (pts)', 'Havoc', 'EPA / Game',
+        ]);
+        expect(FIVE_FACTORS.filter((f) => f.sub).map((f) => f.label)).toEqual(['Start (yds)', 'Expected', 'Luck (pts)', 'EPA / Game']);
     });
 
-    test('the field-position row reads start_position_*, the explosiveness margin reads explosive_margin', () => {
+    test('field position reads drive_start_ep_* with start_position_* beneath it; havoc has a margin', () => {
         const byLabel = Object.fromEntries(FIVE_FACTORS.map((f) => [f.label, f]));
-        expect(byLabel['Field Position']).toMatchObject({ off: 'start_position_off', def: 'start_position_def', margin: 'start_position_margin' });
+        expect(byLabel['Field Position']).toMatchObject({ off: 'drive_start_ep_off', def: 'drive_start_ep_def', margin: 'drive_start_ep_margin' });
+        expect(byLabel['Start (yds)']).toMatchObject({ off: 'start_position_off', def: 'start_position_def', margin: 'start_position_margin' });
+        expect(byLabel['Luck (pts)']).toMatchObject({ off: 'turnover_luck_off', def: 'turnover_luck_def', margin: 'turnover_luck' });
+        expect(byLabel['Havoc'].margin).toBe('havoc_margin');
         expect(byLabel['Explosiveness'].margin).toBe('explosive_margin');
     });
 
@@ -22,7 +29,7 @@ describe('FIVE_FACTORS', () => {
         const rows = fixture(league);
         expect(rows.length).toBe(league === 'cfb' ? 136 : 32);
         for (const f of FIVE_FACTORS) {
-            for (const k of [f.off, f.def, f.margin]) {
+            for (const k of [f.off, f.def, f.margin].filter((c): c is string => c !== null)) {
                 expect(rows[0], k).toHaveProperty(k);
                 expect(rows[0], `${k}_rank`).toHaveProperty(`${k}_rank`);
             }
@@ -31,9 +38,9 @@ describe('FIVE_FACTORS', () => {
 });
 
 describe('fiveFactorColumns', () => {
-    test('the 15 value columns and nothing else', () => {
+    test('the 30 value columns and nothing else', () => {
         const cols = fiveFactorColumns();
-        expect(new Set(cols).size).toBe(15);
+        expect(new Set(cols).size).toBe(30);
         expect(cols).toEqual(FIVE_FACTORS.flatMap((f) => [f.off, f.def, f.margin]));
         // retrieveTeamSummaries appends `_rank` to every column it is handed, and
         // one unknown column in `select` (a `_rank_rank`) is a 400 from the API

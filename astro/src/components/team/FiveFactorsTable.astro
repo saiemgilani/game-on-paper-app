@@ -17,7 +17,7 @@ const row = (summary ?? {}) as Record<string, unknown>;
 const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNull(row[`${k}_rank`]));
 ---
 
-<TeamPlayerTable id="five-factors" title="Five Factors" show={true}>
+<TeamPlayerTable id="five-factors" title="Team Factors" show={true}>
     <Fragment slot="header">
         <th rowspan="1" colspan="1"></th>
         <th rowspan="1" colspan="1" class="text-center">Offense</th>
@@ -28,8 +28,8 @@ const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNu
     <Fragment slot="rows">
         {FIVE_FACTORS.map((f) => (
             <tr>
-                <td class="text-left text-nowrap"><abbr title={f.hover}>{f.label}</abbr></td>
-                {[f.off, f.def, f.margin].map((k) => (
+                <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr title={f.hover}>{f.label}</abbr></td>
+                {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
                     <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
                         {formatFactor(row[k], f.format, k === f.margin)}
                         {rankOf(k) !== null && (

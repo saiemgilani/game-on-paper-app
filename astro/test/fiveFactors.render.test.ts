@@ -52,32 +52,40 @@ async function render(league: 'cfb' | 'nfl', id: string, preview: boolean) {
 }
 
 const panelOf = (html: string) => html.split('id="five-factors-panel"')[1]?.split('</table>')[0];
-/** Each body `<td>`: its class attribute and its text, tags stripped. */
+/** Each body `<td>`: its class attribute and its text, tags stripped (a `>` inside a quoted
+ *  attribute, as in the `(EPA > 0)` hover, is not the tag's end). */
 const tds = (panel: string) => [...panel.split('<tbody')[1].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)]
-    .map((m) => ({ cls: m[1].match(/class="([^"]*)"/)?.[1] ?? '', text: m[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() }));
+    .map((m) => ({ cls: m[1].match(/class="([^"]*)"/)?.[1] ?? '', text: m[2].replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, '').replace(/\s+/g, ' ').trim() }));
 
 // row label -> [columns, is a rate, decimals], in table order
 const EXPECTED: [string, string[], boolean, number][] = [
     ['Efficiency', ['success_off', 'success_def', 'success_margin'], true, 1],
     ['Explosiveness', ['explosive_off', 'explosive_def', 'explosive_margin'], true, 1],
-    ['Field Position', ['start_position_off', 'start_position_def', 'start_position_margin'], false, 1],
+    ['Field Position', ['drive_start_ep_off', 'drive_start_ep_def', 'drive_start_ep_margin'], false, 2],
+    ['Start (yds)', ['start_position_off', 'start_position_def', 'start_position_margin'], false, 1],
     ['Finishing Drives', ['pts_per_opp_off', 'pts_per_opp_def', 'pts_per_opp_margin'], false, 2],
     ['Turnovers', ['turnovers_off', 'turnovers_def', 'turnover_margin'], false, 2],
+    ['Expected', ['expected_turnovers_off', 'expected_turnovers_def', 'expected_turnover_margin'], false, 2],
+    ['Luck (pts)', ['turnover_luck_off', 'turnover_luck_def', 'turnover_luck'], false, 2],
+    ['Havoc', ['havoc_off', 'havoc_def', 'havoc_margin'], true, 1],
+    ['EPA / Game', ['havoc_EPAgame_off', 'havoc_EPAgame_def', 'havoc_EPAgame_margin'], false, 2],
 ];
+/** Where a row's cells start in `tds()`: four cells a row (label + off/def/margin). */
+const at = (label: string) => 4 * EXPECTED.findIndex(([l]) => l === label);
 
 describe.each([
     ['cfb', '333', 134, 'Data shown is from FBS vs FBS games only.'],
     ['nfl', '12', 32, 'Data shown is from regular season games only.'],
 ] as const)('%s season team page, flag on', (league, id, teamCount, subtitle) => {
-    test('15 value cells: the fixture value, its #rank, shaded by rank', async () => {
+    test('30 value cells: the fixture value, its #rank, shaded by rank', async () => {
         const html = await render(league, id, true);
         const panel = panelOf(html);
         expect(panel, 'panel').toBeTruthy();
-        expect(panel).toContain('Five Factors');
+        expect(panel).toContain('Team Factors');
         expect(panel).toContain(subtitle);
         const row = rows[league].find((r) => r.team_id === Number(id));
         const cells = tds(panel);
-        expect(cells.length).toBe(5 * 4);
+        expect(cells.length).toBe(EXPECTED.length * 4);
         EXPECTED.forEach(([label, cols, rate, fixed], i) => {
             expect(cells[i * 4].text).toBe(label);
             cols.forEach((k, j) => {
@@ -105,22 +113,22 @@ describe.each([
 
 describe('cfb season team page, Five Factors edge cases', () => {
     test('a tied rank prints the site\'s T- form', async () => {
-        // Alabama's pts_per_opp_def_rank is 61.5 in the fixture: averaged ties
-        const cells = tds(panelOf(await render('cfb', '333', true)));
-        expect(cells[3 * 4 + 2].text).toBe('3.97 #T-61');
+        // Auburn's turnovers_off_rank is 13.5 in the fixture: averaged ties
+        const cells = tds(panelOf(await render('cfb', '2', true)));
+        expect(cells[at('Turnovers') + 1].text).toBe('0.82 #T-13');
     }, 60_000);
 
     test('a good rank is green and a poor one purple', async () => {
         // literals from Alabama's real row, not re-derived with the ramp call the
-        // component makes: turnovers_off_rank 12, start_position_off_rank 109
+        // component makes: turnovers_off_rank 12, start_position_off_rank 105
         const cells = tds(panelOf(await render('cfb', '333', true)));
-        expect(cells[4 * 4 + 1].text).toBe('0.79 #12');
-        expect(cells[4 * 4 + 1].cls).toContain('hulk-bg-level-9');
-        expect(cells[2 * 4 + 1].text).toBe('73.6 #109');
-        expect(cells[2 * 4 + 1].cls).toContain('hulk-bg-level-2');
+        expect(cells[at('Turnovers') + 1].text).toBe('0.79 #12');
+        expect(cells[at('Turnovers') + 1].cls).toContain('hulk-bg-level-9');
+        expect(cells[at('Start (yds)') + 1].text).toBe('71.9 #105');
+        expect(cells[at('Start (yds)') + 1].cls).toContain('hulk-bg-level-2');
     }, 60_000);
 
-    test('no team_summaries row: no panel at all, rather than fifteen dashes', async () => {
+    test('no team_summaries row: no panel at all, rather than a table of dashes', async () => {
         feed.override = [];
         const html = await render('cfb', '333', true);
         expect(html).toContain('Alabama'); // the page itself still renders
@@ -132,7 +140,7 @@ describe('cfb season team page, Five Factors edge cases', () => {
         // the rank is left in place: a null value must not be shaded or ranked by it
         feed.override = [{ ...row, pts_per_opp_off: null, turnover_margin: null }];
         const cells = tds(panelOf(await render('cfb', '333', true)));
-        for (const cell of [cells[3 * 4 + 1], cells[4 * 4 + 3]]) {
+        for (const cell of [cells[at('Finishing Drives') + 1], cells[at('Turnovers') + 3]]) {
             expect(cell.text).toBe('—');
             expect(cell.cls).not.toContain('hulk-');
         }
@@ -141,7 +149,7 @@ describe('cfb season team page, Five Factors edge cases', () => {
     test('flag off: no panel, and the request is exactly the pre-flag one', async () => {
         const html = await render('cfb', '333', false);
         expect(html).not.toContain('five-factors');
-        expect(html).not.toContain('Five Factors');
+        expect(html).not.toContain('Team Factors');
         expect(feed.calls).toHaveLength(1);
         expect(feed.calls[0].columns).toBeUndefined();
         expect(feed.calls[0]).toEqual({ season: 2025, team_id: 333, league: 'cfb' });
