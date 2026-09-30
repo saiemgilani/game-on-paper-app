@@ -1,8 +1,8 @@
 ---
 import type { ESPNTeam } from '../../../resources/espn';
 import Panel from '../../../layouts/panel/GenericPanel.astro';
+import { adjustTeamColorsForContrast, cleanAbbreviation, roundNumber, rgbToHex, type ThemedGameColors } from '../../../utils/misc';
 import { espnLogoLeague } from '../../../utils/league';
-import { cleanAbbreviation, roundNumber, type ThemedGameColors } from '../../../utils/misc';
 
 interface Props {
     result: {
@@ -17,13 +17,17 @@ interface Props {
 }
 
 const { result, homeTeam, awayTeam, completed, colors } = Astro.props;
+const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
 
 const clampPct = (share: number) => Math.min(99, Math.max(1, Math.round(share * 100)));
 const homePct = clampPct(result.homeShare);
 const awayPct = 100 - homePct;
 // the page's colour decision when there is one ('game-colours'), as custom properties that
-// switch with prefers-color-scheme like the rest of the site's dark mode; else each team's own
-const barColor = (t: ESPNTeam, fallback: string) => colors ? `var(--pi-${t === homeTeam ? "home" : "away"})` : `#${t.color ?? fallback}`;
+// switch with prefers-color-scheme like the rest of the site's dark mode; else the pair
+// adjusted for contrast against each other
+const barColor = (t: ESPNTeam, fallback: string) => colors
+    ? `var(--pi-${t === homeTeam ? "home" : "away"})`
+    : (t.id == awayTeam.id ? (rgbToHex(awayTeamColor) ?? fallback) : (rgbToHex(homeTeamColor) ?? fallback));
 const barVars = colors && `#paper-index-panel { --pi-home: ${colors.light.home}; --pi-away: ${colors.light.away}; }
 @media (prefers-color-scheme: dark) { #paper-index-panel { --pi-home: ${colors.dark.home}; --pi-away: ${colors.dark.away}; } }`;
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;

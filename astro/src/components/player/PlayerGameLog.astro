@@ -200,8 +200,13 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                     <td class="text-left text-nowrap align-middle" colspan="1">
                         <div class="d-flex align-items-center gap-1">
                             {weekLabel(league, g.week, g.season_type, g.season)} - 
-                            {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : '—'}
+                            {g.result ? <span class={RESULT_CLASS[g.result] || undefined}>{g.result}</span> : (g.team_score != null && g.opponent_score != null ? '' : '—')}
                             {g.team_score != null && g.opponent_score != null ? ` ${g.team_score}-${g.opponent_score}` : ''}
+                            {liveOf(g) && <StatusBadge label="Live" variant="danger" title="This game is in progress" />}
+                            {admin && liveOf(g)?.qa && (
+                                <StatusBadge label="QA" variant="secondary" dataAttr="live-qa"
+                                    title={qaTitle(liveOf(g)!.qa!)} />
+                            )}
                             <span class="text-muted">{g.home_away === 'away' ? 'at' : 'vs'}</span>
                             <a class="d-flex align-items-center gap-1" href={opponentId(g) ? leaguePath(league, `/year/${g.season}/team/${opponentId(g)}`) : undefined}>
                                 {opponentId(g) && (
@@ -211,11 +216,6 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
                                 )}
                                 <span>{cleanTextForTeam(g.opponent, opponentId(g))}</span>
                             </a>
-                            {liveOf(g) && <StatusBadge label="Live" variant="danger" title="This game is in progress" />}
-                            {admin && liveOf(g)?.qa && (
-                                <StatusBadge label="QA" variant="secondary" dataAttr="live-qa"
-                                    title={qaTitle(liveOf(g)!.qa!)} />
-                            )}
                         </div>
                         {gameStatLine(g, league) && (<span class="d-block text-muted small">{gameStatLine(g, league)}</span>)}
                     </td>
