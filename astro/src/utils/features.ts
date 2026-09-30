@@ -61,6 +61,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // shows, no new element. Read in GameHeader.astro, which both game-page
     // twins and the pregame page import.
     'game-links': 'preview',
+    // One team-colour decision per game (utils/misc.ts pickGameColors), a pair
+    // per theme, handed to every chart on the game page (WP, EP, drive charts,
+    // Deserved Win %) and the matchup radar. Off: each chart keeps its own
+    // legacy colours.
+    'game-colours': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

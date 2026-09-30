@@ -2,7 +2,8 @@
 <script>
 import { onMount } from "svelte";
 import { determineLuminance, teamColorHex } from "../../../utils/misc";
-const { id, subtitle, result, plays, offenseColor, defenseColor, isNeutralSite } = $props();
+// dark*: the page's dark-theme pair, passed only with 'game-colours' on
+const { id, subtitle, result, plays, offenseColor, defenseColor, darkOffenseColor = null, darkDefenseColor = null, isNeutralSite } = $props();
 
 let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
 // if (!isNeutralSite && homeTeam.id == 68) {
@@ -246,15 +247,16 @@ class FootballField {
     }
 }
 
-// onMount, not DOMContentLoaded: a client:only island often mounts after that event
-// has fired, and the listener then never runs (blank 300x150 canvas); onMount also
-// guarantees the canvas below exists
-onMount(() => {
+function drawDrive() {
+    // the dark pair when the page made one and the theme is dark, else the light pair / each team's own colour
+    const dark = darkOffenseColor && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const offense = dark ? darkOffenseColor : offenseColor;
+    const defense = dark ? darkDefenseColor : defenseColor;
     const field = new FootballField(
         `football-field-${id}`,
         fieldColor,
-        offenseColor,
-        defenseColor,
+        offense,
+        defense,
         10,
         subtitle
     )
@@ -272,11 +274,23 @@ onMount(() => {
         endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone
         endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone;
         if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offenseColor), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
         } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offenseColor), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
         }
     }
+}
+
+// onMount, not DOMContentLoaded: a client:only island often mounts after that event
+// has fired, and the listener then never runs (blank 300x150 canvas); onMount also
+// guarantees the canvas below exists
+onMount(() => {
+    drawDrive();
+    if (!darkOffenseColor) return;
+    // a new FootballField resizes (and so clears) the canvas: redraw in the other theme's colours when it flips
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change', drawDrive);
+    return () => scheme.removeEventListener('change', drawDrive);
 });
 
 </script>

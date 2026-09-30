@@ -2,11 +2,11 @@
 import Chart from 'chart.js/auto';
 import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
-import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, waitForElement } from '../../utils/misc';
+import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -177,7 +177,9 @@ async function generateChart() {
     Chart.register(GradientFillLineController);
 
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const [awayTeamColor, homeTeamColor] = adjustTeamColorsForContrast(awayTeam, homeTeam)
+    // the page's colour decision for this theme when it made one ('game-colours'), else the legacy per-chart rule
+    const pair = colors && (isDarkMode ? colors.dark : colors.light)
+    const [awayTeamColor, homeTeamColor] = pair ? [hexToRgb(pair.away), hexToRgb(pair.home)] : adjustTeamColorsForContrast(awayTeam, homeTeam)
 
     var timestamps = [...Array(plays.length).keys()];
     let periodMarkers = []
@@ -423,14 +425,15 @@ async function generateChart() {
         }
     })
 
-    document.getElementById("wp-download").addEventListener('click', function() {
+    // a property, not a listener: a theme redraw must replace the handler bound to the old chart
+    document.getElementById("wp-download").onclick = function() {
         /*Get image of canvas element*/
         var url_base64jp = wpChart.toBase64Image();
         /*get download button (tag: <a></a>) */
         var a =  document.getElementById("wp-download");
         /*insert chart image url to download button (tag: <a></a>) */
         a.href = url_base64jp;
-    });
+    };
 }
 
 async function waitToGenerateChart() {
@@ -444,6 +447,14 @@ async function waitToGenerateChart() {
             container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
         }
     }
+}
+
+// with the page's per-theme colours, redraw in the other pair when the theme flips
+if (colors) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        Chart.getChart("wpChart")?.destroy()
+        waitToGenerateChart()
+    })
 }
 
 if (document.readyState !== 'loading') {
