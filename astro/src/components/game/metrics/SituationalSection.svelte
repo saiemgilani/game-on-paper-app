@@ -107,6 +107,26 @@ function onChangeSpan(e: Event) {
             useSuffix={true}
             decimalPoints={2}
         />
+        <TeamMetricsTable 
+            title="Special Teams"
+            league={league}
+            teamKey='pos_team'
+            season={season}
+            columns={
+                [
+                    "st_team.fg_attempts",
+                    "st_team.kickoff_touchback_rate",
+                    "st_team.kickoff_return_avg_allowed",
+                    "st_team.punt_net_avg",
+                    "st_team.kick_return_avg",
+                    "st_team.punt_blocks_by",
+                    "st_team.fg_blocks_by"
+                ]
+            }
+            box={selectedBoxScore}
+            useSuffix={false}
+            decimalPoints={0}
+        />
     </div>
     <div class="col-md-4 ms-sm-auto col-lg-4">
         <TeamMetricsTable 
@@ -150,7 +170,9 @@ function onChangeSpan(e: Event) {
                     "situational.EPA_middle_8_success",
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                situational: selectedBoxScore.situational
+            }}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -171,7 +193,9 @@ function onChangeSpan(e: Event) {
                     "situational.EPA_success_early_down_rush",
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                situational: selectedBoxScore.situational
+            }}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -190,9 +214,16 @@ function onChangeSpan(e: Event) {
                     "situational.EPA_success_late_down_pass",
                     "situational.EPA_success_late_down_rush",
                     "situational.late_down_avg_distance",
+
+                    "team_usage.third_down_opportunities",
+                    "team_usage.third_down_conversions",
+                    "team_usage.third_down_expected",
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                situational: selectedBoxScore.situational,
+                team_usage: selectedBoxScore.team_usage
+            }}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -212,7 +243,9 @@ function onChangeSpan(e: Event) {
                     "situational.EPA_middle_8_success_rush"
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                situational: selectedBoxScore.situational
+            }}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -230,22 +263,6 @@ function onChangeSpan(e: Event) {
                     "drives.plays_per_drive",
                     "drives.yards_per_drive",
                     "drives.drive_total_gained_yards_rate",
-                ]
-            }
-            box={selectedBoxScore}
-            useSuffix={false}
-            decimalPoints={2}
-        />
-        <TeamMetricsTable 
-            title="Finishing Drives"
-            league={league}
-            teamKey='pos_team'
-            season={season}
-            columns={
-                [
-                    "team_usage.third_down_opportunities",
-                    "team_usage.third_down_conversions",
-                    "team_usage.third_down_expected",
 
                     "team_usage.so_trips",
                     "team_usage.so_touchdown_rate",
@@ -258,19 +275,7 @@ function onChangeSpan(e: Event) {
                     "team_usage.rz_points_per_trip",
                     "team_usage.rz_success_rate",
                     "team_usage.rz_epa_per_play",
-                ]
-            }
-            box={selectedBoxScore}
-            useSuffix={false}
-            decimalPoints={2}
-        />
-        <TeamMetricsTable 
-            title="Game Plan"
-            league={league}
-            teamKey='pos_team'
-            season={season}
-            columns={
-                [
+
                     "drive_scripting.scripted.drives",
                     "drive_scripting.scripted.success_rate",
                     "drive_scripting.scripted.epa_per_play",
@@ -282,7 +287,11 @@ function onChangeSpan(e: Event) {
                     "drive_scripting.non_scripted.points_per_drive",
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                drives: selectedBoxScore.drives,
+                team_usage: selectedBoxScore.team_usage,
+                drive_scripting: selectedBoxScore.drive_scripting
+            }}
             useSuffix={false}
             decimalPoints={2}
         />
@@ -307,7 +316,9 @@ function onChangeSpan(e: Event) {
                     "defensive.fumbles"
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                defensive: selectedBoxScore.defensive
+            }}
             useSuffix={true}
             decimalPoints={0}
         />
@@ -329,40 +340,11 @@ function onChangeSpan(e: Event) {
                     "turnover.turnover_luck"
                 ]
             }
-            box={selectedBoxScore}
+            box={{
+                turnover: selectedBoxScore.turnover
+            }}
             useSuffix={false}
             decimalPoints={0}
         />
-        <TeamMetricsTable 
-            title="Special Teams"
-            league={league}
-            teamKey='pos_team'
-            season={season}
-            columns={
-                [
-                    "st_team.fg_attempts",
-                    "st_team.kickoff_touchback_rate",
-                    "st_team.kickoff_return_avg_allowed",
-                    "st_team.punt_net_avg",
-                    "st_team.kick_return_avg",
-                    "st_team.punt_blocks_by",
-                    "st_team.fg_blocks_by"
-                ]
-            }
-            box={selectedBoxScore}
-            useSuffix={false}
-            decimalPoints={0}
-        />
-        <!-- <TraditionalTeamStats
-            season={season}
-            teams={selectedBoxScore.team.map((t: any) => t.pos_team)}
-            plays={game.plays}
-            drives={spanDrives}
-        />
-        <PenaltyBreakdown
-            season={season}
-            teams={selectedBoxScore.team.map((t: any) => t.pos_team)}
-            plays={game.plays}
-        /> -->
     </div>
 </div>
