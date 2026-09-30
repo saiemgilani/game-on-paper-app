@@ -151,17 +151,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // which sends its Authorization header proactively -- no 401 challenge
     // needed, so the browser popup is gone for good).
     const open = url.pathname === '/admin/login' || url.pathname === '/admin/api/login';
-    const cookieOk = context.locals.adminAuthed === true;  // verified above, on every path
+    const adminCookieOk = context.locals.adminAuthed === true;  // verified above, on every path
     const basicOk = checkBasicAuth(context.request.headers.get('authorization'),
       getSecret('ADMIN_USER'), getSecret('ADMIN_PASS'));
-    if (!open && !cookieOk && !basicOk) {
+    if (!open && !adminCookieOk && !basicOk) {
       if (url.pathname.startsWith('/admin/api/')) {
         return Response.json({ ok: false, error: 'auth required' },
           { status: 401, headers: { 'Cache-Control': 'no-store' } });
       }
       return context.redirect('/admin/login', 302);
     }
-    if (cookieOk || basicOk) {
+    if (adminCookieOk || basicOk) {
       context.locals.adminAuthed = true;
       // vetted here, where auth is actually verified: the audit log must not
       // trust a raw Authorization header a cookie-authed caller could forge

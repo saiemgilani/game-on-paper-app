@@ -34,9 +34,67 @@ export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
 
 export interface Term { term: string; definition: string; source?: string }
 
+/**
+ * Deep-link id for one glossary term: "Successful play / Success Rate" -> "successful-play-success-rate".
+ * Diacritics fold to their base letter ("Élan" -> "elan"); anything else outside a-z0-9 joins with a
+ * hyphen, so on its own this can collide ("C++" and "C#" are both "c") or come out empty. The page and
+ * its structured data resolve a whole list with termSlugs(), which is what a deep link has to match.
+ */
+export function termSlug(term: string): string {
+    return term.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * One unique, non-empty slug per entry of a list, in list order: a collision takes "-2", "-3", ...;
+ * an empty slug becomes "term-<position>". Keyed by the entry itself, so two entries that share a
+ * name still get their own slugs. The glossary page ids and the DefinedTermSet both read this map,
+ * so every entry's deep link lands on its own definition.
+ */
+export function termSlugs(terms: Term[]): Map<Term, string> {
+    const out = new Map<Term, string>();
+    const used = new Set<string>();
+    terms.forEach((t, i) => {
+        const base = termSlug(t.term) || `term-${i + 1}`;
+        let slug = base;
+        for (let k = 2; used.has(slug); k++) slug = `${base}-${k}`;
+        used.add(slug);
+        out.set(t, slug);
+    });
+    return out;
+}
+
+/** Link to one entry on the single glossary page (#226: no per-term pages), resolved against the list it sits in. */
+export function glossaryHref(entry: Term, terms: Term[]): string {
+    return `/glossary/#${termSlugs(terms).get(entry) ?? termSlug(entry.term)}`;
+}
+
+// A tag, with quoted attribute values allowed to contain ">" (`<a title="1 > 0">`).
+const TAG_BODY = String.raw`(?:"[^"]*"|'[^']*'|[^'">])*`;
+const BLOCK_TAG = new RegExp(String.raw`<\/?(?:br|p|div|li|ul|ol|tr|td|th|table|thead|tbody|h[1-6])\b${TAG_BODY}>`, 'gi');
+const ANY_TAG = new RegExp(`<${TAG_BODY}>`, 'g');
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * A definition's authored HTML as text: a block boundary (a cell, a row, a break, a list item)
+ * separates words, an inline tag does not, so "<b>D</b>ownfield" stays "Downfield". Entities
+ * are decoded after the tags go, so an authored `&lt;0 yds` reads `<0 yds` and is not a tag.
+ */
+export function definitionText(html: string): string {
+    return html
+        .replace(BLOCK_TAG, ' ')
+        .replace(ANY_TAG, '')
+        .replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) =>
+            dec ? String.fromCodePoint(Number(dec))
+                : hex ? String.fromCodePoint(parseInt(hex, 16))
+                : NAMED_ENTITIES[name.toLowerCase()] ?? m)
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
 export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
     const url = new URL(pageUrl, ORIGIN).href;
+    const slugs = termSlugs(terms);
     return {
         '@context': 'https://schema.org',
         '@type': 'DefinedTermSet',
@@ -45,9 +103,11 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         url,
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
+            '@id': `${url}#${slugs.get(t)}`,
+            url: `${url}#${slugs.get(t)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
-            description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            description: definitionText(t.definition),
             inDefinedTermSet: url,
         })),
     };
