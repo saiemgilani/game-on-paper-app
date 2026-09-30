@@ -1,5 +1,5 @@
 <script>
-	import { GLOBAL_GROUP_LIST, GLOBAL_SCHEDULE_MAP } from '../../resources/schedule';
+	import { GLOBAL_SCHEDULE_MAP, groupsForSeason } from '../../resources/schedule';
 	import { NFL_POST_LABELS } from '../../utils/constants';
 	import { LEAGUES, leaguePath } from '../../utils/league';
 
@@ -18,7 +18,11 @@
 	// svelte-ignore state_referenced_locally
 	let selectedSeason = $state({ value: String(season) });
 	let selectedSeasonWeeks = $derived({ value: weeksFor(selectedSeason.value) });
-	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : (group || cfg.defaultGroup) });
+	let groupList = $derived(groupsForSeason(selectedSeason.value));
+	// a conference the season lacks (a bookmarked ?group=, or a season change) would
+	// submit a filter with no games while the select shows a different one
+	const validGroup = (id) => groupList.some((g) => g.id == id) ? id : cfg.defaultGroup;
+	let selectedGroup = $state({ value: cfg.defaultGroup === null ? null : validGroup(group || cfg.defaultGroup) });
 	let selectedWeek = $state({ value: (week && seasontype) ? `${seasontype};${week}`: "-1;-1" });
 
 
@@ -27,6 +31,7 @@
 
 		document.getElementById("weekSelect").selectedIndex = 0;
 		selectedWeek.value = "-1;-1"
+		selectedGroup.value = validGroup(selectedGroup.value);
 	}
 
 	function onSubmit(e) {
@@ -71,7 +76,7 @@
 		{#if cfg.defaultGroup !== null}
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-lg" onchange={(e) => selectedGroup.value = e.target.value}>
-				{#each GLOBAL_GROUP_LIST as g}
+				{#each groupList as g}
 					<option value={g.id} selected={selectedGroup.value == g.id}>{g.name}</option>
 				{/each}
             </select>
