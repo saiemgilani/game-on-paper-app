@@ -41,10 +41,16 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "EPA_plays","EPA_overall_total", "EPA_overall_offense", "EPA_special_teams", "EPA_penalty"                                 
-            ]}
-            teamBoxScores={selectedBoxScore.team}
+            columns={
+                [
+                    "team.EPA_plays",
+                    "team.EPA_overall_total",
+                    "team.EPA_overall_offense",
+                    "team.EPA_special_teams",
+                    "team.EPA_penalty"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
             caption='Totals may not add up due to plays fitting in multiple categories (e.g. a penalty on a punt).'
@@ -54,10 +60,26 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "scrimmage_plays","off_yards","yards_per_play","EPA_overall_off","EPA_per_play","passes","pass_yards","yards_per_pass","EPA_passing_overall","EPA_passing_per_play","rushes","rush_yards","yards_per_rush", "EPA_rushing_overall","EPA_rushing_per_play"                                    
-            ]}
-            teamBoxScores={selectedBoxScore.team}
+            columns={
+                [
+                    "team.scrimmage_plays",
+                    "team.off_yards",
+                    "team.yards_per_play",
+                    "team.EPA_overall_off",
+                    "team.EPA_per_play",
+                    "team.passes",
+                    "team.pass_yards",
+                    "team.yards_per_pass",
+                    "team.EPA_passing_overall",
+                    "team.EPA_passing_per_play",
+                    "team.rushes",
+                    "team.rush_yards",
+                    "team.yards_per_rush",
+                    "team.EPA_rushing_overall",
+                    "team.EPA_rushing_per_play"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -66,10 +88,22 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "scrimmage_plays","rushes","rushing_power","rushing_power_success","rushing_stuff","rushing_stopped","rushing_opportunity","line_yards","line_yards_per_carry","rushing_highlight_yards","rushing_highlight_yards_per_opp"                                
-            ]}
-            teamBoxScores={selectedBoxScore.team}
+            columns={
+                [
+                    "team.scrimmage_plays",
+                    "team.rushes",
+                    "team.rushing_power",
+                    "team.rushing_power_success",
+                    "team.rushing_stuff",
+                    "team.rushing_stopped",
+                    "team.rushing_opportunity",
+                    "team.line_yards",
+                    "team.line_yards_per_carry",
+                    "team.rushing_highlight_yards",
+                    "team.rushing_highlight_yards_per_opp"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -80,10 +114,22 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "EPA_plays","scrimmage_plays","EPA_explosive","EPA_explosive_passing","EPA_explosive_rushing","EPA_non_explosive","EPA_non_explosive_per_play","EPA_non_explosive_passing","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing","EPA_non_explosive_rushing_per_play"
-            ]}
-            teamBoxScores={selectedBoxScore.team}
+            columns={
+                [
+                    "team.EPA_plays",
+                    "team.scrimmage_plays",
+                    "team.EPA_explosive",
+                    "team.EPA_explosive_passing",
+                    "team.EPA_explosive_rushing",
+                    "team.EPA_non_explosive",
+                    "team.EPA_non_explosive_per_play",
+                    "team.EPA_non_explosive_passing",
+                    "team.EPA_non_explosive_passing_per_play",
+                    "team.EPA_non_explosive_rushing",
+                    "team.EPA_non_explosive_rushing_per_play"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -92,17 +138,19 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "EPA_success",
-                "EPA_success_pass",
-                "EPA_success_rush",
-                "EPA_success_standard_down",
-                "EPA_success_passing_down",
-                "EPA_success_early_down",
-                "EPA_success_late_down",
-                "EPA_middle_8_success",
-            ]}
-            teamBoxScores={selectedBoxScore.situational}
+            columns={
+                [
+                    "situational.EPA_success",
+                    "situational.EPA_success_pass",
+                    "situational.EPA_success_rush",
+                    "situational.EPA_success_standard_down",
+                    "situational.EPA_success_passing_down",
+                    "situational.EPA_success_early_down",
+                    "situational.EPA_success_late_down",
+                    "situational.EPA_middle_8_success",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -111,17 +159,19 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "early_downs",
-                "early_down_first_down",
-                "EPA_early_down",
-                "EPA_early_down_per_play",
-                "early_down_pass",
-                "early_down_rush",
-                "EPA_success_early_down_pass",
-                "EPA_success_early_down_rush",
-            ]}
-            teamBoxScores={selectedBoxScore.situational}
+            columns={
+                [
+                    "situational.early_downs",
+                    "situational.early_down_first_down",
+                    "situational.EPA_early_down",
+                    "situational.EPA_early_down_per_play",
+                    "situational.early_down_pass",
+                    "situational.early_down_rush",
+                    "situational.EPA_success_early_down_pass",
+                    "situational.EPA_success_early_down_rush",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -130,17 +180,19 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "late_downs",
-                "EPA_late_down",
-                "EPA_late_down_per_play",
-                "late_down_pass",
-                "late_down_rush",
-                "EPA_success_late_down_pass",
-                "EPA_success_late_down_rush",
-                "late_down_avg_distance",
-            ]}
-            teamBoxScores={selectedBoxScore.situational}
+            columns={
+                [
+                    "situational.late_downs",
+                    "situational.EPA_late_down",
+                    "situational.EPA_late_down_per_play",
+                    "situational.late_down_pass",
+                    "situational.late_down_rush",
+                    "situational.EPA_success_late_down_pass",
+                    "situational.EPA_success_late_down_rush",
+                    "situational.late_down_avg_distance",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -149,16 +201,18 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "middle_8",
-                "EPA_middle_8",
-                "EPA_middle_8_per_play",
-                "middle_8_pass",
-                "middle_8_rush",
-                "EPA_middle_8_success_pass",
-                "EPA_middle_8_success_rush"
-            ]}
-            teamBoxScores={selectedBoxScore.situational}
+            columns={
+                [
+                    "situational.middle_8",
+                    "situational.EPA_middle_8",
+                    "situational.EPA_middle_8_per_play",
+                    "situational.middle_8_pass",
+                    "situational.middle_8_rush",
+                    "situational.EPA_middle_8_success_pass",
+                    "situational.EPA_middle_8_success_rush"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={2}
         />
@@ -169,14 +223,16 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "drives",
-                "avg_field_position",
-                "plays_per_drive",
-                "yards_per_drive",
-                "drive_total_gained_yards_rate",
-            ]}
-            teamBoxScores={selectedBoxScore.drives}
+            columns={
+                [
+                    "drives.drives",
+                    "drives.avg_field_position",
+                    "drives.plays_per_drive",
+                    "drives.yards_per_drive",
+                    "drives.drive_total_gained_yards_rate",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={false}
             decimalPoints={2}
         />
@@ -185,24 +241,26 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "third_down_opportunities",
-                "third_down_conversions",
-                "third_down_expected",
+            columns={
+                [
+                    "team_usage.third_down_opportunities",
+                    "team_usage.third_down_conversions",
+                    "team_usage.third_down_expected",
 
-                "so_trips",
-                "so_touchdown_rate",
-                "so_points_per_trip",
-                "so_success_rate",
-                "so_epa_per_play",
+                    "team_usage.so_trips",
+                    "team_usage.so_touchdown_rate",
+                    "team_usage.so_points_per_trip",
+                    "team_usage.so_success_rate",
+                    "team_usage.so_epa_per_play",
 
-                "rz_trips",
-                "rz_touchdown_rate",
-                "rz_points_per_trip",
-                "rz_success_rate",
-                "rz_epa_per_play",
-            ]}
-            teamBoxScores={selectedBoxScore.team_usage}
+                    "team_usage.rz_trips",
+                    "team_usage.rz_touchdown_rate",
+                    "team_usage.rz_points_per_trip",
+                    "team_usage.rz_success_rate",
+                    "team_usage.rz_epa_per_play",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={false}
             decimalPoints={2}
         />
@@ -211,18 +269,20 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "scripted.drives",
-                "scripted.success_rate",
-                "scripted.epa_per_play",
-                "scripted.points_per_drive",
+            columns={
+                [
+                    "drive_scripting.scripted.drives",
+                    "drive_scripting.scripted.success_rate",
+                    "drive_scripting.scripted.epa_per_play",
+                    "drive_scripting.scripted.points_per_drive",
 
-                "non_scripted.drives",
-                "non_scripted.success_rate",
-                "non_scripted.epa_per_play",
-                "non_scripted.points_per_drive",
-            ]}
-            teamBoxScores={selectedBoxScore.drive_scripting}
+                    "drive_scripting.non_scripted.drives",
+                    "drive_scripting.non_scripted.success_rate",
+                    "drive_scripting.non_scripted.epa_per_play",
+                    "drive_scripting.non_scripted.points_per_drive",
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={false}
             decimalPoints={2}
         />
@@ -231,10 +291,23 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='def_pos_team'
             season={season}
-            columns={[
-                "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","def_int","fumbles"
-            ]}
-            teamBoxScores={selectedBoxScore.defensive}
+            columns={
+                [
+                    "defensive.scrimmage_plays",
+                    "defensive.drive_stopped_rate",
+                    "defensive.havoc_total",
+                    "defensive.havoc_total_pass",
+                    "defensive.havoc_total_rush",
+                    "defensive.TFL",
+                    "defensive.TFL_pass",
+                    "defensive.TFL_rush",
+                    "defensive.sacks",
+                    "defensive.PD",
+                    "defensive.def_int",
+                    "defensive.fumbles"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={true}
             decimalPoints={0}
         />
@@ -243,10 +316,20 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "turnovers","total_fumbles","fumbles_lost","fumbles_recovered","Int","turnover_margin","expected_turnovers","expected_turnover_margin","turnover_luck"
-            ]}
-            teamBoxScores={selectedBoxScore.turnover}
+            columns={
+                [
+                    "turnover.turnovers",
+                    "turnover.total_fumbles",
+                    "turnover.fumbles_lost",
+                    "turnover.fumbles_recovered",
+                    "turnover.Int",
+                    "turnover.turnover_margin",
+                    "turnover.expected_turnovers",
+                    "turnover.expected_turnover_margin",
+                    "turnover.turnover_luck"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={false}
             decimalPoints={0}
         />
@@ -255,16 +338,18 @@ function onChangeSpan(e: Event) {
             league={league}
             teamKey='pos_team'
             season={season}
-            columns={[
-                "fg_attempts",
-                "kickoff_touchback_rate",
-                "kickoff_return_avg_allowed",
-                "punt_net_avg",
-                "kick_return_avg",
-                "punt_blocks_by",
-                "fg_blocks_by"
-            ]}
-            teamBoxScores={selectedBoxScore.st_team}
+            columns={
+                [
+                    "st_team.fg_attempts",
+                    "st_team.kickoff_touchback_rate",
+                    "st_team.kickoff_return_avg_allowed",
+                    "st_team.punt_net_avg",
+                    "st_team.kick_return_avg",
+                    "st_team.punt_blocks_by",
+                    "st_team.fg_blocks_by"
+                ]
+            }
+            box={selectedBoxScore}
             useSuffix={false}
             decimalPoints={0}
         />

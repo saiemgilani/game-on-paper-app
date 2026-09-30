@@ -1,32 +1,46 @@
 <script lang="ts">
-import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
-import { espnLogoLeague } from '../../../utils/league';
+import type { ProcessedBoxScore, ProcessedTeamMetricBoxScore } from '../../../resources/python';
+import { espnLogoLeague, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { metricDecimalPoints, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
-    league: string
+    league: League
     teamKey: string
     season: number
     columns: string[]
-    teamBoxScores: ProcessedTeamMetricBoxScore[]
+    box: Partial<ProcessedBoxScore>
     useSuffix: boolean
     decimalPoints: number
     caption?: string
 }
-let { title, league, teamKey, season, columns, teamBoxScores, useSuffix, decimalPoints, caption = null } = $props();
-
-teamBoxScores = (teamBoxScores || [])
+const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
 
 const groups = [
-    ...new Set(teamBoxScores.map((group: any) => group[teamKey]))
+    ...new Set((box as any)[Object.keys(box)[0]].map((group: any) => group[teamKey]))
 ];
 
-function handleMetricRows(item: string): string {
+function handleMetricRows(rowKey: string): string {
     const finalDecimalPoints = metricDecimalPoints(decimalPoints);
-    var result = ""
+    if (rowKey.length == 0) {
+        return ""
+    }
+    const splitKeys = rowKey.split(".");
+
+    let item: string;
+    let boxKey: string;
+    if (splitKeys.length == 1) {
+        item = splitKeys[0];
+        boxKey = Object.keys(box)[0];
+    } else {
+        item = splitKeys.slice(1).join(".");
+        boxKey = splitKeys[0];
+    }
+
+    const teamBoxScores: ProcessedTeamMetricBoxScore[] = ((box as any)[boxKey] || []);
+    let result = ""
     if (item == "EPA_misc") {
         teamBoxScores.forEach((teamData: any) => {
             let overall = parseFloat(teamData['EPA_overall_total'] || 0);
@@ -106,11 +120,11 @@ function handleMetricRows(item: string): string {
         const script = item.split(".")[0]
         const metric = item.replace(script + ".", "")
         for (const teamData of teamBoxScores) {
-            if (teamData["script"] != script) {
+            if ((teamData as any)["script"] != script) {
                 continue;
             }
 
-            let val = teamData[metric] || 0;
+            let val = (teamData as any)[metric] || 0;
             if (["epa_per_play", "points_per_drive"].includes(metric)) {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
             } else if (metric == "success_rate") {
@@ -133,6 +147,12 @@ function handleMetricRows(item: string): string {
     }
     return result;
 }
+
+function getMetricTitle(rowKey: string): string {
+    const splitKeys = rowKey.split(".");
+    const item = splitKeys.length > 1 ? splitKeys.slice(1).join(".") : splitKeys[0];
+    return METRIC_KEY_TITLE_MAPPING[item] || item
+}
 </script>
 
 <div class="table-responsive">
@@ -151,7 +171,7 @@ function handleMetricRows(item: string): string {
         <tbody>
             {#each columns as item}
                 <tr>
-                        <td style="text-align: left;">{@html METRIC_KEY_TITLE_MAPPING[item] || item}</td>
+                        <td style="text-align: left;">{@html getMetricTitle(item)}</td>
                         {@html handleMetricRows(item)}
                 </tr>
             {/each}
