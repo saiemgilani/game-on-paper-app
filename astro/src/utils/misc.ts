@@ -472,7 +472,7 @@ function validTeamHex(value: unknown): string | null {
     return m ? `#${m[1].toLowerCase()}` : null;
 }
 
-function rgbToHex(rgb: number[]): string {
+function rgbArrayToHex(rgb: number[]): string {
     return "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 }
 
@@ -576,7 +576,7 @@ export function pickGameColors(
 function pickPairOn(candidates: [string, string][], background: string, minDeltaE: number): GameColors {
     const readable = (c: string) => contrastRatio(c, background) >= GAME_COLOR_MIN_CONTRAST;
     const apart = (x: string, y: string) => deltaE2000(x, y) >= minDeltaE;
-    const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbToHex(lab2rgb([L, lab[1], lab[2]])); };
+    const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbArrayToHex(lab2rgb([L, lab[1], lab[2]])); };
     // the side with room to read: darker on a light background, lighter on a dark one
     const dir = hexToLab(background)[0] >= 50 ? -1 : 1;
     // nearest L* at which the colour reads on this background
