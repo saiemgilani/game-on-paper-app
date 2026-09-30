@@ -6,8 +6,8 @@ interface Props {
 const { keys } = Astro.props;
 ---
 
-<div class="container-fluid mt-3">
-    <nav class="d-none d-lg-flex nav justify-content-center">
+<div class="container-fluid">
+    <nav class="d-none d-lg-flex nav justify-content-center mt-3">
         {
             keys.map((k, i, arr) => (
                 <a class="link-primary p-2" href={`#glossary-section-${k}`}>{k.toLocaleUpperCase()}</a>
