@@ -41,3 +41,33 @@ describe('glossary while the coaches flag is not public', () => {
         expect(withoutCoachBoards(e)).toEqual(e);
     });
 });
+
+// The explainer wave-2 audit (2026-09-30) read each definition against the code
+// that computes it; these pin the corrected claims.
+describe('definitions say what the code computes', () => {
+    test('fourth downs: a three-way recommendation, but confidence, agreement and WP left are go against the best kick', () => {
+        const rec = byTerm('Fourth down recommendations')!.definition;
+        expect(rec).toContain('each choice (go, field goal, punt)');
+        expect(rec).toContain('between going for it and the better of the two kicks');
+        expect(rec).not.toContain('second-highest');
+        expect(byTerm('Fourth-down agreement rate')!.definition).toContain('on go or kick; a punt and a field goal both count as a kick');
+        expect(byTerm('Win probability left on the field')!.definition).toContain('the gap between going for it and the better of the two kicks');
+    });
+
+    test('scoring opportunities count runs and passes; seconds per play is game clock, not a chosen tempo', () => {
+        expect(byTerm('Scoring opportunity')!.definition).toMatch(/^A drive with at least one run or pass inside the opponent's 40/);
+        const pace = byTerm('Seconds per play')!.definition;
+        expect(pace).not.toContain('tempo the head coach chose');
+        expect(pace).toContain('an incompletion stops the clock');
+    });
+
+    test('third downs quote the bundled college curve; neutral pass rate cites a live source and names the NFL filter', () => {
+        // sportsdataverse cfb_third_down_conversion.parquet: 3rd-and-10 = 0.2749
+        expect(byTerm('Third Downs Over Expected')!.definition).toContain('73% and 27.5% in college');
+        const neutral = byTerm('Situation-neutral pass rate')!;
+        expect(neutral.source).not.toContain('opensourcefootball.com/posts/2020-08-20-what-is-neutral-situation');
+        expect(neutral.source).toBe('https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/tendencies.py');
+        expect(neutral.definition).toContain('The NFL team Neutral Pass Rate follows');
+        expect(neutral.definition).toContain('first and second down only, first three quarters');
+    });
+});
