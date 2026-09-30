@@ -42,7 +42,11 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
             <option value="">Every play</option>
             {periods.length > 0 && (
                 <optgroup label="Periods">
-                    {periods.map((t) => <option value={`p:${t}`}>{periodLabel(t)}</option>)}
+                    {
+                        periods.map((t) => (
+                            <option value={`p:${Math.min(t, 5)}`}>{periodLabel(Math.min(t, 5))}</option>
+                        ))
+                    }
                 </optgroup>
             )}
             {tags.length > 0 && (
