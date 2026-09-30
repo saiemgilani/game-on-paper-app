@@ -16,13 +16,14 @@ const fx = JSON.parse(readFileSync(new URL('./fixtures/nfl-coaches-2024.json', i
 };
 
 // per-test control of what the mocked client returns
-const feed = { season: fx.coach_tendencies as CoachRow[], careers: fx.coach_careers as CoachRow[], calls: [] as any[] };
+const feed = { season: fx.coach_tendencies as CoachRow[], careers: fx.coach_careers as CoachRow[], fbs: [] as CoachRow[], calls: [] as any[] };
 
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveCoachTendencies: async (req: any) => { feed.calls.push(['coach_tendencies', req]); return feed.season; },
     retrieveCoachCareers: async (req: any) => { feed.calls.push(['coach_careers', req]); return feed.careers; },
     retrieveTeamTendencies: async () => fx.team_tendencies,
+    retrieveTeamSummaries: async (req: any) => { feed.calls.push(['team_summaries', req]); return feed.fbs; },
 }));
 
 let container: AstroContainer;
@@ -56,6 +57,9 @@ describe('NFL season board', () => {
         expect(html).toContain('Regular season and playoffs');
         expect(html).not.toContain('Regular season games only');
         expect(html).not.toContain('FBS');
+        expect(html).toContain('head coaches per the nflverse schedule');
+        expect(html).not.toContain('game rosters');
+        expect(feed.calls.map((c) => c[0])).not.toContain('team_summaries');
         // 32 head coaches, every one over the 300-play floor: no divider
         expect((html.match(/<tr>/g) ?? []).length).toBeGreaterThanOrEqual(32);
         expect(html).not.toContain('coach-partial-divider');
@@ -167,7 +171,11 @@ describe('college twin and the empty state', () => {
         expect(html).toContain('href="/year/2024/team/12"');
         expect(html).toContain('teamlogos/ncaa/500/12.png');
         expect(html).not.toContain('href="/nfl/');
-        expect(html).toContain('FBS vs FBS games only');
+        // the tendency tables count every game, and CFB coaches come from CFBD, not ESPN
+        expect(html).not.toContain('FBS vs FBS');
+        expect(html).toContain('FCS opponents and the postseason included');
+        expect(html).toContain('>CFBD</a>');
+        expect(html).not.toContain('game rosters');
         // a defense board ranks lowest-first
         expect(html).toContain('bi bi-arrow-up');
         const top = byTop(fx.coach_tendencies, 'def_epa_per_play', true);
@@ -203,6 +211,59 @@ describe('college twin and the empty state', () => {
         }
     }, 60_000);
 });
+
+describe('wave-2 board fixes', () => {
+    test('a CFB season board names the FBS teams it has no head coach row for', async () => {
+        const saved = feed.fbs;
+        // fixture team 12 has a coach row; 99 and 213 (LSU, Penn State) changed coach mid-season
+        feed.fbs = [
+            { team_id: 12, pos_team: 'Arizona', season: 2024 },
+            { team_id: 213, pos_team: 'Penn State', season: 2024 },
+            { team_id: 99, pos_team: 'LSU', season: 2024 },
+            // a fallback season's row never lands in this season's note
+            { team_id: 57, pos_team: 'Florida', season: 2023 },
+        ];
+        feed.calls = [];
+        try {
+            const html = await renderBoard('cfb', 'efficiency', { season: 2024 });
+            expect(html).toMatch(/A season counts for a head coach only when he led at least 80% of the team(&#39;|')s games\. Not listed: LSU, Penn State\./);
+            expect(html).not.toContain('Florida');
+            expect(feed.calls.find((c) => c[0] === 'team_summaries')?.[1]).toMatchObject({ season: 2024 });
+            // careers: the rule, no list
+            const careers = await renderBoard('cfb', 'efficiency');
+            expect(careers).toContain('at least 80% of the team');
+            expect(careers).not.toContain('Not listed');
+        } finally {
+            feed.fbs = saved;
+        }
+    }, 60_000);
+
+    test('third downs over expected is a rate per 100, read from the count and the opportunities', async () => {
+        feed.calls = [];
+        const html = await renderBoard('nfl', 'efficiency', { season: 2024, metric: 'third_down_over_expected_rate' });
+        expect(html).toContain('data-sort="third_down_over_expected_rate"');
+        const cols = feed.calls.find((c) => c[0] === 'coach_tendencies')![1].columns;
+        expect(cols).toEqual(expect.arrayContaining(['third_down_over_expected', 'third_down_opportunities']));
+        expect(cols).not.toContain('third_down_over_expected_rate');
+        const top = [...fx.coach_tendencies].sort((a, b) => rate(b) - rate(a))[0];
+        const row = html.split('<tr').slice(2)[0];
+        expect(row).toContain(`<strong>${top.coach}</strong>`);
+        expect(row).toContain(`>${rate(top).toFixed(1)}</td>`);
+    }, 60_000);
+
+    test('style boards are unshaded; quality boards keep the green-purple ramp', async () => {
+        for (const board of ['tendencies', 'pace']) {
+            const html = await renderBoard('nfl', board, { season: 2024 });
+            expect(html, board).not.toContain('hulk-bg-level');
+        }
+        const fourth = await renderBoard('nfl', 'fourth-downs', { season: 2024 });
+        expect(fourth).toContain('hulk-bg-level');
+        const efficiency = await renderBoard('nfl', 'efficiency', { season: 2024 });
+        expect(efficiency).toContain('hulk-bg-level');
+    }, 60_000);
+});
+
+const rate = (r: CoachRow) => 100 * (numericValue(r, 'third_down_over_expected') as number) / (numericValue(r, 'third_down_opportunities') as number);
 
 describe('nfl page files render the shared component as NFL', () => {
     test('/nfl/year/2024/coaches/fourth-downs', async () => {

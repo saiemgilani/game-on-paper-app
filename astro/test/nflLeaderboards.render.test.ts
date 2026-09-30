@@ -61,6 +61,18 @@ describe('NFL team leaderboard', () => {
         // canonical + JSON-LD dataset url carry the league prefix
         expect(html).toContain('gameonpaper.com/nfl/year/2025/teams/tendencies');
     }, 60_000);
+
+    test('pass rates are a style, not a quality: unshaded, while series conversion keeps the ramp', async () => {
+        const html = await renderTeams('tendencies');
+        const rows = html.split('<tr').filter((r) => r.includes('<td') && r.includes('team-logo'));
+        expect(rows.length).toBe(4);
+        const shaded = rows.map((r) => [...r.matchAll(/<td class="text-center ?([^"]*)" colspan="1">[^<]*<\/td>/g)].slice(-8).map((m) => m[1].includes('hulk-bg-level')));
+        for (const cells of shaded) {
+            expect(cells).toHaveLength(8);
+            expect(cells.slice(0, 6)).toEqual([false, false, false, false, false, false]);
+        }
+        expect(shaded.some((cells) => cells[6] || cells[7])).toBe(true);
+    }, 60_000);
 });
 
 describe('NFL passing leaderboard', () => {

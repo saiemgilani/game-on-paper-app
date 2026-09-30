@@ -376,7 +376,7 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         h1: (s, l) => `${coachScope(s, l)} Pace: Seconds per Play`,
         title: (s, l) => `${coachScope(s, l)} Pace Rankings: Seconds per Play, Plays per Game | Game on Paper`,
         description: (s, l) => `How fast ${coachPool(s, l)} plays: seconds of game clock per offensive play, situation-neutral pace, plays per game and plays per drive. Sortable head coach tendencies.`,
-        intro: 'Seconds per play is game clock elapsed per offensive snap over drives with a usable clock, so the number is the tempo the head coach chose rather than the length of the game. Situation-neutral pace drops the two-minute drill and blowouts, where the score dictates the tempo.',
+        intro: 'Seconds per play is game clock elapsed per offensive play, over drives with a usable clock. It is game clock, not time between snaps: an incompletion stops the clock, so a pass-heavy offense reads faster. Situation-neutral pace drops the two-minute drill and blowouts, where the score dictates the tempo.',
         variables: ['seconds per play', 'situation-neutral seconds per play', 'plays per game', 'plays per drive'],
     },
     tendencies: {
@@ -404,7 +404,7 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         h1: (s, l) => `${coachScope(s, l)} Fourth Down Decisions: Go Rate and Model Agreement`,
         title: (s, l) => `${coachScope(s, l)} Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper`,
         description: (s, l) => `Fourth down decisions by ${coachPool(s, l)}: go rate, agreement with the win-probability model, go rate when the model says go or kick, conversion rate, and win probability left on the field per decision.`,
-        intro: 'On every fourth down the model compares the win probability of going for it, kicking and punting. Agreement rate is how often the head coach made the model\'s call; win probability left on the field is the gap between the chosen play and the best one, summed over the decisions where they differed, so a lower number is better.',
+        intro: 'On every fourth down the model compares the win probability of going for it, kicking a field goal and punting. Agreement rate is how often the head coach matched the model on go or kick (a punt and a field goal both count as a kick). Win probability left on the field is the gap between going and the best kick, summed over the decisions that went against the model, so a lower number is better.',
         variables: ['fourth-down go rate', 'fourth-down agreement rate', 'go rate when the model says go', 'fourth-down conversion rate', 'win probability left on the field'],
     },
     defense: {
