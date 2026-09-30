@@ -119,10 +119,15 @@ describe('the ingest stamp is cached, not fetched per request', () => {
 
     test('concurrent reads in a fresh isolate share one in-flight meta fetch', async () => {
         const sdv = await load();
-        await Promise.all([2025, 2024, 2023, 2022, 2021, 2020].map(s => sdv.retrievePercentiles(s, 50)));
+        const seasons = [2025, 2024, 2023, 2022, 2021, 2020];
+        await Promise.all(seasons.map(s => sdv.retrievePercentiles(s, 50)));
         expect(metaCalls()).toBe(1);
         expect(gets.filter(k => k.startsWith('sdv-meta'))).toHaveLength(1);
         expect(tableCalls()).toBe(6);
+        // every caller waits for that one read: none falls through to the unversioned
+        // (pre-ingest) key while it is in flight
+        const versioned = await Promise.all(seasons.map(s => sha256(`percentiles?season=${s}&pctile=50#2026-09-27T12:05:07+00:00`)));
+        expect(gets.filter(k => !k.startsWith('sdv-meta')).sort()).toEqual(versioned.sort());
     });
 
     test('a failed meta read is retried once the window has passed', async () => {
