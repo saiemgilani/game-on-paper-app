@@ -29,8 +29,8 @@ const cleanLineDetails = (details?: string | null): string => {
     return details;
 };
 
-const margin = calculatePredictedPointMargin(awayAdjEpa ?? undefined, homeAdjEpa ?? undefined, neutralSite);
-const winProb = calculatePredictedWinProb(margin);
+const margin = calculatePredictedPointMargin(awayAdjEpa ?? undefined, homeAdjEpa ?? undefined, neutralSite, Astro.locals.league);
+const winProb = calculatePredictedWinProb(margin, Astro.locals.league);
 const favorite = margin == null ? null : (margin >= 0 ? homeTeam : awayTeam);
 const favProb = winProb == null ? null : (margin != null && margin >= 0 ? winProb : 1 - winProb);
 
