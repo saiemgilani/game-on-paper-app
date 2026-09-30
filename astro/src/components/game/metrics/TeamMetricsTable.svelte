@@ -11,16 +11,16 @@ interface Props {
     teamKey: string
     season: number
     columns: string[]
-    box: Partial<ProcessedBoxScore>
+    box?: Partial<ProcessedBoxScore>
     useSuffix: boolean
     decimalPoints: number
     caption?: string
 }
 const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
 
-const groups = [
-    ...new Set((box as any)[Object.keys(box)[0]].map((group: any) => group[teamKey]))
-];
+const keys = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => group[teamKey]): [];
+
+const groups = [...new Set(keys || [])];
 
 function handleMetricRows(rowKey: string): string {
     const finalDecimalPoints = metricDecimalPoints(decimalPoints);
@@ -33,13 +33,13 @@ function handleMetricRows(rowKey: string): string {
     let boxKey: string;
     if (splitKeys.length == 1) {
         item = splitKeys[0];
-        boxKey = Object.keys(box)[0];
+        boxKey = Object.keys(box || {})[0];
     } else {
         item = splitKeys.slice(1).join(".");
         boxKey = splitKeys[0];
     }
 
-    const teamBoxScores: ProcessedTeamMetricBoxScore[] = ((box as any)[boxKey] || []);
+    const teamBoxScores: ProcessedTeamMetricBoxScore[] = box ? ((box as any)[boxKey] || []) : [];
     let result = ""
     if (item == "EPA_misc") {
         teamBoxScores.forEach((teamData: any) => {
