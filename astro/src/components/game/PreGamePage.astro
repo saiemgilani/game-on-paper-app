@@ -5,7 +5,7 @@ import type { SDVTeamSeasonInformation, SDVTeamSummary } from '../../resources/s
 import { retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveMatchupHistory } from '../../resources/sdv';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import { CURRENT_YEAR, METRIC_YEAR } from '../../utils/constants';
-import { cleanLocation, isChampionshipEvent } from '../../utils/misc';
+import { cleanLocation, isChampionshipEvent, pickGameColors } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import LocalDate from '../LocalDate.svelte';
 import TeamCard from '../team/TeamCard.astro';
@@ -137,6 +137,8 @@ const gameSpec = {
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription({ ...gameSpec, league });
 const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]);
+// one colour decision for the game (a light and a dark pair): team_info first, ESPN's header where team_info has none
+const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors([homeTeamSeason?.team, homeTeam], [awayTeamSeason?.team, awayTeam]) : undefined;
 
 ---
 
@@ -212,7 +214,7 @@ const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]
                 </div>
             )
         }
-        <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} matchupHistory={matchupHistory} />
+        <MatchupView awayTeamSeason={awayTeamSeason} homeTeamSeason={homeTeamSeason} awayTeamSummary={awaySummary} homeTeamSummary={homeSummary} matchupHistory={matchupHistory} colors={gameColors} />
         <Footer />
     </body>
 </html>

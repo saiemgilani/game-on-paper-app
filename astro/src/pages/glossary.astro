@@ -4,7 +4,7 @@ export const prerender = true;
 import { generateGlossaryItems } from '../resources/glossary';
 import GlossaryHeader from '../components/glossary/GlossaryHeader.astro';
 import GlossarySection from '../components/glossary/GlossarySection.astro';
-import { definedTermSetJsonLd } from '../utils/seo';
+import { definedTermSetJsonLd, termSlugs } from '../utils/seo';
 import GenericPage from '../layouts/GenericPage.astro';
 
 const glossary = generateGlossaryItems();
@@ -17,6 +17,7 @@ const subtitle = 'Definitions of EPA (expected points added), EPA per play, adju
 // ranking page was one it may not crawl. Measured 2026-08-29.
 const canonical = 'https://gameonpaper.com/glossary/';
 const allTerms = [...glossary.values()].flat();
+const slugs = termSlugs(allTerms);
 
 ---
 
@@ -26,7 +27,7 @@ const allTerms = [...glossary.values()].flat();
         <h1 class="visually-hidden">College Football Advanced Stats Glossary</h1>
         {
             glossary.keys().map((k) => (
-                <GlossarySection letter={k} entries={glossary.get(k)} />
+                <GlossarySection letter={k} entries={glossary.get(k)} slugs={slugs} />
             )) 
         }
     </div>

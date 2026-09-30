@@ -6,7 +6,7 @@ import { generateRadarConfig, generateRadarDataset } from '../../utils/radar';
 import { leagueFromLocation } from '../../utils/league';
 
 // league comes from the page; leagueFromLocation() is the client:only fallback
-const { homeTeam, awayTeam, teamData, league = leagueFromLocation() } = $props();
+const { homeTeam, awayTeam, teamData, league = leagueFromLocation(), colors = null } = $props();
 
 let offRadarChart: Chart | null = null;
 let defRadarChart: Chart | null = null;
@@ -28,7 +28,7 @@ async function waitToGenerateChart() {
         offRadarChart = new Chart(
             offRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(teamData, "Offensive", "Defensive", isDarkMode, league),
+                generateRadarDataset(teamData, "Offensive", "Defensive", isDarkMode, league, colors),
                 `${awayTeamTitle} Offense vs ${homeTeamTitle} Defense`,
                 isDarkMode,
                 true
@@ -43,7 +43,7 @@ async function waitToGenerateChart() {
         defRadarChart = new Chart(
             defRadarCtx as ChartItem,
             generateRadarConfig(
-                generateRadarDataset(teamData, "Defensive", "Offensive", isDarkMode, league),
+                generateRadarDataset(teamData, "Defensive", "Offensive", isDarkMode, league, colors),
                 `${awayTeamTitle} Defense vs ${homeTeamTitle} Offense`,
                 isDarkMode,
                 true
@@ -58,6 +58,10 @@ async function waitToGenerateChart() {
         }
     }
 }
+
+// with the page's per-theme colours, redraw in the other pair when the theme flips
+// (waitToGenerateChart destroys the old charts first)
+if (colors) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', waitToGenerateChart);
 
 if (document.readyState !== 'loading') {
     console.log(`DOM ready state`)
