@@ -1000,6 +1000,13 @@ export const SDV_PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, 
     }
 };
 
+// Styles, not qualities: rank 1 is only the most pass-happy (or aggressive)
+// offense, so these cells are never shaded on the good/bad ramp.
+export const SDV_TEAM_STYLE_COLUMNS: string[] = [
+    "pass_rate_off", "xpass_rate_off", "pass_oe_off", "neutral_pass_rate_off", "neutral_xpass_rate_off", "neutral_pass_oe_off",
+    "fourth_decisions_off", "fourth_go_rate_off", "fourth_go_expected_off",
+];
+
 export const SDV_PLAYER_PERCENT_COLUMNS: string[] = [
     "success",
     "catchpct"

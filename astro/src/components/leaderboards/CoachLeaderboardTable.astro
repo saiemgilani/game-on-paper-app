@@ -25,8 +25,9 @@ const sortColumn = def.columns.find((c) => c.key === sortKey) ?? def.columns[0];
 const minPlays = careers ? COACH_MIN_PLAYS.careers : COACH_MIN_PLAYS.season;
 const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), minPlays);
 const ranks = rankCoachRows(qualified, sortKey);
-// every metric cell is shaded by its own column's rank, as the team grid does
-const columnRank = new Map<string, Map<CoachRow, number | null>>(def.columns.map((c) => {
+// every quality cell is shaded by its own column's rank, as the team grid does;
+// a style column (pace, pass rate, go rate) has no good end, so it stays plain
+const columnRank = new Map<string, Map<CoachRow, number | null>>(def.columns.filter((c) => !c.neutral).map((c) => {
     const sorted = sortCoachRows(qualified, c);
     const r = rankCoachRows(sorted, c.key);
     return [c.key, new Map(sorted.map((row, i) => [row, r[i]]))];
