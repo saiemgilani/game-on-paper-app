@@ -173,7 +173,7 @@ describe('college twin and the empty state', () => {
         expect(html).not.toContain('href="/nfl/');
         // the tendency tables count every game, and CFB coaches come from CFBD, not ESPN
         expect(html).not.toContain('FBS vs FBS');
-        expect(html).toContain('FCS opponents and the postseason included');
+        expect(html).toContain('Includes all games (including bowls/CFP and those against FCS opponents).');
         expect(html).toContain('>CFBD</a>');
         expect(html).not.toContain('game rosters');
         // a defense board ranks lowest-first

@@ -93,7 +93,7 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                     {careers
                         ? <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank.</Fragment>
                         : <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank.</Fragment>}
-                    {league === 'cfb' && " Every game, FCS opponents and the postseason included."}{league === 'nfl' && " Regular season and playoffs."}
+                    {league === 'cfb' && " Includes all games (including bowls/CFP and those against FCS opponents)."}{league === 'nfl' && " Regular season and playoffs."}
                 </p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per {league === 'cfb' ? <a href="https://collegefootballdata.com">CFBD</a> : "the nflverse schedule"}. Click a column heading to sort by it. Rows with no clock data show "—".</p>
                 {league === 'cfb' && (
