@@ -141,7 +141,7 @@ for both leagues and overwrite the files; the game ids must stay the same.
 ## `team-summaries-cfb-2025.json` / `team-summaries-nfl-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_summaries?season=2025&limit=200` bodies
 (every team: 136 CFB, 32 NFL), trimmed by `select` to `team_id`, `pos_team`,
-`season` and the 30 Team Factors value columns (`fiveFactorColumns()`, in table
+`season` and the 30 Five Factors value columns (`fiveFactorColumns()`, in table
 order) followed by their `_rank`s. Ranks are Float64 with ties averaged, so some
 are `x.5` (Auburn's `turnovers_off_rank` is 13.5).
 

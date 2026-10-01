@@ -14,6 +14,8 @@ describe('FIVE_FACTORS', () => {
             'Turnovers', 'Expected', 'Luck (pts)', 'Havoc', 'EPA / Game',
         ]);
         expect(FIVE_FACTORS.filter((f) => f.sub).map((f) => f.label)).toEqual(['Start (yds)', 'Expected', 'Luck (pts)', 'EPA / Game']);
+        // every row names its metric for the column beside the label
+        for (const f of FIVE_FACTORS) expect(f.metric, f.label).toMatch(/\S/);
     });
 
     test('field position reads drive_start_ep_* with start_position_* beneath it; havoc has a margin', () => {

@@ -4,6 +4,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { formatRank, generateColorRampValue, roundNumber } from '../src/utils/misc';
+import { FIVE_FACTORS } from '../src/utils/fiveFactors';
 
 // The season team page's Five Factors panel, rendered from the Data API's real
 // 2025 team_summaries rows (fixtures/team-summaries-{cfb,nfl}-2025.json). The
@@ -70,8 +71,8 @@ const EXPECTED: [string, string[], boolean, number][] = [
     ['Havoc', ['havoc_off', 'havoc_def', 'havoc_margin'], true, 1],
     ['EPA / Game', ['havoc_EPAgame_off', 'havoc_EPAgame_def', 'havoc_EPAgame_margin'], false, 2],
 ];
-/** Where a row's cells start in `tds()`: four cells a row (label + off/def/margin). */
-const at = (label: string) => 4 * EXPECTED.findIndex(([l]) => l === label);
+/** Where a row's cells start in `tds()`: five cells a row (label, metric, off/def/margin). */
+const at = (label: string) => 5 * EXPECTED.findIndex(([l]) => l === label);
 
 describe.each([
     ['cfb', '333', 134, 'Data shown is from FBS vs FBS games only.'],
@@ -81,18 +82,24 @@ describe.each([
         const html = await render(league, id, true);
         const panel = panelOf(html);
         expect(panel, 'panel').toBeTruthy();
-        expect(panel).toContain('Team Factors');
+        expect(panel).toContain('Five Factors');
         expect(panel).toContain(subtitle);
+        // the credit line Akshay asked for, with the explainer link
+        expect(panel).toContain("Bill Connelly</a>'s");
+        expect(panel).toContain('sbnation.com/college-football/2017/10/13/16457830');
         const row = rows[league].find((r) => r.team_id === Number(id));
         const cells = tds(panel);
-        expect(cells.length).toBe(EXPECTED.length * 4);
+        expect(cells.length).toBe(EXPECTED.length * 5);
         EXPECTED.forEach(([label, cols, rate, fixed], i) => {
-            expect(cells[i * 4].text).toBe(label);
+            expect(cells[i * 5].text).toBe(label);
+            // the metric column names what the three cells measure; hidden below md
+            expect(cells[i * 5 + 1].text).toBe(FIVE_FACTORS[i].metric);
+            expect(cells[i * 5 + 1].cls).toContain('d-none d-md-table-cell');
             cols.forEach((k, j) => {
                 const v = rate ? row[k] * 100 : row[k];
                 const sign = j === 2 && v >= 0 ? '+' : '';
                 const want = `${sign}${roundNumber(v, 2, fixed)}${rate ? '%' : ''} #${formatRank(row[`${k}_rank`])}`;
-                const cell = cells[i * 4 + 1 + j];
+                const cell = cells[i * 5 + 2 + j];
                 expect(cell.text, k).toBe(want);
                 expect(cell.cls, k).toContain('numeral');
                 const ramp = generateColorRampValue(row[`${k}_rank`], teamCount, true);
@@ -115,17 +122,17 @@ describe('cfb season team page, Five Factors edge cases', () => {
     test('a tied rank prints the site\'s T- form', async () => {
         // Auburn's turnovers_off_rank is 13.5 in the fixture: averaged ties
         const cells = tds(panelOf(await render('cfb', '2', true)));
-        expect(cells[at('Turnovers') + 1].text).toBe('0.82 #T-13');
+        expect(cells[at('Turnovers') + 2].text).toBe('0.82 #T-13');
     }, 60_000);
 
     test('a good rank is green and a poor one purple', async () => {
         // literals from Alabama's real row, not re-derived with the ramp call the
         // component makes: turnovers_off_rank 12, start_position_off_rank 105
         const cells = tds(panelOf(await render('cfb', '333', true)));
-        expect(cells[at('Turnovers') + 1].text).toBe('0.79 #12');
-        expect(cells[at('Turnovers') + 1].cls).toContain('hulk-bg-level-9');
-        expect(cells[at('Start (yds)') + 1].text).toBe('71.9 #105');
-        expect(cells[at('Start (yds)') + 1].cls).toContain('hulk-bg-level-2');
+        expect(cells[at('Turnovers') + 2].text).toBe('0.79 #12');
+        expect(cells[at('Turnovers') + 2].cls).toContain('hulk-bg-level-9');
+        expect(cells[at('Start (yds)') + 2].text).toBe('71.9 #105');
+        expect(cells[at('Start (yds)') + 2].cls).toContain('hulk-bg-level-2');
     }, 60_000);
 
     test('no team_summaries row: no panel at all, rather than a table of dashes', async () => {
@@ -140,7 +147,7 @@ describe('cfb season team page, Five Factors edge cases', () => {
         // the rank is left in place: a null value must not be shaded or ranked by it
         feed.override = [{ ...row, pts_per_opp_off: null, turnover_margin: null }];
         const cells = tds(panelOf(await render('cfb', '333', true)));
-        for (const cell of [cells[at('Finishing Drives') + 1], cells[at('Turnovers') + 3]]) {
+        for (const cell of [cells[at('Finishing Drives') + 2], cells[at('Turnovers') + 4]]) {
             expect(cell.text).toBe('—');
             expect(cell.cls).not.toContain('hulk-');
         }
@@ -149,7 +156,7 @@ describe('cfb season team page, Five Factors edge cases', () => {
     test('flag off: no panel, and the request is exactly the pre-flag one', async () => {
         const html = await render('cfb', '333', false);
         expect(html).not.toContain('five-factors');
-        expect(html).not.toContain('Team Factors');
+        expect(html).not.toContain('Five Factors');
         expect(feed.calls).toHaveLength(1);
         expect(feed.calls[0].columns).toBeUndefined();
         expect(feed.calls[0]).toEqual({ season: 2025, team_id: 333, league: 'cfb' });

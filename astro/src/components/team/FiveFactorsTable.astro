@@ -17,9 +17,11 @@ const row = (summary ?? {}) as Record<string, unknown>;
 const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNull(row[`${k}_rank`]));
 ---
 
-<TeamPlayerTable id="five-factors" title="Team Factors" show={true}>
+<TeamPlayerTable id="five-factors" title="Five Factors" show={true}>
+    <Fragment slot="subtitle">Based on <a href="https://bsky.app/profile/ESPNBillC.bsky.social">Bill Connelly</a>'s <a href="https://www.sbnation.com/college-football/2017/10/13/16457830/college-football-advanced-stats-analytics-rankings">Five Factors</a> of winning football. Metrics from SportsDataverse.</Fragment>
     <Fragment slot="header">
         <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="d-none d-md-table-cell">Metric</th>
         <th rowspan="1" colspan="1" class="text-center">Offense</th>
         <th rowspan="1" colspan="1" class="text-center">Defense</th>
         <th rowspan="1" colspan="1" class="text-center">Margin</th>
@@ -29,6 +31,7 @@ const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNu
         {FIVE_FACTORS.map((f) => (
             <tr>
                 <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr title={f.hover}>{f.label}</abbr></td>
+                <td class="d-none d-md-table-cell text-left text-nowrap text-muted text-small">{f.metric}</td>
                 {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
                     <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
                         {formatFactor(row[k], f.format, k === f.margin)}
