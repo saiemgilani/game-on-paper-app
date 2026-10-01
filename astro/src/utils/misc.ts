@@ -104,7 +104,9 @@ export function roundNumber(value: string | number | undefined | null, power10: 
     if (typeof value == "number") {
         value = `${value}`;
     }
-    return (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    const out = (Math.round(parseFloat(value || "0") * (Math.pow(10, power10))) / (Math.pow(10, power10))).toFixed(fixed)
+    // toFixed keeps the sign of a value that rounds to zero ("-0", "-0.00")
+    return /^-0(\.0*)?$/.test(out) ? out.slice(1) : out
 }
 
 /**
