@@ -53,13 +53,13 @@
     "F": [
         {
             "term": "Fourth-down agreement rate",
-            "definition": "The share of a head coach's fourth-down decisions that matched the <a href='#glossary-section-F'>fourth-down model</a>'s recommendation (go, field goal or punt). It is a measure of how often the coach made the higher-win-probability call, not how aggressive he was: a coach who goes for it every time the model says go and kicks every time it says kick scores 100%. Shown on the <a href='/year/{season}/coaches/fourth-downs'>head coach fourth-down board</a> next to go rate and win probability left on the field.",
+            "definition": "The share of a head coach's fourth-down decisions that matched the <a href='#glossary-section-F'>fourth-down model</a> on go or kick; a punt and a field goal both count as a kick. It is a measure of how often the coach made the higher-win-probability call, not how aggressive he was: a coach who goes for it every time the model says go and kicks every time it says kick scores 100%. Shown on the <a href='/year/{season}/coaches/fourth-downs'>head coach fourth-down board</a> next to go rate and win probability left on the field.",
             "source": "https://cfb4th.sportsdataverse.org"
         },
         {
             "term": "Fourth down recommendations",
             "source": "https://cfb4th.sportsdataverse.org",
-            "definition": "Our fourth-down decision bot (based on work from  Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of each choice (go, field goal, punt) using conversion and make (for FG) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. Typically, recommendations are provided with a 'confidence' value based on the difference in win probability between the highest and second-highest options: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>"
+            "definition": "Our fourth-down decision bot (based on work from Ben Baldwin (<a href='https://bsky.app/profile/rbsdm.com'>@rbsdm.com</a>) and Jared Lee (<a href='https://github.com/Kazink36'>@Kazink36</a>) compares the expected win probability of each choice (go, field goal, punt) using conversion and make (for FG) probabilities based on the situation. The recommendation is simply the choice with the highest win probability and will be highlighted if the offense chose to do something different. The 'confidence' value is the difference in win probability between going for it and the better of the two kicks: <table class='table table-sm table-responsive'><thead><tr><th>Confidence</th><th>Change in WP</th></tr></thead><tbody><tr><td>LOW</td><td>0% to 1%</td></tr><tr><td>MEDIUM</td><td>1% to 3%</td></tr><tr><td>STRONG</td><td>3% to 10%</td></tr><tr><td>VERY STRONG</td><td>10+%</td></tr></tbody></table>"
         },
         {
             "term": "First Down + Touchdown Rate",
@@ -146,12 +146,12 @@
     "S": [
         {
             "term": "Situation-neutral pass rate",
-            "definition": "Pass rate counted only on snaps where the game is still in the balance: win probability between 20% and 80%, in regulation, and outside the last two minutes of a half. The scoreboard dictates play calling once a game is lopsided or the clock is short, so the raw pass rate says as much about the score as the coach; the neutral rate is the closer measure of a head coach's run/pass philosophy. Shown on the <a href='/year/{season}/coaches/tendencies'>head coach tendencies board</a>.",
-            "source": "https://www.opensourcefootball.com/posts/2020-08-20-what-is-neutral-situation/"
+            "definition": "Pass rate counted only on snaps where the game is still in the balance: win probability between 20% and 80%, in regulation, and outside the last two minutes of a half. The scoreboard dictates play calling once a game is lopsided or the clock is short, so the raw pass rate says as much about the score as the coach; the neutral rate is the closer measure of a head coach's run/pass philosophy. This definition is the same in both leagues. The Neutral Pass Rate column on the NFL team leaderboard is narrower, following <a href='https://rbsdm.com/stats/stats/'>rbsdm.com</a>: first and second down only, first three quarters, win probability between 20% and 80%, and more than two minutes left in the half. Shown on the <a href='/year/{season}/coaches/tendencies'>head coach tendencies board</a>.",
+            "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/tendencies.py"
         },
         {
             "term": "Seconds per play",
-            "definition": "Seconds of game clock elapsed per offensive snap, computed over drives with a usable clock, so it measures the tempo the head coach chose rather than the length of the game. Lower is faster. The situation-neutral version drops the two-minute drill and blowouts, where the score dictates the pace. When no drive carries a clock the value is blank. Shown on the <a href='/year/{season}/coaches/pace'>head coach pace board</a>.",
+            "definition": "Seconds of game clock elapsed per offensive play, computed over drives with a usable clock. Lower is faster. It is game clock, not time between snaps: an incompletion stops the clock, so a pass-heavy offense reads faster. The situation-neutral version drops the two-minute drill and blowouts, where the score dictates the pace. When no drive carries a clock the value is blank. Shown on the <a href='/year/{season}/coaches/pace'>head coach pace board</a>.",
             "source": "https://gameonpaper.com/coaches/pace"
         },
         {
@@ -161,7 +161,7 @@
         },
         {
             "term": "Scoring opportunity",
-            "definition": "A drive with at least one snap inside the opponent's 40-yard line, a wider net than the red zone that also catches field-goal range. Scoring-opportunity trip rate is the share of drives that got there; touchdown rate, score rate and points per trip describe how the offense finished once it did. Shown on the <a href='/year/{season}/coaches/scoring'>head coach scoring board</a> next to the red-zone figures.",
+            "definition": "A drive with at least one run or pass inside the opponent's 40-yard line, a wider net than the red zone that also catches field-goal range. Scoring-opportunity trip rate is the share of drives that got there; touchdown rate, score rate and points per trip describe how the offense finished once it did. Shown on the <a href='/year/{season}/coaches/scoring'>head coach scoring board</a> next to the red-zone figures.",
             "source": "https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary"
         },
         {
@@ -218,14 +218,14 @@
         },
         {
             "term": "Third Downs Over Expected",
-            "definition": "Third downs converted minus the number a league-average offense converts from the same yards to go (a bundled per-league curve: about 63% at 3rd-and-1 and 29% at 3rd-and-10 in the NFL; 73% and 28% in college). Positive means the team or player beat the distance.",
+            "definition": "Third downs converted minus the number a league-average offense converts from the same yards to go (a bundled per-league curve: about 63% at 3rd-and-1 and 29% at 3rd-and-10 in the NFL; 73% and 27.5% in college). Positive means the team or player beat the distance.",
             "source": "https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/football/usage_box.py"
         }
     ],
     "W": [
         {
             "term": "Win probability left on the field",
-            "definition": "On each fourth down the <a href='#glossary-section-F'>fourth-down model</a> gives every choice a win probability; the difference between the best choice and the one the head coach made is the win probability left on the field for that decision, in percentage points. Summed over a season it is total WP left; divided by the number of decisions it is WP left per decision, the single number that says how costly a coach's fourth-down calls were. Lower is better; a coach who always matched the model would leave zero. Shown on the <a href='/year/{season}/coaches/fourth-downs'>head coach fourth-down board</a>.",
+            "definition": "On each fourth down where the head coach went against the <a href='#glossary-section-F'>fourth-down model</a>'s go-or-kick call, the win probability left on the field is the gap between going for it and the better of the two kicks, in percentage points; a punt where the model preferred a field goal, or the reverse, costs nothing. Summed over a season it is total WP left; divided by the number of decisions it is WP left per decision, the single number that says how costly a coach's fourth-down calls were. Lower is better; a coach who always matched the model would leave zero. Shown on the <a href='/year/{season}/coaches/fourth-downs'>head coach fourth-down board</a>.",
             "source": "https://cfb4th.sportsdataverse.org"
         },
         {
