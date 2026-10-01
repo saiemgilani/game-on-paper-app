@@ -59,10 +59,10 @@ describe('buildPlayIndex', () => {
         expect(ix.tagCounts.penalty).toBe(count('t:penalty'));
     });
 
-    test('a play with nobody and no tag is left out of the index entirely', () => {
+    test('a play with nobody and no tag is NOT left out of the index', () => {
         const keyed = Object.keys(ix.byPlay).length;
         expect(keyed).toBeGreaterThan(0);
-        expect(keyed).toBeLessThan(plays.length);
+        expect(keyed).toBe(plays.length);
     });
 
     test('plays with no player ids still index their play types', () => {

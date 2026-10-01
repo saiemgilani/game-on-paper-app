@@ -3,8 +3,9 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { categoryColumns, formatPlayerMetric, gameStatLine, percentileOf, totalGameLog, weekLabel } from '../src/utils/players';
+import { categoryColumns, formatPlayerMetric, gameStatLine, percentileOf, totalGameLog } from '../src/utils/players';
 import { formatPercent, formatRank, generateColorRampValue, roundNumber } from '../src/utils/misc';
+import { weekLabel } from '../src/utils/league';
 
 // The player pages rendered with the REAL bodies the Data API's player-keyed
 // routes return (fixtures captured 2026-09-19; see fixtures/README.md). The SDV
@@ -217,30 +218,25 @@ describe('CFB player page', () => {
 
     test('game log: every row carries its stat line, its EPA and a link to the game page', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
-        // the stat line is not a column (it squeezed the numbers off a phone,
-        // 2026-09-25): eight headers, one per cell of the game row
+        // the stat line is inside the week cell
         const head = html.split('id="player-game-log"')[1].split('</thead>')[0];
         expect(head).not.toContain('Stat line');
-        expect((head.match(/<th[\s>]/g) ?? []).length).toBe(8);
+        expect((head.match(/<th[\s>]/g) ?? []).length).toBe(6);
         const rows = logRows(html);
         expect(rows.length).toBe(cfb.games.data.length);
         cfb.games.data.forEach((g: any, i: number) => {
-            // ...it is a second row under the game, one cell spanning all eight
-            const [game, line] = rows[i].split('<tr class="stat-line-row">');
-            expect((game.match(/<td[\s>]/g) ?? []).length, String(g.game_id)).toBe(8);
-            expect(line, String(g.game_id)).toMatch(/^\s*<td colspan="8" class="text-muted">/);
-            expect(cells(line)).toEqual([gameStatLine(g, 'cfb')]);
-            const c = logCells(game);
+            const c = logCells(rows[i]);
             // the date is a LocalDate island (client:only), so what the server
             // ships is the UTC instant for the viewer's browser to localise --
             // a 7:30pm ET Saturday kickoff must not render as Sunday
             expect(rows[i], String(g.game_id)).toContain(String(g.game_date));
-            expect(c[1]).toBe(weekLabel('cfb', g.season_type, g.week));
-            expect(c[2]).toContain(g.opponent);
-            expect(c[4]).toBe(String(g.plays));
-            expect(c[5]).toBe(roundNumber(g.epa_per_play, 2, 2));
-            expect(c[6]).toBe(roundNumber(g.epa, 2, 2));
-            expect(c[7]).toBe(formatPercent(g.success_rate));
+            expect(c[1]).toContain(weekLabel('cfb', g.week, g.season_type, 2024));
+            expect(c[1]).toContain(g.opponent);
+            expect(c[1]).toContain("TD,");
+            expect(c[2]).toBe(String(g.plays));
+            expect(c[3]).toBe(roundNumber(g.epa_per_play, 2, 2));
+            expect(c[4]).toBe(roundNumber(g.epa, 2, 2));
+            expect(c[5]).toBe(formatPercent(g.success_rate));
             expect(rows[i]).toContain(`href="/game/${g.game_id}"`);
             // every opponent links to its team page, logo and name in one flex row
             expect(rows[i], `opponent ${g.opponent_id}`).toContain(`href="/year/${g.season}/team/${g.opponent_id}"`);
@@ -256,7 +252,7 @@ describe('CFB player page', () => {
         const last = cfb.games.data[cfb.games.data.length - 1];
         expect(last.week).toBe(1);
         expect(last.season_type).toBe('postseason');
-        expect(cells(rows[rows.length - 1])[1]).toBe('Postseason');
+        expect(cells(rows[rows.length - 1])[1]).toContain('Postseason');
     }, 60_000);
 
     test('game log: W/L is green/purple, and the metric cells are shaded by rank within the season', async () => {
@@ -311,9 +307,9 @@ describe('CFB player page', () => {
         const spy = vi.spyOn(sdv, 'retrievePlayerGames').mockResolvedValue(games);
         try {
             const rows = logRows(await renderPage('cfb', '4433971', 2024));
-            expect(cells(rows[0])[2]).toContain('georgia');
+            expect(cells(rows[0])[1]).toContain('georgia');
             games.slice(1).forEach((g: any, i: number) => {
-                expect(cells(rows[i + 1])[2], g.opponent).toContain(g.opponent);
+                expect(cells(rows[i + 1])[1], g.opponent).toContain(g.opponent);
             });
         } finally {
             spy.mockRestore();
@@ -337,7 +333,10 @@ describe('CFB player page', () => {
     test('splits: the table is the API\'s rows, and overtime with no plays is left out', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const rows = bodyRows(html, 'player-splits-table');
-        const played = cfb.splits.data.filter((s: any) => s.plays > 0);
+        const played = [
+            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.split != "all"),
+            ...cfb.splits.data.filter((s: any) => s.plays > 0 && s.split == "all")
+        ];
         expect(rows.length).toBe(played.length);
         played.forEach((s: any, i: number) => {
             const c = cells(rows[i]);
@@ -440,11 +439,9 @@ describe('NFL player page', () => {
         // and no row ever links to a raw nflverse id
         expect(html).not.toContain('/game/2024_');
         nfl.games.data.forEach((g: any, i: number) => {
-            const [game, line] = rows[i].split('<tr class="stat-line-row">');
-            expect(cells(line), String(g.game_id)).toEqual([gameStatLine(g, 'nfl')]);
-            const c = logCells(game);
-            expect(c[4]).toBe(String(g.plays));
-            expect(c[6]).toBe(roundNumber(g.epa, 2, 2));
+            const c = logCells(rows[i]);
+            expect(c[2]).toBe(String(g.plays));
+            expect(c[4]).toBe(roundNumber(g.epa, 2, 2));
             // the nflverse rows name an opponent by ABBREVIATION; every team URL
             // and every dark-mode logo rule is keyed on the ESPN id, so it is
             // resolved before it reaches either
@@ -527,6 +524,33 @@ describe('the page tells Workers Caching what to do', () => {
         }
         feed.missing.delete('99999999999');
     }, 60_000);
+
+    test('a page rendered around a failed section read is served, never cached', async () => {
+        // CodeRabbit on #267: cached for the TTL, a degraded page would keep saying
+        // "unavailable" (or drop its game links) long after the upstream recovered
+        const sdv = await import('../src/resources/sdv');
+        const { preparePlayer } = await import('../src/routes/player');
+        const reads: [keyof typeof sdv, 'cfb' | 'nfl', string, string][] = [
+            ['retrievePlayerSeasons', 'cfb', '/players/4433971', '4433971'],
+            ['retrievePlayerGames', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerSplits', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrievePlayerGamePercentiles', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveTeamSummaries', 'cfb', '/players/4433971?season=2024', '4433971'],
+            ['retrieveNflEspnGameIds', 'nfl', '/nfl/players/16800?season=2024', '16800'],
+        ];
+        for (const [fn, league, path, id] of reads) {
+            const spy = vi.spyOn(sdv, fn as any).mockRejectedValue(new Error(`${fn} is down`));
+            try {
+                const f = fake(path, { id });
+                const r = await preparePlayer(f.astro, league) as any;
+                expect(r.player?.espn_id, fn).toBe(id);   // still a page, not a 503
+                expect(f.cache, fn).toEqual([false]);
+                expect(f.headers.get('Cache-Control'), fn).toBe('no-store');
+            } finally {
+                spy.mockRestore();
+            }
+        }
+    }, 60_000);
 });
 
 describe('one failing section does not blank the page', () => {
@@ -565,6 +589,23 @@ describe('one failing section does not blank the page', () => {
             expect(html).toContain('id="player-game-log-unavailable"');
             // "No games for 2024" would be a lie about a player who played 13
             expect(html).not.toContain('No games for 2024');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('a past season whose rows failed names no team, not the identity\'s current one', async () => {
+        // CodeRabbit on #267: McCord's identity is Syracuse (2024), but 2023 was
+        // Ohio State -- with the season rows down, the header must not guess
+        const sdv = await import('../src/resources/sdv');
+        expect(await renderPage('cfb', '4433971', 2023)).toContain('season with Ohio State:');
+        const spy = vi.spyOn(sdv, 'retrievePlayerSeasons').mockRejectedValue(new Error('seasons route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2023);
+            expect(html).not.toContain('Syracuse');
+            expect(html).not.toContain('teamlogos/ncaa/500/183.png');
+            // the career view still falls back to the identity, which IS current
+            expect(await renderCareer('cfb', '4433971')).toContain('career with Syracuse:');
         } finally {
             spy.mockRestore();
         }

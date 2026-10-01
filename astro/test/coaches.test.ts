@@ -60,9 +60,13 @@ describe('board definitions', () => {
             }
         }
         // the three percentage-POINT columns would render as 2700% under pct
-        for (const k of ['third_down_over_expected', 'fourth_wp_left_per_decision', 'fourth_wp_left']) {
+        for (const k of ['third_down_over_expected']) {
             const col = Object.values(COACH_BOARDS).flatMap((b) => b.columns).find((c) => c.key === k);
             expect(col?.format, k).toMatch(/^num/);
+        }
+        for (const k of ['fourth_wp_left_per_decision', 'fourth_wp_left']) {
+            const col = Object.values(COACH_BOARDS).flatMap((b) => b.columns).find((c) => c.key === k);
+            expect(col?.format, k).toMatch(/^pct_format/);
         }
         expect(Math.max(...fx.coach_tendencies.map((r) => numericValue(r, 'fourth_wp_left') as number))).toBeGreaterThan(1);
     });

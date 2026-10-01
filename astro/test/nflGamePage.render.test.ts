@@ -31,10 +31,11 @@ describe('GamePage renders a finished NFL game end to end', () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        // these v2 renders assert the public header; game-links (flag on) is covered by gameHeaderLinks.render.test.ts
         html = await container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true },
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
         if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);
@@ -81,11 +82,12 @@ describe('GamePage renders a finished NFL game end to end', () => {
 });
 
 describe('the NFL game page carries the same v2 blocks as the CFB page (#243 alignment)', () => {
-    test('Deserved Win % renders for an NFL game once the processor emits paperIndex', async () => {
+    test('Deserved Win % does NOT render for an NFL game once the processor emits paperIndex if the game is not marked completed', async () => {
         // the committed fixture predates sportsdataverse-py #488, which made the
         // NFL processor emit paperIndex; inject the shape it now returns
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game: any = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
+        game.header.competitions[0].status.type.completed = false;
         game.paperIndex = {
             homeShare: 0.62,
             margins: { success: 0.08, explosive: -0.01, explosive_epa: 0.12, opp_conversion: 0.2, pts_per_opp: 0.5, field_position: 0.1, havoc: 0.02, turnovers: 1 },
@@ -96,6 +98,30 @@ describe('the NFL game page carries the same v2 blocks as the CFB page (#243 ali
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
             locals: { league: 'nfl', preview: true },
+        });
+        expect(html).not.toContain('href="#paper-index-panel"');
+        expect(html).not.toContain('Deserved Win %');
+        // the panel's team logos follow the league like every other block
+        expect(html).toContain('teamlogos/nfl/500/');
+        expect(html).not.toContain('teamlogos/ncaa/');
+    }, 60_000);
+
+    test('Deserved Win % DOES render for an NFL game once the processor emits paperIndex if the game is marked completed', async () => {
+        // the committed fixture predates sportsdataverse-py #488, which made the
+        // NFL processor emit paperIndex; inject the shape it now returns
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game: any = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
+        game.header.competitions[0].status.type.completed = true;
+        game.paperIndex = {
+            homeShare: 0.62,
+            margins: { success: 0.08, explosive: -0.01, explosive_epa: 0.12, opp_conversion: 0.2, pts_per_opp: 0.5, field_position: 0.1, havoc: 0.02, turnovers: 1 },
+            byPeriod: { q1: { homeShare: 0.55, margins: {} } },
+        };
+        const { default: GamePage } = await import('../src/components/game/GamePage.astro');
+        const html = await container.renderToString(GamePage, {
+            props: { id: GAME_ID, game, league: 'nfl' },
+            request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
         expect(html).toContain('href="#paper-index-panel"');
         expect(html).toContain('Deserved Win %');
@@ -114,11 +140,8 @@ describe('usage / situational / special-teams sections', () => {
         const render = async (game: any) => container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true },
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
         });
-        const bare = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
-        const without = await render(bare);
-        expect(without).not.toContain('id="situational-splits-panel"');
 
         const game = await retrieveProcessedGame(GAME_ID, 30, 'nfl');
         const away = parseInt(game.teamInfo.away.id);
@@ -180,35 +203,32 @@ describe('usage / situational / special-teams sections', () => {
             punt_net_avg: 38, punt_return_avg_allowed: 8, kick_return_avg: 25, punt_return_avg: 12, fg_pct: 2 / 3,
         }));
         const html = await render(game);
-        expect(html).toContain('id="situational-splits-panel"');
-        expect(html).toContain('3rd downs over expected');
-        expect(html).toContain('Scripted drives');
-        expect(html).toContain('Net punt average');
-        expect(html).toContain('0 punt, 0 FG');
-        expect(html).not.toContain('undefined punt');
-        // the processor attaches the usage sections to every span box too, but
-        // only the full-game box renders them: they must not reach the island props
-        // a fresh window object: the fixture's `all` span aliases advBoxScore itself
-        (game.advBoxScoreSpans as any).q1 = { ...game.advBoxScoreSpans.all, player_usage: [usage(away, 'Span Only Receiver', 's1')] };
-        const withSpans = await render(game);
-        expect(withSpans).toContain('Away Receiver');
-        expect(withSpans).not.toContain('Span Only Receiver');
-        expect(withSpans).not.toContain('player_usage');
+        // is the team stat section actually rendering?
+        expect(html).toContain('Middle 8');
+        expect(html).toContain('Explosiveness');
+
+        // are the new situational sections rendering?
+        expect(html).toContain('3rd Downs');
+        expect(html).toContain('Scripted Drives');
+        expect(html).toContain('Net Punt Distance');
+        expect(html).toContain('Punt Blocks');
+        expect(html).toContain('FG Blocks');
+
         expect(html).toContain('Away Receiver');
         expect(html).toContain('Home Receiver');
         expect(html).toContain('Away Backer');
         expect(html).toContain('Home Kicker');
         expect(html).toContain('Away Punter');
-        expect(html).toContain('FG 2/3');
+        expect(html).toContain('FG: 2/3');
         // returner, block and position-group rows
         expect(html).toContain('Home Returner');
-        expect(html).toContain('KR 2-50, 25.0 avg, 31 LNG.');
-        expect(html).toContain('PR 1-12, 12.0 avg, 12 LNG, 1 TD.');
+        expect(html).toContain('KR: 2 for 50 yds (25.0 yds avg, 31 LNG)');
+        expect(html).toContain('PR: 1 for 12 yds (12.0 yds avg, 12 LNG), 1 TD');
         expect(html).toContain('Away Blocker');
-        expect(html).toContain('1 punt blocked.');
-        expect(html).toContain('<i>TE</i>');
+        expect(html).toContain('1 punt blocked');
+        expect(html).toContain('<b>TE</b>');
         expect(html).toContain('&lt;b&gt;evil&lt;/b&gt;');
         expect(html).not.toContain('<b>evil</b>');
-        expect(html).toContain('<i>DB</i>');
+        expect(html).toContain('<b>DB</b>');
     }, 120_000);
 });

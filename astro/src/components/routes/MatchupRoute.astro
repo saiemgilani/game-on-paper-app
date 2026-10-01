@@ -42,8 +42,8 @@ if (homeTeamId && awayTeamId) {
     }
 }
 
-const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true)
-const predWinProb = calculatePredictedWinProb(predMargin)
+const predMargin = calculatePredictedPointMargin(awayTeamSummary?.net_adj_epa, homeTeamSummary?.net_adj_epa, true, league)
+const predWinProb = calculatePredictedWinProb(predMargin, league)
 
 const projection = (homeTeamSummary && awayTeamSummary && predWinProb) ? {
     winner: ((predMargin || 0) > 0) ? `${homeSeason} ${homeTeamSummary.pos_team}` : `${awaySeason} ${awayTeamSummary.pos_team}`,
@@ -58,7 +58,7 @@ const canDisplayMatchupView = (awaySeason && homeSeason && awayTeamId && homeTea
 
 <GenericPage title={"Matchup Builder | Game on Paper"} subtitle={`Pick two team-seasons to compare`} slug={leaguePath(league, "/game/matchup")} breadcrumbs={[]}>
     <DarkModeLogos teamIds={[homeTeamId, awayTeamId]} />
-    <div class="container">
+    <div class="container mt-3">
         <div class="row mb-3">
             <div class="col-12 mb-xs-3">
                 <h1>Matchup Builder</h1>

@@ -707,6 +707,34 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     }
 }
 
+/**
+ * One season baseline row from sdv-db `league_averages`: the distribution of a
+ * published metric over its entity rows (teams, qualified players, team-games).
+ * `qualifier_min` is the per-team-game gate on player rows (14 / 6.25 / 1.875),
+ * null on team rows; `sd` is null when `n` is 1.
+ */
+export interface SDVLeagueAverage {
+    season: number
+    level: string
+    entity: 'team' | 'player'
+    category: string
+    metric: string
+    mean: number | null
+    median: number | null
+    sd: number | null
+    n: number
+    qualifier_min: number | null
+}
+
+export async function retrieveLeagueAverages(season: number, filters: { entity?: 'team' | 'player'; category?: string; level?: string } = {}, league: League = 'cfb'): Promise<SDVLeagueAverage[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    // the API defaults to 1000 rows; one season across every level can run past that
+    const query: Record<string, string> = { season: String(season), limit: '5000' };
+    for (const [k, v] of Object.entries(filters)) if (v) query[k] = v;
+    const content = await requestSDV('league_averages', new URLSearchParams(query), undefined, 60 * 60 * 24, true, league);
+    return content?.data ?? [];
+}
+
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
 export interface SDVTeamSummaryRequest {
     season?: number
@@ -832,31 +860,50 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     }
 }
 
-// Mirrors https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_prediction_constants.py
-const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
-    net_points_scale: 24.6578,
-    hfa_points: 3.0365,
-    margin_sd: 18.7894
+// Fitted for THIS input, the team summaries' net_adj_epa, by
+// `python -m cfb_model_build.cfb_higher_models fit-pregame --seasons 2014 ... 2025 --holdout 2024 2025`
+// in sportsdataverse/cfbfastR-cfb-data ("gop_net_adj_epa" in models/pregame_fit.json):
+// margin = scale * (home - away) + hfa off neutral sites, fit on 2014-2023 as-of games.
+// These are NOT sportsdataverse-py's cfb_prediction_constants. Those are fitted to
+// cfb_ratings' adj_net, a different rating 1.37x wider (team-game sd 0.2633 vs 0.1916).
+// Applied to net_adj_epa they compressed every projection (calibration slope 1.73).
+// 2024-25 near-holdout (never in the fit; sportsdataverse-py #598 tuned net_adj_epa on
+// 2023-25), 1,202 games: MAE 13.39 -> 13.00, Brier 0.2056 -> 0.1967, calibration slope
+// 0.885 (this scale runs about 10% steep on those seasons).
+// Only leagues with a fit of their own get a projection. The NFL has none yet, and the CFB
+// constants have no calibration behind them on NFL ratings, so NFL pregame pages and the
+// NFL Matchup Builder show no projection until an NFL entry is added here.
+const SDV_RATINGS_PREDICTION_CONFIG: Partial<Record<League, { net_points_scale: number, hfa_points: number, margin_sd: number }>> = {
+    cfb: {
+        net_points_scale: 48.4590,
+        hfa_points: 2.7110,
+        margin_sd: 17.1697
+    }
 };
 
 // Mirrors: https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_game_predict.py
-export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false): number | null {
+export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false, league: League = 'cfb'): number | null {
+    const config = SDV_RATINGS_PREDICTION_CONFIG[league]
+    if (!config) {
+        return null
+    }
     // null-checks, not falsiness: 0 is a legitimate Net Adj EPA rating
     if (away_adj_epa == null || home_adj_epa == null || !Number.isFinite(away_adj_epa) || !Number.isFinite(home_adj_epa)) {
         return null
     }
 
-    const hfa_pts = neutral_site ? 0.0 : SDV_CFB_RATINGS_PREDICTION_CONFIG.hfa_points
-    return SDV_CFB_RATINGS_PREDICTION_CONFIG.net_points_scale * (home_adj_epa - away_adj_epa) + hfa_pts
+    const hfa_pts = neutral_site ? 0.0 : config.hfa_points
+    return config.net_points_scale * (home_adj_epa - away_adj_epa) + hfa_pts
 }
 
 // https://github.com/sportsdataverse/sportsdataverse-py/blob/a19e7f2e89cf428e6d5aec137f18300484c5b2a9/sportsdataverse/cfb/cfb_game_predict.py#L80
-export function calculatePredictedWinProb(pred_margin: number | null): number | null {
-    if (!pred_margin && pred_margin != 0) {
+export function calculatePredictedWinProb(pred_margin: number | null, league: League = 'cfb'): number | null {
+    const config = SDV_RATINGS_PREDICTION_CONFIG[league]
+    if (!config || (!pred_margin && pred_margin != 0)) {
         return null;
     }
 
-    return calculateNormCdf(pred_margin, 0, SDV_CFB_RATINGS_PREDICTION_CONFIG.margin_sd)
+    return calculateNormCdf(pred_margin, 0, config.margin_sd)
 }
 
 export interface SDVTeamScheduleRequest {
@@ -1232,7 +1279,8 @@ export async function resolveEspnAthleteId(gsisId: string): Promise<string | nul
  * One cached read per season, not one per row.
  */
 export async function retrieveNflEspnGameIds(season: number): Promise<Record<string, string>> {
-    const content = await requestSDV('schedule', new URLSearchParams({ season: String(season), select: 'game_id,espn', limit: '1000' }), undefined, 60 * 60 * 24, true, 'nfl');
+    // strict: a failed read must reject, so the player page is not cached without its game links
+    const content = await requestPlayer('nfl', 'schedule', { season: String(season), select: 'game_id,espn', limit: '1000' }, 60 * 60 * 24);
     const out: Record<string, string> = {};
     for (const r of (content?.data ?? [])) {
         if (r?.game_id && r?.espn) out[String(r.game_id)] = String(r.espn);

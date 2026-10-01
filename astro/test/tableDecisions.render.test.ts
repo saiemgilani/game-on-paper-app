@@ -168,13 +168,18 @@ describe('the Binion box rounds through one guard in both twins', () => {
         // CodeRabbit on #269: both twins still read `decimalPoints || 1`, the drift
         // the shared guard exists to stop. A caller asking for 0 places gets 0.
         const g = loadGzJson(FIXTURES.cfb.file);
+
         const props = {
             title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'],
             teamBoxScores: g.advBoxScore.team, useSuffix: true, decimalPoints: 0,
         };
+        const svelteProps = {
+            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'],
+            box: { team: g.advBoxScore.team }, useSuffix: true, decimalPoints: 0,
+        };
         const [classic, v2] = await Promise.all([
             container.renderToString((await import('../src/components/game/classic/TeamMetricsTable.astro')).default, { props, locals: locals('cfb') }),
-            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props, locals: locals('cfb') }),
+            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: svelteProps, locals: locals('cfb') }),
         ]);
         for (const html of [classic, v2]) {
             const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());

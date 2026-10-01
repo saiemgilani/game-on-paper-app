@@ -4,7 +4,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { rushingStatLine } from '../src/utils/players';
+import { kickerStatLine, punterStatLine, rushingStatLine } from '../src/utils/players';
 
 // Why this exists: a TDZ ReferenceError in GamePage's frontmatter shipped in
 // #181 and every finished-game page rendered as a 200 with an empty body.
@@ -28,9 +28,10 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     },
 }));
 
+const sdvState = vi.hoisted(() => ({ percentiles: [] as any[] }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    retrievePercentiles: async () => [],
+    retrievePercentiles: async () => sdvState.percentiles,
     retrieveTeamSummaries: async () => [],
     retrieveTeamSeasonInformation: async () => null,
     retrieveMatchupHistory: async () => [],
@@ -102,9 +103,9 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/astro-island[^>]+ExpectedPointsChart/);
     });
 
-    test('situational metrics render client-side', () => {
+    test('situational metrics render server-side', () => {
         expect((html.match(/id="team-stats"/g) ?? []).length).toBe(1);
-        expect((html.match(/id="span-stats"/g) ?? []).length).toBe(0);
+        expect((html.match(/id="span-stats"/g) ?? []).length).toBe(1);
         expect(html).toMatch(/astro-island[^>]+SituationalSection/);
     });
 
@@ -158,13 +159,9 @@ describe('GamePage renders a finished game end to end', () => {
     test('All Plays offers a quarter filter, and the markup its script needs is there', () => {
         // The filter script finds rows by these hooks. If PlayRow or PlaysTable
         // stops emitting them the buttons silently do nothing, so pin the contract.
-        expect(html).toContain('data-plays-body="all"');
-        expect(html).toContain('data-play-filters="all"');
-        expect(html).toMatch(/data-period-filter="all"/);
-        for (const q of [1, 2, 3, 4]) expect(html).toContain(`data-period-filter="${q}"`);
+        for (const q of [1, 2, 3, 4]) expect(html).toContain(`<option value="p:${q}"`);
         // no overtime in this game, so no overtime button
-        expect(html).not.toContain('data-period-filter="5"');
-        expect(html).toContain('data-order-toggle');
+        expect(html).not.toContain('<option value="p:5"');
     });
 
     test('inside All Plays every summary row is followed by exactly one detail row', () => {
@@ -350,7 +347,6 @@ describe('the player stat line is a row under the name, not a column', () => {
         })),
     }));
     const headers = (html: string) => (html.split('</thead>')[0].match(/<th[\s>]/g) ?? []).length;
-    /** Every player is a name row of `n` single cells with its stat line, one cell spanning `n`, right under it. */
     const expectSecondRows = (html: string, n: number) => {
         expect(html).not.toContain('Stat line');
         expect(headers(html)).toBe(n);
@@ -413,25 +409,24 @@ describe('the player stat line is a row under the name, not a column', () => {
         expect(firstLine(v2).startsWith(firstLine(classic))).toBe(true);
     });
 
-    test('the special-teams usage table: the name and EPA, then the line spanning both', async () => {
-        const { default: Usage } = await import('../src/components/game/metrics/UsageBoxScore.astro');
-        const html = await container.renderToString(Usage, {
+    test('player box: specialists name and EPA, then the stat line', async () => {
+        const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');
+        const punter = { pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 };
+        const kicker = { pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 };
+        const html = await container.renderToString(PlayerBoxScore, {
             props: {
                 teamId: 1,
-                box: {
-                    st_kickers: [{ pos_team: 1, player_id: '1', player_name: 'K. Kicker', fg_attempts: 2, fg_made: 1, fg_long: 44, xp_attempts: 3, xp_made: 3, kickoffs: 0, fg_epa: 0.4, kickoff_epa: 0 }],
-                    st_punters: [{ pos_team: 1, player_id: '2', player_name: 'P. Punter', punts: 4, punt_avg: 44.5, punt_net_avg: 40.1, punt_long: 55, punt_inside_20: 2, punt_touchbacks: 0, punt_fair_catches: 1, punt_epa: -0.3 }],
-                },
+                pass: [],
+                rush: [],
+                receiver: [],
+                kickers: [kicker],
+                punters: [punter],
             } as any,
         });
-        const table = html.slice(html.indexOf('Special teams'));
-        const rows = expectSecondRows(table, 2);
-        expect(rows.map((r) => r.cells.map((c) => c.text))).toEqual([
-            ['K. Kicker K', '0.40'],
-            [expect.stringMatching(/^FG 1\/2 \([^)]*\), 44 LNG\. XP 3\/3\.$/)],
-            ['P. Punter P', '-0.30'],
-            ['4 punts, 44.5 avg, 40.1 net, 55 LNG, 2 inside 20, 0 TB, 1 FC.'],
-        ]);
+        expect(html).toContain(">Punting</td>")
+        expect(html).toContain(punterStatLine(punter));
+        expect(html).toContain(">Kicking</td>")
+        expect(html).toContain(kickerStatLine(kicker));
     });
 });
 
@@ -505,4 +500,50 @@ describe('the play filter is the only way to focus the plays on a player', () =>
         expect(page).not.toContain('focus-jump');
         expect(page).not.toContain('data-focus-jump');
     });
+});
+describe('chart islands serialize only the fields their charts read', () => {
+    // Every client:only prop is serialized into the HTML. Each drive chart
+    // carried both full ESPN team objects (~8.8KB a drive, ~212KB a game) to
+    // read one colour apiece, and the WP chart carried the whole percentile
+    // table (~103KB) to rank one number, the excitement index.
+    const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const islandProps = (html: string, component: string) => [...html.matchAll(/<astro-island ([^>]*)>/g)]
+        .map((m) => m[1])
+        .filter((attrs) => attrs.includes(component))
+        .map((attrs) => JSON.parse(unescape(attrs.match(/ props="([^"]*)"/)![1])));
+    const renders: Record<string, string> = {};
+    beforeAll(async () => {
+        sdvState.percentiles = Array.from({ length: 101 }, (_, i) => ({ season: 2025, pctile: i / 100, GEI: i / 20, EPAplay: i / 100 - 0.5 }));
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = await retrieveProcessedGame(GAME_ID, 30);
+        const { default: v2 } = await import('../src/components/game/GamePage.astro');
+        const { default: classic } = await import('../src/components/game/classic/GamePage.astro');
+        for (const [name, Page] of [['v2', v2], ['classic', classic]] as const) {
+            renders[name] = await container.renderToString(Page, {
+                props: { id: GAME_ID, game },
+                request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+            });
+        }
+        sdvState.percentiles = [];
+    }, 60_000);
+
+    for (const twin of ['v2', 'classic']) {
+        test(`${twin}: each drive chart gets a team colour, not the team`, () => {
+            const drives = islandProps(renders[twin], 'DriveChart');
+            expect(drives.length).toBeGreaterThan(10);
+            for (const p of drives) {
+                expect(p.offenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
+                expect(p.defenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
+                expect(p.offense).toBeUndefined();
+                expect(p.defense).toBeUndefined();
+            }
+        });
+
+        test(`${twin}: the WP chart gets the excitement column, not the percentile table`, () => {
+            const [wp] = islandProps(renders[twin], 'WinProbabilityChart');
+            const rows = wp.percentiles[1].map((r: any) => r[1]);
+            expect(rows).toHaveLength(101);
+            expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
+        });
+    }
 });

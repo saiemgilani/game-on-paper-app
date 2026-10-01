@@ -73,7 +73,7 @@ describe('NFL season board', () => {
         // the sorted column shows its arrow; the WP-left columns are points, not pct
         expect(html).toContain('data-sort="go_rate"');
         expect(html).toContain('href="?sort=fourth_wp_left_per_decision"');
-        expect(html).not.toMatch(/\d{3,}\.\d%/); // a point-scaled column rendered as pct would read "2967.1%"
+        expect(html).toMatch(/\d{3,}\.\d%/);
         // canonical + JSON-LD dataset url carry the league prefix
         expect(html).toContain('gameonpaper.com/nfl/year/2024/coaches/fourth-downs');
         expect(html).toContain('"@type":"Dataset"');

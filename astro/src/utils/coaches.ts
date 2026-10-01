@@ -10,7 +10,7 @@
  * moves a column between the two conventions fails loudly.
  */
 
-export type CoachColumnFormat = 'pct' | 'num1' | 'num2' | 'int';
+export type CoachColumnFormat = 'pct' | 'num1' | 'num2' | 'int' | 'pct_format';
 
 export interface CoachBoardColumn {
     key: string;
@@ -114,8 +114,8 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
             pct('go_rate_when_model_says_go', 'Went When Told Go', 'Go rate on the fourth downs where the model said go'),
             pct('go_rate_when_model_says_kick', 'Went When Told Kick', 'Go rate on the fourth downs where the model said kick or punt', true),
             pct('fourth_conversion_rate', 'Conversion Rate', 'Share of fourth-down attempts converted'),
-            num('fourth_wp_left_per_decision', 'WP Left/Decision', 'Win probability left on the field per fourth-down decision, in percentage points; lower is better', 'num2', true),
-            num('fourth_wp_left', 'Total WP Left', 'Win probability left on the field over every fourth-down decision, in percentage points; lower is better', 'num1', true),
+            { key:'fourth_wp_left_per_decision', label:'WP Left/Decision', hover:'Win probability left on the field per fourth-down decision, in percentage points; lower is better', format: 'pct_format', lowerIsBetter: true },
+            { key: 'fourth_wp_left', label:'Total WP Left', hover:'Win probability left on the field over every fourth-down decision, in percentage points; lower is better', format: 'pct_format', lowerIsBetter: true },
         ],
     },
     defense: {
@@ -184,6 +184,7 @@ export function formatCoachValue(value: number | null | undefined, format: Coach
     if (value === null || value === undefined || !Number.isFinite(value)) return '—';
     switch (format) {
         case 'pct': return `${(value * 100).toFixed(1)}%`;
+        case 'pct_format': return `${value.toFixed(1)}%`;
         case 'num1': return value.toFixed(1);
         case 'num2': return value.toFixed(2);
         case 'int': return String(Math.round(value));

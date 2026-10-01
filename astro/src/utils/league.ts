@@ -130,7 +130,7 @@ export function weekLabel(
     seasonType?: string | null,
     season?: number | string | null,
 ): string {
-    const postseason = !!seasonType && seasonType !== 'regular';
+    const postseason = !!seasonType && ((seasonType !== 'regular' && seasonType != 'REG') || /^(post|post-?season|3)$/i.test(String(seasonType ?? '')));
     if (postseason) {
         const round = (league ?? DEFAULT_LEAGUE) === 'nfl' && week != null
             ? NFL_POSTSEASON_ROUNDS[week - nflRegularSeasonWeeks(season) - 1]
