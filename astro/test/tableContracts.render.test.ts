@@ -31,7 +31,7 @@ import {
     METRIC_KEY_TITLE_MAPPING,
 } from '../src/utils/constants';
 import { roundNumber, metricDecimalPoints } from '../src/utils/misc';
-import { madeOf, num, pct, scriptSplit, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
+import { pct, signed, sortDesc, teamRows } from '../src/utils/usage';
 import { isScrimmage } from '../src/utils/situational';
 import { loadGzJson, locals, parseTable, tableWithHeading, text } from './helpers/tables';
 
@@ -93,15 +93,20 @@ async function renderPage(twin: 'classic' | 'v2', league: Lg): Promise<{ g: any,
     return { g, html };
 }
 
-/** The v2 Team Stats island, which the page only ever mounts client-side. */
-async function renderSituationalSection(league: Lg): Promise<string> {
+/**
+ * The v2 Team Stats island on its own. Since #270 the page mounts it `client:load`
+ * with every span's full box (usage sections included), so what it renders here
+ * is what the page serves.
+ */
+async function renderSituationalSection(league: Lg): Promise<{ g: any, html: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
     const { default: SituationalSection } = await import('../src/components/game/metrics/SituationalSection.svelte');
-    return container.renderToString(SituationalSection as any, {
-        props: { season: g.season.year, advBoxScoreSpans: withoutUsageSections(g.advBoxScoreSpans), league, percentiles: [] },
+    const html = await container.renderToString(SituationalSection as any, {
+        props: { season: g.season.year, advBoxScoreSpans: g.advBoxScoreSpans, league, percentiles: [] },
         locals: locals(league),
     });
+    return { g, html };
 }
 
 /**
@@ -110,7 +115,11 @@ async function renderSituationalSection(league: Lg): Promise<string> {
  */
 const STAT_YARDAGE_GAPS: Record<string, number> = { 'cfb:2117': 1 };
 
-/** The eight team-metric tables, exactly as both GamePage twins configure them. */
+/**
+ * The eight team-metric tables, exactly as the classic GamePage configures them.
+ * The v2 TeamMetricsTable still renders every one of them (the twin-parity
+ * check); the v2 page's own layout is V2_METRIC_TABLES below.
+ */
 const METRIC_TABLES = [
     { title: 'Expected Points', section: 'team', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: ['EPA_plays', 'EPA_overall_total', 'EPA_overall_offense', 'EPA_special_teams', 'EPA_penalty'] },
     { title: 'Production', section: 'team', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: ['scrimmage_plays', 'off_yards', 'yards_per_play', 'EPA_overall_off', 'EPA_per_play', 'passes', 'pass_yards', 'yards_per_pass', 'EPA_passing_overall', 'EPA_passing_per_play', 'rushes', 'rush_yards', 'yards_per_rush', 'EPA_rushing_overall', 'EPA_rushing_per_play'] },
@@ -122,66 +131,128 @@ const METRIC_TABLES = [
     { title: 'Turnovers', section: 'turnover', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: ['turnovers', 'total_fumbles', 'fumbles_lost', 'fumbles_recovered', 'Int', 'turnover_margin', 'expected_turnovers', 'expected_turnover_margin', 'turnover_luck'] },
 ] as const;
 
+type MetricTable = { title: string, teamKey: string, useSuffix: boolean, decimalPoints: number, columns: readonly string[], section?: string };
+
+const classic = (title: string) => METRIC_TABLES.find((t) => t.title === title)!.columns;
+const dotted = (section: string, keys: readonly string[]) => keys.map((k) => `${section}.${k}`);
+
 /**
- * What the cell for `key` must read, derived straight from the payload row.
- *
- * The branch order is the contract the two TeamMetricsTable twins share: a
- * percent column, then a fixed-decimal column, then a bare count, and anything
- * else is "count (rate%)".
+ * The twelve v2 Team Stats tables, exactly as SituationalSection.svelte
+ * configures them since #270: each key is `<box section>.<field>`, and a
+ * drive-scripting key also names the script its row reads. The classic
+ * Situational table is split four ways, and the former Situational & Special
+ * Teams panel's rows (third downs, red zone, scoring opportunities, scripted
+ * drives, the kicking game) sit in Late Downs, Drives and Special Teams.
  */
-function expectedMetricCell(key: string, row: any, useSuffix: boolean, decimalPoints: number): string {
+const V2_METRIC_TABLES: MetricTable[] = [
+    { title: 'Expected Points', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('team', classic('Expected Points')) },
+    { title: 'Production', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('team', classic('Production')) },
+    { title: 'Rushing', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('team', classic('Rushing')) },
+    { title: 'Special Teams', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: dotted('st_team', ['fg_attempts', 'kickoff_touchback_rate', 'kickoff_return_avg_allowed', 'punt_net_avg', 'kick_return_avg', 'punt_blocks_by', 'fg_blocks_by']) },
+    { title: 'Explosiveness', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('team', classic('Explosiveness')) },
+    { title: 'Success', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['EPA_success', 'EPA_success_pass', 'EPA_success_rush', 'EPA_success_standard_down', 'EPA_success_passing_down', 'EPA_success_early_down', 'EPA_success_late_down', 'EPA_middle_8_success']) },
+    { title: 'Early Downs', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['early_downs', 'early_down_first_down', 'EPA_early_down', 'EPA_early_down_per_play', 'early_down_pass', 'early_down_rush', 'EPA_success_early_down_pass', 'EPA_success_early_down_rush']) },
+    { title: 'Late Downs', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: [
+        ...dotted('situational', ['late_downs', 'EPA_late_down', 'EPA_late_down_per_play', 'late_down_pass', 'late_down_rush', 'EPA_success_late_down_pass', 'EPA_success_late_down_rush', 'late_down_avg_distance']),
+        ...dotted('team_usage', ['third_down_opportunities', 'third_down_conversions', 'third_down_expected']),
+    ] },
+    { title: 'Middle 8', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['middle_8', 'EPA_middle_8', 'EPA_middle_8_per_play', 'middle_8_pass', 'middle_8_rush', 'EPA_middle_8_success_pass', 'EPA_middle_8_success_rush']) },
+    { title: 'Drives', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: [
+        ...dotted('drives', classic('Drives')),
+        ...dotted('team_usage', ['so_trips', 'so_touchdown_rate', 'so_points_per_trip', 'so_success_rate', 'so_epa_per_play', 'rz_trips', 'rz_touchdown_rate', 'rz_points_per_trip', 'rz_success_rate', 'rz_epa_per_play']),
+        ...dotted('drive_scripting', ['scripted.drives', 'scripted.success_rate', 'scripted.epa_per_play', 'scripted.points_per_drive', 'non_scripted.drives', 'non_scripted.success_rate', 'non_scripted.epa_per_play', 'non_scripted.points_per_drive']),
+    ] },
+    { title: 'Defensive', teamKey: 'def_pos_team', useSuffix: true, decimalPoints: 0, columns: dotted('defensive', classic('Defensive')) },
+    { title: 'Turnovers', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: dotted('turnover', classic('Turnovers')) },
+];
+
+/**
+ * What the cell for `item` must read, derived straight from the payload row.
+ *
+ * The branch order is TeamMetricsTable's (the v2 twin's is a superset of the
+ * classic's, and the two agree on every key the classic renders): the
+ * hand-formatted rows first, then a percent column, a fixed-decimal column, a
+ * bare count, a scripted-drive metric, and anything else is "count (rate%)".
+ */
+function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalPoints: number): string {
     // the shared guard (#269): an explicit 0 means zero places, a missing value means one
     const dp = metricDecimalPoints(decimalPoints);
+    const v = (k: string) => row[k] || 0;
     // Production's total is rush + pass, not ESPN's per-play statYardage (#269)
-    if (key === 'off_yards') return String(parseFloat(row['pass_yards'] || 0) + parseFloat(row['rush_yards'] || 0));
-    if (key === 'avg_field_position') {
-        const v = row[key] || 0;
-        return `${v >= 50 ? 'Own' : 'Opp'} ${roundNumber(v >= 50 ? 100 - parseFloat(v) : v, 2, 0)}`;
+    if (item === 'off_yards') return String(parseFloat(v('pass_yards')) + parseFloat(v('rush_yards')));
+    if (item === 'avg_field_position') {
+        const val = v(item);
+        return `${val >= 50 ? 'Own' : 'Opp'} ${roundNumber(val >= 50 ? 100 - parseFloat(val) : val, 2, 0)}`;
     }
-    if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(key)) return `${roundNumber(parseFloat(row[key] || 0), 2, 0)}%`;
-    if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(key)) return roundNumber(parseFloat(row[key] || 0), 2, dp);
-    if (BOX_SCORE_NON_RATE_COLUMNS.includes(key)) return String(row[key] || 0);
-    const val = row[key] || 0;
-    const rate = useSuffix ? 100.0 * row[`${key}_rate`] : 100.0 * (parseFloat(val) / parseFloat(row['scrimmage_plays']));
+    // the usage-box rates arrive as fractions, and the made-of pairs show their attempts (#270)
+    if (['kickoff_touchback_rate', 'rz_success_rate', 'so_success_rate', 'rz_touchdown_rate', 'so_touchdown_rate'].includes(item)) return `${roundNumber(parseFloat(v(item)) * 100, 2, 0)}%`;
+    if (item === 'fg_attempts') return v(item) == 0 ? '-' : `${v('fg_made')}/${v(item)} (${roundNumber(100 * v('fg_made') / v(item), 2, 0)}%)`;
+    if (item === 'third_down_conversions' || item === 'third_down_expected') {
+        const att = v('third_down_opportunities');
+        return att == 0 ? '-' : `${roundNumber(v(item), 2, item === 'third_down_expected' ? 1 : 0)} (${roundNumber(100 * v(item) / att, 2, 0)}%)`;
+    }
+    if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) return `${roundNumber(parseFloat(v(item)), 2, 0)}%`;
+    if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) return roundNumber(parseFloat(v(item)), 2, dp);
+    if (BOX_SCORE_NON_RATE_COLUMNS.includes(item)) return String(v(item));
+    if (item.startsWith('scripted.') || item.startsWith('non_scripted.')) {
+        const metric = item.split('.')[1];
+        if (metric === 'epa_per_play' || metric === 'points_per_drive') return roundNumber(v(metric), 2, 2);
+        if (metric === 'success_rate') return `${roundNumber(v(metric) * 100, 2, 0)}%`;
+        return String(v(metric));
+    }
+    const val = v(item);
+    const rate = useSuffix ? 100.0 * row[`${item}_rate`] : 100.0 * (parseFloat(val) / parseFloat(row['scrimmage_plays']));
     return `${val} (${roundNumber(rate, 2, 0)}%)`;
+}
+
+/** `<section>.<field>` → [section, field]; a bare key reads the table's own section. */
+const splitKey = (key: string, section?: string): [string, string] => {
+    const dot = key.indexOf('.');
+    return dot < 0 ? [section!, key] : [key.slice(0, dot), key.slice(dot + 1)];
+};
+
+/** The box row a cell reads: the team's row of the section, or its row for the named script. */
+function rowFor(rows: any[], team: string, teamKey: string, item: string): any {
+    const script = item.startsWith('scripted.') ? 'scripted' : item.startsWith('non_scripted.') ? 'non_scripted' : null;
+    return rows.find((r) => String(r[teamKey]) === team && (script === null || r.script === script));
 }
 
 /**
  * The contract for one team-metric table: the row labels are the ones its
- * columns map to, and every cell reads the payload row it claims. Shared by the
- * component-level test and the page-level one, so the page is checked against
- * the same expectation rather than against its own wiring.
+ * columns map to, and every cell reads the payload row of the team whose logo
+ * heads that column. Shared by the component-level tests and the page-level
+ * ones, so the page is checked against the same expectation rather than against
+ * its own wiring.
  */
-function assertMetricTable(html: string, cfg: (typeof METRIC_TABLES)[number], rowsData: any[]): void {
-    const { rows } = parseTable(html);
-    // row 0 is the header (title + one logo per team)
+function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, any[]>): void {
+    const { rows, rowHtml } = parseTable(html);
+    // row 0 is the header: the title, then one logo per team in column order
+    const teams = [...rowHtml[0].matchAll(/team-logo-(\d+)/g)].map((m) => m[1]);
+    expect(teams.length, `${cfg.title}: a team column per logo`).toBeGreaterThan(0);
     const body = rows.slice(1);
     expect(body, `${cfg.title}: one row per configured column`).toHaveLength(cfg.columns.length);
     cfg.columns.forEach((key, i) => {
+        const [section, item] = splitKey(key, cfg.section);
         const [label, ...cells] = body[i];
-        expect(label, `${cfg.title} row ${i} label`).toBe(text(METRIC_KEY_TITLE_MAPPING[key] || key));
-        expect(cells, `${cfg.title} / ${key}: one cell per team`).toHaveLength(rowsData.length);
-        cells.forEach((cell, t) => {
-            expect(cell, `${cfg.title} / ${key} / team ${rowsData[t][cfg.teamKey]}`)
-                .toBe(expectedMetricCell(key, rowsData[t], cfg.useSuffix, cfg.decimalPoints));
+        expect(label, `${cfg.title} row ${i} label`).toBe(text(METRIC_KEY_TITLE_MAPPING[item] || item));
+        expect(cells, `${cfg.title} / ${key}: one cell per team`).toHaveLength(teams.length);
+        teams.forEach((team, t) => {
+            const row = rowFor(box[section] ?? [], team, cfg.teamKey, item);
+            expect(row, `${cfg.title} / ${key}: a ${section} row for team ${team}`).toBeTruthy();
+            expect(cells[t], `${cfg.title} / ${key} / team ${team}`)
+                .toBe(expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints));
         });
     });
 }
 
 async function renderMetricTable(twin: 'classic' | 'v2', league: Lg, cfg: (typeof METRIC_TABLES)[number]) {
     const g = game(league);
-    const props = {
-        title: cfg.title,
-        teamKey: cfg.teamKey,
-        season: g.season.year,
-        columns: [...cfg.columns],
-        teamBoxScores: g.advBoxScore[cfg.section],
-        useSuffix: cfg.useSuffix,
-        decimalPoints: cfg.decimalPoints,
-    };
-    const mod = twin === 'classic'
-        ? await import('../src/components/game/classic/TeamMetricsTable.astro')
-        : await import('../src/components/game/metrics/TeamMetricsTable.svelte');
+    const rows = g.advBoxScore[cfg.section];
+    const shared = { title: cfg.title, teamKey: cfg.teamKey, season: g.season.year, useSuffix: cfg.useSuffix, decimalPoints: cfg.decimalPoints };
+    // the v2 table reads a box by `<section>.<field>` keys and takes the league as a prop (#270)
+    const [mod, props] = twin === 'classic'
+        ? [await import('../src/components/game/classic/TeamMetricsTable.astro'), { ...shared, columns: [...cfg.columns], teamBoxScores: rows }]
+        : [await import('../src/components/game/metrics/TeamMetricsTable.svelte'), { ...shared, league, columns: dotted(cfg.section, cfg.columns), box: { [cfg.section]: rows } }];
     return container.renderToString(mod.default as any, { props, locals: locals(league) });
 }
 
@@ -192,7 +263,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 const g = game(league);
                 const rowsData: any[] = g.advBoxScore[cfg.section];
                 expect(rowsData.length, `${cfg.section} has rows`).toBeGreaterThan(0);
-                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, rowsData);
+                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, g.advBoxScore);
             }, 30_000);
         }
 
@@ -363,7 +434,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const html = await container.renderToString(
                 (await import('../src/components/game/metrics/UsageBoxScore.astro')).default,
                 { props: { box: g.advBoxScore, teamId }, locals: locals(league) });
-            const table = tableWithHeading(html, 'Defender');
+            const table = tableWithHeading(html, 'Defensive Usage');
             if (tackles.length === 0) {
                 // The section is optional and an empty one must render NOTHING
                 // rather than an empty table (UsageBoxScore.astro's own contract).
@@ -382,32 +453,18 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             });
         }, 30_000);
 
-        test('SituationalSplits: every labelled row reads the section it names', async () => {
-            const g = game(league);
-            const [home, away] = [g.header.competitions[0].competitors[0].team, g.header.competitions[0].competitors[1].team];
-            const html = await container.renderToString(
-                (await import('../src/components/game/metrics/SituationalSplits.astro')).default,
-                { props: { box: g.advBoxScore, awayTeam: away, homeTeam: home }, locals: locals(league) });
-            const { rows } = parseTable(html);
-            const byLabel = new Map(rows.map((r) => [r[0], r.slice(1)]));
-            const teams = [away, home];
-            const usage = teams.map((t) => teamRows(g.advBoxScore.team_usage, t.id)[0]);
-            const st = teams.map((t) => teamRows(g.advBoxScore.st_team, t.id)[0]);
-            const scripts = teams.map((t) => scriptSplit(g.advBoxScore.drive_scripting as any[], t.id));
-            expect(usage.every(Boolean), 'both teams have a team_usage row').toBe(true);
-
-            expect(byLabel.get('3rd downs')).toEqual(usage.map((u: any) => `${madeOf(u.third_down_conversions, u.third_down_opportunities)} (exp ${num(u.third_down_expected, 1)})`));
-            expect(byLabel.get('Red-zone trips')).toEqual(usage.map((u: any) => String(u.rz_trips ?? 0)));
-            expect(byLabel.get('Red-zone TD rate')).toEqual(usage.map((u: any) => pct(u.rz_touchdown_rate, 0)));
-            expect(byLabel.get('Red-zone points per trip')).toEqual(usage.map((u: any) => num(u.rz_points_per_trip, 2)));
-            expect(byLabel.get('Red-zone EPA/play')).toEqual(usage.map((u: any) => num(u.rz_epa_per_play, 2)));
-            expect(byLabel.get('Scoring-opp trips')).toEqual(usage.map((u: any) => String(u.so_trips ?? 0)));
-            expect(byLabel.get('Scoring-opp TD rate')).toEqual(usage.map((u: any) => pct(u.so_touchdown_rate, 0)));
-            expect(byLabel.get('Scoring-opp EPA/play')).toEqual(usage.map((u: any) => num(u.so_epa_per_play, 2)));
-            expect(byLabel.get('Field goals')).toEqual(st.map((s: any) => `${madeOf(s.fg_made, s.fg_attempts)}${s.fgs_blocked > 0 ? ` (${s.fgs_blocked} blocked)` : ''}`));
-            expect(byLabel.get('Kickoff touchback rate')).toEqual(st.map((s: any) => pct(s.kickoff_touchback_rate, 0)));
-            expect(byLabel.get('Net punt average')).toEqual(st.map((s: any) => num(s.punt_net_avg, 1)));
-            expect(byLabel.get('Scripted drives')).toEqual(scripts.map((s: any) => `${s.scripted.drives} drives, ${num(s.scripted.epa_per_play, 2)} EPA/play, ${pct(s.scripted.success_rate, 0)} SR, ${num(s.scripted.points_per_drive, 2)} pts/drive`));
+        test('SituationalSection: all twelve Team Stats tables read the sections their keys name', async () => {
+            // The former SituationalSplits contract, on the tables that absorbed its
+            // rows (#270): the island is handed the full-game box and every cell of
+            // every table must read the team_usage / st_team / drive_scripting row
+            // (or the metric row) of the team whose logo heads its column.
+            const { g, html } = await renderSituationalSection(league);
+            expect(g.advBoxScore.team_usage.length, 'both teams have a team_usage row').toBe(2);
+            for (const cfg of V2_METRIC_TABLES) {
+                const table = tableWithHeading(html, cfg.title);
+                expect(table, `the island renders a "${cfg.title}" table`).toBeTruthy();
+                assertMetricTable(table!, cfg, g.advBoxScore);
+            }
         }, 30_000);
     });
 
@@ -516,7 +573,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of METRIC_TABLES) {
                 const table = tableWithHeading(html, cfg.title);
                 expect(table, `the classic page renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore[cfg.section]);
+                assertMetricTable(table!, cfg, g.advBoxScore);
             }
         }, 60_000);
 
@@ -536,10 +593,10 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             expect(cells[4]).toBe(`${roundNumber(passer.SR * 100, 2, 0)}%`);
         }, 60_000);
 
-        test('v2: the Paper Index, linescore, situational splits, usage box and drives all read the payload', async () => {
+        test('v2: the Paper Index, linescore, Team Stats, usage box and drives all read the payload', async () => {
             const { g, html } = await renderPage('v2', league);
             const competitors = g.header.competitions[0].competitors;
-            const homeTeam = competitors[0].team, awayTeam = competitors[1].team;
+            const awayTeam = competitors[1].team;
 
             // Deserved Win %
             const fmt = (v: number, digits = 1) => `${v >= 0 ? '+' : ''}${roundNumber(v, 2, digits)}`;
@@ -556,16 +613,19 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const lineRow = parseTable(line!).rows[1];
             away.linescores.forEach((ls: any, q: number) => expect(lineRow[1 + q], `period ${q + 1}`).toBe(String(ls.displayValue)));
 
-            // Situational & Special Teams -- the page passes away, then home
-            const splits = html.slice(html.indexOf('id="situational-splits-table"'));
-            const byLabel = new Map(parseTable(splits).rows.map((r) => [r[0], r.slice(1)]));
-            const usageRows = [awayTeam, homeTeam].map((t: any) => teamRows(g.advBoxScore.team_usage, t.id)[0]);
-            expect(byLabel.get('Red-zone TD rate')).toEqual(usageRows.map((u: any) => pct(u.rz_touchdown_rate, 0)));
+            // Team Stats -- server-rendered since #270, so the twelve tables are checked
+            // where they land, against the sections their keys name
+            const teamStats = html.slice(html.indexOf('id="team-stats"'), html.indexOf('id="player-stats"'));
+            for (const cfg of V2_METRIC_TABLES) {
+                const table = tableWithHeading(teamStats, cfg.title);
+                expect(table, `the v2 page renders a "${cfg.title}" table`).toBeTruthy();
+                assertMetricTable(table!, cfg, g.advBoxScore);
+            }
 
             // Usage box -- the away team's leading player, in the away panel
             const awayPanel = html.slice(html.indexOf('id="away-stats-panel"'), html.indexOf('id="home-stats-panel"'));
             const top = sortDesc(teamRows(g.advBoxScore.player_usage, awayTeam.id), 'opportunities')[0] as any;
-            const usage = tableWithHeading(awayPanel, 'Player');
+            const usage = tableWithHeading(awayPanel, 'Offensive Usage');
             expect(usage, 'the away panel renders the usage table').toBeTruthy();
             const first = parseTable(usage!).rows[1];
             expect(first[0]).toContain(top.player_name);
@@ -661,7 +721,7 @@ describe('twin inventory: which sections each twin renders', () => {
 
         test(`[${league}] the v2 Team Stats island renders the Binion box for both leagues`, async () => {
             // Populated, not just present: its 11 metric rows, a value per team.
-            const v2 = binionRows(await renderSituationalSection(league));
+            const v2 = binionRows((await renderSituationalSection(league)).html);
             expect(v2, `v2 ${league} Binion box`).not.toBeNull();
             expect(v2).toHaveLength(11);
             for (const r of v2!) {
@@ -673,15 +733,15 @@ describe('twin inventory: which sections each twin renders', () => {
         }, 60_000);
 
         test(`[${league}] neither twin renders TraditionalTeamStats or PenaltyBreakdown`, async () => {
-            // Both components are live code with unit tests behind them
+            // Both are live code with unit tests behind them
             // (test/traditionalStats.test.ts, test/penalties.test.ts) but nothing
-            // renders them: their only call sites are commented out in
-            // SituationalSection.svelte. Pinned by rendering all three surfaces
-            // that could carry them, so uncommenting either one goes red here.
+            // renders them: TraditionalTeamStats.astro went with #270 and
+            // PenaltyBreakdown.astro has no call site. Pinned by rendering all
+            // three surfaces that could carry them, so wiring either in goes red here.
             const surfaces = [
                 (await renderPage('classic', league)).html,
                 (await renderPage('v2', league)).html,
-                await renderSituationalSection(league),
+                (await renderSituationalSection(league)).html,
             ];
             for (const html of surfaces) {
                 expect(html).not.toContain(TRADITIONAL);
