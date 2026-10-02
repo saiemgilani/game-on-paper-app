@@ -130,12 +130,17 @@ export function weekLabel(
     seasonType?: string | null,
     season?: number | string | null,
 ): string {
+    if (!!seasonType && ((seasonType === 'preseason' || seasonType === 'PRE'))) {
+        return 'Preseason';
+    }
+
     const postseason = !!seasonType && ((seasonType !== 'regular' && seasonType != 'REG') || /^(post|post-?season|3)$/i.test(String(seasonType ?? '')));
-    if (postseason) {
-        const round = (league ?? DEFAULT_LEAGUE) === 'nfl' && week != null
-            ? NFL_POSTSEASON_ROUNDS[week - nflRegularSeasonWeeks(season) - 1]
-            : undefined;
+    if (postseason && (league ?? DEFAULT_LEAGUE) === 'nfl' && week != null) {
+        const availableWeeks = nflRegularSeasonWeeks(season) 
+        const round = (week >= availableWeeks) ? NFL_POSTSEASON_ROUNDS[week - availableWeeks - 1] : NFL_POSTSEASON_ROUNDS[week - 1];
         return round ?? 'Postseason';
+    } else if (postseason && (league ?? DEFAULT_LEAGUE) !== 'nfl') {
+        return 'Postseason'
     }
     return week != null ? `Week ${week}` : '';
 }
