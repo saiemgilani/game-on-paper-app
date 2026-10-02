@@ -25,6 +25,19 @@ class FootballField {
         this.sourceElement.style.height = "300px";
         this.sourceElement.style.border = `12px white solid`;
 
+        // below md the element shrinks to the screen and keeps the bitmap's 2.4:1 ratio (the border
+        // is inside the width: Bootstrap makes every element border-box). Desktop keeps the fixed
+        // 720x300: a percentage max-width there drops the canvas from the drives table's
+        // min-content width and shrinks the whole table.
+        const narrow = window.matchMedia("(max-width: 767.98px)");
+        const fit = () => {
+            this.sourceElement.style.maxWidth = narrow.matches ? "100%" : "";
+            this.sourceElement.style.height = narrow.matches ? "auto" : "300px";
+        };
+        fit();
+        narrow.addEventListener("change", fit);
+        this.dispose = () => narrow.removeEventListener("change", fit);
+
         // Set actual size in memory (scaled to account for extra pixel density).
         const dpi = window.devicePixelRatio; // Change to 1 on retina screens to see blurry canvas.
         this.sourceElement.width = 720 * dpi;
@@ -247,7 +260,10 @@ class FootballField {
     }
 }
 
+// the field on the canvas now: a redraw replaces it, so its breakpoint listener must go with it
+let activeField = null;
 function drawDrive() {
+    activeField?.dispose();
     // the dark pair when the page made one and the theme is dark, else the light pair / each team's own colour
     const dark = darkOffenseColor && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const offense = dark ? darkOffenseColor : offenseColor;
@@ -260,6 +276,7 @@ function drawDrive() {
         10,
         subtitle
     )
+    activeField = field;
 
 
     field.draw();
@@ -286,11 +303,14 @@ function drawDrive() {
 // guarantees the canvas below exists
 onMount(() => {
     drawDrive();
-    if (!darkOffenseColor) return;
+    if (!darkOffenseColor) return () => activeField?.dispose();
     // a new FootballField resizes (and so clears) the canvas: redraw in the other theme's colours when it flips
     const scheme = window.matchMedia('(prefers-color-scheme: dark)');
     scheme.addEventListener('change', drawDrive);
-    return () => scheme.removeEventListener('change', drawDrive);
+    return () => {
+        scheme.removeEventListener('change', drawDrive);
+        activeField?.dispose();
+    };
 });
 
 </script>
