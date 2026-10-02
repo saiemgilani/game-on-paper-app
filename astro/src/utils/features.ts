@@ -66,6 +66,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // Deserved Win %) and the matchup radar. Off: each chart keeps its own
     // legacy colours.
     'game-colours': 'preview',
+    // The Five Factors panel on the season team page (/year/N/team/<id> and the
+    // /nfl twin), under Profile. Only this path adds the factor columns to the
+    // team_summaries `select`, so for every other viewer the request, its cache
+    // key and the page are exactly what they are today. Promote to 'on' once the
+    // table has been reviewed on production data.
+    'five-factors': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
