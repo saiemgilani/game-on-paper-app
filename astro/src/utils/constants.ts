@@ -22,6 +22,7 @@ export const NETWORK_MAPPINGS: Record<string, string> = {
     "CBS" : 'https://www.cbssports.com/live/',
     'PAC12' : 'https://pac-12.com/live',
     'NFL NET' : 'https://www.nfl.com/network/watch/nfl-network-live',
+    'NFL Net' : 'https://www.nfl.com/network/watch/nfl-network-live',
     'CW NETWORK' : "https://www.cwtv.com/sports/",
     "CW" : "https://www.cwtv.com/sports/",
     "THE CW NETWORK" : "https://www.cwtv.com/sports/",
