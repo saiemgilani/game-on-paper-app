@@ -112,7 +112,7 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
 // week alone. Both `nfl.schedule` and `nfl.espn_schedule` show exactly two eras
 // and no exceptions: 1999-2020 regular 1-17 / postseason 18-21, 2021 onwards
 // regular 1-18 / postseason 19-22.
-const NFL_SEVENTEEN_GAME_SEASON = 2021;
+export const NFL_SEVENTEEN_GAME_SEASON = 2021;
 const NFL_POSTSEASON_ROUNDS = ['Wild Card', 'Divisional', 'Conference Championship', 'Super Bowl'];
 
 /**
