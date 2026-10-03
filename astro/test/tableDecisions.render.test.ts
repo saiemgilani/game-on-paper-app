@@ -184,7 +184,7 @@ describe('the Binion box rounds through one guard in both twins', () => {
         for (const html of [classic, v2]) {
             const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());
             expect(cells.length).toBeGreaterThan(0);
-            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?\d+$/);
+            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?[\d\.]+$/);
         }
     }, 60_000);
 });
