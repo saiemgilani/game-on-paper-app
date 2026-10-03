@@ -18,25 +18,25 @@
     "test:tables": "vitest run test/tableContracts.render.test.ts test/seasonTables.render.test.ts"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.9",
-    "@astrojs/cloudflare": "14.2.3",
-    "@astrojs/node": "^11.0.2",
-    "@astrojs/svelte": "9.0.1",
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/cloudflare": "^14.3.3",
+    "@astrojs/node": "^11.1.6",
+    "@astrojs/svelte": "^9.0.1",
     "@sgratzl/chartjs-chart-boxplot": "^4.4.5",
-    "@types/node": "^26.0.0",
-    "astro": "7.2.4",
+    "@types/node": "^26.6.4",
+    "astro": "^7.3.5",
     "bootstrap-icons": "^1.13.1",
     "chart.js": "^4.5.1",
-    "feather": "^0.0.5",
+    "feather": "^0.0.6",
     "luxon": "^3.7.2",
-    "svelte": "5.56.10",
+    "svelte": "5.57.1",
     "typescript": "^6.0.3",
-    "wrangler": "^4.94.0"
+    "wrangler": "^4.147.0"
   },
   "devDependencies": {
-    "@types/chart.js": "^2.9.41",
-    "@types/luxon": "^3.7.1",
-    "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "@types/chart.js": "^4.0.1",
+    "@types/luxon": "^3.7.6",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   }
 }
