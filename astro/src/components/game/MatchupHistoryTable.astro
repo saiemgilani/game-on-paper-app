@@ -39,7 +39,7 @@ const { games } = Astro.props;
                                     (!m.notes && m.conference_game && !m.neutral_site) && <Fragment>Conference Play</Fragment>
                                 }
                                 {
-                                    (!m.notes && m.conference_game && m.neutral_site) && <Fragment>{m.home_conference} Championship</Fragment>
+                                    (!m.notes && m.conference_game && m.neutral_site) && <Fragment>Conference Play</Fragment>
                                 }
                                 {
                                     (!m.notes && !m.conference_game && !m.neutral_site && m.season_type == "regular") && <Fragment>Regular Season</Fragment>

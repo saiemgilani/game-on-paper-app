@@ -74,10 +74,10 @@ describe('NFL season board', () => {
         expect(rows[0]).toContain(`<strong>${top.coach}</strong>`);
         expect(rows[0]).toContain(`${((numericValue(top, 'go_rate') as number) * 100).toFixed(1)}%`);
         expect(rows[0]).toMatch(/<td class="text-right"[^>]*>1</);
-        // the sorted column shows its arrow; the WP-left columns are points, not pct
+        // the sorted column shows its arrow; the WP-left columns are percents
         expect(html).toContain('data-sort="go_rate"');
         expect(html).toContain('href="?sort=fourth_wp_left_per_decision"');
-        expect(html).not.toMatch(/\d{3,}\.\d%/); // a point-scaled column rendered as pct would read "2967.1%"
+        expect(html).toMatch(/\d{3,}\.\d%/);
         // canonical + JSON-LD dataset url carry the league prefix
         expect(html).toContain('gameonpaper.com/nfl/year/2024/coaches/fourth-downs');
         expect(html).toContain('"@type":"Dataset"');

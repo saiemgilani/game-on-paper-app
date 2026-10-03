@@ -198,8 +198,8 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
                 <th style="text-align: left;">Overall</th>
                 {#each groups as value}
                 <th style="text-align: center;">
-                    <a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}>
-                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
+                    <a href={leaguePath(league, `/year/${season}/team/${value}`)}>
+                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
                     </a>
                 </th>
                 {/each}

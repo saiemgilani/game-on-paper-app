@@ -159,12 +159,12 @@ describe('the links are gated with the pages', () => {
             locals: { league: 'cfb', ...locals },
         });
         const off = await render({});
-        expect(off).toContain('<td><b>Kyle McCord</b>');
+        expect(off).toContain('<td>Kyle McCord');
         expect(off).not.toContain('/players/');
         const on = await render({ preview: true });
         expect(on).toContain('href="/players/4433971?season=2024"');
         expect(on).toContain('href="/players/4567890?season=2024"');
-        expect(on).toContain('<b>Kyle McCord</b></a>');
+        expect(on).toContain('Kyle McCord</a>');
     }, 60_000);
 
     test('a row with no usable id is never linked, flag on or off', async () => {

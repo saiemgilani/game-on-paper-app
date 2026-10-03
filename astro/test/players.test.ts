@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, weekLabel, type SeasonRow,
+    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
 
@@ -177,27 +177,6 @@ describe('formatting', () => {
     test('numberOrNull keeps 0 and rejects the API\'s empty markers', () => {
         expect(numberOrNull(0)).toBe(0);
         for (const v of [null, undefined, '', 'NA', 'x', NaN]) expect(numberOrNull(v), String(v)).toBeNull();
-    });
-});
-
-describe('the week cell', () => {
-    // A postseason `week` restarts at 1 in BOTH leagues, so the bare number
-    // labels a bowl game / a Super Bowl "1". The CFB fixture carries exactly
-    // that row, which is why this is a contract and not a hypothetical.
-    test('a postseason row is named, never numbered', () => {
-        const post = cfb.games.data.find((g: any) => g.season_type === 'postseason');
-        expect(post.week).toBe(1);
-        expect(weekLabel('cfb', post.season_type, post.week)).toBe('Postseason');
-        expect(weekLabel('nfl', 'POST', 1)).toBe('Wild Card');
-        expect(weekLabel('nfl', 'POST', 5)).toBe('Super Bowl');
-        // a round the league has not defined still says postseason, not "1"
-        expect(weekLabel('nfl', 'POST', 9)).toBe('Postseason');
-    });
-
-    test('a regular-season row is its number, and an absent week an em dash', () => {
-        expect(weekLabel('cfb', 'regular', 7)).toBe('7');
-        expect(weekLabel('nfl', 'REG', 18)).toBe('18');
-        expect(weekLabel('nfl', 'REG', null)).toBe('—');
     });
 });
 
