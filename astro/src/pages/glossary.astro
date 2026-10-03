@@ -24,7 +24,6 @@ const slugs = termSlugs(allTerms);
 <GenericPage title={title} subtitle={subtitle} slug="/glossary" breadcrumbs={[]} heading={title} description={subtitle} canonicalPath={canonical} jsonLd={[definedTermSetJsonLd(allTerms, canonical)]}>
     <GlossaryHeader keys={glossary.keys().toArray()} />
     <div class="container">
-        <h1 class="visually-hidden">College Football Advanced Stats Glossary</h1>
         {
             glossary.keys().map((k) => (
                 <GlossarySection letter={k} entries={glossary.get(k)} slugs={slugs} />
