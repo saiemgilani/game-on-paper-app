@@ -68,7 +68,7 @@ function handleMetricRows(rowKey: string): string {
         teamBoxScores.forEach((teamData: any) => {
             const scrimmagePlays = teamData["scrimmage_plays"]
             if (!scrimmagePlays || scrimmagePlays == "0") {
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}"> - </td>`;
+                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">—</td>`;
             } else {
                 let val = (parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0)) / parseFloat(scrimmagePlays);
                 result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">${roundNumber(val, 2, 2)}</td>`;
@@ -97,7 +97,7 @@ function handleMetricRows(rowKey: string): string {
             let num = teamData["fg_made"] || 0;
             let pct = (denom == 0) ? 0 : num / denom
             if (denom == 0) {
-                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
             } else {
                 result += `<td class="numeral" style="text-align: center;">${num}/${denom} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
             }
@@ -109,7 +109,7 @@ function handleMetricRows(rowKey: string): string {
             let pct = (denom == 0) ? 0 : num / denom
             let places = item == "third_down_expected" ? 1 : 0
             if (denom == 0) {
-                result += `<td class="numeral" style="text-align: center;"> - </td>`;
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
             } else {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(num, 2, places)} (${roundNumber(pct * 100, 2, 0)}%)</td>`;
             }
