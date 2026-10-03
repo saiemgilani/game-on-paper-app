@@ -1,9 +1,10 @@
 ---
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
-import { retrieveCoachCareers, retrieveCoachTendencies } from "../../resources/sdv";
+import { retrieveCoachCareers, retrieveCoachTendencies, retrieveTeamSummaries } from "../../resources/sdv";
 import { METRIC_YEAR } from "../../utils/constants";
-import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS, numericValue, type CoachRow } from "../../utils/coaches";
+import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS, coachSourceColumns, numericValue, teamsWithoutCoach, withDerivedColumns, type CoachRow } from "../../utils/coaches";
 import { LEAGUES, leaguePath } from "../../utils/league";
+import { cleanField } from "../../utils/misc";
 import { COACH_BOARD_COPY, datasetJsonLd } from "../../utils/seo";
 import CoachLeaderboardTable from "./CoachLeaderboardTable.astro";
 
@@ -32,10 +33,22 @@ const description = copy.description(seasonOrNull, league);
 const seasons = cfg.seasons.filter((y) => y <= METRIC_YEAR).toSorted((a, b) => b - a);
 
 // the page fetches so the Dataset's coverage can come from the rows themselves
-const columnKeys = def.columns.map((c) => c.key);
-const rows: CoachRow[] = careers
+const columnKeys = [...new Set(def.columns.flatMap((c) => coachSourceColumns(c.key)))];
+const fetched: CoachRow[] = careers
     ? await retrieveCoachCareers({ league, columns: columnKeys })
     : await retrieveCoachTendencies({ season, league, columns: columnKeys });
+const rows = withDerivedColumns(fetched);
+
+// A college coach is credited with a team-season only when he led 80% of its
+// games, so a school that changed coach mid-season has no row: name those FBS
+// teams (team_summaries is FBS only) rather than drop them silently.
+const uncoached = league === 'cfb' && !careers && rows.length > 0
+    ? teamsWithoutCoach(
+        (await retrieveTeamSummaries({ season, league, columns: ['EPAplay_off'] })).filter((t) => t.season == season) as unknown as CoachRow[],
+        rows,
+        (t) => cleanField(t, 'pos_team'),
+    )
+    : [];
 
 // The careers table pools whatever seasons the builder has run, which the
 // league's season range does not know; say the interval the rows actually
@@ -80,9 +93,12 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                     {careers
                         ? <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank.</Fragment>
                         : <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank.</Fragment>}
-                    {league === 'cfb' && " FBS vs FBS games only."}{league === 'nfl' && " Regular season and playoffs."}
+                    {league === 'cfb' && " Includes all games (including bowls/CFP and those against FCS opponents)."}{league === 'nfl' && " Regular season and playoffs."}
                 </p>
-                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per ESPN's game rosters. Click a column heading to sort by it. Rows with no clock data show "—".</p>
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per {league === 'cfb' ? <a href="https://collegefootballdata.com">CFBD</a> : "the nflverse schedule"}. Click a column heading to sort by it. Rows with no clock data show "—".</p>
+                {league === 'cfb' && (
+                    <p class="m-0 mb-2 text-muted text-small">A season counts for a head coach only when he led at least 80% of the team's games.{uncoached.length > 0 && ` Not listed: ${uncoached.join(', ')}.`}</p>
+                )}
             </div>
             <div class="ms-auto col-lg-5 col-xs-12">
                 <form class="mb-3 d-flex justify-content-xs-start justify-content-lg-end coach-board-form" id="coach-board-form">

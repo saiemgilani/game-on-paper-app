@@ -5,7 +5,7 @@
  * The three tables (`team_tendencies`, `coach_tendencies`, `coach_careers`)
  * share one metric vocabulary, so a board definition serves the season pages
  * and the careers page alike. Rates are 0-1 fractions; the three columns in
- * percentage POINTS (`third_down_over_expected`, `fourth_wp_left*`) carry a
+ * percentage POINTS (`third_down_over_expected_rate`, `fourth_wp_left*`) carry a
  * numeric format, which the fixture-backed test pins so a builder change that
  * moves a column between the two conventions fails loudly.
  */
@@ -20,6 +20,8 @@ export interface CoachBoardColumn {
     format: CoachColumnFormat;
     /** rank 1 is the smallest value (pace, WP left, everything a defense allows) */
     lowerIsBetter?: boolean;
+    /** a style, not a quality (pace, pass rate, go rate): ranked, never shaded good/bad */
+    neutral?: boolean;
 }
 
 export interface CoachBoard {
@@ -35,6 +37,8 @@ export type CoachRow = Record<string, string | number | null | undefined>;
 const pct = (key: string, label: string, hover: string, lowerIsBetter = false): CoachBoardColumn => ({ key, label, hover, format: 'pct', lowerIsBetter });
 const num = (key: string, label: string, hover: string, format: 'num1' | 'num2', lowerIsBetter = false): CoachBoardColumn => ({ key, label, hover, format, lowerIsBetter });
 
+const style = (c: CoachBoardColumn): CoachBoardColumn => ({ ...c, neutral: true });
+
 const NEUTRAL = 'win probability between 20% and 80%, in regulation, outside the last two minutes of a half';
 
 export const COACH_BOARDS: Record<string, CoachBoard> = {
@@ -43,12 +47,12 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
         title: 'Pace',
         defaultSort: 'sec_per_play',
         columns: [
-            num('sec_per_play', 'Sec/Play', 'Seconds of game clock per offensive play, over drives with a clock; lower is faster', 'num1', true),
-            num('sec_per_play_neutral', 'Neutral Sec/Play', `Seconds of game clock per offensive play in situation-neutral snaps (${NEUTRAL}); lower is faster`, 'num1', true),
-            num('plays_per_game', 'Plays/Game', 'Offensive plays per game', 'num1'),
-            num('plays_per_drive', 'Plays/Drive', 'Offensive plays per drive', 'num2'),
-            num('drives_per_game', 'Drives/Game', 'Offensive drives per game', 'num1'),
-            pct('pace_coverage', 'Clock Coverage', 'Share of drives with a usable game clock; the pace columns are blank when it is zero'),
+            style(num('sec_per_play', 'Sec/Play', 'Seconds of game clock per offensive play, over drives with a clock; lower is faster', 'num1', true)),
+            style(num('sec_per_play_neutral', 'Neutral Sec/Play', `Seconds of game clock per offensive play in situation-neutral snaps (${NEUTRAL}); lower is faster`, 'num1', true)),
+            style(num('plays_per_game', 'Plays/Game', 'Offensive plays per game', 'num1')),
+            style(num('plays_per_drive', 'Plays/Drive', 'Offensive plays per drive', 'num2')),
+            style(num('drives_per_game', 'Drives/Game', 'Offensive drives per game', 'num1')),
+            style(pct('pace_coverage', 'Clock Coverage', 'Share of drives with a usable game clock; the pace columns are blank when it is zero')),
         ],
     },
     tendencies: {
@@ -56,15 +60,15 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
         title: 'Run/Pass',
         defaultSort: 'pass_rate_neutral',
         columns: [
-            pct('pass_rate', 'Pass Rate', 'Share of offensive plays that were dropbacks'),
-            pct('pass_rate_neutral', 'Neutral Pass Rate', `Situation-neutral pass rate: dropbacks per play when ${NEUTRAL}`),
-            pct('pass_rate_early_down', 'Early Down', 'Pass rate on first and second down'),
-            pct('pass_rate_d1', '1st Down', 'Pass rate on first down'),
-            pct('pass_rate_d2', '2nd Down', 'Pass rate on second down'),
-            pct('pass_rate_d3', '3rd Down', 'Pass rate on third down'),
-            pct('pass_rate_leading', 'Leading', 'Pass rate while ahead on the scoreboard'),
-            pct('pass_rate_tied', 'Tied', 'Pass rate while tied'),
-            pct('pass_rate_trailing', 'Trailing', 'Pass rate while behind on the scoreboard'),
+            style(pct('pass_rate', 'Pass Rate', 'Share of offensive plays that were passes (attempts and sacks)')),
+            style(pct('pass_rate_neutral', 'Neutral Pass Rate', `Situation-neutral pass rate: passes per play when ${NEUTRAL}`)),
+            style(pct('pass_rate_early_down', 'Early Down', 'Pass rate on first and second down')),
+            style(pct('pass_rate_d1', '1st Down', 'Pass rate on first down')),
+            style(pct('pass_rate_d2', '2nd Down', 'Pass rate on second down')),
+            style(pct('pass_rate_d3', '3rd Down', 'Pass rate on third down')),
+            style(pct('pass_rate_leading', 'Leading', 'Pass rate while ahead on the scoreboard')),
+            style(pct('pass_rate_tied', 'Tied', 'Pass rate while tied')),
+            style(pct('pass_rate_trailing', 'Trailing', 'Pass rate while behind on the scoreboard')),
         ],
     },
     efficiency: {
@@ -79,7 +83,7 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
             pct('explosive_rate_pass', 'Explosive Pass', 'Explosive rate on dropbacks'),
             num('ypp', 'Yards/Play', 'Yards per offensive play', 'num1'),
             pct('third_down_rate', '3rd Down Conv', 'Share of third downs converted'),
-            num('third_down_over_expected', '3rd Down Over Exp', 'Third-down conversions over what the distances to go would predict, in percentage points', 'num1'),
+            num('third_down_over_expected_rate', '3rd Down Over Exp', 'Third-down conversion rate minus what the distances to go would predict, in percentage points', 'num1'),
             num('pts_per_drive', 'Pts/Drive', 'Points per offensive drive', 'num2'),
         ],
     },
@@ -92,7 +96,7 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
             pct('rz_td_rate', 'RZ TD Rate', 'Share of red-zone trips ending in a touchdown'),
             pct('rz_conversion_rate', 'RZ Score Rate', 'Share of red-zone trips ending in any score'),
             num('rz_pts_per_trip', 'RZ Pts/Trip', 'Points per red-zone trip', 'num2'),
-            pct('so_trip_rate', 'SO Trip Rate', 'Share of drives that became a scoring opportunity (a snap inside the 40)'),
+            pct('so_trip_rate', 'SO Trip Rate', 'Share of drives that became a scoring opportunity (a run or pass inside the 40)'),
             pct('so_td_rate', 'SO TD Rate', 'Share of scoring opportunities ending in a touchdown'),
             pct('so_conversion_rate', 'SO Score Rate', 'Share of scoring opportunities ending in any score'),
             num('so_pts_per_trip', 'SO Pts/Trip', 'Points per scoring opportunity', 'num2'),
@@ -108,9 +112,9 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
         title: 'Fourth Downs',
         defaultSort: 'go_rate',
         columns: [
-            { key: 'fourth_decisions', label: 'Decisions', hover: 'Fourth downs where the model had a recommendation', format: 'int' },
-            pct('go_rate', 'Go Rate', 'Share of fourth-down decisions where the offense went for it'),
-            pct('fourth_agreement_rate', 'Model Agreement', 'Share of fourth-down decisions matching the win-probability model'),
+            style({ key: 'fourth_decisions', label: 'Decisions', hover: 'Fourth downs where the model had a recommendation', format: 'int' }),
+            style(pct('go_rate', 'Go Rate', 'Share of fourth-down decisions where the offense went for it')),
+            pct('fourth_agreement_rate', 'Model Agreement', 'Share of fourth-down decisions matching the model on go or kick (a punt and a field goal both count as a kick)'),
             pct('go_rate_when_model_says_go', 'Went When Told Go', 'Go rate on the fourth downs where the model said go'),
             pct('go_rate_when_model_says_kick', 'Went When Told Kick', 'Go rate on the fourth downs where the model said kick or punt', true),
             pct('fourth_conversion_rate', 'Conversion Rate', 'Share of fourth-down attempts converted'),
@@ -151,9 +155,49 @@ export function isCoachBoardPath(pathname: string): boolean {
 /** Rows with fewer plays sit below a divider, unranked: interim stints and partial seasons. */
 export const COACH_MIN_PLAYS = { season: 300, careers: 1500 } as const;
 
-/** Every metric column any board reads, once -- the `select` for the API calls. */
+/**
+ * Board columns the tables do not carry, as [count, opportunities]: the board
+ * shows 100 x count / opportunities. Third downs over expected is a count, so
+ * summed over a career it ranked longevity; per 100 third downs it is a rate.
+ */
+export const COACH_DERIVED_COLUMNS: Record<string, [string, string]> = {
+    third_down_over_expected_rate: ['third_down_over_expected', 'third_down_opportunities'],
+};
+
+/** The table columns a board column reads: its own key, or a derived column's inputs. */
+export function coachSourceColumns(key: string): string[] {
+    return Object.hasOwn(COACH_DERIVED_COLUMNS, key) ? COACH_DERIVED_COLUMNS[key] : [key];
+}
+
+/** Rows with every derived column filled in (null when there are no opportunities). */
+export function withDerivedColumns<T extends CoachRow>(rows: T[]): T[] {
+    return rows.map((row) => {
+        const out: CoachRow = { ...row };
+        for (const [key, [count, per]] of Object.entries(COACH_DERIVED_COLUMNS)) {
+            const n = numericValue(row, count);
+            const d = numericValue(row, per);
+            out[key] = n !== null && d ? (100 * n) / d : null;
+        }
+        return out as T;
+    });
+}
+
+/** Every table column any board reads, once -- the `select` for the API calls. */
 export function coachMetricColumns(): string[] {
-    return [...new Set(Object.values(COACH_BOARDS).flatMap((b) => b.columns.map((c) => c.key)))];
+    return [...new Set(Object.values(COACH_BOARDS).flatMap((b) => b.columns.flatMap((c) => coachSourceColumns(c.key))))];
+}
+
+/**
+ * FBS teams with no head-coach row, by name. College coaches are credited per
+ * team-season, only to a coach who led at least 80% of the games, so a school
+ * that changed coach mid-season has no row at all.
+ */
+export function teamsWithoutCoach(teams: CoachRow[], rows: CoachRow[], nameOf: (team: CoachRow) => string): string[] {
+    const coached = new Set(rows.map((r) => String(r.pos_team_id)));
+    return teams
+        .filter((t) => !coached.has(String(t.team_id)))
+        .map(nameOf)
+        .toSorted((a, b) => a.localeCompare(b));
 }
 
 /** The board for a slug, or undefined: an own-key lookup, so 'toString' is not a board. */
