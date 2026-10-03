@@ -18,7 +18,7 @@ interface Props {
 }
 const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
 
-const keys = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => group[teamKey]): [];
+const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => group[teamKey]) : [];
 
 const groups = [...new Set(keys || [])];
 
@@ -39,7 +39,9 @@ function handleMetricRows(rowKey: string): string {
         boxKey = splitKeys[0];
     }
 
-    const teamBoxScores: ProcessedTeamMetricBoxScore[] = box ? ((box as any)[boxKey] || []) : [];
+    let teamBoxScores: ProcessedTeamMetricBoxScore[] = box ? ((box as any)[boxKey] || []) : [];
+    teamBoxScores.sort((a, b) => keys.indexOf((a as any)[teamKey]) - keys.indexOf((b as any)[teamKey]) )
+
     let result = ""
     if (item == "EPA_misc") {
         teamBoxScores.forEach((teamData: any) => {
