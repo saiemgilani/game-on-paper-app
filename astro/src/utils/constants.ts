@@ -375,7 +375,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "rz_success_rate": "&emsp;&emsp;Success Rate",
     "rz_epa_per_play": "&emsp;&emsp;EPA/Play",
 
-    "so_trips": "<abbr title='Drives with a snap inside the opponent\'s 40'>Scoring Opportunities</abbr>",
+    "so_trips": "<abbr title=\"Drives with a snap inside the opponent's 40\">Scoring Opportunities</abbr>",
     "so_touchdown_rate": "&emsp;&emsp;TD Rate",
     "so_points_per_trip": "&emsp;&emsp;Pts/Trip",
     "so_success_rate": "&emsp;&emsp;Success Rate",
