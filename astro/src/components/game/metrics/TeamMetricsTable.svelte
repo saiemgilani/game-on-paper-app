@@ -161,10 +161,45 @@ function handleMetricRows(rowKey: string): string {
     return result;
 }
 
+const V2_METRIC_KEY_TITLE_MAPPING_OVERRIDES: Record<string, string> = {
+    "EPA_success" : "Plays",
+    "EPA_success_pass" : "When Passing",
+    "EPA_success_rush" : "When Rushing",
+    "EPA_success_standard_down" : "On Standard Downs",
+    "EPA_success_passing_down": "On Passing Downs",
+    "EPA_success_early_down": "On Early Downs",
+    "EPA_success_early_down_pass": "Successful Passes (Rate)",
+    "EPA_success_early_down_rush": "Successful Rushes (Rate)",
+    "early_downs": "Plays",
+    "early_down_pass": "Passes",
+    "early_down_rush": "Rushes",
+    "EPA_success_late_down": "On Late Downs",
+    "EPA_success_late_down_pass": "Successful Passes (Rate)",
+    "EPA_success_late_down_rush": "Successful Rushes (Rate)",
+    "late_downs": "Plays",
+    "late_down_pass": "Passes",
+    "late_down_rush": "Rushes",
+    "middle_8": "Plays",
+    "middle_8_pass": "Passes",
+    "middle_8_rush": "Rushes",
+    "EPA_middle_8": "EPA",
+    "EPA_middle_8_success": "During \"Middle 8\"",
+    "EPA_middle_8_success_pass": "Successful Passes (Rate)",
+    "EPA_middle_8_success_rush": "Successful Rushes (Rate)",
+    "EPA_middle_8_per_play" : "EPA/play",
+    "EPA_early_down" : "EPA",
+    "EPA_early_down_per_play" : "EPA/Play",
+    "EPA_late_down" : "EPA",
+    "EPA_late_down_per_play" : "EPA/Play",
+    "late_down_avg_distance" : "Avg Distance",
+    "early_down_first_down" : "First Downs Created",
+};
+
 function getMetricTitle(rowKey: string): string {
     const splitKeys = rowKey.split(".");
     const item = splitKeys.length > 1 ? splitKeys.slice(1).join(".") : splitKeys[0];
-    return METRIC_KEY_TITLE_MAPPING[item] || item
+
+    return V2_METRIC_KEY_TITLE_MAPPING_OVERRIDES[item] || METRIC_KEY_TITLE_MAPPING[item] || item;
 }
 </script>
 
