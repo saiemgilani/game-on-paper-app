@@ -129,11 +129,13 @@ describe('Deserved Win % bars switch pair with prefers-color-scheme', () => {
 describe('game-colours off: the page is byte-for-byte what main renders', () => {
     // Hashes of the flag-off render of this fixture on origin/main 4a62cc2a,
     // before 'game-colours' existed (same test body, run there), re-pinned for
-    // the Turnovers/Defensive table fix (two decimals, Pass Breakups). The flag's
+    // the Turnovers/Defensive table fix (two decimals, Pass Breakups), and v2 for
+    // linked hover (WP points carry game_play_number + drive_id, `linked`, one module
+    // script; classic unchanged). The flag's
     // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
     // PR that changes the game page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { v2: '1376f0e4a9ff1d7c', classic: '469862e18c3ae16b' };
+    const GOLDEN = { v2: 'e36e1f863fc94f81', classic: '469862e18c3ae16b' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});
