@@ -188,7 +188,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {punters.map((p: any) => (
                 <tr>
-                    <td><PlayerLink id={playerIds.get(String(p.player_name ?? ''))} season={season}>{p.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={p.player_id ?? playerIds.get(String(p.player_name ?? ''))} season={season}>{p.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
@@ -208,7 +208,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {kickers.map((k: any) => (
                 <tr>
-                    <td><PlayerLink id={playerIds.get(String(k.player_name ?? ''))} season={season}>{k.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={k.player_id ?? playerIds.get(String(k.player_name ?? ''))} season={season}>{k.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
@@ -230,7 +230,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {returners.map((r: any) => (
                 <tr>
-                    <td><PlayerLink id={playerIds.get(String(r.player_name ?? ''))} season={season}>{r.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={r.player_id ?? playerIds.get(String(r.player_name ?? ''))} season={season}>{r.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
@@ -252,7 +252,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {blocks.map((b: any) => (
                 <tr>
-                    <td><PlayerLink id={playerIds.get(String(b.player_name ?? ''))} season={season}>{b.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={b.player_id ?? playerIds.get(String(b.player_name ?? ''))} season={season}>{b.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
