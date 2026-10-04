@@ -29,6 +29,13 @@ describe('glossary term anchors', () => {
 });
 
 describe('glossary controls', () => {
+    test('one h1, the page name, not the <title> string', async () => {
+        const { default: Page } = await import('../src/pages/glossary.astro');
+        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/glossary/') });
+        const h1s = [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1].trim());
+        expect(h1s).toEqual(['College Football Advanced Stats Glossary']);
+    }, 60_000);
+
     test('every <select> on the page has an accessible name', async () => {
         // Lighthouse's `select-name` audit: the mobile section picker shipped without
         // one and the PR evidence flagged it on /glossary.
