@@ -311,7 +311,7 @@ function onChangeSpan(e: Event) {
                     "defensive.TFL_pass",
                     "defensive.TFL_rush",
                     "defensive.sacks",
-                    "defensive.PD",
+                    "defensive.pass_breakups",
                     "defensive.def_int",
                     "defensive.fumbles"
                 ]
