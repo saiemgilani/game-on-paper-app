@@ -64,7 +64,7 @@ async function render(league: 'cfb' | 'nfl', query: string, preview: boolean) {
     const { loadChartBuilder } = await import('../src/routes/charts');
     const data = await loadChartBuilder({ url: new URL(url), locals, cache: { set: () => {} } } as any, league);
     const { default: Route } = await import('../src/components/routes/ChartBuilderRoute.astro');
-    return container.renderToString(Route, { props: data, request: new Request(url), locals });
+    return container.renderToString(Route, { props: { ...data }, request: new Request(url), locals });
 }
 
 describe('chart-builder-v2 off: the public builder is what main renders', () => {
