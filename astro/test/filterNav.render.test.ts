@@ -20,16 +20,16 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function schedule(props: Record<string, unknown>, locals: Record<string, unknown>, path = '/year/2025/type/2/week/5') {
+async function schedule(props: Record<string, unknown>, locals: Partial<App.Locals>, path = '/year/2025/type/2/week/5') {
     const { default: SchedulePage } = await import('../src/components/schedule/SchedulePage.astro');
     return container.renderToString(SchedulePage, {
         props: { games: [], isScoreboard: false, ...props },
         request: new Request(`https://gameonpaper.com${path}`),
-        locals,
+        locals: locals as App.Locals,
     });
 }
 
-async function leaderboard(kind: 'teams' | 'players', locals: Record<string, unknown>) {
+async function leaderboard(kind: 'teams' | 'players', locals: Partial<App.Locals>) {
     const { default: Page } = kind === 'teams'
         ? await import('../src/components/leaderboards/TeamLeaderboardPage.astro')
         : await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
@@ -39,7 +39,7 @@ async function leaderboard(kind: 'teams' | 'players', locals: Record<string, unk
     return container.renderToString(Page, {
         props,
         request: new Request(`https://gameonpaper.com/nfl/year/2025/${kind}/${props.category}`),
-        locals: { league: 'nfl', ...locals },
+        locals: { league: 'nfl', ...locals } as App.Locals,
     });
 }
 
