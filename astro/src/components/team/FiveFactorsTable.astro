@@ -28,9 +28,10 @@ const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNu
     </Fragment>
 
     <Fragment slot="rows">
+        {/* the label carries the definition as a hover only below md, where the Metric column is hidden */}
         {FIVE_FACTORS.map((f) => (
             <tr>
-                <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr title={f.hover}>{f.label}</abbr></td>
+                <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr class="d-md-none" title={f.hover}>{f.label}</abbr><span class="d-none d-md-inline">{f.label}</span></td>
                 <td class="d-none d-md-table-cell text-left text-nowrap text-muted text-small">{f.metric}</td>
                 {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
                     <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>

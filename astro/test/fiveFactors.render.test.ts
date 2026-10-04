@@ -54,10 +54,12 @@ async function render(league: 'cfb' | 'nfl', id: string, preview: boolean) {
 }
 
 const panelOf = (html: string) => html.split('id="five-factors-panel"')[1]?.split('</table>')[0];
-/** Each body `<td>`: its class attribute and its text, tags stripped (a `>` inside a quoted
- *  attribute, as in the `(EPA > 0)` hover, is not the tag's end). */
+/** Each body `<td>`: its attributes, its class, its inner HTML and its text, tags stripped
+ *  (a `>` inside a quoted attribute, as in the `(EPA > 0)` hover, is not the tag's end). */
 const tds = (panel: string) => [...panel.split('<tbody')[1].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)]
-    .map((m) => ({ cls: m[1].match(/class="([^"]*)"/)?.[1] ?? '', text: m[2].replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, '').replace(/\s+/g, ' ').trim() }));
+    .map((m) => ({ attrs: m[1], cls: m[1].match(/class="([^"]*)"/)?.[1] ?? '', html: m[2], text: m[2].replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, '').replace(/\s+/g, ' ').trim() }));
+/** A tag's attributes and its text, a `>` inside a quoted attribute included. */
+const tag = (html: string, name: string) => html.match(new RegExp(`<${name}((?:[^>"']|"[^"]*"|'[^']*')*)>([^<]*)</${name}>`));
 
 /** The Own/Opp rule TeamMetricsTable prints drive start with, spelled out here rather than imported. */
 const yardline = (val: number) => `${val >= 50 ? 'Own' : 'Opp'} ${roundNumber(val >= 50 ? 100 - val : val, 2, 0)}`;
@@ -96,10 +98,21 @@ describe.each([
         const cells = tds(panel);
         expect(cells.length).toBe(EXPECTED.length * 5);
         EXPECTED.forEach(([label, cols, rate, fixed, yards], i) => {
-            expect(cells[i * 5].text).toBe(label);
             // the metric column names what the three cells measure; hidden below md
             expect(cells[i * 5 + 1].text).toBe(FIVE_FACTORS[i].metric);
             expect(cells[i * 5 + 1].cls).toContain('d-none d-md-table-cell');
+            // so the label carries the definition as a hover only below md, where that
+            // column is hidden; from md up it is plain text, with no second title
+            const cell = cells[i * 5];
+            expect(cell.attrs, label).not.toContain('title=');
+            expect(cell.html.match(/title=/g), label).toHaveLength(1);
+            const abbr = tag(cell.html, 'abbr');
+            expect(abbr?.[2], label).toBe(label);
+            expect(abbr?.[1], label).toContain('class="d-md-none"');
+            expect(abbr?.[1], label).toContain(`title="${FIVE_FACTORS[i].hover}"`);
+            const plain = tag(cell.html, 'span');
+            expect(plain?.[2], label).toBe(label);
+            expect(plain?.[1], label).toBe(' class="d-none d-md-inline"');
             cols.forEach((k, j) => {
                 const v = rate ? row[k] * 100 : row[k];
                 const sign = j === 2 && v >= 0 ? '+' : '';
