@@ -1,7 +1,7 @@
 ---
 import { retrieveTeamSummaries, type SDVTeamSummary } from '../../resources/sdv';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
-import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
+import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS, SDV_TEAM_STYLE_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldInvertSortForMetric, STANDARD_THEME_COLOR, isTeamFavorite, formatRank, generateMarginalString  } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -61,7 +61,7 @@ function generateMetricCell(team: any, category: string, m: string): string {
     let valString = category == "differential" ? generateMarginalString(value, power10, fixed) : roundNumber(value, power10, fixed);
     valString += ((SDV_TEAM_PERCENT_COLUMNS.includes(m)) ? "%" : "");
     return `
-    <td class="text-center ${generateColorRampValue(parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
+    <td class="text-center ${SDV_TEAM_STYLE_COLUMNS.includes(m) ? '' : generateColorRampValue(parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
     `
 }
 

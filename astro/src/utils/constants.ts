@@ -310,7 +310,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "turnover_margin" : "Turnover Margin",
     "expected_turnover_margin" : "Expected Turnover Margin",
     "turnover_luck" : "Turnover Luck (pts)",
-    "PD" : "Passes Defensed",
+    "pass_breakups" : "Pass Breakups",
     "INT" : "&emsp;&emsp;Interceptions",
     "Int" : "&emsp;&emsp;Interceptions",
     "def_int" : "Interceptions",
@@ -391,7 +391,7 @@ export const TURNOVER_VEC: string[] = [
 ]
 
 export const BOX_SCORE_NON_RATE_DECIMAL_COLUMNS: string[] = ["expected_turnovers","expected_turnover_margin","turnover_luck","EPA_middle_8_per_play","EPA_middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","EPA_sp","EPA_special_teams","EPA_kickoff","EPA_punt","EPA_fg","EPA_overall_off", "EPA_overall_offense","EPA_per_play","EPA_passing_overall","EPA_passing_per_play", "EPA_rushing_overall","EPA_rushing_per_play","points_per_drive","yards_per_drive","plays_per_drive","avg_field_position","rushing_highlight_yards_per_opp","line_yards_per_carry","yards_per_rush","yards_per_pass","yards_per_play","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play", "EPA_late_down_per_play", "EPA_late_down", "late_down_avg_distance", "EPA_overall_total", "EPA_penalty"];
-export const BOX_SCORE_NON_RATE_COLUMNS: string[] = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","PD","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
+export const BOX_SCORE_NON_RATE_COLUMNS: string[] = ["EPA_plays","scrimmage_plays","expected_turnover_margin","turnover_margin","turnovers","expected_turnovers","turnover_luck","early_downs","late_downs","fumbles","INT","pass_breakups","middle_8","EPA_middle_8_per_play","EPA_middle_8","EPA_early_down_per_play","EPA_early_down","fumbles_lost","fumbles_recovered","Int","TFL","TFL_pass","TFL_rush","total_fumbles","def_int","points_per_drive","drives","points_per_drive","yards_per_drive","plays_per_drive","drive_total_gained_yards_rate","avg_field_position","rushing_highlight_yards","line_yards","yards_per_rush","yards_per_pass","yards_per_play","off_yards","pass_yards","rush_yards","EPA_overall_offense","EPA_penalty","EPA_overall_total","second_level_yards","open_field_yards","drive_stopped_rate","EPA_non_explosive","EPA_non_explosive_passing","EPA_non_explosive_rushing","EPA_non_explosive_per_play","EPA_non_explosive_passing_per_play","EPA_non_explosive_rushing_per_play"]; 
 export const BOX_SCORE_NON_RATE_PERCENT_COLUMNS: string[] = ["drive_total_gained_yards_rate","drive_stopped_rate","EPA_success_rate_third","EPA_success_rate_rz"];
 
 
@@ -418,6 +418,8 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
     "play_stuffed_off",
     "drives_off",
     "drivesgame_off",
+    "pts_per_opp_off",
+    "turnovers_off",
     "yardsdrive_off",
     "playsdrive_off",
     "success_off",
@@ -472,6 +474,8 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
     "play_stuffed_def",
     "drives_def",
     "drivesgame_def",
+    "pts_per_opp_def",
+    "turnovers_def",
     "yardsdrive_def",
     "playsdrive_def",
     "success_def",
@@ -523,6 +527,8 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
     "success_margin_rank",
     "yardsplay_margin_rank",
     "start_position_margin",
+    "pts_per_opp_margin",
+    "turnover_margin",
     "start_position_margin_rank",
     "total_available_yards_off",
     "total_gained_yards_off",
@@ -1000,6 +1006,13 @@ export const SDV_PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, 
     }
 };
 
+// Styles, not qualities: rank 1 is only the most pass-happy (or aggressive)
+// offense, so these cells are never shaded on the good/bad ramp.
+export const SDV_TEAM_STYLE_COLUMNS: string[] = [
+    "pass_rate_off", "xpass_rate_off", "pass_oe_off", "neutral_pass_rate_off", "neutral_xpass_rate_off", "neutral_pass_oe_off",
+    "fourth_decisions_off", "fourth_go_rate_off", "fourth_go_expected_off",
+];
+
 export const SDV_PLAYER_PERCENT_COLUMNS: string[] = [
     "success",
     "catchpct"
@@ -1173,6 +1186,10 @@ export const SDV_BASE_METRIC_TITLES: Record<string, string> = {
   "total_available_yards": "Total Available Yards",
   "total_gained_yards": "Total Gained Yards",
   "available_yards_pct": "Available Yards %",
+  "pts_per_opp": "Points/Opp",
+  "pts_per_drive": "Points/Drive",
+  "turnovers": "Turnovers",
+  "turnover": "Turnover Margin",
   "adj_epa": "Adj EPA/Play",
   "strength_faced": "Strength Faced",
   "EPAdropback": "EPA/Dropback",

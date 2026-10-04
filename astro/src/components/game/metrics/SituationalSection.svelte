@@ -157,7 +157,7 @@ function onChangeSpan(e: Event) {
             teamKey='def_pos_team'
             season={season}
             columns={[
-                "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","def_int","fumbles"
+                "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","pass_breakups","def_int","fumbles"
             ]}
             teamBoxScores={selectedBoxScore.defensive}
             useSuffix={true}
@@ -172,7 +172,7 @@ function onChangeSpan(e: Event) {
             ]}
             teamBoxScores={selectedBoxScore.turnover}
             useSuffix={false}
-            decimalPoints={0}
+            decimalPoints={2}
         />
         <!-- <TraditionalTeamStats
             season={season}
