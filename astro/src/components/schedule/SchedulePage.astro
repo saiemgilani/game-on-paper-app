@@ -10,7 +10,6 @@ import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
 import { jsonLdScript, websiteJsonLd } from "../../utils/seo"
 import { LEAGUES } from "../../utils/league"
-import FilterGroup from "../../layouts/FilterGroup.astro";
 import MobileFilters from "../MobileFilters.astro";
 import { adjacentWeeks, weekHref, weeksFor } from "../../resources/schedule";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -172,15 +171,11 @@ if (compactRows) {
             {weekNav && (
                 // the pickers' box, so from md up the stepper lines up under the
                 // season select; on phones it sits at the edge, beside the Filters toggle
-                <div class="form-picker pt-0 px-0 px-md-3">
-                    <FilterGroup label="Week">
-                        <Fragment slot="filter-body">
-                            {weekNav.prev && <a class="btn btn-sm btn-outline-secondary" href={weekHref(league, season, weekNav.prev, group)} rel="prev" aria-label={`Previous week: ${weekNav.prev.label}`}><i class="bi bi-chevron-left" aria-hidden="true"></i> {weekNav.prev.label}</a>}
-                            <span class="px-2 fw-bold">{weekNav.current.label}</span>
-                            {weekNav.next && <a class="btn btn-sm btn-outline-secondary" href={weekHref(league, season, weekNav.next, group)} rel="next" aria-label={`Next week: ${weekNav.next.label}`}>{weekNav.next.label} <i class="bi bi-chevron-right" aria-hidden="true"></i></a>}
-                        </Fragment>
-                    </FilterGroup>
-                </div>
+                <nav class="form-picker pt-0 px-0 px-md-3 d-flex align-items-center flex-wrap gap-1" aria-label="Week">
+                    {weekNav.prev && <a class="btn btn-sm btn-outline-secondary" href={weekHref(league, season, weekNav.prev, group)} rel="prev" aria-label={`Previous week: ${weekNav.prev.label}`}><i class="bi bi-chevron-left" aria-hidden="true"></i> {weekNav.prev.label}</a>}
+                    <span class="px-2 fw-bold">{weekNav.current.label}</span>
+                    {weekNav.next && <a class="btn btn-sm btn-outline-secondary" href={weekHref(league, season, weekNav.next, group)} rel="next" aria-label={`Next week: ${weekNav.next.label}`}>{weekNav.next.label} <i class="bi bi-chevron-right" aria-hidden="true"></i></a>}
+                </nav>
             )}
             {
                 (compactRows && games.length > 0) && (

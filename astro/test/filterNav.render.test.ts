@@ -46,7 +46,7 @@ async function leaderboard(kind: 'teams' | 'players', locals: Partial<App.Locals
 describe('week stepper (filter-nav)', () => {
     test('preview: previous and next weeks as named links, group kept', async () => {
         const html = await schedule({ season: 2025, seasontype: 2, week: 5, group: 80 }, { preview: true });
-        expect(html).toContain('aria-label="Week"');
+        expect(html).toMatch(/<nav[^>]*aria-label="Week"/);
         expect(html).toMatch(/href="\/year\/2025\/type\/2\/week\/4\?group=80"[^>]*rel="prev"[^>]*aria-label="Previous week: Week 4"/);
         expect(html).toMatch(/href="\/year\/2025\/type\/2\/week\/6\?group=80"[^>]*rel="next"[^>]*aria-label="Next week: Week 6"/);
     }, 60_000);
