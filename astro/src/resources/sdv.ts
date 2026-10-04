@@ -912,6 +912,10 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     }
 }
 
+// The largest ranked table is CFB receiving (744 rows in 2025, 538 in 2024); the
+// reader throws rather than truncate if a season ever passes this.
+const RANKED_ROWS_LIMIT = '2000';
+
 /**
  * Every RANKED row of one season leaderboard table, with only the columns a
  * nearby-rank list reads. `<first metric>_rank__gte=1` drops the non-qualifiers
@@ -925,9 +929,14 @@ export async function retrieveRankedRows({ table, season, metrics, idColumns, le
     { table: string; season: number; metrics: string[]; idColumns: string[]; league?: League }): Promise<Record<string, any>[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     const select = [...new Set([...idColumns, 'season', ...metrics, ...metrics.map((m) => `${m}_rank`)])].join(',');
-    const query = new URLSearchParams({ season: String(season), select, [`${metrics[0]}_rank__gte`]: '1', order: `${metrics[0]}_rank`, limit: '1000' });
+    const query = new URLSearchParams({ season: String(season), select, [`${metrics[0]}_rank__gte`]: '1', order: `${metrics[0]}_rank`, limit: RANKED_ROWS_LIMIT });
     const content = await requestSDV(table, query, undefined, 60 * 60 * 24, true, league, true);
-    return content?.data ?? [];
+    // Strict means every ranked row or an error. A 200 whose body has no `data`
+    // array, or a page the API cut short (`next` set), would otherwise pass for a
+    // short list and drop the players ranked past the cut.
+    if (!Array.isArray(content?.data)) throw new Error(`ranked rows: no data array in the ${league}/${table} response`);
+    if (content.next) throw new Error(`ranked rows: ${league}/${table} ${season} has more than ${RANKED_ROWS_LIMIT} ranked rows`);
+    return content.data;
 }
 
 // Fitted for THIS input, the team summaries' net_adj_epa, by
