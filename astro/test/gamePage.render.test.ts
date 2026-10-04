@@ -109,29 +109,6 @@ describe('GamePage renders a finished game end to end', () => {
         expect(html).toMatch(/astro-island[^>]+SituationalSection/);
     });
 
-    // test('penalties split by unit, and the totals are accepted flags only', () => {
-    //     expect(html).toContain('>Penalties<');
-    //     for (const u of ['Offense', 'Defense', 'Special teams', 'Total', 'First downs given up', 'Plays nullified']) {
-    //         expect(html).toContain(`>${u}<`);
-    //     }
-    //     // this game has 11 flags, none on a kick
-    //     const pen = html.slice(html.indexOf('>Penalties<'));
-    //     const st = pen.slice(pen.indexOf('>Special teams<'), pen.indexOf('>Total<'));
-    //     expect(st).toMatch(/0&ndash;0/);
-    //     const totals = [...pen.slice(pen.indexOf('>Total<')).matchAll(/<strong>(\d+)&ndash;(\d+)<\/strong>/g)];
-    //     expect(totals).toHaveLength(2);
-    //     expect(Number(totals[0][1]) + Number(totals[1][1])).toBe(11);
-    // });
-
-    // test('the book rows render with their EPA beside them', () => {
-    //     for (const label of ['Third down', 'Fourth down', 'Red zone scoring', 'Turnovers', 'Sacks taken', 'Time of possession']) {
-    //         expect(html).toContain(`>${label}<`);
-    //     }
-    //     expect(html).toMatch(/\d+-\d+ \(\d+%\)/);
-    //     // the clock lives in the possession row itself, not just anywhere on the page
-    //     expect(html).toMatch(/Time of possession<\/td>[\s\S]{0,600}?\d+:\d\d/);
-    // });
-
     test('a game whose text names no tacklers shows no defensive box', () => {
         // 401729745 predates ESPN's LiveStats tackler parentheticals; the section
         // has to disappear rather than render an empty table. Scoped to the player
