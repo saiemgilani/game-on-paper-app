@@ -1162,6 +1162,48 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
+function cleanUpBoxScores(key: string, baseData: any[], pbp: ProcessedGame): any[] {
+    const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
+    let teamKey = "pos_team"
+    if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
+        teamKey = "def_pos_team"
+    }
+
+    baseData.sort((a: any, b: any) => {
+        if (a[teamKey] == pbp.teamInfo.away.id && b[teamKey] == pbp.teamInfo.home.id) {
+            return -1;
+        } else if (b[teamKey] == pbp.teamInfo.away.id && a[teamKey] == pbp.teamInfo.home.id) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+
+    if (key == "drive_scripting") {
+        let teamTrack: Record<string, string[]> = {};
+        teamTrack[`${pbp.teamInfo.home.id}`] = [];
+        teamTrack[`${pbp.teamInfo.away.id}`] = [];
+
+        for (const b of baseData) {
+            const key = String(b["pos_team"])
+            teamTrack[key].push(b["script"])
+        }
+        
+        const expected = new Set(["scripted", "unscripted"])
+        for (const [key, scripts] of Object.entries(teamTrack)) {
+            const diff = expected.difference(new Set(scripts))
+
+            for (const d of diff) {
+                const miniBox: any = { "script": d };
+                miniBox[teamKey] = key
+                baseData.push(miniBox)
+            }
+        }
+    }
+
+    return baseData
+}
+
 export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source);
 
@@ -1171,21 +1213,7 @@ export async function retrieveProcessedGame(gameId: string | number, cacheTTL: n
     };
 
     for (let [key, baseData] of Object.entries(pbp.advBoxScore || {})) {
-        const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
-        let teamKey = "pos_team"
-        if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
-            teamKey = "def_pos_team"
-        }
-
-        baseData.sort((a: any, b: any) => {
-            if (a[teamKey] == pbp.teamInfo.away.id && b[teamKey] == pbp.teamInfo.home.id) {
-                return -1;
-            } else if (b[teamKey] == pbp.teamInfo.away.id && a[teamKey] == pbp.teamInfo.home.id) {
-                return 1;
-            } else {
-                return 0;
-            }
-        });
+        baseData = cleanUpBoxScores(key, baseData, pbp);
     }
 
     if (!pbp.advBoxScoreSpans) {
@@ -1194,21 +1222,7 @@ export async function retrieveProcessedGame(gameId: string | number, cacheTTL: n
 
     for (let [span, advBoxScore] of Object.entries(pbp.advBoxScoreSpans)) {
         for (let [key, baseData] of Object.entries(advBoxScore || {})) {
-            const statKeys = (baseData as any).length > 0 ? Object.keys((baseData as any)[0]) : []
-            let teamKey = "pos_team"
-            if (statKeys.length > 0 && statKeys.includes("def_pos_team")) {
-                teamKey = "def_pos_team"
-            }
-
-            (baseData as any).sort((a: any, b: any) => {
-                if (a[teamKey] == pbp.teamInfo.away.id && b[teamKey] == pbp.teamInfo.home.id) {
-                    return -1;
-                } else if (b[teamKey] == pbp.teamInfo.away.id && a[teamKey] == pbp.teamInfo.home.id) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            });
+            baseData = cleanUpBoxScores(key, baseData, pbp);
         }
     }
 

@@ -18,8 +18,7 @@ interface Props {
 }
 const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
 
-const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => group[teamKey]) : [];
-
+const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => String(group[teamKey])) : [];
 const groups = [...new Set(keys || [])];
 
 function handleMetricRows(rowKey: string): string {
