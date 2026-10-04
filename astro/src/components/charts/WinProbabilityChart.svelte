@@ -82,10 +82,34 @@ function createDriveShadePlugin(getRange) {
     };
 }
 
+// The chart's side of linked mode. A plugin, not options.onHover: Chart.js calls
+// onHover only inside the chart area, so leaving the chart would never clear the
+// rows. A tap shows the tooltip but does not jump the page; a mouse click does.
+function createLinkedHoverPlugin() {
+    let last = null;
+    let lastTouch = 0;
+    const playAt = (el) => (el ? (plays[el.index]?.game_play_number ?? null) : null);
+    return {
+        id: 'linked-hover',
+        afterEvent: (chart, args) => {
+            const native = args.event.native;
+            if (native?.type?.startsWith('touch')) lastTouch = Date.now();
+            const n = playAt(chart.getActiveElements()[0]);
+            if (n !== last) {
+                last = n;
+                window.dispatchEvent(new CustomEvent(HOVER_WP, { detail: { n } }));
+            }
+            const tap = native?.pointerType === 'touch' || Date.now() - lastTouch < 1000;
+            if (args.event.type === 'click' && args.inChartArea && n != null && !tap) {
+                window.dispatchEvent(new CustomEvent(SELECT_WP, { detail: { n } }));
+            }
+        },
+    };
+}
+
 // Linked mode: the rows talk to whichever chart is drawn now (a theme flip
 // destroys and rebuilds it), so these listeners are added once, not per build.
 let driveShade = null;
-let hoveredPlay = null;
 if (linked) {
     window.addEventListener(HOVER_PLAY, (e) => {
         const chart = Chart.getChart("wpChart");
@@ -257,7 +281,7 @@ async function generateChart() {
     var wpChart = new Chart(document.getElementById("wpChart"), {
         type: 'GradientFillLineController',
         plugins: [
-            ...(linked ? [createDriveShadePlugin(() => driveShade)] : []),
+            ...(linked ? [createDriveShadePlugin(() => driveShade), createLinkedHoverPlugin()] : []),
             ...periodMarkers,
             {
                 beforeDatasetDraw: (chart) => {
@@ -354,22 +378,8 @@ async function generateChart() {
         },
         options: {
             responsive: true,
-            ...(linked ? {
-                // any x picks its play: the line has no drawn points to intersect
-                interaction: { mode: 'index', intersect: false },
-                onHover: (_evt, elements) => {
-                    const n = elements.length ? (plays[elements[0].index]?.game_play_number ?? null) : null;
-                    if (n === hoveredPlay) return;
-                    hoveredPlay = n;
-                    window.dispatchEvent(new CustomEvent(HOVER_WP, { detail: { n } }));
-                },
-                onClick: (evt, elements) => {
-                    // a tap shows the tooltip; only a pointer that can hover jumps the page to All Plays
-                    if (evt.native?.pointerType === 'touch' || !window.matchMedia('(hover: hover)').matches) return;
-                    const n = elements.length ? (plays[elements[0].index]?.game_play_number ?? null) : null;
-                    if (n != null) window.dispatchEvent(new CustomEvent(SELECT_WP, { detail: { n } }));
-                },
-            } : {}),
+            // any x picks its play: the line has no drawn points to intersect
+            ...(linked ? { interaction: { mode: 'index', intersect: false } } : {}),
             scales: {
                 y: {
                     suggestedMax: 1.0,
