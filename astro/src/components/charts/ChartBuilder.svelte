@@ -5,13 +5,25 @@
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
+    import { builderUrl, CHART_TEXT, chartTitle, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
-    const { season, x, y, points, league = 'cfb' } = $props();
+    const { season, x, y, points, league = 'cfb', v2 = false, highlight = '', mode = 'logos' } = $props();
     let selectedSeason = season;
     let selectedMetricX = x;
     let selectedMetricY = y;
+
+    // v2 ('chart-builder-v2'): one click on the rail or Random navigates, carrying the v2 view state
+    const rail = metricRail();
+    const railKeys = rail.flatMap((f) => f.metrics.map((m) => m.key));
+    function go(nx: string, ny: string) {
+        window.location.href = builderUrl(league, { season: selectedSeason, x: nx, y: ny, hl: highlight, mode });
+    }
+    function onRandom() {
+        const [nx, ny] = randomAxes(railKeys);
+        go(nx, ny);
+    }
 
     let conferenceList = [...new Set(points.map(p => p.conference))].sort()
 
@@ -69,6 +81,10 @@
         const averageY = (chartedPoints.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         const minY = Math.min(...chartedPoints.map((t: any) => t.y))
         const maxY = Math.max(...chartedPoints.map((t: any) => t.y))
+        // v2 draws the MEDIAN crosshair (quadrants split the field in half); the public builder keeps its mean.
+        // A team with no value (null) is skipped by median(), never read as 0.
+        const centerX = v2 ? (median(chartedPoints.map((t: any) => t.x)) ?? averageX) : averageX;
+        const centerY = v2 ? (median(chartedPoints.map((t: any) => t.y)) ?? averageY) : averageY;
         console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
         console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
 
@@ -184,8 +200,8 @@
                     }
                 },
                 afterDraw: (chart) => {
-                    const yValue = chart.scales.y.getPixelForValue(averageY);
-                    const xValue = chart.scales.x.getPixelForValue(averageX);
+                    const yValue = chart.scales.y.getPixelForValue(centerY);
+                    const xValue = chart.scales.x.getPixelForValue(centerX);
 
                     const ctx = chart.ctx;
                     ctx.save();
@@ -209,6 +225,31 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     ctx.restore();
+
+                    if (v2) {
+                        const area = chart.chartArea;
+                        const q = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY));
+                        ctx.save();
+                        ctx.fillStyle = isDarkMode ? CHART_TEXT.dark : CHART_TEXT.light;
+                        ctx.font = 'bold 11px "Chivo", "Fira Mono", serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`MEDIAN ${formatNumberForMetric(selectedMetricY, centerY)}`, area.left + 4, yValue - 4);
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`MEDIAN ${formatNumberForMetric(selectedMetricX, centerX)}`, xValue, area.bottom - 4);
+                        ctx.font = '11px "Chivo", "Fira Mono", serif';
+                        ctx.globalAlpha = 0.6;
+                        // two labels share each edge: draw them only where they fit side by side (not on a phone-width chart)
+                        const widest = Math.max(...Object.values(q).map((t) => ctx.measureText(t).width));
+                        if (2 * widest + 16 < area.right - area.left) {
+                            ctx.textAlign = 'right';
+                            ctx.fillText(q.topRight, area.right - 4, area.top + 12);
+                            ctx.fillText(q.bottomRight, area.right - 4, area.bottom - 18);
+                            ctx.textAlign = 'left';
+                            ctx.fillText(q.topLeft, area.left + 4, area.top + 12);
+                            ctx.fillText(q.bottomLeft, area.left + 4, area.bottom - 18);
+                        }
+                        ctx.restore();
+                    }
                 }
             }],
             options: {
@@ -270,8 +311,10 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
+                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all') : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
+                        // v2's chart is a column narrower: drop the title below the credit lines (drawn on lg/xl only)
+                        ...(v2 && (viewport == "xl" || viewport == "lg") ? { padding: { top: 34, bottom: 10 } } : {}),
                         font: {
                             size: getTitleSizeForViewport(viewport),
                             family: '"Chivo", "Fira Mono", serif'
@@ -383,7 +426,7 @@
         <div class="ms-auto col-lg-6 col-xs-12">
             <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-lg-auto mx-sx-0 mx-sm-2">
-                    <select class="form-select form-select-md" onchange={onChangeSeason}>
+                    <select class="form-select form-select-md" onchange={(e) => { onChangeSeason(e); if (v2) go(selectedMetricX, selectedMetricY); }}>
                         <option value="-1" disabled>Choose Season...</option>
                         {#each AVAILABLE_SEASONS as s}
                             <option value={s} selected={(selectedSeason == s)}>{s}</option>
@@ -391,6 +434,7 @@
                     </select>
                 </div>
             </form>
+            {#if !v2}
             <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-auto mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2" onchange={onChangeMetricX}>
                     <select class="form-select form-select-md">
@@ -423,13 +467,48 @@
                 <!-- <a href="#" class="btn btn-md btn-secondary me-2" title="Download Chart" download={`chart-${x}-${y}-${season}.jpg`} id="chart-download">Download Chart</a> -->
                 <button onclick={onSubmit} class="btn btn-md btn-primary" title="Generate">Generate</button>
             </div>
+            {/if}
         </div>
     </div>
 </div>
 
+{#if v2}
+<div class="container mb-3">
+    <div class="row">
+        <div class="col-lg-3 col-12 mb-3 order-2 order-lg-1" id="metric-rail">
+            <div class="mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="random-axes" onclick={onRandom}>Random</button>
+            </div>
+            {#each rail as fam}
+            <details open={fam.metrics.some((m) => m.key === selectedMetricX || m.key === selectedMetricY)}>
+                <summary class="text-small">{fam.family}</summary>
+                <table class="table table-sm mb-2">
+                    <thead>
+                        <tr><th></th><th class="text-center text-muted text-small">X</th><th class="text-center text-muted text-small">Y</th></tr>
+                    </thead>
+                    <tbody>
+                    {#each fam.metrics as m}
+                        <tr data-rail-metric={m.key}>
+                            <td class="text-left">{m.title}</td>
+                            <td class="text-center"><input class="form-check-input" type="radio" name="rail-x" aria-label={`X axis: ${m.title}`} checked={m.key === selectedMetricX} onchange={() => go(m.key, selectedMetricY)} /></td>
+                            <td class="text-center"><input class="form-check-input" type="radio" name="rail-y" aria-label={`Y axis: ${m.title}`} checked={m.key === selectedMetricY} onchange={() => go(selectedMetricX, m.key)} /></td>
+                        </tr>
+                    {/each}
+                    </tbody>
+                </table>
+            </details>
+            {/each}
+        </div>
+        <div class="col-lg-9 col-12 order-1 order-lg-2" id="chart_container">
+            <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800"></canvas>
+        </div>
+    </div>
+</div>
+{:else}
 <div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
 </div>
+{/if}
 <div class="container mb-3">
     <div class="row d-flex">
         <div class="col-xs-12 col-sm-auto mb-xs-1 mb-sm-3 mx-xs-0 mx-sm-1 d-flex justify-content-start">
