@@ -27,3 +27,19 @@ describe('glossary term anchors', () => {
         }
     });
 });
+
+describe('glossary controls', () => {
+    test('every <select> on the page has an accessible name', async () => {
+        // Lighthouse's `select-name` audit: the mobile section picker shipped without
+        // one and the PR evidence flagged it on /glossary.
+        const { default: Page } = await import('../src/pages/glossary.astro');
+        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/glossary/') });
+        const selects = [...html.matchAll(/<select\b[^>]*>/g)].map((m) => m[0]);
+        expect(selects.length).toBeGreaterThan(0);
+        for (const tag of selects) {
+            const id = tag.match(/\bid="([^"]+)"/)?.[1];
+            const named = /\baria-label(ledby)?="[^"]+"/.test(tag) || (!!id && html.includes(`for="${id}"`));
+            expect(named, tag).toBe(true);
+        }
+    }, 60_000);
+});
