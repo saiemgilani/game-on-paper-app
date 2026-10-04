@@ -277,7 +277,6 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
                         <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
-                            <FallbackSpinner slot="fallback" />
                         </SituationalSection>
                     </Panel>
                 </div>
