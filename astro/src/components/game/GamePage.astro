@@ -401,6 +401,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                             periods={periodsPlayed}
                                             teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
                                             teamNames={{ [String(homeTeam.id)]: cleanLocation(homeTeam), [String(awayTeam.id)]: cleanLocation(awayTeam) }} 
+                                            newestFirst={gameStatus.type.completed != true}
                                         />
                                     </div>
                                 )

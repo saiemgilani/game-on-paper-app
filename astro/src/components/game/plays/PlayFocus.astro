@@ -9,8 +9,10 @@ interface Props {
     /** Team ids, for grouping the player menu by side. */
     teams: (number | string)[];
     teamNames?: Record<string, string>;
+    /** The order the table is rendered in: live games newest first, finished games in order. */
+    newestFirst: boolean;
 }
-const { target, plays, periods, teams, teamNames = {} } = Astro.props;
+const { target, plays, periods, teams, teamNames = {}, newestFirst } = Astro.props;
 const ix = buildPlayIndex(plays);
 const nameOf = (id: string) => teamNames[String(id)] ?? `Team ${id}`;
 const periodLabel = (p: number) => (p <= 4 ? `Q${p}` : "OT");
@@ -36,7 +38,7 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
 {/* Either half is enough to be useful: an early-season game can carry no player ids
     at all yet still have penalties, scoring plays and turnovers worth isolating. */}
 {(options.length > 0 || tags.length > 0 || periods.length > 0) && (
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-play-focus={target} data-index={JSON.stringify(ix.byPlay)}>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2 w-100" data-play-focus={target} data-index={JSON.stringify(ix.byPlay)}>
         <label class="text-small text-muted" for={`focus-${target}`}>Show only</label>
         <select id={`focus-${target}`} class="form-select form-select-sm" style="width:auto;min-width:250px">
             <option value="">Every play</option>
@@ -61,12 +63,18 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
             ))}
         </select>
         <span class="text-small text-muted" data-focus-count={target}></span>
+        {/* The reading-order toggle the quarter filter bar carried before this bar replaced it. */}
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-order-toggle aria-pressed={String(newestFirst)}>
+            {newestFirst ? "Newest first" : "Oldest first"}
+        </button>
     </div>
 )}
 
 <script>
     // Deferred module, not `is:inline`: this renders above the table it drives, so an
     // inline script would look up a tbody that has not been parsed yet.
+    import { pairRows } from '../../../utils/playFilters';
+
     // This dropdown is the ONLY way to focus the plays on a player (review on
     // #267): the advanced box score's names used to carry a second, jump-here
     // affordance beside the link to the player page, and two interactions on one
@@ -83,11 +91,7 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
 
         // Rows come in [summary, detail] pairs; both must move together or a detail
         // row ends up under a play it does not belong to.
-        const pairs: HTMLElement[][] = [];
-        for (const row of [...body.children] as HTMLElement[]) {
-            if (row.classList.contains('accordion-body') && pairs.length) pairs[pairs.length - 1].push(row);
-            else pairs.push([row]);
-        }
+        const pairs = pairRows([...body.children] as HTMLElement[], (row) => row.classList.contains('accordion-body'));
         const keyOf = (pair: HTMLElement[]) => {
             const href = pair[0].getAttribute('href') || '';
             const m = href.match(/-(\d+)$/);
@@ -101,13 +105,21 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
                 const ok = !want || (index[keyOf(pair)] || []).includes(want);
                 if (ok) shown++;
                 // Inline display, not a class or attribute needing a stylesheet: if the
-                // CSS failed to load the filter would silently do nothing. The quarter
-                // filter hides with the `hidden` property, so the two compose without
-                // either having to know about the other -- whichever wants a row gone
-                // wins, and clearing one does not reveal a row the other still hides.
+                // CSS failed to load the filter would silently do nothing.
                 for (const row of pair) row.style.display = ok ? '' : 'none';
             }
             if (out) out.textContent = want ? `${shown} of ${pairs.length} plays` : '';
+        });
+
+        // Reordering moves whole pairs and never touches `display`, so it composes with
+        // the filter above: a hidden play stays hidden wherever it lands.
+        const toggle = bar.querySelector<HTMLButtonElement>('[data-order-toggle]');
+        toggle?.addEventListener('click', () => {
+            pairs.reverse();
+            for (const pair of pairs) for (const row of pair) body.appendChild(row);
+            const newestFirstNow = toggle.getAttribute('aria-pressed') !== 'true';
+            toggle.setAttribute('aria-pressed', String(newestFirstNow));
+            toggle.textContent = newestFirstNow ? 'Newest first' : 'Oldest first';
         });
     }
 </script>
