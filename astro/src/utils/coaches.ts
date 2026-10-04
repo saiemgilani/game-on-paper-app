@@ -5,9 +5,13 @@
  * The three tables (`team_tendencies`, `coach_tendencies`, `coach_careers`)
  * share one metric vocabulary, so a board definition serves the season pages
  * and the careers page alike. Rates are 0-1 fractions; the three columns in
- * percentage POINTS (`third_down_over_expected_rate`, `fourth_wp_left*`) carry a
- * numeric format, which the fixture-backed test pins so a builder change that
- * moves a column between the two conventions fails loudly.
+ * percentage POINTS (`third_down_over_expected_rate`, `fourth_wp_left*`) are not
+ * fractions: `third_down_over_expected_rate` and the season/career total
+ * `fourth_wp_left` carry a numeric format, and only `fourth_wp_left_per_decision`,
+ * a share of one game's win probability and so never over 100, prints with `%`
+ * (`pct_format`). A total runs into the thousands over a career, where "2967.1%"
+ * would read as a percent. The fixture-backed test pins all of this, so a builder
+ * change that moves a column between the conventions fails loudly.
  */
 
 export type CoachColumnFormat = 'pct' | 'num1' | 'num2' | 'int' | 'pct_format';
@@ -119,7 +123,7 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
             pct('go_rate_when_model_says_kick', 'Went When Told Kick', 'Go rate on the fourth downs where the model said kick or punt', true),
             pct('fourth_conversion_rate', 'Conversion Rate', 'Share of fourth-down attempts converted'),
             { key:'fourth_wp_left_per_decision', label:'WP Left/Decision', hover:'Win probability left on the field per fourth-down decision, in percentage points; lower is better', format: 'pct_format', lowerIsBetter: true },
-            { key: 'fourth_wp_left', label:'Total WP Left', hover:'Win probability left on the field over every fourth-down decision, in percentage points; lower is better', format: 'pct_format', lowerIsBetter: true },
+            num('fourth_wp_left', 'Total WP Left', 'Win probability left on the field over every fourth-down decision, in percentage points; lower is better', 'num1', true),
         ],
     },
     defense: {
