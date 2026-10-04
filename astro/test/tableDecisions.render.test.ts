@@ -19,7 +19,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { metricDecimalPoints, roundNumber } from '../src/utils/misc';
+import { metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../src/utils/misc';
 import { withoutUsageSections } from '../src/utils/usage';
 import { loadGzJson, locals, parseTable, tableWithHeading } from './helpers/tables';
 
@@ -167,14 +167,16 @@ describe('the Binion box rounds through one guard in both twins', () => {
     test('TeamMetricsTable honours an explicit 0 decimal places in both twins', async () => {
         // CodeRabbit on #269: both twins still read `decimalPoints || 1`, the drift
         // the shared guard exists to stop. A caller asking for 0 places gets 0.
+        // Read off EPA/Play: Yards/Play is fixed at two places (pinned below), so it
+        // cannot show whether the guard is honoured.
         const g = loadGzJson(FIXTURES.cfb.file);
 
         const props = {
-            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'],
+            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['EPA_per_play'],
             teamBoxScores: g.advBoxScore.team, useSuffix: true, decimalPoints: 0,
         };
         const svelteProps = {
-            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'],
+            title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['EPA_per_play'],
             box: { team: g.advBoxScore.team }, useSuffix: true, decimalPoints: 0,
         };
         const [classic, v2] = await Promise.all([
@@ -184,7 +186,7 @@ describe('the Binion box rounds through one guard in both twins', () => {
         for (const html of [classic, v2]) {
             const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());
             expect(cells.length).toBeGreaterThan(0);
-            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?[\d\.]+$/);
+            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?\d+$/);
         }
     }, 60_000);
 });
@@ -224,4 +226,57 @@ describe('roundNumber never prints a negative zero', () => {
         expect(roundNumber(-0.6, 2, 0)).toBe('-1');
         expect(roundNumber(-0.22, 2, 2)).toBe('-0.22');
     });
+});
+
+describe('Yards/Play counts sack yardage in every table that prints it', () => {
+    // The payload's `yards_per_play` is the processor's statYardage over scrimmage
+    // plays, so the yards a sack lost are in it. (pass_yards + rush_yards) /
+    // scrimmage_plays is a different number: a sack is a dropback with no
+    // receiving and no rushing yards, so that sum leaves the loss out.
+    const g = loadGzJson(FIXTURES.cfb.file);
+    const teams: any[] = g.advBoxScore.team;
+    const net = teams.map((t) => roundNumber(t.yards_per_play, 2, 2));
+    const gross = teams.map((t) => roundNumber((t.pass_yards + t.rush_yards) / t.scrimmage_plays, 2, 2));
+    const numerals = (html: string) => [...html.matchAll(/<td class="numeral[^"]*"[^>]*>\s*([^<\s]*)/g)].map((m) => m[1]);
+    const row = (html: string, label: string) => html.match(new RegExp(`<tr[^>]*>(?:(?!</tr>)[\\s\\S])*?${label}(?:(?!</tr>)[\\s\\S])*?</tr>`))?.[0] ?? '';
+
+    test('the fixture tells the two definitions apart', () => {
+        expect(net).toEqual(['5.93', '4.83']);
+        expect(gross).toEqual(['6.38', '5.24']);
+    });
+
+    test('the helper: the payload value, off_yards over plays without one, null with no plays', () => {
+        expect(offenseYardsPerPlay(teams[0])).toBeCloseTo(teams[0].yards_per_play, 10);
+        expect(offenseYardsPerPlay({ scrimmage_plays: 61, off_yards: 345, pass_yards: 153, rush_yards: 211 })).toBeCloseTo(345 / 61, 10);
+        expect(offenseYardsPerPlay({ scrimmage_plays: 0, yards_per_play: 5 })).toBeNull();
+        expect(offenseYardsPerPlay({ scrimmage_plays: '0' })).toBeNull();
+        expect(offenseYardsPerPlay(undefined)).toBeNull();
+    });
+
+    test('the Team Stats table, both twins', async () => {
+        const base = { title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'], useSuffix: true, decimalPoints: 2 };
+        const [classic, v2] = await Promise.all([
+            container.renderToString((await import('../src/components/game/classic/TeamMetricsTable.astro')).default, { props: { ...base, teamBoxScores: teams }, locals: locals('cfb') }),
+            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: teams } }, locals: locals('cfb') }),
+        ]);
+        expect(numerals(classic)).toEqual(net);
+        expect(numerals(v2)).toEqual(net);
+    }, 60_000);
+
+    test('the Binion box, both twins', async () => {
+        const props = { season: g.season.year, advancedBoxScore: g.advBoxScore, percentiles: [] };
+        const [classic, v2] = await Promise.all([
+            container.renderToString((await import('../src/components/game/classic/BinionBoxScore.astro')).default, { props, locals: locals('cfb') }),
+            container.renderToString((await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any, { props: { ...props, league: 'cfb' }, locals: locals('cfb') }),
+        ]);
+        expect(numerals(row(classic, 'Yards/Play'))).toEqual(net);
+        expect(numerals(row(v2, 'Yards/Play'))).toEqual(net);
+    }, 60_000);
+
+    test('a team with no scrimmage plays gets a dash, not 0.00', async () => {
+        const none = [{ ...teams[0], scrimmage_plays: 0, yards_per_play: null, off_yards: 0, pass_yards: 0, rush_yards: 0 }, teams[1]];
+        const base = { title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'], useSuffix: true, decimalPoints: 2 };
+        const v2 = await container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: none } }, locals: locals('cfb') });
+        expect(numerals(v2)).toEqual(['—', net[1]]);
+    }, 60_000);
 });

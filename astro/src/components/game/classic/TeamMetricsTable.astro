@@ -3,7 +3,7 @@ import type { ProcessedTeamMetricBoxScore } from '../../../resources/python';
 import { espnLogoLeague } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { metricDecimalPoints, roundNumber } from '../../../utils/misc';
+import { metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -41,16 +41,12 @@ function handleMetricRows(item: string): string {
             result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
         });
     } else if (item == "yards_per_play") {
-        // This has to be based the updated off_yards above to remain consistent.
+        // Sack yardage included (offenseYardsPerPlay). The "Yards" row above is pass +
+        // rush, which leaves sacks out, so the tooltip says what this is yards over.
         teamBoxScores.forEach((teamData: any) => {
-            const scrimmagePlays = teamData["scrimmage_plays"]
-            const baseVal = roundNumber(teamData['yards_per_play'] || 0, 2, 2)
-            if (!scrimmagePlays || scrimmagePlays == "0") {
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${baseVal}">—</td>`;
-            } else {
-                let val = (parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0)) / parseFloat(scrimmagePlays);
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${baseVal}">${roundNumber(val, 2, 2)}</td>`;
-            }
+            const val = offenseYardsPerPlay(teamData);
+            const title = `${teamData['off_yards'] ?? 0} net yards (sacks included) on ${teamData['scrimmage_plays'] ?? 0} plays`;
+            result += `<td class="numeral" style="text-align: center;" title="${title}">${val === null ? '—' : roundNumber(val, 2, 2)}</td>`;
         });
     } else if (item == "avg_field_position") {
         teamBoxScores.forEach((teamData: any) => {

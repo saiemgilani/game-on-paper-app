@@ -153,6 +153,28 @@ export function numberOrNull(v: unknown): number | null {
     return Number.isFinite(x) ? x : null;
 }
 
+/**
+ * Yards per play for one team's box-score row, sack yardage included.
+ *
+ * The payload's `yards_per_play` is the processor's statYardage over scrimmage
+ * plays (interception returns zeroed), so the yards a sack lost are in it, as they
+ * are in SDV's season `yardsplay` and the percentiles the Binion box ranks against.
+ * `(pass_yards + rush_yards) / scrimmage_plays` is not the same number: those two
+ * are the parsed receiving and rushing yards, a sack is a dropback with neither,
+ * and the sum reads high by what the sacks lost (2025: 1,507 of 1,912 team-games
+ * had a sack; 0.20 yards per play on average, 1.57 at most).
+ *
+ * Null when the team has no scrimmage plays, so a table prints a dash, not 0.00.
+ */
+export function offenseYardsPerPlay(team: Record<string, any> | null | undefined): number | null {
+    const plays = numberOrNull(team?.scrimmage_plays);
+    if (!plays) return null;
+    const perPlay = numberOrNull(team?.yards_per_play);
+    if (perPlay !== null) return perPlay;
+    const yards = numberOrNull(team?.off_yards);
+    return yards === null ? null : yards / plays;
+}
+
 /** A numeric cell: `roundNumber` when there is a number, an em dash when there is not. */
 export function formatNumber(v: unknown, fixed: number, power10: number = 2): string {
     const x = numberOrNull(v);
