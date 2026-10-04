@@ -72,6 +72,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // Chart Builder v2: the X/Y metric rail, median crosshair, highlight,
+    // logo/dot marks, labelled extremes, zoom and PNG export on /charts/builder
+    // (both leagues). Public traffic keeps today's builder until promoted.
+    'chart-builder-v2': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
