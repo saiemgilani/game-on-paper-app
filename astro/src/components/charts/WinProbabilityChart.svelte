@@ -5,8 +5,9 @@ import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
+import { HOVER_PLAY, HOVER_DRIVE, HOVER_WP, SELECT_WP, wpIndex, driveRange } from '../../utils/linkedHover';
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, linked = false, colors = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -55,35 +56,50 @@ function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 
     };
 }
 
-// Translucent box over the active span (chart data stays full-game;
-// a WP chart of one quarter alone is misleading). Same canvas-plugin pattern
-// as createVerticalLinePlugin; indices are positions on the x axis.
-function createSpanShadePlugin(shade, isDarkMode) {
+// The hovered drive's stretch of the WP line (linked mode only). The fill is the
+// page's own text colour at low alpha, so it follows dark mode with no colour
+// picked here. Each play occupies [x(i), x(i+1)), so the band ends at the next
+// play's x, clamped to the axis end.
+function createDriveShadePlugin(getRange) {
     return {
-        id: 'span-shade',
+        id: 'drive-shade',
         beforeDatasetsDraw: (chart) => {
+            const range = getRange();
             const xScale = chart.scales.x;
-            if (!xScale) return;
-            const x0 = xScale.getPixelForValue(shade.from);
-            // each play occupies [x(i), x(i+1)): an inclusive-to band ends at
-            // the NEXT play's x, which for a whole quarter is exactly the next
-            // period's marker (QA on #215 -- the edge was one play short).
-            // The last play of the game has no next x; clamp to the axis end.
-            const xEnd = Math.min(shade.to + 1, (chart.data.labels?.length ?? 1) - 1);
-            // a one-play window at the axis end still keeps a visible box
+            if (!range || !xScale) return;
+            const x0 = xScale.getPixelForValue(range.from);
+            const xEnd = Math.min(range.to + 1, (chart.data.labels?.length ?? 1) - 1);
+            // a one-play drive at the axis end still keeps a visible band
             const x1 = Math.max(xScale.getPixelForValue(xEnd), x0 + 3);
             const { top, bottom } = chart.chartArea;
             const ctx = chart.ctx;
             ctx.save();
-            ctx.fillStyle = isDarkMode ? 'rgba(255, 213, 79, 0.10)' : 'rgba(255, 193, 7, 0.14)';
+            ctx.globalAlpha = 0.12;
+            ctx.fillStyle = getComputedStyle(chart.canvas).color;
             ctx.fillRect(x0, top, x1 - x0, bottom - top);
-            ctx.textAlign = 'left';
-            ctx.font = 'bold 10px Helvetica';
-            ctx.fillStyle = isDarkMode ? '#ffd54f' : '#b45309';
-            ctx.fillText(shade.label, x0 + 4, bottom - 6);
             ctx.restore();
         },
     };
+}
+
+// Linked mode: the rows talk to whichever chart is drawn now (a theme flip
+// destroys and rebuilds it), so these listeners are added once, not per build.
+let driveShade = null;
+let hoveredPlay = null;
+if (linked) {
+    window.addEventListener(HOVER_PLAY, (e) => {
+        const chart = Chart.getChart("wpChart");
+        if (!chart) return;
+        const i = wpIndex(plays, e.detail.n);
+        const active = i < 0 ? [] : [{ datasetIndex: 0, index: i }];
+        chart.setActiveElements(active);
+        chart.tooltip.setActiveElements(active, { x: 0, y: 0 });
+        chart.update('none');
+    });
+    window.addEventListener(HOVER_DRIVE, (e) => {
+        driveShade = driveRange(plays, e.detail.id);
+        Chart.getChart("wpChart")?.update('none');
+    });
 }
 
 function geiGenerateColorRampValue(input) {
@@ -241,7 +257,7 @@ async function generateChart() {
     var wpChart = new Chart(document.getElementById("wpChart"), {
         type: 'GradientFillLineController',
         plugins: [
-            ...(spanShade ? [createSpanShadePlugin(spanShade, isDarkMode)] : []),
+            ...(linked ? [createDriveShadePlugin(() => driveShade)] : []),
             ...periodMarkers,
             {
                 beforeDatasetDraw: (chart) => {
@@ -338,6 +354,22 @@ async function generateChart() {
         },
         options: {
             responsive: true,
+            ...(linked ? {
+                // any x picks its play: the line has no drawn points to intersect
+                interaction: { mode: 'index', intersect: false },
+                onHover: (_evt, elements) => {
+                    const n = elements.length ? (plays[elements[0].index]?.game_play_number ?? null) : null;
+                    if (n === hoveredPlay) return;
+                    hoveredPlay = n;
+                    window.dispatchEvent(new CustomEvent(HOVER_WP, { detail: { n } }));
+                },
+                onClick: (evt, elements) => {
+                    // a tap shows the tooltip; only a pointer that can hover jumps the page to All Plays
+                    if (evt.native?.pointerType === 'touch' || !window.matchMedia('(hover: hover)').matches) return;
+                    const n = elements.length ? (plays[elements[0].index]?.game_play_number ?? null) : null;
+                    if (n != null) window.dispatchEvent(new CustomEvent(SELECT_WP, { detail: { n } }));
+                },
+            } : {}),
             scales: {
                 y: {
                     suggestedMax: 1.0,

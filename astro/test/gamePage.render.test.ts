@@ -5,6 +5,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { rushingStatLine } from '../src/utils/players';
+import { decodeEntities } from './helpers/tables';
 
 // Why this exists: a TDZ ReferenceError in GamePage's frontmatter shipped in
 // #181 and every finished-game page rendered as a 200 with an empty body.
@@ -552,4 +553,37 @@ describe('chart islands serialize only the fields their charts read', () => {
             expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
         });
     }
+});
+
+// Module scope: G7 reuses both helpers.
+/** The WP island's opening tag, entities decoded: its serialized props are readable. */
+const wpIsland = (html: string) => decodeEntities(html.match(/<astro-island[^>]*WinProbabilityChart[^>]*>/)?.[0] ?? '');
+/** The whole page of one twin, from the route's own processed game. */
+async function renderTwin(classic: boolean): Promise<string> {
+    const { retrieveProcessedGame } = await import('../src/resources/python');
+    const game = await retrieveProcessedGame(GAME_ID, 30);
+    const Page = classic
+        ? (await import('../src/components/game/classic/GamePage.astro')).default
+        : (await import('../src/components/game/GamePage.astro')).default;
+    return container.renderToString(Page, {
+        props: { id: GAME_ID, game },
+        request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+    });
+}
+
+describe('linked hover: only the v2 WP chart is wired', () => {
+    test('v2 ships each WP point its play number and drive, and turns linked mode on', async () => {
+        const island = wpIsland(await renderTwin(false));
+        expect(island).toContain('"linked":[0,true]');
+        expect(island).toMatch(/"game_play_number":\[0,\d+\]/);
+        expect(island).toMatch(/"drive_id":\[0,"?\d+"?\]/);
+    }, 60_000);
+
+    test('classic is untouched: no play numbers, no linked mode, no span shade', async () => {
+        const island = wpIsland(await renderTwin(true));
+        expect(island).toContain('WinProbabilityChart');
+        expect(island).not.toContain('"linked":');
+        expect(island).not.toContain('game_play_number');
+        expect(island).not.toContain('spanShade');
+    }, 60_000);
 });
