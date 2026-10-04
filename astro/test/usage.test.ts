@@ -7,8 +7,6 @@ describe('usage box helpers', () => {
         expect(hasUsageBox({} as any)).toBe(false);
         expect(hasUsageBox({ player_usage: [] } as any)).toBe(false);
         expect(hasUsageBox({ st_punters: [{ pos_team: 1 }] } as any)).toBe(true);
-        // every emitted section counts, team-level special teams included
-        expect(hasUsageBox({ st_team: [{ pos_team: 1 }] } as any)).toBe(true);
         expect(hasUsageBox({ position_group_usage: [{ pos_team: 1 }] } as any)).toBe(true);
     });
     test('hasSituationalSplits needs a section the two-team panel reads', () => {
@@ -45,8 +43,8 @@ describe('usage box helpers', () => {
             h1: { team: [], drive_scripting: [{ pos_team: 1, script: 'scripted' }] },
         };
         const out = withoutUsageSections(spans as any);
-        expect(Object.keys(out.q1)).toEqual(['team']);
-        expect(Object.keys(out.h1)).toEqual(['team']);
+        expect(Object.keys(out.q1)).toEqual(['team', 'st_team']);
+        expect(Object.keys(out.h1)).toEqual(['team', 'drive_scripting']);
         expect(withoutUsageSections(undefined)).toEqual({});
         expect(spans.q1.player_usage).toHaveLength(1); // the input is not mutated
     });

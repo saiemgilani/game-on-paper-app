@@ -16,8 +16,7 @@
  *    kickoff is Sunday in UTC. It renders through `LocalDate` (`client:only`,
  *    luxon) -- the same island the scoreboard and the matchup history use -- so
  *    the reader sees his own date, not the server's.
- * 2. **A postseason `week` restarts at 1** in both leagues, so the bare number
- *    labels a bowl game "1". `weekLabel` names the round instead.
+ * 2. For postseason rounds, `weekLabel` names the round rather than the week (IE: Week 19 or seasontype 3 / week 1 for NFL --> Wild Card, seasontype 3 / week 1 for CFB --> Postseason).
  * 3. **A row can arrive with no schedule context at all.** The API adds a game
  *    the player has attributed plays in even when nothing joined a schedule row
  *    to it, so `game_date` can be absent -- and luxon renders an absent date as

@@ -13,7 +13,7 @@ interface Props {
 const { target, plays, periods, teams, teamNames = {} } = Astro.props;
 const ix = buildPlayIndex(plays);
 const nameOf = (id: string) => teamNames[String(id)] ?? `Team ${id}`;
-const periodLabel = (p: number) => (p <= 4 ? `Q${p}` : p === 5 ? "OT" : `${p - 4}OT`);
+const periodLabel = (p: number) => (p <= 4 ? `Q${p}` : "OT");
 // One option per player-role, so "Cam Miller — dropbacks (63)" and "Cam Miller —
 // carries (5)" are separate picks rather than one lump of everything he touched.
 const options = ix.players.flatMap((p) =>
@@ -43,8 +43,8 @@ const tags = (Object.keys(PLAY_TAGS) as (keyof typeof PLAY_TAGS)[])
             {periods.length > 0 && (
                 <optgroup label="Periods">
                     {
-                        periods.map((t) => (
-                            <option value={`p:${Math.min(t, 5)}`}>{periodLabel(Math.min(t, 5))}</option>
+                        [...new Set(periods.map((p) => Math.min(p, 5)))].map((t) => (
+                            <option value={`p:${Math.min(t)}`}>{periodLabel(Math.min(t))}</option>
                         ))
                     }
                 </optgroup>

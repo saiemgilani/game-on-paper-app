@@ -32,7 +32,7 @@ import GameHeader from './GameHeader.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
 import UsageBoxScore from './metrics/UsageBoxScore.astro';
-import { hasSituationalSplits, withoutUsageSections } from '../../utils/usage';
+import { withoutUsageSections } from '../../utils/usage';
 
 interface Props {
    id: string | number
@@ -128,8 +128,6 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#ep-section", title: "EPA Chart" },
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
-    // rendered only when the processor emitted the two-team usage sections
-    ...(hasSituationalSplits(game.advBoxScore) ? [{ href: "#situational-splits-panel", title: "Situational & ST" }] : []),
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
     { href: "#most-important-plays-panel", title: "Most Important Plays" },
@@ -278,7 +276,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={game.advBoxScoreSpans} league={league} percentiles={percentiles}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
                             <FallbackSpinner slot="fallback" />
                         </SituationalSection>
                     </Panel>

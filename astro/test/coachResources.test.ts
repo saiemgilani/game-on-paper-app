@@ -11,7 +11,12 @@ let respond: () => Response = () => new Response(JSON.stringify({ data: [{ coach
 
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
-    wrappedFetch: async (url: string) => { seen.push({ url: String(url) }); return respond(); },
+    // the /v1/meta ingest-stamp read is pinned in sdvCacheVersion.test.ts; answering
+    // it with no `datasets` keeps these reads on their unversioned keys
+    wrappedFetch: async (url: string) => {
+        if (String(url).endsWith('/v1/meta')) return new Response('{}', { status: 200 });
+        seen.push({ url: String(url) }); return respond();
+    },
 }));
 vi.mock('cloudflare:workers', () => {
     const kv = {
