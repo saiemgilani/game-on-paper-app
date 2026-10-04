@@ -1,0 +1,17 @@
+---
+// Under 768px the pickers fold behind one toggle; from md up `d-md-block`
+// (display:block !important) keeps the collapse open, so desktop is unchanged.
+// Same collapse mechanism as the header's phone nav. Public viewers get the
+// slot exactly as before.
+import { isFeatureEnabled } from "../utils/features";
+
+interface Props { id: string; label?: string }
+const { id, label = "Filters" } = Astro.props;
+const on = isFeatureEnabled('filter-nav', Astro.locals);
+---
+{on ? (
+    <Fragment>
+        <button class="btn btn-sm btn-outline-secondary d-md-none mb-3" type="button" data-bs-toggle="collapse" data-bs-target={`#${id}`} aria-controls={id} aria-expanded="false"><i class="bi bi-sliders" aria-hidden="true"></i> {label}</button>
+        <div class="collapse d-md-block" id={id}><slot /></div>
+    </Fragment>
+) : <slot />}

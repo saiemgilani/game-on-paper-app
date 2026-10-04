@@ -4,6 +4,7 @@ import { LEAGUES, leaguePath } from "../../utils/league";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
+import MobileFilters from "../MobileFilters.astro";
 import { PLAYER_LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
 import { PLAYER_STAT_MINIMUMS } from "../../utils/players";
 
@@ -60,7 +61,7 @@ const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
                 <!-- <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
-                <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} league={league} />
+                <MobileFilters id="leaderboard-filters"><PlayerMetricDropdown client:idle season={season} category={category} metric={metric} league={league} /></MobileFilters>
             </div>
         </div>
     </div>

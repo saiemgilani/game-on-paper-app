@@ -85,6 +85,30 @@ describe('week stepper (filter-nav)', () => {
     }, 60_000);
 });
 
+describe('phone filters (filter-nav)', () => {
+    test('preview: the schedule pickers sit in a collapse that is always open from md up; the stepper stays outside it', async () => {
+        const html = await schedule({ season: 2025, seasontype: 2, week: 5, group: 80 }, { preview: true });
+        expect(html).toMatch(/<button[^>]*class="btn btn-sm btn-outline-secondary d-md-none mb-3"[^>]*data-bs-target="#schedule-filters"/);
+        expect(html).toContain('class="collapse d-md-block" id="schedule-filters"');
+        const folded = html.slice(html.indexOf('id="schedule-filters"'), html.indexOf('aria-label="Week"'));
+        expect(folded).toContain('form-picker');
+        expect(folded).not.toContain('rel="next"');
+    }, 60_000);
+    test.each(['teams', 'players'] as const)('preview: the %s leaderboard pickers get the same treatment', async (kind) => {
+        const html = await leaderboard(kind, { preview: true });
+        expect(html).toMatch(/<button[^>]*data-bs-target="#leaderboard-filters"/);
+        expect(html).toContain('class="collapse d-md-block" id="leaderboard-filters"');
+    }, 60_000);
+    test('public: no toggle, pickers rendered as before', async () => {
+        const s = await schedule({ season: 2025, seasontype: 2, week: 5, group: 80 }, {});
+        expect(s).not.toContain('schedule-filters');
+        expect(s).toContain('form-picker');
+        const t = await leaderboard('teams', {});
+        expect(t).not.toContain('leaderboard-filters');
+        expect(t).toContain('dropdown-form');
+    }, 60_000);
+});
+
 describe('filter-nav off: the pages are byte-for-byte what main renders', () => {
     // Hashes of the flag-off renders on origin/main b5665b08, before 'filter-nav'
     // existed (same test body, run there). Another PR that changes these pages

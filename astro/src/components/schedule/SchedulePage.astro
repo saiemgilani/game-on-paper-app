@@ -11,6 +11,7 @@ import Scripts from "../Scripts.astro"
 import { jsonLdScript, websiteJsonLd } from "../../utils/seo"
 import { LEAGUES } from "../../utils/league"
 import FilterGroup from "../../layouts/FilterGroup.astro";
+import MobileFilters from "../MobileFilters.astro";
 import { adjacentWeeks, weekHref, weeksFor } from "../../resources/schedule";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
@@ -167,7 +168,7 @@ if (compactRows) {
         <Header />
         <div class="container">
             <h1 class="visually-hidden">{title || titleText}</h1>
-            <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} />
+            <MobileFilters id="schedule-filters"><ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} /></MobileFilters>
             {weekNav && (
                 <div class="mb-3">
                     <FilterGroup label="Week">
