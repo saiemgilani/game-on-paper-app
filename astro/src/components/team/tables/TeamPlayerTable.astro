@@ -12,7 +12,7 @@ const { id, title, show } = Astro.props;
 ---
 
 <GenericPanel id={id} title={title} show={show}>
-    <p slot="panel-subtitle" class="text-small text-muted">{(Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.'}</p>
+    <p slot="panel-subtitle" class="text-small text-muted"><slot name="subtitle" /> {(Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.'}</p>
     <div slot="panel-body">
         <div class="table-responsive">
             <table class="table table-sm table-responsive">
