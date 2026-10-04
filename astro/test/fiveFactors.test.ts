@@ -15,7 +15,16 @@ describe('FIVE_FACTORS', () => {
         ]);
         expect(FIVE_FACTORS.filter((f) => f.sub).map((f) => f.label)).toEqual(['Start (yds)', 'Expected', 'Luck (pts)', 'EPA / Game']);
         // every row names its metric for the column beside the label
-        for (const f of FIVE_FACTORS) expect(f.metric, f.label).toMatch(/\S/);
+        for (const f of FIVE_FACTORS) {
+            expect(f.metric, f.label).toMatch(/\S/);
+            expect(f.metric, f.label).not.toContain('·');
+        }
+    });
+
+    test('the metric copy Akshay set on #284', () => {
+        const byLabel = Object.fromEntries(FIVE_FACTORS.map((f) => [f.label, f]));
+        expect(byLabel['Turnovers'].metric).toBe('Giveaways or Takeaways per game');
+        expect(byLabel['Field Position'].metric).toBe('Avg expected points based on drive start yardline');
     });
 
     test('field position reads drive_start_ep_* with start_position_* beneath it; havoc has a margin', () => {
