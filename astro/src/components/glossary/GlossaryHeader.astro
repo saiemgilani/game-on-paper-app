@@ -17,7 +17,7 @@ const { keys } = Astro.props;
     </nav>
 </div>
 <div class="d-inline d-lg-none" style="background: inherit;">
-    <div class="game-nav-sticky py-1 mt-n3 mb-3 border-bottom">
+    <div class="game-nav-sticky py-1 mb-3 border-bottom">
         <select class="form-select form-select-md" style="min-width:250px;border:0;" id="glossary-section-picker" aria-label="Jump to a glossary section">
             <option disabled selected>Navigate to...</option>
             {
@@ -28,14 +28,10 @@ const { keys } = Astro.props;
 </div>
 <script>
     document.getElementById("glossary-section-picker")?.addEventListener("change", (e: Event) => {
+        // every option is an in-page anchor
         const href = (e.target as HTMLSelectElement).value;
         if (href && href.startsWith("#")) {
             document.getElementById(href.replace("#", ""))?.scrollIntoView({ behavior: "smooth"})
-        } else if (href && (href.startsWith("/") || href.startsWith("https://"))) {
-            const aTag: HTMLAnchorElement = document.createElement("a")
-            aTag.href = href;
-            aTag.target = "__blank"
-            aTag.click()
         }
     })
 </script>

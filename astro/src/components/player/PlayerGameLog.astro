@@ -239,7 +239,7 @@ const opponentIds = [...new Set(games.map(opponentId).filter(Boolean))] as (stri
 )}
 
 <script>
-    // Deliberately not `is:inline`: the same reason `plays/PlayFilters.astro` gives --
+    // Deliberately not `is:inline`: the same reason `plays/PlayFocus.astro` gives --
     // an inline script runs where it sits, and the toggle renders before the table
     // it drives. Both shadings are already in the markup as data attributes, so this
     // only ever swaps a class and un-hides a span; with no JS the log keeps whichever
