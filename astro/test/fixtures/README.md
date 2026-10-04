@@ -158,3 +158,18 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
+
+## `team-summaries-cfb-2026-builder.json`
+The exact body the chart builder's read returns for
+`/charts/builder?season=2026&x=red_zone_success_off_pass&y=success_off`: the
+Data API's `GET /v1/cfb/team_summaries?season=2026&select=pos_team,team_id,season,conference,division,fbs_class,red_zone_success_off_pass,success_off,red_zone_success_off_pass_rank,success_off_rank&limit=150`
+(every team, 138). Rice (242) has a null `red_zone_success_off_pass`, which is
+what the median tests need: a team with no value is skipped, not read as 0.
+
+**Provenance (2026-10-04):** captured from the live API mid-season; no edits.
+
+**Used by:** `test/chartBuilder.test.ts` (the builder's median on an even-count
+column and on a column with a null, and the route's flag-off/on render).
+
+**To regenerate:** repeat the same request; the tests pin Rice as the only null
+and the two medians, so re-pin them from the new body.
