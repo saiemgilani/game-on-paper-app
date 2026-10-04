@@ -437,5 +437,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                 <script is:inline src="/assets/js/auto-update.js" />
             )
         }
+        <script>
+            // linked hover: rows <-> WP chart (utils/linkedHover.ts)
+            import { installLinkedHover } from '../../utils/linkedHover';
+            installLinkedHover(document);
+        </script>
     </body>
 </html>

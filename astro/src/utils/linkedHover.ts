@@ -39,3 +39,61 @@ export function driveRange(points: WpPoint[], id: string | null | undefined): { 
     });
     return from < 0 ? null : { from, to };
 }
+
+/** A lit row: Bootstrap's active-row tint (it darkens the penalty/turnover/score shades instead of replacing them) plus an underline, so the mark is not colour alone. */
+const LIT = ['table-active', 'text-decoration-underline'];
+
+/**
+ * The row side: one delegated listener for every play and drive table, and the
+ * highlight/scroll for events coming back from the chart. v2 page only. Keyboard
+ * focus moving onto a row (its team link) counts as hovering it.
+ */
+export function installLinkedHover(doc: Document): void {
+    const fire = (name: string, detail: object) => window.dispatchEvent(new CustomEvent(name, { detail }));
+    const rowOf = (t: EventTarget | null) => (t instanceof Element ? t.closest('tr[href]') : null);
+
+    let current: Element | null = null;
+    const leave = () => {
+        if (!current) return;
+        const wasPlay = playNumberFromHref(current.getAttribute('href')) != null;
+        current = null;
+        fire(wasPlay ? HOVER_PLAY : HOVER_DRIVE, wasPlay ? { n: null } : { id: null });
+    };
+    const enter = (e: Event) => {
+        const tr = rowOf(e.target);
+        if (!tr || tr === current) return;
+        leave();
+        current = tr;
+        const href = tr.getAttribute('href');
+        const n = playNumberFromHref(href);
+        if (n != null) fire(HOVER_PLAY, { n });
+        else fire(HOVER_DRIVE, { id: driveIdFromHref(href) });
+    };
+    const exit = (e: Event) => {
+        const tr = rowOf(e.target);
+        if (tr && tr === current && !tr.contains((e as MouseEvent | FocusEvent).relatedTarget as Node | null)) leave();
+    };
+    doc.addEventListener('mouseover', enter);
+    doc.addEventListener('focusin', enter);
+    doc.addEventListener('mouseout', exit);
+    doc.addEventListener('focusout', exit);
+
+    let lit: Element[] = [];
+    window.addEventListener(HOVER_WP, (e) => {
+        lit.forEach((r) => r.classList.remove(...LIT));
+        const n = (e as CustomEvent<{ n: number | null }>).detail.n;
+        lit = n == null ? [] : Array.from(doc.querySelectorAll(`tr[data-play-row][href$="-${n}"]`));
+        lit.forEach((r) => r.classList.add(...LIT));
+    });
+    window.addEventListener(SELECT_WP, (e) => {
+        const n = (e as CustomEvent<{ n: number }>).detail.n;
+        const row = doc.querySelector(`tr[href="#play-all-${n}"]`);
+        const panel = doc.getElementById('all-plays');
+        if (!row || !panel) return;
+        const go = () => row.scrollIntoView({ block: 'center' });
+        if (panel.classList.contains('show')) return go();
+        // a collapsed panel has no height yet: scroll once it has opened
+        panel.addEventListener('shown.bs.collapse', go, { once: true });
+        (window as any).bootstrap?.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+    });
+}
