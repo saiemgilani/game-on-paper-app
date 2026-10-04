@@ -1,0 +1,47 @@
+---
+import type { SDVTeamSummary } from '../../resources/sdv';
+import { FIVE_FACTORS } from '../../utils/fiveFactors';
+import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
+import { formatMetricValue, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import TeamPlayerTable from './tables/TeamPlayerTable.astro';
+
+interface Props {
+    summary: SDVTeamSummary | null
+}
+
+const { summary } = Astro.props;
+// the rank colour ramp scales to the league's team count, as in TeamCard
+const cfg = LEAGUES[Astro.locals.league ?? DEFAULT_LEAGUE];
+const row = (summary ?? {}) as Record<string, unknown>;
+// a missing value carries no rank and no shading, even if a rank came with it
+const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNull(row[`${k}_rank`]));
+---
+
+<TeamPlayerTable id="five-factors" title="Five Factors" show={true}>
+    <Fragment slot="subtitle">Based on <a href="https://bsky.app/profile/ESPNBillC.bsky.social">Bill Connelly</a>'s <a href="https://www.sbnation.com/college-football/2017/10/13/16457830/college-football-advanced-stats-analytics-rankings">Five Factors</a> of winning football. Metrics from SportsDataverse.</Fragment>
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="d-none d-md-table-cell">Metric</th>
+        <th rowspan="1" colspan="1" class="text-center">Offense</th>
+        <th rowspan="1" colspan="1" class="text-center">Defense</th>
+        <th rowspan="1" colspan="1" class="text-center">Margin</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {/* the label carries the definition as a hover only below md, where the Metric column is hidden */}
+        {FIVE_FACTORS.map((f) => (
+            <tr>
+                <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr class="d-md-none" title={f.hover}>{f.label}</abbr><span class="d-none d-md-inline">{f.label}</span></td>
+                <td class="d-none d-md-table-cell text-left text-nowrap text-muted text-small">{f.metric}</td>
+                {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
+                    <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
+                        {formatMetricValue(row[k], f.format, k === f.margin)}
+                        {rankOf(k) !== null && (
+                            <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(k))}</span>
+                        )}
+                    </td>
+                ))}
+            </tr>
+        ))}
+    </Fragment>
+</TeamPlayerTable>

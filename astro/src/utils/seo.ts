@@ -34,9 +34,67 @@ export function breadcrumbListJsonLd(crumbs: PageBreadcrumb[]) {
 
 export interface Term { term: string; definition: string; source?: string }
 
+/**
+ * Deep-link id for one glossary term: "Successful play / Success Rate" -> "successful-play-success-rate".
+ * Diacritics fold to their base letter ("Élan" -> "elan"); anything else outside a-z0-9 joins with a
+ * hyphen, so on its own this can collide ("C++" and "C#" are both "c") or come out empty. The page and
+ * its structured data resolve a whole list with termSlugs(), which is what a deep link has to match.
+ */
+export function termSlug(term: string): string {
+    return term.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * One unique, non-empty slug per entry of a list, in list order: a collision takes "-2", "-3", ...;
+ * an empty slug becomes "term-<position>". Keyed by the entry itself, so two entries that share a
+ * name still get their own slugs. The glossary page ids and the DefinedTermSet both read this map,
+ * so every entry's deep link lands on its own definition.
+ */
+export function termSlugs(terms: Term[]): Map<Term, string> {
+    const out = new Map<Term, string>();
+    const used = new Set<string>();
+    terms.forEach((t, i) => {
+        const base = termSlug(t.term) || `term-${i + 1}`;
+        let slug = base;
+        for (let k = 2; used.has(slug); k++) slug = `${base}-${k}`;
+        used.add(slug);
+        out.set(t, slug);
+    });
+    return out;
+}
+
+/** Link to one entry on the single glossary page (#226: no per-term pages), resolved against the list it sits in. */
+export function glossaryHref(entry: Term, terms: Term[]): string {
+    return `/glossary/#${termSlugs(terms).get(entry) ?? termSlug(entry.term)}`;
+}
+
+// A tag, with quoted attribute values allowed to contain ">" (`<a title="1 > 0">`).
+const TAG_BODY = String.raw`(?:"[^"]*"|'[^']*'|[^'">])*`;
+const BLOCK_TAG = new RegExp(String.raw`<\/?(?:br|p|div|li|ul|ol|tr|td|th|table|thead|tbody|h[1-6])\b${TAG_BODY}>`, 'gi');
+const ANY_TAG = new RegExp(`<${TAG_BODY}>`, 'g');
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * A definition's authored HTML as text: a block boundary (a cell, a row, a break, a list item)
+ * separates words, an inline tag does not, so "<b>D</b>ownfield" stays "Downfield". Entities
+ * are decoded after the tags go, so an authored `&lt;0 yds` reads `<0 yds` and is not a tag.
+ */
+export function definitionText(html: string): string {
+    return html
+        .replace(BLOCK_TAG, ' ')
+        .replace(ANY_TAG, '')
+        .replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) =>
+            dec ? String.fromCodePoint(Number(dec))
+                : hex ? String.fromCodePoint(parseInt(hex, 16))
+                : NAMED_ENTITIES[name.toLowerCase()] ?? m)
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 /** The glossary as a DefinedTermSet -- the featured-snippet shape for "what is EPA". */
 export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
     const url = new URL(pageUrl, ORIGIN).href;
+    const slugs = termSlugs(terms);
     return {
         '@context': 'https://schema.org',
         '@type': 'DefinedTermSet',
@@ -45,9 +103,11 @@ export function definedTermSetJsonLd(terms: Term[], pageUrl: string) {
         url,
         hasDefinedTerm: terms.map((t) => ({
             '@type': 'DefinedTerm',
+            '@id': `${url}#${slugs.get(t)}`,
+            url: `${url}#${slugs.get(t)}`,
             name: t.term,
             // definitions are authored HTML (links, a table); structured data wants text
-            description: t.definition.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            description: definitionText(t.definition),
             inDefinedTermSet: url,
         })),
     };
@@ -235,19 +295,19 @@ export const LEADERBOARD_COPY: Record<string, LeaderboardCopy> = {
         h1: (s, l) => `${s} ${sportTitle(l)} Offensive EPA per Play Rankings`,
         title: (s, l) => `${s} ${sportTitle(l)} Offensive Rankings: EPA per Play, Success Rate | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} offense in ${s} ranked by adjusted EPA per play, with success rate, explosiveness and havoc allowed. Sortable, updated after every game.`,
-        intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance and field position. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field, so it is the fairest single number for how good an offense really is.',
+        intro: 'Offensive EPA per play is the average number of expected points an offense adds on each snap, given down, distance, and field position. Adjusted EPA/play corrects for opponent strength, so it is the fairest single number for how good an offense really is.',
     },
     defensive: {
         h1: (s, l) => `${s} ${sportTitle(l)} Defensive EPA per Play Rankings`,
         title: (s, l) => `${s} ${sportTitle(l)} Defensive Rankings: EPA/Play Allowed, Success Rate | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} defense in ${s} ranked by adjusted EPA per play allowed, with success rate, explosiveness and havoc rate. Sortable, updated after every game.`,
-        intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play strips garbage time and corrects for opponent strength and home field.',
+        intro: 'Defensive EPA per play is the average number of expected points a defense allows on each snap -- lower (more negative) is better. Adjusted EPA/play corrects for opponent strength.',
     },
     differential: {
         h1: (s, l) => `${s} ${sportTitle(l)} Team Rankings by Net EPA per Play`,
         title: (s, l) => `${s} ${sportTitle(l)} Advanced Stats: Net EPA per Play Team Rankings | Game on Paper`,
         description: (s, l) => `Every ${poolNoun(l)} team in ${s} ranked by net adjusted EPA per play (offense minus defense), with success rate margin and explosiveness. The advanced-stats power ranking, updated after every game.`,
-        intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. Adjusted for opponent, home field and garbage time.',
+        intro: 'Net EPA per play is a team\'s offensive EPA per play minus the EPA per play its defense allows -- the single best play-by-play measure of how much better a team is than its opponents. The adjusted version corrects for opponent strength.',
     },
     // NFL-only categories (rbsdm.com parity); the college grid has no such columns
     tendencies: {
@@ -316,7 +376,7 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         h1: (s, l) => `${coachScope(s, l)} Pace: Seconds per Play`,
         title: (s, l) => `${coachScope(s, l)} Pace Rankings: Seconds per Play, Plays per Game | Game on Paper`,
         description: (s, l) => `How fast ${coachPool(s, l)} plays: seconds of game clock per offensive play, situation-neutral pace, plays per game and plays per drive. Sortable head coach tendencies.`,
-        intro: 'Seconds per play is game clock elapsed per offensive snap over drives with a usable clock, so the number is the tempo the head coach chose rather than the length of the game. Situation-neutral pace drops the two-minute drill and blowouts, where the score dictates the tempo.',
+        intro: 'Seconds per play is game clock elapsed per offensive play, over drives with a usable clock. It is game clock, not time between snaps: an incompletion stops the clock, so a pass-heavy offense reads faster. Situation-neutral pace drops the two-minute drill and blowouts, where the score dictates the tempo.',
         variables: ['seconds per play', 'situation-neutral seconds per play', 'plays per game', 'plays per drive'],
     },
     tendencies: {
@@ -344,7 +404,7 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         h1: (s, l) => `${coachScope(s, l)} Fourth Down Decisions: Go Rate and Model Agreement`,
         title: (s, l) => `${coachScope(s, l)} Fourth Down Aggressiveness: Go Rate vs the Model | Game on Paper`,
         description: (s, l) => `Fourth down decisions by ${coachPool(s, l)}: go rate, agreement with the win-probability model, go rate when the model says go or kick, conversion rate, and win probability left on the field per decision.`,
-        intro: 'On every fourth down the model compares the win probability of going for it, kicking and punting. Agreement rate is how often the head coach made the model\'s call; win probability left on the field is the gap between the chosen play and the best one, summed over the decisions where they differed, so a lower number is better.',
+        intro: 'On every fourth down the model compares the win probability of going for it, kicking a field goal and punting. Agreement rate is how often the head coach matched the model on go or kick (a punt and a field goal both count as a kick). Win probability left on the field is the gap between going and the best kick, summed over the decisions that went against the model, so a lower number is better.',
         variables: ['fourth-down go rate', 'fourth-down agreement rate', 'go rate when the model says go', 'fourth-down conversion rate', 'win probability left on the field'],
     },
     defense: {

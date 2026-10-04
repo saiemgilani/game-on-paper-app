@@ -15,7 +15,13 @@ beforeEach(() => {
     respond = () => new Response(JSON.stringify({ data: [{ ok: 1 }] }), { status: 200 });
 });
 
-const only = () => { expect(seen).toHaveLength(1); return new URL(seen[0].url); };
+// requestSDV also reads `GET /v1/meta` (the ingest stamp in the cache key); it is
+// not the table request these tests are about.
+const only = () => {
+    const table = seen.filter((s) => !s.url.endsWith('/v1/meta'));
+    expect(table).toHaveLength(1);
+    return new URL(table[0].url);
+};
 const select = (u: URL) => decodeURIComponent(u.searchParams.get('select') ?? '').split(',');
 
 describe('retrieveRankedRows', () => {

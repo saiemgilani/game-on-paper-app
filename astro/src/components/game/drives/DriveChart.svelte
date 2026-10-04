@@ -1,7 +1,9 @@
 
 <script>
+import { onMount } from "svelte";
 import { determineLuminance, teamColorHex } from "../../../utils/misc";
-const { id, subtitle, result, plays, offense, defense, isNeutralSite } = $props();
+// dark*: the page's dark-theme pair, passed only with 'game-colours' on
+const { id, subtitle, result, plays, offenseColor, defenseColor, darkOffenseColor = null, darkDefenseColor = null, isNeutralSite } = $props();
 
 let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to avoid issues with team colors
 // if (!isNeutralSite && homeTeam.id == 68) {
@@ -12,7 +14,7 @@ let fieldColor = "rgb(0, 153, 41)" //"rgba(0, 153, 41, 1.0)" // transparent to a
 
 /* Based off https://github.com/criscokid/Canvas-Field */
 class FootballField {
-    constructor(elementId, fieldColor = "rgb(0, 153, 41)", team1 = { color: "#B3A369", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/59.png" }, team2 = { color: "#80000A", url: "https://a.espncdn.com/i/teamlogos/ncaa/500/60.png" }, baseLineWidth = 10, subtitle = null) {
+    constructor(elementId, fieldColor = "rgb(0, 153, 41)", team1Color = "#B3A369", team2Color = "#80000A", baseLineWidth = 10, subtitle = null) {
         this.currentPoint = 0;
         this.currentPlayY = 15;
         this.isDrawn = false;
@@ -22,6 +24,19 @@ class FootballField {
         this.sourceElement.style.width = "720px";
         this.sourceElement.style.height = "300px";
         this.sourceElement.style.border = `12px white solid`;
+
+        // below md the element shrinks to the screen and keeps the bitmap's 2.4:1 ratio (the border
+        // is inside the width: Bootstrap makes every element border-box). Desktop keeps the fixed
+        // 720x300: a percentage max-width there drops the canvas from the drives table's
+        // min-content width and shrinks the whole table.
+        const narrow = window.matchMedia("(max-width: 767.98px)");
+        const fit = () => {
+            this.sourceElement.style.maxWidth = narrow.matches ? "100%" : "";
+            this.sourceElement.style.height = narrow.matches ? "auto" : "300px";
+        };
+        fit();
+        narrow.addEventListener("change", fit);
+        this.dispose = () => narrow.removeEventListener("change", fit);
 
         // Set actual size in memory (scaled to account for extra pixel density).
         const dpi = window.devicePixelRatio; // Change to 1 on retina screens to see blurry canvas.
@@ -202,9 +217,9 @@ class FootballField {
         };
 
         this.fillEndZones = function () {
-            this.ctx.fillStyle = teamColorHex(team1.color);
+            this.ctx.fillStyle = teamColorHex(team1Color);
             this.ctx.fillRect(0, 0, this.fieldSegment, this.fieldHeight);
-            this.ctx.fillStyle = teamColorHex(team2.color);
+            this.ctx.fillStyle = teamColorHex(team2Color);
             this.ctx.fillRect(this.fieldWidth - this.fieldSegment, 0, this.fieldSegment, this.fieldHeight);
         };
 
@@ -245,7 +260,14 @@ class FootballField {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// the field on the canvas now: a redraw replaces it, so its breakpoint listener must go with it
+let activeField = null;
+function drawDrive() {
+    activeField?.dispose();
+    // the dark pair when the page made one and the theme is dark, else the light pair / each team's own colour
+    const dark = darkOffenseColor && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const offense = dark ? darkOffenseColor : offenseColor;
+    const defense = dark ? darkDefenseColor : defenseColor;
     const field = new FootballField(
         `football-field-${id}`,
         fieldColor,
@@ -254,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         10,
         subtitle
     )
+    activeField = field;
 
 
     field.draw();
@@ -268,11 +291,26 @@ document.addEventListener('DOMContentLoaded', () => {
         endYardsToEndzone = (play.end.team.id == play.start.team.id & play.end.yardsToEndzone == 99) ? 0 : endYardsToEndzone
         endYardsToEndzone = (play.type.text.includes("Punt") || (play.end.team.id != play.start.team.id & play.end.yardsToEndzone == 99)) ? play.start.yardsToEndzone : endYardsToEndzone;
         if (!['Kickoff', 'Timeout', 'Kickoff Return (Offense)', "Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense), play.start.yardsToEndzone, endYardsToEndzone, text, annotation);
         } else if (["Field Goal Good", "Field Goal Missed"].includes(play.type.text)) {
-            field.markPlay(teamColorHex(offense.color), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
+            field.markPlay(teamColorHex(offense), play.start.yardsToEndzone, play.start.yardsToEndzone, text, annotation);
         }
     }
+}
+
+// onMount, not DOMContentLoaded: a client:only island often mounts after that event
+// has fired, and the listener then never runs (blank 300x150 canvas); onMount also
+// guarantees the canvas below exists
+onMount(() => {
+    drawDrive();
+    if (!darkOffenseColor) return () => activeField?.dispose();
+    // a new FootballField resizes (and so clears) the canvas: redraw in the other theme's colours when it flips
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change', drawDrive);
+    return () => {
+        scheme.removeEventListener('change', drawDrive);
+        activeField?.dispose();
+    };
 });
 
 </script>

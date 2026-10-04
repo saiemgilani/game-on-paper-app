@@ -6,11 +6,12 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, retrieveTeamSeasonInformation,
+    SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, retrieveTeamSeasonInformation, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary,
 } from '../resources/sdv';
-import type { League } from '../utils/league';
 import { isFeatureEnabled } from '../utils/features';
+import { fiveFactorColumns } from '../utils/fiveFactors';
+import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 
 export interface SeasonTeamData {
@@ -41,7 +42,9 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     try {
         team = await retrieveTeamInformation(id, league);
         teamSeason = await retrieveTeamSeasonInformation(year, id, league);
-        teamSummaries = await retrieveTeamSummaries({ season: Number(year), team_id: Number(id), league });
+        // flag off: no `columns`, so the request and its cache key are unchanged
+        const columns = isFeatureEnabled('five-factors', Astro.locals) ? [...teamSummaryColumns(league), ...fiveFactorColumns()] : undefined;
+        teamSummaries = await retrieveTeamSummaries({ season: Number(year), team_id: Number(id), league, columns });
     } catch (e: any) {
         console.error(`ERROR while loading team information: ${e}, ${e.stack}`)
         Astro.cache.set(false);

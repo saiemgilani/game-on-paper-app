@@ -56,6 +56,22 @@ export const FLAGS: Record<string, FeatureState> = {
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
     'player-pages': 'preview',
+    // Game-page header links: the team names in the h1 go to /team/<id>, and the
+    // Back button goes to the game's own week. Links on text the page already
+    // shows, no new element. Read in GameHeader.astro, which both game-page
+    // twins and the pregame page import.
+    'game-links': 'preview',
+    // One team-colour decision per game (utils/misc.ts pickGameColors), a pair
+    // per theme, handed to every chart on the game page (WP, EP, drive charts,
+    // Deserved Win %) and the matchup radar. Off: each chart keeps its own
+    // legacy colours.
+    'game-colours': 'preview',
+    // The Five Factors panel on the season team page (/year/N/team/<id> and the
+    // /nfl twin), under Profile. Only this path adds the factor columns to the
+    // team_summaries `select`, so for every other viewer the request, its cache
+    // key and the page are exactly what they are today. Promote to 'on' once the
+    // table has been reviewed on production data.
+    'five-factors': 'preview',
     // Nearby-rank lists on the team-season and player pages: for each key
     // metric, the teams or players ranked within five places, the page's own
     // row marked. Promote once both leagues' lists have been reviewed.

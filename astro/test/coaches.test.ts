@@ -14,6 +14,8 @@ import {
     resolveCoachSort,
     sortCoachRows,
     splitByMinPlays,
+    teamsWithoutCoach,
+    withDerivedColumns,
     type CoachRow,
 } from '../src/utils/coaches';
 import { COACH_BOARD_COPY } from '../src/utils/seo';
@@ -50,7 +52,7 @@ describe('board definitions', () => {
     });
 
     test('pct columns hold 0-1 fractions and the point-scaled columns do not (the format convention)', () => {
-        const rows = fx.coach_tendencies.concat(fx.coach_careers);
+        const rows = withDerivedColumns(fx.coach_tendencies.concat(fx.coach_careers));
         for (const b of Object.values(COACH_BOARDS)) {
             for (const c of b.columns) {
                 const vals = rows.map((r) => numericValue(r, c.key)).filter((v): v is number => v !== null);
@@ -60,7 +62,7 @@ describe('board definitions', () => {
             }
         }
         // the three percentage-POINT columns would render as 2700% under pct
-        for (const k of ['third_down_over_expected', 'fourth_wp_left_per_decision', 'fourth_wp_left']) {
+        for (const k of ['third_down_over_expected_rate', 'fourth_wp_left_per_decision', 'fourth_wp_left']) {
             const col = Object.values(COACH_BOARDS).flatMap((b) => b.columns).find((c) => c.key === k);
             expect(col?.format, k).toMatch(/^num/);
         }
@@ -80,6 +82,57 @@ describe('board definitions', () => {
         expect(coachBoard('hasOwnProperty')).toBeUndefined();
         expect(coachBoard('pace')?.slug).toBe('pace');
         expect(coachBoardColumn('constructor', 'go_rate')).toBeUndefined();
+    });
+});
+
+describe('third downs over expected', () => {
+    test('a rate per 100 third downs, in percentage points, read from the count and the opportunities', () => {
+        const col = COACH_BOARDS.efficiency.columns.find((c) => c.key === 'third_down_over_expected_rate')!;
+        expect(col.hover).toMatch(/rate .* percentage points/);
+        // Texas Tech 2025: +24.6 conversions over expected on 216 third downs
+        const [tt] = withDerivedColumns([{ third_down_over_expected: 24.6, third_down_opportunities: 216 }]);
+        expect(formatCoachValue(numericValue(tt, 'third_down_over_expected_rate'), col.format)).toBe('11.4');
+        const [none] = withDerivedColumns([{ third_down_over_expected: 0, third_down_opportunities: 0 }]);
+        expect(numericValue(none, 'third_down_over_expected_rate')).toBeNull();
+        // the API is asked for the inputs, never for the derived name (an unknown column is a 400)
+        expect(coachMetricColumns()).toEqual(expect.arrayContaining(['third_down_over_expected', 'third_down_opportunities']));
+        expect(coachMetricColumns()).not.toContain('third_down_over_expected_rate');
+    });
+
+    test('careers rank the rate, not the career total', () => {
+        const rows = withDerivedColumns(fx.coach_careers);
+        const col = COACH_BOARDS.efficiency.columns.find((c) => c.key === 'third_down_over_expected_rate')!;
+        const top = sortCoachRows(rows, col)[0];
+        const best = Math.max(...rows.map((r) => 100 * (numericValue(r, 'third_down_over_expected') as number) / (numericValue(r, 'third_down_opportunities') as number)));
+        expect(numericValue(top, 'third_down_over_expected_rate')).toBeCloseTo(best, 9);
+    });
+});
+
+describe('style columns', () => {
+    test('pace, pass rate, go rate and decision counts are unshaded; quality columns keep the ramp', () => {
+        for (const c of COACH_BOARDS.pace.columns.concat(COACH_BOARDS.tendencies.columns)) expect(c.neutral, c.key).toBe(true);
+        const fourth = (k: string) => COACH_BOARDS['fourth-downs'].columns.find((c) => c.key === k)!;
+        expect(fourth('go_rate').neutral).toBe(true);
+        expect(fourth('fourth_decisions').neutral).toBe(true);
+        expect(fourth('fourth_agreement_rate').neutral).toBeFalsy();
+        expect(fourth('fourth_wp_left').neutral).toBeFalsy();
+        for (const b of ['efficiency', 'scoring', 'defense']) {
+            for (const c of COACH_BOARDS[b].columns) expect(c.neutral, `${b}.${c.key}`).toBeFalsy();
+        }
+    });
+});
+
+describe('teams without a head coach row', () => {
+    test('the FBS teams the coach table has no row for, by name, sorted', () => {
+        const fbs = [
+            { team_id: 12, pos_team: 'Arizona' },
+            { team_id: 99, pos_team: 'LSU' },
+            { team_id: 213, pos_team: 'Penn State' },
+            { team_id: 2, pos_team: 'Auburn' },
+        ];
+        const coached = [{ pos_team_id: '12', coach: 'Brent Brennan' }];
+        expect(teamsWithoutCoach(fbs, coached, (t) => String(t.pos_team))).toEqual(['Auburn', 'LSU', 'Penn State']);
+        expect(teamsWithoutCoach([], coached, (t) => String(t.pos_team))).toEqual([]);
     });
 });
 

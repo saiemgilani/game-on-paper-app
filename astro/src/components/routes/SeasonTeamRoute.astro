@@ -13,6 +13,8 @@ import type { SDVPassingSummary, SDVReceivingSummary, SDVRushingSummary } from "
 import type { SeasonTeamData } from "../../routes/seasonTeam";
 import { cleanLocation, roundNumber } from "../../utils/misc";
 import TeamCard from "../../components/team/TeamCard.astro";
+import FiveFactorsTable from "../../components/team/FiveFactorsTable.astro";
+import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
@@ -94,6 +96,12 @@ const breadcrumbs: PageBreadcrumb[] = [
             </TeamRadarChart>
         </GenericPanel>
     </div>
+    {/* no summary row, no panel: fifteen dashes say nothing */}
+    {isFeatureEnabled('five-factors', Astro.locals) && teamSummaries[0] && (
+        <div class="container mb-3">
+            <FiveFactorsTable summary={teamSummaries[0]} />
+        </div>
+    )}
     {neighborLists.length > 0 && (
     <div class="container mb-3">
         <GenericPanel id="nearby-ranks" title="Nearby Ranks" show={true}>

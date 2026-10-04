@@ -565,6 +565,49 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
     return hexString;
 }
 
+// `GET /v1/meta` (sdv-db #85) answers when each table's data last changed:
+// `datasets["cfb.team_summaries"] = "<ISO time>"`, stamped by the loader only
+// after the new rows commit. That stamp goes into the table's cache key, so
+// the first read after an ingest misses instead of serving pre-ingest numbers
+// for the rest of a multi-day TTL; entries under an old stamp are never read
+// again and expire on their own TTL. A table meta doesn't list (qa, the player
+// routes) or a failed meta read keeps the unversioned key -- the behaviour
+// before this. Meta is held in memory per isolate and shared through KV, both
+// for SDV_META_TTL: one small Data API call per colo per 5 minutes, never one
+// per request. A new ingest therefore shows within ~10 minutes (both windows).
+const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
+const SDV_META_KEY = 'sdv-meta:datasets';
+const SDV_META_TTL = 60 * 5;
+// Single-flight: the in-flight read is shared, so a burst on a fresh isolate makes one
+// meta call, not one per request. Sharing a promise across requests is safe under
+// `handle_cross_request_promise_resolution` (default since compatibility_date
+// 2024-10-14; ours is later). fetchSDVDatasets never rejects: a failure resolves to
+// null, which holds for the window, then retries -- no per-request retry storm on a down API.
+let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
+
+async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
+    try {
+        const cached = await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
+        if (cached) return cached as Record<string, string>;
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        if (!req.ok) throw new Error(`status ${req.status}`);
+        const datasets = (await req.json() as any)?.datasets;
+        if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
+        await safeCachePut(env.SDV_API_CACHE, SDV_META_KEY, JSON.stringify(datasets), SDV_META_TTL);
+        return datasets;
+    } catch (e) {
+        console.warn(`SDV meta unavailable, cache keys stay unversioned: ${e}`);
+        return null;
+    }
+}
+
+async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
+    if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
+        sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
+    }
+    return (await sdvMeta.datasets)?.[`${league}.${table}`];
+}
+
 /**
  * A Data API failure the caller must SEE rather than render around. Every
  * historical caller wants an empty table on a bad day; the player pages want
@@ -590,7 +633,9 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     }
 
     // cfb keeps its historical cache keys; other leagues are namespaced
-    const cacheKey = await generateSDVCacheKey(league === 'cfb' ? endpointURL : `${league}/${endpointURL}`);
+    const unversioned = league === 'cfb' ? endpointURL : `${league}/${endpointURL}`;
+    const stamp = cacheEnabled ? await sdvIngestStamp(league, endpoint) : undefined;
+    const cacheKey = await generateSDVCacheKey(stamp ? `${unversioned}#${stamp}` : unversioned);
 
     // check cache first
     if (cacheEnabled) { 
@@ -707,6 +752,44 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     }
 }
 
+/**
+ * `retrieveTeamSummaries`' default columns (it appends each `_rank`): every column
+ * the LEAGUE's categories read. The NFL-only categories name columns the cfb table
+ * does not have, and one unknown column in `select` is a 400 (every team profile /
+ * season team / pregame read went empty).
+ */
+export function teamSummaryColumns(league: League): string[] {
+    return teamCategoriesFor(league).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p] ?? []).concat(SDV_TEAM_CARD_COLUMNS[p] ?? []))
+}
+
+/**
+ * One season baseline row from sdv-db `league_averages`: the distribution of a
+ * published metric over its entity rows (teams, qualified players, team-games).
+ * `qualifier_min` is the per-team-game gate on player rows (14 / 6.25 / 1.875),
+ * null on team rows; `sd` is null when `n` is 1.
+ */
+export interface SDVLeagueAverage {
+    season: number
+    level: string
+    entity: 'team' | 'player'
+    category: string
+    metric: string
+    mean: number | null
+    median: number | null
+    sd: number | null
+    n: number
+    qualifier_min: number | null
+}
+
+export async function retrieveLeagueAverages(season: number, filters: { entity?: 'team' | 'player'; category?: string; level?: string } = {}, league: League = 'cfb'): Promise<SDVLeagueAverage[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    // the API defaults to 1000 rows; one season across every level can run past that
+    const query: Record<string, string> = { season: String(season), limit: '5000' };
+    for (const [k, v] of Object.entries(filters)) if (v) query[k] = v;
+    const content = await requestSDV('league_averages', new URLSearchParams(query), undefined, 60 * 60 * 24, true, league);
+    return content?.data ?? [];
+}
+
 // this needs to be split into players (passing/rushing/receiving) and teams (team_summaries)
 export interface SDVTeamSummaryRequest {
     season?: number
@@ -757,10 +840,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     } else if (category) {
         metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
     } else if (!category) {
-        // every column the LEAGUE's categories read: the NFL-only categories name
-        // columns the cfb table does not have, and one unknown column in `select`
-        // is a 400 (every team profile / season team / pregame read went empty)
-        metric_columns = teamCategoriesFor(league).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p] ?? []).concat(SDV_TEAM_CARD_COLUMNS[p] ?? []))
+        metric_columns = teamSummaryColumns(league)
     } else {
         throw Error(`Category ${category} not implemented`)
     }
@@ -850,31 +930,50 @@ export async function retrieveRankedRows({ table, season, metrics, idColumns, le
     return content?.data ?? [];
 }
 
-// Mirrors https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_prediction_constants.py
-const SDV_CFB_RATINGS_PREDICTION_CONFIG = {
-    net_points_scale: 24.6578,
-    hfa_points: 3.0365,
-    margin_sd: 18.7894
+// Fitted for THIS input, the team summaries' net_adj_epa, by
+// `python -m cfb_model_build.cfb_higher_models fit-pregame --seasons 2014 ... 2025 --holdout 2024 2025`
+// in sportsdataverse/cfbfastR-cfb-data ("gop_net_adj_epa" in models/pregame_fit.json):
+// margin = scale * (home - away) + hfa off neutral sites, fit on 2014-2023 as-of games.
+// These are NOT sportsdataverse-py's cfb_prediction_constants. Those are fitted to
+// cfb_ratings' adj_net, a different rating 1.37x wider (team-game sd 0.2633 vs 0.1916).
+// Applied to net_adj_epa they compressed every projection (calibration slope 1.73).
+// 2024-25 near-holdout (never in the fit; sportsdataverse-py #598 tuned net_adj_epa on
+// 2023-25), 1,202 games: MAE 13.39 -> 13.00, Brier 0.2056 -> 0.1967, calibration slope
+// 0.885 (this scale runs about 10% steep on those seasons).
+// Only leagues with a fit of their own get a projection. The NFL has none yet, and the CFB
+// constants have no calibration behind them on NFL ratings, so NFL pregame pages and the
+// NFL Matchup Builder show no projection until an NFL entry is added here.
+const SDV_RATINGS_PREDICTION_CONFIG: Partial<Record<League, { net_points_scale: number, hfa_points: number, margin_sd: number }>> = {
+    cfb: {
+        net_points_scale: 48.4590,
+        hfa_points: 2.7110,
+        margin_sd: 17.1697
+    }
 };
 
 // Mirrors: https://github.com/sportsdataverse/sportsdataverse-py/blob/main/sportsdataverse/cfb/cfb_game_predict.py
-export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false): number | null {
+export function calculatePredictedPointMargin(away_adj_epa?: number, home_adj_epa?: number, neutral_site: boolean = false, league: League = 'cfb'): number | null {
+    const config = SDV_RATINGS_PREDICTION_CONFIG[league]
+    if (!config) {
+        return null
+    }
     // null-checks, not falsiness: 0 is a legitimate Net Adj EPA rating
     if (away_adj_epa == null || home_adj_epa == null || !Number.isFinite(away_adj_epa) || !Number.isFinite(home_adj_epa)) {
         return null
     }
 
-    const hfa_pts = neutral_site ? 0.0 : SDV_CFB_RATINGS_PREDICTION_CONFIG.hfa_points
-    return SDV_CFB_RATINGS_PREDICTION_CONFIG.net_points_scale * (home_adj_epa - away_adj_epa) + hfa_pts
+    const hfa_pts = neutral_site ? 0.0 : config.hfa_points
+    return config.net_points_scale * (home_adj_epa - away_adj_epa) + hfa_pts
 }
 
 // https://github.com/sportsdataverse/sportsdataverse-py/blob/a19e7f2e89cf428e6d5aec137f18300484c5b2a9/sportsdataverse/cfb/cfb_game_predict.py#L80
-export function calculatePredictedWinProb(pred_margin: number | null): number | null {
-    if (!pred_margin && pred_margin != 0) {
+export function calculatePredictedWinProb(pred_margin: number | null, league: League = 'cfb'): number | null {
+    const config = SDV_RATINGS_PREDICTION_CONFIG[league]
+    if (!config || (!pred_margin && pred_margin != 0)) {
         return null;
     }
 
-    return calculateNormCdf(pred_margin, 0, SDV_CFB_RATINGS_PREDICTION_CONFIG.margin_sd)
+    return calculateNormCdf(pred_margin, 0, config.margin_sd)
 }
 
 export interface SDVTeamScheduleRequest {
