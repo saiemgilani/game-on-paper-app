@@ -823,10 +823,9 @@ describe('twin inventory: which sections each twin renders', () => {
         }, 60_000);
 
         test(`[${league}] neither twin renders TraditionalTeamStats or PenaltyBreakdown`, async () => {
-            // Both are live code with unit tests behind them
-            // (test/traditionalStats.test.ts, test/penalties.test.ts) but nothing
-            // renders them: TraditionalTeamStats.astro went with #270 and
-            // PenaltyBreakdown.astro has no call site. Pinned by rendering all
+            // TraditionalTeamStats.astro and its utility went with #270;
+            // PenaltyBreakdown.astro is live code with a unit test behind it
+            // (test/penalties.test.ts) but no call site. Pinned by rendering all
             // three surfaces that could carry them, so wiring either in goes red here.
             const surfaces = [
                 (await renderPage('classic', league)).html,
