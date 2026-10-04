@@ -344,7 +344,7 @@ function onChangeSpan(e: Event) {
                 turnover: selectedBoxScore.turnover
             }}
             useSuffix={false}
-            decimalPoints={0}
+            decimalPoints={2}
         />
     </div>
 </div>

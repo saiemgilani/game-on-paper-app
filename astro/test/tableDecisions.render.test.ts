@@ -19,7 +19,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { metricDecimalPoints } from '../src/utils/misc';
+import { metricDecimalPoints, roundNumber } from '../src/utils/misc';
 import { withoutUsageSections } from '../src/utils/usage';
 import { loadGzJson, locals, parseTable, tableWithHeading } from './helpers/tables';
 
@@ -68,11 +68,11 @@ beforeAll(async () => {
  * `SituationalSection` island, which is what owns the column list there -- the
  * v2 page mounts it `client:only`, so no whole-page render can see inside it.
  */
-async function renderProduction(twin: 'classic' | 'v2', league: Lg): Promise<{ teams: any[], table: string }> {
+async function renderProduction(twin: 'classic' | 'v2', league: Lg, heading = 'Production'): Promise<{ teams: any[], box: any, table: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
     let html: string;
-    let teams: any[];
+    let box: any;
     if (twin === 'classic') {
         const Page = (await import('../src/components/game/classic/GamePage.astro')).default;
         html = await container.renderToString(Page, {
@@ -80,7 +80,7 @@ async function renderProduction(twin: 'classic' | 'v2', league: Lg): Promise<{ t
             request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
             locals: locals(league),
         });
-        teams = g.advBoxScore.team;
+        box = g.advBoxScore;
     } else {
         const spans = withoutUsageSections(g.advBoxScoreSpans);
         const Section = (await import('../src/components/game/metrics/SituationalSection.svelte')).default as any;
@@ -89,11 +89,11 @@ async function renderProduction(twin: 'classic' | 'v2', league: Lg): Promise<{ t
             locals: locals(league),
         });
         // the island opens on the whole game, the `all` span
-        teams = spans.all.team;
+        box = spans.all;
     }
-    const table = tableWithHeading(html, 'Production');
-    expect(table, `the ${twin} twin renders a Production table`).toBeTruthy();
-    return { teams, table: table! };
+    const table = tableWithHeading(html, heading);
+    expect(table, `the ${twin} twin renders a ${heading} table`).toBeTruthy();
+    return { teams: box.team, box, table: table! };
 }
 
 /** The Production column list, in the order both twins pass it. */
@@ -187,4 +187,41 @@ describe('the Binion box rounds through one guard in both twins', () => {
             for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?[\d\.]+$/);
         }
     }, 60_000);
+});
+
+// Explainer wave-2 audit (turnover luck F4/F5): the Turnovers table rounded the
+// expected-turnover model to whole numbers (BYU-Iowa State read "0 | -0" for an
+// expected margin of +0.22, and a luck of 19 the page's own numbers made 20),
+// and the Defensive table asked for a `PD` key the processor never emits.
+for (const league of Object.keys(FIXTURES) as Lg[]) {
+    describe(`[${league}] turnover and defensive rows show what the payload holds`, () => {
+        for (const twin of ['classic', 'v2'] as const) {
+            test(`${twin}: expected turnovers, margin and luck to two decimals; pass breakups from the payload`, async () => {
+                const { box, table } = await renderProduction(twin, league, 'Turnovers');
+                const rows = parseTable(table).rows.slice(1);
+                const row = (label: string) => rows.find((r) => r[0] === label)?.slice(1);
+                const cells = { 'Expected Turnovers': 'expected_turnovers', 'Expected Turnover Margin': 'expected_turnover_margin', 'Turnover Luck (pts)': 'turnover_luck' };
+                for (const [label, key] of Object.entries(cells)) {
+                    expect(row(label), label).toEqual(box.turnover.map((t: any) => roundNumber(t[key], 2, 2)));
+                }
+                expect(parseTable(table).rows.flat()).not.toContain('-0');
+                // the fixtures have fractional expectations, so whole-number rounding fails here
+                expect(box.turnover.some((t: any) => !Number.isInteger(t.expected_turnovers))).toBe(true);
+
+                const def = parseTable((await renderProduction(twin, league, 'Defensive')).table).rows.slice(1);
+                const pbu = def.find((r) => r[0] === 'Pass Breakups')?.slice(1);
+                expect(pbu).toEqual(box.defensive.map((t: any) => String(t.pass_breakups)));
+                expect(box.defensive.some((t: any) => t.pass_breakups > 0), 'the fixture has breakups').toBe(true);
+            }, 60_000);
+        }
+    });
+}
+
+describe('roundNumber never prints a negative zero', () => {
+    test('a value that rounds to zero reads 0, whatever its sign', () => {
+        expect(roundNumber(-0.22, 2, 0)).toBe('0');
+        expect(roundNumber(-0.004, 3, 2)).toBe('0.00');
+        expect(roundNumber(-0.6, 2, 0)).toBe('-1');
+        expect(roundNumber(-0.22, 2, 2)).toBe('-0.22');
+    });
 });
