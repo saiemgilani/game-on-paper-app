@@ -135,7 +135,7 @@ describe('game-colours off: the page is byte-for-byte what main renders', () => 
     // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
     // PR that changes the game page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { v2: 'e797e0a5cd608357', classic: '5270063bb6fdb017' };
+    const GOLDEN = { v2: '6d9d6c90eba0aaf3', classic: 'caf2c90861e4beb8' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});
