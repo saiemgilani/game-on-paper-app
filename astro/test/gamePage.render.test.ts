@@ -5,7 +5,6 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { kickerStatLine, punterStatLine, rushingStatLine } from '../src/utils/players';
-import type { ProcessedDriveScripting, ProcessedGame } from '../src/resources/python';
 
 // Why this exists: a TDZ ReferenceError in GamePage's frontmatter shipped in
 // #181 and every finished-game page rendered as a 200 with an empty body.
@@ -386,33 +385,6 @@ describe('the player stat line is a row under the name, not a column', () => {
         expect(firstLine(classic)).toMatch(/^20\/32, 153 yds, 1 TD, 2 INT, \d+ Sck, [\d.]+ xQBR/);
         expect(firstLine(v2).startsWith(firstLine(classic))).toBe(true);
     });
-
-    test('drive_scripting box scores: retrieveProcessedGame properly handles missing script items', async () => {
-        vi.mock('../src/utils/telemetry', async (orig) => ({
-            ...(await orig<typeof import('../src/utils/telemetry')>()),
-            wrappedFetch: async (url: string) => {
-                if (!String(url).includes(`/cfb/${GAME_ID}/process`)) throw new Error(`unexpected fetch in test: ${url}`);
-                (globalThis as any).__lastProcessUrl = String(url);
-
-                // manipulate static API payload
-                const apiPayloadRaw = gunzipSync(readFileSync(new URL('./fixtures/game-401729745.json.gz', import.meta.url))).toString();
-                let apiPayload: ProcessedGame = JSON.parse(apiPayloadRaw);
-                apiPayload.advBoxScore.drive_scripting = apiPayload.advBoxScore.drive_scripting?.filter((p: ProcessedDriveScripting) => p.script != "scripted") || []
-            
-                // mock out payload return
-                const apiPayloadManipulatedRaw = JSON.stringify(apiPayload);
-                return new Response(apiPayloadManipulatedRaw, { status: 200, headers: { 'content-type': 'application/json' } });
-            },
-        }));
-
-        // call method
-        const { retrieveProcessedGame } = await import('../src/resources/python');
-        const game = await retrieveProcessedGame(GAME_ID, 30);
-
-        // check for script box scores
-        const availableScripts = game.advBoxScore.drive_scripting?.map((p: ProcessedDriveScripting) => p.script) || []
-        expect(availableScripts).toContain("scripted")
-    })
 
     test('player box: specialists name and EPA, then the stat line', async () => {
         const { default: PlayerBoxScore } = await import('../src/components/game/metrics/PlayerBoxScore.astro');

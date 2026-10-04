@@ -39,7 +39,9 @@ function handleMetricRows(rowKey: string): string {
     }
 
     let teamBoxScores: ProcessedTeamMetricBoxScore[] = box ? ((box as any)[boxKey] || []) : [];
-    teamBoxScores.sort((a, b) => keys.indexOf((a as any)[teamKey]) - keys.indexOf((b as any)[teamKey]) )
+    // `keys` are strings and the payload's ids are numbers: compare like with like, or
+    // every row is -1 and the sections keep whatever order they arrived in
+    teamBoxScores = teamBoxScores.toSorted((a, b) => keys.indexOf(String((a as any)[teamKey])) - keys.indexOf(String((b as any)[teamKey])));
 
     let result = ""
     if (item == "EPA_misc") {
@@ -132,13 +134,15 @@ function handleMetricRows(rowKey: string): string {
     } else if (item.startsWith("scripted.") || item.startsWith("non_scripted.")) {
         const script = item.split(".")[0]
         const metric = item.replace(script + ".", "")
-        for (const teamData of teamBoxScores) {
-            if ((teamData as any)["script"] != script) {
-                continue;
-            }
-
-            let val = (teamData as any)[metric] || 0;
-            if (["epa_per_play", "points_per_drive"].includes(metric)) {
+        // One cell per header team, found by team id. A team with no drive of this kind
+        // in the span has no row at all, so reading the rows in order would put the other
+        // team's numbers under its logo; it gets a dash instead.
+        for (const team of groups) {
+            const teamData = teamBoxScores.find((row: any) => String(row[teamKey]) === team && row["script"] === script) as any;
+            const val = teamData?.[metric];
+            if (val === undefined || val === null) {
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
+            } else if (["epa_per_play", "points_per_drive"].includes(metric)) {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
             } else if (metric == "success_rate") {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(val * 100, 2, 0)}%</td>`;
