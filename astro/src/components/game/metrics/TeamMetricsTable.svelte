@@ -67,11 +67,12 @@ function handleMetricRows(rowKey: string): string {
         // This has to be based the updated off_yards above to remain consistent.
         teamBoxScores.forEach((teamData: any) => {
             const scrimmagePlays = teamData["scrimmage_plays"]
+            const baseVal = roundNumber(teamData['yards_per_play'] || 0, 2, 2)
             if (!scrimmagePlays || scrimmagePlays == "0") {
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">—</td>`;
+                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${baseVal}">—</td>`;
             } else {
                 let val = (parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0)) / parseFloat(scrimmagePlays);
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">${roundNumber(val, 2, 2)}</td>`;
+                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${baseVal}">${roundNumber(val, 2, 2)}</td>`;
             }
         });
     }  else if (item == "avg_field_position") {
