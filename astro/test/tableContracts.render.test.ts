@@ -129,8 +129,8 @@ const METRIC_TABLES = [
     { title: 'Explosiveness', section: 'team', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: ['EPA_plays', 'scrimmage_plays', 'EPA_explosive', 'EPA_explosive_passing', 'EPA_explosive_rushing', 'EPA_non_explosive', 'EPA_non_explosive_per_play', 'EPA_non_explosive_passing', 'EPA_non_explosive_passing_per_play', 'EPA_non_explosive_rushing', 'EPA_non_explosive_rushing_per_play'] },
     { title: 'Situational', section: 'situational', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: ['EPA_success', 'EPA_success_pass', 'EPA_success_rush', 'EPA_success_standard_down', 'EPA_success_passing_down', 'EPA_success_early_down', 'EPA_success_late_down', 'EPA_middle_8_success', 'early_downs', 'early_down_first_down', 'EPA_early_down', 'EPA_early_down_per_play', 'early_down_pass', 'early_down_rush', 'EPA_success_early_down_pass', 'EPA_success_early_down_rush', 'late_downs', 'EPA_late_down', 'EPA_late_down_per_play', 'late_down_pass', 'late_down_rush', 'EPA_success_late_down_pass', 'EPA_success_late_down_rush', 'late_down_avg_distance', 'middle_8', 'EPA_middle_8', 'EPA_middle_8_per_play', 'middle_8_pass', 'middle_8_rush', 'EPA_middle_8_success_pass', 'EPA_middle_8_success_rush'] },
     { title: 'Drives', section: 'drives', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: ['drives', 'avg_field_position', 'plays_per_drive', 'yards_per_drive', 'drive_total_gained_yards_rate'] },
-    { title: 'Defensive', section: 'defensive', teamKey: 'def_pos_team', useSuffix: true, decimalPoints: 0, columns: ['scrimmage_plays', 'drive_stopped_rate', 'havoc_total', 'havoc_total_pass', 'havoc_total_rush', 'TFL', 'TFL_pass', 'TFL_rush', 'sacks', 'PD', 'def_int', 'fumbles'] },
-    { title: 'Turnovers', section: 'turnover', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: ['turnovers', 'total_fumbles', 'fumbles_lost', 'fumbles_recovered', 'Int', 'turnover_margin', 'expected_turnovers', 'expected_turnover_margin', 'turnover_luck'] },
+    { title: 'Defensive', section: 'defensive', teamKey: 'def_pos_team', useSuffix: true, decimalPoints: 0, columns: ['scrimmage_plays', 'drive_stopped_rate', 'havoc_total', 'havoc_total_pass', 'havoc_total_rush', 'TFL', 'TFL_pass', 'TFL_rush', 'sacks', 'pass_breakups', 'def_int', 'fumbles'] },
+    { title: 'Turnovers', section: 'turnover', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: ['turnovers', 'total_fumbles', 'fumbles_lost', 'fumbles_recovered', 'Int', 'turnover_margin', 'expected_turnovers', 'expected_turnover_margin', 'turnover_luck'] },
 ] as const;
 
 type MetricTable = { title: string, teamKey: string, useSuffix: boolean, decimalPoints: number, columns: readonly string[], section?: string };
@@ -165,7 +165,7 @@ const V2_METRIC_TABLES: MetricTable[] = [
         ...dotted('drive_scripting', ['scripted.drives', 'scripted.success_rate', 'scripted.epa_per_play', 'scripted.points_per_drive', 'non_scripted.drives', 'non_scripted.success_rate', 'non_scripted.epa_per_play', 'non_scripted.points_per_drive']),
     ] },
     { title: 'Defensive', teamKey: 'def_pos_team', useSuffix: true, decimalPoints: 0, columns: dotted('defensive', classic('Defensive')) },
-    { title: 'Turnovers', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: dotted('turnover', classic('Turnovers')) },
+    { title: 'Turnovers', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: dotted('turnover', classic('Turnovers')) },
 ];
 
 type Twin = 'classic' | 'v2';
@@ -181,14 +181,14 @@ type Twin = 'classic' | 'v2';
  */
 
 /**
- * Cells. 4174aaa7 ("situational: add carve out for YPP ..."): both twins print
- * Production's "Yards" as pass + rush yards (#269), but only v2 then derives the
- * Yards/Play under it from that total -- (pass_yards + rush_yards) /
- * scrimmage_plays -- and keeps the payload's value as the cell's tooltip,
- * `title="ESPN: <yards_per_play>"`. The classic twin still prints the payload's
- * yards_per_play, which is ESPN's statYardage per play.
+ * Cells. None differ between the twins any more. For a while only v2 derived
+ * Yards/Play from the pass + rush total (4174aaa7); since #270's review both
+ * twins print Production's "Yards" as the payload's net `off_yards` and
+ * Yards/Play as the payload's `yards_per_play`, so the yards lost on sacks are in
+ * both rows (owner decision 2026-10-04). The list stays as the place to record
+ * a value the twins are MEANT to print differently.
  */
-const V2_ONLY_VALUES: readonly string[] = ['yards_per_play'];
+const V2_ONLY_VALUES: readonly string[] = [];
 
 /**
  * Row labels. 4b9a96c2 ("constants: revert change to remove tabs in v1 game
@@ -214,13 +214,15 @@ function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalP
     // the shared guard (#269): an explicit 0 means zero places, a missing value means one
     const dp = metricDecimalPoints(decimalPoints);
     const v = (k: string) => row[k] || 0;
-    // Production's total is rush + pass, not ESPN's per-play statYardage (#269)
-    if (item === 'off_yards') return String(parseFloat(v('pass_yards')) + parseFloat(v('rush_yards')));
-    // ...and in v2 alone Yards/Play is that total per scrimmage play (V2_ONLY_VALUES);
-    // the classic twin falls through to the payload's own fixed-decimal value
-    if (item === 'yards_per_play' && twin === 'v2') {
+    // Production's total is the payload's net off_yards: statYardage over scrimmage
+    // plays, so the yards lost on sacks are in it. (It was rush + pass under #269,
+    // which leaves sacks out.)
+    if (item === 'off_yards') return roundNumber(v('off_yards'), 2, 0);
+    // ...and Yards/Play is that total per scrimmage play, the payload's own value, at
+    // two places in both twins; a team with no scrimmage plays gets an em-dash
+    if (item === 'yards_per_play') {
         const plays = parseFloat(v('scrimmage_plays'));
-        return plays ? roundNumber((parseFloat(v('pass_yards')) + parseFloat(v('rush_yards'))) / plays, 2, 2) : '—';
+        return plays ? roundNumber(parseFloat(v('yards_per_play')), 2, 2) : '—';
     }
     if (item === 'avg_field_position') {
         const val = v(item);
