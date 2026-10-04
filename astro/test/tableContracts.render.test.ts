@@ -10,7 +10,8 @@
  *  2. TWIN PARITY — the classic twin (`components/game/classic/**`, what the
  *     public sees) and the v2 twin render the same numbers for the same
  *     payload. Sections that exist in only one twin are listed in the PR body,
- *     not failed.
+ *     not failed; the rows where the twins differ on purpose are named, one by
+ *     one, under TWIN EXCEPTIONS below, and nothing else may differ.
  *  3. AGGREGATION RECONCILIATION — where the page computes from plays (drive
  *     rates, per-play means) the displayed value is recomputed from the
  *     payload's plays; where it reads `advBoxScore`, the team totals are
@@ -31,7 +32,7 @@ import {
     METRIC_KEY_TITLE_MAPPING,
 } from '../src/utils/constants';
 import { roundNumber, metricDecimalPoints } from '../src/utils/misc';
-import { pct, signed, sortDesc, teamRows } from '../src/utils/usage';
+import { pct, signed, sortDesc, teamRows, withoutUsageSections } from '../src/utils/usage';
 import { isScrimmage } from '../src/utils/situational';
 import { loadGzJson, locals, parseTable, tableWithHeading, text } from './helpers/tables';
 
@@ -94,16 +95,17 @@ async function renderPage(twin: 'classic' | 'v2', league: Lg): Promise<{ g: any,
 }
 
 /**
- * The v2 Team Stats island on its own. Since #270 the page mounts it `client:load`
- * with every span's full box (usage sections included), so what it renders here
- * is what the page serves.
+ * The v2 Team Stats island on its own, with the props the page gives it. Since
+ * #270 the page mounts it `client:load` with every span's box minus the
+ * per-player usage sections (edcb37ff): `withoutUsageSections` keeps team_usage,
+ * drive_scripting and st_team, which three of the twelve tables read.
  */
 async function renderSituationalSection(league: Lg): Promise<{ g: any, html: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
     const { default: SituationalSection } = await import('../src/components/game/metrics/SituationalSection.svelte');
     const html = await container.renderToString(SituationalSection as any, {
-        props: { season: g.season.year, advBoxScoreSpans: g.advBoxScoreSpans, league, percentiles: [] },
+        props: { season: g.season.year, advBoxScoreSpans: withoutUsageSections(g.advBoxScoreSpans), league, percentiles: [] },
         locals: locals(league),
     });
     return { g, html };
@@ -166,30 +168,71 @@ const V2_METRIC_TABLES: MetricTable[] = [
     { title: 'Turnovers', teamKey: 'pos_team', useSuffix: false, decimalPoints: 0, columns: dotted('turnover', classic('Turnovers')) },
 ];
 
+type Twin = 'classic' | 'v2';
+
 /**
- * What the cell for `item` must read, derived straight from the payload row.
+ * TWIN EXCEPTIONS -- the complete list of rows where the v2 twin may differ from
+ * the classic twin, as of AE/design-fixes at 69a9029f (#270), keyed by the row's
+ * field. Twin parity is enforced on every label and every cell NOT named here,
+ * so a new divergence fails. Each side of a named one is pinned to its own
+ * source, and the two must really differ on the fixture, so an entry that has
+ * gone stale (the classic twin adopting v2's formula, say) fails as well and is
+ * deleted rather than left behind as a hole.
+ */
+
+/**
+ * Cells. 4174aaa7 ("situational: add carve out for YPP ..."): both twins print
+ * Production's "Yards" as pass + rush yards (#269), but only v2 then derives the
+ * Yards/Play under it from that total -- (pass_yards + rush_yards) /
+ * scrimmage_plays -- and keeps the payload's value as the cell's tooltip,
+ * `title="ESPN: <yards_per_play>"`. The classic twin still prints the payload's
+ * yards_per_play, which is ESPN's statYardage per play.
+ */
+const V2_ONLY_VALUES: readonly string[] = ['yards_per_play'];
+
+/**
+ * Row labels. 4b9a96c2 ("constants: revert change to remove tabs in v1 game
+ * page"): METRIC_KEY_TITLE_MAPPING is the classic twin's again, and
+ * TeamMetricsTable.svelte overrides it for v2, which splits the classic
+ * Situational table into Success / Early Downs / Late Downs / Middle 8 tables
+ * whose headings carry the group's name. Only the four overrides a reader can
+ * see are listed: the rest differ from the classic label by indentation alone,
+ * which `text()` collapses.
+ */
+const V2_ROW_LABELS: Record<string, string> = { EPA_success: 'Plays', early_downs: 'Plays', late_downs: 'Plays', middle_8: 'Plays' };
+
+/**
+ * What the cell for `item` must read in `twin`, derived straight from the payload row.
  *
  * The branch order is TeamMetricsTable's (the v2 twin's is a superset of the
- * classic's, and the two agree on every key the classic renders): the
- * hand-formatted rows first, then a percent column, a fixed-decimal column, a
- * bare count, a scripted-drive metric, and anything else is "count (rate%)".
+ * classic's, and the two agree on every key the classic renders but the ones in
+ * V2_ONLY_VALUES): the hand-formatted rows first, then a percent column, a
+ * fixed-decimal column, a bare count, a scripted-drive metric, and anything
+ * else is "count (rate%)".
  */
-function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalPoints: number): string {
+function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalPoints: number, twin: Twin): string {
     // the shared guard (#269): an explicit 0 means zero places, a missing value means one
     const dp = metricDecimalPoints(decimalPoints);
     const v = (k: string) => row[k] || 0;
     // Production's total is rush + pass, not ESPN's per-play statYardage (#269)
     if (item === 'off_yards') return String(parseFloat(v('pass_yards')) + parseFloat(v('rush_yards')));
+    // ...and in v2 alone Yards/Play is that total per scrimmage play (V2_ONLY_VALUES);
+    // the classic twin falls through to the payload's own fixed-decimal value
+    if (item === 'yards_per_play' && twin === 'v2') {
+        const plays = parseFloat(v('scrimmage_plays'));
+        return plays ? roundNumber((parseFloat(v('pass_yards')) + parseFloat(v('rush_yards'))) / plays, 2, 2) : '—';
+    }
     if (item === 'avg_field_position') {
         const val = v(item);
         return `${val >= 50 ? 'Own' : 'Opp'} ${roundNumber(val >= 50 ? 100 - parseFloat(val) : val, 2, 0)}`;
     }
-    // the usage-box rates arrive as fractions, and the made-of pairs show their attempts (#270)
+    // the usage-box rates arrive as fractions, and the made-of pairs show their attempts
+    // (#270), or an em-dash when there were none (b6dce6a0)
     if (['kickoff_touchback_rate', 'rz_success_rate', 'so_success_rate', 'rz_touchdown_rate', 'so_touchdown_rate'].includes(item)) return `${roundNumber(parseFloat(v(item)) * 100, 2, 0)}%`;
-    if (item === 'fg_attempts') return v(item) == 0 ? '-' : `${v('fg_made')}/${v(item)} (${roundNumber(100 * v('fg_made') / v(item), 2, 0)}%)`;
+    if (item === 'fg_attempts') return v(item) == 0 ? '—' : `${v('fg_made')}/${v(item)} (${roundNumber(100 * v('fg_made') / v(item), 2, 0)}%)`;
     if (item === 'third_down_conversions' || item === 'third_down_expected') {
         const att = v('third_down_opportunities');
-        return att == 0 ? '-' : `${roundNumber(v(item), 2, item === 'third_down_expected' ? 1 : 0)} (${roundNumber(100 * v(item) / att, 2, 0)}%)`;
+        return att == 0 ? '—' : `${roundNumber(v(item), 2, item === 'third_down_expected' ? 1 : 0)} (${roundNumber(100 * v(item) / att, 2, 0)}%)`;
     }
     if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) return `${roundNumber(parseFloat(v(item)), 2, 0)}%`;
     if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) return roundNumber(parseFloat(v(item)), 2, dp);
@@ -222,9 +265,9 @@ function rowFor(rows: any[], team: string, teamKey: string, item: string): any {
  * columns map to, and every cell reads the payload row of the team whose logo
  * heads that column. Shared by the component-level tests and the page-level
  * ones, so the page is checked against the same expectation rather than against
- * its own wiring.
+ * its own wiring. `twin` picks the side of each TWIN EXCEPTION the table is on.
  */
-function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, any[]>): void {
+function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, any[]>, twin: Twin): void {
     const { rows, rowHtml } = parseTable(html);
     // row 0 is the header: the title, then one logo per team in column order
     const teams = [...rowHtml[0].matchAll(/team-logo-(\d+)/g)].map((m) => m[1]);
@@ -234,13 +277,13 @@ function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, a
     cfg.columns.forEach((key, i) => {
         const [section, item] = splitKey(key, cfg.section);
         const [label, ...cells] = body[i];
-        expect(label, `${cfg.title} row ${i} label`).toBe(text(METRIC_KEY_TITLE_MAPPING[item] || item));
+        expect(label, `${cfg.title} row ${i} label`).toBe((twin === 'v2' && V2_ROW_LABELS[item]) || text(METRIC_KEY_TITLE_MAPPING[item] || item));
         expect(cells, `${cfg.title} / ${key}: one cell per team`).toHaveLength(teams.length);
         teams.forEach((team, t) => {
             const row = rowFor(box[section] ?? [], team, cfg.teamKey, item);
             expect(row, `${cfg.title} / ${key}: a ${section} row for team ${team}`).toBeTruthy();
             expect(cells[t], `${cfg.title} / ${key} / team ${team}`)
-                .toBe(expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints));
+                .toBe(expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints, twin));
         });
     });
 }
@@ -263,7 +306,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 const g = game(league);
                 const rowsData: any[] = g.advBoxScore[cfg.section];
                 expect(rowsData.length, `${cfg.section} has rows`).toBeGreaterThan(0);
-                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, g.advBoxScore);
+                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, g.advBoxScore, 'classic');
             }, 30_000);
         }
 
@@ -282,8 +325,35 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                     renderMetricTable('classic', league, cfg),
                     renderMetricTable('v2', league, cfg),
                 ]);
-                const strip = (h: string) => parseTable(h).rows.slice(1).map((r) => r.join('|'));
-                expect(strip(v2)).toEqual(strip(classic));
+                const body = (h: string) => parseTable(h).rows.slice(1);
+                const [c, v] = [body(classic), body(v2)];
+                expect(c, `${cfg.title}: one classic row per configured column`).toHaveLength(cfg.columns.length);
+                expect(v, `${cfg.title}: the same rows in both twins`).toHaveLength(c.length);
+                const box: any[] = game(league).advBoxScore[cfg.section];
+                cfg.columns.forEach((item, i) => {
+                    const [cLabel, ...cCells] = c[i];
+                    const [vLabel, ...vCells] = v[i];
+                    // Identical, label and cells, unless TWIN EXCEPTIONS names the row; and a
+                    // named row has each twin on its own source and the two really apart.
+                    if (item in V2_ROW_LABELS) {
+                        expect(cLabel, `${item}: the classic label`).toBe(text(METRIC_KEY_TITLE_MAPPING[item]));
+                        expect(vLabel, `${item}: the v2 label`).toBe(V2_ROW_LABELS[item]);
+                        expect(vLabel, `${item}: V2_ROW_LABELS entry is stale, the twins agree`).not.toBe(cLabel);
+                    } else {
+                        expect(vLabel, `${cfg.title} / ${item}: label`).toBe(cLabel);
+                    }
+                    if (V2_ONLY_VALUES.includes(item)) {
+                        const want = (twin: Twin) => box.map((row) => expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints, twin));
+                        expect(cCells, `${item}: the classic cells`).toEqual(want('classic'));
+                        expect(vCells, `${item}: the v2 cells`).toEqual(want('v2'));
+                        expect(vCells, `${item}: V2_ONLY_VALUES entry is stale, the twins agree`).not.toEqual(cCells);
+                        // what the classic twin prints is what v2 keeps as the cell's tooltip
+                        const tips = [...parseTable(v2).rowHtml[i + 1].matchAll(/title="ESPN: ([^"]*)"/g)].map((m) => roundNumber(parseFloat(m[1]), 2, 2));
+                        expect(tips, `${item}: the v2 tooltips`).toEqual(cCells);
+                    } else {
+                        expect(vCells, `${cfg.title} / ${item}: cells`).toEqual(cCells);
+                    }
+                });
             }, 30_000);
         }
 
@@ -463,8 +533,26 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of V2_METRIC_TABLES) {
                 const table = tableWithHeading(html, cfg.title);
                 expect(table, `the island renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore);
+                assertMetricTable(table!, cfg, g.advBoxScore, 'v2');
             }
+        }, 30_000);
+
+        test('TeamMetricsTable (v2): a zero denominator prints an em-dash, not a rate', async () => {
+            // Neither fixture has a team without a scrimmage play, a field-goal try or a
+            // third down, so the guards (4174aaa7, b6dce6a0) are exercised on the real
+            // rows with those three denominators zeroed.
+            const g = game(league);
+            const zeroed = (section: string, k: string) => g.advBoxScore[section].map((r: any) => ({ ...r, [k]: 0 }));
+            const box = { team: zeroed('team', 'scrimmage_plays'), st_team: zeroed('st_team', 'fg_attempts'), team_usage: zeroed('team_usage', 'third_down_opportunities') };
+            const cfg: MetricTable = {
+                title: 'Zero denominators', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2,
+                columns: ['team.yards_per_play', 'st_team.fg_attempts', 'team_usage.third_down_conversions', 'team_usage.third_down_expected'],
+            };
+            const html = await container.renderToString(
+                (await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any,
+                { props: { ...cfg, league, season: g.season.year, box }, locals: locals(league) });
+            assertMetricTable(html, cfg, box, 'v2');
+            expect(parseTable(html).rows.slice(1).flatMap((r) => r.slice(1))).toEqual(Array(8).fill('—'));
         }, 30_000);
     });
 
@@ -573,7 +661,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of METRIC_TABLES) {
                 const table = tableWithHeading(html, cfg.title);
                 expect(table, `the classic page renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore);
+                assertMetricTable(table!, cfg, g.advBoxScore, 'classic');
             }
         }, 60_000);
 
@@ -619,7 +707,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of V2_METRIC_TABLES) {
                 const table = tableWithHeading(teamStats, cfg.title);
                 expect(table, `the v2 page renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore);
+                assertMetricTable(table!, cfg, g.advBoxScore, 'v2');
             }
 
             // Usage box -- the away team's leading player, in the away panel
