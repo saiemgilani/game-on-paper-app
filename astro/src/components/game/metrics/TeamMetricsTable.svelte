@@ -54,19 +54,19 @@ function handleMetricRows(rowKey: string): string {
             result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
         });
     } else if (item == "off_yards") {
-        // The row is labelled "Yards" under the overall block and the pass and
-        // rush "Yards" rows sit right under it, so the header promises their
-        // sum. The payload's own off_yards is ESPN's per-play statYardage --
-        // a different universe from the processor's parsed pass/rush yardage,
-        // and off by up to 31 yards on a single game -- so it is shown as the
-        // tooltip instead of as the total.
+        // The overall "Yards" row is the payload's net total: statYardage over
+        // scrimmage plays, so the yards lost on sacks are in it, and it is exactly
+        // what Yards/Play below is yards over. The pass and rush "Yards" rows
+        // under it are the parsed receiving and rushing yards; a sack is in
+        // neither, so their sum reads higher (on 62% of 2025 team-games by
+        // exactly the sack yardage) and is shown as the tooltip.
         teamBoxScores.forEach((teamData: any) => {
-            let val = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
-            result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
+            const gross = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
+            result += `<td class="numeral" style="text-align: center;" title="Pass + rush: ${gross}">${roundNumber(teamData['off_yards'] || 0, 2, 0)}</td>`;
         });
     } else if (item == "yards_per_play") {
-        // Sack yardage included (offenseYardsPerPlay). The "Yards" row above is pass +
-        // rush, which leaves sacks out, so the tooltip says what this is yards over.
+        // Sack yardage included (offenseYardsPerPlay): the "Yards" row above over the
+        // scrimmage plays. The tooltip spells that division out.
         teamBoxScores.forEach((teamData: any) => {
             const val = offenseYardsPerPlay(teamData);
             const title = `${teamData['off_yards'] ?? 0} net yards (sacks included) on ${teamData['scrimmage_plays'] ?? 0} plays`;

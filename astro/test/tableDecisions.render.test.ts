@@ -5,8 +5,10 @@
  * markup rather than from component source, and each one goes red if the change
  * it guards is reverted:
  *
- *  T2  the Production table's overall "Yards" row is the sum of the pass and
- *      rush "Yards" rows right under it, in BOTH twins.
+ *  T2  the Production table's overall "Yards" row is the payload's net total,
+ *      yards lost on sacks included, in BOTH twins, with pass + rush as its
+ *      tooltip. (Until 2026-10-04 it was the pass + rush sum, which leaves sacks
+ *      out; the owner's rule is that total yards and Yards/Play both count them.)
  *  F4  both Binion twins round through one shared guard.
  *
  * Findings 3, 5 and 6 (the Binion league gate, wiring the #252 sections, and
@@ -102,9 +104,9 @@ const PASS_YARDS = 6;      // after passes
 const RUSH_YARDS = 11;     // after rushes
 
 for (const league of Object.keys(FIXTURES) as Lg[]) {
-    describe(`[${league}] the Production total is the sum of the rows under it`, () => {
+    describe(`[${league}] the Production total counts sack yardage`, () => {
         for (const twin of ['classic', 'v2'] as const) {
-            test(`${twin}: the overall Yards row equals rush + pass`, async () => {
+            test(`${twin}: the overall Yards row is the net total; pass + rush is its tooltip`, async () => {
                 const { teams, table } = await renderProduction(twin, league);
                 const body = parseTable(table).rows.slice(1);
 
@@ -121,24 +123,23 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 const rush = row(RUSH_YARDS, 'rush');
 
                 teams.forEach((team, t) => {
-                    // what is displayed adds up, which is the whole claim the
-                    // header makes -- read entirely out of the rendered table
-                    expect(Number(total[t]), `team ${team.pos_team}: displayed total = displayed rush + pass`)
-                        .toBe(Number(pass[t]) + Number(rush[t]));
-                    // ...and it is the payload's own parsed yardage, not a
-                    // coincidence of the rendering
+                    // the pass and rush rows are the payload's parsed yardage
                     expect(pass[t], `team ${team.pos_team} pass yards`).toBe(String(team.pass_yards));
                     expect(rush[t], `team ${team.pos_team} rush yards`).toBe(String(team.rush_yards));
-                    expect(total[t], `team ${team.pos_team} total yards`)
-                        .toBe(String(team.pass_yards + team.rush_yards));
+                    // the total is the payload's off_yards: statYardage over
+                    // scrimmage plays, so the yards a sack lost are in it
+                    expect(total[t], `team ${team.pos_team} total yards`).toBe(String(team.off_yards));
+                    // ...which makes it exactly what Yards/Play is yards over
+                    expect(Number(total[t]) / team.scrimmage_plays, `team ${team.pos_team}: total / plays = yards per play`)
+                        .toBeCloseTo(team.yards_per_play, 6);
                 });
-                // ...and the assertion has teeth: on this fixture the payload's
-                // own off_yards (ESPN's per-play statYardage) is a different
-                // number, so a revert to it fails here.
+                // ...and the assertion has teeth: on this fixture a team's pass +
+                // rush is a different number (it leaves the sacks out), so a
+                // revert to that sum fails here.
                 expect(teams.some((team) => team.off_yards !== team.pass_yards + team.rush_yards),
-                    'the fixture disagrees with off_yards on at least one team').toBe(true);
-                // ESPN's total is kept, as the tooltip the other numeral cells use
-                expect(table).toContain(`title="ESPN: ${teams[0].off_yards}"`);
+                    'pass + rush disagrees with the net total on at least one team').toBe(true);
+                // the gross sum is kept, as the tooltip
+                expect(table).toContain(`title="Pass + rush: ${teams[0].pass_yards + teams[0].rush_yards}"`);
             }, 60_000);
         }
     });
