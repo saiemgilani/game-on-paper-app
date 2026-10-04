@@ -123,7 +123,21 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
 
     let finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
-    if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
+    if (item == "yards_per_play") {
+        // This has to be based the updated off_yards above to remain consistent.
+        finalTeamInfo.forEach((teamData: any) => {
+            const scrimmagePlays = teamData["scrimmage_plays"]
+            const baseVal = roundNumber(teamData['yards_per_play'] || 0, 2, 2)
+            if (!scrimmagePlays || scrimmagePlays == "0") {
+                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${baseVal}">—</td>`;
+            } else {
+                let val = (parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0)) / parseFloat(scrimmagePlays);
+                let pct = retrieveBoxScorePercentile(val, finalKey);
+                let colorRampClass = generateColorRampValue(pct.pctl, 100)
+                result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="ESPN Value: ${baseVal}\nWorst: ${roundNumber(pct.min, 2, finalDecimalPoints)}\nMedian: ${roundNumber(pct.mid, 2, finalDecimalPoints)}\nBest: ${roundNumber(pct.max, 2, finalDecimalPoints)}">${roundNumber(val, 2, finalDecimalPoints)} <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
+            }
+        });
+    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {
             let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
             let rate = parseFloat(JSON.parse(JSON.stringify(val)));
