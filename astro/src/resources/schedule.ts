@@ -2,6 +2,8 @@ import scheduleMap from '../static/schedule.json' with { type: "json" };
 import groupMap from '../static/groups.json' with { type: "json" };  
 import seasonGroupMap from '../static/season_groups.json' with { type: "json" };
 import type { ESPNScheduleEntry } from './espn';
+import { NFL_POST_LABELS } from '../utils/constants';
+import { LEAGUES, leaguePath, type League } from '../utils/league';
 
 export type ScheduleWeek = ESPNScheduleEntry & {
     year: string;
@@ -24,4 +26,34 @@ export const SEASON_GROUP_MAP: Record<string, ScheduleGroup[]> = seasonGroupMap;
 /** The conference filter for a season; today's static list for a season the file lacks. */
 export function groupsForSeason(season: number | string): ScheduleGroup[] {
     return SEASON_GROUP_MAP[String(season)] ?? GLOBAL_GROUP_LIST;
+}
+
+export interface WeekOption { type: number; value: number; label: string; detail: string }
+
+/** Every selectable week of a season, in schedule order. cfb reads the static
+ *  map (bowl/CFP weeks vary by season); the nfl calendar is fixed. */
+export function weeksFor(league: League, season: number | string): WeekOption[] {
+    if (league === 'cfb') {
+        return (GLOBAL_SCHEDULE_MAP[String(season)] ?? [])
+            .map((w) => ({ type: Number(w.type), value: Number(w.value), label: w.label, detail: w.detail }));
+    }
+    const cfg = LEAGUES[league];
+    const reg = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));
+    const post = NFL_POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ type: 3, value: i + 1, label, detail: 'Postseason' }));
+    return reg.concat(post);
+}
+
+export interface WeekNav { prev: WeekOption | null; current: WeekOption; next: WeekOption | null }
+
+/** Neighbours in schedule order. cfb's postseason is Bowls (3/1) then CFP
+ *  (3/999), so this is never week +/- 1. Null when the week is not listed. */
+export function adjacentWeeks(weeks: WeekOption[], seasontype: number, week: number): WeekNav | null {
+    const i = weeks.findIndex((w) => w.type === seasontype && w.value === week);
+    if (i < 0) return null;
+    return { prev: weeks[i - 1] ?? null, current: weeks[i], next: weeks[i + 1] ?? null };
+}
+
+export function weekHref(league: League, season: number, w: { type: number; value: number }, group?: number): string {
+    const path = leaguePath(league, `/year/${season}/type/${w.type}/week/${w.value}`);
+    return group === undefined ? path : `${path}?group=${group}`;
 }

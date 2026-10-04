@@ -1,23 +1,14 @@
 <script>
-	import { GLOBAL_SCHEDULE_MAP, groupsForSeason } from '../../resources/schedule';
-	import { NFL_POST_LABELS } from '../../utils/constants';
+	import { groupsForSeason, weeksFor } from '../../resources/schedule';
 	import { LEAGUES, leaguePath } from '../../utils/league';
 
 	// `league` is passed from SchedulePage (SSR knows Astro.locals.league);
 	// it defaults to cfb so every existing caller is unchanged.
 	const { season, week, seasontype, group, league = 'cfb' } = $props()
 	const cfg = LEAGUES[league];
-	// cfb weeks come from the static schedule map (bowl/CFP weeks vary by
-	// season); the nfl calendar is fixed: 18 regular + 5 postseason rounds.
-	function weeksFor(s) {
-		if (league === 'cfb') return GLOBAL_SCHEDULE_MAP[s] || [];
-		const reg = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));
-		const post = NFL_POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ type: 3, value: i + 1, label, detail: 'Postseason' }));
-		return reg.concat(post);
-	}
 	// svelte-ignore state_referenced_locally
 	let selectedSeason = $state({ value: String(season) });
-	let selectedSeasonWeeks = $derived({ value: weeksFor(selectedSeason.value) });
+	let selectedSeasonWeeks = $derived({ value: weeksFor(league, selectedSeason.value) });
 	let groupList = $derived(groupsForSeason(selectedSeason.value));
 	// a conference the season lacks (a bookmarked ?group=, or a season change) would
 	// submit a filter with no games while the select shows a different one
