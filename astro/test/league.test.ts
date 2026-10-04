@@ -114,7 +114,7 @@ describe('weekLabel', () => {
         const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
         const post = cfb.games.data.find((g: any) => g.season_type === 'postseason');
         expect(post.week).toBe(1);
-        expect(weekLabel('cfb', post.season_type, post.week)).toBe('Postseason');
+        expect(weekLabel('cfb', post.week, post.season_type)).toBe('Postseason');
         expect(weekLabel('nfl', 1, 'POST', 2026)).toBe('Wild Card');
         expect(weekLabel('nfl', 4, 'POST', 2026)).toBe('Super Bowl');
         // a round the league has not defined still says postseason, not "1"

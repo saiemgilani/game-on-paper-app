@@ -115,7 +115,7 @@ const previewUrlParams = new URLSearchParams({
 // and a "Latest" strip repeating the last five plays is noise.
 const latestPlays = gameStatus.type.completed === true ? [] : fullGamePlays.slice(-5).toReversed();
 // Quarters actually played, so overtime only offers a button when it happened.
-const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
+const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite).filter(x => x > 0))].sort((a, b) => a - b);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);

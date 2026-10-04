@@ -311,7 +311,7 @@ function onChangeSpan(e: Event) {
                     "defensive.TFL_pass",
                     "defensive.TFL_rush",
                     "defensive.sacks",
-                    "defensive.PD",
+                    "defensive.pass_breakups",
                     "defensive.def_int",
                     "defensive.fumbles"
                 ]
@@ -344,7 +344,7 @@ function onChangeSpan(e: Event) {
                 turnover: selectedBoxScore.turnover
             }}
             useSuffix={false}
-            decimalPoints={0}
+            decimalPoints={2}
         />
     </div>
 </div>

@@ -3,7 +3,7 @@ import type { ProcessedBoxScore, ProcessedTeamMetricBoxScore } from '../../../re
 import { espnLogoLeague, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { metricDecimalPoints, roundNumber } from '../../../utils/misc';
+import { metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -18,8 +18,7 @@ interface Props {
 }
 const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
 
-const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => group[teamKey]) : [];
-
+const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => String(group[teamKey])) : [];
 const groups = [...new Set(keys || [])];
 
 function handleMetricRows(rowKey: string): string {
@@ -40,7 +39,9 @@ function handleMetricRows(rowKey: string): string {
     }
 
     let teamBoxScores: ProcessedTeamMetricBoxScore[] = box ? ((box as any)[boxKey] || []) : [];
-    teamBoxScores.sort((a, b) => keys.indexOf((a as any)[teamKey]) - keys.indexOf((b as any)[teamKey]) )
+    // `keys` are strings and the payload's ids are numbers: compare like with like, or
+    // every row is -1 and the sections keep whatever order they arrived in
+    teamBoxScores = teamBoxScores.toSorted((a, b) => keys.indexOf(String((a as any)[teamKey])) - keys.indexOf(String((b as any)[teamKey])));
 
     let result = ""
     if (item == "EPA_misc") {
@@ -53,26 +54,23 @@ function handleMetricRows(rowKey: string): string {
             result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
         });
     } else if (item == "off_yards") {
-        // The row is labelled "Yards" under the overall block and the pass and
-        // rush "Yards" rows sit right under it, so the header promises their
-        // sum. The payload's own off_yards is ESPN's per-play statYardage --
-        // a different universe from the processor's parsed pass/rush yardage,
-        // and off by up to 31 yards on a single game -- so it is shown as the
-        // tooltip instead of as the total.
+        // The overall "Yards" row is the payload's net total: statYardage over
+        // scrimmage plays, so the yards lost on sacks are in it, and it is exactly
+        // what Yards/Play below is yards over. The pass and rush "Yards" rows
+        // under it are the parsed receiving and rushing yards; a sack is in
+        // neither, so their sum reads higher (on 62% of 2025 team-games by
+        // exactly the sack yardage) and is shown as the tooltip.
         teamBoxScores.forEach((teamData: any) => {
-            let val = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
-            result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['off_yards'] || 0}">${val}</td>`;
+            const gross = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
+            result += `<td class="numeral" style="text-align: center;" title="Pass + rush: ${gross}">${roundNumber(teamData['off_yards'] || 0, 2, 0)}</td>`;
         });
     } else if (item == "yards_per_play") {
-        // This has to be based the updated off_yards above to remain consistent.
+        // Sack yardage included (offenseYardsPerPlay): the "Yards" row above over the
+        // scrimmage plays. The tooltip spells that division out.
         teamBoxScores.forEach((teamData: any) => {
-            const scrimmagePlays = teamData["scrimmage_plays"]
-            if (!scrimmagePlays || scrimmagePlays == "0") {
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">—</td>`;
-            } else {
-                let val = (parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0)) / parseFloat(scrimmagePlays);
-                result += `<td class="numeral" style="text-align: center;" title="ESPN: ${teamData['yards_per_play'] || 0}">${roundNumber(val, 2, 2)}</td>`;
-            }
+            const val = offenseYardsPerPlay(teamData);
+            const title = `${teamData['off_yards'] ?? 0} net yards (sacks included) on ${teamData['scrimmage_plays'] ?? 0} plays`;
+            result += `<td class="numeral" style="text-align: center;" title="${title}">${val === null ? '—' : roundNumber(val, 2, 2)}</td>`;
         });
     }  else if (item == "avg_field_position") {
         teamBoxScores.forEach((teamData: any) => {
@@ -132,13 +130,15 @@ function handleMetricRows(rowKey: string): string {
     } else if (item.startsWith("scripted.") || item.startsWith("non_scripted.")) {
         const script = item.split(".")[0]
         const metric = item.replace(script + ".", "")
-        for (const teamData of teamBoxScores) {
-            if ((teamData as any)["script"] != script) {
-                continue;
-            }
-
-            let val = (teamData as any)[metric] || 0;
-            if (["epa_per_play", "points_per_drive"].includes(metric)) {
+        // One cell per header team, found by team id. A team with no drive of this kind
+        // in the span has no row at all, so reading the rows in order would put the other
+        // team's numbers under its logo; it gets a dash instead.
+        for (const team of groups) {
+            const teamData = teamBoxScores.find((row: any) => String(row[teamKey]) === team && row["script"] === script) as any;
+            const val = teamData?.[metric];
+            if (val === undefined || val === null) {
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
+            } else if (["epa_per_play", "points_per_drive"].includes(metric)) {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(val, 2, 2)}</td>`;
             } else if (metric == "success_rate") {
                 result += `<td class="numeral" style="text-align: center;">${roundNumber(val * 100, 2, 0)}%</td>`;

@@ -753,6 +753,16 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
 }
 
 /**
+ * `retrieveTeamSummaries`' default columns (it appends each `_rank`): every column
+ * the LEAGUE's categories read. The NFL-only categories name columns the cfb table
+ * does not have, and one unknown column in `select` is a 400 (every team profile /
+ * season team / pregame read went empty).
+ */
+export function teamSummaryColumns(league: League): string[] {
+    return teamCategoriesFor(league).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p] ?? []).concat(SDV_TEAM_CARD_COLUMNS[p] ?? []))
+}
+
+/**
  * One season baseline row from sdv-db `league_averages`: the distribution of a
  * published metric over its entity rows (teams, qualified players, team-games).
  * `qualifier_min` is the per-team-game gate on player rows (14 / 6.25 / 1.875),
@@ -830,10 +840,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     } else if (category) {
         metric_columns = Object.keys(SDV_TEAM_METRIC_CATEGORIES[category]).concat(SDV_RADAR_COLUMNS[category]).concat(SDV_TEAM_CARD_COLUMNS[category])
     } else if (!category) {
-        // every column the LEAGUE's categories read: the NFL-only categories name
-        // columns the cfb table does not have, and one unknown column in `select`
-        // is a 400 (every team profile / season team / pregame read went empty)
-        metric_columns = teamCategoriesFor(league).flatMap((p: string) => Object.keys(SDV_TEAM_METRIC_CATEGORIES[p]).concat(SDV_RADAR_COLUMNS[p] ?? []).concat(SDV_TEAM_CARD_COLUMNS[p] ?? []))
+        metric_columns = teamSummaryColumns(league)
     } else {
         throw Error(`Category ${category} not implemented`)
     }

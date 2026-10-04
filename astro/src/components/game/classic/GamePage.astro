@@ -340,7 +340,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     teamKey='def_pos_team'
                                     season={game.season.year}
                                     columns={[
-                                        "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","PD","def_int","fumbles"
+                                        "scrimmage_plays","drive_stopped_rate","havoc_total","havoc_total_pass","havoc_total_rush","TFL","TFL_pass","TFL_rush", "sacks","pass_breakups","def_int","fumbles"
                                     ]}
                                     teamBoxScores={game.advBoxScore.defensive}
                                     useSuffix={true}
@@ -355,7 +355,7 @@ const wpPlays = game.plays.filter(p => (p.scrimmage_play == true)).map(p => {
                                     ]}
                                     teamBoxScores={game.advBoxScore.turnover}
                                     useSuffix={false}
-                                    decimalPoints={0}
+                                    decimalPoints={2}
                                 />
                             </div>
                         </div>

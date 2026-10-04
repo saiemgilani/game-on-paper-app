@@ -18,7 +18,7 @@ const { keys } = Astro.props;
 </div>
 <div class="d-inline d-lg-none" style="background: inherit;">
     <div class="game-nav-sticky py-1 mt-n3 mb-3 border-bottom">
-        <select class="form-select form-select-md" style="min-width:250px;border:0;" id="glossary-section-picker">
+        <select class="form-select form-select-md" style="min-width:250px;border:0;" id="glossary-section-picker" aria-label="Jump to a glossary section">
             <option disabled selected>Navigate to...</option>
             {
                 (keys.map((k) => <option value={`#glossary-section-${k}`}>{k.toLocaleUpperCase()}</option>))
