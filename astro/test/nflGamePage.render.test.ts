@@ -207,7 +207,7 @@ describe('usage / situational / special-teams sections', () => {
         expect(html).toContain('Middle 8');
         expect(html).toContain('Explosiveness');
 
-        // are the new situational sections rendering?
+        // are the new situational metrics rendering?
         expect(html).toContain('3rd Downs');
         expect(html).toContain('Scripted Drives');
         expect(html).toContain('Net Punt Distance');
