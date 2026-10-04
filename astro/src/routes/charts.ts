@@ -4,7 +4,9 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamSummaries } from '../resources/sdv';
+import type { MarkMode } from '../utils/chartBuilder';
 import { METRIC_YEAR } from '../utils/constants';
+import { isFeatureEnabled } from '../utils/features';
 import type { League } from '../utils/league';
 
 export interface ChartPoint {
@@ -24,6 +26,9 @@ export interface ChartBuilderData {
     metricX: string;
     metricY: string;
     points: ChartPoint[];
+    v2: boolean;
+    highlight: string;
+    mode: MarkMode;
 }
 
 export async function loadChartBuilder(Astro: AstroGlobal, league: League): Promise<ChartBuilderData> {
@@ -53,5 +58,9 @@ export async function loadChartBuilder(Astro: AstroGlobal, league: League): Prom
     } else {
         Astro.cache.set(false);
     }
-    return { league, season, metricX, metricY, points };
+    // v2-only view state (highlight, marks): read for a viewer the flag admits, empty for everyone else
+    const v2 = isFeatureEnabled('chart-builder-v2', Astro.locals);
+    const highlight = v2 ? (query.get('hl') ?? '').slice(0, 60) : '';
+    const mode: MarkMode = v2 && query.get('mode') === 'dots' ? 'dots' : 'logos';
+    return { league, season, metricX, metricY, points, v2, highlight, mode };
 }
