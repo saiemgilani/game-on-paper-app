@@ -1,8 +1,8 @@
 ---
 import type { SDVTeamSummary } from '../../resources/sdv';
-import { FIVE_FACTORS, formatFactor } from '../../utils/fiveFactors';
+import { FIVE_FACTORS } from '../../utils/fiveFactors';
 import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
-import { formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import { formatMetricValue, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import TeamPlayerTable from './tables/TeamPlayerTable.astro';
 
 interface Props {
@@ -34,7 +34,7 @@ const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNu
                 <td class="d-none d-md-table-cell text-left text-nowrap text-muted text-small">{f.metric}</td>
                 {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
                     <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
-                        {formatFactor(row[k], f.format, k === f.margin)}
+                        {formatMetricValue(row[k], f.format, k === f.margin)}
                         {rankOf(k) !== null && (
                             <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(k))}</span>
                         )}

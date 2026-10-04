@@ -9,7 +9,8 @@ import { FIVE_FACTORS } from '../src/utils/fiveFactors';
 // The season team page's Five Factors panel, rendered from the Data API's real
 // 2025 team_summaries rows (fixtures/team-summaries-{cfb,nfl}-2025.json). The
 // expected cell text is rebuilt here from the raw fixture value, so a formatter
-// that drifts from "roundNumber, % for the rates, signed margins" goes red.
+// that drifts from "roundNumber, % for the rates, Own/Opp for a yardline, signed
+// margins" goes red.
 const fixture = (league: string) =>
     JSON.parse(readFileSync(new URL(`./fixtures/team-summaries-${league}-2025.json`, import.meta.url)).toString()).data;
 const rows: Record<string, any[]> = { cfb: fixture('cfb'), nfl: fixture('nfl') };
@@ -58,12 +59,16 @@ const panelOf = (html: string) => html.split('id="five-factors-panel"')[1]?.spli
 const tds = (panel: string) => [...panel.split('<tbody')[1].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)]
     .map((m) => ({ cls: m[1].match(/class="([^"]*)"/)?.[1] ?? '', text: m[2].replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, '').replace(/\s+/g, ' ').trim() }));
 
-// row label -> [columns, is a rate, decimals], in table order
-const EXPECTED: [string, string[], boolean, number][] = [
+/** The Own/Opp rule TeamMetricsTable prints drive start with, spelled out here rather than imported. */
+const yardline = (val: number) => `${val >= 50 ? 'Own' : 'Opp'} ${roundNumber(val >= 50 ? 100 - val : val, 2, 0)}`;
+
+// row label -> [columns, is a rate, decimals, is a yardline], in table order
+const EXPECTED: [string, string[], boolean, number, boolean?][] = [
     ['Efficiency', ['success_off', 'success_def', 'success_margin'], true, 1],
     ['Explosiveness', ['explosive_off', 'explosive_def', 'explosive_margin'], true, 1],
     ['Field Position', ['drive_start_ep_off', 'drive_start_ep_def', 'drive_start_ep_margin'], false, 2],
-    ['Start (yds)', ['start_position_off', 'start_position_def', 'start_position_margin'], false, 1],
+    // off/def print as a yardline; the margin is a signed yards delta to one decimal
+    ['Start (yds)', ['start_position_off', 'start_position_def', 'start_position_margin'], false, 1, true],
     ['Finishing Drives', ['pts_per_opp_off', 'pts_per_opp_def', 'pts_per_opp_margin'], false, 2],
     ['Turnovers', ['turnovers_off', 'turnovers_def', 'turnover_margin'], false, 2],
     ['Expected', ['expected_turnovers_off', 'expected_turnovers_def', 'expected_turnover_margin'], false, 2],
@@ -90,7 +95,7 @@ describe.each([
         const row = rows[league].find((r) => r.team_id === Number(id));
         const cells = tds(panel);
         expect(cells.length).toBe(EXPECTED.length * 5);
-        EXPECTED.forEach(([label, cols, rate, fixed], i) => {
+        EXPECTED.forEach(([label, cols, rate, fixed, yards], i) => {
             expect(cells[i * 5].text).toBe(label);
             // the metric column names what the three cells measure; hidden below md
             expect(cells[i * 5 + 1].text).toBe(FIVE_FACTORS[i].metric);
@@ -98,7 +103,8 @@ describe.each([
             cols.forEach((k, j) => {
                 const v = rate ? row[k] * 100 : row[k];
                 const sign = j === 2 && v >= 0 ? '+' : '';
-                const want = `${sign}${roundNumber(v, 2, fixed)}${rate ? '%' : ''} #${formatRank(row[`${k}_rank`])}`;
+                const shown = yards && j < 2 ? yardline(v) : `${sign}${roundNumber(v, 2, fixed)}${rate ? '%' : ''}`;
+                const want = `${shown} #${formatRank(row[`${k}_rank`])}`;
                 const cell = cells[i * 5 + 2 + j];
                 expect(cell.text, k).toBe(want);
                 expect(cell.cls, k).toContain('numeral');
@@ -131,7 +137,9 @@ describe('cfb season team page, Five Factors edge cases', () => {
         const cells = tds(panelOf(await render('cfb', '333', true)));
         expect(cells[at('Turnovers') + 2].text).toBe('0.79 #12');
         expect(cells[at('Turnovers') + 2].cls).toContain('hulk-bg-level-9');
-        expect(cells[at('Start (yds)') + 2].text).toBe('71.9 #105');
+        // 71.9 yards to goal is Alabama's own 28, printed as the box score prints it
+        expect(cells[at('Start (yds)') + 2].text).toBe('Own 28 #105');
+        expect(cells[at('Start (yds)') + 4].text).toBe('-0.3 #69');
         expect(cells[at('Start (yds)') + 2].cls).toContain('hulk-bg-level-2');
     }, 60_000);
 

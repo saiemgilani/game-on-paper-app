@@ -166,6 +166,32 @@ export function formatPercent(v: unknown, fixed: number = 1): string {
 }
 
 /**
+ * How a producer metric prints in a table cell, by kind: rates as percentages,
+ * counts to one or two places, and drive start (yards to goal) as a yardline,
+ * the way the game page's box score prints it. One spec, so tables that show the
+ * same kind of number cannot drift apart.
+ */
+export const METRIC_FORMATS = {
+    pct: { multiplier: 100, fixed: 1, suffix: '%' },
+    num1: { multiplier: 1, fixed: 1, suffix: '' },
+    num2: { multiplier: 1, fixed: 2, suffix: '' },
+    // "Own 28" / "Opp 44" in whole yards; `fixed` is for a margin, which is a
+    // distance between two starts rather than a spot, so it prints as signed yards
+    yardline: { multiplier: 1, fixed: 1, suffix: '' },
+} as const;
+export type MetricFormat = keyof typeof METRIC_FORMATS;
+
+/** A metric cell per `METRIC_FORMATS`: an em dash when absent, signed when it is a margin. */
+export function formatMetricValue(value: unknown, format: MetricFormat, signed = false): string {
+    const x = numberOrNull(value);
+    if (x === null) return "—";
+    if (format === 'yardline' && !signed) return `${x >= 50 ? "Own" : "Opp"} ${roundNumber(x >= 50 ? 100 - x : x, 2, 0)}`;
+    const { multiplier, fixed, suffix } = METRIC_FORMATS[format];
+    const shown = multiplier * x;
+    return (signed ? generateMarginalString(shown, 2, fixed) : roundNumber(shown, 2, fixed)) + suffix;
+}
+
+/**
  * Decimal places for a metric cell: an explicit 0 means zero places, a missing
  * value means one. Shared by both BinionBoxScore twins so the guard cannot
  * drift between them (`decimalPoints || 1` silently turns an explicit 0 into 1).
