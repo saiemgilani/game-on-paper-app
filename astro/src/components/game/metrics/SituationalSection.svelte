@@ -213,7 +213,7 @@ function onChangeSpan(e: Event) {
                     "situational.late_down_rush",
                     "situational.EPA_success_late_down_pass",
                     "situational.EPA_success_late_down_rush",
-                    "situational.late_down_avg_distance",
+                    // "situational.late_down_avg_distance",
 
                     "team_usage.third_down_opportunities",
                     "team_usage.third_down_conversions",
