@@ -151,10 +151,19 @@ async function renderPage(locals: Record<string, unknown> = {}): Promise<string>
     });
 }
 
-/** the `<td>`s of the Result column, exactly as they render */
-const resultCells = (html: string): string[] =>
+/**
+ * Each game's Performance cell flex row, exactly as it renders: week, result,
+ * score, the badges, then `at`/`vs` and the opponent (#270's layout). A badge
+ * anywhere else in the row -- its own cell, the stat line -- is not in here.
+ */
+const perfRows = (html: string): string[] =>
     [...html.split('id="player-game-log"')[1].split('</table>')[0]
-        .matchAll(/<td class="text-center text-nowrap numeral" colspan="1">[\s\S]*?<\/td>/g)].map((m) => m[0]);
+        .matchAll(/<td class="text-left text-nowrap align-middle" colspan="1"><div class="d-flex align-items-center gap-1">([\s\S]*?)<\/div>/g)].map((m) => m[1]);
+const LIVE = '<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>';
+const QA_TITLE = 'Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly: ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1';
+const QA = `<span class="badge bg-secondary align-middle" title="${QA_TITLE}" data-badge="live-qa">QA</span>`;
+/** the at/vs span that opens the opponent: the badges sit before it, right after the score */
+const OPP = '<span class="text-muted">';
 
 describe('the badge copy, over the shapes #265 produces', () => {
     test('a full block: served source, fallback flag, verdict and anomaly count', () => {
@@ -190,12 +199,13 @@ describe('the live badge is public and generic', () => {
         world.live = [LIVE_ID];
         world.payload = { qa: QA_FULL };
         const html = await renderPage();
-        const cells = resultCells(html);
-        expect(cells[0]).toContain('<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>');
-        // a final row is the result, the score and nothing else -- no dash, and the
-        // pills sit on the text's own line (review on #268)
-        expect(cells[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span class="hulk-text-green">W</span><span>31-28</span></span></td>');
-        expect(cells.filter((c) => c.includes('>Live<'))).toHaveLength(1);
+        const rows = perfRows(html);
+        // in the Performance cell's own flex row, right after the score and before
+        // the opponent -- on the text's line, not a cell of its own (#268 on #270)
+        expect(rows[0]).toContain(`14-10${LIVE}${OPP}`);
+        // a final row is the result, the score and nothing else
+        expect(rows[1]).toMatch(/^Week 2 -<span class="hulk-text-green">W<\/span> 31-28<span class="text-muted">vs<\/span>/);
+        expect(html.match(/>Live</g)).toHaveLength(1);
     }, 60_000);
 
     test('the live claim costs one scoreboard read and NO processing run', async () => {
@@ -213,17 +223,15 @@ describe('the live badge is public and generic', () => {
         expect(html).not.toContain('>Live<');
         expect(processed).not.toHaveBeenCalled();
         // a game with no result is its score alone -- a dash says nothing (review on #268)
-        expect(resultCells(html)[0]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span>14-10</span></span></td>');
-        expect(resultCells(html)[1]).toBe('<td class="text-center text-nowrap numeral" colspan="1"><span class="d-inline-flex align-items-center gap-1"><span class="hulk-text-green">W</span><span>31-28</span></span></td>');
+        expect(perfRows(html)[0]).toMatch(/^Week 1 - 14-10<span class="text-muted">/);
+        expect(perfRows(html)[1]).toMatch(/^Week 2 -<span class="hulk-text-green">W<\/span> 31-28<span class="text-muted">vs<\/span>/);
     }, 60_000);
 });
 
 describe('the game being played right now is not in the log, so it is put there', () => {
     /** the `<tr>` blocks of the game log, header dropped */
-    // a game's name row only: its stat line is a spanning row of its own (#274)
     const logRows = (html: string): string[] =>
-        html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2)
-            .filter((r) => !r.startsWith(' class="stat-line-row"'));
+        html.split('id="player-game-log"')[1].split('</table>')[0].split('<tr').slice(2);
 
     test('an in-progress game for his team becomes the LAST row, with the Live badge', async () => {
         world.board = [LIVE_EVENT];
@@ -235,18 +243,21 @@ describe('the game being played right now is not in the log, so it is put there'
         expect(live).toContain('data-live-row="true"');
         expect(rows.filter((r) => r.includes('data-live-row')).length).toBe(1);
         expect(rows.length).toBe(games.length + 1);
-        // opponent, a link to the game page, and the live score
-        expect(live).toContain('Florida State');
+        // a link to the game page, and the Performance line: its (regular-season)
+        // week, the live score, the Live pill, then the opponent -- and no stat line
         expect(live).toContain('href="/game/401856687"');
-        expect(live).toContain('17-14');
-        expect(live).toContain('<span class="badge bg-danger align-middle" title="This game is in progress">Live</span>');
+        const perf = perfRows(html).at(-1)!;
+        expect(perf).toMatch(new RegExp(`^Week 4 - 17-14${LIVE}${OPP}vs</span>`));
+        expect(perf).toContain('Florida State');
+        expect(live).not.toContain('d-block text-muted small');
         // nothing of it has been processed, so every stat cell is an em dash: plays and
-        // the three shaded metrics (the stat line is its own row now, #274)
+        // the three shaded metrics
         const cells = [...live.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
+        expect(cells).toHaveLength(6);
         expect(cells.slice(-4)).toEqual(['—', '—', '—', '—']);
         // and a stored row is untouched by any of it
         expect(rows[0]).not.toContain('data-live-row');
-        expect(rows[1]).toContain('<span class="hulk-text-green">W</span><span>31-28</span>');
+        expect(perfRows(html)[1]).toContain('<span class="hulk-text-green">W</span> 31-28<span class="text-muted">');
     }, 60_000);
 
     test('a finished game is left to the processor: no synthetic row', async () => {
@@ -289,8 +300,7 @@ describe('the game being played right now is not in the log, so it is put there'
         world.board = [LIVE_EVENT];
         world.payload = { qa: QA_FULL };
         const html = await renderPage({ adminAuthed: true });
-        const rows = logRows(html);
-        expect(rows[rows.length - 1]).toContain('data-badge="live-qa"');
+        expect(perfRows(html).at(-1)).toContain(`17-14${LIVE}${QA}${OPP}`);
         expect(processed.mock.calls[0][0]).toBe('401856687');
     }, 60_000);
 });
@@ -393,15 +403,27 @@ describe('the QA badge is admin only', () => {
         world.live = [LIVE_ID];
         world.payload = { qa: QA_FULL };
         const admin = await renderPage({ adminAuthed: true });
-        expect(admin).toContain('>Live<');
-        // the whole verdict is HOVER copy on the pill, never a line in the row
-        expect(admin).toContain('data-badge="live-qa"');
-        expect(admin).toContain('title="Served: shield (fallback), QA 2 errors, 1 warning, 1 anomaly'
-            + ': ep.ep_range×9, score.monotone×3, wp.wpa_sums_to_result×1"');
+        // the whole verdict is HOVER copy on the pill, never a line in the row, and
+        // the pill sits beside Live: after the score, before the opponent
+        expect(perfRows(admin)[0]).toContain(`14-10${LIVE}${QA}${OPP}`);
         expect(admin).not.toContain('>Served:');
         // ...through the game page's own path, on its own cache key: one call, the live game's
         expect(processed).toHaveBeenCalledTimes(1);
         expect(processed.mock.calls[0][0]).toBe(LIVE_ID);
+    }, 60_000);
+
+    test('the log itself hides a verdict it is handed from a non-admin', async () => {
+        // The page only fetches the payload for an admin, so a page render cannot
+        // tell whether the log would ALSO hide one it was given: this is the
+        // component's own gate, the one any other caller of the log leans on.
+        const { default: Log } = await import('../src/components/player/PlayerGameLog.astro');
+        const live = { [LIVE_ID]: { live: true as const, qa: qaBadge({ qa: QA_FULL } as any) } };
+        const render = (locals: Record<string, unknown>) =>
+            container.renderToString(Log, { props: { games, live }, locals: locals as any });
+        const reader = perfRows(await render({ preview: true }));
+        expect(reader[0]).toContain(`14-10${LIVE}${OPP}`);
+        expect(reader.join('')).not.toContain('data-badge="live-qa"');
+        expect(perfRows(await render({ adminAuthed: true }))[0]).toContain(`14-10${LIVE}${QA}${OPP}`);
     }, 60_000);
 
     test('no `qa` block: the source alone, and no verdict invented', async () => {
@@ -417,7 +439,7 @@ describe('the QA badge is admin only', () => {
         world.fail = true;
         const html = await renderPage({ adminAuthed: true });
         expect(html).not.toContain('data-badge="live-qa"');
-        expect(resultCells(html)[0]).toContain('>Live<');
+        expect(perfRows(html)[0]).toContain(`14-10${LIVE}${OPP}`);
     }, 60_000);
 });
 

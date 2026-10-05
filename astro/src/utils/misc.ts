@@ -153,6 +153,28 @@ export function numberOrNull(v: unknown): number | null {
     return Number.isFinite(x) ? x : null;
 }
 
+/**
+ * Yards per play for one team's box-score row, sack yardage included.
+ *
+ * The payload's `yards_per_play` is the processor's statYardage over scrimmage
+ * plays (interception returns zeroed), so the yards a sack lost are in it, as they
+ * are in SDV's season `yardsplay` and the percentiles the Binion box ranks against.
+ * `(pass_yards + rush_yards) / scrimmage_plays` is not the same number: those two
+ * are the parsed receiving and rushing yards, a sack is a dropback with neither,
+ * and the sum reads high by what the sacks lost (2025: 1,507 of 1,912 team-games
+ * had a sack; 0.20 yards per play on average, 1.57 at most).
+ *
+ * Null when the team has no scrimmage plays, so a table prints a dash, not 0.00.
+ */
+export function offenseYardsPerPlay(team: Record<string, any> | null | undefined): number | null {
+    const plays = numberOrNull(team?.scrimmage_plays);
+    if (!plays) return null;
+    const perPlay = numberOrNull(team?.yards_per_play);
+    if (perPlay !== null) return perPlay;
+    const yards = numberOrNull(team?.off_yards);
+    return yards === null ? null : yards / plays;
+}
+
 /** A numeric cell: `roundNumber` when there is a number, an em dash when there is not. */
 export function formatNumber(v: unknown, fixed: number, power10: number = 2): string {
     const x = numberOrNull(v);
@@ -201,12 +223,28 @@ export function metricDecimalPoints(decimalPoints: number | null | undefined): n
 }
 
 export function hexToRgb(hex: string): RGBColor | null {
+    if (!hex) {
+        return null;
+    }    
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+function componentToHex(c: number): string {
+  var hex = c.toString(16);
+  return hex.length == 1 ? "0" + hex : hex;
+}
+
+export function rgbToHex(color?: RGBColor | null): string | null {
+    if (!color) {
+        return null;
+    }
+    
+    return "#" + componentToHex(color.r) + componentToHex(color.g) + componentToHex(color.b);
 }
 
 export function getNumberWithOrdinal(n: number): string {
@@ -389,7 +427,7 @@ export function teamColorHex(color: string | null | undefined, fallback: string 
     return c.startsWith("#") ? c : `#${c}`;
 }
 
-export function adjustTeamColorsForContrast(awayTeam: { color: string, alternateColor: string }, homeTeam: { color: string, alternateColor: string }): RGBColor[] {
+export function adjustTeamColorsForContrast(awayTeam: { color?: string, alternateColor?: string }, homeTeam: { color?: string, alternateColor?: string }): RGBColor[] {
     let awayTeamColor = hexToRgb(awayTeam.color) || { r: 0, g: 0, b: 255 }
     let homeTeamColor = hexToRgb(homeTeam.color) || { r: 255, g: 0, b: 0 }
 
@@ -484,7 +522,7 @@ function validTeamHex(value: unknown): string | null {
     return m ? `#${m[1].toLowerCase()}` : null;
 }
 
-function rgbToHex(rgb: number[]): string {
+function rgbArrayToHex(rgb: number[]): string {
     return "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 }
 
@@ -588,7 +626,7 @@ export function pickGameColors(
 function pickPairOn(candidates: [string, string][], background: string, minDeltaE: number): GameColors {
     const readable = (c: string) => contrastRatio(c, background) >= GAME_COLOR_MIN_CONTRAST;
     const apart = (x: string, y: string) => deltaE2000(x, y) >= minDeltaE;
-    const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbToHex(lab2rgb([L, lab[1], lab[2]])); };
+    const withLightness = (c: string, L: number) => { const lab = hexToLab(c); return rgbArrayToHex(lab2rgb([L, lab[1], lab[2]])); };
     // the side with room to read: darker on a light background, lighter on a dark one
     const dir = hexToLab(background)[0] >= 50 ? -1 : 1;
     // nearest L* at which the colour reads on this background

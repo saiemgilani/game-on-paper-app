@@ -159,7 +159,7 @@ if (compactRows) {
     </head>
     <body>
         <Header />
-        <div class="container">
+        <div class="container mt-3">
             <h1 class="visually-hidden">{title || titleText}</h1>
             <ScheduleDropdown client:idle season={season} week={week} seasontype={seasontype} group={group} league={league} />
             {
@@ -170,7 +170,7 @@ if (compactRows) {
                                 <h6 class="gb-slot small text-muted mt-3 mb-1 ms-1"
                                     data-gb-utc={slot.tbd ? undefined : slot.games[0].date}
                                     data-gb-fmt={compactMultiDate && !slot.tbd ? 'datetime' : undefined}>
-                                    {compactMultiDate ? `${slot.day} · ${slot.time}` : slot.time}</h6>
+                                    {compactMultiDate ? `${slot.day} - ${slot.time}` : slot.time}</h6>
                                 {slot.games.map((g) => <GameCompactRow game={g} />)}
                             </Fragment>
                         ))}

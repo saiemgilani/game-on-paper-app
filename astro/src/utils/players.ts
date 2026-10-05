@@ -17,10 +17,11 @@
  *    plays, which would silently publish a different number.
  */
 
-import { NFL_POST_LABELS, SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
+import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS } from './constants';
 import { isFeatureEnabled } from './features';
 import { leaguePath, type League } from './league';
 import { numberOrNull, roundNumber } from './misc';
+import { madeOf, num, pct } from './usage';
 
 /** The season-table categories, in the order the page shows them. */
 export const PLAYER_CATEGORIES = ['passing', 'rushing', 'receiving'] as const;
@@ -77,13 +78,13 @@ export const PLAYER_NAME_FIELD: Record<PlayerCategory, string> = {
  * the rest of the site offers hover copy.
  */
 export const PLAYER_SPLITS: { key: string; label: string; title?: string }[] = [
-    { key: 'all', label: 'All plays' },
     { key: 'standard_downs', label: 'Standard downs', title: '1st down, 2nd and short of 8, 3rd or 4th and short of 5' },
     { key: 'passing_downs', label: 'Passing downs', title: '2nd and 8 or more, 3rd or 4th and 5 or more' },
     { key: 'red_zone', label: 'Red zone' },
     { key: 'first_half', label: '1st half' },
     { key: 'second_half', label: '2nd half' },
     { key: 'overtime', label: 'Overtime' },
+    { key: 'all', label: 'All plays' },
 ];
 
 /** The two splits that partition `all` by down type, and the three that partition it by period. */
@@ -134,19 +135,6 @@ export function playerHref(
     const linkable = isEspnAthleteId(key) || (locals?.league === 'nfl' && isGsisId(key));
     if (!linkable || !isFeatureEnabled('player-pages', locals)) return null;
     return playerPath(locals?.league, key, season);
-}
-
-/**
- * The game log's week cell. A postseason `week` restarts at 1 in both leagues,
- * so printing it bare labels a bowl game "1": the NFL's five rounds have names
- * (the same list the schedule dropdown offers), and CFB's postseason is one
- * bucket, since which bowl a game was is the game page's business.
- */
-export function weekLabel(league: League, seasonType: string | null | undefined, week: number | null | undefined): string {
-    const post = /^(post|post-?season|3)$/i.test(String(seasonType ?? ''));
-    if (!post) return week === null || week === undefined ? '—' : String(week);
-    if (league !== 'nfl') return 'Postseason';
-    return NFL_POST_LABELS[Number(week) - 1] ?? 'Postseason';
 }
 
 export interface PlayerGameRow {
@@ -296,6 +284,67 @@ export function receivingStatLine(v: { receptions?: unknown; targets?: unknown; 
     const tgt = numberOrNull(v.targets);
     const caught = tgt === null ? `${q(v.receptions)} rec` : `${q(v.receptions)}/${tgt} tgt`;
     return `${caught}, ${q(v.yards)} yds, ${q(v.tds)} TD`;
+}
+
+export function kickerStatLine(k: { fg_attempts: number, fg_made: number, fg_long: number | null,  fg_blocked?: number, fg_0_39_made?: number, fg_0_39_attempts?: number, fg_40_49_made?: number, fg_40_49_attempts?: number, fg_50_plus_made?: number, fg_50_plus_attempts?: number, xp_made: number, xp_attempts: number, kickoffs: number, kickoff_avg?: number, kickoff_return_avg_allowed?: number, kickoff_touchback_rate?: number, kickoff_returns_allowed?: number, kickoff_return_tds_allowed?: number }): string {
+    let content: string[] = []
+    const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} / ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} / ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
+    if (k.fg_attempts) {
+        content = content.concat(`FG: ${madeOf(k.fg_made, k.fg_attempts)} <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">(${fgByRange(k)})</abbr>${k.fg_long != null ? `, ${k.fg_long} LNG` : ''}${!!k.fg_blocked && k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}`)
+    }
+    if (k.xp_attempts) {
+        content = content.concat(`XP: ${madeOf(k.xp_made, k.xp_attempts)}`)
+    }
+
+    if (k.kickoffs) {
+        content = content.concat(`KO: ${k.kickoffs}, ${num(k.kickoff_avg, 1)} yds avg, ${pct(k.kickoff_touchback_rate, 0)} TB${!!k.kickoff_returns_allowed && k.kickoff_returns_allowed > 0 ? `, ${num(k.kickoff_return_avg_allowed, 1)} yds/return allowed` : ''}${!!k.kickoff_return_tds_allowed && k.kickoff_return_tds_allowed > 0 ? `, ${k.kickoff_return_tds_allowed} return TD allowed` : ''}`)   
+    }
+    return content.map((p: string) => `<span>${p}</span>`).join("\n");
+}
+
+export function punterStatLine(v: { punts: number, punt_avg: number, punt_net_avg: number, punt_long: number | null, punt_inside_20: number, punt_touchbacks: number, punt_fair_catches: number, punt_returns_allowed?: number, punt_return_avg_allowed?: number, punt_blocked?: number }): string {
+    let baseBox = `${v.punts} punts, ${num(v.punt_avg, 1)} yds avg, ${num(v.punt_net_avg, 1)} <abbr title="Net punt = gross - return yards - 20 per touchback">net</abbr>`;
+    if (v.punt_long) {
+        baseBox += `, ${v.punt_long} LNG`
+    }
+    if (v.punt_inside_20) {
+        baseBox += `, ${v.punt_inside_20} inside 20`
+    }
+    if (v.punt_touchbacks) {
+        baseBox += `, ${v.punt_touchbacks} TB`
+    }
+    if (v.punt_fair_catches) {
+        baseBox += `, ${v.punt_fair_catches} FC`
+    }
+    if (v.punt_returns_allowed) {
+        baseBox += `, ${num(v.punt_return_avg_allowed, 1)} yds/return allowed`
+    }
+    if (v.punt_blocked) {
+        baseBox += `, ${v.punt_blocked} blocked`
+    }
+    return baseBox
+}
+
+export function blockerStatLine(v: { punt_blocks: number, fg_blocks: number}): string {
+    let content: string[] = []
+    if (v.punt_blocks) {
+        content = content.concat([`${v.punt_blocks} punt${v.punt_blocks > 1 ? 's' : ''} blocked`])
+    }
+    if (v.fg_blocks) {
+        content = content.concat([`${v.fg_blocks} FG${v.fg_blocks > 1 ? 's' : ''} blocked`])
+    }
+    return content.join(", ");
+}
+
+export function returnerStatLine(r: { punt_returns: number, punt_return_yards: number, punt_return_avg: number, punt_return_long: number | null, punt_return_tds: number, kick_returns: number, kick_return_yards: number, kick_return_avg: number, kick_return_long: number | null, kick_return_tds: number  }): string {
+    let content: string[] = []
+    if (r.punt_returns) {
+        content = content.concat([`PR: ${r.punt_returns} for ${r.punt_return_yards} yds (${num(r.punt_return_avg, 1)} yds avg${r.punt_return_long != null ? `, ${r.punt_return_long} LNG` : ''})${r.punt_return_tds > 0 ? `, ${r.punt_return_tds} TD` : ''}`])
+    }
+    if (r.kick_returns) {
+        content = content.concat([`KR: ${r.kick_returns} for ${r.kick_return_yards} yds (${num(r.kick_return_avg, 1)} yds avg${r.kick_return_long != null ? `, ${r.kick_return_long} LNG` : ''})${r.kick_return_tds > 0 ? `, ${r.kick_return_tds} TD` : ''}`])
+    }
+    return content.join(", ");
 }
 
 /**

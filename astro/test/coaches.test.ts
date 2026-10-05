@@ -61,11 +61,21 @@ describe('board definitions', () => {
                 if (c.format === 'pct') expect(maxAbs, `${c.key} formatted as pct`).toBeLessThanOrEqual(1);
             }
         }
-        // the three percentage-POINT columns would render as 2700% under pct
-        for (const k of ['third_down_over_expected_rate', 'fourth_wp_left_per_decision', 'fourth_wp_left']) {
-            const col = Object.values(COACH_BOARDS).flatMap((b) => b.columns).find((c) => c.key === k);
-            expect(col?.format, k).toMatch(/^num/);
+        // the percentage-POINT columns would render as 2700% under pct; a total of
+        // points runs past 100, so only the per-decision value carries a % sign
+        const colOf = (k: string) => Object.values(COACH_BOARDS).flatMap((b) => b.columns).find((c) => c.key === k);
+        for (const k of ['third_down_over_expected_rate', 'fourth_wp_left']) expect(colOf(k)?.format, k).toMatch(/^num/);
+        expect(colOf('fourth_wp_left_per_decision')?.format).toBe('pct_format');
+        // ...and that is the real rule: a column printed with % never goes past 100 on the fixture
+        for (const b of Object.values(COACH_BOARDS)) {
+            for (const c of b.columns.filter((c) => c.format === 'pct_format')) {
+                const vals = rows.map((r) => numericValue(r, c.key)).filter((v): v is number => v !== null);
+                expect(Math.max(...vals.map(Math.abs)), `${c.key} printed with %`).toBeLessThanOrEqual(100);
+            }
         }
+        // the total is the column that does pass 100, which is why it is not a percent
+        const totals = rows.map((r) => numericValue(r, 'fourth_wp_left')).filter((v): v is number => v !== null);
+        expect(Math.max(...totals)).toBeGreaterThan(100);
         expect(Math.max(...fx.coach_tendencies.map((r) => numericValue(r, 'fourth_wp_left') as number))).toBeGreaterThan(1);
     });
 

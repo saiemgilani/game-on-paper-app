@@ -5,7 +5,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { pickGameColors } from '../src/utils/misc';
+import { adjustTeamColorsForContrast, pickGameColors, rgbToHex } from '../src/utils/misc';
 
 // 'game-colours': the game page decides the team colours ONCE and every chart
 // paints that pair. Before it, the drive chart painted ESPN's raw colours while
@@ -119,21 +119,23 @@ describe('Deserved Win % bars switch pair with prefers-color-scheme', () => {
         expect(html).toContain('background-color: var(--pi-home)');
     });
 
-    test('without it, the bars keep the teams\' raw colours', async () => {
+    test('without it, the bars keep the pair adjusted for contrast (#270)', async () => {
         const html = await renderPanel();
+        const [away, home] = adjustTeamColorsForContrast(game.teamInfo.away, game.teamInfo.home);
         expect(html).not.toContain('--pi-');
-        expect(html).toContain(`background-color: #${game.teamInfo.home.color}`);
+        expect(html).toContain(`background-color: ${rgbToHex(home)}`);
+        expect(html).toContain(`background-color: ${rgbToHex(away)}`);
     });
 });
 
 describe('game-colours off: the page is byte-for-byte what main renders', () => {
-    // Hashes of the flag-off render of this fixture on origin/main 4a62cc2a,
-    // before 'game-colours' existed (same test body, run there), re-pinned for
-    // the Turnovers/Defensive table fix (two decimals, Pass Breakups). The flag's
+    // Hashes of the flag-off render of this fixture on #270's tree before 'game-colours'
+    // existed (AE/design-fixes + main 4a62cc2a = be3b1082, same body, run there); the
+    // merged tree renders the same bytes. The flag's
     // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
     // PR that changes the game page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { v2: '1376f0e4a9ff1d7c', classic: '469862e18c3ae16b' };
+    const GOLDEN = { v2: 'bdd540d70b5e2d07', classic: 'fd1759c91e80ba65' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});

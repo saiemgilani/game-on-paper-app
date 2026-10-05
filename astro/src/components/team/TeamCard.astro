@@ -32,7 +32,11 @@ if (teamSeason.confRecord) {
     conf = ""
 }
 
+// A year on the metric headers only when the numbers come from a different season
+// than the page (an early-season pregame card showing last year's team). The
+// profile link always goes to the season the numbers are from.
 const metricSeason = (summary?.season && season != summary?.season) ? `${summary.season} ` : "";
+const profileSeason = summary?.season ?? season;
 
 ---
 
@@ -85,7 +89,7 @@ const metricSeason = (summary?.season && season != summary?.season) ? `${summary
 
         {
             (summary && !hideNavigation) && (
-                <a href={leaguePath(league, `/year/${metricSeason.trim()}/team/${team.id}`)}>View full profile</a>
+                <a href={leaguePath(league, `/year/${profileSeason}/team/${team.id}`)}>View full profile</a>
             )
         }
     </div>

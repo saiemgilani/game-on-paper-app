@@ -254,16 +254,25 @@ def test_fixture_metrics_clear_the_gates(league):
         assert row["input"]["bytes"] > 0
     assert sum(r["n"] for r in prov["calibration"]) == prov["holdout_games"]
 
-
 def test_fit_logistic_nonneg_reenters_a_pinned_margin():
     """KKT re-entry: on a collinear design the one-way active set pins
-    columns {0, 1}; the KKT loop lets column 0 back in once its partner is
-    gone and ends at {1, 3}, a strictly higher likelihood, with every active
-    weight positive and a non-positive gradient on every pinned one."""
-    rng = np.random.default_rng(384)
+    columns {0, 3}; the KKT loop lets column 3 back in once its partner is
+    gone and ends at {0, 2}, a strictly higher likelihood, with every active
+    weight positive and a non-positive gradient on every pinned one.
+
+    The design is built from plain normal draws and a matrix product. It used
+    to come from ``rng.multivariate_normal``, which factors the covariance
+    through LAPACK: the default SVD, ``eigh`` and ``cholesky`` each give a
+    different X from the same seed, so the pinned sets asserted below held on
+    one BLAS and not on another (the test was skipped as "nondeterministic").
+    The fit itself is deterministic. Seed 108 was picked from 1-4000 for the
+    width of its narrowest decision: every coefficient or gradient the active
+    set branches on is at least 0.2 from zero and from the runner-up."""
+    rng = np.random.default_rng(108)
     n, k = 300, 4
     A = rng.normal(size=(k, k))
-    X = rng.multivariate_normal(np.zeros(k), A @ A.T + 0.05 * np.eye(k), size=n)
+    # the same covariance as multivariate_normal(0, A A' + 0.05 I), with no factorization
+    X = rng.normal(size=(n, k)) @ A.T + np.sqrt(0.05) * rng.normal(size=(n, k))
     X /= X.std(axis=0)
     beta_true = rng.uniform(-1.5, 2.0, size=k)
     y = (rng.random(n) < 1 / (1 + np.exp(-(X @ beta_true)))).astype(float)
@@ -287,9 +296,9 @@ def test_fit_logistic_nonneg_reenters_a_pinned_margin():
 
     naive_beta, naive_dropped = one_way(X, y)
     beta, dropped = fit_logistic_nonneg(X, y)
-    assert naive_dropped == [0, 1]
-    assert dropped == [1, 3]  # column 0 re-entered, column 3 left
-    assert (beta[[0, 2]] > 0).all() and (beta[[1, 3]] == 0).all()
+    assert naive_dropped == [0, 3]
+    assert dropped == [0, 2]  # column 3 re-entered, column 2 left
+    assert (beta[[1, 3]] > 0).all() and (beta[[0, 2]] == 0).all()
     grad = X[:, dropped].T @ (y - share(X, beta))
     assert (grad <= 1e-8).all(), grad
     assert loglik(beta) > loglik(naive_beta) + 1.0

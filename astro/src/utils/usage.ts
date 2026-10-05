@@ -8,8 +8,8 @@ import { formatNumber, formatPercent } from './misc';
 
 /** Every section sportsdataverse.football.usage_box emits. */
 export const USAGE_SECTIONS = [
-    'player_usage', 'position_group_usage', 'tackles', 'position_group_tackles', 'team_usage', 'drive_scripting',
-    'st_kickers', 'st_punters', 'st_returners', 'st_blocks', 'st_team',
+    'player_usage', 'position_group_usage', 'tackles', 'position_group_tackles',
+    'st_kickers', 'st_punters', 'st_returners', 'st_blocks',
 ] as const;
 
 /** The sections the two-team Situational & Special Teams panel reads. */

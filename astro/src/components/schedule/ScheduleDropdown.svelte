@@ -1,7 +1,7 @@
 <script>
 	import { GLOBAL_SCHEDULE_MAP, groupsForSeason } from '../../resources/schedule';
 	import { NFL_POST_LABELS } from '../../utils/constants';
-	import { LEAGUES, leaguePath } from '../../utils/league';
+	import { LEAGUES, leaguePath, NFL_SEVENTEEN_GAME_SEASON } from '../../utils/league';
 
 	// `league` is passed from SchedulePage (SSR knows Astro.locals.league);
 	// it defaults to cfb so every existing caller is unchanged.
@@ -11,7 +11,7 @@
 	// season); the nfl calendar is fixed: 18 regular + 5 postseason rounds.
 	function weeksFor(s) {
 		if (league === 'cfb') return GLOBAL_SCHEDULE_MAP[s] || [];
-		const reg = Array.from({ length: cfg.regularSeasonWeeks }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));
+		const reg = Array.from({ length: (selectedSeason.value >= NFL_SEVENTEEN_GAME_SEASON) ? 18 : 17 }, (_, i) => ({ type: 2, value: i + 1, label: `Week ${i + 1}`, detail: 'Regular Season' }));
 		const post = NFL_POST_LABELS.slice(0, cfg.postseasonWeeks).map((label, i) => ({ type: 3, value: i + 1, label, detail: 'Postseason' }));
 		return reg.concat(post);
 	}
