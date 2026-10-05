@@ -41,7 +41,7 @@ const signed = (n: number | null | undefined): string => {
 <p style="text-align: center;"><strong>Started Drive at:</strong> {formatYardline(play.drive_start, cleanAbbreviation(offense), cleanAbbreviation(defense), play.type.text)}</p>
 <p style="text-align: center;"><strong>Expected Points (Before → After):</strong> {roundNumber(play.expectedPoints.before, 2, 2)} → {roundNumber(play.expectedPoints.after, 2, 2)}, <strong>Added:</strong> {signed(play.expectedPoints.added)}{
     (Math.abs(play.EP_between ?? 0) >= 0.005) && (
-        <span title="Expected points that changed between the previous play's end and this play's start (a penalty enforced from the prior spot, an untracked administrative change, a data gap). It is part of Added, so Added is not simply After minus Before here."> · incl. {signed(play.EP_between ?? 0)} between plays</span>
+        <span title="Expected points that changed between the previous play's end and this play's start (a penalty enforced from the prior spot, an untracked administrative change, a data gap). It is part of Added, so Added is not simply After minus Before here."> (incl. {signed(play.EP_between ?? 0)} between plays)</span>
     )
 }</p>
 <p style="text-align: center;"><strong>Score Difference (Before):</strong> {play.start.pos_score_diff} ({roundNumber(play.start.ExpScoreDiff, 2, 2)})</p>
