@@ -155,7 +155,7 @@ const V2_METRIC_TABLES: MetricTable[] = [
     { title: 'Success', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['EPA_success', 'EPA_success_pass', 'EPA_success_rush', 'EPA_success_standard_down', 'EPA_success_passing_down', 'EPA_success_early_down', 'EPA_success_late_down', 'EPA_middle_8_success']) },
     { title: 'Early Downs', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['early_downs', 'early_down_first_down', 'EPA_early_down', 'EPA_early_down_per_play', 'early_down_pass', 'early_down_rush', 'EPA_success_early_down_pass', 'EPA_success_early_down_rush']) },
     { title: 'Late Downs', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: [
-        ...dotted('situational', ['late_downs', 'EPA_late_down', 'EPA_late_down_per_play', 'late_down_pass', 'late_down_rush', 'EPA_success_late_down_pass', 'EPA_success_late_down_rush', 'late_down_avg_distance']),
+        ...dotted('situational', ['late_downs', 'EPA_late_down', 'EPA_late_down_per_play', 'late_down_pass', 'late_down_rush', 'EPA_success_late_down_pass', 'EPA_success_late_down_rush']),
         ...dotted('team_usage', ['third_down_opportunities', 'third_down_conversions', 'third_down_expected']),
     ] },
     { title: 'Middle 8', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['middle_8', 'EPA_middle_8', 'EPA_middle_8_per_play', 'middle_8_pass', 'middle_8_rush', 'EPA_middle_8_success_pass', 'EPA_middle_8_success_rush']) },
