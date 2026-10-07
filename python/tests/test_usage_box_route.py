@@ -276,3 +276,22 @@ def test_every_section_carries_the_columns_the_page_reads(body):
         for col in cols:
             assert all(col in r for r in rows), f"{section}.{col}"
     assert {"player_usage", "team_usage", "drive_scripting", "st_kickers", "st_punters", "st_team"} <= set(checked)
+
+
+def test_drive_start_ep_is_the_paper_index_value(body):
+    """The Drives table's EP row is the number the Paper Index field-position
+    margin is built from, for the whole game (both from paper_index)."""
+    teams = body["paperIndex"]["teams"]
+    rows = body["advBoxScore"]["drives"]
+    assert len(rows) == 2
+    for row in rows:
+        assert abs(row["avg_start_ep"] - teams[str(row["pos_team"])]["avgStartEp"]) < 1e-9
+
+
+def test_every_window_carries_drive_start_ep(body):
+    spans = body["advBoxScoreSpans"]
+    assert {"q1", "q2", "q3", "q4", "h1", "h2"} <= set(spans)
+    for key, box in spans.items():
+        for row in box["drives"]:
+            v = row["avg_start_ep"]
+            assert v is None or -2.0 < v < 7.0, (key, row)
