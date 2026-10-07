@@ -14,7 +14,7 @@ beforeAll(async () => {
 });
 
 describe('NeighborRanks', () => {
-    test('one table per list, the team marked once per table, league links and logos, no ramp classes', async () => {
+    test('one table per list, the team marked once per table, league links and logos, leaderboard shading', async () => {
         const { default: NeighborRanks } = await import('../src/components/leaderboards/NeighborRanks.astro');
         const lists = teamNeighborLists(fx.nfl_team_summaries_2025, 14, 'nfl', 2025);
         const html = await container.renderToString(NeighborRanks, { props: { lists, logos: true }, locals: { league: 'nfl' } });
@@ -23,8 +23,14 @@ describe('NeighborRanks', () => {
         expect(html).toMatch(/href="\/nfl\/year\/2025\/team\/\d+"/);
         expect(html).toContain('teamlogos/nfl/500/');
         expect(html).not.toContain('teamlogos/ncaa/');
-        expect(html).not.toContain('hulk-');
         expect(html).toContain('>Off EPA/Play<');
+        // metric cells carry the leaderboards' ramp (Akshay's #296 sign-off): LA is #1 of 32
+        // in Net Adj EPA/Play (green) and #12 in Off Explosive Rate (level 6); rank and name
+        // cells stay unshaded so the own-row and hover marks still read
+        const selfRows = html.match(/<tr[^>]*class="table-secondary"[^>]*>[\s\S]*?<\/tr>/g)!;
+        expect(selfRows[0]).toContain('class="text-center numeral hulk-bg-level-9"');
+        expect(selfRows[3]).toContain('class="text-center numeral hulk-bg-level-6"');
+        expect(html).not.toMatch(/<td class="text-(right|left)[^"]*hulk-/);
         // the identity column is the row's primary entity: bolded like TeamLeaderboardTable /
         // PlayerLeaderboardTable do, self row included.
         const selfRow = html.match(/<tr[^>]*class="table-secondary"[^>]*>[\s\S]*?<\/tr>/);

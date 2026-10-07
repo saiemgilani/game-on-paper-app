@@ -10,7 +10,8 @@
  * read as unreadable in dark mode (final review), and the own row is already
  * identifiable by its persistent marking, so it just stays as it is while lit.
  * Rows come from `utils/neighbors.ts`; this only renders them, in the
- * `CoachLeaderboardTable` format: rank right, name left, value centred.
+ * `CoachLeaderboardTable` format: rank right, name left, value centred, the
+ * value cell shaded as the season leaderboards shade it (`hulk-bg-level-*`).
  */
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { espnLogoLeague } from '../../utils/league';
@@ -47,7 +48,7 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
                                         <a href={r.href} aria-current={r.self ? 'page' : undefined}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" loading="lazy" decoding="async" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
                                     ) : <strong>{r.label}</strong>}
                                 </td>
-                                <td class="text-center numeral" colspan="1">{r.value}</td>
+                                <td class:list={['text-center', 'numeral', r.shade]} colspan="1">{r.value}</td>
                             </tr>
                         ))}
                     </tbody>

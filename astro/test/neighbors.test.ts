@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { neighborWindow, playerKey, playerNeighborLists, teamKey, teamNeighborLists } from '../src/utils/neighbors';
-import { generateMarginalString, roundNumber } from '../src/utils/misc';
+import { generateColorRampValue, generateMarginalString, roundNumber } from '../src/utils/misc';
 
 const fx = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
@@ -78,5 +78,33 @@ describe('display rows', () => {
         expect(pub.every((l) => l.rows.every((c) => c.href === null))).toBe(true);
         const prev = playerNeighborLists(rows, key, 'passing', { league: 'cfb', preview: true }, 2024);
         expect(prev[0].rows.find((c) => c.self)!.href).toBe('/players/4433971?season=2024');
+    });
+});
+
+describe('metric cell shading (the season leaderboards\' ramp)', () => {
+    test('teams: rank 1 green, last purple, the middle unshaded; every cell as TeamLeaderboardTable shades it', () => {
+        const rows = fx.nfl_team_summaries_2025;
+        const selfCell = (rank: number) => {
+            const t = rows.find((r: any) => r.net_adj_epa_rank === rank);
+            return teamNeighborLists(rows, t.team_id, 'nfl', 2025)[0].rows.find((c) => c.self)!;
+        };
+        expect(selfCell(1).shade).toBe('hulk-bg-level-9');
+        expect(selfCell(32).shade).toBe('hulk-bg-level-0');
+        expect(selfCell(16).shade).toBeNull();
+        // TeamLeaderboardTable: generateColorRampValue(rank, every ranked team, inverted)
+        for (const l of teamNeighborLists(rows, 14, 'nfl', 2025)) {
+            const win = neighborWindow(rows, teamKey, 14, l.metric);
+            expect(l.rows.map((c) => c.shade)).toEqual(win.map((n) => generateColorRampValue(n.rank, rows.length, true)));
+        }
+    });
+
+    test('players: the denominator is every passer ranked on the metric (131), not the window', () => {
+        const rows = fx.cfb_passing_2024;
+        const mid = rows.find((r: any) => r.EPAplay_rank === 66);
+        const cell = playerNeighborLists(rows, playerKey(mid), 'passing', { league: 'cfb' }, 2024)[0].rows.find((c) => c.self)!;
+        // 65/131 rounds to the unshaded middle; over the window's own length it would be purple
+        expect(cell.shade).toBeNull();
+        const last = rows.find((r: any) => r.EPAplay_rank === 131);
+        expect(playerNeighborLists(rows, playerKey(last), 'passing', { league: 'cfb' }, 2024)[0].rows.find((c) => c.self)!.shade).toBe('hulk-bg-level-0');
     });
 });
