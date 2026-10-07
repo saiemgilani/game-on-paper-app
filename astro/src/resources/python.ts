@@ -1155,6 +1155,8 @@ export interface ProcessedGame {
     broadcasts: ESPNGeoBroadcast[]
     season: ESPNSeason
     gei?: number
+    /** when /process built the payload; absent until the processor sends it */
+    updatedAt?: string
     teamInfo: ProcessedGameTeamInfo
 }
 
