@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { FLAGS, isFeatureEnabled } from '../src/utils/features';
-import { builderUrl, chartTitle, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { builderUrl, chartTitle, keepPreviewSurface, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
 // The Data API's real 2026 cfb rows for x=red_zone_success_off_pass&y=success_off (fixtures/README.md):
@@ -81,5 +81,13 @@ describe('chart builder helpers', () => {
         expect(builderUrl('nfl', { season: 2025, x: 'a', y: 'b' })).toBe('/nfl/charts/builder?season=2025&x=a&y=b');
         expect(builderUrl('cfb', { season: 2025, x: 'a', y: 'b', hl: 'SEC', mode: 'dots' })).toBe('/charts/builder?season=2025&x=a&y=b&hl=SEC&mode=dots');
         expect(builderUrl('cfb', { season: 2025, x: 'a', y: 'b', hl: '  ', mode: 'logos' })).toBe('/charts/builder?season=2025&x=a&y=b');
+    });
+
+    test('keepPreviewSurface prefixes /preview only when the builder was opened there', () => {
+        const nfl = builderUrl('nfl', { season: 2025, x: 'a', y: 'b' });
+        expect(keepPreviewSurface(nfl, '/preview/nfl/charts/builder')).toBe('/preview/nfl/charts/builder?season=2025&x=a&y=b');
+        expect(keepPreviewSurface(nfl, '/preview')).toBe(`/preview${nfl}`);
+        expect(keepPreviewSurface(nfl, '/nfl/charts/builder')).toBe(nfl);
+        expect(keepPreviewSurface(nfl, '/previewer/charts/builder')).toBe(nfl);
     });
 });

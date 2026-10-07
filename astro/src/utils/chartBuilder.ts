@@ -5,6 +5,7 @@
 import { SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from './constants';
 import { leaguePath, type League } from './league';
 import { generateCategoryForMetric, generateSubCategoryForMetric, generateTeamMetricTitle } from './misc';
+import { PREVIEW_PATH_PREFIX } from './preview';
 
 /** The caption colours the builder already draws in. */
 export const CHART_TEXT = { light: '#525252', dark: '#e8e6e3' } as const;
@@ -61,4 +62,13 @@ export function builderUrl(league: League, s: { season: string | number; x: stri
     if (s.hl?.trim()) q.set('hl', s.hl.trim());
     if (s.mode === 'dots') q.set('mode', 'dots');
     return leaguePath(league, `/charts/builder?${q}`);
+}
+
+/**
+ * Keep a builder navigation on the uncacheable /preview surface when it started there (as Footer.astro does
+ * for links): a public URL can serve its cached copy, which has no v2 props.
+ */
+export function keepPreviewSurface(target: string, pathname: string): string {
+    const onPreview = pathname === PREVIEW_PATH_PREFIX || pathname.startsWith(`${PREVIEW_PATH_PREFIX}/`);
+    return onPreview ? `${PREVIEW_PATH_PREFIX}${target}` : target;
 }

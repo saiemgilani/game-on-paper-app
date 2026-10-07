@@ -5,7 +5,7 @@
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartTitle, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartTitle, keepPreviewSurface, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -18,7 +18,8 @@
     const rail = metricRail();
     const railKeys = rail.flatMap((f) => f.metrics.map((m) => m.key));
     function go(nx: string, ny: string) {
-        window.location.href = builderUrl(league, { season: selectedSeason, x: nx, y: ny, hl: highlight, mode });
+        const target = builderUrl(league, { season: selectedSeason, x: nx, y: ny, hl: highlight, mode });
+        window.location.href = keepPreviewSurface(target, window.location.pathname);
     }
     function onRandom() {
         const [nx, ny] = randomAxes(railKeys);
