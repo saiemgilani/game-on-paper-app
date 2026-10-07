@@ -113,7 +113,9 @@ export function liveGameRow(event: ESPNScheduleEvent, teamIds: Set<string>, leag
         game_id: String(event.id),
         season: Number(event.season?.year) || undefined,
         week: event.week?.number ?? null,
-        season_type: String(event.season?.type ?? ''),
+        // the API rows' own words: ESPN's numeric type (2, 3) is not one of them, and
+        // `weekLabel` reads anything but 'regular'/'REG' as the postseason
+        season_type: event.season?.type === 3 ? 'postseason' : 'regular',
         game_date: comp?.date ?? event.date ?? null,
         team_id: String(mine.team?.id ?? ''),
         opponent_id: String(them.team?.id ?? ''),

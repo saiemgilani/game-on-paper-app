@@ -50,17 +50,17 @@ async function watchRows(teamId: string | number): Promise<WatchRow[]> {
         p && {
             title: "Passing",
             name: p.passer_player_name,
-            subtitle: `${roundNumber(p.EPAplay, 2, 2)} EPA/play · ${p.dropbacks} db · ${yds(p.yards)} · ${p.passing_td} TD`,
+            subtitle: `${roundNumber(p.EPAplay, 2, 2)} EPA/play, ${p.dropbacks} db, ${yds(p.yards)}, ${p.passing_td} TD`,
         },
         r && {
             title: "Rushing",
             name: r.rusher_player_name,
-            subtitle: `${roundNumber(r.EPAplay, 2, 2)} EPA/play · ${r.plays} car · ${yds(r.yards)} · ${r.rushing_td} TD`,
+            subtitle: `${roundNumber(r.EPAplay, 2, 2)} EPA/play, ${r.plays} car, ${yds(r.yards)}, ${r.rushing_td} TD`,
         },
         c && {
             title: "Receiving",
             name: c.receiver_player_name,
-            subtitle: `${roundNumber(c.EPAplay, 2, 2)} EPA/play · ${c.plays} rec · ${yds(c.yards)}`,
+            subtitle: `${roundNumber(c.EPAplay, 2, 2)} EPA/play, ${c.plays} rec, ${yds(c.yards)}`,
         },
     ].filter((x): x is WatchRow => !!x);
 }

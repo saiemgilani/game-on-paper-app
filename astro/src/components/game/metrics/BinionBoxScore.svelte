@@ -2,7 +2,7 @@
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
-import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue, metricDecimalPoints } from '../../../utils/misc';
+import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue, metricDecimalPoints, offenseYardsPerPlay } from '../../../utils/misc';
 import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import { LEAGUES, type League } from '../../../utils/league';
@@ -123,7 +123,20 @@ function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoint
 
     let finalDecimalPoints = metricDecimalPoints(decimalPoints);
     var result = ""
-    if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
+    if (item == "yards_per_play") {
+        // Sack yardage included (offenseYardsPerPlay): the same basis as the SDV
+        // `yardsplay` percentiles this cell is ranked against.
+        finalTeamInfo.forEach((teamData: any) => {
+            const val = offenseYardsPerPlay(teamData);
+            if (val === null) {
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
+            } else {
+                let pct = retrieveBoxScorePercentile(val, finalKey);
+                let colorRampClass = generateColorRampValue(pct.pctl, 100)
+                result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${roundNumber(pct.min, 2, finalDecimalPoints)}\nMedian: ${roundNumber(pct.mid, 2, finalDecimalPoints)}\nBest: ${roundNumber(pct.max, 2, finalDecimalPoints)}">${roundNumber(val, 2, finalDecimalPoints)} <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
+            }
+        });
+    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
         finalTeamInfo.forEach(teamData => {
             let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
             let rate = parseFloat(JSON.parse(JSON.stringify(val)));
@@ -198,8 +211,8 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
                 <th style="text-align: left;">Overall</th>
                 {#each groups as value}
                 <th style="text-align: center;">
-                    <a href={leaguePath(leagueFromLocation(), `/year/${season}/team/${value}`)}>
-                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(leagueFromLocation())}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
+                    <a href={leaguePath(league, `/year/${season}/team/${value}`)}>
+                        <img class={`img-fluid team-logo-${value}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${value}.png`} alt={`ESPN team id ${value}`}/>
                     </a>
                 </th>
                 {/each}

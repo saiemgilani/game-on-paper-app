@@ -24,6 +24,7 @@ const { items } = Astro.props;
     </div>
     <div class="py-1 d-inline d-lg-none">
         <select class="form-select form-select-md" style="min-width:250px;border:0;" id="game-section-picker">
+            <option disabled selected>Navigate to...</option>
             {
                 (items.map((p) => <option value={p.href}>{p.title}</option>))
             }

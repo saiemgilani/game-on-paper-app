@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { LEAGUES, NFL_LOGO_ABBR, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
@@ -104,6 +105,26 @@ describe('weekLabel', () => {
     test('no season reads as the current era', () => {
         expect(weekLabel('nfl', 19, 'postseason')).toBe('Wild Card');
         expect(weekLabel('nfl', 22, 'postseason')).toBe('Super Bowl');
+    });
+
+    // A postseason `week` restarts at 1 in BOTH leagues, so the bare number
+    // labels a bowl game / a Super Bowl "1". The CFB fixture carries exactly
+    // that row, which is why this is a contract and not a hypothetical.
+    test('a postseason row is named, never numbered', () => {
+        const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
+        const post = cfb.games.data.find((g: any) => g.season_type === 'postseason');
+        expect(post.week).toBe(1);
+        expect(weekLabel('cfb', post.week, post.season_type)).toBe('Postseason');
+        expect(weekLabel('nfl', 1, 'POST', 2026)).toBe('Wild Card');
+        expect(weekLabel('nfl', 4, 'POST', 2026)).toBe('Super Bowl');
+        // a round the league has not defined still says postseason, not "1"
+        expect(weekLabel('nfl', 9, 'POST', 2026)).toBe('Postseason');
+    });
+
+    test('a regular-season row is its number, and an absent week an em dash', () => {
+        expect(weekLabel('cfb', 7, 'regular')).toBe('Week 7');
+        expect(weekLabel('nfl', 18, 'REG')).toBe('Week 18');
+        expect(weekLabel('nfl', null, 'REG')).toBe('');
     });
 });
 

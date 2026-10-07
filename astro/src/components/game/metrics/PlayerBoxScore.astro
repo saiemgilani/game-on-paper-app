@@ -1,15 +1,19 @@
 ---
-import type { ProcessedBoxScore, ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore } from '../../../resources/python';
+import type { ProcessedBoxScore, ProcessedPassingBoxScore, ProcessedReceivingBoxScore, ProcessedRushingBoxScore, ProcessedSTBlock, ProcessedSTKicker, ProcessedSTPunter, ProcessedSTReturner } from '../../../resources/python';
 import { roundNumber } from "../../../utils/misc";
 import { defensiveBox, playerExtremes } from "../../../utils/defensiveBox";
-import { playerIdsByName } from "../../../utils/usage";
-import { passingStatLine, receivingStatLine, rushingStatLine } from "../../../utils/players";
+import { num, playerIdsByName } from "../../../utils/usage";
+import { blockerStatLine, kickerStatLine, passingStatLine, punterStatLine, receivingStatLine, returnerStatLine, rushingStatLine } from "../../../utils/players";
 import PlayerLink from "../../player/PlayerLink.astro";
 
 interface Props {
     pass: ProcessedPassingBoxScore[],
     rush: ProcessedRushingBoxScore[],
     receiver: ProcessedReceivingBoxScore[],
+    kickers?: ProcessedSTKicker[],
+    punters?: ProcessedSTPunter[],
+    blocks?: ProcessedSTBlock[],
+    returners?: ProcessedSTReturner[],
     /** Every play in the game, for the longest gain, the best play, and the defence. */
     plays?: any[],
     /** The team whose defenders to credit; omit to leave the defensive table out. */
@@ -19,7 +23,7 @@ interface Props {
     /** The game's season, so a player link opens on the season being watched. */
     season?: number,
 }
-let { pass, rush, receiver, plays = [], teamId, box, season } = Astro.props;
+let { pass, rush, receiver, kickers, punters, blocks, returners, plays = [], teamId, box, season } = Astro.props;
 
 // These rows carry a player NAME and no id, so a link to the player page has to
 // borrow the id from the usage/tackle sections of the same box -- the same
@@ -60,6 +64,10 @@ const airLine = (p: { aDOT?: number | null, CompAirYds?: number | null, YAC?: nu
 pass = pass.filter(p => (p.passer_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 rush = rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
 receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
+kickers = (kickers || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.fg_epa - a.fg_epa);
+punters = (punters || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.punt_epa - a.punt_epa);
+returners = (returners || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.kick_return_yards - a.kick_return_yards);
+blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
 
 ---
 <div class="table-responsive">
@@ -171,6 +179,94 @@ receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSor
                     </Fragment>
                 )))
             }
+            {
+                (punters.length > 0) && (
+                    <tr>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Punting</td>
+                    </tr>
+                )
+            }
+            {punters.map((p: any) => (
+                <tr>
+                    <td><PlayerLink id={p.player_id ?? playerIds.get(String(p.player_name ?? ''))} season={season}>{p.player_name}</PlayerLink></td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="6" class="text-muted"><Fragment set:html={punterStatLine(p)} /></td>
+                </tr>
+            ))}
+            {
+                (kickers.length > 0) && (
+                    <tr>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Kicking</td>
+                    </tr>
+                )
+            }
+            {kickers.map((k: any) => (
+                <tr>
+                    <td><PlayerLink id={k.player_id ?? playerIds.get(String(k.player_name ?? ''))} season={season}>{k.player_name}</PlayerLink></td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="6" class="text-muted">
+                        <Fragment set:html={kickerStatLine(k)} />
+                    </td>
+                </tr>
+            ))}
+            {
+                (returners.length > 0) && (
+                    <tr>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Kick Returns</td>
+                    </tr>
+                )
+            }
+            {returners.map((r: any) => (
+                <tr>
+                    <td><PlayerLink id={r.player_id ?? playerIds.get(String(r.player_name ?? ''))} season={season}>{r.player_name}</PlayerLink></td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="6" class="text-muted">
+                        <Fragment set:html={returnerStatLine(r)} />
+                    </td>
+                </tr>
+            ))}
+            {
+                (blocks.length > 0) && (
+                    <tr>
+                        <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Blocked Kicks</td>
+                    </tr>
+                )
+            }
+            {blocks.map((b: any) => (
+                <tr>
+                    <td><PlayerLink id={b.player_id ?? playerIds.get(String(b.player_name ?? ''))} season={season}>{b.player_name}</PlayerLink></td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                    <td class="numeral" style="text-align: center;">&mdash;</td>
+                </tr>
+                <tr class="stat-line-row">
+                    <td colspan="6" class="text-muted">
+                        <Fragment set:html={blockerStatLine(b)} />
+                    </td>
+                </tr>
+            ))}
+
+
         </tbody>
     </table>
 </div>

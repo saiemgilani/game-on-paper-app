@@ -8,7 +8,6 @@ import { isFeatureEnabled } from '../../utils/features';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
-import PlayFilters from './plays/PlayFilters.astro';
 import PlayFocus from './plays/PlayFocus.astro';
 import PlayMarkSprite from './plays/PlayMarkSprite.astro';
 import { threeAndOutPlays } from '../../utils/playIcons';
@@ -30,12 +29,10 @@ import FallbackSpinner from '../FallbackSpinner.astro';
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
 import { latestDriveSubtitle } from '../../utils/latestDrive';
 import GameHeader from './GameHeader.astro';
-import FilterGroup from '../../layouts/FilterGroup.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
-import SituationalSplits from './metrics/SituationalSplits.astro';
 import UsageBoxScore from './metrics/UsageBoxScore.astro';
-import { hasSituationalSplits, withoutUsageSections } from '../../utils/usage';
+import { withoutUsageSections } from '../../utils/usage';
 
 interface Props {
    id: string | number
@@ -118,7 +115,7 @@ const previewUrlParams = new URLSearchParams({
 // and a "Latest" strip repeating the last five plays is noise.
 const latestPlays = gameStatus.type.completed === true ? [] : fullGamePlays.slice(-5).toReversed();
 // Quarters actually played, so overtime only offers a button when it happened.
-const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite))].sort((a, b) => a - b);
+const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite).filter(x => x > 0))].sort((a, b) => a - b);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -131,8 +128,6 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#ep-section", title: "EPA Chart" },
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
-    // rendered only when the processor emitted the two-team usage sections
-    ...(hasSituationalSplits(game.advBoxScore) ? [{ href: "#situational-splits-panel", title: "Situational & ST" }] : []),
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
     { href: "#most-important-plays-panel", title: "Most Important Plays" },
@@ -281,23 +276,11 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection slot="panel-body" client:only season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
-                            <FallbackSpinner slot="fallback" />
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
                         </SituationalSection>
                     </Panel>
                 </div>
             </div>
-            {hasSituationalSplits(game.advBoxScore) && (
-            <div class="row mb-3">
-                <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="situational-splits" title="Situational & Special Teams" show={true}>
-                        <div slot="panel-body">
-                            <SituationalSplits box={game.advBoxScore} awayTeam={awayTeam} homeTeam={homeTeam} />
-                        </div>
-                    </Panel>
-                </div>
-            </div>
-            )}
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
@@ -306,6 +289,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(awayTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(awayTeam.id))}
+                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
+                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
+                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(awayTeam.id)) ?? []}
+                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(awayTeam.id)) ?? []}
                                 plays={game.plays}
                                 teamId={parseInt(awayTeam.id)}
                                 box={game.advBoxScore}
@@ -324,6 +311,10 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                                 pass={game.advBoxScore.pass.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 rush={game.advBoxScore.rush.filter(g => g.pos_team == parseInt(homeTeam.id))}
                                 receiver={game.advBoxScore.receiver.filter(g => g.pos_team == parseInt(homeTeam.id))}
+                                kickers={game.advBoxScore.st_kickers?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
+                                punters={game.advBoxScore.st_punters?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
+                                blocks={game.advBoxScore.st_blocks?.filter(g => g.def_pos_team == parseInt(homeTeam.id)) || []}
+                                returners={game.advBoxScore.st_returners?.filter(g => g.pos_team == parseInt(homeTeam.id)) || []}
                                 plays={game.plays}
                                 teamId={parseInt(homeTeam.id)}
                                 box={game.advBoxScore}
@@ -404,11 +395,14 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                             {
                                 (game.plays.length > 0) && (
                                     <div class="mt-2 d-flex flex-wrap justify-content-between">
-                                        <PlayFilters target="all" periods={periodsPlayed} newestFirst={gameStatus.type.completed != true} />
-                                    
-                                        <PlayFocus target="all" plays={game.plays}
+                                        <PlayFocus 
+                                            target="all" 
+                                            plays={game.plays}
+                                            periods={periodsPlayed}
                                             teams={game.advBoxScore.team.map((t: any) => t.pos_team)}
-                                            teamNames={{ [String(homeTeam.id)]: cleanLocation(homeTeam), [String(awayTeam.id)]: cleanLocation(awayTeam) }} />
+                                            teamNames={{ [String(homeTeam.id)]: cleanLocation(homeTeam), [String(awayTeam.id)]: cleanLocation(awayTeam) }} 
+                                            newestFirst={gameStatus.type.completed != true}
+                                        />
                                     </div>
                                 )
                             }
