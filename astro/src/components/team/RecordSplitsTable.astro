@@ -1,0 +1,34 @@
+---
+import { formatPercent, generateMarginalString } from '../../utils/misc';
+import { formatRecord, type ResumeRow } from '../../utils/resume';
+import TeamPlayerTable from './tables/TeamPlayerTable.astro';
+
+interface Props {
+    /** resumeRows() output, rows with no games already dropped */
+    rows: ResumeRow[]
+}
+
+const { rows } = Astro.props;
+---
+
+<TeamPlayerTable id="record-splits" title="Record" show={true} population={false}>
+    <Fragment slot="subtitle">All completed games, postseason included.</Fragment>
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="text-center">Record</th>
+        <th rowspan="1" colspan="1" class="text-center">Win %</th>
+        <th rowspan="1" colspan="1" class="text-center">Avg Margin</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {/* records, not ranks: no shading */}
+        {rows.map((r) => (
+            <tr class:list={[r.key === 'overall' && 'table-secondary']}>
+                <td class="text-left text-nowrap">{r.title ? <abbr title={r.title}>{r.label}</abbr> : r.key === 'overall' ? <strong>{r.label}</strong> : r.label}</td>
+                <td class="numeral text-center">{formatRecord(r)}</td>
+                <td class="numeral text-center">{formatPercent(r.winPct)}</td>
+                <td class="numeral text-center">{generateMarginalString(r.avgMargin, 2, 1)}</td>
+            </tr>
+        ))}
+    </Fragment>
+</TeamPlayerTable>
