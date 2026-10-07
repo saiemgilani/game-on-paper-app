@@ -601,7 +601,10 @@ async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
     }
 }
 
-async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
+/** When `<league>.<table>` last ingested, per /v1/meta; undefined when meta does not say.
+ *  Exported for the "Last updated" stamps (utils/freshness.ts): the stamp a page shows is
+ *  the one that keys its rows, so the rows are never older than the stamp. Never rejects. */
+export async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
     if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
         sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
     }

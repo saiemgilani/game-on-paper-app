@@ -95,6 +95,15 @@ describe('SDV_API_CACHE key carries the table ingest stamp', () => {
         expect(tableKey()).toBe(await sha256(TABLE_URL));
     });
 
+    test('the exported stamp is the one keying the rows (what a "Last updated" stamp shows)', async () => {
+        const sdv = await load();
+        expect(await sdv.sdvIngestStamp('cfb', 'percentiles')).toBe('2026-09-27T12:05:07+00:00');
+        await sdv.retrievePercentiles(2025, 50);
+        expect(tableKey()).toBe(await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`));
+        expect(await sdv.sdvIngestStamp('cfb', 'qa')).toBeUndefined();
+        expect(metaCalls()).toBe(1); // the stamp rides the read's meta fetch, never its own
+    });
+
     test('a table meta does not list keeps the unversioned key', async () => {
         const sdv = await load();
         await sdv.retrieveQaSeason(2025);
