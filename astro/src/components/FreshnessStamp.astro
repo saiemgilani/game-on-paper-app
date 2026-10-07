@@ -1,0 +1,9 @@
+---
+// The pre-Astro site's "Last updated" line, revived. Renders nothing without a stamp.
+import type { FreshnessStamp } from "../utils/freshness";
+interface Props { stamp: FreshnessStamp | null }
+const { stamp } = Astro.props;
+---
+{stamp && (
+    <p class="m-0 mb-2 text-muted text-small">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><time datetime={stamp.iso}>{stamp.text}</time></abbr></p>
+)}

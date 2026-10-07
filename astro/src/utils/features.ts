@@ -72,6 +72,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // "Last updated" stamps on the team and player leaderboards and the national
+    // trends page (drawn inside the chart canvas too, so a saved image keeps it).
+    // The time is the table's /v1/meta ingest stamp, the one that already keys its
+    // cached rows. Off: no stamp, and the page is exactly what it is today.
+    'freshness-stamps': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
