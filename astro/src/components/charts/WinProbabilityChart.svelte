@@ -5,7 +5,7 @@ import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
-import { wpExportFooter } from '../../utils/chartExport'
+import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
 const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, exportMeta = null } = $props()
 const homeTeam = homeComp.team;
@@ -188,7 +188,7 @@ function composeExport(src, meta, page) {
     ctx.fillText(meta.title, pad, pad + 18 * dpr, src.width);
     ctx.drawImage(src, pad, pad + titleH);
     ctx.font = `${11 * dpr}px ${page.fontFamily}`;
-    ctx.fillText(wpExportFooter(meta, (iso) => new Date(iso).toLocaleString()), pad, out.height - pad, src.width);
+    ctx.fillText(wpExportFooter(meta, (iso) => exportTime(iso)), pad, out.height - pad, src.width);
     return out.toDataURL('image/png');
 }
 

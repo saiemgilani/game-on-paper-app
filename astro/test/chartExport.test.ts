@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { wpExportFooter, wpExportTitle } from '../src/utils/chartExport';
+import { exportTime, wpExportFooter, wpExportTitle } from '../src/utils/chartExport';
 import { cleanLocation } from '../src/utils/misc';
 import { loadGzJson } from './helpers/tables';
 
@@ -19,5 +19,11 @@ describe('WP chart export text', () => {
         expect(wpExportFooter({ title: '', url, completed: false, updatedAt: iso }, (t) => t.slice(11, 16)))
             .toBe(`${url} | Updated 18:00`);
         expect(wpExportFooter({ title: '', url, completed: false, updatedAt: null }, () => 'never')).toBe(url);
+    });
+
+    test('the footer time names its zone, so a shared image is not ambiguous', () => {
+        // \s: newer ICU puts a narrow no-break space before AM/PM
+        expect(exportTime('2026-09-26T18:00:00Z', { locale: 'en-US', timeZone: 'America/New_York' })).toMatch(/^Sep 26, 2:00\sPM EDT$/);
+        expect(exportTime('2026-09-26T18:00:00Z', { locale: 'en-US', timeZone: 'America/Los_Angeles' })).toMatch(/^Sep 26, 11:00\sAM PDT$/);
     });
 });
