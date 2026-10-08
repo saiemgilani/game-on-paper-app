@@ -1,7 +1,7 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
     import { color } from 'chart.js/helpers';
-    import type { OpponentBar } from '../../utils/gameSet';
+    import { averageAxisBounds, type OpponentBar } from '../../utils/gameSet';
     import { formatMetricValue, generateTeamMetricTitle, type MetricFormat } from '../../utils/misc';
 
     type Average = { raw: number | null, margin: number | null };
@@ -20,6 +20,16 @@
     const average = $derived(selected.avg[view]);
     const fmt = (v: unknown) => formatMetricValue(v, selected.format, view === 'margin');
 
+    // redraw when the OS theme flips, as the site's other themed charts do
+    // (WinProbabilityChart, ExpectedPointsChart, MatchupRadarChart, DriveChart)
+    let dark = $state(typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    $effect(() => {
+        const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+        const flip = () => (dark = scheme.matches);
+        scheme.addEventListener('change', flip);
+        return () => scheme.removeEventListener('change', flip);
+    });
+
     let canvas: HTMLCanvasElement;
     $effect(() => {
         const { bars } = selected;
@@ -29,7 +39,7 @@
         const ink = style.color;
         const faint = color(ink).alpha(0.2).rgbString();
         const font = { family: style.fontFamily };
-        const pair = window.matchMedia('(prefers-color-scheme: dark)').matches ? colors.dark : colors.light;
+        const pair = dark ? colors.dark : colors.light;
         const chart = new Chart(canvas, {
             type: 'bar',
             data: {
@@ -42,6 +52,7 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: {
+                        ...averageAxisBounds(line),
                         title: { display: true, text: title, color: ink, font: { ...font, style: 'oblique' } },
                         ticks: { color: ink, font, callback: (v) => fmt(v) },
                         grid: { color: (c) => (c.tick?.value === 0 ? ink : faint) },
@@ -95,5 +106,15 @@
     <span class="text-small text-muted">Season average: {fmt(average)}</span>
 </div>
 <div style={`position: relative; height: ${selected.bars.length * 28 + 70}px`}>
-    <canvas bind:this={canvas} aria-label={`${title} by game`}></canvas>
+    <canvas bind:this={canvas} aria-hidden="true"></canvas>
 </div>
+<!-- the chart's data for screen readers: the canvas is pixels and its tooltips need a pointer -->
+<table class="visually-hidden">
+    <caption>{title} by game. Season average: {fmt(average)}</caption>
+    <thead><tr><th scope="col">Game</th><th scope="col">{title}</th></tr></thead>
+    <tbody>
+        {#each selected.bars as b}
+        <tr><th scope="row">{b.title}</th><td>{fmt(b[view])}</td></tr>
+        {/each}
+    </tbody>
+</table>

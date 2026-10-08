@@ -102,6 +102,15 @@ describe.each([
         expect(panel).toMatch(/<option value="raw"[^>]*>Raw<\/option>\s*<option value="margin"[^>]*>Margin<\/option>/);
         const avg = opponentAverages(splitsOf(league), 'epa_per_play').raw;
         expect(panel).toContain(`Season average: ${formatMetricValue(avg, 'num2')}`);
+        // the chart's data as a table for screen readers: one row per game, the canvas hidden from them
+        expect(panel).toMatch(/<canvas[^>]*aria-hidden="true"/);
+        const table = panel.split('<table class="visually-hidden">')[1]?.split('</table>')[0].replace(/<!--[\s\S]*?-->/g, '');
+        expect(table, 'table').toBeTruthy();
+        expect(table).toContain(`<caption>Off EPA/Play by game. Season average: ${formatMetricValue(avg, 'num2')}</caption>`);
+        const bars = opponentBars(splitsOf(league), eventsOf(league), 'epa_per_play');
+        const rows = [...table!.matchAll(/<tr><th scope="row">([^<]*)<\/th><td>([^<]*)<\/td><\/tr>/g)];
+        expect(rows.map((r) => r[1])).toEqual(bars.map((b) => b.title));
+        expect(rows.map((r) => r[2])).toEqual(bars.map((b) => formatMetricValue(b.raw, 'num2')));
     }, 60_000);
 });
 

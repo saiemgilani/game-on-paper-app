@@ -190,6 +190,12 @@ the team) and `schedule.home_id` / `schedule.away_id` (the two schedule reads
 the postseason (two postseason week-1 games); NFL rows carry no name and are
 regular season only.
 
+`cfb_155` holds the same six reads for North Dakota (FCS, `cfb` 155), whose
+2025 rows cover two games. Its Margin view's season average (-0.124 EPA/play,
+offense and defense each weighted by their own plays) sits beyond both bars
+(-0.09, -0.10): the real case that the chart's value axis must include the
+average line.
+
 **Provenance (2026-10-08):** captured verbatim from the live API; no edits.
 
 **Used by:** `test/gameSet.test.ts` (bar order, labels, raw and margin values,

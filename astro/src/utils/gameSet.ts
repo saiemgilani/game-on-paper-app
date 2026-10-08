@@ -94,3 +94,13 @@ export function opponentAverages(splits: GameSplits, metric: GameMetric): { raw:
         margin: off === null || def === null ? null : chartValue(off - def),
     };
 }
+
+/**
+ * Bounds the value axis must reach besides the bars: zero, and the season-average
+ * line. Chart.js sizes the axis from the bars alone, and in the Margin view the
+ * average (offense minus defense, each weighted by its own plays) can sit beyond
+ * every bar, where the line would be drawn outside the chart.
+ */
+export function averageAxisBounds(average: number | null): { suggestedMin: number, suggestedMax: number } {
+    return { suggestedMin: Math.min(0, average ?? 0), suggestedMax: Math.max(0, average ?? 0) };
+}

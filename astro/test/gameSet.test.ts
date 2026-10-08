@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
-import { aggregateGames, opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { aggregateGames, averageAxisBounds, opponentAverages, opponentBars } from '../src/utils/gameSet';
 
 // The Data API's real 2025 bodies (fixtures/team-opponent-splits-2025.json):
 // team_opponent_splits by team_id and by opponent_id, and the schedule rows,
@@ -22,7 +22,7 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     },
 }));
 
-const load = (league: 'cfb' | 'nfl') => {
+const load = (league: 'cfb' | 'nfl' | 'cfb_155') => {
     const f = fixture[league];
     return {
         splits: { team: f.team_id.data, opponent: f.opponent_id.data },
@@ -170,3 +170,24 @@ describe('retrieveTeamOpponentSplits', () => {
         expect(await retrieveTeamOpponentSplits(2025, 9002)).toBeNull();
     });
 });
+
+describe('averageAxisBounds', () => {
+    test('North Dakota 2025: the Margin average sits beyond every bar, and the axis reaches it', () => {
+        // two games: at Kansas State (0.15 vs 0.25) and vs North Dakota State (-0.19 vs -0.10)
+        const { splits, events } = load('cfb_155');
+        const margins = opponentBars(splits, events, 'epa_per_play').map((b) => b.margin as number);
+        expect(margins).toEqual([-0.1, -0.09]);
+        // offense -0.024 on 176 plays, defense 0.100 on 145: the difference is -0.124
+        const avg = opponentAverages(splits, 'epa_per_play').margin as number;
+        expect(avg).toBeCloseTo(-0.1242, 4);
+        // Chart.js's axis from the bars alone runs -0.10 to 0, which would leave the line outside the chart
+        expect(avg).toBeLessThan(Math.min(0, ...margins));
+        expect(averageAxisBounds(avg)).toEqual({ suggestedMin: avg, suggestedMax: 0 });
+    });
+
+    test('zero is always in range; no average adds nothing beyond it', () => {
+        expect(averageAxisBounds(0.07)).toEqual({ suggestedMin: 0, suggestedMax: 0.07 });
+        expect(averageAxisBounds(null)).toEqual({ suggestedMin: 0, suggestedMax: 0 });
+    });
+});
+

@@ -7,7 +7,7 @@ export default async (page, base) => {
   // the flow exists to exercise this panel: a missing one is a failed recording, not a skip
   if ((await panel.count()) !== 1) throw new Error(`expected one Results by Opponent panel, found ${await panel.count()}`);
   await panel.scrollIntoViewIfNeeded();
-  // client:visible: the selects only switch the chart once the island has hydrated
+  // client:idle: the selects only switch the chart once the island has hydrated
   await page.locator('astro-island[component-url*="OpponentBarChart"]:not([ssr])').waitFor({ state: 'attached', timeout: 15_000 });
   const average = panel.locator('span', { hasText: 'Season average:' });
   await page.waitForTimeout(1500);
