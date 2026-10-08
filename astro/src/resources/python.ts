@@ -1108,7 +1108,7 @@ export interface ProcessedGame {
         /** per margin, the percentage points it alone moved homeShare; same keys as margins */
         impact?: Record<string, number>
         teams: Record<string, Record<string, number>>
-        byPeriod: Record<string, { homeShare: number; margins: Record<string, number> }>
+        byPeriod: Record<string, { homeShare: number; margins: Record<string, number>; impact?: Record<string, number> }>
     }
     winprobability: ESPNWinProbability[]
     homeTeamSpread: number
