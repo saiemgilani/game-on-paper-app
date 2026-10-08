@@ -178,3 +178,23 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
+
+## `team-opponent-splits-2025.json`
+The Data API bodies the season team page's Results by Opponent panel reads, for
+Alabama (`cfb`, 333) and Kansas City (`nfl`, 12), keyed by league:
+`team_id` (`GET /v1/{league}/team_opponent_splits?season=2025&team_id=<id>`),
+`opponent_id` (the same with `opponent_id=<id>`: each opponent's row against
+the team) and `schedule.home_id` / `schedule.away_id` (the two schedule reads
+`retrieveTeamSchedule` makes: `cfb` `schedule`, `nfl` `espn_schedule`, with
+`order=-start_date`). CFB rows carry `opponent` and cover FCS opponents and
+the postseason (two postseason week-1 games); NFL rows carry no name and are
+regular season only.
+
+**Provenance (2026-10-08):** captured verbatim from the live API; no edits.
+
+**Used by:** `test/gameSet.test.ts` (bar order, labels, raw and margin values,
+play-weighted averages) and `test/gameSet.render.test.ts` (the panel on
+`/year/2025/team/333` and `/nfl/year/2025/team/12`, its island props, the gates).
+
+**To regenerate:** repeat the six reads for 2025; the tests assert on those
+teams' games, labels and scores.

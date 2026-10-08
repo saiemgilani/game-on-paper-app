@@ -1,0 +1,34 @@
+---
+import OpponentBarChart from '../charts/OpponentBarChart.svelte';
+import GenericPanel from '../../layouts/panel/GenericPanel.astro';
+import type { SDVGame } from '../../resources/sdv';
+import { opponentAverages, opponentBars, type GameSplits } from '../../utils/gameSet';
+import type { League } from '../../utils/league';
+import { pickGameColors, STANDARD_THEME_COLOR } from '../../utils/misc';
+
+interface Props {
+    league: League
+    splits: GameSplits
+    events: SDVGame[]
+    /** the colour sources, in order: team_info's row, then ESPN's team */
+    teamColors: ({ color?: string | null, alternateColor?: string | null, alt_color?: string | null } | null | undefined)[]
+}
+
+const { league, splits, events, teamColors } = Astro.props;
+// one colour decision per theme: the team's bars must read on the page and stand
+// apart from the average line, which keeps the site's theme blue where it can
+const { light, dark } = pickGameColors(teamColors, { color: STANDARD_THEME_COLOR });
+const colors = { light: { bar: light.home, line: light.away }, dark: { bar: dark.home, line: dark.away } };
+---
+
+<GenericPanel id="vs-opponent" title="Results by Opponent" show={true}>
+    <p slot="panel-subtitle" class="text-muted text-small m-0">Margin is the team's number minus its opponent's in that game. The dashed line is the season average, weighted by plays. {league === 'cfb' ? 'Data shown is from every game, FCS opponents and the postseason included.' : 'Data shown is from regular season games only.'}</p>
+    <div slot="panel-body">
+        <OpponentBarChart client:visible
+            epaBars={opponentBars(splits, events, 'epa_per_play')}
+            successBars={opponentBars(splits, events, 'success_rate')}
+            epaAvg={opponentAverages(splits, 'epa_per_play')}
+            successAvg={opponentAverages(splits, 'success_rate')}
+            colors={colors} />
+    </div>
+</GenericPanel>
