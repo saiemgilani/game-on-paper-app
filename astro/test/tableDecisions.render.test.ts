@@ -242,8 +242,10 @@ describe('Yards/Play counts sack yardage in every table that prints it', () => {
     const row = (html: string, label: string) => html.match(new RegExp(`<tr[^>]*>(?:(?!</tr>)[\\s\\S])*?${label}(?:(?!</tr>)[\\s\\S])*?</tr>`))?.[0] ?? '';
 
     test('the fixture tells the two definitions apart', () => {
-        expect(net).toEqual(['5.93', '4.83']);
-        expect(gross).toEqual(['6.38', '5.24']);
+        // keyed by team: the processor does not keep a section's team order from one run to the next
+        const byTeam = (vals: string[]) => Object.fromEntries(teams.map((t, i) => [String(t.pos_team), vals[i]]));
+        expect(byTeam(net)).toEqual({ 2117: '5.93', 197: '4.83' });
+        expect(byTeam(gross)).toEqual({ 2117: '6.38', 197: '5.24' });
     });
 
     test('the helper: the payload value, off_yards over plays without one, null with no plays', () => {

@@ -144,6 +144,8 @@ the table-reconciliation decisions (#264 review).
 **To regenerate** after a processor change: re-run that same offline route call
 for both leagues and overwrite the files; the game ids must stay the same.
 
+Regenerated 2026-10-07 after python/paper_index.add_start_ep (G10): drives rows carry avg_start_ep; same offline call. It also picks up the processor pin's changes since the first capture (win probabilities, the NFL tackle-points columns), and the teams' row order within a section can differ from one run to the next, so tests key rows by team id rather than by position.
+
 **Used by:** `test/tableContracts.render.test.ts` — the render-level table
 contract, twin-parity and aggregation-reconciliation tests (plan V3b).
 
