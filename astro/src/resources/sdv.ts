@@ -1002,6 +1002,10 @@ export interface SDVGame {
     away_pregame_elo?: number
     away_postgame_elo?: number
 
+    // cfb only: the poll rank at kickoff, 1-25, null when unranked
+    home_rank?: number | null
+    away_rank?: number | null
+
     excitement_index?: number
     highlights?: string
     notes?: string

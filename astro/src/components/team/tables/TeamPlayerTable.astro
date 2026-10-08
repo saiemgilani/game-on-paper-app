@@ -6,13 +6,15 @@ interface Props {
     id: string
     title: string
     show: boolean
+    /** false for a table not drawn from the season tables' game pool (the Record table counts every game) */
+    population?: boolean
 }
 
-const { id, title, show } = Astro.props;
+const { id, title, show, population = true } = Astro.props;
 ---
 
 <GenericPanel id={id} title={title} show={show}>
-    <p slot="panel-subtitle" class="text-small text-muted"><slot name="subtitle" /> {(Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.'}</p>
+    <p slot="panel-subtitle" class="text-small text-muted"><slot name="subtitle" />{population && ` ${(Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.'}`}</p>
     <div slot="panel-body">
         <div class="table-responsive">
             <table class="table table-sm table-responsive">

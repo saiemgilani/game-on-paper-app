@@ -178,3 +178,21 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
+
+## `schedule-cfb-333-2025.json` / `schedule-nfl-12-2025.json`
+The two Data API bodies `retrieveTeamSchedule` concatenates for one team-season,
+keyed by the query side: `home_id` is `GET /v1/cfb/schedule?season=2025&home_id=333&order=-start_date`
+(Alabama; `/v1/nfl/espn_schedule` with `home_id=12` for Kansas City) and `away_id`
+the same with `away_id`. Every column the API returns, no `select`; the CFB rows
+carry `home_rank` / `away_rank` (rank at kickoff, null when unranked).
+
+**Provenance (2026-10-07):** captured verbatim from the live API; reformatted to
+one row per line, no other edits.
+
+**Used by:** `test/resume.test.ts` (the Record splits partition Overall, and
+Overall matches `retrieveTeamSeasonInformation`'s record from the same bodies)
+and `test/resume.render.test.ts` (the Record panel on `/year/2025/team/333` and
+`/nfl/year/2025/team/12`, served through a faked fetch layer).
+
+**To regenerate:** repeat both calls per league for 2025; the tests assert
+Alabama's 11-4 (5-3 vs ranked) and Kansas City's 6-11.
