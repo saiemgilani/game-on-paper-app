@@ -57,6 +57,46 @@ export function quadrantLabels(xTitle: string, yTitle: string) {
     };
 }
 
+export interface PlotArea { left: number; right: number; top: number; bottom: number }
+/** Text sizes on the v2 chart, in px: the quadrant labels, the two-line axis-flip note, and the MEDIAN labels (smaller on phones). */
+export const LABEL_PX = { quadrant: 11, note: 8, line: 6 } as const;
+
+/**
+ * Where the v2 chart's text goes inside the plot area, as canvas baselines, so no two labels share a row:
+ * the x MEDIAN label on the bottom edge, the bottom quadrant labels above it, the axis-flip note above those,
+ * and the top quadrant labels under the top edge. The MEDIAN labels follow their lines but are kept off the
+ * quadrant rows and inside the plot.
+ */
+export function chartLabelLayout(area: PlotArea, viewport: 'xs' | 'sm' | 'md' | 'lg' | 'xl') {
+    const median = viewport === 'xs' || viewport === 'sm' ? 9 : 11;
+    const row = LABEL_PX.quadrant + LABEL_PX.line;
+    const medianX = area.bottom - 5;
+    const quadrantBottom = medianX - median - LABEL_PX.line;
+    const quadrantTop = area.top + LABEL_PX.quadrant + 2;
+    const noteBottom = quadrantBottom - row;
+    return {
+        median,
+        medianX,
+        quadrantTop,
+        quadrantBottom,
+        flipNote: [noteBottom - LABEL_PX.note - 4, noteBottom] as [number, number],
+        /** baseline of the y MEDIAN label: just above its line, between the quadrant rows */
+        medianY: (linePx: number) => Math.min(Math.max(linePx - 4, quadrantTop + median + LABEL_PX.line), quadrantBottom - row),
+        /** centre of the x MEDIAN label: on its line, inside the plot */
+        medianXCentre: (linePx: number, textWidth: number) =>
+            Math.min(Math.max(linePx, area.left + textWidth / 2 + 4), area.right - textWidth / 2 - 4),
+    };
+}
+
+/** The one-line empty state when the loaded season has no values to plot, or null when there is something to draw. */
+export function emptyChartMessage(points: { x: unknown; y: unknown }[], x: string, y: string, season: string | number): string | null {
+    const has = (k: 'x' | 'y') => points.some((p) => Number.isFinite(p[k]));
+    const missing = [!has('x') && x, !has('y') && y].filter((m): m is string => !!m);
+    if (points.length > 0 && missing.length === 0) return null;
+    const metrics = missing.length === 1 ? generateTeamMetricTitle(missing[0]) : `${generateTeamMetricTitle(x)} vs ${generateTeamMetricTitle(y)}`;
+    return `No data for ${metrics} in ${season}.`;
+}
+
 export function builderUrl(league: League, s: { season: string | number; x: string; y: string; hl?: string; mode?: MarkMode }): string {
     const q = new URLSearchParams({ season: String(s.season), x: s.x, y: s.y });
     if (s.hl?.trim()) q.set('hl', s.hl.trim());

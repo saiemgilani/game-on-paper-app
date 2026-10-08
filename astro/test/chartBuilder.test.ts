@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { FLAGS, isFeatureEnabled } from '../src/utils/features';
-import { builderUrl, chartTitle, keepPreviewSurface, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { builderUrl, chartLabelLayout, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
 // The Data API's real 2026 cfb rows for x=red_zone_success_off_pass&y=success_off (fixtures/README.md):
@@ -89,5 +89,49 @@ describe('chart builder helpers', () => {
         expect(keepPreviewSurface(nfl, '/preview')).toBe(`/preview${nfl}`);
         expect(keepPreviewSurface(nfl, '/nfl/charts/builder')).toBe(nfl);
         expect(keepPreviewSurface(nfl, '/previewer/charts/builder')).toBe(nfl);
+    });
+
+    // plot areas measured on the 2026 cfb chart: desktop 1280 (xl) and a 390 phone (xs)
+    test.each([
+        ['xl', { left: 57, right: 1103, top: 64, bottom: 688 }],
+        ['lg', { left: 57, right: 900, top: 64, bottom: 560 }],
+        ['xs', { left: 44, right: 358, top: 30, bottom: 213 }],
+    ] as const)('chartLabelLayout (%s): MEDIAN labels, quadrant rows and the flip note never share a row', (viewport, area) => {
+        const r = chartLabelLayout(area, viewport);
+        expect(r.median).toBe(viewport === 'xs' ? 9 : 11);
+        // text boxes as [top, bottom]: ascent above the baseline, 3px of descender below; MEDIAN boxes are their pills
+        const box = (baseline: number, px: number, pill = false): [number, number] => [baseline - px - (pill ? 2 : 0), baseline + 3];
+        const below = (a: [number, number], b: [number, number]) => expect(a[1]).toBeLessThan(b[0]); // a sits wholly above b
+        const yHigh = box(r.medianY(-1e6), r.median, true);
+        const yLow = box(r.medianY(1e6), r.median, true);
+        const quadTop = box(r.quadrantTop, LABEL_PX.quadrant);
+        const quadBottom = box(r.quadrantBottom, LABEL_PX.quadrant);
+        const [note1, note2] = r.flipNote.map((b) => box(b, LABEL_PX.note));
+        const xMedian = box(r.medianX, r.median, true);
+        expect(quadTop[0]).toBeGreaterThanOrEqual(area.top);
+        below(quadTop, yHigh);
+        below(yLow, quadBottom);
+        below(quadTop, note1);
+        below(note1, note2);
+        below(note2, quadBottom);
+        below(quadBottom, xMedian);
+        expect(xMedian[1]).toBeLessThanOrEqual(area.bottom);
+        // the y label follows its line in between
+        const mid = (area.top + area.bottom) / 2;
+        expect(r.medianY(mid)).toBe(mid - 4);
+        // the x label follows its line, and stays inside the plot at either edge
+        expect(r.medianXCentre(500, 80)).toBe(500 > area.right - 44 ? area.right - 44 : 500);
+        expect(r.medianXCentre(area.left, 80)).toBe(area.left + 44);
+        expect(r.medianXCentre(area.right + 50, 80)).toBe(area.right - 44);
+    });
+
+    test('emptyChartMessage: null while either axis has values, one line naming what is missing otherwise', () => {
+        const pts = cfb2026.map((r) => ({ x: r.red_zone_success_off_pass, y: r.success_off }));
+        expect(emptyChartMessage(pts, 'red_zone_success_off_pass', 'success_off', 2026)).toBeNull();
+        // the Data API answers an unknown column with no rows: the route hands the island []
+        expect(emptyChartMessage([], 'pts_per_opp_off', 'adj_def_epa', '2024')).toBe('No data for Off Points/Opp vs Def Adj EPA/Play in 2024.');
+        const noX = pts.map((p) => ({ ...p, x: null }));
+        expect(emptyChartMessage(noX, 'red_zone_success_off_pass', 'success_off', 2026)).toMatch(/^No data for [^]+ in 2026\.$/);
+        expect(emptyChartMessage(noX, 'red_zone_success_off_pass', 'success_off', 2026)).not.toContain(' vs ');
     });
 });

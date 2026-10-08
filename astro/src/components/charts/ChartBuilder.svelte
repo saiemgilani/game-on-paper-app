@@ -5,7 +5,7 @@
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartTitle, keepPreviewSurface, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -176,14 +176,18 @@
                         chart.ctx.fillText(`Filters: FBS groups - ${selectedFBSClassFilter}, Conferences - ${selectedConferenceFilter}`, sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                         chart.ctx.restore();
 
+                        // v2 lifts the axis-flip note above its bottom quadrant labels, which would sit on top of it
+                        const noteX = v2 ? chart.chartArea.right - 4 : sizeWidth * (1 - margin + xAdjust);
+                        const noteY = v2 ? chartLabelLayout(chart.chartArea, viewport).flipNote
+                            : [(sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))];
                         if (shouldFlipYAxis && !shouldFlipXAxis) {
                             chart.ctx.save()
                             chart.ctx.textAlign = "right"
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", noteX, noteY[1])
                             chart.ctx.restore();
                         } else if (shouldFlipXAxis && !shouldFlipYAxis) {
                             chart.ctx.save()
@@ -191,8 +195,8 @@
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: x-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the right and 'bad' performances are towards the left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: x-axis is flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the right and 'bad' performances are towards the left.", noteX, noteY[1])
                             chart.ctx.restore();
                         } else if (shouldFlipXAxis && shouldFlipYAxis) {
                             chart.ctx.save()
@@ -200,8 +204,8 @@
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: both axes are flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the top-right and 'bad' performances are towards the bottom-left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: both axes are flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the top-right and 'bad' performances are towards the bottom-left.", noteX, noteY[1])
                             chart.ctx.restore();
                         }
                     }
@@ -235,25 +239,42 @@
 
                     if (v2) {
                         const area = chart.chartArea;
+                        const rows = chartLabelLayout(area, viewport);
                         const q = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY));
+                        const text = isDarkMode ? CHART_TEXT.dark : CHART_TEXT.light;
+                        // the MEDIAN labels sit on a pill of the page background (as the drive chart labels its field),
+                        // so a logo under one never makes it unreadable
+                        const surface = getComputedStyle(document.body).backgroundColor;
+                        const pill = (label: string, cx: number, baseline: number) => {
+                            const w = ctx.measureText(label).width;
+                            ctx.save();
+                            ctx.globalAlpha = 0.85;
+                            ctx.fillStyle = surface;
+                            ctx.beginPath();
+                            ctx.roundRect(cx - w / 2 - 3, baseline - rows.median - 2, w + 6, rows.median + 5, 3);
+                            ctx.fill();
+                            ctx.restore();
+                            ctx.fillText(label, cx, baseline);
+                        };
                         ctx.save();
-                        ctx.fillStyle = isDarkMode ? CHART_TEXT.dark : CHART_TEXT.light;
-                        ctx.font = 'bold 11px "Chivo", "Fira Mono", serif';
-                        ctx.textAlign = 'left';
-                        ctx.fillText(`MEDIAN ${formatNumberForMetric(selectedMetricY, centerY)}`, area.left + 4, yValue - 4);
+                        ctx.fillStyle = text;
+                        ctx.font = `bold ${rows.median}px "Chivo", "Fira Mono", serif`;
                         ctx.textAlign = 'center';
-                        ctx.fillText(`MEDIAN ${formatNumberForMetric(selectedMetricX, centerX)}`, xValue, area.bottom - 4);
-                        ctx.font = '11px "Chivo", "Fira Mono", serif';
+                        const yLabel = `MEDIAN ${formatNumberForMetric(selectedMetricY, centerY)}`;
+                        pill(yLabel, area.left + 7 + ctx.measureText(yLabel).width / 2, rows.medianY(yValue));
+                        const xLabel = `MEDIAN ${formatNumberForMetric(selectedMetricX, centerX)}`;
+                        pill(xLabel, rows.medianXCentre(xValue, ctx.measureText(xLabel).width), rows.medianX);
+                        ctx.font = `${LABEL_PX.quadrant}px "Chivo", "Fira Mono", serif`;
                         ctx.globalAlpha = 0.6;
                         // two labels share each edge: draw them only where they fit side by side (not on a phone-width chart)
                         const widest = Math.max(...Object.values(q).map((t) => ctx.measureText(t).width));
                         if (2 * widest + 16 < area.right - area.left) {
                             ctx.textAlign = 'right';
-                            ctx.fillText(q.topRight, area.right - 4, area.top + 12);
-                            ctx.fillText(q.bottomRight, area.right - 4, area.bottom - 18);
+                            ctx.fillText(q.topRight, area.right - 4, rows.quadrantTop);
+                            ctx.fillText(q.bottomRight, area.right - 4, rows.quadrantBottom);
                             ctx.textAlign = 'left';
-                            ctx.fillText(q.topLeft, area.left + 4, area.top + 12);
-                            ctx.fillText(q.bottomLeft, area.left + 4, area.bottom - 18);
+                            ctx.fillText(q.topLeft, area.left + 4, rows.quadrantTop);
+                            ctx.fillText(q.bottomLeft, area.left + 4, rows.quadrantBottom);
                         }
                         ctx.restore();
                     }
@@ -366,6 +387,17 @@
     async function waitToGenerateChart() {
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
+            // v2: a season with no values for the pair gets one plain line instead of the error note
+            // (textContent: the metric keys come from the URL)
+            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
+            if (empty) {
+                const note = document.createElement('p');
+                note.className = 'm-0 mb-3 text-muted text-small';
+                note.id = 'chart-empty';
+                note.textContent = empty;
+                document.getElementById("chart_container")?.replaceChildren(note);
+                return;
+            }
             if (chartedPoints.length == 0) {
                 throw new Error("Unable to generate chart, no points available.")
             }
