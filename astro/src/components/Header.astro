@@ -2,6 +2,7 @@
 import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled } from "../utils/features";
+import SiteSearch from "./search/SiteSearch.svelte";
 
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
@@ -17,6 +18,13 @@ const lp = (p: string) => leaguePath(league, p);
                 <i class="bi bi-justify"></i>
             </button>
             <div class="collapse navbar-collapse" id="navOptions">
+                {/* first in the source so it heads the phone menu, last on a desktop row; from
+                    sm to lg the expanded row has no room left for it, so it shows from xl up */}
+                {isFeatureEnabled("site-search", Astro.locals) && (
+                    <div id="site-search" class="navbar-nav position-relative order-sm-last my-2 my-sm-0 d-sm-none d-xl-flex">
+                        <SiteSearch client:idle league={league} placeholder={isFeatureEnabled("player-pages", Astro.locals) ? "Search teams, players, games" : "Search teams, games"} />
+                    </div>
+                )}
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
                     <li class="nav-item dropdown">
