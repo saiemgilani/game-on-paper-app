@@ -11,6 +11,8 @@ import orjson
 import os
 import logging
 import base64
+import urllib.parse
+import urllib.request
 
 from telemetry import TEL, stage, init_flask
 import gop_routes
@@ -18,6 +20,7 @@ import espn_proxy
 import dq
 import paper_index
 import qa
+import share_card
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
@@ -697,6 +700,134 @@ def sources(game_id: int):
 @require_auth_token
 def sources_nfl(game_id: int):
     return _sources("nfl", game_id)
+
+
+# Where a card may fetch team art from: the site's own (astro SPECIAL_IMAGES, e.g.
+# UGA and GT) and ESPN's CDN. The URLs arrive as request parameters, so this list is
+# what stops the API being pointed at anything else (internal addresses included):
+# https only, no credentials or ports, and no redirects followed off the list.
+LOGO_HOSTS = {"gameonpaper.com", "a.espncdn.com"}
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_LOGO_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _logo_fetch(url):
+    """A team logo from an allowed host, or None (the card prints the abbreviation)."""
+    try:
+        u = urllib.parse.urlsplit(url)
+        if (
+            u.scheme != "https"
+            or u.hostname not in LOGO_HOSTS
+            or u.port is not None
+            or u.username
+            or u.password
+        ):
+            return None
+        with _LOGO_OPENER.open(url, timeout=3) as resp:
+            return resp.read(2_000_000)
+    except Exception:
+        return None
+
+
+def _card(league: str, game_id: int):
+    """The game's 1200x630 share card (share_card.py) as a PNG.
+
+    The Worker names the state it read from ESPN (`pre|live|final`) and the
+    variant (`full|spoilerfree`); a pregame card may carry GOP's projection
+    (`proj_margin`, home-relative points, and `proj_wp`, the home side's win
+    probability). Caching is the Worker's: this route renders every call.
+    """
+    state, variant = request.args.get("state"), request.args.get("variant", "full")
+    if state not in share_card.STATES or variant not in share_card.VARIANTS:
+        return jsonify(
+            {
+                "status": "bad",
+                "message": "state is pre|live|final, variant full|spoilerfree",
+            }
+        ), 400
+    projection = None
+    try:
+        if request.args.get("proj_margin") is not None:
+            wp = request.args.get("proj_wp")
+            projection = {
+                "margin": float(request.args["proj_margin"]),
+                "homeWinProb": float(wp) if wp is not None else None,
+            }
+    except ValueError:
+        return jsonify(
+            {"status": "bad", "message": "proj_margin / proj_wp must be numbers"}
+        ), 400
+
+    cls, fetch_name = _PROCESSORS[league]
+    try:
+        game = cls(gameId=game_id)
+        game.join_participants = False  # the card draws no participants
+        game.resolve_missing = False
+        summary = getattr(game, fetch_name)()
+    except Exception as e:
+        logging.getLogger("root").warning(
+            f"card: ESPN fetch failed for {league} {game_id}: {e!r}"
+        )
+        summary = None
+    if not ((summary or {}).get("header") or {}).get("competitions"):
+        return jsonify({"status": "bad", "message": "unknown game"}), 404
+    # The Worker read the state from its own ESPN fetch. Across a transition (or a
+    # stale copy) the two can disagree, and a live game drawn as final would be
+    # cached for a year: refuse, and the Worker serves an uncached error instead.
+    status = (summary["header"]["competitions"][0].get("status") or {}).get("type") or {}
+    actual = "final" if status.get("completed") is True else ("live" if status.get("state") == "in" else "pre")
+    if actual != state:
+        return jsonify({"status": "bad", "message": f"ESPN says {actual}, not {state}"}), 409
+
+    card = {
+        "header": summary["header"],
+        "gameInfo": summary.get("gameInfo"),
+        "projection": projection,
+        # the Worker resolves each side's art (astro utils/shareTags.ts cardLogoUrl)
+        "logos": {side: request.args.get(f"{side}_logo") for side in ("home", "away")},
+    }
+    if state != "pre":
+        try:
+            card["plays"] = game.run_processing_pipeline()["plays"]
+            _reshape_records(card["plays"])
+        except Exception as e:  # a game with no plays yet still gets its card
+            logging.getLogger("root").warning(
+                f"card: no plays for {league} {game_id}: {e!r}"
+            )
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                card["paperIndex"] = paper_index.compute(
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0], league=league
+                )
+        except Exception as e:  # the card drops the line, as the page drops the panel
+            logging.getLogger("root").warning(
+                f"card: paper index failed for {game_id}: {e!r}"
+            )
+    try:
+        png = share_card.render(card, league, state, variant, _logo_fetch, dt.now(tz.utc))
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} {game_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+@app.route("/cfb/<int:game_id>/card.png", methods=["GET"])
+@require_auth_token
+def card(game_id: int):
+    return _card("cfb", game_id)
+
+
+@app.route("/nfl/<int:game_id>/card.png", methods=["GET"])
+@require_auth_token
+def card_nfl(game_id: int):
+    return _card("nfl", game_id)
 
 
 def _sdv_identity():

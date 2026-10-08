@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.14"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -412,9 +412,12 @@ dependencies = [
     { name = "flask" },
     { name = "flask-compress" },
     { name = "gunicorn" },
+    { name = "matplotlib" },
     { name = "orjson" },
+    { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
     { name = "sportsdataverse" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -427,9 +430,12 @@ requires-dist = [
     { name = "flask" },
     { name = "flask-compress", specifier = ">=1.25" },
     { name = "gunicorn" },
+    { name = "matplotlib", specifier = ">=3.10" },
     { name = "orjson", specifier = ">=3.13" },
+    { name = "pillow", specifier = ">=12" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3" },
     { name = "sportsdataverse", git = "https://github.com/sportsdataverse/sportsdataverse-py?branch=main" },
+    { name = "tzdata", specifier = ">=2026.2" },
 ]
 
 [package.metadata.requires-dev]
