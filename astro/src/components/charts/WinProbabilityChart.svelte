@@ -171,10 +171,10 @@ const geiPctl = geiGenerateColorRampValue(geiVal)
 const geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
 
 // The shareable image: title band, the chart on the page background, URL footer.
-// Colours and font are read from the page, so dark mode exports dark.
-function composeExport(src, meta) {
+// Colours and font are the page's, read when the chart drew (see generateChart), so the
+// band matches the chart's theme even if the system theme flipped since.
+function composeExport(src, meta, page) {
     const dpr = window.devicePixelRatio || 1;
-    const page = getComputedStyle(document.body);
     const pad = 16 * dpr, titleH = 30 * dpr, footH = 24 * dpr;
     const out = document.createElement('canvas');
     out.width = src.width + 2 * pad;
@@ -200,6 +200,9 @@ async function generateChart() {
     Chart.register(GradientFillLineController);
 
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // copied, not the live object: the export must keep the theme this chart drew in
+    const { backgroundColor, color, fontFamily } = getComputedStyle(document.body);
+    const exportStyle = { backgroundColor, color, fontFamily };
     // the page's colour decision for this theme when it made one ('game-colours'), else the legacy per-chart rule
     const pair = colors && (isDarkMode ? colors.dark : colors.light)
     const [awayTeamColor, homeTeamColor] = pair ? [hexToRgb(pair.away), hexToRgb(pair.home)] : adjustTeamColorsForContrast(awayTeam, homeTeam)
@@ -451,7 +454,7 @@ async function generateChart() {
     // a property, not a listener: a theme redraw must replace the handler bound to the old chart
     document.getElementById("wp-download").onclick = function() {
         var a =  document.getElementById("wp-download");
-        a.href = exportMeta ? composeExport(wpChart.canvas, exportMeta) : wpChart.toBase64Image();
+        a.href = exportMeta ? composeExport(wpChart.canvas, exportMeta, exportStyle) : wpChart.toBase64Image();
     };
 }
 
