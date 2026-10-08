@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mintPreviewCookie, verifyPreviewCookie, readCookie, previewSetCookie, sessionCookie, PREVIEW_COOKIE, PREVIEW_TTL_S } from '../src/utils/preview';
+import { mintPreviewCookie, verifyPreviewCookie, readCookie, previewSetCookie, sessionCookie, keepPreviewSurface, PREVIEW_COOKIE, PREVIEW_TTL_S } from '../src/utils/preview';
 import { isFeatureEnabled, FLAGS } from '../src/utils/features';
 
 describe('preview cookie', () => {
@@ -88,4 +88,15 @@ describe('admin session cookie', () => {
     expect(await timingSafeEqual('', '')).toBe(true);
     expect(await timingSafeEqual('a'.repeat(200), 'a')).toBe(false);
   });
+});
+
+describe('keepPreviewSurface', () => {
+    test.each([
+        ['/preview', '/preview/team/333'],
+        ['/preview/', '/preview/team/333'],
+        ['/preview/game/401856682', '/preview/team/333'],
+        ['/previewer', '/team/333'],
+        ['/', '/team/333'],
+        ['/team/61', '/team/333'],
+    ])('on %s, /team/333 -> %s', (pathname, want) => expect(keepPreviewSurface('/team/333', pathname)).toBe(want));
 });

@@ -72,6 +72,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // The header search box (components/search/SiteSearch.svelte) and the
+    // GET /api/search proxy it calls, which 404s for every other viewer. Hits
+    // into a gated namespace are dropped per viewer: players while
+    // 'player-pages' is off, NFL rows while 'nfl' is off. Prerendered pages
+    // (glossary, data-sources, changelog) resolve the flag at build time, so
+    // they show no box while this is 'preview'.
+    'site-search': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

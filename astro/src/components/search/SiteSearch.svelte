@@ -1,0 +1,251 @@
+<script module lang="ts">
+    /** The option the arrow keys land on: wraps at both ends, and from none (-1) goes to an end. */
+    export function moveActive(i: number, delta: number, n: number): number {
+        if (n <= 0) return -1;
+        if (i < 0) return delta > 0 ? 0 : n - 1;
+        return (i + delta + n) % n;
+    }
+</script>
+
+<script lang="ts">
+    import { tick } from 'svelte';
+    import { keepPreviewSurface } from '../../utils/preview';
+
+    // The header search box. The hrefs come built from /api/search, so this island needs
+    // nothing from utils/ but the import-free preview.ts (other utils' imports would ride
+    // along into every page's bundle).
+    type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
+    const GROUPS = [['team', 'Teams'], ['player', 'Players'], ['game', 'Games']] as const;
+
+    const { league = 'cfb' } = $props();
+
+    let q = $state('');
+    let hits: Hit[] = $state([]);
+    let answered = $state(''); // the query `hits` answers
+    let open = $state(false);
+    let active = $state(-1);
+    const showing = $derived(open && answered !== '');
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let ctrl: AbortController | undefined;
+    let goWhenAnswered = false;
+
+    // From sm to lg the expanded nav row has no room for the box, so a magnifier button opens
+    // it as a panel under the nav instead. Phones (in the collapsed menu) and xl rows show the
+    // box inline and never see the button.
+    let panel = $state(false);
+    let toggle: HTMLButtonElement;
+    let form: HTMLFormElement;
+    let input: HTMLInputElement;
+
+    async function openPanel() {
+        panel = true;
+        await tick();
+        input.focus();
+    }
+
+    function closePanel(refocus: boolean) {
+        panel = false;
+        open = false;
+        active = -1;
+        if (refocus) toggle.focus();
+    }
+
+    // A click outside closes the panel; focus goes back to the button unless the click
+    // landed on something that takes focus itself.
+    function onDocumentClick(e: MouseEvent) {
+        const t = e.target as Element;
+        if (!panel || form.contains(t) || toggle.contains(t)) return;
+        closePanel(!t.closest?.('a, button, input, select, textarea, [tabindex]'));
+    }
+
+    async function search(term: string) {
+        ctrl?.abort();
+        ctrl = new AbortController();
+        let next: Hit[] = [];
+        const params = new URLSearchParams({ q: term, league });
+        // an admin's per-request ?view= / ?flags= must reach the API too, or the box an
+        // override rendered would 404 (the middleware reads them only for an admin session)
+        const page = new URLSearchParams(window.location.search);
+        for (const k of ['view', 'flags']) if (page.has(k)) params.set(k, page.get(k)!);
+        try {
+            const res = await fetch(`/api/search?${params}`, { signal: ctrl.signal });
+            if (res.ok) next = await res.json();
+        } catch (e) {
+            if ((e as Error).name === 'AbortError') return;
+        }
+        hits = next;
+        answered = term;
+        active = -1;
+        if (goWhenAnswered) {
+            goWhenAnswered = false;
+            if (next[0]) go(next[0].href);
+        }
+    }
+
+    // A tap or click on a result is a link, which Footer.astro keeps on /preview; Enter
+    // navigates from script, so it keeps the surface itself.
+    function go(href: string) {
+        window.location.href = keepPreviewSurface(href, window.location.pathname);
+    }
+
+    function oninput() {
+        clearTimeout(timer);
+        // an edit cancels an Enter still waiting for its answer, and the highlight belonged
+        // to the old answer (whose rows stay visible until the new one lands, without flicker)
+        goWhenAnswered = false;
+        active = -1;
+        open = true;
+        const term = q.trim();
+        if (term.length < 2) {
+            ctrl?.abort();
+            hits = [];
+            answered = '';
+            return;
+        }
+        timer = setTimeout(() => search(term), 150);
+    }
+
+    function onkeydown(e: KeyboardEvent) {
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && hits.length) {
+            e.preventDefault();
+            open = true;
+            active = moveActive(active, e.key === 'ArrowDown' ? 1 : -1, hits.length);
+        } else if (e.key === 'Escape' && showing) {
+            // first Esc closes the list; only a second one gets the search field's native clear
+            e.preventDefault();
+            open = false;
+            active = -1;
+        }
+    }
+
+    // Enter (or a phone keyboard's search key) follows the highlighted hit, else the top one.
+    // Pressed before the answer is in, it searches now and goes when the answer lands.
+    function onsubmit(e: SubmitEvent) {
+        e.preventDefault();
+        const term = q.trim();
+        if (term.length < 2) return;
+        if (answered === term) {
+            const hit = hits[active] ?? hits[0];
+            if (hit) go(hit.href);
+            return;
+        }
+        clearTimeout(timer);
+        goWhenAnswered = true;
+        search(term);
+    }
+
+    // Esc closes the panel. It is caught on window, in the capture phase: the panel is a
+    // .dropdown-menu, and Bootstrap's capture-phase keydown handler on document stops an Esc
+    // inside a menu (then fails, as this one has no data-bs-toggle) before the input sees it.
+    function onWindowKeydown(e: KeyboardEvent) {
+        if (e.key !== 'Escape' || !panel || !form.contains(e.target as Node)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        closePanel(true);
+    }
+
+    function onfocusout(e: FocusEvent) {
+        const to = e.relatedTarget as Node | null;
+        if (form.contains(to)) return;
+        open = false;
+        // tabbing out of the panel closes it (a click outside is onDocumentClick's)
+        if (panel && to && !toggle.contains(to)) panel = false;
+    }
+</script>
+
+<svelte:document onclick={onDocumentClick} />
+<svelte:window onkeydowncapture={onWindowKeydown} />
+
+<!-- the nav's own button style: the phone menu toggle is btn-sm btn-outline-primary too -->
+<button
+    type="button"
+    class="btn btn-sm btn-outline-primary d-none d-sm-inline-block d-xl-none"
+    aria-label="Open search"
+    aria-expanded={panel}
+    aria-controls="site-search-form"
+    bind:this={toggle}
+    onclick={() => (panel ? closePanel(false) : openPanel())}
+>
+    <i class="bi bi-search" aria-hidden="true"></i>
+</button>
+<!-- inline on phones and xl rows; hidden from sm to lg until the button opens it as a
+     right-aligned dropdown panel under the nav. In the panel the input is w-auto, so its
+     size attribute sets the panel's width (~350px) -->
+<form
+    role="search"
+    id="site-search-form"
+    class={panel ? 'dropdown-menu dropdown-menu-end show p-2' : 'd-sm-none d-xl-block'}
+    data-bs-popper={panel ? 'none' : undefined}
+    bind:this={form}
+    onsubmit={onsubmit}
+    onfocusin={() => (open = true)}
+    {onfocusout}
+>
+    <!-- 16px text (no zoom on focus) and 50px tall in the phone menu, 34px on a desktop row.
+         The utilities pin it on every page: base.css, which GenericPage loads and the
+         scoreboard does not, strips a navbar input's border and re-pads it -->
+    <input
+        type="search"
+        id="site-search-input"
+        class="form-control border px-3 py-2 py-xl-0 lh-lg"
+        class:w-auto={panel}
+        size={panel ? 28 : 16}
+        role="combobox"
+        aria-label="Search"
+        aria-autocomplete="list"
+        aria-controls="site-search-results"
+        aria-expanded={showing}
+        aria-activedescendant={showing && active >= 0 ? `site-search-option-${active}` : undefined}
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="search"
+        placeholder="Search"
+        bind:value={q}
+        bind:this={input}
+        {oninput}
+        {onkeydown}
+    />
+    <!-- static in the phone nav (.navbar-nav .dropdown-menu), so the results push the
+         links down instead of being clipped; mousedown keeps focus in the input, so a
+         tap lands on the link before the list closes -->
+    <div
+        class="dropdown-menu dropdown-menu-end w-100"
+        class:show={showing}
+        class:position-static={panel}
+        class:border-0={panel}
+        id="site-search-results"
+        role="listbox"
+        aria-label="Search results"
+        data-bs-popper="none"
+        tabindex="-1"
+        onmousedown={(e) => e.preventDefault()}
+    >
+        {#if !hits.length}
+            <span class="dropdown-item-text text-muted">No results</span>
+        {/if}
+        {#each GROUPS as [type, name] (type)}
+            {@const group = hits.filter((h) => h.type === type)}
+            {#if group.length}
+                <div role="group" aria-labelledby="site-search-group-{type}">
+                    <h6 class="dropdown-header" id="site-search-group-{type}">{name}</h6>
+                    {#each group as hit (hit.href)}
+                        {@const i = hits.indexOf(hit)}
+                        <a
+                            class="dropdown-item text-wrap"
+                            class:active={i === active}
+                            href={hit.href}
+                            id="site-search-option-{i}"
+                            role="option"
+                            aria-selected={i === active}
+                        >
+                            {hit.label}
+                            {#if hit.sublabel}<span class="d-block small" class:text-muted={i !== active}>{hit.sublabel}</span>{/if}
+                        </a>
+                    {/each}
+                </div>
+            {/if}
+        {/each}
+    </div>
+</form>
