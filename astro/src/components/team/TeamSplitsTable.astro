@@ -1,0 +1,66 @@
+---
+import type { SDVTeamTendency } from '../../resources/sdv';
+import { formatNumber, formatPercent } from '../../utils/misc';
+import { teamSplitRows } from '../../utils/teamSplits';
+import TeamPlayerTable from './tables/TeamPlayerTable.astro';
+
+interface Props {
+    row: SDVTeamTendency
+}
+
+const { row } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+// both sides render; the select shows one, and ?side=def opens on Defense
+const side = Astro.url.searchParams.get('side') === 'def' ? 'def' : 'off';
+const sides = [['off', 'Offense'], ['def', 'Defense']] as const;
+const note = league === 'cfb'
+    ? 'All regular-season and postseason games, FCS opponents included.'
+    : 'All regular-season and postseason games.';
+---
+
+<TeamPlayerTable id="team-splits" title="Situational Splits" show={true} note={note}>
+    <Fragment slot="subtitle">Metrics from SportsDataverse.</Fragment>
+    <div slot="controls" class="d-flex justify-content-start align-items-center mb-2">
+        <label class="visually-hidden" for="team-splits-side">Side</label>
+        <select id="team-splits-side" class="form-select form-select-sm w-auto" autocomplete="off" data-splits-side>
+            {sides.map(([v, label]) => <option value={v} selected={v === side}>{label}</option>)}
+        </select>
+    </div>
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="text-center">Plays</th>
+        <th rowspan="1" colspan="1" class="text-center">Pass Rate</th>
+        <th rowspan="1" colspan="1" class="text-center">EPA/Play</th>
+        <th rowspan="1" colspan="1" class="text-center">Success Rate</th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {sides.map(([s]) => teamSplitRows(row, s).map((r) => (
+            <tr data-side={s} data-split={r.key} class:list={[s !== side && 'd-none']}>
+                <td class="text-left text-nowrap">{r.title ? <abbr title={r.title}>{r.label}</abbr> : r.label}</td>
+                <td class="numeral text-center">{formatNumber(r.plays, 0)}</td>
+                <td class="numeral text-center">{formatPercent(r.pass_rate)}</td>
+                <td class="numeral text-center">{formatNumber(r.epa_per_play, 2)}</td>
+                <td class="numeral text-center">{formatPercent(r.success_rate)}</td>
+            </tr>
+        )))}
+    </Fragment>
+</TeamPlayerTable>
+
+<script>
+    // Deliberately not `is:inline` (as in player/PlayerGameLog.astro): both sides are
+    // already in the markup, so this only swaps which rows show and keeps ?side= in
+    // the URL for a shared link. With no JS the table keeps the side the server picked.
+    for (const select of document.querySelectorAll('[data-splits-side]')) {
+        const scope = select.closest('.panel-body');
+        select.addEventListener('change', () => {
+            const value = select.querySelector('option:checked')?.getAttribute('value') ?? 'off';
+            for (const tr of scope?.querySelectorAll('tr[data-side]') ?? []) {
+                tr.classList.toggle('d-none', tr.getAttribute('data-side') !== value);
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set('side', value);
+            history.replaceState(history.state, '', url);
+        });
+    }
+</script>

@@ -14,6 +14,7 @@ import type { SeasonTeamData } from "../../routes/seasonTeam";
 import { cleanLocation, roundNumber } from "../../utils/misc";
 import TeamCard from "../../components/team/TeamCard.astro";
 import FiveFactorsTable from "../../components/team/FiveFactorsTable.astro";
+import TeamSplitsTable from "../../components/team/TeamSplitsTable.astro";
 import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
@@ -22,7 +23,7 @@ import { leaguePath } from "../../utils/league";
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, teamTendency } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -99,6 +100,12 @@ const breadcrumbs: PageBreadcrumb[] = [
     {isFeatureEnabled('five-factors', Astro.locals) && teamSummaries[0] && (
         <div class="container mb-3">
             <FiveFactorsTable summary={teamSummaries[0]} />
+        </div>
+    )}
+    {/* teamTendency is read only with the flag on; no row, no panel */}
+    {isFeatureEnabled('team-splits', Astro.locals) && teamTendency && (
+        <div class="container mb-3">
+            <TeamSplitsTable row={teamTendency} />
         </div>
     )}
     <div class="container">
