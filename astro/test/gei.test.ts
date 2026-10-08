@@ -21,6 +21,7 @@ const bodies: Record<string, string> = {
     '/nfl/401772944/process': payload('game-401772944-nfl.json.gz'),
     '/cfb/401752696/process': payload('game-401752696.json.gz'),
     '/nfl/401772944-tie/process': JSON.stringify(tie),
+    '/cfb/400869270/process': payload('usage-cfb-400869270.json.gz'),
 };
 
 vi.mock('../src/utils/telemetry', async (orig) => ({
@@ -73,6 +74,14 @@ describe('GEI closes on the result, not on who has the ball', () => {
     test('winning team (home) has the last snap: Denver kneels out a 10-7 win', async () => {
         const g = await gei('nfl', '401772944');
         expect(String(g.last.pos_team)).toBe(String(g.home));
+        expect(g.gei).toBeCloseTo(g.expected, 10);
+    });
+
+    test('winning team (away) has the last snap: CMU wins 30-27 at Oklahoma State', async () => {
+        // the possession rule closed this at a HOME win (1.0): away had the ball and home was not ahead
+        const g = await gei('cfb', '400869270');
+        expect(String(g.last.pos_team)).toBe(String(g.away));
+        expect(g.last.awayScore).toBeGreaterThan(g.last.homeScore);
         expect(g.gei).toBeCloseTo(g.expected, 10);
     });
 
