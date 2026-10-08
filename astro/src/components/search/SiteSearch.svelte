@@ -9,9 +9,11 @@
 
 <script lang="ts">
     import { tick } from 'svelte';
+    import { keepPreviewSurface } from '../../utils/preview';
 
     // The header search box. The hrefs come built from /api/search, so this island needs
-    // nothing from utils/ (whose imports would ride along into every page's bundle).
+    // nothing from utils/ but the import-free preview.ts (other utils' imports would ride
+    // along into every page's bundle).
     type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
     const GROUPS = [['team', 'Teams'], ['player', 'Players'], ['game', 'Games']] as const;
 
@@ -77,8 +79,14 @@
         active = -1;
         if (goWhenAnswered) {
             goWhenAnswered = false;
-            if (next[0]) window.location.href = next[0].href;
+            if (next[0]) go(next[0].href);
         }
+    }
+
+    // A tap or click on a result is a link, which Footer.astro keeps on /preview; Enter
+    // navigates from script, so it keeps the surface itself.
+    function go(href: string) {
+        window.location.href = keepPreviewSurface(href, window.location.pathname);
     }
 
     function oninput() {
@@ -119,7 +127,7 @@
         if (term.length < 2) return;
         if (answered === term) {
             const hit = hits[active] ?? hits[0];
-            if (hit) window.location.href = hit.href;
+            if (hit) go(hit.href);
             return;
         }
         clearTimeout(timer);
