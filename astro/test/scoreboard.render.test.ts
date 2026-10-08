@@ -111,8 +111,8 @@ describe('the compact scoreboard rows are preview-gated', () => {
         // Saturdays sharing "12:00 PM" must not merge under one header)
         const slots = [...html.matchAll(/class="gb-slot[^"]*"[^>]*>\s*([^<]+)</g)].map((m) => m[1].trim());
         expect(slots).toHaveLength(2);
-        expect(slots[0]).toMatch(/^\w+, 9\/6 · 7:30 PM ET$/);
-        expect(slots[1]).toMatch(/^\w+, 12\/5 · Time TBD$/);
+        expect(slots[0]).toMatch(/^\w+, 9\/6 - 7:30 PM ET$/);
+        expect(slots[1]).toMatch(/^\w+, 12\/5 - Time TBD$/);
         expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*data-gb-fmt="datetime"/);
         // Option E: abbreviations with the rank AHEAD of the abbr on BOTH
         // sides (the banner list section only -- the md+ card grid also

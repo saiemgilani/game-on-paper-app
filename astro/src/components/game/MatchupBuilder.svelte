@@ -99,7 +99,7 @@
             {#if projection.actual_games?.length === 1}
             <div class="d-flex justify-content-center">
                 <div class="w-auto">
-                    <div class="alert alert-primary" role="alert" style="background: #031633; border: 1px solid #084298;">
+                    <div class="alert alert-primary" role="alert">
                     We found a game for this matchup! <a href={leaguePath(league, `/game/${projection.actual_games[0].game_id}`)}>Check out what actually happened.</a>
                     </div>
                 </div>
@@ -109,7 +109,7 @@
                  meeting gets a link rather than an arbitrary one -->
             <div class="d-flex justify-content-center">
                 <div class="w-auto">
-                    <div class="alert alert-primary" role="alert" style="background: #031633; border: 1px solid #084298;">
+                    <div class="alert alert-primary" role="alert">
                     {projection.actual_games.length} meetings that season:
                     <ul class="list-unstyled mb-0 mt-1">
                         {#each projection.actual_games as g}

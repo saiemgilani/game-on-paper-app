@@ -1802,8 +1802,8 @@ iframe {
 }
 .alert-primary {
     color: rgb(115, 184, 248);
-    background-color: rgb(38, 41, 42);
-    border-color: rgb(2, 52, 123);
+    background-color: #031633;
+    border-color: #084298;
 }
 .alert-primary .alert-link {
     color: rgb(133, 193, 249);

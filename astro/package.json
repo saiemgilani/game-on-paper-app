@@ -14,7 +14,8 @@
     "generate-types": "wrangler types",
     "test": "vitest run",
     "visual-check": "node scripts/visual-check.mjs",
-    "walkthrough": "node scripts/walkthrough.mjs"
+    "walkthrough": "node scripts/walkthrough.mjs",
+    "test:tables": "vitest run test/tableContracts.render.test.ts test/seasonTables.render.test.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
