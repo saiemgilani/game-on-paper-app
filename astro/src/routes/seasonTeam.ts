@@ -24,7 +24,7 @@ export interface SeasonTeamData {
     passers: SDVPassingSummary[];
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
-    /** 'vs-opponent' only; null (and no read) with the flag off */
+    /** 'vs-opponent' only: null with the flag off (no read) or when either read failed */
     opponentSplits: GameSplits | null;
 }
 

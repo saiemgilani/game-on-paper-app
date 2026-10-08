@@ -4,7 +4,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { opponentAverages, opponentBars } from '../src/utils/gameSet';
-import { formatMetricValue } from '../src/utils/misc';
+import { formatMetricValue, pickGameColors, STANDARD_THEME_COLOR } from '../src/utils/misc';
 
 // Results by Opponent ('vs-opponent') on the season team page, rendered from the
 // Data API's real 2025 bodies (fixtures/team-opponent-splits-2025.json): both sides
@@ -85,12 +85,12 @@ describe.each([
         expect(props.epaBars).toHaveLength(splits.team.length);
         expect(props.epaAvg).toEqual(opponentAverages(splits, 'epa_per_play'));
         expect(props.successAvg).toEqual(opponentAverages(splits, 'success_rate'));
-        // one decision per theme: a readable bar colour apart from the average line's
-        for (const theme of ['light', 'dark']) {
-            expect(props.colors[theme].bar).toMatch(/^#[0-9a-f]{6}$/);
-            expect(props.colors[theme].line).toMatch(/^#[0-9a-f]{6}$/);
-            expect(props.colors[theme].bar).not.toBe(props.colors[theme].line);
-        }
+        // one decision per theme: the team (bars) against the theme blue (the line).
+        // On white, the mocked crimson and the blue both read and stand apart, so
+        // both are kept as they are; dark is whatever the shared rule lifts them to.
+        expect(props.colors.light).toEqual({ bar: '#9e1b32', line: STANDARD_THEME_COLOR });
+        const { dark } = pickGameColors([null, { color: '9e1b32', alternateColor: 'ffffff' }], { color: STANDARD_THEME_COLOR });
+        expect(props.colors.dark).toEqual({ bar: dark.home, line: dark.away });
     }, 60_000);
 
     test('server-rendered controls: the metric and Raw/Margin selects, and the raw season average', async () => {

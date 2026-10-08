@@ -47,17 +47,20 @@ const result = (r: SDVTeamOpponentSplit) => {
 };
 
 /**
- * One bar per game the team played, in kickoff order (the schedule's
- * `start_date`; season type then week without it, which ties on postseason
- * week 1). The label and name come from the schedule, so the NFL rows, which
- * carry no opponent name, get one too.
+ * One bar per game the team played, in kickoff order: the schedule's
+ * `start_date`, so a rescheduled game sits where it was played. Without a
+ * kickoff for every game, season type then week (kickoff, then id, break the
+ * postseason's week-1 ties). The label and name come from the schedule, so the
+ * NFL rows, which carry no opponent name, get one too.
  */
 export function opponentBars(splits: GameSplits, events: SDVGame[], metric: GameMetric): OpponentBar[] {
     const eventOf = new Map(events.map((e) => [String(e.game_id), e]));
     const against = new Map(splits.opponent.map((r) => [String(r.game_id), r]));
     const kickoff = (r: SDVTeamOpponentSplit) => eventOf.get(String(r.game_id))?.start_date ?? '';
+    // one ordering for the whole list: mixing date and week comparisons is not transitive
+    const dated = splits.team.every((r) => kickoff(r) !== '');
     return splits.team
-        .toSorted((a, b) => (a.season_type - b.season_type) || (a.week - b.week) || kickoff(a).localeCompare(kickoff(b)) || (a.game_id - b.game_id))
+        .toSorted((a, b) => (dated ? 0 : (a.season_type - b.season_type) || (a.week - b.week)) || kickoff(a).localeCompare(kickoff(b)) || (a.game_id - b.game_id))
         .map((r) => {
             const e = eventOf.get(String(r.game_id));
             const home = e ? String(e.home_id) === String(r.team_id) : r.is_home;

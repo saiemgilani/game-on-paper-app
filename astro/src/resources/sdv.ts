@@ -1168,13 +1168,23 @@ export interface SDVTeamOpponentSplit {
 /**
  * Both sides of every game a team played in a season: its own rows (`team`) and
  * its opponents' rows against it (`opponent`), whose rates are what it allowed.
+ * Either read failing is null, never a half-empty pair: a missing side would draw
+ * bars with no margin and pass for a complete season.
  */
-export async function retrieveTeamOpponentSplits(season: number, teamId: string | number, league: League = 'cfb'): Promise<{ team: SDVTeamOpponentSplit[], opponent: SDVTeamOpponentSplit[] }> {
-    if (!LEAGUES[league].sdvEnabled) return { team: [], opponent: [] };
-    const read = async (key: 'team_id' | 'opponent_id'): Promise<SDVTeamOpponentSplit[]> =>
-        (await requestSDV('team_opponent_splits', new URLSearchParams({ season: String(season), [key]: String(teamId) }), undefined, 60 * 60 * 24 * 3, true, league))?.data ?? [];
-    const [team, opponent] = await Promise.all([read('team_id'), read('opponent_id')]);
-    return { team, opponent };
+export async function retrieveTeamOpponentSplits(season: number, teamId: string | number, league: League = 'cfb'): Promise<{ team: SDVTeamOpponentSplit[], opponent: SDVTeamOpponentSplit[] } | null> {
+    if (!LEAGUES[league].sdvEnabled) return null;
+    const read = async (key: 'team_id' | 'opponent_id'): Promise<SDVTeamOpponentSplit[]> => {
+        const content = await requestSDV('team_opponent_splits', new URLSearchParams({ season: String(season), [key]: String(teamId) }), undefined, 60 * 60 * 24 * 3, true, league, true);
+        if (!Array.isArray(content?.data)) throw new Error(`no data array for ${key}=${teamId}`);
+        return content.data;
+    };
+    try {
+        const [team, opponent] = await Promise.all([read('team_id'), read('opponent_id')]);
+        return { team, opponent };
+    } catch (e) {
+        console.error(`ERROR while loading team_opponent_splits (${league} ${season} ${teamId}): ${e}`);
+        return null;
+    }
 }
 
 // ---- head-coach tendencies ------------------------------------------------
