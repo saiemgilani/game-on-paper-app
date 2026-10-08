@@ -9,6 +9,7 @@ const ALAB: SearchRow[] = JSON.parse(readFileSync(new URL('./fixtures/search-ala
 
 const seen: { url: string; init?: RequestInit }[] = [];
 const kv = new Map<string, string>();
+let kvDown = false;
 let respond: () => Response = () => Response.json(ALAB);
 
 vi.mock('../src/utils/telemetry', async (orig) => ({
@@ -18,7 +19,10 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
 vi.mock('cloudflare:workers', () => ({
     env: {
         SDV_API_CACHE: {
-            get: async (k: string, type?: string) => (kv.has(k) ? (type === 'json' ? JSON.parse(kv.get(k)!) : kv.get(k)) : null),
+            get: async (k: string, type?: string) => {
+                if (kvDown) throw new Error('KV unavailable');
+                return kv.has(k) ? (type === 'json' ? JSON.parse(kv.get(k)!) : kv.get(k)) : null;
+            },
             put: async (k: string, v: string) => { kv.set(k, v); },
         },
     },
@@ -27,6 +31,7 @@ vi.mock('cloudflare:workers', () => ({
 beforeEach(() => {
     seen.length = 0;
     kv.clear();
+    kvDown = false;
     respond = () => Response.json(ALAB);
 });
 
@@ -137,6 +142,12 @@ describe('GET /api/search', () => {
         const hits: { type: string }[] = await res.json();
         expect(hits).toHaveLength(7);
         expect(hits.some((h) => h.type === 'player')).toBe(false);
+    });
+
+    test('a KV read failure is a cache miss: the Data API is still asked', async () => {
+        kvDown = true;
+        expect(await (await call('q=alab&league=cfb')).json()).toHaveLength(8);
+        expect(seen).toHaveLength(1);
     });
 
     test('an upstream failure is [], not cached, and its message never reaches the client', async () => {

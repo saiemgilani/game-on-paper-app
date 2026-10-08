@@ -22,7 +22,7 @@ const lp = (p: string) => leaguePath(league, p);
                     sm to lg the expanded row has no room left for it, so it shows from xl up */}
                 {isFeatureEnabled("site-search", Astro.locals) && (
                     <div id="site-search" class="navbar-nav position-relative order-sm-last my-2 my-sm-0 d-sm-none d-xl-flex">
-                        <SiteSearch client:idle league={league} placeholder={isFeatureEnabled("player-pages", Astro.locals) ? "Search teams, players, games" : "Search teams, games"} />
+                        <SiteSearch client:idle league={league} placeholder={isFeatureEnabled("player-pages", Astro.locals) ? "Teams, players, games" : "Teams, games"} />
                     </div>
                 )}
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">

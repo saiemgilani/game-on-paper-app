@@ -31,12 +31,12 @@ describe('Header search', () => {
         expect(html).toMatch(/<input[^>]*type="search"[^>]*role="combobox"/);
         expect(html).toContain('aria-controls="site-search-results"');
         expect(html).toContain('aria-expanded="false"');
-        expect(html).toContain('placeholder="Search teams, players, games"');
+        expect(html).toContain('placeholder="Teams, players, games"');
     });
 
     test('the placeholder leaves out players while player pages are off', async () => {
         const html = await render({ preview: true, flagOverrides: { 'player-pages': false } });
-        expect(html).toContain('placeholder="Search teams, games"');
+        expect(html).toContain('placeholder="Teams, games"');
     });
 
     test('the island searches the league the page is in', async () => {

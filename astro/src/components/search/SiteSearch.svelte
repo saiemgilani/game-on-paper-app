@@ -30,8 +30,13 @@
         ctrl?.abort();
         ctrl = new AbortController();
         let next: Hit[] = [];
+        const params = new URLSearchParams({ q: term, league });
+        // an admin's per-request ?view= / ?flags= must reach the API too, or the box an
+        // override rendered would 404 (the middleware reads them only for an admin session)
+        const page = new URLSearchParams(window.location.search);
+        for (const k of ['view', 'flags']) if (page.has(k)) params.set(k, page.get(k)!);
         try {
-            const res = await fetch(`/api/search?${new URLSearchParams({ q: term, league })}`, { signal: ctrl.signal });
+            const res = await fetch(`/api/search?${params}`, { signal: ctrl.signal });
             if (res.ok) next = await res.json();
         } catch (e) {
             if ((e as Error).name === 'AbortError') return;
@@ -39,7 +44,6 @@
         hits = next;
         answered = term;
         active = -1;
-        open = true;
         if (goWhenAnswered) {
             goWhenAnswered = false;
             if (next[0]) window.location.href = next[0].href;
@@ -48,6 +52,11 @@
 
     function oninput() {
         clearTimeout(timer);
+        // an edit cancels an Enter still waiting for its answer, and the highlight belonged
+        // to the old answer (whose rows stay visible until the new one lands, without flicker)
+        goWhenAnswered = false;
+        active = -1;
+        open = true;
         const term = q.trim();
         if (term.length < 2) {
             ctrl?.abort();

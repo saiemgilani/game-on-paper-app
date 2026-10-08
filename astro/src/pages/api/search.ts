@@ -34,7 +34,8 @@ export const GET: APIRoute = async ({ url, locals }) => {
 async function upstream(q: string, league: string): Promise<SearchRow[]> {
     const key = `search:${league}:${q.toLowerCase()}`;
     try {
-        const cached = await env.SDV_API_CACHE.get(key, 'json');
+        // a KV failure is a cache miss, not an empty answer
+        const cached = await env.SDV_API_CACHE.get(key, 'json').catch(() => null);
         if (Array.isArray(cached)) return cached;
         const res = await wrappedFetch(`${UPSTREAM}?${new URLSearchParams({ q, league, types: TYPES })}`, {
             headers: { Authorization: `Bearer ${getSecret('SDV_AUTH_TOKEN') ?? ''}` },
