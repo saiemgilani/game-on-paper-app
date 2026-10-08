@@ -72,6 +72,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // The Situational Splits panel on the season team page (/year/N/team/<id> and
+    // the /nfl twin): the team's one team_tendencies row by down, field, score and
+    // game context, for offense or defense. Only this path reads team_tendencies
+    // there; for every other viewer the page and its requests are unchanged.
+    'team-splits': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

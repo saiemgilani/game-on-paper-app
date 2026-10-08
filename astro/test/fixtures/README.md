@@ -178,3 +178,18 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
+
+## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
+The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
+bodies, no `select`: one row each (Alabama, Kansas City) with every column the
+table serves (598 CFB, 578 NFL; the NFL has no `*_vs_ranked`).
+
+**Provenance (2026-10-08):** captured from the live API after the IF-1 republish
+(splits carry `epa_*` / `successes_*` and their rates; the d3 buckets, red zone,
+own/opp half, one score and the `ctx_*` game-context splits). No edits.
+
+**Used by:** `test/teamSplits.test.ts` (every `teamSplitColumns` select column
+exists; the defense perspective swaps) and `test/teamSplits.render.test.ts` (the
+Situational Splits panel on `/year/2025/team/333` and `/nfl/year/2025/team/12`).
+
+**To regenerate:** repeat the two requests for 2025.

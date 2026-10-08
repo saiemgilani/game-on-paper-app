@@ -1206,8 +1206,11 @@ async function requestTendencyTable<T>(table: string, keys: string[], filters: R
 
 export interface SDVSeasonTendencyRequest { season: number; league?: League; columns?: string[] }
 
-export async function retrieveTeamTendencies({ season, league = 'cfb', columns }: SDVSeasonTendencyRequest): Promise<SDVTeamTendency[]> {
-    return requestTendencyTable<SDVTeamTendency>('team_tendencies', TEAM_TENDENCY_KEYS, { season: String(season) }, columns, league);
+/** `teamId` narrows the read to that team's one row (`pos_team_id`), same table and TTL. */
+export async function retrieveTeamTendencies({ season, league = 'cfb', columns, teamId }: SDVSeasonTendencyRequest & { teamId?: number }): Promise<SDVTeamTendency[]> {
+    const filters: Record<string, string> = { season: String(season) };
+    if (teamId !== undefined) filters.pos_team_id = String(teamId);
+    return requestTendencyTable<SDVTeamTendency>('team_tendencies', TEAM_TENDENCY_KEYS, filters, columns, league);
 }
 
 /** Head coaches only (`role=HC`); a coordinator row, if the builder ever emits one, never lands on the HC board. */
