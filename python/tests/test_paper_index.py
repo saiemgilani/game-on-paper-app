@@ -373,3 +373,16 @@ def test_add_start_ep_stamps_every_row():
     paper_index.add_start_ep(rows, _frame())
     assert rows[0]["avg_start_ep"] == pytest.approx(paper_index.team_inputs(_frame(), 10)["avgStartEp"], abs=1e-9)
     assert rows[1]["avg_start_ep"] is None
+
+
+def test_a_window_values_a_carried_over_drive_at_its_real_start():
+    # team 10's drive a starts at the 75 in period 1 and is still going in period 2
+    # (its period-2 snap is at the 40); drive b is all period 2
+    frame = _frame().with_columns(period=pl.Series([1, 1, 2, 2, 1, 1, 2, 2]))
+    whole = paper_index.avg_start_ep(frame, 10)
+    assert paper_index.avg_start_ep(frame, 10, window=pl.col("period") == 2) == pytest.approx(whole, abs=1e-12)
+    naive = paper_index.avg_start_ep(frame.filter(pl.col("period") == 2), 10)
+    assert naive != pytest.approx(whole, abs=1e-6)
+    only_a = paper_index.avg_start_ep(frame.filter(pl.col("drive.id") == "a"), 10)
+    assert paper_index.avg_start_ep(frame, 10, window=pl.col("period") == 1) == pytest.approx(only_a, abs=1e-12)
+    assert paper_index.avg_start_ep(frame, 10, window=pl.col("period") == 3) is None

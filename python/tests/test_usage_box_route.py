@@ -288,10 +288,35 @@ def test_drive_start_ep_is_the_paper_index_value(body):
         assert abs(row["avg_start_ep"] - teams[str(row["pos_team"])]["avgStartEp"]) < 1e-9
 
 
-def test_every_window_carries_drive_start_ep(body):
+_IN_WINDOW = {
+    "q1": lambda p: p == 1,
+    "q2": lambda p: p == 2,
+    "q3": lambda p: p == 3,
+    "q4": lambda p: p == 4,
+    "h1": lambda p: p in (1, 2),
+    "h2": lambda p: p in (3, 4),
+    "ot": lambda p: p > 4,
+}
+
+
+def test_every_window_carries_drive_start_ep(body, league):
+    """Each window's row, recomputed from the response's own plays: the team's
+    drives with a snap in the window, each valued at its first snap of the game
+    (a drive carried over from the previous quarter keeps its real start)."""
+    import paper_index
+
+    ep = dict(paper_index._ep_table(league).iter_rows())
+    snaps = [p for p in body["plays"] if p.get("scrimmage_play") is True and p.get("drive.id") is not None]
+    start = {}
+    for p in snaps:
+        start.setdefault((str(p["pos_team"]), p["drive.id"]), p["start"]["yardsToEndzone"])
     spans = body["advBoxScoreSpans"]
     assert {"q1", "q2", "q3", "q4", "h1", "h2"} <= set(spans)
     for key, box in spans.items():
+        assert box["drives"], key
         for row in box["drives"]:
-            v = row["avg_start_ep"]
-            assert v is None or -2.0 < v < 7.0, (key, row)
+            team = str(row["pos_team"])
+            drives = {p["drive.id"] for p in snaps if str(p["pos_team"]) == team and _IN_WINDOW[key](p["period"])}
+            assert drives, (key, team)
+            want = sum(ep[min(99, max(1, int(100 - start[(team, d)])))] for d in drives) / len(drives)
+            assert row["avg_start_ep"] == pytest.approx(want, abs=1e-9), (key, team)
