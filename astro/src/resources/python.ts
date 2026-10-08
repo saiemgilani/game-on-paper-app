@@ -2,6 +2,7 @@ import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
+import { CARD_MAX_AGE, type CardState, type CardVariant } from "../utils/shareTags"
 
 export interface ProcessedModelInput {
     down: number
@@ -1306,6 +1307,43 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
         return Array.isArray(body?.sources) && body.sources.length ? body : null;
     } catch (e) {
         console.error(`ERROR while listing sources for ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
+/**
+ * A game's share card from the API (python/share_card.py) as PNG bytes, or null when
+ * the API cannot render one. Cached at the edge for as long as the card itself may
+ * be (CARD_MAX_AGE: a final card for a year, a live one for a minute), keyed per
+ * deploy, state, variant and projection, so a new renderer redraws every card.
+ * `pregame` is GOP's projection: home-relative margin and the home side's win probability.
+ */
+export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }): Promise<ArrayBuffer | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    const query = new URLSearchParams({ state, variant });
+    if (pregame) {
+        query.set('proj_margin', String(pregame.margin));
+        if (pregame.homeWinProb != null) query.set('proj_wp', String(pregame.homeWinProb));
+    }
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}`, {
+            headers: {
+                "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`,
+                "Referer": "gameonpaper.com",
+            },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
+                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
+            }
+        });
+        if (!req.ok) {
+            console.error(`ERROR share card ${league} ${gameId} ${query}: HTTP ${req.status}`);
+            return null;
+        }
+        return await req.arrayBuffer();
+    } catch (e) {
+        console.error(`ERROR while fetching share card for ${league} ${gameId}: ${e}`);
         return null;
     }
 }

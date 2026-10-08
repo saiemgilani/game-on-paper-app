@@ -14,6 +14,7 @@ import WatchButton from './WatchButton.astro';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
+import { cardState, shareTags } from '../../utils/shareTags';
 import GameHeader from './GameHeader.astro';
 import GameEssentials from './GameEssentials.astro';
 import PlayersToWatch from './PlayersToWatch.astro';
@@ -137,6 +138,16 @@ const gameSpec = {
 const title = gameTitle(gameSpec);
 const subtitle = gameDescription({ ...gameSpec, league });
 const structuredData = jsonLdScript([sportsEventJsonLd({ ...gameSpec, league })]);
+
+// 'share-card' (preview): the API's card for the game's state as og:image, and
+// ?spoilers=off previews without the score (these tags only; the body is the same).
+// Off, every tag below is exactly what it was.
+const share = isFeatureEnabled('share-card', Astro.locals)
+    ? shareTags({ ...gameSpec, league, state: cardState(game.status), title, description: subtitle }, { spoilerFree: Astro.url.searchParams.get('spoilers') === 'off' })
+    : null;
+const headTitle = share?.title ?? title;
+const headDescription = share?.description ?? subtitle;
+const ogImage = share?.image ?? `https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${game.id}.png?templateId=espn.com.share.1`;
 // one colour decision for the game (a light and a dark pair): team_info first, ESPN's header where team_info has none
 const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors([homeTeamSeason?.team, homeTeam], [awayTeamSeason?.team, awayTeam]) : undefined;
 
@@ -160,24 +171,24 @@ const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColo
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="referrer" content="origin-when-cross-origin">
         <link rel="canonical" href={canonicalUrl}>
-        <title>{title}</title>
-        <meta name="description" content={subtitle}>
+        <title>{headTitle}</title>
+        <meta name="description" content={headDescription}>
 
         <meta property="og:site_name" content="GameOnPaper.com">
         <meta property="og:url" content={canonicalUrl}>
-        <meta property="og:title" content={title}>
-        <meta property="og:description" content={subtitle}>
-        <meta property="og:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${game.id}.png?templateId=espn.com.share.1`}>
-        <meta property="og:image:width" content="400">
-        <meta property="og:image:height" content="400">
+        <meta property="og:title" content={headTitle}>
+        <meta property="og:description" content={headDescription}>
+        <meta property="og:image" content={ogImage}>{share && <meta property="og:image:alt" content={share.imageAlt}>}
+        <meta property="og:image:width" content={share ? "1200" : "400"}>
+        <meta property="og:image:height" content={share ? "630" : "400"}>
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="@gameonpaper">
         <meta name="twitter:url" content={canonicalUrl}>
-        <meta name="twitter:title" content={title}>
-        <meta name="twitter:description" content={subtitle}>
-        <meta name="twitter:card" content="summary">
-        <meta name="twitter:image" content={`https://s.espncdn.com/stitcher/sports/football/${espnPath}/events/${game.id}.png?templateId=espn.com.share.1`}>
-        <meta name="title" content={title}>
+        <meta name="twitter:title" content={headTitle}>
+        <meta name="twitter:description" content={headDescription}>
+        <meta name="twitter:card" content={share ? "summary_large_image" : "summary"}>
+        <meta name="twitter:image" content={ogImage}>
+        <meta name="title" content={headTitle}>
         <meta name="medium" content="website">
         <script type="application/ld+json" set:html={structuredData} />
         <!-- Privacy-friendly analytics by Plausible -->
