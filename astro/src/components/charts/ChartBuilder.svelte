@@ -1,24 +1,45 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
-    import { espnLogoLeague, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
+    import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricDirection, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
-    const { season, x, y, points, league = 'cfb' } = $props();
+    const { season, x, y, points, league = 'cfb', v2 = false, highlight = '', mode = 'logos' } = $props();
     let selectedSeason = season;
     let selectedMetricX = x;
     let selectedMetricY = y;
+
+    // v2 ('chart-builder-v2'): the bar above the chart only edits these. Plot is a GET of the builder URL
+    // (SSR, cached per URL), so the chart and table keep showing the loaded season/x/y until then.
+    const metricFamilies = metricRail();
+    const metricKeys = metricFamilies.flatMap((f) => f.metrics.map((m) => m.key));
+    let formSeason = $state(String(season));
+    let formX = $state(x);
+    let formY = $state(y);
+    function onRandom() {
+        const [nx, ny] = randomAxes(metricKeys);
+        formX = nx;
+        formY = ny;
+    }
+    function onPlot(e: SubmitEvent) {
+        e.preventDefault();
+        const target = builderUrl(league, { season: formSeason, x: formX, y: formY, hl: highlight, mode });
+        window.location.href = keepPreviewSurface(target, window.location.pathname);
+    }
 
     let conferenceList = [...new Set(points.map(p => p.conference))].sort()
 
     let selectedSort = $state("x");
     let selectedFBSClassFilter = $state("all");
     let selectedConferenceFilter = $state("all");
-    let flipArrow = $derived((selectedSort == "x") ? shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX) : shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY))
+    // v2 ranks and flips by metricDirection, so its quadrant captions match the axes; the public builder is unchanged
+    const lowerIsBetter = (m: string) => v2 ? metricDirection(m) === 'lower' : shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
+    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY))
     let chartedPoints = $derived(
         points
             .filter((p) => (selectedFBSClassFilter == "all") || (selectedFBSClassFilter == p.fbs_class))
@@ -26,7 +47,9 @@
             .toSorted((a, b) => flipArrow ? (a[selectedSort] - b[selectedSort]) : (b[selectedSort] - a[selectedSort]))
     )
 
-    const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
+    // v2 lists the league's own seasons (NFL from 2002), and the copy reads from the same list
+    const seasonList = v2 ? LEAGUES[league].seasons : AVAILABLE_SEASONS;
+    const yearRange = seasonList.length > 1 ? `${seasonList[0]} to ${seasonList[seasonList.length - 1]}` : `${seasonList[0]}`
 
     const availableMetricColumns = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter(m => !["fbs_class", "valid_games", "team_id", "pos_team", "division", "conference", "season"].includes(m) && !m.endsWith("_rank"))
     let availableMetricCategories: Record<string, Record<string, string>> = {
@@ -61,16 +84,22 @@
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     let builderChart: Chart | null = null;
+    // v2: the canvas's medians and corner meanings as text, for screen readers
+    let summary = $state('');
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
-        const averageX = (chartedPoints.map((t: any) => parseFloat(t.x)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         const minX = Math.min(...chartedPoints.map((t: any) => t.x))
         const maxX = Math.max(...chartedPoints.map((t: any) => t.x))
-        const averageY = (chartedPoints.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         const minY = Math.min(...chartedPoints.map((t: any) => t.y))
         const maxY = Math.max(...chartedPoints.map((t: any) => t.y))
-        console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
-        console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
+        // the public builder's mean, as on main (it drops zeros, so a column of zeros throws into the error note)
+        const mean = (k: 'x' | 'y') => (chartedPoints.map((t: any) => parseFloat(t[k])).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
+        // v2 draws the MEDIAN crosshair (quadrants split the field in half), and never computes the mean.
+        // A team with no value (null) is skipped by median(), never read as 0; a column of zeros has median 0.
+        const centerX = v2 ? (median(chartedPoints.map((t: any) => t.x)) ?? 0) : mean('x');
+        const centerY = v2 ? (median(chartedPoints.map((t: any) => t.y)) ?? 0) : mean('y');
+        console.log(`X: centre - ${centerX}, min - ${minX}, max - ${maxX}`)
+        console.log(`Y: centre - ${centerY}, min - ${minY}, max - ${maxY}`)
 
         const suggestedRange = {
             min: {
@@ -88,8 +117,15 @@
         const lineMultiplier = 0.125
         const xAdjust = 0.05
 
-        const shouldFlipYAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY);
-        const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX);
+        const shouldFlipYAxis = lowerIsBetter(selectedMetricY);
+        const shouldFlipXAxis = lowerIsBetter(selectedMetricX);
+        const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
+            metricDirection(selectedMetricX) !== null, metricDirection(selectedMetricY) !== null);
+        if (v2) {
+            summary = chartSummary(chartedPoints.filter((t: any) => Number.isFinite(t.x) && Number.isFinite(t.y)).length,
+                { title: generateTeamMetricTitle(selectedMetricX), median: formatNumberForMetric(selectedMetricX, centerX) },
+                { title: generateTeamMetricTitle(selectedMetricY), median: formatNumberForMetric(selectedMetricY, centerY) }, quadrants);
+        }
 
         const config: ChartConfiguration<'scatter'> = {
             type: 'scatter',
@@ -153,14 +189,18 @@
                         chart.ctx.fillText(`Filters: FBS groups - ${selectedFBSClassFilter}, Conferences - ${selectedConferenceFilter}`, sizeWidth * (1 - margin + xAdjust), (baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))
                         chart.ctx.restore();
 
+                        // v2 lifts the axis-flip note above its bottom quadrant labels, which would sit on top of it
+                        const noteX = v2 ? chart.chartArea.right - 4 : sizeWidth * (1 - margin + xAdjust);
+                        const noteY = v2 ? chartLabelLayout(chart.chartArea, viewport).flipNote
+                            : [(sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8))];
                         if (shouldFlipYAxis && !shouldFlipXAxis) {
                             chart.ctx.save()
                             chart.ctx.textAlign = "right"
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: y-axis is flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the top and 'bad' performances are towards the bottom.", noteX, noteY[1])
                             chart.ctx.restore();
                         } else if (shouldFlipXAxis && !shouldFlipYAxis) {
                             chart.ctx.save()
@@ -168,8 +208,8 @@
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: x-axis is flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the right and 'bad' performances are towards the left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: x-axis is flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the right and 'bad' performances are towards the left.", noteX, noteY[1])
                             chart.ctx.restore();
                         } else if (shouldFlipXAxis && shouldFlipYAxis) {
                             chart.ctx.save()
@@ -177,15 +217,15 @@
                             chart.ctx.font = "italic 8px Helvetica";
                             chart.ctx.globalAlpha = 0.5;
                             chart.ctx.fillStyle = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8e6e3' : '#525252';
-                            chart.ctx.fillText("NOTE: both axes are flipped to ensure 'good' performances are", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (lineMultiplier)) * (sizeHeight / 8)))
-                            chart.ctx.fillText("towards the top-right and 'bad' performances are towards the bottom-left.", sizeWidth * (1 - margin + xAdjust), (sizeHeight * 0.95) - ((baseMultiplier - (2 * lineMultiplier)) * (sizeHeight / 8)))
+                            chart.ctx.fillText("NOTE: both axes are flipped to ensure 'good' performances are", noteX, noteY[0])
+                            chart.ctx.fillText("towards the top-right and 'bad' performances are towards the bottom-left.", noteX, noteY[1])
                             chart.ctx.restore();
                         }
                     }
                 },
                 afterDraw: (chart) => {
-                    const yValue = chart.scales.y.getPixelForValue(averageY);
-                    const xValue = chart.scales.x.getPixelForValue(averageX);
+                    const yValue = chart.scales.y.getPixelForValue(centerY);
+                    const xValue = chart.scales.x.getPixelForValue(centerX);
 
                     const ctx = chart.ctx;
                     ctx.save();
@@ -209,6 +249,48 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     ctx.restore();
+
+                    if (v2) {
+                        const area = chart.chartArea;
+                        const rows = chartLabelLayout(area, viewport);
+                        const q = quadrants;
+                        const text = isDarkMode ? CHART_TEXT.dark : CHART_TEXT.light;
+                        // the MEDIAN labels sit on a pill of the page background (as the drive chart labels its field),
+                        // so a logo under one never makes it unreadable
+                        const surface = getComputedStyle(document.body).backgroundColor;
+                        const pill = (label: string, cx: number, baseline: number) => {
+                            const w = ctx.measureText(label).width;
+                            ctx.save();
+                            ctx.globalAlpha = 0.85;
+                            ctx.fillStyle = surface;
+                            ctx.beginPath();
+                            ctx.roundRect(cx - w / 2 - 3, baseline - rows.median - 2, w + 6, rows.median + 5, 3);
+                            ctx.fill();
+                            ctx.restore();
+                            ctx.fillText(label, cx, baseline);
+                        };
+                        ctx.save();
+                        ctx.fillStyle = text;
+                        ctx.font = `bold ${rows.median}px "Chivo", "Fira Mono", serif`;
+                        ctx.textAlign = 'center';
+                        const yLabel = `MEDIAN ${formatNumberForMetric(selectedMetricY, centerY)}`;
+                        pill(yLabel, area.left + 7 + ctx.measureText(yLabel).width / 2, rows.medianY(yValue));
+                        const xLabel = `MEDIAN ${formatNumberForMetric(selectedMetricX, centerX)}`;
+                        pill(xLabel, rows.medianXCentre(xValue, ctx.measureText(xLabel).width), rows.medianX);
+                        ctx.font = `${LABEL_PX.quadrant}px "Chivo", "Fira Mono", serif`;
+                        ctx.globalAlpha = 0.6;
+                        // two labels share each edge: draw them only where they fit side by side (not on a phone-width chart)
+                        const widest = Math.max(...Object.values(q).map((t) => ctx.measureText(t).width));
+                        if (2 * widest + 16 < area.right - area.left) {
+                            ctx.textAlign = 'right';
+                            ctx.fillText(q.topRight, area.right - 4, rows.quadrantTop);
+                            ctx.fillText(q.bottomRight, area.right - 4, rows.quadrantBottom);
+                            ctx.textAlign = 'left';
+                            ctx.fillText(q.topLeft, area.left + 4, rows.quadrantTop);
+                            ctx.fillText(q.bottomLeft, area.left + 4, rows.quadrantBottom);
+                        }
+                        ctx.restore();
+                    }
                 }
             }],
             options: {
@@ -270,8 +352,10 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
+                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all') : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
+                        // v2: drop the title below the credit lines, which it overlaps at desktop width (drawn on lg/xl only)
+                        ...(v2 && (viewport == "xl" || viewport == "lg") ? { padding: { top: 34, bottom: 10 } } : {}),
                         font: {
                             size: getTitleSizeForViewport(viewport),
                             family: '"Chivo", "Fira Mono", serif'
@@ -316,6 +400,17 @@
     async function waitToGenerateChart() {
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
+            // v2: a season with no values for the pair gets one plain line instead of the error note
+            // (textContent: the metric keys come from the URL)
+            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
+            if (empty) {
+                const note = document.createElement('p');
+                note.className = 'm-0 mb-3 text-muted text-small';
+                note.id = 'chart-empty';
+                note.textContent = empty;
+                document.getElementById("chart_container")?.replaceChildren(note);
+                return;
+            }
             if (chartedPoints.length == 0) {
                 throw new Error("Unable to generate chart, no points available.")
             }
@@ -380,6 +475,7 @@
             <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
             <p class="m-0 mb-2 text-muted text-small">Note: this page is best viewed on desktop.</p>
         </div>
+        {#if !v2}
         <div class="ms-auto col-lg-6 col-xs-12">
             <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-lg-auto mx-sx-0 mx-sm-2">
@@ -424,12 +520,52 @@
                 <button onclick={onSubmit} class="btn btn-md btn-primary" title="Generate">Generate</button>
             </div>
         </div>
+        {/if}
     </div>
 </div>
 
+{#if v2}
+<!-- the leaderboards' pickers row (dropdowns/TeamMetricDropdown.svelte), labelled like the player page's season picker -->
+<div class="container">
+    <form class="row" id="builder-controls" onsubmit={onPlot}>
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-season">Season</label>
+            <select id="builder-season" class="form-select form-select-md w-auto" bind:value={formSeason}>
+                {#each seasonList as s}
+                    <option value={String(s)}>{s}</option>
+                {/each}
+            </select>
+        </div>
+        {#snippet metricOptions()}
+            {#each metricFamilies as fam}
+                <optgroup label={fam.family}>
+                    {#each fam.metrics as m}<option value={m.key}>{m.title}</option>{/each}
+                </optgroup>
+            {/each}
+        {/snippet}
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-x">X axis</label>
+            <select id="builder-x" class="form-select form-select-md w-auto" bind:value={formX}>{@render metricOptions()}</select>
+        </div>
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-y">Y axis</label>
+            <select id="builder-y" class="form-select form-select-md w-auto" bind:value={formY}>{@render metricOptions()}</select>
+        </div>
+        <div class="col-auto mb-3 d-flex gap-2">
+            <button type="button" class="btn btn-md btn-outline-secondary" id="random-axes" onclick={onRandom}>Random</button>
+            <button type="submit" class="btn btn-md btn-primary" id="plot-chart">Plot</button>
+        </div>
+    </form>
+</div>
+<div class="container mb-3" id="chart_container">
+    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, false)} aria-describedby="chart-summary"></canvas>
+</div>
+<p class="visually-hidden" id="chart-summary">{summary}</p>
+{:else}
 <div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>
 </div>
+{/if}
 <div class="container mb-3">
     <div class="row d-flex">
         <div class="col-xs-12 col-sm-auto mb-xs-1 mb-sm-3 mx-xs-0 mx-sm-1 d-flex justify-content-start">
