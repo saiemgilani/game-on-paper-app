@@ -19,9 +19,9 @@ const lp = (p: string) => leaguePath(league, p);
             </button>
             <div class="collapse navbar-collapse" id="navOptions">
                 {/* first in the source so it heads the phone menu, last on a desktop row; from
-                    sm to lg the expanded row has no room left for it, so it shows from xl up */}
+                    sm to lg the row has no room left, so the island shows a button there instead */}
                 {isFeatureEnabled("site-search", Astro.locals) && (
-                    <div id="site-search" class="navbar-nav position-relative order-sm-last my-2 my-sm-0 d-sm-none d-xl-flex">
+                    <div id="site-search" class="navbar-nav position-relative order-sm-last my-2 my-sm-0">
                         <SiteSearch client:idle league={league} placeholder={isFeatureEnabled("player-pages", Astro.locals) ? "Teams, players, games" : "Teams, games"} />
                     </div>
                 )}

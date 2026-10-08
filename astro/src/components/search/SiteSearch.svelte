@@ -8,6 +8,8 @@
 </script>
 
 <script lang="ts">
+    import { tick } from 'svelte';
+
     // The header search box. The hrefs come built from /api/search, so this island needs
     // nothing from utils/ (whose imports would ride along into every page's bundle).
     type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
@@ -25,6 +27,35 @@
     let timer: ReturnType<typeof setTimeout> | undefined;
     let ctrl: AbortController | undefined;
     let goWhenAnswered = false;
+
+    // From sm to lg the expanded nav row has no room for the box, so a magnifier button opens
+    // it as a panel under the nav instead. Phones (in the collapsed menu) and xl rows show the
+    // box inline and never see the button.
+    let panel = $state(false);
+    let toggle: HTMLButtonElement;
+    let form: HTMLFormElement;
+    let input: HTMLInputElement;
+
+    async function openPanel() {
+        panel = true;
+        await tick();
+        input.focus();
+    }
+
+    function closePanel(refocus: boolean) {
+        panel = false;
+        open = false;
+        active = -1;
+        if (refocus) toggle.focus();
+    }
+
+    // A click outside closes the panel; focus goes back to the button unless the click
+    // landed on something that takes focus itself.
+    function onDocumentClick(e: MouseEvent) {
+        const t = e.target as Element;
+        if (!panel || form.contains(t) || toggle.contains(t)) return;
+        closePanel(!t.closest?.('a, button, input, select, textarea, [tabindex]'));
+    }
 
     async function search(term: string) {
         ctrl?.abort();
@@ -96,12 +127,53 @@
         search(term);
     }
 
+    // Esc closes the panel. It is caught on window, in the capture phase: the panel is a
+    // .dropdown-menu, and Bootstrap's capture-phase keydown handler on document stops an Esc
+    // inside a menu (then fails, as this one has no data-bs-toggle) before the input sees it.
+    function onWindowKeydown(e: KeyboardEvent) {
+        if (e.key !== 'Escape' || !panel || !form.contains(e.target as Node)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        closePanel(true);
+    }
+
     function onfocusout(e: FocusEvent) {
-        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) open = false;
+        const to = e.relatedTarget as Node | null;
+        if (form.contains(to)) return;
+        open = false;
+        // tabbing out of the panel closes it (a click outside is onDocumentClick's)
+        if (panel && to && !toggle.contains(to)) panel = false;
     }
 </script>
 
-<form role="search" onsubmit={onsubmit} onfocusin={() => (open = true)} {onfocusout}>
+<svelte:document onclick={onDocumentClick} />
+<svelte:window onkeydowncapture={onWindowKeydown} />
+
+<!-- the nav's own button style: the phone menu toggle is btn-sm btn-outline-primary too -->
+<button
+    type="button"
+    class="btn btn-sm btn-outline-primary d-none d-sm-inline-block d-xl-none"
+    aria-label="Open search"
+    aria-expanded={panel}
+    aria-controls="site-search-form"
+    bind:this={toggle}
+    onclick={() => (panel ? closePanel(false) : openPanel())}
+>
+    <i class="bi bi-search" aria-hidden="true"></i>
+</button>
+<!-- inline on phones and xl rows; hidden from sm to lg until the button opens it as a
+     right-aligned dropdown panel under the nav. In the panel the input is w-auto, so its
+     size attribute sets the panel's width (~350px) -->
+<form
+    role="search"
+    id="site-search-form"
+    class={panel ? 'dropdown-menu dropdown-menu-end show p-2' : 'd-sm-none d-xl-block'}
+    data-bs-popper={panel ? 'none' : undefined}
+    bind:this={form}
+    onsubmit={onsubmit}
+    onfocusin={() => (open = true)}
+    {onfocusout}
+>
     <!-- 16px text (no zoom on focus) and 50px tall in the phone menu, 34px on a desktop row.
          The utilities pin it on every page: base.css, which GenericPage loads and the
          scoreboard does not, strips a navbar input's border and re-pads it -->
@@ -109,7 +181,8 @@
         type="search"
         id="site-search-input"
         class="form-control border px-3 py-2 py-xl-0 lh-lg"
-        size="16"
+        class:w-auto={panel}
+        size={panel ? 28 : 16}
         role="combobox"
         aria-label="Search"
         aria-autocomplete="list"
@@ -122,6 +195,7 @@
         enterkeyhint="search"
         {placeholder}
         bind:value={q}
+        bind:this={input}
         {oninput}
         {onkeydown}
     />
@@ -131,6 +205,8 @@
     <div
         class="dropdown-menu dropdown-menu-end w-100"
         class:show={showing}
+        class:position-static={panel}
+        class:border-0={panel}
         id="site-search-results"
         role="listbox"
         aria-label="Search results"

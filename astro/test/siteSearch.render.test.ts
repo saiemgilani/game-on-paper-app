@@ -34,6 +34,18 @@ describe('Header search', () => {
         expect(html).toContain('placeholder="Teams, players, games"');
     });
 
+    test('from sm to lg a magnifier button opens the same box as a panel; phones and xl show it inline', async () => {
+        const html = await render({ preview: true });
+        const button = html.match(/<button[^>]*aria-controls="site-search-form"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? '';
+        expect(button).toContain('class="btn btn-sm btn-outline-primary d-none d-sm-inline-block d-xl-none"');
+        expect(button).toContain('aria-label="Open search"');
+        expect(button).toContain('aria-expanded="false"');
+        expect(button).toContain('bi bi-search');
+        // one box, not a second copy for the panel: hidden from sm to lg until the button opens it
+        expect(html.match(/id="site-search-input"/g)).toHaveLength(1);
+        expect(html).toMatch(/<form[^>]*id="site-search-form"[^>]*class="d-sm-none d-xl-block"/);
+    });
+
     test('the placeholder leaves out players while player pages are off', async () => {
         const html = await render({ preview: true, flagOverrides: { 'player-pages': false } });
         expect(html).toContain('placeholder="Teams, games"');
