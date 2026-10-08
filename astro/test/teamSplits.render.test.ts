@@ -13,7 +13,7 @@ const fixture = (name: string) =>
 const rows: Record<string, any[]> = { cfb: fixture('cfb-333'), nfl: fixture('nfl-12') };
 
 // `override`, when set, is the whole row list the API returns (`[]` = no row for the team)
-const feed: { override: any[] | null; calls: any[] } = { override: null, calls: [] };
+const feed: { override: any[] | null; calls: any[]; order: string[] } = { override: null, calls: [], order: [] };
 
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
@@ -23,9 +23,16 @@ vi.mock('../src/resources/espn', async (orig) => ({
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveTeamSeasonInformation: async () => ({ team: null, events: [], record: '0-0' }),
-    retrievePlayerSummaries: async () => [],
+    // each player read takes a macrotask, so a tendency read that waits for them starts after one ends
+    retrievePlayerSummaries: async () => {
+        feed.order.push('player-start');
+        await new Promise((r) => setTimeout(r, 0));
+        feed.order.push('player-end');
+        return [];
+    },
     retrieveTeamSummaries: async () => [],
     retrieveTeamTendencies: async (req: any) => {
+        feed.order.push('tendency-start');
         feed.calls.push(req);
         return feed.override ?? rows[req.league];
     },
@@ -38,6 +45,7 @@ beforeAll(async () => {
 beforeEach(() => {
     feed.override = null;
     feed.calls = [];
+    feed.order = [];
 });
 
 async function render(league: 'cfb' | 'nfl', id: string, preview: boolean, query = '') {
@@ -101,6 +109,12 @@ describe.each([
     test('one request: the team\'s row, with the split columns', async () => {
         await render(league, id, true);
         expect(feed.calls).toEqual([{ season: 2025, league, columns: teamSplitColumns(league), teamId: Number(id) }]);
+    }, 60_000);
+
+    test('the tendency read starts before any player read finishes (no added round trip)', async () => {
+        await render(league, id, true);
+        expect(feed.order.indexOf('tendency-start')).toBeGreaterThanOrEqual(0);
+        expect(feed.order.indexOf('tendency-start')).toBeLessThan(feed.order.indexOf('player-end'));
     }, 60_000);
 });
 

@@ -57,11 +57,15 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         Astro.cache.set(false);
         return { notFound: true };
     }
+    // started before the player reads and awaited after them, so it overlaps them
+    // instead of adding a round trip; it never rejects ([] on any failure). Flag
+    // off: no request, and the player reads run exactly as before.
+    const tendencies = isFeatureEnabled('team-splits', Astro.locals)
+        ? retrieveTeamTendencies({ season: Number(year), league, columns: teamSplitColumns(league), teamId: Number(id) })
+        : undefined;
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
-    const teamTendency = isFeatureEnabled('team-splits', Astro.locals)
-        ? (await retrieveTeamTendencies({ season: Number(year), league, columns: teamSplitColumns(league), teamId: Number(id) }))[0]
-        : undefined;
+    const teamTendency = (await tendencies)?.[0];
     return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, teamTendency };
 }

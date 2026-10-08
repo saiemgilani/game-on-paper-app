@@ -60,10 +60,22 @@ describe('coach tendency reads', () => {
         expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/cfb/team_tendencies');
         expect(u.searchParams.get('season')).toBe('2023');
         expect(u.searchParams.has('role')).toBe(false);
+        // no teamId, no team filter: every team's row
+        expect(u.searchParams.has('pos_team_id')).toBe(false);
         expect(u.searchParams.get('limit')).toBe('400');
         const sel = select(u);
         for (const k of ['season', 'pos_team_id', 'pos_team', 'games', 'plays', 'drives', 'pass_rate']) expect(sel).toContain(k);
         expect(sel).not.toContain('coach');
+    });
+
+    test('team_tendencies with teamId: pos_team_id narrows the read to that team', async () => {
+        const sdv = await import('../src/resources/sdv');
+        await sdv.retrieveTeamTendencies({ season: 2025, league: 'nfl', columns: ['plays_d1'], teamId: 12 });
+        const u = only();
+        expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/nfl/team_tendencies');
+        expect(u.searchParams.get('season')).toBe('2025');
+        expect(u.searchParams.get('pos_team_id')).toBe('12');
+        expect(select(u)).toContain('plays_d1');
     });
 
     test('coach_careers: role=HC, no season, the career key columns', async () => {
