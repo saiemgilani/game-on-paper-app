@@ -5,8 +5,9 @@ import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
+import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, exportMeta = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -169,6 +170,28 @@ const geiVal = (Math.round((gei || 0) * 100) / 100)
 const geiPctl = geiGenerateColorRampValue(geiVal)
 const geiTitle = `%ile: ${getNumberWithOrdinal(geiPctl.pctl)}\nMost Boring: ${geiPctl.min}\nMedian: ${geiPctl.mid}\nMost Exciting: ${geiPctl.max}`;
 
+// The shareable image: title band, the chart on the page background, URL footer.
+// Colours and font are the page's, read when the chart drew (see generateChart), so the
+// band matches the chart's theme even if the system theme flipped since.
+function composeExport(src, meta, page) {
+    const dpr = window.devicePixelRatio || 1;
+    const pad = 16 * dpr, titleH = 30 * dpr, footH = 24 * dpr;
+    const out = document.createElement('canvas');
+    out.width = src.width + 2 * pad;
+    out.height = src.height + titleH + footH + 2 * pad;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = page.backgroundColor;
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.fillStyle = page.color;
+    // maxWidth: on a phone the title is wider than the chart, so the canvas narrows it to fit
+    ctx.font = `bold ${16 * dpr}px ${page.fontFamily}`;
+    ctx.fillText(meta.title, pad, pad + 18 * dpr, src.width);
+    ctx.drawImage(src, pad, pad + titleH);
+    ctx.font = `${11 * dpr}px ${page.fontFamily}`;
+    ctx.fillText(wpExportFooter(meta, (iso) => exportTime(iso)), pad, out.height - pad, src.width);
+    return out.toDataURL('image/png');
+}
+
 async function generateChart() {
     GradientFillLineController.id = 'GradientFillLineController';
     GradientFillLineController.defaults = LineController.defaults;
@@ -177,6 +200,9 @@ async function generateChart() {
     Chart.register(GradientFillLineController);
 
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // copied, not the live object: the export must keep the theme this chart drew in
+    const { backgroundColor, color, fontFamily } = getComputedStyle(document.body);
+    const exportStyle = { backgroundColor, color, fontFamily };
     // the page's colour decision for this theme when it made one ('game-colours'), else the legacy per-chart rule
     const pair = colors && (isDarkMode ? colors.dark : colors.light)
     const [awayTeamColor, homeTeamColor] = pair ? [hexToRgb(pair.away), hexToRgb(pair.home)] : adjustTeamColorsForContrast(awayTeam, homeTeam)
@@ -427,12 +453,8 @@ async function generateChart() {
 
     // a property, not a listener: a theme redraw must replace the handler bound to the old chart
     document.getElementById("wp-download").onclick = function() {
-        /*Get image of canvas element*/
-        var url_base64jp = wpChart.toBase64Image();
-        /*get download button (tag: <a></a>) */
         var a =  document.getElementById("wp-download");
-        /*insert chart image url to download button (tag: <a></a>) */
-        a.href = url_base64jp;
+        a.href = exportMeta ? composeExport(wpChart.canvas, exportMeta, exportStyle) : wpChart.toBase64Image();
     };
 }
 
@@ -486,7 +508,7 @@ if (document.readyState !== 'loading') {
                 | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            | <a id="wp-download" download={`game-wp-${id}.jpg`} href="#">Download Chart</a>
+            | <a id="wp-download" download={exportMeta ? `game-wp-${id}.png` : `game-wp-${id}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>

@@ -523,4 +523,17 @@ describe('chart islands serialize only the fields their charts read', () => {
             expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
         });
     }
+
+    test('v2: the WP chart gets its export title and canonical URL', () => {
+        const [wp] = islandProps(renders.v2, 'WinProbabilityChart');
+        const meta = wp.exportMeta[1];
+        expect(meta.url[1]).toBe(`https://gameonpaper.com/game/${GAME_ID}`);
+        expect(meta.title[1]).toBe('Abilene Christian 31 @ North Dakota State 51: Win Probability (Final)');
+        expect(meta.completed[1]).toBe(true);
+    });
+
+    test('classic: the WP chart keeps today\'s download, no export context', () => {
+        const [wp] = islandProps(renders.classic, 'WinProbabilityChart');
+        expect(wp).not.toHaveProperty('exportMeta');
+    });
 });
