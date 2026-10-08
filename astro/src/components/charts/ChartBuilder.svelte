@@ -5,7 +5,7 @@
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartLabelLayout, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricDirection, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -37,7 +37,9 @@
     let selectedSort = $state("x");
     let selectedFBSClassFilter = $state("all");
     let selectedConferenceFilter = $state("all");
-    let flipArrow = $derived((selectedSort == "x") ? shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX) : shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY))
+    // v2 ranks and flips by metricDirection, so its quadrant captions match the axes; the public builder is unchanged
+    const lowerIsBetter = (m: string) => v2 ? metricDirection(m) === 'lower' : shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
+    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY))
     let chartedPoints = $derived(
         points
             .filter((p) => (selectedFBSClassFilter == "all") || (selectedFBSClassFilter == p.fbs_class))
@@ -45,7 +47,9 @@
             .toSorted((a, b) => flipArrow ? (a[selectedSort] - b[selectedSort]) : (b[selectedSort] - a[selectedSort]))
     )
 
-    const yearRange = AVAILABLE_SEASONS.length > 1 ? `${AVAILABLE_SEASONS[0]} to ${AVAILABLE_SEASONS[AVAILABLE_SEASONS.length - 1]}` : `${AVAILABLE_SEASONS[0]}`
+    // v2 lists the league's own seasons (NFL from 2002), and the copy reads from the same list
+    const seasonList = v2 ? LEAGUES[league].seasons : AVAILABLE_SEASONS;
+    const yearRange = seasonList.length > 1 ? `${seasonList[0]} to ${seasonList[seasonList.length - 1]}` : `${seasonList[0]}`
 
     const availableMetricColumns = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS.filter(m => !["fbs_class", "valid_games", "team_id", "pos_team", "division", "conference", "season"].includes(m) && !m.endsWith("_rank"))
     let availableMetricCategories: Record<string, Record<string, string>> = {
@@ -80,20 +84,22 @@
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     let builderChart: Chart | null = null;
+    // v2: the canvas's medians and corner meanings as text, for screen readers
+    let summary = $state('');
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
-        const averageX = (chartedPoints.map((t: any) => parseFloat(t.x)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         const minX = Math.min(...chartedPoints.map((t: any) => t.x))
         const maxX = Math.max(...chartedPoints.map((t: any) => t.x))
-        const averageY = (chartedPoints.map((t: any) => parseFloat(t.y)).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         const minY = Math.min(...chartedPoints.map((t: any) => t.y))
         const maxY = Math.max(...chartedPoints.map((t: any) => t.y))
-        // v2 draws the MEDIAN crosshair (quadrants split the field in half); the public builder keeps its mean.
-        // A team with no value (null) is skipped by median(), never read as 0.
-        const centerX = v2 ? (median(chartedPoints.map((t: any) => t.x)) ?? averageX) : averageX;
-        const centerY = v2 ? (median(chartedPoints.map((t: any) => t.y)) ?? averageY) : averageY;
-        console.log(`X: avg - ${averageX}, min - ${minX}, max - ${maxX}`)
-        console.log(`Y: avg - ${averageY}, min - ${minY}, max - ${maxY}`)
+        // the public builder's mean, as on main (it drops zeros, so a column of zeros throws into the error note)
+        const mean = (k: 'x' | 'y') => (chartedPoints.map((t: any) => parseFloat(t[k])).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
+        // v2 draws the MEDIAN crosshair (quadrants split the field in half), and never computes the mean.
+        // A team with no value (null) is skipped by median(), never read as 0; a column of zeros has median 0.
+        const centerX = v2 ? (median(chartedPoints.map((t: any) => t.x)) ?? 0) : mean('x');
+        const centerY = v2 ? (median(chartedPoints.map((t: any) => t.y)) ?? 0) : mean('y');
+        console.log(`X: centre - ${centerX}, min - ${minX}, max - ${maxX}`)
+        console.log(`Y: centre - ${centerY}, min - ${minY}, max - ${maxY}`)
 
         const suggestedRange = {
             min: {
@@ -111,8 +117,15 @@
         const lineMultiplier = 0.125
         const xAdjust = 0.05
 
-        const shouldFlipYAxis = shouldInvertSortForMetric(selectedMetricY.includes("_def") ? "defensive" : "offensive", selectedMetricY);
-        const shouldFlipXAxis = shouldInvertSortForMetric(selectedMetricX.includes("_def") ? "defensive" : "offensive", selectedMetricX);
+        const shouldFlipYAxis = lowerIsBetter(selectedMetricY);
+        const shouldFlipXAxis = lowerIsBetter(selectedMetricX);
+        const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
+            metricDirection(selectedMetricX) !== null, metricDirection(selectedMetricY) !== null);
+        if (v2) {
+            summary = chartSummary(chartedPoints.filter((t: any) => Number.isFinite(t.x) && Number.isFinite(t.y)).length,
+                { title: generateTeamMetricTitle(selectedMetricX), median: formatNumberForMetric(selectedMetricX, centerX) },
+                { title: generateTeamMetricTitle(selectedMetricY), median: formatNumberForMetric(selectedMetricY, centerY) }, quadrants);
+        }
 
         const config: ChartConfiguration<'scatter'> = {
             type: 'scatter',
@@ -240,7 +253,7 @@
                     if (v2) {
                         const area = chart.chartArea;
                         const rows = chartLabelLayout(area, viewport);
-                        const q = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY));
+                        const q = quadrants;
                         const text = isDarkMode ? CHART_TEXT.dark : CHART_TEXT.light;
                         // the MEDIAN labels sit on a pill of the page background (as the drive chart labels its field),
                         // so a logo under one never makes it unreadable
@@ -518,7 +531,7 @@
         <div class="col-auto mb-3 d-flex align-items-center gap-2">
             <label class="form-label text-muted text-small mb-0" for="builder-season">Season</label>
             <select id="builder-season" class="form-select form-select-md w-auto" bind:value={formSeason}>
-                {#each LEAGUES[league].seasons as s}
+                {#each seasonList as s}
                     <option value={String(s)}>{s}</option>
                 {/each}
             </select>
@@ -545,8 +558,9 @@
     </form>
 </div>
 <div class="container mb-3" id="chart_container">
-    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800"></canvas>
+    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, false)} aria-describedby="chart-summary"></canvas>
 </div>
+<p class="visually-hidden" id="chart-summary">{summary}</p>
 {:else}
 <div class="container mb-3" id="chart_container">
     <canvas id="metric_chart_canvas" class="mb-3" style="display: block; box-sizing: border-box; height: 1200px; width: 800px;"  width="1200" height="800"></canvas>

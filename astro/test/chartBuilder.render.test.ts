@@ -6,6 +6,7 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { render as renderSvelte } from 'svelte/server';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { median, metricRail } from '../src/utils/chartBuilder';
+import { LEAGUES } from '../src/utils/league';
 
 // /charts/builder and its /nfl twin, rendered from real Data API rows: the cfb
 // 2026 builder read (Rice has a null red-zone pass value) and the nfl 2025 top-4.
@@ -135,6 +136,13 @@ describe('chart-builder-v2 on', () => {
         }
         expect(bar).toMatch(/<button type="button"[^>]*id="random-axes"[^>]*>Random<\/button>/);
         expect(bar).toMatch(/<button type="submit"[^>]*id="plot-chart"[^>]*>Plot<\/button>/);
+        // the season list and the "Available Seasons" copy come from the league's own seasons
+        const seasons = LEAGUES[league].seasons;
+        expect([...bar.matchAll(/<option value="(\d{4})"/g)].map((m) => Number(m[1]))).toEqual(seasons);
+        expect(html).toContain(`<strong>Available Seasons:</strong> ${seasons[0]} to ${seasons[seasons.length - 1]}`);
+        // the canvas is described by a visually hidden summary (filled in when the chart draws)
+        expect(html).toMatch(/<canvas id="metric_chart_canvas"[^>]*role="img"[^>]*aria-describedby="chart-summary"/);
+        expect(html).toContain('<p class="visually-hidden" id="chart-summary">');
         // the FBS group/conference filters stay below the chart, client-side
         expect(html.indexOf('Focus on:')).toBeGreaterThan(html.indexOf('id="chart_container"'));
     });

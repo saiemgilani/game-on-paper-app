@@ -14,12 +14,18 @@ export default async (page, base) => {
   await page.waitForTimeout(800);
   await page.selectOption('#builder-y', 'success_def');
   await page.waitForTimeout(800);
-  await page.click('#random-axes');
-  await page.waitForTimeout(1200);
+  // Random promises two different metrics, not a new pair: press again while it lands on the pair
+  // already picked or the one loaded (Plot must change the URL)
+  const pair = async () => [await page.inputValue('#builder-x'), await page.inputValue('#builder-y')];
+  let [x, y] = ['success_off', 'success_def'];
+  for (let i = 0; i < 10 && ((x === 'success_off' && y === 'success_def') || (x === 'adj_off_epa' && y === 'adj_def_epa')); i++) {
+    await page.click('#random-axes');
+    await page.waitForTimeout(i === 0 ? 1200 : 200);
+    [x, y] = await pair();
+  }
   if (page.url() !== loaded) throw new Error('a select or Random navigated before Plot');
-  const x = await page.inputValue('#builder-x');
-  const y = await page.inputValue('#builder-y');
-  if (x === y || (x === 'success_off' && y === 'success_def')) throw new Error(`Random did not pick new axes: ${x}, ${y}`);
+  if (x === y) throw new Error(`Random put ${x} on both axes`);
+  if (x === 'adj_off_epa' && y === 'adj_def_epa') throw new Error('Random kept the loaded pair ten times');
   const titles = await page.evaluate(() => ['#builder-x', '#builder-y'].map((s) => document.querySelector(s).selectedOptions[0].text));
 
   await Promise.all([page.waitForURL((u) => u.toString() !== loaded, { timeout: 90_000 }), page.click('#plot-chart')]);
@@ -28,7 +34,11 @@ export default async (page, base) => {
   const got = new URL(page.url());
   const want = new URL(base + `/charts/builder?season=2025&x=${x}&y=${y}`);
   if (got.pathname + got.search !== want.pathname + want.search) throw new Error(`not the canonical URL: ${got.pathname}${got.search}`);
-  if ((await chart()).equals(before)) throw new Error('the chart did not redraw');
+  // a random pair can be one the season has no values for: then the chart is one line of text, not a canvas
+  const empty = page.locator('#chart-empty');
+  if (await empty.count()) {
+    if (!/^No data for .+ in 2025\.$/.test(await empty.innerText())) throw new Error(`unexpected empty state: ${await empty.innerText()}`);
+  } else if ((await chart()).equals(before)) throw new Error('the chart did not redraw');
   const head = await page.locator('#points_table thead').innerText();
   if (!titles.every((t) => head.includes(t))) throw new Error(`the table is not titled ${titles.join(' / ')}: ${head}`);
   await page.locator('#points_table').scrollIntoViewIfNeeded();

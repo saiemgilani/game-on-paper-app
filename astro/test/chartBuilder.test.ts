@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { FLAGS, isFeatureEnabled } from '../src/utils/features';
-import { builderUrl, chartLabelLayout, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { builderUrl, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricDirection, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
 // The Data API's real 2026 cfb rows for x=red_zone_success_off_pass&y=success_off (fixtures/README.md):
@@ -68,6 +68,44 @@ describe('chart builder helpers', () => {
             expect(rail.has(x) && rail.has(y)).toBe(true);
             expect(x).not.toBe(y);
         }
+    });
+
+    test('metricDirection: lower-is-better metrics, their _pass/_rush variants, takeaways, and style columns', () => {
+        // giveaways are bad for an offense; a defense's turnovers are takeaways
+        expect(metricDirection('turnovers_off')).toBe('lower');
+        expect(metricDirection('turnovers_def')).toBe('higher');
+        expect(metricDirection('turnover_margin')).toBe('higher');
+        expect(metricDirection('adj_off_epa')).toBe('higher');
+        expect(metricDirection('adj_def_epa')).toBe('lower');
+        expect(metricDirection('havoc_off')).toBe('lower');
+        expect(metricDirection('havoc_def_pass')).toBe('higher');
+        expect(metricDirection('play_stuffed_off_rush')).toBe('lower');
+        expect(metricDirection('third_down_distance_off_rush')).toBe('lower');
+        expect(metricDirection('third_down_distance_def_pass')).toBe('higher');
+        expect(metricDirection('pts_per_opp_def')).toBe('lower');
+        for (const m of ['passrate_off', 'rushrate_def', 'plays_def_pass', 'drivesgame_off_rush', 'playsdrive_off', 'off_strength_faced', 'def_strength_faced']) {
+            expect(metricDirection(m)).toBeNull();
+        }
+        // every rail metric gets an answer
+        for (const m of metricRail().flatMap((f) => f.metrics)) expect([null, 'higher', 'lower']).toContain(metricDirection(m.key));
+    });
+
+    test('quadrantLabels for a lower-is-better metric: its axis is flipped, so Better still reads up and right', () => {
+        // v2 reverses an axis exactly when metricDirection says lower, so the caption follows the direction
+        expect(metricDirection('turnovers_off')).toBe('lower');
+        expect(quadrantLabels('Off Turnovers', 'Def Adj EPA/Play').topRight).toBe('Better Def Adj EPA/Play / Better Off Turnovers');
+        // a style column has no better side: High/Low on the unflipped scale
+        expect(quadrantLabels('Off Turnovers', 'Off Pass Rate', true, false)).toEqual({
+            topRight: 'High Off Pass Rate / Better Off Turnovers', topLeft: 'High Off Pass Rate / Worse Off Turnovers',
+            bottomRight: 'Low Off Pass Rate / Better Off Turnovers', bottomLeft: 'Low Off Pass Rate / Worse Off Turnovers',
+        });
+    });
+
+    test('chartSummary: the medians and corner meanings as one sentence for screen readers', () => {
+        const q = quadrantLabels('Off Adj EPA/Play', 'Def Adj EPA/Play');
+        expect(chartSummary(136, { title: 'Off Adj EPA/Play', median: '0.01' }, { title: 'Def Adj EPA/Play', median: '-0.01' }, q)).toBe(
+            '136 teams. Median Off Adj EPA/Play: 0.01. Median Def Adj EPA/Play: -0.01. '
+            + 'Top right: Better Def Adj EPA/Play / Better Off Adj EPA/Play. Bottom left: Worse Def Adj EPA/Play / Worse Off Adj EPA/Play.');
     });
 
     test('quadrantLabels: better is up and right, because the builder flips axes that way', () => {
