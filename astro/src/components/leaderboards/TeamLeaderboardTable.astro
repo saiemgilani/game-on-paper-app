@@ -10,14 +10,14 @@ interface Props {
     season: number
     category: string
     metric: string
-    dataVersion?: string // the freshness stamp the page shows: rows are read under it
+    rows?: SDVTeamSummary[] // a stamped page reads its rows itself (pinned to its stamp)
 }
 
-const { season, category, metric, dataVersion } = Astro.props;
+const { season, category, metric, rows } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
-let content: SDVTeamSummary[] = await retrieveTeamSummaries({ season, category, maxLookback: season, league: Astro.locals.league, version: dataVersion });
+let content: SDVTeamSummary[] = rows ?? await retrieveTeamSummaries({ season, category, maxLookback: season, league: Astro.locals.league });
 content = content.filter(p => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"

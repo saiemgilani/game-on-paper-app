@@ -1,6 +1,6 @@
 ---
 import FreshnessStamp from "../FreshnessStamp.astro";
-import { sdvIngestStamp } from "../../resources/sdv";
+import { retrieveTeamSummaries, sdvIngestStamp, sdvPin } from "../../resources/sdv";
 import { freshnessStamp } from "../../utils/freshness";
 import { isFeatureEnabled } from "../../utils/features";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
@@ -19,10 +19,14 @@ interface Props {
 let { season, category, metric } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
-const stamp = isFeatureEnabled('freshness-stamps', Astro.locals) ? freshnessStamp(await sdvIngestStamp(league, 'team_summaries')) : null;
 const AVAILABLE_SEASONS = cfg.seasons;
 category = category || "differential";
 metric = metric || "net_adj_epa";
+// A stamped render reads its rows here, pinned to the stamp; any read that cannot confirm
+// that stamp clears the pin and the render shows none (the rows still render).
+const pin = isFeatureEnabled('freshness-stamps', Astro.locals) ? sdvPin(await sdvIngestStamp(league, 'team_summaries')) : undefined;
+const rows = pin ? await retrieveTeamSummaries({ season, category, maxLookback: season, league, pin }) : undefined;
+const stamp = pin?.held ? freshnessStamp(pin.version) : null;
 
 const categoryTitle = category == "differential" ? "Net" : toTitleCase(category.replace("-", " "));
 // Title, H1 and description carry the words people actually search -- "EPA per
@@ -63,5 +67,5 @@ const breadcrumbs: PageBreadcrumb[] = [
             </div>
         </div>
     </div>
-    <TeamLeaderboardTable season={season} category={category} metric={metric} dataVersion={stamp?.iso} />
+    <TeamLeaderboardTable season={season} category={category} metric={metric} rows={rows} />
 </GenericPage>

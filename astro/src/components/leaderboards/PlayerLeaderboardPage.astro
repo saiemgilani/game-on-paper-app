@@ -1,6 +1,6 @@
 ---
 import FreshnessStamp from "../FreshnessStamp.astro";
-import { sdvIngestStamp } from "../../resources/sdv";
+import { retrievePlayerSummaries, sdvIngestStamp, sdvPin, type SummaryType } from "../../resources/sdv";
 import { freshnessStamp } from "../../utils/freshness";
 import { isFeatureEnabled } from "../../utils/features";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
@@ -9,7 +9,7 @@ import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
 import { PLAYER_LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
-import { PLAYER_STAT_MINIMUMS } from "../../utils/players";
+import { PLAYER_STAT_MINIMUMS, playerBoardSort } from "../../utils/players";
 
 interface Props {
     season: number
@@ -23,7 +23,12 @@ const cfg = LEAGUES[league];
 const AVAILABLE_SEASONS = cfg.seasons;
 category = category || "passing";
 metric = metric || "EPAplay";
-const stamp = isFeatureEnabled('freshness-stamps', Astro.locals) ? freshnessStamp(await sdvIngestStamp(league, category)) : null;
+// A stamped render reads its rows here, pinned to the stamp; any read that cannot confirm
+// that stamp clears the pin and the render shows none (the rows still render).
+const pin = isFeatureEnabled('freshness-stamps', Astro.locals) ? sdvPin(await sdvIngestStamp(league, category)) : undefined;
+const { sortBy, ranked } = playerBoardSort(metric);
+const rows = pin ? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, ranked, 150, season, league, pin) : undefined;
+const stamp = pin?.held ? freshnessStamp(pin.version) : null;
 
 const categoryTitle = toTitleCase(category);
 const copy = PLAYER_LEADERBOARD_COPY[category] ?? PLAYER_LEADERBOARD_COPY.passing;
@@ -69,5 +74,5 @@ const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
             </div>
         </div>
     </div>
-    <PlayerLeaderboardTable season={season} category={category} metric={metric} dataVersion={stamp?.iso} />
+    <PlayerLeaderboardTable season={season} category={category} metric={metric} rows={rows} />
 </GenericPage>

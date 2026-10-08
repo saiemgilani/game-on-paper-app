@@ -2,6 +2,7 @@
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue, isTeamFavorite, STANDARD_THEME_COLOR, formatRank } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { retrievePlayerSummaries, type SDVPlayerSummary, SummaryType }  from '../../resources/sdv';
+import { playerBoardSort } from '../../utils/players';
 import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerLink from '../player/PlayerLink.astro';
@@ -11,14 +12,13 @@ interface Props {
     season: number
     category: string
     metric: string
-    dataVersion?: string // the freshness stamp the page shows: rows are read under it
+    rows?: SDVPlayerSummary[] // a stamped page reads its rows itself (pinned to its stamp)
 }
 
-const { season, category, metric, dataVersion } = Astro.props;
-const sortBy = ["comp", "dropbacks", "plays", "targets"].includes(metric) ? metric : `${metric}_rank`;
-const isMetricRanked = sortBy.endsWith("_rank")
+const { season, category, metric, rows } = Astro.props;
+const { sortBy, ranked: isMetricRanked } = playerBoardSort(metric);
 
-let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league, dataVersion);
+let content: SDVPlayerSummary[] = rows ?? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league);
 content = content.filter((p: any) => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"

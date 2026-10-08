@@ -10,6 +10,7 @@ const META = 'https://data.sportsdataverse.org/v1/meta';
 const TABLE_URL = 'percentiles?season=2025&pctile=50';
 const seen: string[] = [];
 let meta: () => Response;
+let tableStatus = 200;
 const store = new Map<string, { value: string; expires: number }>();
 const gets: string[] = [];
 const puts: { key: string; ttl?: number }[] = [];
@@ -18,7 +19,8 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string) => {
         seen.push(String(url));
-        return String(url) === META ? meta() : new Response(JSON.stringify({ data: [{ pctile: 50 }] }), { status: 200 });
+        if (String(url) === META) return meta();
+        return tableStatus === 200 ? new Response(JSON.stringify({ data: [{ pctile: 50 }] }), { status: 200 }) : new Response('down', { status: tableStatus });
     },
 }));
 vi.mock('cloudflare:workers', () => {
@@ -53,6 +55,7 @@ beforeEach(() => {
     vi.setSystemTime(new Date('2026-09-27T12:00:00Z'));
     seen.length = 0; gets.length = 0; puts.length = 0; store.clear();
     meta = stamped('2026-09-27T12:05:07+00:00');
+    tableStatus = 200;
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -104,27 +107,39 @@ describe('SDV_API_CACHE key carries the table ingest stamp', () => {
         expect(metaCalls()).toBe(1); // the stamp rides the read's meta fetch, never its own
     });
 
-    test('a pinned read (the stamp a page showed) keys by that stamp and caches when no ingest landed', async () => {
+    test('a pinned read (the stamp a page will show) keys by it, caches, and holds when no ingest landed', async () => {
         const sdv = await load();
-        const shown = await sdv.sdvIngestStamp('cfb', 'percentiles');
-        await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', shown);
+        const pin = sdv.sdvPin(await sdv.sdvIngestStamp('cfb', 'percentiles'))!;
+        await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', pin);
         const key = await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`);
         expect(tableKey()).toBe(key);
         expect(puts.some(p => p.key === key)).toBe(true);
+        expect(pin.held).toBe(true); // the page keeps its stamp
         expect(metaCalls()).toBe(2); // the stamp's read, then one fresh check after the live fetch
     });
 
-    test('an ingest that lands during a pinned miss is served but never cached under the older stamp', async () => {
+    test('an ingest that lands during a pinned miss: rows served, never cached under the stamp, pin dropped', async () => {
         const sdv = await load();
-        const shown = await sdv.sdvIngestStamp('cfb', 'percentiles');
-        // a newer ingest commits after the page took its stamp; the in-memory meta still says `shown`
+        const pin = sdv.sdvPin(await sdv.sdvIngestStamp('cfb', 'percentiles'))!;
+        // a newer ingest commits after the page took its stamp; the in-memory meta still has the old one
         meta = stamped('2026-09-28T15:00:00+00:00');
-        const rows = await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', shown);
+        const rows = await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', pin);
         expect(rows).toEqual([{ pctile: 50 }]);
         const key = await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`);
-        expect(tableKey()).toBe(key); // looked up under the stamp shown
+        expect(tableKey()).toBe(key); // looked up under the stamp
         expect(puts.some(p => p.key === key)).toBe(false); // newer rows never stored under it
-        expect(metaCalls()).toBe(2);
+        expect(pin.held).toBe(false); // so the page shows no stamp beside them
+    });
+
+    test('a pinned read that fails cannot confirm its stamp either', async () => {
+        const sdv = await load();
+        const pin = sdv.sdvPin('2026-09-27T12:05:07+00:00')!;
+        meta = stamped('2026-09-27T12:05:07+00:00');
+        const failing = vi.spyOn(console, 'error').mockImplementation(() => {});
+        tableStatus = 503; // the table read fails; meta answers normally
+        expect(await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', pin)).toEqual([]);
+        expect(pin.held).toBe(false);
+        failing.mockRestore();
     });
 
     test('an unpinned (public) read never makes the fresh check', async () => {

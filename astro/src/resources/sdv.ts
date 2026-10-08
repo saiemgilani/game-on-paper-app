@@ -625,9 +625,16 @@ export class SDVRequestError extends Error {
     }
 }
 
-// `version` pins the ingest stamp a stamped page already showed (one meta snapshot per
-// render), so its rows are read under exactly that stamp; without it, meta is asked here.
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, league: League = 'cfb', strict = false, version?: string): Promise<any> {
+/**
+ * One stamped render's pin (utils/freshness.ts): every read in the render is keyed by
+ * `version`, the ingest stamp the page will show, and any read that cannot confirm its rows
+ * belong to that stamp clears `held`, so the render drops its stamp (the rows still render).
+ */
+export interface SdvPin { version: string; held: boolean }
+export const sdvPin = (version: string | undefined): SdvPin | undefined => version ? { version, held: true } : undefined;
+
+// `pin` replaces the meta lookup for a stamped render; without it, meta is asked here.
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, league: League = 'cfb', strict = false, pin?: SdvPin): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
@@ -640,7 +647,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
 
     // cfb keeps its historical cache keys; other leagues are namespaced
     const unversioned = league === 'cfb' ? endpointURL : `${league}/${endpointURL}`;
-    const stamp = cacheEnabled ? (version ?? await sdvIngestStamp(league, endpoint)) : undefined;
+    const stamp = cacheEnabled ? (pin?.version ?? await sdvIngestStamp(league, endpoint)) : undefined;
     const cacheKey = await generateSDVCacheKey(stamp ? `${unversioned}#${stamp}` : unversioned);
 
     // check cache first
@@ -675,10 +682,12 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         // it always carries `espn_id` -- an `{ error }`/`{ detail }` body never does.
         const cacheable = cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined);
         // The Data API takes no as-of version, so a pinned read that missed may have fetched
-        // rows from an ingest newer than its stamp. It caches only if a fresh meta read still
-        // shows that stamp; otherwise the rows serve this render but are never stored under it.
-        if (cacheable && version && (await fetchSDVDatasets(true))?.[`${league}.${endpoint}`] !== version) {
-            console.warn(`SDV ingest moved during a pinned read, not cached: ${endpointURL}`)
+        // rows from an ingest newer than its stamp. It holds only if a fresh meta read still
+        // shows that stamp; otherwise the rows serve this render, are never stored under the
+        // stamp, and the render drops its stamp.
+        if (pin && !(cacheable && (await fetchSDVDatasets(true))?.[`${league}.${endpoint}`] === pin.version)) {
+            pin.held = false;
+            console.warn(`SDV pinned read could not confirm its stamp, not cached: ${endpointURL}`)
         } else if (cacheable) {
             console.info(`SDV API cache update: ${endpointURL}`)
             await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
@@ -688,6 +697,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         return content;
     } catch (e) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
+        if (pin) pin.held = false;
         if (strict) throw e
         return {
             "data": []
@@ -729,7 +739,7 @@ export async function retrieveQaSeason(season: number, league: League = 'cfb'): 
     }
 }
 
-export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb', version?: string): Promise<SDVSeasonPercentile[]> {
+export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb', pin?: SdvPin): Promise<SDVSeasonPercentile[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !percentile) {
         console.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
@@ -747,7 +757,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
         }
    
 
-        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, league, false, version);
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, league, false, pin);
         return content.data;
     } catch (err) {
         console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
@@ -759,7 +769,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
         } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < maxLookback)) {
             return [];
         } else {
-            return await retrievePercentiles(season - 1, percentile, maxLookback, league, version);
+            return await retrievePercentiles(season - 1, percentile, maxLookback, league, pin);
         }
     }
 }
@@ -812,9 +822,9 @@ export interface SDVTeamSummaryRequest {
     fbs_class?: string
     maxLookback?: number
     league?: League
-    version?: string // the ingest stamp a stamped page showed; see requestSDV
+    pin?: SdvPin // a stamped render's pin; see requestSDV
 }
-export async function retrieveTeamSummaries({ season, week, fbs_class, category, team_id, columns, maxLookback, league = 'cfb', version }: SDVTeamSummaryRequest): Promise<SDVTeamSummary[]> {
+export async function retrieveTeamSummaries({ season, week, fbs_class, category, team_id, columns, maxLookback, league = 'cfb', pin }: SDVTeamSummaryRequest): Promise<SDVTeamSummary[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !category && !team_id) {
         console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
@@ -863,7 +873,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     payload["limit"] = 150;
 
     try {        
-        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league, false, version);
+        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league, false, pin);
         return content.data;
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
@@ -875,12 +885,12 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
         } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < (maxLookback || SDV_MAX_LOOKBACK_YEAR))) {
             return [];
         } else {
-            return await retrieveTeamSummaries({ season: (season - 1), category, week, team_id, columns, maxLookback, league, version });
+            return await retrieveTeamSummaries({ season: (season - 1), category, week, team_id, columns, maxLookback, league, pin });
         }
     }
 }
 
-export async function retrievePlayerSummaries(season: number, category: SummaryType, team_id?: string | number | null, sortBy?: string, ascending: boolean = false, limit: number = 150, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb', version?: string): Promise<SDVPlayerSummary[]> {
+export async function retrievePlayerSummaries(season: number, category: SummaryType, team_id?: string | number | null, sortBy?: string, ascending: boolean = false, limit: number = 150, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb', pin?: SdvPin): Promise<SDVPlayerSummary[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !category) {
         console.error(`failed to retreive remote league data, must provide 'year' AND/OR 'type'`)
@@ -905,7 +915,7 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     try {        
         let content: SDVAPIResponse<SDVPlayerSummary>;
         if (Object.values(SummaryType).includes(category)) {
-            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league, false, version);
+            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league, false, pin);
         } else {
             throw Error(`Category '${category}' not implemented`)
         }
@@ -920,7 +930,7 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
         } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < maxLookback)) {
             return [];
         } else {
-            return await retrievePlayerSummaries((season - 1), category, team_id, sortBy, ascending, limit, maxLookback, league, version);
+            return await retrievePlayerSummaries((season - 1), category, team_id, sortBy, ascending, limit, maxLookback, league, pin);
         }
     }
 }

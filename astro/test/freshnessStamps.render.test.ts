@@ -12,13 +12,16 @@ const h = vi.hoisted(() => ({
     datasets: {} as Record<string, string>,
     asked: [] as string[],
     teamArgs: [] as any[], playerArgs: [] as any[][], pctArgs: [] as any[][],
+    // an ingest landing mid-render: the nth read of the render cannot confirm its pin
+    reads: 0, moveAt: 0,
 }));
+const read = (pin: any) => { h.reads += 1; if (pin && h.reads === h.moveAt) pin.held = false; return []; };
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     sdvIngestStamp: async (league: string, table: string) => { h.asked.push(`${league}.${table}`); return h.datasets[`${league}.${table}`]; },
-    retrieveTeamSummaries: async (req: any) => { h.teamArgs.push(req); return []; },
-    retrievePlayerSummaries: async (...a: any[]) => { h.playerArgs.push(a); return []; },
-    retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); return []; },
+    retrieveTeamSummaries: async (req: any) => { h.teamArgs.push(req); return read(req.pin); },
+    retrievePlayerSummaries: async (...a: any[]) => { h.playerArgs.push(a); return read(a[8]); },
+    retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); return read(a[4]); },
 }));
 
 const DATASETS = {
@@ -30,7 +33,7 @@ const DATASETS = {
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-beforeEach(() => { h.datasets = { ...DATASETS }; for (const a of [h.asked, h.teamArgs, h.playerArgs, h.pctArgs]) a.length = 0; });
+beforeEach(() => { h.datasets = { ...DATASETS }; h.reads = 0; h.moveAt = 0; for (const a of [h.asked, h.teamArgs, h.playerArgs, h.pctArgs]) a.length = 0; });
 
 async function page(path: string, props: Record<string, unknown>, locals: Partial<App.Locals>) {
     const { default: Page } = await import(path);
@@ -47,14 +50,16 @@ describe('leaderboard freshness stamps', () => {
         expect(html).toContain('Last updated: <abbr');
         expect(html).toContain('<time datetime="2026-09-26T13:14:00Z">Sep 26, 2026, 9:14 AM ET</time>');
         expect(h.asked).toEqual(['cfb.team_summaries']);
-        // one meta snapshot: the rows are read under exactly the stamp shown
-        expect(h.teamArgs.at(-1).version).toBe('2026-09-26T13:14:00Z');
+        // the page reads the rows itself, pinned to the stamp, and the pin held
+        expect(h.teamArgs).toHaveLength(1);
+        expect(h.teamArgs[0].pin).toEqual({ version: '2026-09-26T13:14:00Z', held: true });
     }, 60_000);
     test('preview: the player board stamps from its own category table', async () => {
         const html = await page(PLAYERS, { season: 2025, category: 'passing', metric: 'EPAplay' }, { preview: true });
         expect(html).toContain('<time datetime="2026-09-25T10:00:00Z">Sep 25, 2026, 6:00 AM ET</time>');
         expect(h.asked).toEqual(['cfb.passing']);
-        expect(h.playerArgs.at(-1)!.at(-1)).toBe('2026-09-25T10:00:00Z');
+        expect(h.playerArgs).toHaveLength(1);
+        expect(h.playerArgs[0][8]).toEqual({ version: '2026-09-25T10:00:00Z', held: true });
     }, 60_000);
     test('preview: the NFL team board reads the nfl key', async () => {
         const html = await page(TEAMS, teamProps, { preview: true, league: 'nfl' });
@@ -66,13 +71,13 @@ describe('leaderboard freshness stamps', () => {
         const html = await page(PLAYERS, { season: 2025, category: 'rushing', metric: 'EPAplay' }, { preview: true });
         expect(html).not.toContain('Last updated:');
         expect(html).toContain('Rushing');
-        expect(h.playerArgs.at(-1)!.at(-1)).toBeUndefined(); // the read asks meta itself, as today
+        expect(h.playerArgs.at(-1)![8]).toBeUndefined(); // the table reads unpinned, as today
     }, 60_000);
     test('public: no stamp, and meta is not even asked', async () => {
         const html = await page(TEAMS, teamProps, {});
         expect(html).not.toContain('Last updated:');
         expect(h.asked).toEqual([]);
-        expect(h.teamArgs.at(-1).version).toBeUndefined();
+        expect(h.teamArgs.at(-1).pin).toBeUndefined();
     }, 60_000);
 });
 
@@ -83,16 +88,40 @@ describe('national trends stamp', () => {
         // client:only islands serialize their props; the chart receives the stamp text
         expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;Sep 20, 2026, 12:00 AM ET&quot;\]/);
         expect(h.asked).toEqual(['cfb.percentiles']);
-        // all five percentile reads share the stamp's snapshot, so the chart never mixes versions
+        // all five percentile reads share one pin, and it held
         expect(h.pctArgs).toHaveLength(5);
-        for (const a of h.pctArgs) expect(a.at(-1)).toBe('2026-09-20T04:00:00Z');
+        expect(new Set(h.pctArgs.map((a) => a[4])).size).toBe(1);
+        expect(h.pctArgs[0][4]).toEqual({ version: '2026-09-20T04:00:00Z', held: true });
     }, 60_000);
     test('public: no stamp, and the island props carry no freshness key', async () => {
         const html = await page(TRENDS, { league: 'cfb' }, {});
         expect(html).not.toContain('Last updated:');
         expect(html).not.toContain('&quot;freshness&quot;');
         expect(h.asked).toEqual([]);
-        for (const a of h.pctArgs) expect(a.at(-1)).toBeUndefined();
+        for (const a of h.pctArgs) expect(a[4]).toBeUndefined();
+    }, 60_000);
+});
+
+describe('an ingest landing mid-render drops the stamp (the rows still render)', () => {
+    test('team board: no stamp, and the rows the page read are the ones rendered', async () => {
+        h.moveAt = 1;
+        const html = await page(TEAMS, teamProps, { preview: true });
+        expect(html).not.toContain('Last updated:');
+        expect(html).toContain('2025 Net Team Rankings');
+        expect(h.teamArgs).toHaveLength(1); // the table renders the page's rows, no second read
+    }, 60_000);
+    test('player board: no stamp', async () => {
+        h.moveAt = 1;
+        const html = await page(PLAYERS, { season: 2025, category: 'passing', metric: 'EPAplay' }, { preview: true });
+        expect(html).not.toContain('Last updated:');
+        expect(h.playerArgs).toHaveLength(1);
+    }, 60_000);
+    test('trends: one of the five reads moving drops the stamp for the whole render, canvas included', async () => {
+        h.moveAt = 3;
+        const html = await page(TRENDS, { league: 'cfb' }, { preview: true });
+        expect(html).not.toContain('Last updated:');
+        expect(html).not.toContain('&quot;freshness&quot;');
+        expect(h.pctArgs).toHaveLength(5);
     }, 60_000);
 });
 
