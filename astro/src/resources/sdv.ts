@@ -1144,6 +1144,49 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     }
 }
 
+/**
+ * One team-game row of `{league}.team_opponent_splits`: the team's offense in
+ * that game. CFB covers every game (FCS opponents and the postseason included)
+ * and names the opponent; the NFL table is regular season only, with no name.
+ */
+export interface SDVTeamOpponentSplit {
+    season: number
+    season_type: number
+    week: number
+    game_id: number
+    team_id: number
+    opponent_id: number
+    opponent?: string
+    is_home: boolean
+    points_for: number | null
+    points_against: number | null
+    plays: number | null
+    epa_per_play: number | null
+    success_rate: number | null
+}
+
+/**
+ * Both sides of every game a team played in a season: its own rows (`team`) and
+ * its opponents' rows against it (`opponent`), whose rates are what it allowed.
+ * Either read failing is null, never a half-empty pair: a missing side would draw
+ * bars with no margin and pass for a complete season.
+ */
+export async function retrieveTeamOpponentSplits(season: number, teamId: string | number, league: League = 'cfb'): Promise<{ team: SDVTeamOpponentSplit[], opponent: SDVTeamOpponentSplit[] } | null> {
+    if (!LEAGUES[league].sdvEnabled) return null;
+    const read = async (key: 'team_id' | 'opponent_id'): Promise<SDVTeamOpponentSplit[]> => {
+        const content = await requestSDV('team_opponent_splits', new URLSearchParams({ season: String(season), [key]: String(teamId) }), undefined, 60 * 60 * 24 * 3, true, league, true);
+        if (!Array.isArray(content?.data)) throw new Error(`no data array for ${key}=${teamId}`);
+        return content.data;
+    };
+    try {
+        const [team, opponent] = await Promise.all([read('team_id'), read('opponent_id')]);
+        return { team, opponent };
+    } catch (e) {
+        console.error(`ERROR while loading team_opponent_splits (${league} ${season} ${teamId}): ${e}`);
+        return null;
+    }
+}
+
 // ---- head-coach tendencies ------------------------------------------------
 // Three season tables the nfl-data / cfb-data producers build from the same
 // play-by-play as team_summaries, sharing one metric vocabulary: team_tendencies
