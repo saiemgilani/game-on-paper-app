@@ -80,10 +80,12 @@ function handleMetricRows(rowKey: string): string {
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
         });
     } else if (item == "avg_start_ep") {
-        // EP of the drive starts; a team with no drive in the window is absent, not 0
-        teamBoxScores.forEach((teamData: any) => {
-            result += `<td class="numeral" style="text-align: center;">${formatNumber(teamData[item], 2)}</td>`;
-        });
+        // EP of the drive starts, one cell per header team: a team with no drive in
+        // the window (null, or no row at all) gets a dash, not 0
+        for (const team of groups) {
+            const teamData = teamBoxScores.find((row: any) => String(row[teamKey]) === team) as any;
+            result += `<td class="numeral" style="text-align: center;">${formatNumber(teamData?.[item], 2)}</td>`;
+        }
     } else if (["drive_total_gained_yards_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
             let val = teamData[item] || 0;

@@ -71,4 +71,14 @@ describe('Drives table: drive-start EP', () => {
         });
         expect(parseTable(html).rows.find((r) => r[0] === LABEL)!.slice(1)).toEqual(['—', '2.41']);
     }, 60_000);
+
+    test('a team with no drives row under a header from another section still gets its own cell', async () => {
+        const Table = (await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any;
+        const html = await container.renderToString(Table, {
+            props: { title: 'Drives', league: 'cfb', teamKey: 'pos_team', season: 2016, columns: ['drives.avg_start_ep'], useSuffix: false, decimalPoints: 2,
+                box: { team: [{ pos_team: 2117 }, { pos_team: 197 }], drives: [{ pos_team: 197, avg_start_ep: 2.4128 }] } },
+            locals: locals('cfb'),
+        });
+        expect(parseTable(html).rows.find((r) => r[0] === LABEL)!.slice(1)).toEqual(['—', '2.41']);
+    }, 60_000);
 });
