@@ -76,7 +76,8 @@ describe.each([
 
         const tag = islandTag(html);
         expect(tag, 'island').toBeTruthy();
-        expect(tag).toContain('client="visible"');
+        // idle, not visible: a full-page capture never scrolls it into view, so it would stay blank
+        expect(tag).toContain('client="idle"');
         const props = propsOf(tag!);
         expect(Object.keys(props).sort()).toEqual(['colors', 'epaAvg', 'epaBars', 'successAvg', 'successBars']);
         const splits = splitsOf(league), events = eventsOf(league);

@@ -24,7 +24,7 @@ const colors = { light: { bar: light.home, line: light.away }, dark: { bar: dark
 <GenericPanel id="vs-opponent" title="Results by Opponent" show={true}>
     <p slot="panel-subtitle" class="text-muted text-small m-0">Margin is the team's number minus its opponent's in that game. The dashed line is the season average, weighted by plays. {league === 'cfb' ? 'Data shown is from every game, FCS opponents and the postseason included.' : 'Data shown is from regular season games only.'}</p>
     <div slot="panel-body">
-        <OpponentBarChart client:visible
+        <OpponentBarChart client:idle
             epaBars={opponentBars(splits, events, 'epa_per_play')}
             successBars={opponentBars(splits, events, 'success_rate')}
             epaAvg={opponentAverages(splits, 'epa_per_play')}

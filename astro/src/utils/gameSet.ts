@@ -40,6 +40,10 @@ export interface OpponentBar {
     margin: number | null
 }
 
+// what the chart is handed: six decimals, where the axis prints two (EPA) or one
+// of a percent; a full float per value only bloats the page's island props
+const chartValue = (x: number | null) => (x === null ? null : Math.round(x * 1e6) / 1e6);
+
 const result = (r: SDVTeamOpponentSplit) => {
     const pf = numberOrNull(r.points_for), pa = numberOrNull(r.points_against);
     if (pf === null || pa === null) return '';
@@ -72,8 +76,8 @@ export function opponentBars(splits: GameSplits, events: SDVGame[], metric: Game
             return {
                 label: `${atVs} ${cleanTextForTeam(abbreviation || name, r.opponent_id)}`,
                 title: `${atVs} ${cleanTextForTeam(name, r.opponent_id)}${result(r)}`,
-                raw,
-                margin: raw === null || theirs === null ? null : raw - theirs,
+                raw: chartValue(raw),
+                margin: raw === null || theirs === null ? null : chartValue(raw - theirs),
             };
         });
 }
@@ -86,7 +90,7 @@ export function opponentAverages(splits: GameSplits, metric: GameMetric): { raw:
     const off = aggregateGames(paired)[metric];
     const def = aggregateGames(paired.map((r) => against.get(String(r.game_id))!))[metric];
     return {
-        raw: aggregateGames(splits.team)[metric],
-        margin: off === null || def === null ? null : off - def,
+        raw: chartValue(aggregateGames(splits.team)[metric]),
+        margin: off === null || def === null ? null : chartValue(off - def),
     };
 }

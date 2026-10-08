@@ -53,9 +53,9 @@ describe('opponentBars', () => {
             const fsuTeam = splits.team.find((r: any) => r.game_id === 401752665);
             const fsuOpp = splits.opponent.find((r: any) => r.game_id === 401752665);
             expect(bars[0].raw).toBe(fsuTeam[metric]);
-            expect(bars[0].margin).toBeCloseTo(fsuTeam[metric] - fsuOpp[metric], 12);
+            expect(bars[0].margin).toBeCloseTo(fsuTeam[metric] - fsuOpp[metric], 5);
         }
-        expect(opponentBars(splits, events, 'epa_per_play')[0].margin).toBeCloseTo(-0.21, 12);
+        expect(opponentBars(splits, events, 'epa_per_play')[0].margin).toBeCloseTo(-0.21, 5);
     });
 
     test('nfl: abbreviations and names come from the schedule; F7 carries no name', () => {
@@ -100,7 +100,9 @@ describe('opponentBars', () => {
         const { splits, events } = load('nfl');
         const opponent = splits.opponent.filter((r: any) => r.game_id !== 401772714);
         const bars = opponentBars({ team: splits.team, opponent }, events, 'epa_per_play');
-        expect(bars[0].raw).toBe(splits.team.find((r: any) => r.game_id === 401772714).epa_per_play);
+        // the chart is handed six decimals: 0.20398375970692365 in the row
+        expect(bars[0].raw).toBe(0.203984);
+        expect(bars[0].raw).toBeCloseTo(splits.team.find((r: any) => r.game_id === 401772714).epa_per_play, 5);
         expect(bars[0].margin).toBeNull();
     });
 });
@@ -130,8 +132,8 @@ describe('aggregateGames / opponentAverages', () => {
             for (const metric of ['epa_per_play', 'success_rate'] as const) {
                 const avg = opponentAverages(splits, metric);
                 const off = weighted(splits.team, metric), def = weighted(splits.opponent, metric);
-                expect(avg.raw, `${league} ${metric}`).toBeCloseTo(off, 12);
-                expect(avg.margin, `${league} ${metric}`).toBeCloseTo(off - def, 12);
+                expect(avg.raw, `${league} ${metric}`).toBeCloseTo(off, 5);
+                expect(avg.margin, `${league} ${metric}`).toBeCloseTo(off - def, 5);
             }
         }
         // Kansas City 2025: 468 successes on 1,045 plays across the fixture's 17 rows
@@ -143,8 +145,8 @@ describe('aggregateGames / opponentAverages', () => {
         const opponent = splits.opponent.filter((r: any) => r.game_id !== 401772714);
         const team = splits.team.filter((r: any) => r.game_id !== 401772714);
         const avg = opponentAverages({ team: splits.team, opponent }, 'epa_per_play');
-        expect(avg.raw).toBeCloseTo(aggregateGames(splits.team).epa_per_play as number, 12);
-        expect(avg.margin).toBeCloseTo((aggregateGames(team).epa_per_play as number) - (aggregateGames(opponent).epa_per_play as number), 12);
+        expect(avg.raw).toBeCloseTo(aggregateGames(splits.team).epa_per_play as number, 5);
+        expect(avg.margin).toBeCloseTo((aggregateGames(team).epa_per_play as number) - (aggregateGames(opponent).epa_per_play as number), 5);
     });
 
     test('nulls and zero-play rows carry no weight; no rows is null, not NaN', () => {
