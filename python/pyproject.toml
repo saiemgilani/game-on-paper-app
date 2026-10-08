@@ -9,6 +9,9 @@ dependencies = [
     "flask-compress>=1.24",
     "orjson>=3.11.9",
     "psycopg[binary]>=3.1",
+    "pillow>=12",
+    "matplotlib>=3.10",
+    "tzdata>=2026.2",
 ]
 
 # Pinned to sdv-py main rather than PyPI so the CFB passer box-score fix

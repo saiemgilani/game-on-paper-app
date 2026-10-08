@@ -11,6 +11,7 @@ import orjson
 import os
 import logging
 import base64
+import urllib.request
 
 from telemetry import TEL, stage, init_flask
 import gop_routes
@@ -18,6 +19,7 @@ import espn_proxy
 import dq
 import paper_index
 import qa
+import share_card
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
@@ -697,6 +699,101 @@ def sources(game_id: int):
 @require_auth_token
 def sources_nfl(game_id: int):
     return _sources("nfl", game_id)
+
+
+def _logo_fetch(url):
+    """A team logo from ESPN's CDN, or None (the card prints the abbreviation)."""
+    try:
+        with urllib.request.urlopen(url, timeout=3) as resp:
+            return resp.read()
+    except Exception:
+        return None
+
+
+def _card(league: str, game_id: int):
+    """The game's 1200x630 share card (share_card.py) as a PNG.
+
+    The Worker names the state it read from ESPN (`pre|live|final`) and the
+    variant (`full|spoilerfree`); a pregame card may carry GOP's projection
+    (`proj_margin`, home-relative points, and `proj_wp`, the home side's win
+    probability). Caching is the Worker's: this route renders every call.
+    """
+    state, variant = request.args.get("state"), request.args.get("variant", "full")
+    if state not in share_card.STATES or variant not in share_card.VARIANTS:
+        return jsonify(
+            {
+                "status": "bad",
+                "message": "state is pre|live|final, variant full|spoilerfree",
+            }
+        ), 400
+    projection = None
+    try:
+        if request.args.get("proj_margin") is not None:
+            wp = request.args.get("proj_wp")
+            projection = {
+                "margin": float(request.args["proj_margin"]),
+                "homeWinProb": float(wp) if wp is not None else None,
+            }
+    except ValueError:
+        return jsonify(
+            {"status": "bad", "message": "proj_margin / proj_wp must be numbers"}
+        ), 400
+
+    cls, fetch_name = _PROCESSORS[league]
+    try:
+        game = cls(gameId=game_id)
+        game.join_participants = False  # the card draws no participants
+        game.resolve_missing = False
+        summary = getattr(game, fetch_name)()
+    except Exception as e:
+        logging.getLogger("root").warning(
+            f"card: ESPN fetch failed for {league} {game_id}: {e!r}"
+        )
+        summary = None
+    if not (summary or {}).get("header"):
+        return jsonify({"status": "bad", "message": "unknown game"}), 404
+
+    card = {
+        "header": summary["header"],
+        "gameInfo": summary.get("gameInfo"),
+        "projection": projection,
+    }
+    if state != "pre":
+        try:
+            card["plays"] = game.run_processing_pipeline()["plays"]
+            _reshape_records(card["plays"])
+        except Exception as e:  # a game with no plays yet still gets its card
+            logging.getLogger("root").warning(
+                f"card: no plays for {league} {game_id}: {e!r}"
+            )
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                card["paperIndex"] = paper_index.compute(
+                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0], league=league
+                )
+        except Exception as e:  # the card drops the line, as the page drops the panel
+            logging.getLogger("root").warning(
+                f"card: paper index failed for {game_id}: {e!r}"
+            )
+    try:
+        png = share_card.render(card, league, state, variant, _logo_fetch, dt.now(tz.utc))
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} {game_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+@app.route("/cfb/<int:game_id>/card.png", methods=["GET"])
+@require_auth_token
+def card(game_id: int):
+    return _card("cfb", game_id)
+
+
+@app.route("/nfl/<int:game_id>/card.png", methods=["GET"])
+@require_auth_token
+def card_nfl(game_id: int):
+    return _card("nfl", game_id)
 
 
 def _sdv_identity():
