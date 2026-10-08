@@ -260,6 +260,7 @@ function onChangeSpan(e: Event) {
                 [
                     "drives.drives",
                     "drives.avg_field_position",
+                    "drives.avg_start_ep",
                     "drives.plays_per_drive",
                     "drives.yards_per_drive",
                     "drives.drive_total_gained_yards_rate",

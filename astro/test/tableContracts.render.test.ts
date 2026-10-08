@@ -160,7 +160,8 @@ const V2_METRIC_TABLES: MetricTable[] = [
     ] },
     { title: 'Middle 8', teamKey: 'pos_team', useSuffix: true, decimalPoints: 2, columns: dotted('situational', ['middle_8', 'EPA_middle_8', 'EPA_middle_8_per_play', 'middle_8_pass', 'middle_8_rush', 'EPA_middle_8_success_pass', 'EPA_middle_8_success_rush']) },
     { title: 'Drives', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: [
-        ...dotted('drives', classic('Drives')),
+        // the classic rows plus the drive-start EP under the yards one (G10, v2 only)
+        ...dotted('drives', classic('Drives').flatMap((k) => k === 'avg_field_position' ? [k, 'avg_start_ep'] : [k])),
         ...dotted('team_usage', ['so_trips', 'so_touchdown_rate', 'so_points_per_trip', 'so_success_rate', 'so_epa_per_play', 'rz_trips', 'rz_touchdown_rate', 'rz_points_per_trip', 'rz_success_rate', 'rz_epa_per_play']),
         ...dotted('drive_scripting', ['scripted.drives', 'scripted.success_rate', 'scripted.epa_per_play', 'scripted.points_per_drive', 'non_scripted.drives', 'non_scripted.success_rate', 'non_scripted.epa_per_play', 'non_scripted.points_per_drive']),
     ] },
@@ -228,6 +229,8 @@ function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalP
         const val = v(item);
         return `${val >= 50 ? 'Own' : 'Opp'} ${roundNumber(val >= 50 ? 100 - parseFloat(val) : val, 2, 0)}`;
     }
+    // v2 only (G10): EP of the drive starts at two places, an em-dash when the window has none
+    if (item === 'avg_start_ep') return row[item] == null ? '—' : roundNumber(row[item], 2, 2);
     // the usage-box rates arrive as fractions, and the made-of pairs show their attempts
     // (#270), or an em-dash when there were none (b6dce6a0)
     if (['kickoff_touchback_rate', 'rz_success_rate', 'so_success_rate', 'rz_touchdown_rate', 'so_touchdown_rate'].includes(item)) return `${roundNumber(parseFloat(v(item)) * 100, 2, 0)}%`;

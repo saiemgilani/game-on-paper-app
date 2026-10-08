@@ -3,7 +3,7 @@ import type { ProcessedBoxScore, ProcessedTeamMetricBoxScore } from '../../../re
 import { espnLogoLeague, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
+import { formatNumber, metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -78,6 +78,11 @@ function handleMetricRows(rowKey: string): string {
             let prefix = (val >= 50) ? "Own" : "Opp"
             let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
+        });
+    } else if (item == "avg_start_ep") {
+        // EP of the drive starts; a team with no drive in the window is absent, not 0
+        teamBoxScores.forEach((teamData: any) => {
+            result += `<td class="numeral" style="text-align: center;">${formatNumber(teamData[item], 2)}</td>`;
         });
     } else if (["drive_total_gained_yards_rate"].includes(item)) {
         teamBoxScores.forEach((teamData: any) => {
