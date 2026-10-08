@@ -50,30 +50,39 @@ export interface ShareTagGame {
 }
 
 export interface ShareTags {
+    /** og:url / twitter:url: the link's own address, so a platform that keys a preview on it never merges the two variants */
+    url: string;
     title: string;
     description: string;
     image: string;
     imageAlt: string;
+    /** false on the spoiler-free variant: the JSON-LD names the result */
+    jsonLd: boolean;
 }
 
 export function shareTags(g: ShareTagGame, { spoilerFree, now = Date.now() }: { spoilerFree: boolean; now?: number }): ShareTags {
     const query = new URLSearchParams({ state: g.state, variant: spoilerFree ? 'spoilerfree' : 'full' });
     if (g.state === 'live') query.set('v', `live-${Math.floor(now / 1000 / 300)}`);
-    const image = `https://gameonpaper.com${leaguePath(g.league, `/game/${g.id}/card.png`)}?${query}`;
+    const page = `https://gameonpaper.com${leaguePath(g.league, `/game/${g.id}`)}`;
+    const image = `${page}/card.png?${query}`;
+    const url = spoilerFree ? `${page}?spoilers=off` : page;
+    const jsonLd = !spoilerFree;
     const matchup = `${g.away} @ ${g.home}`;
     if (g.state === 'pre') {
         // nothing to spoil: both variants are the pregame card and today's copy
-        return { title: g.title, description: g.description, image, imageAlt: `${matchup}: matchup preview` };
+        return { url, title: g.title, description: g.description, image, imageAlt: `${matchup}: matchup preview`, jsonLd };
     }
     if (!spoilerFree) {
         const scored = `${g.away} ${g.awayScore} @ ${g.home} ${g.homeScore}`;
         const alt = g.state === 'final' ? `${scored}, final: win probability chart and Deserved Win %` : `${scored}, live: win probability so far`;
-        return { title: g.title, description: g.description, image, imageAlt: alt };
+        return { url, title: g.title, description: g.description, image, imageAlt: alt, jsonLd };
     }
     const label = g.state === 'final' ? 'Final' : 'Live';
     const when = new Date(g.date);
     const day = isNaN(when.getTime()) ? '' : ` on ${when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}`;
     return {
+        url,
+        jsonLd,
         title: `${matchup} · ${gameContext(g)} · Game on Paper`,
         description: `${label}${day}. The score is left out of this preview: open the game for win probability, EPA and every play.`,
         image,

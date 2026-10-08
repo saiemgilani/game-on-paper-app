@@ -106,6 +106,8 @@ describe('shareTags', () => {
     test('a final card is immutable and named by state and variant', () => {
         const t = shareTags(SPEC, { spoilerFree: false });
         expect(t.image).toBe(`https://gameonpaper.com/game/${GAME_ID}/card.png?state=final&variant=full`);
+        expect(t.url).toBe(`https://gameonpaper.com/game/${GAME_ID}`);
+        expect(t.jsonLd).toBe(true);
         expect(t.title).toBe(SPEC.title);
         expect(t.description).toBe(SPEC.description);
         expect(cardCacheControl('final')).toBe('public, max-age=31536000, immutable');
@@ -125,6 +127,9 @@ describe('shareTags', () => {
         for (const state of ['final', 'live'] as const) {
             const t = shareTags({ ...SPEC, state }, { spoilerFree: true });
             expect(t.image).toContain('variant=spoilerfree');
+            // its own og:url: a platform keying previews on og:url must not merge it with the scored link
+            expect(t.url).toBe(`https://gameonpaper.com/game/${GAME_ID}?spoilers=off`);
+            expect(t.jsonLd).toBe(false);
             expect(t.title).toBe('Central Michigan @ Oklahoma State · Week 2 2016 · Game on Paper');
             expect(t.description).toMatch(state === 'final' ? /^Final on Sep 10, 2016\./ : /^Live on Sep 10, 2016\./);
             for (const s of [t.title, t.description, t.imageAlt]) scoreFree(s);
@@ -179,8 +184,10 @@ describe('share-card on: the card for the game state', () => {
         expect(meta(html, 'og:image:height')).toBe('630');
         expect(meta(html, 'twitter:card')).toBe('summary_large_image');
         expect(meta(html, 'og:image:alt')).toBe('Central Michigan 30 @ Oklahoma State 27, final: win probability chart and Deserved Win %');
-        // the full variant keeps today's title
+        // the full variant keeps today's title, address and JSON-LD
         expect(meta(html, 'og:title')).toMatch(/^Central Michigan 30, Oklahoma State 27 \|/);
+        expect(meta(html, 'og:url')).toBe(`https://gameonpaper.com/game/${GAME_ID}`);
+        expect(head(html)).toContain('application/ld+json');
     }, 60_000);
 
     test.each(Object.keys(TWINS) as Twin[])('%s, live', async (twin) => {
@@ -201,6 +208,10 @@ describe('share-card on: the card for the game state', () => {
         const html = await renderGame(twin, true, { query: '?spoilers=off' });
         expect(meta(html, 'og:image')).toBe(`https://gameonpaper.com/game/${GAME_ID}/card.png?state=final&variant=spoilerfree`);
         for (const key of ['og:title', 'og:description', 'og:image:alt', 'twitter:title', 'twitter:description', 'description', 'title']) scoreFree(meta(html, key));
+        for (const key of ['og:url', 'twitter:url']) expect(meta(html, key)).toBe(`https://gameonpaper.com/game/${GAME_ID}?spoilers=off`);
+        // the JSON-LD names the result, so the spoiler-free head leaves it out; canonical stays the game
+        expect(head(html)).not.toContain('application/ld+json');
+        expect(head(html)).toContain(`<link rel="canonical" href="https://gameonpaper.com/game/${GAME_ID}">`);
         expect(head(html).match(/<title>([^<]*)<\/title>/)![1]).toBe('Central Michigan @ Oklahoma State · Week 2 2016 · Game on Paper');
         // the body is unchanged: the header still says the score
         const body = html.slice(html.indexOf('<body'));

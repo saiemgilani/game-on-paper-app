@@ -110,7 +110,12 @@ def test_pregame_card_from_the_espn_summary(projection):
 
 
 @pytest.mark.parametrize("state", ["final", "live"])
-def test_spoiler_free_card_draws_no_result(processed, state):
+def test_spoiler_free_card_draws_no_result(processed, state, monkeypatch):
+    # the WP line is the result drawn as a picture: the spoiler-free card never draws it
+    def no_chart(*a, **k):
+        raise AssertionError("the spoiler-free card drew the WP chart")
+
+    monkeypatch.setattr(share_card._Card, "wp", no_chart)
     for league in ("cfb", "nfl"):
         game = processed(league) if state == "final" else _live(processed(league), 110)
         _, drawn = _render(game, state, "spoilerfree", league)
@@ -198,6 +203,22 @@ class _Unknown(CFBPlayProcess):
         raise RuntimeError("404 from ESPN")
 
 
+def _as(state):
+    """The offline CFB processor with ESPN's status set to `state` (the plays stay real)."""
+    status = {
+        "pre": {"state": "pre", "completed": False, "name": "STATUS_SCHEDULED"},
+        "live": {"state": "in", "completed": False, "name": "STATUS_IN_PROGRESS"},
+        "final": {},
+    }[state]
+
+    class Processor(PROCESSORS["cfb"][0]):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self._summary["header"]["competitions"][0]["status"]["type"].update(status)
+
+    return (Processor, "espn_cfb_pbp")
+
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("PYTHON_HTTP_TOKEN", "secret")
@@ -211,18 +232,38 @@ def client(monkeypatch):
 
 @pytest.mark.parametrize("variant", ["full", "spoilerfree"])
 @pytest.mark.parametrize("state", ["pre", "live", "final"])
-def test_route_every_state_and_variant(client, state, variant):
-    _, c = client
+def test_route_every_state_and_variant(client, monkeypatch, state, variant):
+    app_mod, c = client
+    monkeypatch.setitem(app_mod._PROCESSORS, "cfb", _as(state))
+    calls = []
+    real = share_card.render
+
+    def spy(game, league, st, va, *a, **k):
+        calls.append((st, va, "plays" in game))
+        return real(game, league, st, va, *a, **k)
+
+    monkeypatch.setattr(app_mod.share_card, "render", spy)
     r = c.get(
         f"/cfb/{GAMES['cfb']}/card.png?state={state}&variant={variant}", headers=_auth()
     )
     assert r.status_code == 200, r.get_data(as_text=True)[:300]
     assert r.mimetype == "image/png"
     assert _size(r.get_data()) == (1200, 630)
+    # the card drawn is the one asked for, and only a played game runs the pipeline
+    assert calls == [(state, variant, state != "pre")]
+
+
+@pytest.mark.parametrize("asked", ["pre", "live"])
+def test_route_refuses_a_state_espn_disagrees_with(client, asked):
+    # the fixture is final: a card drawn as anything else could be cached as that state
+    _, c = client
+    r = c.get(f"/cfb/{GAMES['cfb']}/card.png?state={asked}&variant=full", headers=_auth())
+    assert r.status_code == 409
 
 
 def test_route_passes_the_projection(client, monkeypatch):
     app_mod, c = client
+    monkeypatch.setitem(app_mod._PROCESSORS, "cfb", _as("pre"))
     seen = {}
     real = share_card.render
     monkeypatch.setattr(

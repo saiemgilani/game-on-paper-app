@@ -750,8 +750,15 @@ def _card(league: str, game_id: int):
             f"card: ESPN fetch failed for {league} {game_id}: {e!r}"
         )
         summary = None
-    if not (summary or {}).get("header"):
+    if not ((summary or {}).get("header") or {}).get("competitions"):
         return jsonify({"status": "bad", "message": "unknown game"}), 404
+    # The Worker read the state from its own ESPN fetch. Across a transition (or a
+    # stale copy) the two can disagree, and a live game drawn as final would be
+    # cached for a year: refuse, and the Worker serves an uncached error instead.
+    status = (summary["header"]["competitions"][0].get("status") or {}).get("type") or {}
+    actual = "final" if status.get("completed") is True else ("live" if status.get("state") == "in" else "pre")
+    if actual != state:
+        return jsonify({"status": "bad", "message": f"ESPN says {actual}, not {state}"}), 409
 
     card = {
         "header": summary["header"],

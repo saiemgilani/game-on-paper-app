@@ -211,7 +211,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta name="description" content={headDescription}>
 
         <meta property="og:site_name" content="GameOnPaper.com">
-        <meta property="og:url" content={canonicalUrl}>
+        <meta property="og:url" content={share?.url ?? canonicalUrl}>
         <meta property="og:title" content={headTitle}>
         <meta property="og:description" content={headDescription}>
         <meta property="og:image" content={ogImage}>{share && <meta property="og:image:alt" content={share.imageAlt}>}
@@ -219,14 +219,14 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
         <meta property="og:image:height" content={share ? "630" : "400"}>
         <meta property="og:type" content="website">
         <meta name="twitter:site" content="@gameonpaper">
-        <meta name="twitter:url" content={canonicalUrl}>
+        <meta name="twitter:url" content={share?.url ?? canonicalUrl}>
         <meta name="twitter:title" content={headTitle}>
         <meta name="twitter:description" content={headDescription}>
         <meta name="twitter:card" content={share ? "summary_large_image" : "summary"}>
         <meta name="twitter:image" content={ogImage}>
         <meta name="title" content={headTitle}>
         <meta name="medium" content="website">
-        <script type="application/ld+json" set:html={structuredData} />
+        {(share?.jsonLd ?? true) && <script type="application/ld+json" set:html={structuredData} />}
         <!-- Privacy-friendly analytics by Plausible -->
         <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
         <script is:inline>
