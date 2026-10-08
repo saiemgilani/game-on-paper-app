@@ -8,6 +8,8 @@ interface Props {
     result: {
         homeShare: number
         margins: Record<string, number>
+        /** per margin, the percentage points it alone moved the home share (paper_index.py) */
+        impact?: Record<string, number>
         byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
     homeTeam: ESPNTeam
@@ -33,17 +35,24 @@ const barVars = colors && `#paper-index-panel { --pi-home: ${colors.light.home};
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
+const impact = result.impact;
+const pct = (v: number) => `${fmt(v * 100)}%`;
 // the home team's edge on each fitted input, in display order
-const marginRows = [
-    m.success != null ? { label: "Success Rate", value: `${fmt(m.success * 100)}%`, pos: m.success >= 0 } : null,
-    m.explosive != null ? { label: "Explosive Play Rate", value: `${fmt(m.explosive * 100)}%`, pos: m.explosive >= 0 } : null,
-    m.explosive_epa != null ? { label: "Explosiveness (EPA/success)", value: fmt(m.explosive_epa, 2), pos: m.explosive_epa >= 0 } : null,
-    m.opp_conversion != null ? { label: "Opportunity Conversion Rate", value: `${fmt(m.opp_conversion * 100)}%`, pos: m.opp_conversion >= 0 } : null,
-    m.pts_per_opp != null ? { label: "Points per opportunity", value: fmt(m.pts_per_opp), pos: m.pts_per_opp >= 0 } : null,
-    m.field_position != null ? { label: "Field position (EP)", value: fmt(m.field_position, 2), pos: m.field_position >= 0 } : null,
-    m.havoc != null ? { label: "Havoc Rate", value: `${fmt(m.havoc * 100)}%`, pos: m.havoc >= 0 } : null,
-    m.turnovers != null ? { label: "Turnovers", value: fmt(m.turnovers, 0), pos: m.turnovers >= 0 } : null,
-].filter((r): r is { label: string; value: string; pos: boolean } => !!r);
+const MARGINS: [string, string, (v: number) => string][] = [
+    ["success", "Success Rate", pct],
+    ["explosive", "Explosive Play Rate", pct],
+    ["explosive_epa", "Explosiveness (EPA/success)", (v) => fmt(v, 2)],
+    ["opp_conversion", "Opportunity Conversion Rate", pct],
+    ["pts_per_opp", "Points per opportunity", fmt],
+    ["field_position", "Field position (EP)", (v) => fmt(v, 2)],
+    ["havoc", "Havoc Rate", pct],
+    ["turnovers", "Turnovers", (v) => fmt(v, 0)],
+];
+// biggest mover first when the payload carries impact; display order otherwise (stable sort)
+const marginRows = MARGINS
+    .filter(([k]) => m[k] != null)
+    .map(([k, label, format]) => ({ label, value: format(m[k]), pos: m[k] >= 0, impact: impact?.[k] }))
+    .sort((a, b) => Math.abs(b.impact ?? 0) - Math.abs(a.impact ?? 0));
 // per-window strip, canonical order; a missing window simply doesn't render
 const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
 const periods = PERIOD_ORDER
@@ -91,6 +100,7 @@ const periods = PERIOD_ORDER
                     <tr>
                         <th>Margin</th>
                         <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
+                        {impact && <th class="text-center">Impact</th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -98,6 +108,7 @@ const periods = PERIOD_ORDER
                         <tr>
                             <td class="text-small">{r.label}</td>
                             <td class="text-center fw-bold" style={r.pos ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{r.value}</td>
+                            {impact && <td class="text-center fw-bold" style={(r.impact ?? 0) >= 0 ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{fmt(r.impact ?? 0)} pts</td>}
                         </tr>
                     ))}
                 </tbody>
