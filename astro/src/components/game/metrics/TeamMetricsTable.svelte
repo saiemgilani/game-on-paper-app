@@ -3,7 +3,7 @@ import type { ProcessedBoxScore, ProcessedTeamMetricBoxScore } from '../../../re
 import { espnLogoLeague, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
-import { metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
+import { formatNumber, metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
 
 interface Props {
     title: string
@@ -15,10 +15,12 @@ interface Props {
     useSuffix: boolean
     decimalPoints: number
     caption?: string
+    /** The game's two teams, away first. A window where one team has not had the ball has no rows for it, so the header cannot come from the box alone. */
+    teamIds?: (string | number)[]
 }
-const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption }: Props = $props();
+const { title, league, teamKey, season, columns, box, useSuffix, decimalPoints, caption, teamIds }: Props = $props();
 
-const keys: string[] = box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => String(group[teamKey])) : [];
+const keys: string[] = teamIds?.length ? teamIds.map(String) : box ? (box as any)[Object.keys(box || {})[0]].map((group: any) => String(group[teamKey])) : [];
 const groups = [...new Set(keys || [])];
 
 function handleMetricRows(rowKey: string): string {
@@ -44,8 +46,19 @@ function handleMetricRows(rowKey: string): string {
     teamBoxScores = teamBoxScores.toSorted((a, b) => keys.indexOf(String((a as any)[teamKey])) - keys.indexOf(String((b as any)[teamKey])));
 
     let result = ""
+    // One cell per header team, found by team id; a team with no row in this section gets a dash
+    const eachTeam = (cell: (teamData: any) => void) => {
+        for (const team of groups) {
+            const teamData = teamBoxScores.find((row: any) => String(row[teamKey]) === team);
+            if (teamData) {
+                cell(teamData);
+            } else {
+                result += `<td class="numeral" style="text-align: center;">—</td>`;
+            }
+        }
+    };
     if (item == "EPA_misc") {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let overall = parseFloat(teamData['EPA_overall_total'] || 0);
             let off = parseFloat(teamData['EPA_overall_offense'] || 0);
             let sp_epa = parseFloat(teamData['EPA_special_teams'] || 0);
@@ -60,37 +73,42 @@ function handleMetricRows(rowKey: string): string {
         // under it are the parsed receiving and rushing yards; a sack is in
         // neither, so their sum reads higher (on 62% of 2025 team-games by
         // exactly the sack yardage) and is shown as the tooltip.
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             const gross = parseFloat(teamData['pass_yards'] || 0) + parseFloat(teamData['rush_yards'] || 0);
             result += `<td class="numeral" style="text-align: center;" title="Pass + rush: ${gross}">${roundNumber(teamData['off_yards'] || 0, 2, 0)}</td>`;
         });
     } else if (item == "yards_per_play") {
         // Sack yardage included (offenseYardsPerPlay): the "Yards" row above over the
         // scrimmage plays. The tooltip spells that division out.
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             const val = offenseYardsPerPlay(teamData);
             const title = `${teamData['off_yards'] ?? 0} net yards (sacks included) on ${teamData['scrimmage_plays'] ?? 0} plays`;
             result += `<td class="numeral" style="text-align: center;" title="${title}">${val === null ? '—' : roundNumber(val, 2, 2)}</td>`;
         });
     }  else if (item == "avg_field_position") {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             let prefix = (val >= 50) ? "Own" : "Opp"
             let printedVal = (val >= 50) ? (100 - parseFloat(val)) : val
             result += `<td class="numeral" style="text-align: center;">${prefix} ${roundNumber(printedVal, 2, 0)}</td>`;
         });
+    } else if (item == "avg_start_ep") {
+        // EP of the drive starts; a team with no drive in the window gets a dash, not 0
+        eachTeam((teamData: any) => {
+            result += `<td class="numeral" style="text-align: center;">${formatNumber(teamData[item], 2)}</td>`;
+        });
     } else if (["drive_total_gained_yards_rate"].includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
         });
     }  else if (["kickoff_touchback_rate", "rz_success_rate", "so_success_rate", "rz_touchdown_rate", "so_touchdown_rate"].includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val) * 100, 2, 0)}%</td>`;
         });
     } else if (["fg_attempts"].includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let denom = teamData[item] || 0;
             let num = teamData["fg_made"] || 0;
             let pct = (denom == 0) ? 0 : num / denom
@@ -101,7 +119,7 @@ function handleMetricRows(rowKey: string): string {
             }
         });
     } else if (["third_down_conversions", "third_down_expected"].includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let denom = teamData["third_down_opportunities"] || 0;
             let num = teamData[item] || 0;
             let pct = (denom == 0) ? 0 : num / denom
@@ -113,17 +131,17 @@ function handleMetricRows(rowKey: string): string {
             }
         });
     } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, 0)}%</td>`;
         });
     } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${roundNumber(parseFloat(val), 2, finalDecimalPoints)}</td>`;
         });
     } else if (BOX_SCORE_NON_RATE_COLUMNS.includes(item)) {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             result += `<td class="numeral" style="text-align: center;">${val}</td>`;
         });
@@ -147,7 +165,7 @@ function handleMetricRows(rowKey: string): string {
             }
         }
     } else {
-        teamBoxScores.forEach((teamData: any) => {
+        eachTeam((teamData: any) => {
             let val = teamData[item] || 0;
             var rate = 0.0;
             if (useSuffix) {

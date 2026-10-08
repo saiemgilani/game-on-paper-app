@@ -515,6 +515,23 @@ def _process_game(league: str, game_id: int, source: str | None = None):
                 f"paper index failed for {game_id}: {e}"
             )
 
+        # Drive starts in EP units (the Drives table's EP row), for the whole game
+        # and every window: paper_index.avg_start_ep over the drives with a snap in
+        # the window (the span boxes' own expressions), each at its real start.
+        # Fail-open like everything else here.
+        try:
+            frame = getattr(game, "plays_frame", None)
+            if frame is not None:
+                paper_index.add_start_ep(
+                    (processed_game.get("advBoxScore") or {}).get("drives"), frame, league
+                )
+                for key, box in (processed_game.get("advBoxScoreSpans") or {}).items():
+                    parsed = span_box.parse_span(key)
+                    if parsed is not None and isinstance(box, dict):
+                        paper_index.add_start_ep(box.get("drives"), frame, league, window=parsed[1])
+        except Exception as e:  # a missing row must never cost the page
+            logging.getLogger("root").warning(f"drive-start EP failed for {game_id}: {e}")
+
         try:
             frame = getattr(game, "plays_frame", None)
             drv_all = _game_drives(processed_game)

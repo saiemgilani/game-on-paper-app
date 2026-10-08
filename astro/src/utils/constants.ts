@@ -340,6 +340,7 @@ export const METRIC_KEY_TITLE_MAPPING: Record<string, string> = {
     "yards_per_drive" : "Yards/Drive",
     "plays_per_drive" : "Plays/Drive",
     "avg_field_position": "Avg Starting Field Position",
+    "avg_start_ep": "Avg Starting Field Position (EP)",
     "rushing_highlight_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">Highlight Yards</a>",
     "rushing_highlight_yards_per_opp": "&emsp;&emsp;Per Rush Opportunity",
     "line_yards": "<a href=\"https://www.footballstudyhall.com/2018/2/2/16963820/college-football-advanced-stats-glossary\">OL Line Yards</a>",

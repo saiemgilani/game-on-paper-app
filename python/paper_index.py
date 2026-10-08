@@ -230,6 +230,48 @@ def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | Non
     }
 
 
+def avg_start_ep(
+    frame: pl.DataFrame, team_id, league: str = "cfb", window: pl.Expr | None = None
+) -> float | None:
+    """EP of this team's drive starts on the league's field-position curve,
+    averaged over its drives in ``frame``.
+
+    The same computation team_inputs() feeds the field_position margin (kept
+    separate so the fitted model's train/serve path is untouched; the route test
+    pins the two together). ``window`` (a span_box filter) keeps the drives with
+    a snap in that window, each valued at its real start: a drive carried over
+    from the previous quarter starts where it started, not at its first snap in
+    the window. None when the team has no drive in the frame or window.
+    """
+    need = {"scrimmage_play", "pos_team", "drive.id", "start.yardsToEndzone"}
+    if not isinstance(frame, pl.DataFrame) or frame.height == 0 or not need <= set(frame.columns):
+        return None
+    mine = frame.filter(
+        (pl.col("scrimmage_play") == True)  # noqa: E712
+        & (pl.col("pos_team").cast(pl.Utf8) == str(team_id))
+        & pl.col("drive.id").is_not_null()
+    )
+    if window is not None:
+        mine = mine.filter(pl.col("drive.id").is_in(mine.filter(window)["drive.id"].unique().implode()))
+    starts = mine.group_by("drive.id").agg(start_yte=pl.col("start.yardsToEndzone").first())
+    if starts.height == 0:
+        return None
+    ep = (
+        starts.with_columns(yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99))
+        .join(_ep_table(league), on="yardline_own", how="left")["ep"]
+        .mean()
+    )
+    return None if ep is None else float(ep)
+
+
+def add_start_ep(
+    drive_rows, frame: pl.DataFrame, league: str = "cfb", window: pl.Expr | None = None
+) -> None:
+    """Stamp ``avg_start_ep`` onto each team row of a box score's ``drives`` section."""
+    for row in drive_rows or []:
+        row["avg_start_ep"] = avg_start_ep(frame, row.get("pos_team"), league, window)
+
+
 def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     """Margins + the logistic share, from two team_inputs() dicts.
 
