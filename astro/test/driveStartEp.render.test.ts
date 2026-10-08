@@ -30,6 +30,14 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     },
 }));
 
+vi.mock('../src/resources/sdv', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/sdv')>()),
+    retrievePercentiles: async () => [],
+    retrieveTeamSummaries: async () => [],
+    retrieveTeamSeasonInformation: async () => null,
+    retrieveMatchupHistory: async () => [],
+}));
+
 let container: AstroContainer;
 beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
@@ -80,5 +88,35 @@ describe('Drives table: drive-start EP', () => {
             locals: locals('cfb'),
         });
         expect(parseTable(html).rows.find((r) => r[0] === LABEL)!.slice(1)).toEqual(['—', '2.41']);
+    }, 60_000);
+
+    test('a window where only one team has had the ball keeps both team columns on the page', async () => {
+        // The real shape: 401856682 processed from its 2026-09-13 01:41Z poll (early Q3)
+        // has rows for the team with the ball only, in drives / team / situational /
+        // team_usage / drive_scripting, while defensive and st_team carry only the other
+        // team. Rebuilt here from this fixture's own Q3 box.
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const g: any = await retrieveProcessedGame(FIXTURES.cfb.id, 30, 'cfb');
+        const away = String(g.teamInfo.away.id), home = String(g.teamInfo.home.id);
+        const q3 = Object.fromEntries(Object.entries(g.advBoxScoreSpans.q3).map(([k, rows]: [string, any]) => [k,
+            !Array.isArray(rows) || k === 'turnover' ? rows
+                : rows.filter((r: any) => String(['defensive', 'st_team'].includes(k) ? r.def_pos_team ?? r.pos_team : r.pos_team) === (['defensive', 'st_team'].includes(k) ? home : away))]));
+        expect(q3.drives.map((r: any) => String(r.pos_team))).toEqual([away]);
+        g.advBoxScoreSpans = { ...g.advBoxScoreSpans, all: q3 };
+        const Page = (await import('../src/components/game/GamePage.astro')).default;
+        const html = await container.renderToString(Page, {
+            props: { id: String(FIXTURES.cfb.id), game: g, league: 'cfb' },
+            request: new Request(`https://gameonpaper.com/game/${FIXTURES.cfb.id}`),
+            locals: locals('cfb'),
+        });
+        const teamStats = html.slice(html.indexOf('id="team-stats"'), html.indexOf('id="player-stats"'));
+        for (const title of ['Drives', 'Defensive', 'Special Teams']) {
+            const { rows, rowHtml } = parseTable(tableWithHeading(teamStats, title)!);
+            expect([...rowHtml[0].matchAll(/team-logo-(\d+)/g)].map((m) => m[1]), `${title}: both teams head it, away first`).toEqual([away, home]);
+            for (const row of rows.slice(1)) expect(row, `${title}: ${row[0]}`).toHaveLength(3);
+        }
+        const drives = parseTable(tableWithHeading(teamStats, 'Drives')!).rows.slice(1);
+        expect(drives.every((r) => r[2] === '—'), 'the team without the ball reads as dashes').toBe(true);
+        expect(drives.find((r) => r[0] === LABEL)![1]).toBe(roundNumber(q3.drives[0].avg_start_ep, 2, 2));
     }, 60_000);
 });
