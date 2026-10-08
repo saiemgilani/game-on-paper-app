@@ -11,7 +11,7 @@
  */
 import { cleanField, formatRank, generateCategoryForMetric, generateColorRampValue, generateMarginalString, generateTeamMetricTitle, numberOrNull, roundNumber } from './misc';
 import { SDV_PLAYER_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_PERCENT_COLUMNS } from './constants';
-import { formatPlayerMetric, PLAYER_NAME_FIELD, playerHref, type PlayerCategory } from './players';
+import { formatPlayerMetric, PLAYER_NAME_FIELD, playerHref, type PlayerCategory, type SeasonRow } from './players';
 import { leaguePath, type League } from './league';
 
 export type Row = Record<string, any>;
@@ -97,6 +97,22 @@ export function teamNeighborLists(rows: any[], teamId: string | number, league: 
             }),
         };
     }).filter((l) => l.rows.length > 0);
+}
+
+/**
+ * The season row a player page's lists centre on: the category he played most this
+ * season, plays summed over every team he played for (a traded player has one row per
+ * team), then his ranked row in it with the most plays. A category he is unranked in
+ * (under the qualifier) has no rank to centre on, so the next-busiest category he is
+ * ranked in is used; ranked in none, no lists.
+ */
+export function neighborSelfRow(seasonRows: SeasonRow[], season: number): SeasonRow | undefined {
+    const rows = seasonRows.filter((r) => Number(r.season) === season && Object.hasOwn(PLAYER_NEIGHBOR_METRICS, String(r.category)));
+    const total: Record<string, number> = {};
+    for (const r of rows) total[r.category] = (total[r.category] ?? 0) + Number(r.plays ?? 0);
+    return rows
+        .filter((r) => numberOrNull(r.EPAplay_rank) !== null)
+        .toSorted((a, b) => total[b.category] - total[a.category] || Number(b.plays ?? 0) - Number(a.plays ?? 0))[0];
 }
 
 export function playerNeighborLists(rows: any[], selfKey: string, category: PlayerCategory,

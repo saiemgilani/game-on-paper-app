@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { neighborWindow, playerKey, playerNeighborLists, teamKey, teamNeighborLists } from '../src/utils/neighbors';
+import { neighborSelfRow, neighborWindow, playerKey, playerNeighborLists, teamKey, teamNeighborLists } from '../src/utils/neighbors';
 import { generateColorRampValue, generateMarginalString, roundNumber } from '../src/utils/misc';
 
 const fx = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
@@ -106,5 +106,26 @@ describe('metric cell shading (the season leaderboards\' ramp)', () => {
         expect(cell.shade).toBeNull();
         const last = rows.find((r: any) => r.EPAplay_rank === 131);
         expect(playerNeighborLists(rows, playerKey(last), 'passing', { league: 'cfb' }, 2024)[0].rows.find((c) => c.self)!.shade).toBe('hulk-bg-level-0');
+    });
+});
+
+describe('which season row the player page centres the lists on', () => {
+    const row = (category: string, team_id: number, plays: number, EPAplay_rank: number | null) =>
+        ({ season: 2023, category, team_id, plays, EPAplay_rank });
+
+    test('a traded player: the category with the most plays summed over his teams, not his biggest single row', () => {
+        // Copilot's case on #296; no 2023-25 NFL/CFB player hits it, but a mid-season
+        // trade can: rushing totals 60 over two stints, receiving 40 on one
+        const own = neighborSelfRow([row('rushing', 1, 30, 40), row('rushing', 2, 30, null), row('receiving', 2, 40, 90)], 2023);
+        expect(own?.category).toBe('rushing');
+        expect(own?.team_id).toBe(1);
+    });
+
+    test('his busiest category unranked (under the qualifier): the next one he is ranked in', () => {
+        // De'Von Achane, NFL 2023, as the Data API returns his rows: 103 rushing plays
+        // short of the qualifier, ranked 137th as a receiver
+        const own = neighborSelfRow([row('passing', 15, 1, null), row('rushing', 15, 103, null), row('receiving', 15, 37, 137)], 2023);
+        expect(own?.category).toBe('receiving');
+        expect(neighborSelfRow([row('rushing', 15, 103, null)], 2023)).toBeUndefined();
     });
 });

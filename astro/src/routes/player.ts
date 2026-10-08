@@ -17,8 +17,7 @@ import {
     type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
-import { numberOrNull } from '../utils/misc';
-import { PLAYER_NEIGHBOR_METRICS, playerKey, playerNeighborLists, type NeighborList } from '../utils/neighbors';
+import { neighborSelfRow, PLAYER_NEIGHBOR_METRICS, playerKey, playerNeighborLists, type NeighborList } from '../utils/neighbors';
 
 /** Every section's data, each the empty shape when its read failed. */
 export interface PlayerSections {
@@ -200,16 +199,13 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         console.error(`player page: a section read failed: ${r.reason}`);
         return empty;
     };
-    // Nearby ranks ('rank-neighbors'): his ranked row this season with the most
-    // plays picks the one category read; a player with no ranked row gets none.
+    // Nearby ranks ('rank-neighbors'): one category read, the one neighborSelfRow
+    // picks (his busiest ranked category this season); no ranked row, no lists.
     const seasonRows = value(0, []) as SeasonRow[];
     let neighborLists: NeighborList[] = [];
     let neighborsFailed = false;
     const own = season === null || !isFeatureEnabled('rank-neighbors', locals) ? undefined
-        : seasonRows
-            .filter((r) => Number(r.season) === season && numberOrNull(r.EPAplay_rank) !== null
-                && Object.hasOwn(PLAYER_NEIGHBOR_METRICS, String(r.category)))
-            .toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0))[0];
+        : neighborSelfRow(seasonRows, season);
     if (own && season !== null) {
         const category = own.category as PlayerCategory;
         try {
