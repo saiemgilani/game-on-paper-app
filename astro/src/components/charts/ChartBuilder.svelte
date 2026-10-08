@@ -1,6 +1,6 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
-    import { espnLogoLeague, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
+    import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
@@ -14,16 +14,22 @@
     let selectedMetricX = x;
     let selectedMetricY = y;
 
-    // v2 ('chart-builder-v2'): one click on the rail or Random navigates, carrying the v2 view state
-    const rail = metricRail();
-    const railKeys = rail.flatMap((f) => f.metrics.map((m) => m.key));
-    function go(nx: string, ny: string) {
-        const target = builderUrl(league, { season: selectedSeason, x: nx, y: ny, hl: highlight, mode });
-        window.location.href = keepPreviewSurface(target, window.location.pathname);
-    }
+    // v2 ('chart-builder-v2'): the bar above the chart only edits these. Plot is a GET of the builder URL
+    // (SSR, cached per URL), so the chart and table keep showing the loaded season/x/y until then.
+    const metricFamilies = metricRail();
+    const metricKeys = metricFamilies.flatMap((f) => f.metrics.map((m) => m.key));
+    let formSeason = $state(String(season));
+    let formX = $state(x);
+    let formY = $state(y);
     function onRandom() {
-        const [nx, ny] = randomAxes(railKeys);
-        go(nx, ny);
+        const [nx, ny] = randomAxes(metricKeys);
+        formX = nx;
+        formY = ny;
+    }
+    function onPlot(e: SubmitEvent) {
+        e.preventDefault();
+        const target = builderUrl(league, { season: formSeason, x: formX, y: formY, hl: highlight, mode });
+        window.location.href = keepPreviewSurface(target, window.location.pathname);
     }
 
     let conferenceList = [...new Set(points.map(p => p.conference))].sort()
@@ -314,7 +320,7 @@
                         display: true,
                         text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all') : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
-                        // v2's chart is a column narrower: drop the title below the credit lines (drawn on lg/xl only)
+                        // v2: drop the title below the credit lines, which it overlaps at desktop width (drawn on lg/xl only)
                         ...(v2 && (viewport == "xl" || viewport == "lg") ? { padding: { top: 34, bottom: 10 } } : {}),
                         font: {
                             size: getTitleSizeForViewport(viewport),
@@ -424,10 +430,11 @@
             <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time. Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games.</p>
             <p class="m-0 mb-2 text-muted text-small">Note: this page is best viewed on desktop.</p>
         </div>
+        {#if !v2}
         <div class="ms-auto col-lg-6 col-xs-12">
             <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-lg-auto mx-sx-0 mx-sm-2">
-                    <select class="form-select form-select-md" onchange={(e) => { onChangeSeason(e); if (v2) go(selectedMetricX, selectedMetricY); }}>
+                    <select class="form-select form-select-md" onchange={onChangeSeason}>
                         <option value="-1" disabled>Choose Season...</option>
                         {#each AVAILABLE_SEASONS as s}
                             <option value={s} selected={(selectedSeason == s)}>{s}</option>
@@ -435,7 +442,6 @@
                     </select>
                 </div>
             </form>
-            {#if !v2}
             <form class="mb-3 d-flex justify-content-xs-start justify-content-md-end">
                 <div class="col-auto mb-xs-3 mb-sm-0 mx-sx-0 mx-sm-2" onchange={onChangeMetricX}>
                     <select class="form-select form-select-md">
@@ -468,42 +474,46 @@
                 <!-- <a href="#" class="btn btn-md btn-secondary me-2" title="Download Chart" download={`chart-${x}-${y}-${season}.jpg`} id="chart-download">Download Chart</a> -->
                 <button onclick={onSubmit} class="btn btn-md btn-primary" title="Generate">Generate</button>
             </div>
-            {/if}
         </div>
+        {/if}
     </div>
 </div>
 
 {#if v2}
-<div class="container mb-3">
-    <div class="row">
-        <div class="col-lg-3 col-12 mb-3 order-2 order-lg-1" id="metric-rail">
-            <div class="mb-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="random-axes" onclick={onRandom}>Random</button>
-            </div>
-            {#each rail as fam}
-            <details open={fam.metrics.some((m) => m.key === selectedMetricX || m.key === selectedMetricY)}>
-                <summary class="text-small">{fam.family}</summary>
-                <table class="table table-sm mb-2">
-                    <thead>
-                        <tr><th></th><th class="text-center text-muted text-small">X</th><th class="text-center text-muted text-small">Y</th></tr>
-                    </thead>
-                    <tbody>
-                    {#each fam.metrics as m}
-                        <tr data-rail-metric={m.key}>
-                            <td class="text-left">{m.title}</td>
-                            <td class="text-center"><input class="form-check-input" type="radio" name="rail-x" aria-label={`X axis: ${m.title}`} checked={m.key === selectedMetricX} onchange={() => go(m.key, selectedMetricY)} /></td>
-                            <td class="text-center"><input class="form-check-input" type="radio" name="rail-y" aria-label={`Y axis: ${m.title}`} checked={m.key === selectedMetricY} onchange={() => go(selectedMetricX, m.key)} /></td>
-                        </tr>
-                    {/each}
-                    </tbody>
-                </table>
-            </details>
+<!-- the leaderboards' pickers row (dropdowns/TeamMetricDropdown.svelte), labelled like the player page's season picker -->
+<div class="container">
+    <form class="row" id="builder-controls" onsubmit={onPlot}>
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-season">Season</label>
+            <select id="builder-season" class="form-select form-select-md w-auto" bind:value={formSeason}>
+                {#each LEAGUES[league].seasons as s}
+                    <option value={String(s)}>{s}</option>
+                {/each}
+            </select>
+        </div>
+        {#snippet metricOptions()}
+            {#each metricFamilies as fam}
+                <optgroup label={fam.family}>
+                    {#each fam.metrics as m}<option value={m.key}>{m.title}</option>{/each}
+                </optgroup>
             {/each}
+        {/snippet}
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-x">X axis</label>
+            <select id="builder-x" class="form-select form-select-md w-auto" bind:value={formX}>{@render metricOptions()}</select>
         </div>
-        <div class="col-lg-9 col-12 order-1 order-lg-2" id="chart_container">
-            <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800"></canvas>
+        <div class="col-auto mb-3 d-flex align-items-center gap-2">
+            <label class="form-label text-muted text-small mb-0" for="builder-y">Y axis</label>
+            <select id="builder-y" class="form-select form-select-md w-auto" bind:value={formY}>{@render metricOptions()}</select>
         </div>
-    </div>
+        <div class="col-auto mb-3 d-flex gap-2">
+            <button type="button" class="btn btn-md btn-outline-secondary" id="random-axes" onclick={onRandom}>Random</button>
+            <button type="submit" class="btn btn-md btn-primary" id="plot-chart">Plot</button>
+        </div>
+    </form>
+</div>
+<div class="container mb-3" id="chart_container">
+    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800"></canvas>
 </div>
 {:else}
 <div class="container mb-3" id="chart_container">

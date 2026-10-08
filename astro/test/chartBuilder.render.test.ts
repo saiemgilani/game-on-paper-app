@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
+import { render as renderSvelte } from 'svelte/server';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { median } from '../src/utils/chartBuilder';
+import { median, metricRail } from '../src/utils/chartBuilder';
 
 // /charts/builder and its /nfl twin, rendered from real Data API rows: the cfb
 // 2026 builder read (Rice has a null red-zone pass value) and the nfl 2025 top-4.
@@ -67,12 +68,31 @@ async function render(league: 'cfb' | 'nfl', query: string, preview: boolean) {
     return container.renderToString(Route, { props: { ...data }, request: new Request(url), locals });
 }
 
+/** The island is client:only, so the page above never holds its markup: render the component itself
+ *  (svelte/server, with the browser globals its script reads at load) from the props the page passed it. */
+async function islandMarkup(league: 'cfb' | 'nfl', query: string, preview: boolean) {
+    // decoded from the page, so untyped: the island's own prop types are checked where the route passes them
+    const props: any = island(await render(league, query, preview));
+    const g = globalThis as any;
+    g.document = { readyState: 'loading', addEventListener() {}, documentElement: { clientWidth: 1280 } };
+    g.window = { innerWidth: 1280, matchMedia: () => ({ matches: false }), location: { pathname: `${league === 'nfl' ? '/nfl' : ''}/charts/builder` } };
+    try {
+        const { default: ChartBuilder } = await import('../src/components/charts/ChartBuilder.svelte');
+        // hydration markers aside, this is the markup a browser builds
+        return renderSvelte(ChartBuilder, { props }).body.replace(/<!--[\s\S]*?-->/g, '');
+    } finally {
+        delete g.document;
+        delete g.window;
+    }
+}
+
 describe('chart-builder-v2 off: the public builder is what main renders', () => {
-    // Hashes of the flag-off render of these fixtures on origin/main b5665b08,
-    // before 'chart-builder-v2' existed (same test body, run there). Another PR
-    // that changes the builder page moves these on purpose: re-run with
+    // Hashes of the flag-off page and island markup for these fixtures on origin/main b8b8eaad,
+    // before 'chart-builder-v2' existed (same test body, run against main's builder files).
+    // Another PR that changes the builder page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { cfb: 'e55c00998dbaeb4a', nfl: '99585fda010f1821' };
+    const GOLDEN = { cfb: 'aa30c215d693c66e', nfl: 'fc159590590e6d16' };
+    const ISLAND_GOLDEN = { cfb: 'a3765f8a15df88f2', nfl: '7d80aa9ee6adcb12' };
 
     test.each(['cfb', 'nfl'] as const)('%s: same island props, same request, same page', async (league) => {
         const html = await render(league, QUERY[league], false);
@@ -83,6 +103,12 @@ describe('chart-builder-v2 off: the public builder is what main renders', () => 
         // the v2 parameters are not read for a public viewer
         expect(normalise(await render(league, `${QUERY[league]}&hl=SEC&mode=dots`, false))).toBe(normalise(html));
     });
+
+    test.each(['cfb', 'nfl'] as const)('%s: the classic island markup is main\'s', async (league) => {
+        const markup = await islandMarkup(league, QUERY[league], false);
+        if (process.env.PRINT_GOLDEN) console.log(`ISLAND_GOLDEN ${league} ${sha(markup)}`);
+        expect(sha(markup)).toBe(ISLAND_GOLDEN[league]);
+    });
 });
 
 describe('chart-builder-v2 on', () => {
@@ -91,6 +117,26 @@ describe('chart-builder-v2 on', () => {
         expect(props).toMatchObject({ v2: true, highlight: 'SEC', mode: 'dots' });
         expect(props.points).toHaveLength(ROWS[league].length);
         expect(feed.calls).toEqual([REQUEST[league]]);
+    });
+
+    test.each(['cfb', 'nfl'] as const)('%s: one control bar above the chart: Season, X, Y (grouped), Random, Plot', async (league) => {
+        const html = await islandMarkup(league, `${QUERY[league]}&hl=SEC&mode=dots`, true);
+        const [, x, y] = QUERY[league].match(/x=(\w+)&y=(\w+)/)!;
+        const bar = html.slice(html.indexOf('<form class="row" id="builder-controls"'), html.indexOf('id="chart_container"'));
+        expect(bar).not.toBe('');
+        // the header's Season/X/Y selects and Generate, and part 1's rail, are gone
+        expect(html).not.toContain('Generate');
+        expect(html).not.toContain('metric-rail');
+        expect([...bar.matchAll(/<select id="(builder-\w+)"/g)].map((m) => m[1])).toEqual(['builder-season', 'builder-x', 'builder-y']);
+        for (const id of ['builder-x', 'builder-y']) {
+            const select = bar.slice(bar.indexOf(`<select id="${id}"`), bar.indexOf('</select>', bar.indexOf(`<select id="${id}"`)));
+            expect([...select.matchAll(/<optgroup label="([^"]+)"/g)].map((m) => m[1])).toEqual(metricRail().map((f) => f.family));
+            expect(select).toMatch(new RegExp(`<option value="${id === 'builder-x' ? x : y}" selected`));
+        }
+        expect(bar).toMatch(/<button type="button"[^>]*id="random-axes"[^>]*>Random<\/button>/);
+        expect(bar).toMatch(/<button type="submit"[^>]*id="plot-chart"[^>]*>Plot<\/button>/);
+        // the FBS group/conference filters stay below the chart, client-side
+        expect(html.indexOf('Focus on:')).toBeGreaterThan(html.indexOf('id="chart_container"'));
     });
 
     test('an unknown mode falls back to logos, and the highlight is capped at 60 characters', async () => {
