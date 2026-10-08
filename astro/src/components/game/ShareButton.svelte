@@ -35,7 +35,7 @@
     onkeydown={(e) => { if (e.key === 'Escape') open = false; }}
 />
 <div class="dropdown" bind:this={root}>
-    <button class="btn btn-sm btn-outline-primary align-middle" class:p-2={label} type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
+    <button class="btn btn-sm btn-outline-primary align-middle text-nowrap" class:p-2={label} type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
         <i class="bi-share"></i>{label ? ' Share' : ''}
     </button>
     <ul class="dropdown-menu dropdown-menu-end" class:show={open} data-bs-popper="static">

@@ -45,7 +45,8 @@ const backHref = backToWeek
     : leaguePath(league, "/");
 // the phone button says where it goes
 const backLabel = backToWeek ? `Back to Week ${espnHeader.week}` : 'Back to Scoreboard';
-// 'share-card' (preview): a Share button beside Watch, in every game state
+// 'share-card' (preview): a Share button beside Watch, in every game state. The phone row
+// gets a gap: with Share in it, long labels ("Back to Week 10", "Replay (Prime Video)") met.
 const share = isFeatureEnabled('share-card', Astro.locals);
 const shareUrl = new URL(leaguePath(league, `/game/${espnHeader?.id ?? espnComp.id}`), "https://gameonpaper.com").href;
 const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` };
@@ -94,7 +95,7 @@ const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` }
                 </div>
             </div>
         </div>
-        <div class="d-flex justify-content-between align-items-center">
+        <div class={share ? "d-flex justify-content-between align-items-center gap-2" : "d-flex justify-content-between align-items-center"}>
             <div>
                 <a class="btn btn-sm btn-outline-primary align-middle p-2" href={backHref}><i class="bi-arrow-left"></i> {backLabel}</a>
             </div>
