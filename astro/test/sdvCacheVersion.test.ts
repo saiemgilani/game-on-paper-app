@@ -104,14 +104,33 @@ describe('SDV_API_CACHE key carries the table ingest stamp', () => {
         expect(metaCalls()).toBe(1); // the stamp rides the read's meta fetch, never its own
     });
 
-    test('a pinned version (the stamp a page showed) keys the read, even after meta moved on', async () => {
+    test('a pinned read (the stamp a page showed) keys by that stamp and caches when no ingest landed', async () => {
         const sdv = await load();
         const shown = await sdv.sdvIngestStamp('cfb', 'percentiles');
-        meta = stamped('2026-09-28T15:00:00+00:00');
-        vi.setSystemTime(new Date('2026-09-27T12:05:01Z')); // the meta window rolls over mid-render
         await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', shown);
-        expect(tableKey()).toBe(await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`));
-        expect(metaCalls()).toBe(1); // the pinned read never asks meta again
+        const key = await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`);
+        expect(tableKey()).toBe(key);
+        expect(puts.some(p => p.key === key)).toBe(true);
+        expect(metaCalls()).toBe(2); // the stamp's read, then one fresh check after the live fetch
+    });
+
+    test('an ingest that lands during a pinned miss is served but never cached under the older stamp', async () => {
+        const sdv = await load();
+        const shown = await sdv.sdvIngestStamp('cfb', 'percentiles');
+        // a newer ingest commits after the page took its stamp; the in-memory meta still says `shown`
+        meta = stamped('2026-09-28T15:00:00+00:00');
+        const rows = await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', shown);
+        expect(rows).toEqual([{ pctile: 50 }]);
+        const key = await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`);
+        expect(tableKey()).toBe(key); // looked up under the stamp shown
+        expect(puts.some(p => p.key === key)).toBe(false); // newer rows never stored under it
+        expect(metaCalls()).toBe(2);
+    });
+
+    test('an unpinned (public) read never makes the fresh check', async () => {
+        const sdv = await load();
+        await sdv.retrievePercentiles(2025, 50);
+        expect(metaCalls()).toBe(1);
     });
 
     test('a table meta does not list keeps the unversioned key', async () => {

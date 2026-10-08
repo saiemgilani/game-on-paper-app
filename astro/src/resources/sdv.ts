@@ -585,9 +585,10 @@ const SDV_META_TTL = 60 * 5;
 // null, which holds for the window, then retries -- no per-request retry storm on a down API.
 let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
 
-async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
+// `fresh` skips the shared KV copy (a pinned read's post-fetch check; see requestSDV).
+async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> | null> {
     try {
-        const cached = await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
+        const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
         const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
         if (!req.ok) throw new Error(`status ${req.status}`);
@@ -672,7 +673,13 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         // and checked before it can reach the cache. Was cached first, checked never.
         // The player identity route is the one read that answers a bare object, and
         // it always carries `espn_id` -- an `{ error }`/`{ detail }` body never does.
-        if (cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined)) {
+        const cacheable = cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined);
+        // The Data API takes no as-of version, so a pinned read that missed may have fetched
+        // rows from an ingest newer than its stamp. It caches only if a fresh meta read still
+        // shows that stamp; otherwise the rows serve this render but are never stored under it.
+        if (cacheable && version && (await fetchSDVDatasets(true))?.[`${league}.${endpoint}`] !== version) {
+            console.warn(`SDV ingest moved during a pinned read, not cached: ${endpointURL}`)
+        } else if (cacheable) {
             console.info(`SDV API cache update: ${endpointURL}`)
             await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
         } else if (cacheEnabled) {
