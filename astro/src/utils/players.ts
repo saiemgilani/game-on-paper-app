@@ -40,6 +40,12 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
     receiving: 'min. 1.875 targets per team-game',
 };
 
+/** How the player leaderboard sorts a metric: counting stats by value, the rest by rank (ranked = ascending). */
+export function playerBoardSort(metric: string): { sortBy: string; ranked: boolean } {
+    const sortBy = ["comp", "dropbacks", "plays", "targets"].includes(metric) ? metric : `${metric}_rank`;
+    return { sortBy, ranked: sortBy.endsWith("_rank") };
+}
+
 /**
  * A roster height, which both leagues publish as INCHES, as the site writes one
  * ("6-3"). Anything that is not a number of inches reads as absent.

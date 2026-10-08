@@ -1,11 +1,15 @@
 ---
+import FreshnessStamp from "../FreshnessStamp.astro";
+import { retrievePlayerSummaries, sdvIngestStamp, sdvPin, type SummaryType } from "../../resources/sdv";
+import { freshnessStamp } from "../../utils/freshness";
+import { isFeatureEnabled } from "../../utils/features";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { LEAGUES, leaguePath } from "../../utils/league";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
 import { toTitleCase } from "../../utils/misc";
 import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
 import { PLAYER_LEADERBOARD_COPY, datasetJsonLd } from "../../utils/seo";
-import { PLAYER_STAT_MINIMUMS } from "../../utils/players";
+import { PLAYER_STAT_MINIMUMS, playerBoardSort } from "../../utils/players";
 
 interface Props {
     season: number
@@ -19,6 +23,12 @@ const cfg = LEAGUES[league];
 const AVAILABLE_SEASONS = cfg.seasons;
 category = category || "passing";
 metric = metric || "EPAplay";
+// A stamped render reads its rows here, pinned to the stamp; any read that cannot confirm
+// that stamp clears the pin and the render shows none (the rows still render).
+const pin = isFeatureEnabled('freshness-stamps', Astro.locals) ? sdvPin(await sdvIngestStamp(league, category)) : undefined;
+const { sortBy, ranked } = playerBoardSort(metric);
+const rows = pin ? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, ranked, 150, season, league, pin) : undefined;
+const stamp = pin?.held ? freshnessStamp(pin.version) : null;
 
 const categoryTitle = toTitleCase(category);
 const copy = PLAYER_LEADERBOARD_COPY[category] ?? PLAYER_LEADERBOARD_COPY.passing;
@@ -57,12 +67,12 @@ const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
                     (category == "receiving" && league == "cfb") && (<p class="m-0 mb-2 text-muted text-small"><strong>Note: </strong> ESPN does not consistently mark targeted receivers for incomplete passes, which affects Catch %, EPA/target and Yards/Target averages.</p>)
                 }
                 <p class="m-0 mb-2 text-muted text-small">Adj EPA/Play methodology adapted from <a href="https://makennnahack.github.io/makenna-hack.github.io/publications/opp_adj_rank_project/">this article</a> by <a href="https://twitter.com/makennnahack">Makenna Hack</a> and <a href="https://blog.collegefootballdata.com/opponent-adjusted-stats-ridge-regression/">this article</a> from <a href="https://twitter.com/jbuddavis">Bud Davis</a>, accounting for home-field advantage, quality of opponent, and garbage time.{league === 'cfb' && " Only considers FBS vs FBS games -- as a result, adj EPA/Play and normal EPA/Play numbers may differ significantly until all teams have played multiple FBS vs FBS games."}</p>
-                <!-- <p class="m-0 mb-3 text-muted text-small game-context">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><span class="game-date">{SummaryModel.last_updated}</span></abbr></p> -->
+                <FreshnessStamp stamp={stamp} />
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
                 <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} league={league} />
             </div>
         </div>
     </div>
-    <PlayerLeaderboardTable season={season} category={category} metric={metric} />
+    <PlayerLeaderboardTable season={season} category={category} metric={metric} rows={rows} />
 </GenericPage>
