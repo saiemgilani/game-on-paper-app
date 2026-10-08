@@ -1,0 +1,96 @@
+"""excitement.summary on the committed final games (real `/process` payloads, offline)."""
+
+import copy
+
+import pytest
+
+import excitement
+
+
+def test_lead_changes_counted_by_hand_cfb(processed):
+    # CMU at OKST 2016, the scoring plays as ESPN lists them (away-home, the leader):
+    # 0-7 OKST, 0-14 OKST, 7-14 OKST, 7-17 OKST, 10-17 OKST, 17-17 tied,
+    # 17-20 OKST, 24-20 CMU (1), 24-27 OKST (2), 30-27 CMU (3).
+    # The tie at 17 is not a lead, so OKST retaking it at 17-20 is no change.
+    assert excitement.summary(processed("cfb"))["lead_changes"] == 3
+
+
+def test_wire_to_wire_has_no_lead_change(processed):
+    # JAX led CLE from 7-0 to 34-10 (nfl fixture): never tied after the first score.
+    game = processed("nfl")
+    scores = [
+        (p["homeScore"], p["awayScore"]) for p in game["plays"] if p.get("scoringPlay")
+    ]
+    assert scores and all(h > a for h, a in scores)
+    assert excitement.summary(game)["lead_changes"] == 0
+
+
+@pytest.mark.parametrize("league", ["cfb", "nfl"])
+def test_max_swing_is_the_largest_single_play_change(processed, league):
+    game = processed(league)
+    out = excitement.summary(game)
+    biggest = max(abs(p["winProbability"]["added"]) for p in game["plays"])
+    assert out["max_swing_pts"] == pytest.approx(100 * biggest)
+    if league == "cfb":
+        # the last-play touchdown that won it: 8% to 100% for CMU
+        assert round(out["max_swing_pts"]) == 92
+
+
+@pytest.mark.parametrize("league", ["cfb", "nfl"])
+def test_gei_is_the_page_formula(processed, league):
+    # astro/src/resources/python.ts calculateGEI, restated over the same plays
+    game = processed(league)
+    plays = game["plays"]
+    comp = game["header"]["competitions"][0]
+    home = next(
+        str(c["team"]["id"]) for c in comp["competitors"] if c["homeAway"] == "home"
+    )
+
+    def home_wp(p):
+        b = p["winProbability"]["before"]
+        return b if str(p["pos_team"]) == home else 1 - b
+
+    last = plays[-1]
+    final = (
+        1.0
+        if (last["homeScore"] > last["awayScore"]) == (str(last["pos_team"]) == home)
+        else 0.0
+    )
+    nxt = [home_wp(p) for p in plays[1:]] + [final]
+    expected = (
+        179.01777401608126
+        / len(plays)
+        * sum(abs(n - home_wp(p)) for p, n in zip(plays, nxt))
+    )
+    assert excitement.summary(game)["gei"] == pytest.approx(expected)
+
+
+def test_live_game_sums_only_the_swings_so_far(processed):
+    game = copy.deepcopy(processed("cfb"))
+    game["header"]["competitions"][0]["status"]["type"]["completed"] = False
+    game["plays"] = game["plays"][:60]
+    out = excitement.summary(game)
+    final = excitement.summary(processed("cfb"))
+    assert 0 < out["gei"] < final["gei"]
+    assert out["lead_changes"] == 0  # OKST led 14-7 by then
+
+
+def test_no_plays():
+    game = {
+        "header": {
+            "competitions": [
+                {
+                    "status": {"type": {}},
+                    "competitors": [
+                        {"homeAway": "home", "team": {"id": "1"}},
+                        {"homeAway": "away", "team": {"id": "2"}},
+                    ],
+                }
+            ]
+        }
+    }
+    assert excitement.summary(game) == {
+        "gei": None,
+        "lead_changes": 0,
+        "max_swing_pts": None,
+    }
