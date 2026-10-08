@@ -158,6 +158,40 @@ The college twin of `nfl-summaries-2025.json`.
 board from these rows and reconciles each season row against the parts it is
 summed from.
 
+## `neighbors-ranked-rows.json`
+Real rows from the live Data API, captured 2026-09-26: every team's six
+nearby-rank metrics and ranks (NFL 2025, CFB 2024) and every ranked row of NFL 2024 receiving and CFB 2024 passing
+(`<metric>_rank >= 1`). No hand edits. NFL 2024 receiving holds Davante Adams' NYJ row (ranked) but not his LV row
+(under the qualifier), which is what the traded-player tests need.
+
+**Used by:** `test/neighbors.test.ts`, `test/rankNeighbors.render.test.ts`, `test/playerPages.render.test.ts`.
+
+**To regenerate**, from `astro/`, in one shell call so `SDV_AUTH_TOKEN` (read from `.dev.vars`) never
+leaves it; keep the seasons so the tests' ids (NFL team 14, CFB passer 4433971, gsis `00-0031381`) hold:
+
+```bash
+SDV_AUTH_TOKEN="$(grep -E '^SDV_AUTH_TOKEN=' .dev.vars | head -1 | cut -d= -f2- | tr -d "\"'")" \
+node --input-type=module -e '
+const base = "https://data.sportsdataverse.org/v1";
+const get = async (p) => {
+  const r = await fetch(`${base}/${p}`, { headers: { Authorization: `Bearer ${process.env.SDV_AUTH_TOKEN}` } });
+  if (!r.ok) throw new Error(`${p}: ${r.status}`);
+  return (await r.json()).data;
+};
+const T = ["net_adj_epa","EPAplay_off","success_off","explosive_off","EPAplay_def","success_def"];
+const tsel = ["team_id","pos_team","season","conference", ...T, ...T.map((m) => `${m}_rank`)].join(",");
+const psel = (name, ms) => ["player_id", name, "team_id", "pos_team", "season", ...ms, ...ms.map((m) => `${m}_rank`)].join(",");
+const out = {
+  nfl_team_summaries_2025: await get(`nfl/team_summaries?season=2025&select=${tsel}&limit=150`),
+  cfb_team_summaries_2024: await get(`cfb/team_summaries?season=2024&select=${tsel}&limit=150`),
+  nfl_receiving_2024: await get(`nfl/receiving?season=2024&select=${psel("receiver_player_name", ["EPAplay","success","yardsplay","TEPA"])}&EPAplay_rank__gte=1&order=EPAplay_rank&limit=1000`),
+  cfb_passing_2024: await get(`cfb/passing?season=2024&select=${psel("passer_player_name", ["EPAplay","success","yardsdropback","TEPA"])}&EPAplay_rank__gte=1&order=EPAplay_rank&limit=1000`),
+};
+(await import("node:fs")).writeFileSync("test/fixtures/neighbors-ranked-rows.json", JSON.stringify(out, null, 1) + "\n");
+for (const [k, v] of Object.entries(out)) console.log(k, v.length);
+'
+```
+
 ## `team-summaries-cfb-2025.json` / `team-summaries-nfl-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_summaries?season=2025&limit=200` bodies
 (every team: 136 CFB, 32 NFL), trimmed by `select` to `team_id`, `pos_team`,

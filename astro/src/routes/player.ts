@@ -10,12 +10,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { leaguePath, type League } from '../utils/league';
-import { isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
+import { isEspnAthleteId, isGsisId, PLAYER_NAME_FIELD, type PlayerCategory, type PlayerGameRow, type SeasonRow } from '../utils/players';
 import {
     resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
-    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries,
+    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries, retrieveRankedRows,
     type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
 } from '../resources/sdv';
+import { isFeatureEnabled } from '../utils/features';
+import { neighborSelfRow, PLAYER_NEIGHBOR_METRICS, playerKey, playerNeighborLists, type NeighborList } from '../utils/neighbors';
 
 /** Every section's data, each the empty shape when its read failed. */
 export interface PlayerSections {
@@ -28,8 +30,10 @@ export interface PlayerSections {
     leagueBreaks: Record<string, number[]>;
     /** the season's team_summaries rows, for the Team Context panel */
     teamRows: SDVTeamSummary[];
+    /** nearby-rank lists ('rank-neighbors'), one per metric of his ranked category this season */
+    neighborLists: NeighborList[];
     /** which panels have to say "unavailable" instead of "nothing to show" */
-    failed: { seasons: boolean; games: boolean; splits: boolean };
+    failed: { seasons: boolean; games: boolean; splits: boolean; neighbors: boolean };
 }
 
 export interface PlayerParams {
@@ -157,7 +161,7 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
         return { notFound: true };
     }
     // no `?season=` is not "the latest season": it is the career view
-    const { sections, degraded } = await loadPlayerSections(player, season, league);
+    const { sections, degraded } = await loadPlayerSections(player, season, league, Astro.locals);
     // A page rendered around a failed read is served, but never cached: frozen
     // for the TTL it would keep saying "unavailable" long after the upstream
     // recovered (CodeRabbit on #267). The reads are made HERE, not in the page
@@ -176,7 +180,8 @@ const TEAM_CONTEXT_METRICS = ['EPAplay_off', 'success_off', 'explosive_off', 'EP
  * fine. The career view needs only the season rows; the season-only reads are
  * not made at all rather than made and thrown away.
  */
-export async function loadPlayerSections(player: SDVPlayer, season: number | null, league: League):
+export async function loadPlayerSections(player: SDVPlayer, season: number | null, league: League,
+    locals: { preview?: boolean; flagOverrides?: Record<string, boolean> } = {}):
     Promise<{ sections: PlayerSections, degraded: boolean }> {
     const reads = await Promise.allSettled([
         retrievePlayerSeasons(player.espn_id, league),
@@ -194,12 +199,34 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         console.error(`player page: a section read failed: ${r.reason}`);
         return empty;
     };
+    // Nearby ranks ('rank-neighbors'): one category read, the one neighborSelfRow
+    // picks (his busiest ranked category this season); no ranked row, no lists.
+    const seasonRows = value(0, []) as SeasonRow[];
+    let neighborLists: NeighborList[] = [];
+    let neighborsFailed = false;
+    const own = season === null || !isFeatureEnabled('rank-neighbors', locals) ? undefined
+        : neighborSelfRow(seasonRows, season);
+    if (own && season !== null) {
+        const category = own.category as PlayerCategory;
+        try {
+            const rows = await retrieveRankedRows({ table: category, season, metrics: PLAYER_NEIGHBOR_METRICS[category],
+                idColumns: ['player_id', PLAYER_NAME_FIELD[category], 'team_id', 'pos_team'], league });
+            neighborLists = playerNeighborLists(rows, playerKey(own), category, { ...locals, league }, season);
+        } catch (e) {
+            console.error(`player page: the nearby-ranks read failed: ${e}`);
+            neighborsFailed = true;
+        }
+    }
     return {
         sections: {
-            seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
+            seasonRows, games: value(1, []), splits: value(2, []),
             espnGameIds: value(3, {}), leagueBreaks: value(4, {}), teamRows: value(5, []),
-            failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
+            neighborLists,
+            failed: {
+                seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected',
+                splits: reads[2].status === 'rejected', neighbors: neighborsFailed,
+            },
         },
-        degraded: reads.some((r) => r.status === 'rejected'),
+        degraded: reads.some((r) => r.status === 'rejected') || neighborsFailed,
     };
 }

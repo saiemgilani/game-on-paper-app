@@ -37,6 +37,7 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerSeasonTable from './PlayerSeasonTable.astro';
 import PlayerGameLog from './PlayerGameLog.astro';
 import PlayerSplits from './PlayerSplits.astro';
+import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import type { SDVPlayer } from '../../resources/sdv';
 import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
@@ -57,7 +58,7 @@ const { player, season, sections } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
-const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
+const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, neighborLists, failed } = sections;
 
 // the summary tiles count what was PLAYED, so they sum the API's rows and
 // never the synthetic live row below
@@ -306,6 +307,16 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                         </tbody>
                     </table>
                 </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        {(neighborLists.length > 0 || failed.neighbors) && (
+        <Panel id="player-neighbor-ranks" title="Nearby Ranks" show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                {failed.neighbors
+                    ? <p class="m-0 text-muted text-small" id="player-neighbor-ranks-unavailable">{UNAVAILABLE}</p>
+                    : <NeighborRanks lists={neighborLists} logos={false} />}
             </Fragment>
         </Panel>
         )}

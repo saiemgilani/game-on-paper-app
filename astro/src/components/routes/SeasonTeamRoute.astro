@@ -18,11 +18,12 @@ import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
+import NeighborRanks from "../../components/leaderboards/NeighborRanks.astro";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, neighborLists } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -100,6 +101,13 @@ const breadcrumbs: PageBreadcrumb[] = [
         <div class="container mb-3">
             <FiveFactorsTable summary={teamSummaries[0]} />
         </div>
+    )}
+    {neighborLists.length > 0 && (
+    <div class="container mb-3">
+        <GenericPanel id="nearby-ranks" title="Nearby Ranks" show={true}>
+            <NeighborRanks slot="panel-body" lists={neighborLists} logos={true} />
+        </GenericPanel>
+    </div>
     )}
     <div class="container">
         <TeamPassingTable players={passers.filter(p => p.passer_player_name != "NA" && p.passer_player_name != null && p.passer_player_name).toSorted((a, b) => b.plays - a.plays)} />
