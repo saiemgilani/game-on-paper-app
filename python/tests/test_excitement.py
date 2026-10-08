@@ -36,33 +36,48 @@ def test_max_swing_is_the_largest_single_play_change(processed, league):
         assert round(out["max_swing_pts"]) == 92
 
 
-@pytest.mark.parametrize("league", ["cfb", "nfl"])
-def test_gei_is_the_page_formula(processed, league):
-    # astro/src/resources/python.ts calculateGEI, restated over the same plays
-    game = processed(league)
+def _gei(game, final):
+    """calculateGEI (astro/src/resources/python.ts) restated, the last play swinging to `final`."""
     plays = game["plays"]
     comp = game["header"]["competitions"][0]
-    home = next(
-        str(c["team"]["id"]) for c in comp["competitors"] if c["homeAway"] == "home"
-    )
+    home = next(str(c["team"]["id"]) for c in comp["competitors"] if c["homeAway"] == "home")
 
     def home_wp(p):
         b = p["winProbability"]["before"]
         return b if str(p["pos_team"]) == home else 1 - b
 
-    last = plays[-1]
-    final = (
-        1.0
-        if (last["homeScore"] > last["awayScore"]) == (str(last["pos_team"]) == home)
-        else 0.0
-    )
     nxt = [home_wp(p) for p in plays[1:]] + [final]
-    expected = (
-        179.01777401608126
-        / len(plays)
-        * sum(abs(n - home_wp(p)) for p, n in zip(plays, nxt))
-    )
-    assert excitement.summary(game)["gei"] == pytest.approx(expected)
+    return 179.01777401608126 / len(plays) * sum(abs(n - home_wp(p)) for p, n in zip(plays, nxt))
+
+
+@pytest.mark.parametrize("league", ["cfb", "nfl"])
+def test_gei_is_the_page_formula(processed, league):
+    game = processed(league)
+    last = game["plays"][-1]
+    final = 1.0 if last["homeScore"] > last["awayScore"] else 0.0  # no tie in either fixture
+    assert excitement.summary(game)["gei"] == pytest.approx(_gei(game, final))
+
+
+def test_last_play_swings_to_the_result_not_the_possession(processed):
+    # CMU at OKST: CMU trailed 24-27 and had the ball on the last play, and won 30-27
+    # on it. The home side (OKST) lost, so its WP ends at 0, whoever had the ball.
+    game = processed("cfb")
+    last = game["plays"][-1]
+    comp = game["header"]["competitions"][0]
+    away = next(str(c["team"]["id"]) for c in comp["competitors"] if c["homeAway"] == "away")
+    assert str(last["pos_team"]) == away
+    assert (last["start"]["awayScore"], last["start"]["homeScore"]) == (24, 27)
+    assert (last["awayScore"], last["homeScore"]) == (30, 27)
+    gei = excitement.summary(game)["gei"]
+    assert gei == pytest.approx(_gei(game, 0.0))
+    # the old rule read the side with the ball (CMU, leading after the play) as home's 1.0
+    assert gei != pytest.approx(_gei(game, 1.0))
+
+
+def test_a_tie_ends_at_even(processed):
+    game = copy.deepcopy(processed("cfb"))
+    game["plays"][-1]["awayScore"] = game["plays"][-1]["homeScore"]
+    assert excitement.summary(game)["gei"] == pytest.approx(_gei(game, 0.5))
 
 
 def test_live_game_sums_only_the_swings_so_far(processed):
