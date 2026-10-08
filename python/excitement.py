@@ -5,7 +5,8 @@ The spoiler-free share card prints these three numbers in place of the score.
 - ``gei``: the Game Excitement Index the WP chart shows, the same formula and scale
   as ``calculateGEI`` in ``astro/src/resources/python.ts``. The last play of a final
   swings to the result: the home side's WP is 1 if it won, 0 if it lost, 0.5 for a
-  tie, whoever had the ball. While the game is live it sums the swings so far.
+  tie, whoever had the ball. While the game is live it sums the swings so far, the
+  newest play's included (its WP after the play).
 - ``lead_changes``: how often the scoring leader flipped, over scoring plays. A tie is
   not a lead, so A ahead, tied, then B ahead counts once.
 - ``max_swing_pts``: the largest single-play win-probability change, in percentage
@@ -23,6 +24,13 @@ def _home_wp(play, home_id):
     return before if str(play.get("pos_team")) == home_id else 1.0 - before
 
 
+def _home_wp_after(play, home_id):
+    after = (play.get("winProbability") or {}).get("after")
+    if after is None:
+        return None
+    return after if str(play.get("pos_team")) == home_id else 1.0 - after
+
+
 def _gei(plays, home_id, completed):
     diffs = []
     for i, play in enumerate(plays):
@@ -34,7 +42,7 @@ def _gei(plays, home_id, completed):
             margin = play.get("homeScore", 0) - play.get("awayScore", 0)
             nxt = 1.0 if margin > 0 else 0.0 if margin < 0 else 0.5
         else:
-            break  # live: no final value to swing to yet
+            nxt = _home_wp_after(play, home_id)  # live: where the newest play left it
         if wp is not None and nxt is not None:
             diffs.append(abs(nxt - wp))
     return GEI_SCALE / len(plays) * sum(diffs) if plays else None

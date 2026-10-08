@@ -425,3 +425,40 @@ def test_small_art_is_scaled_to_the_logo_box():
     card.logo({"id": "61", "abbr": "uga", "colour": share_card.INK, "logo": "x"}, "cfb", lambda url: buf.getvalue(), 330, 315, 200)
     (image,) = card.fig.images
     assert image.get_array().shape[:2] == (200, 200)
+
+
+# --- the WP line's endpoint ----------------------------------------------------------
+
+
+def _wp_line(game, completed, elapsed=1.0):
+    """The y values the card plots for `game`'s WP line."""
+    comp = game["header"]["competitions"][0]
+    home, away = share_card._side(comp, "home"), share_card._side(comp, "away")
+    card = share_card._Card(None)
+    card.wp(game["plays"], home, away, completed, elapsed, 190, 530)
+    (ax,) = card.fig.axes
+    return list(ax.lines[-1].get_ydata()), home
+
+
+def test_live_line_ends_after_the_newest_play(processed):
+    game = _live(processed("cfb"), 110)
+    ys, home = _wp_line(game, completed=False, elapsed=0.6)
+    scrimmage = [p for p in game["plays"] if p.get("scrimmage_play")]
+    last = scrimmage[-1]
+    after = last["winProbability"]["after"]
+    assert len(ys) == len(scrimmage) + 1
+    assert ys[-1] == pytest.approx(after if str(last["pos_team"]) == home["id"] else 1 - after)
+
+
+def test_final_line_ends_at_the_result(processed):
+    ys, _ = _wp_line(processed("cfb"), completed=True)
+    assert ys[-1] == 0.0  # OKST, the home side, lost
+
+
+def test_tied_final_line_ends_at_even(processed):
+    # a tied final (NFL): ESPN marks neither side the winner
+    game = copy.deepcopy(processed("nfl"))
+    for c in game["header"]["competitions"][0]["competitors"]:
+        c["score"], c["winner"] = "20", False
+    ys, _ = _wp_line(game, completed=True)
+    assert ys[-1] == 0.5

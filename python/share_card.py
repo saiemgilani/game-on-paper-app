@@ -74,6 +74,15 @@ def _side(comp, home_away):
     }
 
 
+def _result(home, away):
+    """The home side's final WP: 1 if it won, 0 if it lost, 0.5 for a tie."""
+    try:
+        margin = int(home["score"]) - int(away["score"])
+    except (TypeError, ValueError):
+        margin = bool(home["winner"]) - bool(away["winner"])
+    return 1.0 if margin > 0 else 0.0 if margin < 0 else 0.5
+
+
 def _clock12(d):
     return f"{d.hour % 12 or 12}:{d.minute:02d} {'AM' if d.hour < 12 else 'PM'}"
 
@@ -164,12 +173,15 @@ class _Card:
                         before if str(p.get("pos_team")) == home["id"] else 1 - before,
                     )
                 )
-        if (
-            completed
-            and pts
-            and (home["winner"] is not None or away["winner"] is not None)
-        ):
-            pts.append((pts[-1][0], 1.0 if home["winner"] else 0.0))
+        if pts and completed:
+            # the result, like the page's chart: 1 or 0 for the home side, 0.5 for a tie
+            # (ESPN marks neither side the winner then)
+            pts.append((pts[-1][0], _result(home, away)))
+        elif pts:
+            # live: the newest play's own swing, so the line is not a play behind
+            after = (plays[-1].get("winProbability") or {}).get("after")
+            if after is not None:
+                pts.append((pts[-1][0], after if str(plays[-1].get("pos_team")) == home["id"] else 1 - after))
         ax = self.fig.add_axes(
             [PAD / W, 1 - bottom / H, (W - 2 * PAD) / W, (bottom - top) / H]
         )

@@ -109,3 +109,27 @@ def test_no_plays():
         "lead_changes": 0,
         "max_swing_pts": None,
     }
+
+
+def _home_after(play, home):
+    after = play["winProbability"]["after"]
+    return after if str(play["pos_team"]) == home else 1 - after
+
+
+def test_live_gei_counts_the_newest_play(processed):
+    # a live game ends on a play that already has its `after`: the swing it made counts
+    game = copy.deepcopy(processed("cfb"))
+    game["header"]["competitions"][0]["status"]["type"]["completed"] = False
+    game["plays"] = game["plays"][:60]
+    comp = game["header"]["competitions"][0]
+    home = next(str(c["team"]["id"]) for c in comp["competitors"] if c["homeAway"] == "home")
+    expected = _gei(game, _home_after(game["plays"][-1], home))
+    assert excitement.summary(game)["gei"] == pytest.approx(expected)
+
+
+def test_live_one_play_game_is_not_zero(processed):
+    game = copy.deepcopy(processed("cfb"))
+    game["header"]["competitions"][0]["status"]["type"]["completed"] = False
+    play = next(p for p in game["plays"] if abs(p["winProbability"]["added"] or 0) > 0.01)
+    game["plays"] = [play]
+    assert excitement.summary(game)["gei"] == pytest.approx(179.01777401608126 * abs(play["winProbability"]["added"]))
