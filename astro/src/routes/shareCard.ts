@@ -16,7 +16,7 @@ import { retrieveGamePageGuarded } from '../resources/espn';
 import { retrieveShareCard } from '../resources/python';
 import { calculatePredictedPointMargin, calculatePredictedWinProb, retrieveTeamSummaries } from '../resources/sdv';
 import { CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
-import { CARD_MAX_AGE, CARD_STATES, CARD_VARIANTS, cardCacheControl, cardState, type CardState, type CardVariant } from '../utils/shareTags';
+import { CARD_MAX_AGE, CARD_STATES, CARD_VARIANTS, cardCacheControl, cardLogoUrl, cardState, type CardState, type CardVariant } from '../utils/shareTags';
 import type { League } from '../utils/league';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
@@ -54,7 +54,9 @@ export function shareCardRoute(league: League): APIRoute {
         if (!header?.competitions?.[0]) return new Response('Not found', { status: 404, headers: NO_STORE });
 
         const state = cardState(header.competitions[0].status);
-        const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined);
+        const teamId = (ha: string): string => header.competitions[0].competitors.find((c: any) => c.homeAway === ha)?.team?.id ?? '';
+        const logos = { home: cardLogoUrl(league, teamId('home')), away: cardLogoUrl(league, teamId('away')) };
+        const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined, logos);
         if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
 
         // an ESPN payload older than one already shown is drawn but never kept

@@ -5,7 +5,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { cardCacheControl, cardState, shareTags, type ShareTagGame } from '../src/utils/shareTags';
+import { cardCacheControl, cardLogoUrl, cardState, shareTags, type ShareTagGame } from '../src/utils/shareTags';
+import { SPECIAL_IMAGES } from '../src/utils/constants';
 
 // 'share-card': game links preview with the API's card (python/share_card.py), and
 // ?spoilers=off previews without the score. Real fixtures: the /process payload of
@@ -130,10 +131,19 @@ describe('shareTags', () => {
             // its own og:url: a platform keying previews on og:url must not merge it with the scored link
             expect(t.url).toBe(`https://gameonpaper.com/game/${GAME_ID}?spoilers=off`);
             expect(t.jsonLd).toBe(false);
-            expect(t.title).toBe('Central Michigan @ Oklahoma State · Week 2 2016 · Game on Paper');
+            expect(t.title).toBe('Central Michigan @ Oklahoma State / Week 2 2016 / Game on Paper');
             expect(t.description).toMatch(state === 'final' ? /^Final on Sep 10, 2016\./ : /^Live on Sep 10, 2016\./);
             for (const s of [t.title, t.description, t.imageAlt]) scoreFree(s);
         }
+    });
+
+    test('card art: GOP\'s own where the site overrides ESPN\'s, else ESPN\'s light logo', () => {
+        // the overrides DarkModeLogos applies, read from the one map (UGA and GT today)
+        expect(Object.keys(SPECIAL_IMAGES).sort()).toEqual(['59', '61']);
+        expect(cardLogoUrl('cfb', 61)).toBe('https://gameonpaper.com/assets/img/ennui-uga.png');
+        expect(cardLogoUrl('cfb', '59')).toBe('https://gameonpaper.com/assets/img/gt-old-gold.png');
+        expect(cardLogoUrl('cfb', 197)).toBe('https://a.espncdn.com/i/teamlogos/ncaa/500/197.png');
+        expect(cardLogoUrl('nfl', 30)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500/30.png');
     });
 
     test('the state follows ESPN', () => {
@@ -212,7 +222,7 @@ describe('share-card on: the card for the game state', () => {
         // the JSON-LD names the result, so the spoiler-free head leaves it out; canonical stays the game
         expect(head(html)).not.toContain('application/ld+json');
         expect(head(html)).toContain(`<link rel="canonical" href="https://gameonpaper.com/game/${GAME_ID}">`);
-        expect(head(html).match(/<title>([^<]*)<\/title>/)![1]).toBe('Central Michigan @ Oklahoma State · Week 2 2016 · Game on Paper');
+        expect(head(html).match(/<title>([^<]*)<\/title>/)![1]).toBe('Central Michigan @ Oklahoma State / Week 2 2016 / Game on Paper');
         // the body is unchanged: the header still says the score
         const body = html.slice(html.indexOf('<body'));
         expect(body).toMatch(/Central Michigan[\s\S]{0,400}30[\s\S]{0,400}Oklahoma State[\s\S]{0,400}27/);
@@ -291,6 +301,12 @@ describe('the card route', () => {
         expect(api!.url).toContain(`/cfb/${id}/card.png?state=${state}&variant=full`);
         expect(api!.init.cf.cacheTtlByStatus['200-299']).toBe(ttl);
         expect(api!.init.cf.cacheKey).toContain(`state=${state}&variant=full`);
+        // each side's art rides along to the API, never into the cache key or the public URL
+        const q = new URL(api!.url).searchParams;
+        const ids = Object.fromEntries(header(espnState).competitions[0].competitors.map((c: any) => [c.homeAway, c.team.id]));
+        expect(q.get('home_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.home}.png`);
+        expect(q.get('away_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.away}.png`);
+        expect(api!.init.cf.cacheKey).not.toContain('logo');
         expect(set).toHaveBeenCalledWith({ maxAge: ttl, tags: ['share-card'] });
     });
 
@@ -307,9 +323,21 @@ describe('the card route', () => {
         expect(api!.url).toContain('state=live&variant=spoilerfree');
     });
 
+    test('UGA and GT get the art the site shows, not ESPN\'s', async () => {
+        const h = header('post');
+        const comps = h.competitions[0].competitors;
+        comps.find((c: any) => c.homeAway === 'home').team.id = '61';
+        comps.find((c: any) => c.homeAway === 'away').team.id = '59';
+        const { api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, h);
+        const q = new URL(api!.url).searchParams;
+        expect(q.get('home_logo')).toBe('https://gameonpaper.com/assets/img/ennui-uga.png');
+        expect(q.get('away_logo')).toBe('https://gameonpaper.com/assets/img/gt-old-gold.png');
+    });
+
     test('nfl reaches the nfl API route', async () => {
         const { api } = await get(`/nfl/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
         expect(api!.url).toContain(`/nfl/${GAME_ID}/card.png`);
+        expect(new URL(api!.url).searchParams.get('home_logo')).toMatch(/^https:\/\/a\.espncdn\.com\/i\/teamlogos\/nfl\/500\/\d+\.png$/);
     });
 
     test('an ESPN payload older than one already shown is drawn but never cached', async () => {

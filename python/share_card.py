@@ -128,7 +128,8 @@ class _Card:
             self.drawn.append(s)
 
     def logo(self, team, league, logo_fetch, cx, cy, size):
-        url = f"https://a.espncdn.com/i/teamlogos/{'nfl' if league == 'nfl' else 'ncaa'}/500/{team['id']}.png"
+        # the art the Worker chose (GOP's own where the site overrides ESPN's), else ESPN's
+        url = team.get("logo") or f"https://a.espncdn.com/i/teamlogos/{'nfl' if league == 'nfl' else 'ncaa'}/500/{team['id']}.png"
         img = None
         raw = logo_fetch(url)
         if raw:
@@ -267,6 +268,8 @@ def render(
     comp = header["competitions"][0]
     status = comp.get("status") or {}
     home, away = _side(comp, "home"), _side(comp, "away")
+    for side, team in (("home", home), ("away", away)):
+        team["logo"] = (game.get("logos") or {}).get(side)
     kickoff = _kickoff(comp)
     context = (header.get("gameNote") or "").strip() or (
         f"Week {header['week']}" if header.get("week") else ""
@@ -291,7 +294,7 @@ def render(
         card.text(
             W / 2,
             58,
-            " · ".join(x for x in (context, when, tv) if x),
+            " / ".join(x for x in (context, when, tv) if x),
             26,
             colour=MUTED,
             max_w=W - 2 * PAD,
@@ -339,16 +342,16 @@ def render(
     else:
         if state == "live":
             stamp = (
-                f"Live · {asof}"
+                f"Live / {asof}"
                 if spoilerfree
-                else f"Live · {_live_clock(status)} · {asof}"
+                else f"Live / {_live_clock(status)} / {asof}"
             )
         else:
             detail = (status.get("type") or {}).get("detail") or ""
             final = (
                 detail if detail.startswith("Final") and not spoilerfree else "Final"
             )
-            stamp = " · ".join(x for x in (final, context, day) if x)
+            stamp = " / ".join(x for x in (final, context, day) if x)
         card.text(W / 2, 58, stamp, 26, colour=MUTED, max_w=W - 2 * PAD)
         title = (
             f"{away['name']} @ {home['name']}"

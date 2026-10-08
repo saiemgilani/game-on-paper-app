@@ -1318,15 +1318,17 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
  * deploy, state, variant and projection, so a new renderer redraws every card.
  * `pregame` is GOP's projection: home-relative margin and the home side's win probability.
  */
-export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }): Promise<ArrayBuffer | null> {
+export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }, logos?: { home: string, away: string }): Promise<ArrayBuffer | null> {
     if (!PYTHON_HTTP_TOKEN) return null;
     const query = new URLSearchParams({ state, variant });
     if (pregame) {
         query.set('proj_margin', String(pregame.margin));
         if (pregame.homeWinProb != null) query.set('proj_wp', String(pregame.homeWinProb));
     }
+    // each side's art (shareTags cardLogoUrl): fixed per team and deploy, so it stays out of the cache key
+    const art = new URLSearchParams(logos ? { home_logo: logos.home, away_logo: logos.away } : {});
     try {
-        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}`, {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`, {
             headers: {
                 "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`,
                 "Referer": "gameonpaper.com",

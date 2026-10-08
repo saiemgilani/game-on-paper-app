@@ -11,6 +11,7 @@ import orjson
 import os
 import logging
 import base64
+import urllib.parse
 import urllib.request
 
 from telemetry import TEL, stage, init_flask
@@ -701,11 +702,35 @@ def sources_nfl(game_id: int):
     return _sources("nfl", game_id)
 
 
+# Where a card may fetch team art from: the site's own (astro SPECIAL_IMAGES, e.g.
+# UGA and GT) and ESPN's CDN. The URLs arrive as request parameters, so this list is
+# what stops the API being pointed at anything else (internal addresses included):
+# https only, no credentials or ports, and no redirects followed off the list.
+LOGO_HOSTS = {"gameonpaper.com", "a.espncdn.com"}
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_LOGO_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def _logo_fetch(url):
-    """A team logo from ESPN's CDN, or None (the card prints the abbreviation)."""
+    """A team logo from an allowed host, or None (the card prints the abbreviation)."""
     try:
-        with urllib.request.urlopen(url, timeout=3) as resp:
-            return resp.read()
+        u = urllib.parse.urlsplit(url)
+        if (
+            u.scheme != "https"
+            or u.hostname not in LOGO_HOSTS
+            or u.port is not None
+            or u.username
+            or u.password
+        ):
+            return None
+        with _LOGO_OPENER.open(url, timeout=3) as resp:
+            return resp.read(2_000_000)
     except Exception:
         return None
 
@@ -764,6 +789,8 @@ def _card(league: str, game_id: int):
         "header": summary["header"],
         "gameInfo": summary.get("gameInfo"),
         "projection": projection,
+        # the Worker resolves each side's art (astro utils/shareTags.ts cardLogoUrl)
+        "logos": {side: request.args.get(f"{side}_logo") for side in ("home", "away")},
     }
     if state != "pre":
         try:

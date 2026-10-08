@@ -9,7 +9,8 @@
  * title, description and image say Final or Live and the date, never the score.
  */
 import type { ESPNStatus } from '../resources/espn';
-import { leaguePath, type League } from './league';
+import { SPECIAL_IMAGES } from './constants';
+import { leaguePath, teamLogoUrl, type League } from './league';
 import { gameContext } from './seo';
 
 export type CardState = 'pre' | 'live' | 'final';
@@ -22,6 +23,16 @@ export const CARD_MAX_AGE: Record<CardState, number> = { final: 31536000, live: 
 
 export function cardCacheControl(state: CardState): string {
     return `public, max-age=${CARD_MAX_AGE[state]}${state === 'final' ? ', immutable' : ''}`;
+}
+
+/**
+ * The team art a card draws: GOP's own where the site overrides ESPN's (SPECIAL_IMAGES,
+ * as DarkModeLogos applies it), else ESPN's logo. The card is white, so always the
+ * light variant. The API fetches only from this site and ESPN's CDN.
+ */
+export function cardLogoUrl(league: League, teamId: string | number): string {
+    const own = SPECIAL_IMAGES[String(teamId)];
+    return own ? new URL(own, 'https://gameonpaper.com').href : teamLogoUrl(league, teamId, false);
 }
 
 /** Final once ESPN says completed, live while it is in progress, otherwise pregame (nothing scored yet). */
@@ -83,7 +94,7 @@ export function shareTags(g: ShareTagGame, { spoilerFree, now = Date.now() }: { 
     return {
         url,
         jsonLd,
-        title: `${matchup} · ${gameContext(g)} · Game on Paper`,
+        title: `${matchup} / ${gameContext(g)} / Game on Paper`,
         description: `${label}${day}. The score is left out of this preview: open the game for win probability, EPA and every play.`,
         image,
         imageAlt: `${matchup}, ${label.toLowerCase()}: game excitement, score hidden`,

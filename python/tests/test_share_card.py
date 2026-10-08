@@ -93,7 +93,7 @@ def test_live_card_says_when_it_was_drawn(processed, league):
     last = game["plays"][-1]
     _, drawn = _render(game, "live", "full", league)
     assert (
-        f"Live · Q{last['period']} {last['clock']['displayValue']} · as of 9:41 PM ET"
+        f"Live / Q{last['period']} {last['clock']['displayValue']} / as of 9:41 PM ET"
         in drawn
     )
     assert not any(s.startswith("Deserved Win") for s in drawn)  # not decided yet
@@ -104,7 +104,7 @@ def test_pregame_card_from_the_espn_summary(projection):
     _, drawn = _render(_pregame(projection), "pre", "full")
     assert "Central Michigan @ #22 Oklahoma State" in drawn
     assert "Boone Pickens Stadium, Stillwater, OK" in drawn
-    assert any(s.endswith("12:00 PM ET · FS1") for s in drawn)
+    assert any(s.endswith("12:00 PM ET / FS1") for s in drawn)
     lines = [s for s in drawn if s.startswith("Projection")]
     assert lines == (["Projection: CMU by 3.5 (62%)"] if projection else [])
 
@@ -130,7 +130,7 @@ def test_spoiler_free_card_draws_no_result(processed, state, monkeypatch):
             assert any(c["team"]["location"] in s for s in drawn)
         # live: the clock (and so any overtime) stays off the spoiler-free card
         if state == "live":
-            assert "Live · as of 9:41 PM ET" in drawn
+            assert "Live / as of 9:41 PM ET" in drawn
 
 
 def test_spoiler_free_hides_overtime(processed):
@@ -219,6 +219,17 @@ def _as(state):
     return (Processor, "espn_cfb_pbp")
 
 
+class _Opener:
+    """Stands in for the API's logo opener: records each URL it would have fetched."""
+
+    def __init__(self):
+        self.opened = []
+
+    def open(self, url, timeout=None):
+        self.opened.append(url)
+        return io.BytesIO(LOGO)
+
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("PYTHON_HTTP_TOKEN", "secret")
@@ -226,7 +237,8 @@ def client(monkeypatch):
 
     importlib.reload(app_mod)
     monkeypatch.setitem(app_mod._PROCESSORS, "cfb", PROCESSORS["cfb"])
-    monkeypatch.setattr(app_mod, "_logo_fetch", lambda url: LOGO)
+    # the real allowlist runs; only the network behind it is a stub
+    monkeypatch.setattr(app_mod, "_LOGO_OPENER", _Opener())
     return app_mod, app_mod.app.test_client()
 
 
@@ -311,3 +323,95 @@ def test_route_needs_the_token(client):
     assert (
         c.get(f"/cfb/{GAMES['cfb']}/card.png?state=pre&variant=full").status_code == 401
     )
+
+
+
+# --- team art: the Worker picks it, the API fetches only from allowed hosts ---------
+
+UGA = "https://gameonpaper.com/assets/img/ennui-uga.png"
+GT = "https://gameonpaper.com/assets/img/gt-old-gold.png"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [UGA, "https://a.espncdn.com/i/teamlogos/ncaa/500/197.png", "https://a.espncdn.com/i/teamlogos/nfl/500/30.png"],
+)
+def test_logo_fetch_allows_the_site_and_espn(client, url):
+    app_mod, _ = client
+    assert app_mod._logo_fetch(url) == LOGO
+    assert app_mod._LOGO_OPENER.opened == [url]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://a.espncdn.com/i/teamlogos/ncaa/500/197.png",  # not https
+        "https://169.254.169.254/latest/meta-data/",  # cloud metadata
+        "https://localhost:5000/healthcheck",
+        "https://127.0.0.1/x.png",
+        "https://gameonpaper.com.evil.example/x.png",  # look-alike host
+        "https://evil.example/a.espncdn.com/x.png",
+        "https://a.espncdn.com@evil.example/x.png",  # credentials trick: the host is evil.example
+        "https://user:pw@gameonpaper.com/x.png",
+        "https://gameonpaper.com:8443/x.png",  # another port on an allowed host
+        "file:///etc/passwd",
+        "not a url",
+        None,
+    ],
+)
+def test_logo_fetch_refuses_everything_else(client, url):
+    app_mod, _ = client
+    assert app_mod._logo_fetch(url) is None
+    assert app_mod._LOGO_OPENER.opened == []
+
+
+def test_logo_fetch_follows_no_redirect():
+    # an allowed host that redirects elsewhere must not lead the fetch off the list
+    import app as app_mod
+
+    assert any(isinstance(h, app_mod._NoRedirect) for h in app_mod._LOGO_OPENER.handlers)
+    assert app_mod._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://evil.example/") is None
+
+
+def test_route_draws_the_art_the_worker_chose(client, monkeypatch):
+    app_mod, c = client
+    seen = {}
+    real = share_card.render
+    monkeypatch.setattr(app_mod.share_card, "render", lambda game, *a, **k: seen.update(game) or real(game, *a, **k))
+    r = c.get(
+        f"/cfb/{GAMES['cfb']}/card.png",
+        query_string={"state": "final", "variant": "full", "home_logo": UGA, "away_logo": GT},
+        headers=_auth(),
+    )
+    assert r.status_code == 200
+    assert seen["logos"] == {"home": UGA, "away": GT}
+    assert sorted(app_mod._LOGO_OPENER.opened) == sorted([UGA, GT])
+
+
+def test_route_without_art_draws_espn_logos(client):
+    app_mod, c = client
+    assert c.get(f"/cfb/{GAMES['cfb']}/card.png?state=final&variant=full", headers=_auth()).status_code == 200
+    assert sorted(app_mod._LOGO_OPENER.opened) == [
+        "https://a.espncdn.com/i/teamlogos/ncaa/500/197.png",
+        "https://a.espncdn.com/i/teamlogos/ncaa/500/2117.png",
+    ]
+
+
+def test_a_refused_logo_prints_the_abbreviation(client, monkeypatch):
+    app_mod, c = client
+    drawn = []
+    real = share_card.render
+    monkeypatch.setattr(app_mod.share_card, "render", lambda game, league, st, va, fetch, now: real(game, league, st, va, fetch, now, drawn))
+    r = c.get(
+        f"/cfb/{GAMES['cfb']}/card.png",
+        query_string={
+            "state": "final",
+            "variant": "full",
+            "home_logo": "http://169.254.169.254/x.png",
+            "away_logo": "https://evil.example/x.png",
+        },
+        headers=_auth(),
+    )
+    assert r.status_code == 200
+    assert app_mod._LOGO_OPENER.opened == []
+    assert {"OKST", "CMU"} <= set(drawn)
