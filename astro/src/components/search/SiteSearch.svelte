@@ -15,7 +15,7 @@
     type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
     const GROUPS = [['team', 'Teams'], ['player', 'Players'], ['game', 'Games']] as const;
 
-    const { league = 'cfb', placeholder = 'Search' } = $props();
+    const { league = 'cfb' } = $props();
 
     let q = $state('');
     let hits: Hit[] = $state([]);
@@ -193,7 +193,7 @@
         autocapitalize="off"
         spellcheck="false"
         enterkeyhint="search"
-        {placeholder}
+        placeholder="Search"
         bind:value={q}
         bind:this={input}
         {oninput}

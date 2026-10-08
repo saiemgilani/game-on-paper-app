@@ -31,7 +31,7 @@ describe('Header search', () => {
         expect(html).toMatch(/<input[^>]*type="search"[^>]*role="combobox"/);
         expect(html).toContain('aria-controls="site-search-results"');
         expect(html).toContain('aria-expanded="false"');
-        expect(html).toContain('placeholder="Teams, players, games"');
+        expect(html).toContain('placeholder="Search"');
     });
 
     test('from sm to lg a magnifier button opens the same box as a panel; phones and xl show it inline', async () => {
@@ -44,11 +44,6 @@ describe('Header search', () => {
         // one box, not a second copy for the panel: hidden from sm to lg until the button opens it
         expect(html.match(/id="site-search-input"/g)).toHaveLength(1);
         expect(html).toMatch(/<form[^>]*id="site-search-form"[^>]*class="d-sm-none d-xl-block"/);
-    });
-
-    test('the placeholder leaves out players while player pages are off', async () => {
-        const html = await render({ preview: true, flagOverrides: { 'player-pages': false } });
-        expect(html).toContain('placeholder="Teams, games"');
     });
 
     test('the island searches the league the page is in', async () => {

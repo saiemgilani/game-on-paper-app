@@ -22,7 +22,7 @@ const lp = (p: string) => leaguePath(league, p);
                     sm to lg the row has no room left, so the island shows a button there instead */}
                 {isFeatureEnabled("site-search", Astro.locals) && (
                     <div id="site-search" class="navbar-nav position-relative order-sm-last my-2 my-sm-0">
-                        <SiteSearch client:idle league={league} placeholder={isFeatureEnabled("player-pages", Astro.locals) ? "Teams, players, games" : "Teams, games"} />
+                        <SiteSearch client:idle league={league} />
                     </div>
                 )}
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
