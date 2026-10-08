@@ -21,7 +21,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.colors import TABLEAU_COLORS, to_rgb
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
-from PIL import Image
+from PIL import Image, ImageOps
 
 import excitement
 
@@ -135,7 +135,8 @@ class _Card:
         if raw:
             try:
                 img = Image.open(io.BytesIO(raw)).convert("RGBA")
-                img.thumbnail((size, size), Image.LANCZOS)
+                # fit the box both ways: the site's own art can be smaller (UGA's is 96px)
+                img = ImageOps.contain(img, (size, size), Image.LANCZOS)
             except Exception:
                 img = None
         if img is None:  # no logo: the abbreviation, in the team's colour

@@ -415,3 +415,13 @@ def test_a_refused_logo_prints_the_abbreviation(client, monkeypatch):
     assert r.status_code == 200
     assert app_mod._LOGO_OPENER.opened == []
     assert {"OKST", "CMU"} <= set(drawn)
+
+
+def test_small_art_is_scaled_to_the_logo_box():
+    # UGA's own art is 96x96: drawn at native size it would be half the pregame logo box
+    buf = io.BytesIO()
+    Image.new("RGBA", (96, 96), (200, 0, 0, 255)).save(buf, format="PNG")
+    card = share_card._Card(None)
+    card.logo({"id": "61", "abbr": "uga", "colour": share_card.INK, "logo": "x"}, "cfb", lambda url: buf.getvalue(), 330, 315, 200)
+    (image,) = card.fig.images
+    assert image.get_array().shape[:2] == (200, 200)
