@@ -69,5 +69,5 @@ const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
             </div>
         </div>
     </div>
-    <PlayerLeaderboardTable season={season} category={category} metric={metric} />
+    <PlayerLeaderboardTable season={season} category={category} metric={metric} dataVersion={stamp?.iso} />
 </GenericPage>

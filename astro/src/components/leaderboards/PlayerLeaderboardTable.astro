@@ -11,13 +11,14 @@ interface Props {
     season: number
     category: string
     metric: string
+    dataVersion?: string // the freshness stamp the page shows: rows are read under it
 }
 
-const { season, category, metric } = Astro.props;
+const { season, category, metric, dataVersion } = Astro.props;
 const sortBy = ["comp", "dropbacks", "plays", "targets"].includes(metric) ? metric : `${metric}_rank`;
 const isMetricRanked = sortBy.endsWith("_rank")
 
-let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league);
+let content: SDVPlayerSummary[] = await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league, dataVersion);
 content = content.filter((p: any) => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"

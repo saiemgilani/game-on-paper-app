@@ -104,6 +104,16 @@ describe('SDV_API_CACHE key carries the table ingest stamp', () => {
         expect(metaCalls()).toBe(1); // the stamp rides the read's meta fetch, never its own
     });
 
+    test('a pinned version (the stamp a page showed) keys the read, even after meta moved on', async () => {
+        const sdv = await load();
+        const shown = await sdv.sdvIngestStamp('cfb', 'percentiles');
+        meta = stamped('2026-09-28T15:00:00+00:00');
+        vi.setSystemTime(new Date('2026-09-27T12:05:01Z')); // the meta window rolls over mid-render
+        await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', shown);
+        expect(tableKey()).toBe(await sha256(`${TABLE_URL}#2026-09-27T12:05:07+00:00`));
+        expect(metaCalls()).toBe(1); // the pinned read never asks meta again
+    });
+
     test('a table meta does not list keeps the unversioned key', async () => {
         const sdv = await load();
         await sdv.retrieveQaSeason(2025);
