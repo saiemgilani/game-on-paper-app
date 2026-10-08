@@ -116,14 +116,25 @@ describe('cfb Record section edge cases', () => {
     }, 60_000);
 
     test('a split with no games is left out', async () => {
-        feed.override = { away_id: { data: [] } };
-        const rows = trs(panelOf(await render('cfb', '333', true)));
-        expect(rows.map((r) => r.cells[0].text)).not.toContain('Away');
-        expect(rows.map((r) => r.cells[0].text)).toContain('Home');
+        // the SEC title game and the Rose Bowl are the only neutral-site games
+        const off = (side: string) => ({ data: bodies.cfb[side].data.filter((g: any) => !g.neutral_site) });
+        feed.override = { home_id: off('home_id'), away_id: off('away_id') };
+        const labels = trs(panelOf(await render('cfb', '333', true))).map((r) => r.cells[0].text);
+        expect(labels).not.toContain('Neutral site');
+        expect(labels).toContain('Home');
+        expect(labels).toContain('Away');
     }, 60_000);
 
-    test('no completed games: no panel at all', async () => {
-        feed.override = { home_id: { data: [] }, away_id: { data: [] } };
+    test('no completed games yet: no panel at all', async () => {
+        const unplayed = (side: string) => ({ data: bodies.cfb[side].data.map((g: any) => ({ ...g, completed: false })) });
+        feed.override = { home_id: unplayed('home_id'), away_id: unplayed('away_id') };
+        const html = await render('cfb', '333', true);
+        expect(html).toContain('Alabama');
+        expect(html).not.toContain('record-splits');
+    }, 60_000);
+
+    test.each(['home_id', 'away_id'])('a failed %s read (an empty side) is half a schedule: no panel', async (side) => {
+        feed.override = { [side]: { data: [] } };
         const html = await render('cfb', '333', true);
         expect(html).toContain('Alabama');
         expect(html).not.toContain('record-splits');

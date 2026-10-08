@@ -58,9 +58,13 @@ const leaders = [
     }
 ].filter(d => !!d);
 
-// the schedule rows the TeamCard's record already reads; a row with no games is dropped
-const recordRows = isFeatureEnabled('team-record-splits', Astro.locals)
-    ? resumeRows(teamSeason?.events ?? [], id, league).filter((r) => r.winPct !== null)
+// the schedule rows the TeamCard's record already reads; a row with no games is dropped.
+// The schedule is two reads (home_id, away_id) and a failed one comes back empty, so a
+// season with no home row or no away row is half a schedule: no panel, not a wrong total.
+const events = teamSeason?.events ?? [];
+const bothSides = events.some((g) => String(g.home_id) === id) && events.some((g) => String(g.away_id) === id);
+const recordRows = isFeatureEnabled('team-record-splits', Astro.locals) && bothSides
+    ? resumeRows(events, id, league).filter((r) => r.winPct !== null)
     : [];
 
 const breadcrumbs: PageBreadcrumb[] = [
