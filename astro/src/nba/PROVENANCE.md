@@ -7,8 +7,8 @@ plan `ClaudeCowork/plans/2026-10-09-nba-shots-gop-pr1.md`, Task 3. Rules:
   else changed. A behaviour change goes to blazing first, then is re-copied.
 - Rewritten here, type-only: `data/shots.ts`, `data/players.ts` (their parquet readers stay in
   blazing). New here: `seasons.ts` (the pure part of blazing's), `adapters.ts`, `links.ts`.
-- Not copied: `data/releases.ts`, `data/rosters.ts`, `pageData.ts`, `routes.ts`, `ui.ts`,
-  `links.ts` (the Data API, `routes/nba/*.ts` and Bootstrap replace them).
+- Not copied: `data/releases.ts`, `data/rosters.ts`, `pageData.ts`, `routes.ts`, `ui.ts`
+  (the Data API, `routes/nba/*.ts` and Bootstrap replace them).
 - Tests: `test/nba/*.test.ts` are blazing's `test/{aggregate,charts,court,explorer,views}.test.ts`
   on vitest, over `test/fixtures/nba/*.json` (the same real rows as blazing's parquet fixtures).
 
