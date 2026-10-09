@@ -178,3 +178,5 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
+
+- `nba/*.json`: the first 2,000 Nets rows of the real `nba_stats_shots/shots_2026.parquet` (2026-09-30) and both teams' rows for their 24 games, plus blazing-the-nets `lib/` outputs on those rows (its `scripts/dump-oracle.mjs`).
