@@ -1,32 +1,19 @@
 <script lang="ts">
     import TeamTrendsMetricDropdown from '../dropdowns/TeamTrendsMetricDropdown.svelte';
     import TrendsChart from './TrendsChart.svelte';
-    import { type ValuePercentile } from '../../resources/chart';
-    import { getPercentileKey } from '../../utils/misc';
     import { EVENT_KEY_TRENDS_METRIC_CHANGED } from '../../utils/constants';
     import { leagueFromLocation } from '../../utils/league';
 
-    const { title, teamColor, teamData, percentiles } = $props();
+    // No national bands behind a team's season means: the only published ones are
+    // the single-GAME ladder, which made every season look average (audit C7). With
+    // none, TrendsChart draws the team's own trend line, as the Net view always has.
+    const { title, teamColor, teamData } = $props();
     let selectedCategory = "offensive"
     let selectedMetric = "EPAplay_off"
-    let selectedPercentiles: ValuePercentile[] = $state([])
 
     function onChangeValue(category: string, metric: string) {
         selectedCategory = category;
         selectedMetric = metric;
-
-        if (selectedCategory != "differential") {
-            const pctlKey = getPercentileKey(selectedMetric)
-            selectedPercentiles = percentiles.map((p: any) => {
-                return {
-                    season: p["season"] || 2025,
-                    pctile: p["pctile"],
-                    value: p[pctlKey]
-                }
-            }).filter((p: any) => (p["value"] !== undefined) && (p["value"] != null))
-        } else {
-            selectedPercentiles = []
-        }
 
         const changeEvent = new CustomEvent(EVENT_KEY_TRENDS_METRIC_CHANGED, { detail: { category, metric }})
         console.log("firing event: " + EVENT_KEY_TRENDS_METRIC_CHANGED)
@@ -46,5 +33,5 @@
             <TeamTrendsMetricDropdown category={selectedCategory} metric={selectedMetric} onChangeValue={onChangeValue} />
         </div>
     </div>
-   <TrendsChart title={title} teamColor={teamColor} teamData={teamData} category={selectedCategory} metric={selectedMetric} percentiles={selectedPercentiles} />
+   <TrendsChart title={title} teamColor={teamColor} teamData={teamData} category={selectedCategory} metric={selectedMetric} percentiles={[]} />
 </div>

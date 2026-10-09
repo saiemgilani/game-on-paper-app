@@ -15,7 +15,7 @@ import type { TeamProfileData } from "../../routes/teamProfile";
 // Route component: routes/teamProfile.ts (per-league page) read ESPN + the
 // season tables and made the not-found decision; this renders.
 type Props = TeamProfileData;
-const { league, id, team, percentiles: allPctls, teamSummaries } = Astro.props;
+const { league, id, team, teamSummaries } = Astro.props;
 const cfg = LEAGUES[league];
 
 const breadcrumbs: PageBreadcrumb[] = [
@@ -77,7 +77,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
             </div>
         </div>
     </div>
-    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData} percentiles={allPctls}>
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData}>
         <FallbackSpinner slot="fallback" />
     </TeamTrendsChart>
     <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} league={league}>
