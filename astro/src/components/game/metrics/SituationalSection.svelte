@@ -35,7 +35,7 @@ function onChangeSpan(e: Event) {
 </div>
 <div class="row">
     <div class="col-md-4 ms-sm-auto col-lg-4">
-        <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} />
+        <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} span={selectedSpan} />
         <TeamMetricsTable 
             title="Expected Points"
             league={league}

@@ -175,6 +175,26 @@ export function offenseYardsPerPlay(team: Record<string, any> | null | undefined
     return yards === null ? null : yards / plays;
 }
 
+/**
+ * Yards per dropback for one team's box-score row, sack yardage included.
+ *
+ * SDV's `yardsdropback` percentiles, which the Binion box ranks this against, are
+ * (receiving yards + sack yards) / dropbacks. The payload's `yards_per_pass` is
+ * receiving yards over the same dropbacks (`passes` counts sacks), so each sack
+ * counts as 0 yards and the number reads high (2025: median game 56th, not 50th).
+ * `sack_yards` is the sum of `yds_sacked`, which is negative, so it is added.
+ *
+ * A payload without `sack_yards` (processed before sportsdataverse emitted it)
+ * falls back to `yards_per_pass`, the number the box showed before.
+ */
+export function yardsPerDropback(team: Record<string, any> | null | undefined): number | null {
+    const dropbacks = numberOrNull(team?.passes);
+    const passYards = numberOrNull(team?.pass_yards);
+    const sackYards = numberOrNull(team?.sack_yards);
+    if (dropbacks && passYards !== null && sackYards !== null) return (passYards + sackYards) / dropbacks;
+    return numberOrNull(team?.yards_per_pass);
+}
+
 /** A numeric cell: `roundNumber` when there is a number, an em dash when there is not. */
 export function formatNumber(v: unknown, fixed: number, power10: number = 2): string {
     const x = numberOrNull(v);
