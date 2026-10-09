@@ -4,7 +4,11 @@
     import type { Draw } from '../chartFrame';
     import ChartSvg from './ChartSvg.svelte';
     let { data, metric, title }: { data: SideChartData; metric: BarMetric; title: string } = $props();
-    const draw: Draw = $derived((svg, width, animate) => renderSideChart(svg, data, { metric, width, animate }));
+    // read every input here, not inside the closure: that is what makes the derived change and Svelte call the action's update
+    const draw: Draw = $derived.by(() => {
+        const d = data, m = metric;
+        return (svg, width, animate) => renderSideChart(svg, d, { metric: m, width, animate });
+    });
 </script>
 
 <ChartSvg {draw} viewBox={sideViewBox(data.player.length)} {title} desc={describeSides(data, metric)} />

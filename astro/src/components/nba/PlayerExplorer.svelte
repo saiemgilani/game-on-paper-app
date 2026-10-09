@@ -53,12 +53,12 @@
 
 {#if games}
     <NbaPanel id="nba-games" title="Games">
-        <div class="btn-group btn-group-sm mb-3 flex-wrap" role="group" aria-label="Select games">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3" role="group" aria-label="Select games">
             {#each GAME_PRESETS as p (p)}
-                <button type="button" class="btn btn-outline-secondary" class:active={activePreset === p} aria-pressed={activePreset === p} onclick={() => choose(p)}>{PRESET_LABELS[p]}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" class:active={activePreset === p} aria-pressed={activePreset === p} onclick={() => choose(p)}>{PRESET_LABELS[p]}</button>
             {/each}
+            {#if neutral > 0}<span class="text-muted small">{neutral} neutral-site game{neutral === 1 ? '' : 's'} (in neither Home nor Away)</span>{/if}
         </div>
-        {#if neutral > 0}<span class="ms-2 text-muted small">{neutral} neutral-site game{neutral === 1 ? '' : 's'} (in neither Home nor Away)</span>{/if}
         <p class="mb-2 small numeral" aria-live="polite">
             {view.view?.length ?? 0} of {games.length} games{windowText ? ` · ${windowText}` : ''} · {fmtInt(line.makes)}/{fmtInt(line.attempts)} FG, {fmtPct(line.fgPct)} FG%, {fmtPct(line.efgPct)} eFG%
         </p>
@@ -88,9 +88,10 @@
 
 {#if games}
     <NbaPanel id="nba-rolling" title="Rolling shooting">
-        <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Rolling window">
+        <div class="d-flex align-items-center gap-2 mb-3 text-muted small" role="group" aria-label="Rolling window">
+            Window
             {#each WINDOWS as w (w)}
-                <button type="button" class="btn btn-outline-secondary" class:active={n === w} aria-pressed={n === w} onclick={() => (n = w)}>{w} games</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" class:active={n === w} aria-pressed={n === w} onclick={() => (n = w)}>{w} games</button>
             {/each}
         </div>
         {#if empty}<p class="small text-muted">{NO_GAMES}</p>{:else}<RollingChart data={rolling} title={`${subject} rolling ${n}-game FG% and eFG%`} />{/if}

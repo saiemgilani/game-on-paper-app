@@ -3,8 +3,9 @@
  * the <svg>'s CSS width (0 until measured; the first measurement applies at once, later ones
  * are debounced), the colour scheme (charts read the resolved theme from CSS, so a flip just
  * redraws), and whether this is the first draw (only that one animates). The draw function is
- * the action's parameter: Svelte calls `update` when a $derived draw changes, which is how a
- * data or mode change reaches the chart.
+ * the action's parameter: a `$derived.by` draw that reads its inputs before returning the closure
+ * changes when they do, and Svelte then calls `update`, which is how a data or mode change
+ * reaches the chart (a bare `$derived(closure)` has no dependencies and never updates).
  */
 import type { Action } from 'svelte/action';
 import { debounce } from '../../nba/debounce';
