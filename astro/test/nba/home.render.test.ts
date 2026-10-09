@@ -30,6 +30,7 @@ describe('/nba', () => {
         expect(body.indexOf(top.player_name)).toBeLessThan(body.indexOf(players.find((p: any) => p !== top).player_name));
         expect(html).toContain('id="nba-season"');
         expect(html).toContain('2025-26');
+        expect(html.split('<h1').length - 1).toBe(1);
         expect(html).not.toContain('undefined');
     });
 });

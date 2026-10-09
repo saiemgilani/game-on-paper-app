@@ -1,8 +1,8 @@
 /**
  * Page-side step of /nba: the season, the Nets roster for it and their headshots. The template
  * is components/routes/NbaHomeRoute.astro. Served at /nba?season=<endYear>; an unlisted season
- * resolves to the current one before any read, so crafted values mint no cache entries worth
- * having (the rendered page is the current season's).
+ * resolves to the current one before any read, so a crafted ?season= still caches its own copy
+ * of the current season's page (the key includes the query) but never a different page.
  */
 import type { AstroGlobal } from 'astro';
 import { headshotsFromRows, playerSeasonsFromRows } from '../../nba/adapters';
