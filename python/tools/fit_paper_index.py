@@ -364,6 +364,14 @@ def _cast_ids(pbp: pl.DataFrame) -> pl.DataFrame:
     return pbp.with_columns([pl.col(c).cast(pl.Utf8) for c in cols])
 
 
+def _read_pbp(season: int, columns: list[str]) -> pl.DataFrame:
+    # use_pyarrow: polars 2.0's own reader asks GitHub's release CDN for the
+    # footer with a suffix range (bytes=-N), which it answers with 501
+    return _cast_ids(
+        pl.read_parquet(PBP_URL.format(season=season), columns=columns, use_pyarrow=True)
+    )
+
+
 def _assert_join_kept(joined: pl.DataFrame, left: pl.DataFrame, what: str) -> None:
     assert joined.height >= JOIN_KEEP_FLOOR * left.height, (
         f"{what}: inner join kept {joined.height} of {left.height} rows"
@@ -377,7 +385,7 @@ def season_game_rows(season: int) -> tuple[pl.DataFrame, dict]:
     sidecar = cache.with_suffix(".json")
     if (games := _cached(cache)) is not None and sidecar.exists():
         return games, json.loads(sidecar.read_text())
-    pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=BASE_COLUMNS))
+    pbp = _read_pbp(season, BASE_COLUMNS)
     scrim = pbp.filter(pl.col("scrimmage_play") == True)  # noqa: E712
     per_team = scrim.group_by(["game_id", "pos_team_id"]).agg(
         plays=pl.len(),
@@ -449,7 +457,7 @@ def season_ext_rows(season: int) -> pl.DataFrame:
     if (out := _cached(cache)) is not None:
         return out
     cols = EXT_COLUMNS + (["fg_made"] if OPP_POINTS_INCLUDE_FG[LEAGUE] else [])
-    pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=cols))
+    pbp = _read_pbp(season, cols)
     scrim = pbp.filter(pl.col("scrimmage_play") == True)  # noqa: E712
     base = scrim.group_by(["game_id", "pos_team_id"]).agg(
         havoc_allowed=pl.col("havoc").cast(pl.Float64).mean(),
@@ -739,7 +747,7 @@ def parity_check(games: pl.DataFrame, season: int, n: int = 5) -> None:
     cols = sorted(set(BASE_COLUMNS + EXT_COLUMNS))
     if OPP_POINTS_INCLUDE_FG[LEAGUE]:
         cols.append("fg_made")
-    pbp = _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=cols))
+    pbp = _read_pbp(season, cols)
     pbp = pbp.rename({"pos_team_id": "pos_team"})
     sample = games.filter(pl.col("season") == season).head(n)
     for r in sample.to_dicts():
