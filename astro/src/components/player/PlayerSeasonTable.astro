@@ -6,10 +6,12 @@
  * identically here and on `/year/N/players/<category>`. That is also where
  * `EPA/DB` comes from: a passer's `EPAplay` is per dropback, not per play.
  *
- * Rows are the producer's own season rows, so they carry `_rank` and `_pct`.
- * Both ride in the metric cell, the way `team/TeamCard.astro` shows a team's:
- * the cell is shaded by the percentile on the site's green -> purple ramp and
- * carries the rank as small faded text beside the number. A traded player has
+ * Rows are the producer's own season rows, so they carry `_rank` and `_pct`
+ * (and `_pos_pct`, the percentile within his position group). Both ride in the
+ * metric cell, the way `team/TeamCard.astro` shows a team's: the cell is shaded
+ * by his position's percentile (`percentileOf`, falling back to `_pct`) on the
+ * site's green -> purple ramp and carries the rank as small faded text beside
+ * the number. A traded player has
  * one row per team-season; two or more rows of a category add a career roll-up
  * whose rates are recomputed from the summed counts, never averaged
  * (`utils/players.ts` rollUpSeasons).
@@ -107,7 +109,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
                             </a>
                         </td>
                         {b.columns.map(([k]) => (
-                            <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k), 100)]} colspan="1">
+                            <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k, true), 100)]} colspan="1">
                                 {formatPlayerMetric(b.category, k, row[k])}
                                 {rankOf(row, k) !== null && (
                                     <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(row, k))}</span>

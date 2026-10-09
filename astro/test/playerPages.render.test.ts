@@ -377,6 +377,29 @@ describe('CFB player page', () => {
         expect(html).not.toContain('progress-bar');
     }, 60_000);
 
+    test('the season table shades by his position group\'s percentile where it is published', async () => {
+        // audit D3: CFB rushing pools QBs with RBs, so `_pct` undersells an RB;
+        // the producer's `_pos_pct` ranks him among his own position
+        const seasons = cfb.seasons.data.map((r: any) => (r.category === 'passing' && r.season === 2024
+            ? { ...r, EPAplay_pct: 50, EPAplay_pos_pct: 99, success_pos_pct: null } : r));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            const row = bodyRows(html, 'player-season-passing')[0];
+            const col = 2 + categoryColumns('passing').findIndex(([k]) => k === 'EPAplay');
+            const td = row.match(/<td[^>]*>[\s\S]*?<\/td>/g)![col];
+            expect(td).toContain('hulk-bg-level-9');   // 99 within QBs, not 50 overall
+            // no `_pos_pct` for success: its `_pct` still shades it
+            const fx = seasons.find((r: any) => r.category === 'passing' && r.season === 2024);
+            const sr = row.match(/<td[^>]*>[\s\S]*?<\/td>/g)![2 + categoryColumns('passing').findIndex(([k]) => k === 'success')];
+            const want = generateColorRampValue(percentileOf(fx, 'success'), 100);
+            if (want) expect(sr).toContain(want);
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
     test('team context reuses the team_summaries row the team leaderboards read', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const rows = bodyRows(html, 'player-team-context-table');

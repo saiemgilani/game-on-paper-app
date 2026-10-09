@@ -142,6 +142,17 @@ describe('formatting', () => {
         expect(percentileOf({ x_pct: -3 }, 'x')).toBe(0);
     });
 
+    test('within his position, the percentile is the producer\'s _pos_pct, else _pct', () => {
+        // Justice Haynes 2025: 93.7 among every rusher (QBs included), 99.5 among RBs
+        const row = { EPAplay_pct: 93.7, EPAplay_pos_pct: 99.5, yards_pct: 80 };
+        expect(percentileOf(row, 'EPAplay', true)).toBe(99.5);
+        expect(percentileOf(row, 'EPAplay')).toBe(93.7);
+        // no position percentile published: the all-qualifier one
+        expect(percentileOf(row, 'yards', true)).toBe(80);
+        expect(percentileOf({ x_pos_pct: 120 }, 'x', true)).toBe(100);
+        expect(percentileOf({}, 'x', true)).toBeNull();
+    });
+
     test('a value tied across breakpoints reads the middle of its tie run, not the top', () => {
         // success rate is lumpy: 20% of player-games at exactly 0, 14% at exactly 1.0
         const sr = Array.from({ length: 101 }, (_, i) => (i <= 19 ? 0 : i >= 87 ? 1 : (i - 19) / 68));

@@ -243,9 +243,19 @@ export function categoryColumns(category: string): [string, string][] {
     return cols ? [['games', 'G'], ...Object.entries(cols)] : [];
 }
 
-/** The `_pct` (0-100) beside a metric, when the producer computed one. */
-export function percentileOf(row: Record<string, unknown>, metric: string): number | null {
-    const v = numberOrNull(row[`${metric}_pct`]);
+/**
+ * The 0-100 percentile beside a metric, when the producer computed one: `_pct`
+ * among every qualifier, or with `withinPosition` the `_pos_pct` among his own
+ * position group's qualifiers, falling back to `_pct` where there is none (CFB
+ * before 2014, a player with no roster position).
+ *
+ * A player's own season line reads his position's (audit D3: CFB rushing pools
+ * QBs with RBs, so 24 of the 27 qualifiers at EPA/rush >= 90th were QBs and the
+ * best RB read 93.7 against 99.5 among RBs). A leaderboard reads `_pct`: its rows
+ * are ranked across positions, and its shading follows the rank beside it.
+ */
+export function percentileOf(row: Record<string, unknown>, metric: string, withinPosition = false): number | null {
+    const v = (withinPosition ? numberOrNull(row[`${metric}_pos_pct`]) : null) ?? numberOrNull(row[`${metric}_pct`]);
     return v === null ? null : Math.min(Math.max(v, 0), 100);
 }
 
