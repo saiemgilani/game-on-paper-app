@@ -74,6 +74,12 @@ test('test_traded_player_sums_teams: league-wide sums the teams, primary first; 
   assert.deepEqual(league.map((p) => [p.person_id, p.attempts, p.team_tricode, p.statsScope]), [[7, 400, 'BKN', 'matching'], [8, 50, 'BKN', 'matching']]);
   const atl = playerSeasonsFromRows(rows, 1610612737);
   assert.deepEqual(atl.map((p) => [p.person_id, p.attempts, p.statsScope]), [[7, 100, 'all-teams']]);
+  // no stats row on either team row: blazing's withStats leaves the scope "matching"
+  const bare = [
+    playerRow({ person_id: 9, team_id: 1610612751, team_tricode: 'BKN', n_teams: 2, has_stats: false }),
+    playerRow({ person_id: 9, team_id: 1610612737, team_tricode: 'ATL', n_teams: 2, has_stats: false, is_primary: false }),
+  ];
+  assert.deepEqual(playerSeasonsFromRows(bare, 1610612737).map((p) => [p.statsScope, p.stats]), [['matching', null]]);
   const bkn = playerSeasonsFromRows(rows, 1610612751);
   assert.deepEqual(bkn.map((p) => [p.person_id, p.attempts, p.statsScope]), [[7, 300, 'all-teams'], [8, 50, 'matching']]);
 });

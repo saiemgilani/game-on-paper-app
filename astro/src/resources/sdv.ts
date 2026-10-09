@@ -690,6 +690,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
  */
 export async function retrieveRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number, strict = false): Promise<T[]> {
     const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, league, strict);
+    if (strict && !Array.isArray(content?.data)) throw new SDVRequestError(502, table, 'no data array in the response');
     return (Array.isArray(content?.data) ? content.data : []) as T[];
 }
 

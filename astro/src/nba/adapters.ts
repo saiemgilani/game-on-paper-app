@@ -26,7 +26,9 @@ function distanceBins(rows: LeagueContextRow[], binFt: number): DistanceBin[] {
     return acc.map((b, i) => ({ distance: i * binFt, ...split(b.attempts, b.makes), share: total ? b.attempts / total : 0 }));
 }
 
-export function leagueContextFromRows(rows: LeagueContextRow[], radius: number = HEX_RADIUS): LeagueContext {
+/** Hex centres are rebuilt at HEX_RADIUS: the server binned the rows at that radius, so no other value is valid. */
+export function leagueContextFromRows(rows: LeagueContextRow[]): LeagueContext {
+    const radius = HEX_RADIUS;
     const dx = radius * 2 * Math.sin(Math.PI / 3);
     const dy = radius * 1.5;
     const by = (kind: string) => rows.filter((r) => r.kind === kind);
@@ -91,7 +93,7 @@ export function playerSeasonsFromRows(rows: SeasonPlayerRow[], teamId?: number):
             out.push({
                 person_id: r.person_id, player_name: r.player_name, team_id: r.team_id, team_tricode: r.team_tricode,
                 attempts: r.attempts, makes: r.makes, fg3a: r.fg3a, fg3m: r.fg3m,
-                stats: statsOf(r), statsScope: r.n_teams > 1 ? 'all-teams' : 'matching',
+                stats: statsOf(r), statsScope: r.has_stats && r.n_teams > 1 ? 'all-teams' : 'matching',
             });
         }
     }
@@ -107,7 +109,7 @@ export function headshotsFromRows(rows: SeasonPlayerRow[]): Map<number, string> 
 
 /** Tricodes of every team he shot for this season, most attempts first (the page header). */
 export function teamsOfPlayer(rows: SeasonPlayerRow[], personId: number): string[] {
-    return rows.filter((r) => r.person_id === personId).sort((a, b) => b.attempts - a.attempts).map((r) => r.team_tricode);
+    return rows.filter((r) => r.person_id === personId).sort((a, b) => b.attempts - a.attempts || Number(b.is_primary) - Number(a.is_primary)).map((r) => r.team_tricode);
 }
 
 /**
