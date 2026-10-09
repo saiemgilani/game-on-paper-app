@@ -17,7 +17,9 @@ import { weekLabel } from '../src/utils/league';
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
 
-const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true };
+// `cohortMissing(args)`: true -> that percentiles read 404s (`{}`), as a cohort under
+// the API's 30-game minimum does; `pctlCalls` records every read in order
+const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true, cohortMissing: () => false, pctlCalls: [] };
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -35,7 +37,7 @@ vi.mock('../src/resources/sdv', async (orig) => {
         // the league-season distribution the game log's second shading reads. A
         // straight ramp per metric, so a value's percentile is arithmetic the test
         // can redo: `plays` 0..100, `epa` -50..50, the two rates 0..1.
-        retrievePlayerGamePercentiles: async (...args: unknown[]) => (feed.pctlArgs = args, feed.percentiles
+        retrievePlayerGamePercentiles: async (...args: unknown[]) => (feed.pctlArgs = args, feed.pctlCalls.push(args), feed.percentiles && !feed.cohortMissing(args)
             ? {
                 plays: Array.from({ length: 101 }, (_, i) => i),
                 epa: Array.from({ length: 101 }, (_, i) => i - 50),
@@ -875,6 +877,42 @@ describe('round-4 review (PR #267)', () => {
             expect(feed.pctlArgs).toEqual([2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS]);
             expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
         } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('a position cohort under the API minimum falls back to every player, same floor', async () => {
+        // a 404 for the QB cohort used to mean no league toggle at all; the reader gets
+        // the all-player ladder at 5+ plays instead, and the hover says so
+        feed.cohortMissing = (args: unknown[]) => args[2] !== null;
+        feed.pctlCalls = [];
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlCalls).toEqual([[2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS]]);
+            expect(html).toContain('data-shade-toggle="player-game-log"');
+            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+            expect(logRows(html)[0]).toContain('data-league-pct');
+        } finally {
+            feed.cohortMissing = () => false;
+        }
+    }, 60_000);
+
+    test('and when the floored ladder 404s too, to every player-game with no floor', async () => {
+        feed.cohortMissing = (args: unknown[]) => args[2] !== null || (args[3] as number) > 0;
+        feed.pctlCalls = [];
+        const games = cfb.games.data.map((g: any, i: number) => (i === 0 ? { ...g, plays: 3 } : g));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: games } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlCalls).toEqual([
+                [2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, 0]]);
+            expect(html).toContain('data-shade-toggle="player-game-log"');
+            expect(html).toContain('title="Percentile among every player game in the nation that season"');
+            // no floor on that ladder, so a 3-play game is on it and is read against it
+            expect(logRows(html)[0]).toContain('data-league-pct');
+        } finally {
+            feed.cohortMissing = () => false;
             feed.cfb = before;
         }
     }, 60_000);
