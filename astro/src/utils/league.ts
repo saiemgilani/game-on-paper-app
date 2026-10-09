@@ -13,7 +13,7 @@ export type League = 'cfb' | 'nfl' | 'nba';
 export type Sport = 'football' | 'basketball';
 export const DEFAULT_LEAGUE: League = 'cfb';
 /** The leagues that live under a URL prefix, in the order `splitLeague` tries them. */
-export const PREFIXED_LEAGUES: readonly League[] = ['nfl', 'nba'];
+export const PREFIXED_LEAGUES: readonly Exclude<League, 'cfb'>[] = ['nfl', 'nba'];
 
 export interface LeagueConfig {
     slug: League;
