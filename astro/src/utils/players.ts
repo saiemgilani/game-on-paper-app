@@ -352,16 +352,27 @@ export function returnerStatLine(r: { punt_returns: number, punt_return_yards: n
  * (`players/games/percentiles`, sdv-db): index 0 is the 0th percentile and index
  * 100 the 100th, so the largest index at or below the value IS its percentile.
  * `null` when there is no value or no distribution to read it against.
+ *
+ * A value several breakpoints EQUAL reads the middle of that run (midrank), not
+ * its top: success rate is exactly 1.0 in 13% of player-games, and the top of
+ * that run printed every one of them as the 100th.
  */
 export function percentileFromBreaks(breaks: number[] | undefined, value: unknown): number | null {
     const v = numberOrNull(value);
     if (v === null || !breaks || breaks.length === 0) return null;
-    let lo = 0, hi = breaks.length - 1, at = 0;
-    while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        if (breaks[mid] <= v) { at = mid; lo = mid + 1; } else { hi = mid - 1; }
-    }
-    return Math.min(Math.max(at, 0), breaks.length - 1);
+    // index of the first breakpoint above v (upper) and the first at or above it (lower)
+    const bound = (above: boolean) => {
+        let lo = 0, hi = breaks.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (above ? breaks[mid] <= v : breaks[mid] < v) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+    };
+    const top = bound(true) - 1;
+    if (top < 0) return 0;
+    const first = breaks[top] === v ? bound(false) : top;
+    return Math.round((first + top) / 2);
 }
 
 /**

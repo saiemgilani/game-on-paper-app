@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
-    percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
+    percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
     formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
@@ -140,6 +140,19 @@ describe('formatting', () => {
         expect(percentileOf(row, 'games')).toBeNull();
         expect(percentileOf({ x_pct: 140 }, 'x')).toBe(100);
         expect(percentileOf({ x_pct: -3 }, 'x')).toBe(0);
+    });
+
+    test('a value tied across breakpoints reads the middle of its tie run, not the top', () => {
+        // success rate is lumpy: 20% of player-games at exactly 0, 14% at exactly 1.0
+        const sr = Array.from({ length: 101 }, (_, i) => (i <= 19 ? 0 : i >= 87 ? 1 : (i - 19) / 68));
+        expect(percentileFromBreaks(sr, 0)).toBe(10);     // was 19
+        expect(percentileFromBreaks(sr, 1)).toBe(94);     // was 100
+        // an untied value keeps the largest breakpoint at or below it
+        expect(percentileFromBreaks(sr, (50.5 - 19) / 68)).toBe(50);
+        expect(percentileFromBreaks(sr, -1)).toBe(0);
+        expect(percentileFromBreaks([0, 1, 2], 5)).toBe(2);
+        expect(percentileFromBreaks(sr, null)).toBeNull();
+        expect(percentileFromBreaks(undefined, 0.5)).toBeNull();
     });
 
     test('the stat line reads the league its box came from', () => {
