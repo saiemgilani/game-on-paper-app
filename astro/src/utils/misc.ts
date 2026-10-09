@@ -743,11 +743,12 @@ export function retrieveValue(dictionary: any, key: string): string {
 
 
 export function getPercentileKey(metric: string): string {
+    // a margin is centred on 0, not a level: it has no ladder column (the default
+    // below hands the metric back, which the ladder rows do not carry)
     const cleanedMetric = (
         metric
             .replace("_off", "")
             .replace("_def", "")
-            .replace("_margin", "")
     )
     switch (cleanedMetric) {
         case "EPAplay": 
@@ -760,7 +761,7 @@ export function getPercentileKey(metric: string): string {
             return "EPAdropback";
         case "yardsplay_pass": 
             return "yardsdropback";
-        case "success_pas": 
+        case "success_pass": 
             return "pass_success";
         case "EPAplay_rush": 
             return "EPArush";
