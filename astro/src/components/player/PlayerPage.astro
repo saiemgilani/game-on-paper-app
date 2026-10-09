@@ -57,7 +57,7 @@ const { player, season, sections } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
-const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, failed } = sections;
+const { seasonRows, games, splits, espnGameIds, leagueBreaks, leagueGroup, teamRows, failed } = sections;
 
 // the summary tiles count what was PLAYED, so they sum the API's rows and
 // never the synthetic live row below
@@ -251,7 +251,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={gameLog} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} live={live} />
+                <PlayerGameLog games={gameLog} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} leagueGroup={leagueGroup} live={live} />
                 {failed.games
                     ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
                     : gameLog.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}

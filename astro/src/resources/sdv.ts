@@ -1295,9 +1295,18 @@ export async function retrievePlayerGames(espnId: string, season: number, league
  * One read per season, not per player -- which is the whole reason it is a season
  * route. It is what lets a game log shade against the league instead of against the
  * player's own season, the only distribution that exists in week 2 (review on #267).
+ *
+ * `positionGroup` (QB/RB/WR/TE) narrows it to one position's player-games and
+ * `minPlays` drops the games under that many plays (`utils/players.ts`
+ * GAME_PERCENTILE_MIN_PLAYS). A cohort under the API's minimum is a 404 -> `{}`.
  */
-export async function retrievePlayerGamePercentiles(season: number, league: League = 'cfb'): Promise<Record<string, number[]>> {
-    const content = await requestPlayer(league, 'players/games/percentiles', { season: String(season) }, 60 * 60 * 24);
+export async function retrievePlayerGamePercentiles(
+    season: number, league: League = 'cfb', positionGroup: string | null = null, minPlays = 0,
+): Promise<Record<string, number[]>> {
+    const query: Record<string, string> = { season: String(season) };
+    if (positionGroup) query.position_group = positionGroup;
+    if (minPlays > 0) query.min_plays = String(minPlays);
+    const content = await requestPlayer(league, 'players/games/percentiles', query, 60 * 60 * 24);
     const out: Record<string, number[]> = {};
     for (const row of (content?.data ?? [])) {
         if (row?.metric && Array.isArray(row?.breaks)) out[String(row.metric)] = row.breaks.map(Number);

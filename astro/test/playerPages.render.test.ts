@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { categoryColumns, formatPlayerMetric, gameStatLine, percentileOf, totalGameLog } from '../src/utils/players';
+import { categoryColumns, formatPlayerMetric, GAME_PERCENTILE_MIN_PLAYS, gameStatLine, percentileOf, totalGameLog } from '../src/utils/players';
 import { formatPercent, formatRank, generateColorRampValue, roundNumber } from '../src/utils/misc';
 import { weekLabel } from '../src/utils/league';
 
@@ -35,7 +35,7 @@ vi.mock('../src/resources/sdv', async (orig) => {
         // the league-season distribution the game log's second shading reads. A
         // straight ramp per metric, so a value's percentile is arithmetic the test
         // can redo: `plays` 0..100, `epa` -50..50, the two rates 0..1.
-        retrievePlayerGamePercentiles: async () => (feed.percentiles
+        retrievePlayerGamePercentiles: async (...args: unknown[]) => (feed.pctlArgs = args, feed.percentiles
             ? {
                 plays: Array.from({ length: 101 }, (_, i) => i),
                 epa: Array.from({ length: 101 }, (_, i) => i - 50),
@@ -802,7 +802,9 @@ describe('round-4 review (PR #267)', () => {
         // the league option's distribution is from; college's population is the nation
         expect(html).toContain('<label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>');
         expect(html).toMatch(/data-shade-mode="player"[^>]*>Player Games<\/option>/);
-        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every player-game in the nation that season"[^>]*>2024 Percentiles<\/option>/);
+        // and its population: his position group's games of 5+ plays (audit D1)
+        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every QB game of 5\+ plays in the nation that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(feed.pctlArgs).toEqual([2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS]);
         const rows = logRows(html);
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
@@ -822,7 +824,36 @@ describe('round-4 review (PR #267)', () => {
 
     test('the NFL toggle names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
-        expect(html).toMatch(/title="Percentile among every player-game in the league that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(html).toMatch(/title="Percentile among every WR game of 5\+ plays in the league that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(feed.pctlArgs).toEqual([2024, 'nfl', 'WR', GAME_PERCENTILE_MIN_PLAYS]);
+    }, 60_000);
+
+    test('a game under the play floor is not read against the floored ladder', async () => {
+        // a 3-play cameo is not on a ladder of 5+-play games, so it gets no league
+        // percentile; the rest of the log keeps theirs
+        const games = cfb.games.data.map((g: any, i: number) => (i === 0 ? { ...g, plays: 3 } : g));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: games } };
+        try {
+            const rows = logRows(await renderPage('cfb', '4433971', 2024));
+            expect(rows[0]).not.toContain('data-league-pct');
+            expect(rows[0]).not.toMatch(/data-shade-league="hulk-/);
+            expect(rows[1]).toContain('data-league-pct');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('a position with no cohort keeps the all-player ladder', async () => {
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, identity: { ...cfb.identity, position: 'Linebacker' } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlArgs).toEqual([2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS]);
+            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+        } finally {
+            feed.cfb = before;
+        }
     }, 60_000);
 
     test('with no league distribution there is no toggle, only the player shading', async () => {

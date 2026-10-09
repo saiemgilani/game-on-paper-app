@@ -10,7 +10,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { leaguePath, type League } from '../utils/league';
-import { isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
+import { GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
 import {
     resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
     retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries,
@@ -26,6 +26,8 @@ export interface PlayerSections {
     espnGameIds: Record<string, string>;
     /** the league-season distribution the game log's second shading reads */
     leagueBreaks: Record<string, number[]>;
+    /** the position group that distribution is over (QB/RB/WR/TE), or null for every player */
+    leagueGroup: string | null;
     /** the season's team_summaries rows, for the Team Context panel */
     teamRows: SDVTeamSummary[];
     /** which panels have to say "unavailable" instead of "nothing to show" */
@@ -178,13 +180,14 @@ const TEAM_CONTEXT_METRICS = ['EPAplay_off', 'success_off', 'explosive_off', 'EP
  */
 export async function loadPlayerSections(player: SDVPlayer, season: number | null, league: League):
     Promise<{ sections: PlayerSections, degraded: boolean }> {
+    const leagueGroup = gamePercentileGroup(player.position);
     const reads = await Promise.allSettled([
         retrievePlayerSeasons(player.espn_id, league),
         season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
         season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
         season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
         // a not-yet-deployed percentiles route is a 404 -> {}, not a failure
-        season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league),
+        season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league, leagueGroup, GAME_PERCENTILE_MIN_PLAYS),
         // one cached call for the whole season, filtered to his team(s) by the page
         season === null ? Promise.resolve([]) : retrieveTeamSummaries({ season, league, columns: TEAM_CONTEXT_METRICS }),
     ]);
@@ -197,7 +200,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
     return {
         sections: {
             seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
-            espnGameIds: value(3, {}), leagueBreaks: value(4, {}), teamRows: value(5, []),
+            espnGameIds: value(3, {}), leagueBreaks: value(4, {}), leagueGroup, teamRows: value(5, []),
             failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
         },
         degraded: reads.some((r) => r.status === 'rejected'),

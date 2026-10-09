@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
-    percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
+    GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
     formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
@@ -153,6 +153,21 @@ describe('formatting', () => {
         expect(percentileFromBreaks([0, 1, 2], 5)).toBe(2);
         expect(percentileFromBreaks(sr, null)).toBeNull();
         expect(percentileFromBreaks(undefined, 0.5)).toBeNull();
+    });
+
+    test('a roster position maps to the game-percentile cohort, both spellings', () => {
+        // NFL and pre-2025 CFB rosters abbreviate; CFB 2025+ spells the position out
+        expect(gamePercentileGroup('QB')).toBe('QB');
+        expect(gamePercentileGroup('Quarterback')).toBe('QB');
+        expect(gamePercentileGroup('FB')).toBe('RB');
+        expect(gamePercentileGroup('Running Back')).toBe('RB');
+        expect(gamePercentileGroup('Wide Receiver')).toBe('WR');
+        expect(gamePercentileGroup('Tight End')).toBe('TE');
+        // no cohort: the all-player ladder
+        expect(gamePercentileGroup('Linebacker')).toBeNull();
+        expect(gamePercentileGroup('K')).toBeNull();
+        expect(gamePercentileGroup(null)).toBeNull();
+        expect(GAME_PERCENTILE_MIN_PLAYS).toBe(5);
     });
 
     test('the stat line reads the league its box came from', () => {

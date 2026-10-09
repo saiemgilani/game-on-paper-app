@@ -348,6 +348,39 @@ export function returnerStatLine(r: { punt_returns: number, punt_return_yards: n
 }
 
 /**
+ * The game log's league percentiles rank a game among games like it: the same
+ * position group, and at least this many plays (sdv-db `players/games/percentiles`
+ * `position_group` + `min_plays`). Over every player-game of every position, 43% of
+ * them 3 plays or fewer, a p90 QB game read as the 73rd (audit D1, 2026-10-08).
+ *
+ * Why 5, from CFB 2025's 22,330 player-games: it is the smallest floor that clears
+ * the one- and two-play games that fill a ladder's ends (success rate exactly 1.0 is
+ * 4.4% of QB, 4.4% of RB, 15.8% of WR and 28.4% of TE games with no floor; at 5 it is
+ * 0.0 / 0.3 / 2.0 / 2.5%), while every cohort keeps a ladder: TE keeps 555 games
+ * (8 leaves 106, 10 leaves 37 -- under the API's 30-game minimum early in a season).
+ * NFL 2026 through week 5 still has 77 TE games at 5. A game under the floor is not
+ * on the ladder, so it is not read against it either.
+ */
+export const GAME_PERCENTILE_MIN_PLAYS = 5;
+
+/** Roster position -> the API's `position_group`; CFB rosters spell it out from 2025 on. */
+const GAME_PERCENTILE_GROUPS: Record<string, string> = {
+    QB: 'QB', QUARTERBACK: 'QB',
+    RB: 'RB', 'RUNNING BACK': 'RB', FB: 'RB', FULLBACK: 'RB',
+    WR: 'WR', 'WIDE RECEIVER': 'WR',
+    TE: 'TE', 'TIGHT END': 'TE',
+};
+
+/**
+ * The cohort a player's games are ranked in, or null for a position the API has
+ * no cohort for -- those keep the all-player ladder. It is the identity's (latest)
+ * roster position, so a converted player reads his old seasons in his new group.
+ */
+export function gamePercentileGroup(position: unknown): string | null {
+    return GAME_PERCENTILE_GROUPS[String(position ?? '').trim().toUpperCase()] ?? null;
+}
+
+/**
  * The whole-number percentile of `value` in a 101-breakpoint distribution
  * (`players/games/percentiles`, sdv-db): index 0 is the 0th percentile and index
  * 100 the 100th, so the largest index at or below the value IS its percentile.
