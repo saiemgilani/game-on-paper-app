@@ -1,25 +1,32 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
+import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
- * The site renders one league per request. The NFL lives at explicit pages
- * under `pages/nfl/**` that set `Astro.locals.league` and render the shared
- * route components; resources and link builders read it. `cfb` is the
+ * The site renders one league per request. The NFL and the NBA live at explicit pages
+ * under `pages/nfl/**` and `pages/nba/**` that set `Astro.locals.league` and render the
+ * shared (football) or their own (basketball) route components; resources and link
+ * builders read it. `cfb` is the
  * unprefixed default, so every pre-existing URL, cache key and KV key is
  * untouched.
  */
-export type League = 'cfb' | 'nfl';
+export type League = 'cfb' | 'nfl' | 'nba';
+export type Sport = 'football' | 'basketball';
 export const DEFAULT_LEAGUE: League = 'cfb';
+/** The leagues that live under a URL prefix, in the order `splitLeague` tries them. */
+export const PREFIXED_LEAGUES: readonly League[] = ['nfl', 'nba'];
 
 export interface LeagueConfig {
     slug: League;
+    /** which family of pages and resources renders this league */
+    sport: Sport;
     name: string;
     shortName: string;
     /** site URL prefix; '' for the default league */
-    urlPrefix: '' | '/nfl';
+    urlPrefix: '' | '/nfl' | '/nba';
     /** cdn.espn.com/core/<espnPath>/…, www.espn.com/<espnPath>/…, s.espncdn.com stitcher path */
-    espnPath: 'college-football' | 'nfl';
+    espnPath: 'college-football' | 'nfl' | 'nba';
     /** sports.core.api.espn.com/v2/sports/football/leagues/<espnCoreLeague> */
-    espnCoreLeague: 'college-football' | 'nfl';
+    espnCoreLeague: 'college-football' | 'nfl' | 'nba';
     /** extra query prepended on the cdn scoreboard call (cfb: FBS group + limit) */
     scoreboardQuery: string;
     /** cdn schedule `group` param; null = the league has no conference grouping */
@@ -27,6 +34,8 @@ export interface LeagueConfig {
     /** KV key for the cached scoreboard; cfb keeps the historical bare key */
     scoreboardCacheKey: string;
     sdvApiBase: string;
+    /** the Data API schema behind sdvApiBase; the `/v1/meta` ingest stamps are keyed `<schema>.<table>` */
+    sdvSchema: string;
     /** SDV table holding the league's game schedule; the NFL's `schedule` is the
      *  nflverse frame, so its ESPN-shaped twin is published separately */
     scheduleTable: 'schedule' | 'espn_schedule';
@@ -36,7 +45,7 @@ export interface LeagueConfig {
     regularSeasonWeeks: number;
     postseasonWeeks: number;
     /** a.espncdn.com/i/teamlogos/<logoLeague>/500/<team id>.png */
-    logoLeague: 'ncaa' | 'nfl';
+    logoLeague: 'ncaa' | 'nfl' | 'nba';
     /** teams ranked in a season table; the rank colour ramp scales to it */
     teamCount: number;
     /** the population the season tables describe, for copy ("FBS vs FBS games only") */
@@ -49,30 +58,44 @@ const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i)
 
 export const LEAGUES: Record<League, LeagueConfig> = {
     cfb: {
-        slug: 'cfb', name: 'College Football', shortName: 'CFB', urlPrefix: '',
+        slug: 'cfb', sport: 'football', name: 'College Football', shortName: 'CFB', urlPrefix: '',
         espnPath: 'college-football', espnCoreLeague: 'college-football',
         scoreboardQuery: 'group=80&limit=1000&', defaultGroup: 80, scoreboardCacheKey: 'scoreboard',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvEnabled: true, scheduleTable: 'schedule',
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/cfb', sdvSchema: 'cfb', sdvEnabled: true, scheduleTable: 'schedule',
         // getters, not values: constants.ts -> misc.ts -> league.ts -> constants.ts is a
         // cycle, and an eager read here sees AVAILABLE_SEASONS before it is initialised
         get seasons() { return AVAILABLE_SEASONS; }, regularSeasonWeeks: 15, postseasonWeeks: 1,
         logoLeague: 'ncaa', teamCount: 134, pool: 'FBS', extraTeamCategories: [],
     },
     nfl: {
-        slug: 'nfl', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
+        slug: 'nfl', sport: 'football', name: 'NFL', shortName: 'NFL', urlPrefix: '/nfl',
         espnPath: 'nfl', espnCoreLeague: 'nfl',
         scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nfl',
-        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvEnabled: true, scheduleTable: 'espn_schedule',
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/nfl', sdvSchema: 'nfl', sdvEnabled: true, scheduleTable: 'espn_schedule',
         // ESPN play-by-play for the NFL is reliable from the 2002 realignment on
         get seasons() { return range(2002, CURRENT_YEAR); }, regularSeasonWeeks: 18, postseasonWeeks: 5,
         logoLeague: 'nfl', teamCount: 32, pool: 'NFL',
         // the rbsdm.com measures the nfl-data producer adds to team_summaries
         extraTeamCategories: ['tendencies', 'fourth-downs', 'luck'],
     },
+    nba: {
+        slug: 'nba', sport: 'basketball', name: 'NBA', shortName: 'NBA', urlPrefix: '/nba',
+        espnPath: 'nba', espnCoreLeague: 'nba',
+        // no scoreboard, groups or weeks: the basketball pages read none of these
+        scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:nba',
+        // stats.nba.com-keyed tables (shots, player_game_logs, player_season_stats, shot_* derived);
+        // ESPN-keyed nba.* is reached only inside the shot_season_players SQL
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/nba_stats', sdvSchema: 'nba_stats', sdvEnabled: true,
+        scheduleTable: 'schedule',
+        // END years: 1998 is 1997-98, the first season every shots file has the legacy frame
+        get seasons() { return range(NBA_FIRST_SEASON, NBA_LAST_KNOWN_SEASON); },
+        regularSeasonWeeks: 0, postseasonWeeks: 0,
+        logoLeague: 'nba', teamCount: 30, pool: 'NBA', extraTeamCategories: [],
+    },
 };
 
 /** ESPN logo path segment for a league's team ids (numeric ids resolve for both). */
-export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' {
+export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' | 'nba' {
     return LEAGUES[league ?? DEFAULT_LEAGUE].logoLeague;
 }
 
@@ -165,11 +188,13 @@ export function teamCategoriesFor(league: League | undefined): string[] {
     return ['differential', 'offensive', 'defensive', ...LEAGUES[league ?? DEFAULT_LEAGUE].extraTeamCategories];
 }
 
-/** '/nfl/game/1' -> { nfl, '/game/1' }; anything else is cfb, untouched. */
+/** '/nfl/game/1' -> { nfl, '/game/1' }, '/nba/players/1' -> { nba, '/players/1' }; anything else is cfb, untouched. */
 export function splitLeague(pathname: string): { league: League; rest: string } {
-    const p = LEAGUES.nfl.urlPrefix;
-    if (pathname === p || pathname === p + '/') return { league: 'nfl', rest: '/' };
-    if (pathname.startsWith(p + '/')) return { league: 'nfl', rest: pathname.slice(p.length) };
+    for (const lg of PREFIXED_LEAGUES) {
+        const p = LEAGUES[lg].urlPrefix;
+        if (pathname === p || pathname === p + '/') return { league: lg, rest: '/' };
+        if (pathname.startsWith(p + '/')) return { league: lg, rest: pathname.slice(p.length) };
+    }
     return { league: 'cfb', rest: pathname };
 }
 

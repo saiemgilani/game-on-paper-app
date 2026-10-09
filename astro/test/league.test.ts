@@ -147,3 +147,31 @@ describe('meetingLabel', () => {
         expect(meetingLabel({ ...post, season: 2019 }, 'nfl')).toBe('Divisional: CAR 30-27 ATL');
     });
 });
+
+describe('the nba league', () => {
+    test('is a basketball league under /nba reading the nba_stats schema', () => {
+        expect(LEAGUES.nba).toMatchObject({
+            slug: 'nba', sport: 'basketball', urlPrefix: '/nba', espnPath: 'nba', espnCoreLeague: 'nba',
+            sdvApiBase: 'https://data.sportsdataverse.org/v1/nba_stats', sdvSchema: 'nba_stats', sdvEnabled: true,
+            logoLeague: 'nba', teamCount: 30, defaultGroup: null, scoreboardQuery: '', regularSeasonWeeks: 0,
+        });
+        expect(LEAGUES.nba.seasons[0]).toBe(1998);
+        expect(LEAGUES.nba.seasons.at(-1)).toBe(2026);
+        expect(LEAGUES.cfb.sport).toBe('football');
+        expect(LEAGUES.nfl.sport).toBe('football');
+        expect(LEAGUES.cfb.sdvSchema).toBe('cfb');
+        expect(LEAGUES.nfl.sdvSchema).toBe('nfl');
+    });
+    test('splitLeague and leaguePath know the /nba prefix', () => {
+        expect(splitLeague('/nba')).toEqual({ league: 'nba', rest: '/' });
+        expect(splitLeague('/nba/players/1629008')).toEqual({ league: 'nba', rest: '/players/1629008' });
+        expect(splitLeague('/nbax/anything')).toEqual({ league: 'cfb', rest: '/nbax/anything' });
+        expect(leaguePath('nba', '/')).toBe('/nba');
+        expect(leaguePath('nba', '/players/1')).toBe('/nba/players/1');
+        expect(leaguePath('nba', '/nba/players/1')).toBe('/nba/players/1');
+    });
+    test('nba logos use ESPN numeric ids in both modes', () => {
+        expect(teamLogoUrl('nba', 17, false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/17.png');
+        expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png');
+    });
+});
