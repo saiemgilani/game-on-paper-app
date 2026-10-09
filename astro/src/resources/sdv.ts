@@ -27,6 +27,8 @@ export interface SDVTeamSummary {
     division: string
     conference: string
     season: number
+    /** teams in this row's season table: the n its `_rank`s are out of (`retrieveTeamCounts`) */
+    team_count?: number | null
     plays_off?: number
     playsgame_off?: number
     passrate_off?: number
@@ -801,6 +803,22 @@ export interface SDVTeamSummaryRequest {
     maxLookback?: number
     league?: League
 }
+/**
+ * Teams per season in `team_summaries` -- the n every season `_rank` is out of:
+ * 128 FBS teams in 2014, 136 in 2025, 138 in 2026, always 32 in the NFL. One
+ * cached read of a single column for every season (~45 KB for CFB). A failed
+ * read is `{}`, and a reader falls back to the league's `teamCount`.
+ */
+export async function retrieveTeamCounts(league: League = 'cfb'): Promise<Record<number, number>> {
+    const content = await requestSDV('team_summaries', new URLSearchParams({ select: 'season', limit: '50000' }), undefined, 60 * 60 * 24, true, league);
+    const out: Record<number, number> = {};
+    for (const r of (content?.data ?? [])) {
+        const s = Number(r?.season);
+        if (Number.isFinite(s)) out[s] = (out[s] ?? 0) + 1;
+    }
+    return out;
+}
+
 export async function retrieveTeamSummaries({ season, week, fbs_class, category, team_id, columns, maxLookback, league = 'cfb' }: SDVTeamSummaryRequest): Promise<SDVTeamSummary[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !category && !team_id) {
@@ -851,7 +869,10 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
 
     try {        
         const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league);
-        return content.data;
+        // a weekly row's ranks are out of that week's teams, which this count is not
+        if (week || !Array.isArray(content.data) || content.data.length === 0) return content.data;
+        const counts = await retrieveTeamCounts(league);
+        return content.data.map((r) => ({ ...r, team_count: counts[Number(r.season)] ?? null }));
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)
         if (err) {

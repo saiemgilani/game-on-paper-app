@@ -9,14 +9,13 @@ import type { SDVTeamSummary } from "../../resources/sdv";
 import TeamRadarChart from "../../components/charts/TeamRadarChart.svelte";
 import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
-import { LEAGUES, leaguePath } from "../../utils/league";
+import { leaguePath, teamCountOf } from "../../utils/league";
 import type { TeamProfileData } from "../../routes/teamProfile";
 
 // Route component: routes/teamProfile.ts (per-league page) read ESPN + the
 // season tables and made the not-found decision; this renders.
 type Props = TeamProfileData;
 const { league, id, team, teamSummaries } = Astro.props;
-const cfg = LEAGUES[league];
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
@@ -42,7 +41,7 @@ function createSeasonColumn(summary: SDVTeamSummary, key: string): string {
     const val = roundNumber(retrieveValue(summary, key), 2, 2)
     const rank = retrieveValue(summary, `${key}_rank`)
 
-    const colorRampClass = generateColorRampValue(parseInt(rank), cfg.teamCount, true)
+    const colorRampClass = generateColorRampValue(parseInt(rank), teamCountOf(summary, league), true)
     const rankStr = formatRank(parseInt(rank))
     return `
     <td class="numeral ${colorRampClass}" style="text-align: center;">${val} <small class="align-self-center" style="opacity: 50%">#${rankStr}</small></td>

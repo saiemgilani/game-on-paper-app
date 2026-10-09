@@ -1,7 +1,7 @@
 ---
 import type { SDVTeamSummary } from '../../resources/sdv';
 import { FIVE_FACTORS } from '../../utils/fiveFactors';
-import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
+import { DEFAULT_LEAGUE, teamCountOf } from '../../utils/league';
 import { formatMetricValue, formatRank, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import TeamPlayerTable from './tables/TeamPlayerTable.astro';
 
@@ -10,8 +10,8 @@ interface Props {
 }
 
 const { summary } = Astro.props;
-// the rank colour ramp scales to the league's team count, as in TeamCard
-const cfg = LEAGUES[Astro.locals.league ?? DEFAULT_LEAGUE];
+// the rank colour ramp scales to the season's team count, as in TeamCard
+const teamCount = teamCountOf(summary, Astro.locals.league ?? DEFAULT_LEAGUE);
 const row = (summary ?? {}) as Record<string, unknown>;
 // a missing value carries no rank and no shading, even if a rank came with it
 const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNull(row[`${k}_rank`]));
@@ -34,7 +34,7 @@ const rankOf = (k: string) => (numberOrNull(row[k]) === null ? null : numberOrNu
                 <td class:list={["text-left", "text-nowrap", f.sub && "ps-4 text-muted text-small"]}><abbr class="d-md-none" title={f.hover}>{f.label}</abbr><span class="d-none d-md-inline">{f.label}</span></td>
                 <td class="d-none d-md-table-cell text-left text-nowrap text-muted text-small">{f.metric}</td>
                 {[f.off, f.def, f.margin].map((k) => k === null ? <td></td> : (
-                    <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), cfg.teamCount, true)]}>
+                    <td class:list={["numeral", "text-center", generateColorRampValue(rankOf(k), teamCount, true)]}>
                         {formatMetricValue(row[k], f.format, k === f.margin)}
                         {rankOf(k) !== null && (
                             <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(k))}</span>
