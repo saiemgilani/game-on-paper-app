@@ -723,33 +723,30 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
         console.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
         return [];
     }
-    try {
-        const payload: Record<string, any> = {};
-        // not a supported param yet
-        if (season) {
-            payload["season"] = String(season)
-        }
-
-        if (percentile) {
-            payload["pctile"] = percentile
-        }
-   
-
-        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, league);
-        return content.data;
-    } catch (err) {
-        console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
-        if (err) {
-            console.error(`also err: ${err}`);
-        }
-        if (!season) {
-            return [];
-        } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < maxLookback)) {
-            return [];
-        } else {
-            return await retrievePercentiles(season - 1, percentile, maxLookback, league);
-        }
+    const payload: Record<string, any> = {};
+    if (season) {
+        payload["season"] = String(season)
     }
+    if (percentile) {
+        payload["pctile"] = percentile
+    }
+    let rows: SDVSeasonPercentile[];
+    try {
+        // strict: a service that did not answer throws here, so it is not mistaken
+        // for a season without a ladder (an earlier season would not answer either)
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, league, true);
+        rows = Array.isArray(content?.data) ? content.data : [];
+    } catch (err) {
+        console.error(`could not load percentiles (${percentile}) for ${league} in ${season}: ${err}`);
+        return [];
+    }
+    if (rows.length > 0 || !season || (season - 1) < maxLookback) {
+        return rows;
+    }
+    // no ladder published for this season yet (a new season before its first
+    // build): rank against the nearest earlier season that has one
+    console.warn(`no percentiles for ${league} in ${season}, checking ${season - 1}`);
+    return await retrievePercentiles(season - 1, percentile, maxLookback, league);
 }
 
 /**
