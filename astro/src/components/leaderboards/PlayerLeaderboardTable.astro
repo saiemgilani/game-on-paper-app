@@ -5,6 +5,7 @@ import { retrievePlayerSummaries, type SDVPlayerSummary, SummaryType }  from '..
 import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayerLink from '../player/PlayerLink.astro';
+import { percentileOf } from '../../utils/players';
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 interface Props {
@@ -37,11 +38,13 @@ const columns = SDV_PLAYER_METRIC_CATEGORIES[category];
 
 function generateMetricCell(player: any, c: string, m: string): string {
     const [multiplier, power10, fixed] = SDV_PLAYER_METRIC_FORMATTING_VALUES[c][m] || [1, 2, 2];
-    const rank = retrieveValue(player, m + '_rank');
     const value = parseFloat(retrieveValue(player, m)) * multiplier;
     const valString = roundNumber(value, power10, fixed) + ((SDV_PLAYER_PERCENT_COLUMNS.includes(m)) ? "%" : "")
+    // shaded by the producer's percentile among EVERY qualifier, not by rank over
+    // the <= 150 rows shown: with 744 receiving qualifiers, rank 145 is the 80th
+    // percentile but read as the bottom of the page (audit D5)
     return `
-    <td class="text-center ${generateColorRampValue(rank == "NA" ? null : parseFloat(rank), content.length, true)}" colspan="1">${valString}</td>
+    <td class="text-center ${generateColorRampValue(percentileOf(player, m), 100) ?? ""}" colspan="1">${valString}</td>
     `
 }
 

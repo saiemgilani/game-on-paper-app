@@ -243,9 +243,19 @@ export function categoryColumns(category: string): [string, string][] {
     return cols ? [['games', 'G'], ...Object.entries(cols)] : [];
 }
 
-/** The `_pct` (0-100) beside a metric, when the producer computed one. */
-export function percentileOf(row: Record<string, unknown>, metric: string): number | null {
-    const v = numberOrNull(row[`${metric}_pct`]);
+/**
+ * The 0-100 percentile beside a metric, when the producer computed one: `_pct`
+ * among every qualifier, or with `withinPosition` the `_pos_pct` among his own
+ * position group's qualifiers, falling back to `_pct` where there is none (CFB
+ * before 2014, a player with no roster position).
+ *
+ * A player's own season line reads his position's (audit D3: CFB rushing pools
+ * QBs with RBs, so 24 of the 27 qualifiers at EPA/rush >= 90th were QBs and the
+ * best RB read 93.7 against 99.5 among RBs). A leaderboard reads `_pct`: its rows
+ * are ranked across positions, and its shading follows the rank beside it.
+ */
+export function percentileOf(row: Record<string, unknown>, metric: string, withinPosition = false): number | null {
+    const v = (withinPosition ? numberOrNull(row[`${metric}_pos_pct`]) : null) ?? numberOrNull(row[`${metric}_pct`]);
     return v === null ? null : Math.min(Math.max(v, 0), 100);
 }
 
@@ -348,20 +358,64 @@ export function returnerStatLine(r: { punt_returns: number, punt_return_yards: n
 }
 
 /**
+ * The game log's league percentiles rank a game among games like it: the same
+ * position group, and at least this many plays (sdv-db `players/games/percentiles`
+ * `position_group` + `min_plays`). Over every player-game of every position, 43% of
+ * them 3 plays or fewer, a p90 QB game read as the 73rd (audit D1, 2026-10-08).
+ *
+ * Why 5, from CFB 2025's 22,330 player-games: it is the smallest floor that clears
+ * the one- and two-play games that fill a ladder's ends (success rate exactly 1.0 is
+ * 4.4% of QB, 4.4% of RB, 15.8% of WR and 28.4% of TE games with no floor; at 5 it is
+ * 0.0 / 0.3 / 2.0 / 2.5%), while every cohort keeps a ladder: TE keeps 555 games
+ * (8 leaves 106, 10 leaves 37 -- under the API's 30-game minimum early in a season).
+ * NFL 2026 through week 5 still has 77 TE games at 5. A game under the floor is not
+ * on the ladder, so it is not read against it either.
+ */
+export const GAME_PERCENTILE_MIN_PLAYS = 5;
+
+/** Roster position -> the API's `position_group`; CFB rosters spell it out from 2025 on. */
+const GAME_PERCENTILE_GROUPS: Record<string, string> = {
+    QB: 'QB', QUARTERBACK: 'QB',
+    RB: 'RB', 'RUNNING BACK': 'RB', FB: 'RB', FULLBACK: 'RB',
+    WR: 'WR', 'WIDE RECEIVER': 'WR',
+    TE: 'TE', 'TIGHT END': 'TE',
+};
+
+/**
+ * The cohort a player's games are ranked in, or null for a position the API has
+ * no cohort for -- those keep the all-player ladder. It is the identity's (latest)
+ * roster position, so a converted player reads his old seasons in his new group.
+ */
+export function gamePercentileGroup(position: unknown): string | null {
+    return GAME_PERCENTILE_GROUPS[String(position ?? '').trim().toUpperCase()] ?? null;
+}
+
+/**
  * The whole-number percentile of `value` in a 101-breakpoint distribution
  * (`players/games/percentiles`, sdv-db): index 0 is the 0th percentile and index
  * 100 the 100th, so the largest index at or below the value IS its percentile.
  * `null` when there is no value or no distribution to read it against.
+ *
+ * A value several breakpoints EQUAL reads the middle of that run (midrank), not
+ * its top: success rate is exactly 1.0 in 13% of player-games, and the top of
+ * that run printed every one of them as the 100th.
  */
 export function percentileFromBreaks(breaks: number[] | undefined, value: unknown): number | null {
     const v = numberOrNull(value);
     if (v === null || !breaks || breaks.length === 0) return null;
-    let lo = 0, hi = breaks.length - 1, at = 0;
-    while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        if (breaks[mid] <= v) { at = mid; lo = mid + 1; } else { hi = mid - 1; }
-    }
-    return Math.min(Math.max(at, 0), breaks.length - 1);
+    // index of the first breakpoint above v (upper) and the first at or above it (lower)
+    const bound = (above: boolean) => {
+        let lo = 0, hi = breaks.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (above ? breaks[mid] <= v : breaks[mid] < v) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+    };
+    const top = bound(true) - 1;
+    if (top < 0) return 0;
+    const first = breaks[top] === v ? bound(false) : top;
+    return Math.round((first + top) / 2);
 }
 
 /**

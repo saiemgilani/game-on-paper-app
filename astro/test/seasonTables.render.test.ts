@@ -159,6 +159,33 @@ describe('player season board cells equal the column they are headed by', () => 
     }, 30_000);
 });
 
+describe('player season board shading', () => {
+    test('a cell is shaded by its published percentile, not its rank over the rows shown', async () => {
+        // the fixture is 4 of 2025's 35 qualifiers: J.Goff is 5th in EPA/DB (85.7 pct),
+        // which a rank-over-rows-shown ramp painted the WORST colour (audit D5)
+        const { default: Table } = await import('../src/components/leaderboards/PlayerLeaderboardTable.astro');
+        const { generateColorRampValue } = await import('../src/utils/misc');
+        const { percentileOf } = await import('../src/utils/players');
+        const html = await container.renderToString(Table, {
+            props: { season: 2025, category: 'passing', metric: 'EPAplay' },
+            request: new Request('https://gameonpaper.com/nfl/year/2025/players/passing'),
+            locals: locals('nfl'),
+        });
+        const keys = Object.keys(SDV_PLAYER_METRIC_CATEGORIES.passing);
+        for (const p of nfl.passing) {
+            const tr = html.split('<tr').find((r) => r.includes(`>${p.passer_player_name}<`))!;
+            const classes = [...tr.matchAll(/<td class="([^"]*)"/g)].map((m) => m[1]).slice(-keys.length);
+            keys.forEach((key, i) => {
+                const want = generateColorRampValue(percentileOf(p, key), 100);
+                if (want) expect(classes[i], `${key} / ${p.passer_player_name}`).toContain(want);
+                else expect(classes[i], `${key} / ${p.passer_player_name}`).not.toMatch(/hulk-|null/);
+            });
+        }
+        const goff = html.split('<tr').find((r) => r.includes('>J.Goff<'))!;
+        expect(goff).not.toContain('hulk-bg-level-0');
+    }, 30_000);
+});
+
 describe('head-coach board cells equal the column they are headed by', () => {
     for (const board of ['pace', 'fourth-downs', 'efficiency']) {
         test(`nfl ${board} season board`, async () => {

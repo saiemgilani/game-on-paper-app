@@ -71,6 +71,19 @@ describe('sdv.ts routes each league to its own API base', () => {
         expect(urls.filter(u => u.includes('/v1/nfl/')).every(u => !u.includes('fbs_class='))).toBe(true);
     });
 
+    test('game-log percentiles ask for the position cohort and the play floor', async () => {
+        const sdv = await import('../src/resources/sdv');
+        await sdv.retrievePlayerGamePercentiles(2025, 'cfb', 'QB', 5).catch(() => {});
+        await sdv.retrievePlayerGamePercentiles(2024, 'nfl').catch(() => {});
+        const url = (lg: string) => new URL(seen.find(u => u.includes(`/v1/${lg}/players/games/percentiles?`))!);
+        expect(url('cfb').searchParams.get('season')).toBe('2025');
+        expect(url('cfb').searchParams.get('position_group')).toBe('QB');
+        expect(url('cfb').searchParams.get('min_plays')).toBe('5');
+        // no cohort asked for, none sent: the all-player, all-games ladder
+        expect(url('nfl').searchParams.has('position_group')).toBe(false);
+        expect(url('nfl').searchParams.has('min_plays')).toBe(false);
+    });
+
     test('a no-category team read selects only the columns its league has', async () => {
         const sdv = await import('../src/resources/sdv');
         await sdv.retrieveTeamSummaries({ team_id: 59 }).catch(() => {});

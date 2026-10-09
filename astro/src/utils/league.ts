@@ -37,7 +37,7 @@ export interface LeagueConfig {
     postseasonWeeks: number;
     /** a.espncdn.com/i/teamlogos/<logoLeague>/500/<team id>.png */
     logoLeague: 'ncaa' | 'nfl';
-    /** teams ranked in a season table; the rank colour ramp scales to it */
+    /** teams ranked in a season table, when the season's own count (`teamCountOf`) is unknown */
     teamCount: number;
     /** the population the season tables describe, for copy ("FBS vs FBS games only") */
     pool: string;
@@ -70,6 +70,17 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         extraTeamCategories: ['tendencies', 'fourth-downs', 'luck'],
     },
 };
+
+/**
+ * The n a season row's `_rank`s are out of: the season's own team count
+ * (`team_count`, attached by `retrieveTeamSummaries`), else the league default.
+ * FBS has been 128 to 138 teams; a fixed 134 put ranks 135-138 below zero and
+ * read the worst 2014 team as the 4th percentile (audit C3).
+ */
+export function teamCountOf(row: { team_count?: unknown } | null | undefined, league?: League): number {
+    const n = Number(row?.team_count);
+    return Number.isFinite(n) && n > 0 ? n : LEAGUES[league ?? DEFAULT_LEAGUE].teamCount;
+}
 
 /** ESPN logo path segment for a league's team ids (numeric ids resolve for both). */
 export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' {

@@ -5,7 +5,7 @@ import { isFeatureEnabled } from '../../utils/features';
 import MatchupRadarChart from '../charts/MatchupRadarChart.svelte';
 import FallbackSpinner from '../FallbackSpinner.astro';
 import MatchupHistoryTable from './MatchupHistoryTable.astro';
-import { DEFAULT_LEAGUE, LEAGUES } from '../../utils/league';
+import { DEFAULT_LEAGUE, teamCountOf } from '../../utils/league';
 
 interface Props {
     homeTeamSeason: SDVTeamSeasonInformation | null
@@ -21,9 +21,6 @@ const { homeTeamSeason, awayTeamSeason, homeTeamSummary, awayTeamSummary, matchu
 const colors = Astro.props.colors ?? (isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(homeTeamSeason?.team, awayTeamSeason?.team) : undefined);
 
 const league = Astro.locals.league ?? DEFAULT_LEAGUE;
-// the rank colour ramp scales to the league's team count: on the 134-team CFB
-// scale the WORST of 32 NFL teams still shaded green
-const cfg = LEAGUES[league];
 
 const showSeasons = awayTeamSummary?.season && homeTeamSummary?.season && homeTeamSummary?.season != awayTeamSummary?.season;
 
@@ -34,7 +31,10 @@ function cleanBreakdown(breakdown: SDVTeamSummary | null): any {
     return breakdown
 }
 
-function produceRankHtml(rank?: number, addClass: string = "", addStyle: string = ""): string {       
+// the rank colour ramp scales to the rank's own season's team count (`teamCountOf`):
+// on a 134-team scale the WORST of 32 NFL teams still shaded green, and FBS has been
+// 128 to 138 -- the two sides can be different seasons
+function produceRankHtml(breakdown: any, rank?: number, addClass: string = "", addStyle: string = ""): string {
     if (rank == null || rank == undefined || (!rank && rank != 0)) {
         return `<td class="${addClass} text-center" style="${addStyle}">N/A</td>`
     }
@@ -49,7 +49,7 @@ function produceRankHtml(rank?: number, addClass: string = "", addStyle: string 
         rankString = "N/A"
     }
 
-    return `<td class="${generateColorRampValue(rank, cfg.teamCount, true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
+    return `<td class="${generateColorRampValue(rank, teamCountOf(breakdown, league), true) || ""} ${addClass} text-center" style="${addStyle}">${rankString}</td>`
 }
 
 function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any, awaySideOfBall: string, category: string, statKey: string): string {
@@ -78,11 +78,11 @@ function produceMatchupRow(title: string, awayBreakdown: any, homeBreakdown: any
 
     return `
     <tr>
-        ${produceRankHtml(awayRank, "", "width: 10% !important;")}
+        ${produceRankHtml(awayBreakdown, awayRank, "", "width: 10% !important;")}
         <td class="text-center" style="width: 20% !important;" >${awayValue || "N/A"}</td>
         <td class="text-center" style="width: 40% !important;">${title}</td>
         <td class="text-center" style="width: 20% !important;" >${homeValue || "N/A"}</td>
-        ${produceRankHtml(homeRank, "", "width: 10% !important;")}
+        ${produceRankHtml(homeBreakdown, homeRank, "", "width: 10% !important;")}
     </tr>
     `
 }
@@ -103,17 +103,17 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td class="text-left">Net Adj EPA/Play</td>
                         <td class="text-center">${generateMarginalString(breakdown?.net_adj_epa, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.net_adj_epa_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.net_adj_epa_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Offense</td>
                         <td class="text-center">${roundNumber(breakdown?.adj_off_epa, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.adj_off_epa_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.adj_off_epa_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Defense</td>
                         <td class="text-center">${roundNumber(breakdown?.adj_def_epa, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.adj_def_epa_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.adj_def_epa_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -131,17 +131,17 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td class="text-left">Net EPA/Play</td>
                         <td class="text-center">${generateMarginalString(breakdown?.EPAplay_margin, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAplay_margin_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAplay_margin_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Offense</td>
                         <td class="text-center">${roundNumber(breakdown?.EPAplay_off, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAplay_off_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAplay_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Defense</td>
                         <td class="text-center">${roundNumber(breakdown?.EPAplay_def, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAplay_def_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAplay_def_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -159,17 +159,17 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td>Offense Success</td>
                         <td class="text-center">${roundNumber((breakdown?.success_off || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_off_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
                         <td class="text-center">${roundNumber((breakdown?.success_off_pass || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_off_pass_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_off_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
                         <td class="text-center">${roundNumber((breakdown?.success_off_rush || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_off_rush_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_off_rush_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -187,17 +187,17 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td>Defense Success</td>
                         <td class="text-center">${roundNumber((breakdown?.success_def || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_def_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_def_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Pass</td>
                         <td class="text-center">${roundNumber((breakdown?.success_def_pass || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_def_pass_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_def_pass_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Rush</td>
                         <td class="text-center">${roundNumber((breakdown?.success_def_rush || 0) * 100, 2, 1)}%</td>
-                        ${produceRankHtml(breakdown?.success_def_rush_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.success_def_rush_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -215,17 +215,17 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td>Net EPA/Drive</td>
                         <td class="text-center">${generateMarginalString(breakdown?.EPAdrive_margin, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAdrive_margin_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAdrive_margin_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Offense</td>
                         <td class="text-center">${roundNumber(breakdown?.EPAdrive_off, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAdrive_off_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAdrive_off_rank)}
                     </tr>
                     <tr>
                         <td class="ps-4">Defense</td>
                         <td class="text-center">${roundNumber(breakdown?.EPAdrive_def, 2, 2)}</td>
-                        ${produceRankHtml(breakdown?.EPAdrive_def_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.EPAdrive_def_rank)}
                     </tr>
                 </tbody>
             </table>
@@ -243,7 +243,7 @@ function produceTeamSector(team?: SDVTeam | null, breakdown?: SDVTeamSummary) {
                     <tr>
                         <td class="w-50">Net Field Position</td>
                         <td class="text-center">${generateMarginalString(breakdown?.start_position_margin, 2, 1)}</td>
-                        ${produceRankHtml(breakdown?.start_position_margin_rank)}
+                        ${produceRankHtml(breakdown, breakdown?.start_position_margin_rank)}
                     </tr>
                 </tbody>
             </table>

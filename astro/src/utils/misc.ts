@@ -742,59 +742,6 @@ export function retrieveValue(dictionary: any, key: string): string {
 }
 
 
-export function getPercentileKey(metric: string): string {
-    const cleanedMetric = (
-        metric
-            .replace("_off", "")
-            .replace("_def", "")
-            .replace("_margin", "")
-    )
-    switch (cleanedMetric) {
-        case "EPAplay": 
-            return "EPAplay";
-        case "yardsplay": 
-            return "yardsplay";
-        case "success": 
-            return "success";
-        case "EPAplay_pass": 
-            return "EPAdropback";
-        case "yardsplay_pass": 
-            return "yardsdropback";
-        case "success_pas": 
-            return "pass_success";
-        case "EPAplay_rush": 
-            return "EPArush";
-        case "yardsplay_rush": 
-            return "yardsrush";
-        case "success_rush": 
-            return "rush_success";
-        case "havoc": 
-            return "havoc";
-        case "explosive_pass":
-            return "pass_explosive";
-        case "explosive_rush":
-            return "rush_explosive";
-        case "opportunity_rate":
-            return "opportunity_run";
-        case "line_yards":
-            return "lineyards";
-        case "play_stuffed":
-            return "play_stuffed";
-        case "explosive":
-            return "explosive";
-        case "nonExplosiveEpaPerPlay":
-            return "nonExplosiveEpaPerPlay";
-        case "early_down_EPA":
-            return "early_down_EPA";
-        case "late_down_success":
-            return "late_down_success";
-        case "third_down_distance":
-            return "third_down_distance";
-        default:
-            return metric;
-    }
-}
-
 export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
     if (!input && input != 0) {
         return null;
