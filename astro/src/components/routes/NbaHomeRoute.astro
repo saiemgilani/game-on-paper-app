@@ -1,0 +1,60 @@
+---
+// The Nets roster for a season: blazing-the-nets' app/home/[season]/page.tsx on GenericPage
+// with Bootstrap cards. Numbers via blazing's fmt* (the same text the charts use).
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaHeadshot from '../nba/NbaHeadshot.astro';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import { lineOf } from '../../nba/data/aggregate';
+import { NETS_TEAM_ID, teamName } from '../../nba/data/teams';
+import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { playerHref, withParams } from '../../nba/links';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaHomeParams } from '../../routes/nba/home';
+
+interface Props { data: NbaHomeParams }
+const { season, seasons, current, q, roster, headshots } = Astro.props.data;
+const label = seasonLabel(season);
+const title = `${teamName(NETS_TEAM_ID, season)} shooting, ${label} | Game on Paper`;
+const subtitle = 'Hex shot charts, shooting signatures and distance and side splits for every Nets player, compared with the rest of the league, from stats.nba.com play-by-play.';
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: label, active: true }];
+---
+<GenericPage title={title} subtitle={subtitle} slug="/nba" breadcrumbs={breadcrumbs} canonicalPath={`/nba${q}`} heading={`${teamName(NETS_TEAM_ID, season)} ${label} shooting`}>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="h3">Where the Nets shoot, and how often it goes in.</h1>
+        <p class="text-muted">{subtitle}</p>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath="/nba" />
+          <a href={withParams('/nba/players', { season: String(season) }, { season: String(current) })}>All players &rarr;</a>
+          <a href={withParams('/nba/teams', { season: String(season) }, { season: String(current) })}>All teams &rarr;</a>
+        </div>
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-12">
+        <h2 class="h4">{teamName(NETS_TEAM_ID, season)}, {label} <small class="text-muted">regular season, by attempts</small></h2>
+        {roster.length === 0 && (<p class="text-muted">No Nets regular-season shots in {label} yet; the charts fill in after their first game.</p>)}
+      </div>
+    </div>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="nba-roster">
+      {roster.map((p) => {
+        const line = lineOf(p);
+        return (
+          <div class="col">
+            <a href={playerHref(p.person_id, q)} class="card border rounded h-100 text-decoration-none text-reset">
+              <div class="card-body d-flex align-items-center gap-3">
+                <NbaHeadshot src={headshots.get(p.person_id) ?? null} name={p.player_name} size={88} decorative />
+                <div class="min-w-0">
+                  <p class="card-title h6 mb-1 text-truncate">{p.player_name}</p>
+                  <p class="mb-0 numeral">{fmtInt(p.attempts)} FGA &middot; {fmtPct(line.fgPct)} FG &middot; {fmtPct(line.efgPct)} eFG</p>
+                  {p.stats && (<p class="mb-0 text-muted numeral">{fmtInt(p.stats.gp)} GP &middot; {fmtDec(p.stats.min)} MIN{p.statsScope === 'all-teams' && ' (season totals across teams)'}</p>)}
+                </div>
+              </div>
+            </a>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</GenericPage>
