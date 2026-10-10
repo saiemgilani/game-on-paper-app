@@ -35,7 +35,7 @@ export default async (page, base) => {
   const want = new URL(base + `/charts/builder?season=2025&x=${x}&y=${y}`);
   if (got.pathname + got.search !== want.pathname + want.search) throw new Error(`not the canonical URL: ${got.pathname}${got.search}`);
   // a random pair can be one the season has no values for: then the chart is one line of text, not a canvas
-  const empty = page.locator('#chart-empty');
+  const empty = page.locator('#chart_container > p');
   if (await empty.count()) {
     if (!/^No data for .+ in 2025\.$/.test(await empty.innerText())) throw new Error(`unexpected empty state: ${await empty.innerText()}`);
   } else if ((await chart()).equals(before)) throw new Error('the chart did not redraw');

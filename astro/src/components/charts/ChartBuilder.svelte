@@ -398,21 +398,13 @@
     }
 
     async function waitToGenerateChart() {
+        // v2: a season with no values for the pair says so in the error note instead of asking to reach out
+        let empty: string | null = null;
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
-            // v2: a season with no values for the pair gets one plain line instead of the error note
-            // (textContent: the metric keys come from the URL)
-            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
-            if (empty) {
-                const note = document.createElement('p');
-                note.className = 'm-0 mb-3 text-muted text-small';
-                note.id = 'chart-empty';
-                note.textContent = empty;
-                document.getElementById("chart_container")?.replaceChildren(note);
-                return;
-            }
-            if (chartedPoints.length == 0) {
-                throw new Error("Unable to generate chart, no points available.")
+            empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
+            if (empty || chartedPoints.length == 0) {
+                throw new Error(empty ?? "Unable to generate chart, no points available.")
             }
             generateChart(context, selectedMetricX, selectedMetricY)
         } catch (e) {
@@ -420,6 +412,8 @@
             const container = document.getElementById("chart_container");
             if (container) {
                 container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
+                // textContent: the metric keys in the empty line come from the URL
+                if (empty) container.firstElementChild!.textContent = empty;
             }
         }
     }
