@@ -47,7 +47,9 @@ describe('leaderboard freshness stamps', () => {
     test('a public viewer (no preview cookie): the team board stamps from cfb.team_summaries', async () => {
         const html = await page(TEAMS, teamProps, {});
         expect(html).toContain('Last updated: <abbr');
-        expect(html).toContain('<time datetime="2026-09-26T13:14:00Z">Sep 26, 2026, 9:14 AM ET</time>');
+        expect(html).toContain('<time datetime="2026-09-26T13:14:00Z" data-freshness>Sep 26, 2026, 1:14 PM UTC</time>');
+        // the no-JS text is UTC, labelled; the stamp's own script rewrites it into the viewer's zone
+        expect(html).toMatch(/<script type="module" src="[^"]*FreshnessStamp\.astro\?astro&type=script/);
         expect(h.asked).toEqual(['cfb.team_summaries']);
         // the page reads the rows itself, pinned to the stamp, and the pin held
         expect(h.teamArgs).toHaveLength(1);
@@ -55,14 +57,14 @@ describe('leaderboard freshness stamps', () => {
     }, 60_000);
     test('the player board stamps from its own category table', async () => {
         const html = await page(PLAYERS, { season: 2025, category: 'passing', metric: 'EPAplay' }, {});
-        expect(html).toContain('<time datetime="2026-09-25T10:00:00Z">Sep 25, 2026, 6:00 AM ET</time>');
+        expect(html).toContain('<time datetime="2026-09-25T10:00:00Z" data-freshness>Sep 25, 2026, 10:00 AM UTC</time>');
         expect(h.asked).toEqual(['cfb.passing']);
         expect(h.playerArgs).toHaveLength(1);
         expect(h.playerArgs[0][8]).toEqual({ version: '2026-09-25T10:00:00Z', held: true });
     }, 60_000);
     test('the NFL team board reads the nfl key', async () => {
         const html = await page(TEAMS, teamProps, { league: 'nfl' });
-        expect(html).toContain('<time datetime="2026-10-07T15:04:56.597057+00:00">Oct 7, 2026, 11:04 AM ET</time>');
+        expect(html).toContain('<time datetime="2026-10-07T15:04:56.597057+00:00" data-freshness>Oct 7, 2026, 3:04 PM UTC</time>');
         expect(h.asked).toEqual(['nfl.team_summaries']);
     }, 60_000);
     test('meta does not know the table (or is down): no stamp, page still renders', async () => {
@@ -77,9 +79,9 @@ describe('leaderboard freshness stamps', () => {
 describe('national trends stamp', () => {
     test('stamp on the page and handed to the chart island for its canvas', async () => {
         const html = await page(TRENDS, { league: 'cfb' }, {});
-        expect(html).toContain('<time datetime="2026-09-20T04:00:00Z">Sep 20, 2026, 12:00 AM ET</time>');
-        // client:only islands serialize their props; the chart receives the stamp text
-        expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;Sep 20, 2026, 12:00 AM ET&quot;\]/);
+        expect(html).toContain('<time datetime="2026-09-20T04:00:00Z" data-freshness>Sep 20, 2026, 4:00 AM UTC</time>');
+        // client:only islands serialize their props; the chart receives the ISO and draws it in the viewer's zone
+        expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;2026-09-20T04:00:00Z&quot;\]/);
         expect(h.asked).toEqual(['cfb.percentiles']);
         // all five percentile reads share one pin, and it held
         expect(h.pctArgs).toHaveLength(5);
@@ -114,9 +116,9 @@ describe('an ingest landing mid-render drops the stamp (the rows still render)',
 describe('the trends chart draws the stamp in its canvas', () => {
     // The island has no DOM under vitest, so its Chart.js config is pinned at the source:
     // the prop is read and its subtitle reaches options.plugins (a saved image keeps it).
-    test('TrendsChart reads `freshness` and hands freshnessSubtitle(freshness) to plugins.subtitle', () => {
+    test('TrendsChart reads `freshness` and hands its viewer-local time to plugins.subtitle', () => {
         const src = readFileSync(new URL('../src/components/charts/TrendsChart.svelte', import.meta.url)).toString();
         expect(src).toMatch(/const \{[^}]*\bfreshness = null\b[^}]*\} = \$props\(\);/);
-        expect(src).toMatch(/plugins: \{[\s\S]*?subtitle: \{ \.\.\.freshnessSubtitle\(freshness\),[\s\S]*?legend:/);
+        expect(src).toMatch(/plugins: \{[\s\S]*?subtitle: \{ \.\.\.freshnessSubtitle\(freshness && freshnessTime\(freshness\)\),[\s\S]*?legend:/);
     });
 });

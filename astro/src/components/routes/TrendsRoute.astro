@@ -67,7 +67,7 @@ const title = `National Trends | ${range} | Game on Paper`;
             </div>
         </div>
     </div>
-    <TrendsChart client:only {...(stamp ? { freshness: stamp.text } : {})} title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
+    <TrendsChart client:only {...(stamp ? { freshness: stamp.iso } : {})} title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
         <FallbackSpinner slot="fallback" />
     </TrendsChart>
 </GenericPage>

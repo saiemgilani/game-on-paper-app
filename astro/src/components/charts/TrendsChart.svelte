@@ -7,7 +7,7 @@ import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDAR
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
-import { freshnessSubtitle } from '../../utils/freshness';
+import { freshnessSubtitle, freshnessTime } from '../../utils/freshness';
 
 const { title, teamColor, teamData, category, metric, percentiles, freshness = null } = $props();
 
@@ -283,8 +283,9 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                         family: '"Chivo", "Fira Mono", serif'
                     },
                 },
-                // the "Last updated" stamp inside the canvas, so a saved image keeps it
-                subtitle: { ...freshnessSubtitle(freshness), color: (isDarkMode) ? "white" : "black" },
+                // the "Last updated" stamp inside the canvas, so a saved image keeps it: the
+                // viewer's local time (this island runs only in the browser), its zone named
+                subtitle: { ...freshnessSubtitle(freshness && freshnessTime(freshness)), color: (isDarkMode) ? "white" : "black" },
                 legend: {
                     display: (chartData.datasets.length > 1),
                     position: "top"
