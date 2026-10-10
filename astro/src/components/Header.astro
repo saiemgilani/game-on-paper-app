@@ -6,8 +6,8 @@ import { isFeatureEnabled } from "../utils/features";
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 const football = cfg.sport === 'football';
-// every other league a viewer may switch to: cfb always, the prefixed ones behind their flags
-const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
+// every other league a viewer may switch to (a football viewer's Header stays the cfb<->nfl switch): cfb always, the prefixed ones behind their flags
+const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league && (football ? LEAGUES[lg].sport === 'football' : true) && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
 ---
 
@@ -97,7 +97,12 @@ const lp = (p: string) => leaguePath(league, p);
                         </ul>
                     </li>
                 </ul>
-                {others.length > 0 && (
+                {others.length === 1 && (
+                    <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
+                    <a href={leaguePath(others[0], "/")} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[others[0]].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[others[0]].shortName}</a>
+                    </form>
+                )}
+                {others.length > 1 && (
                     <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
                         <div class="dropdown">
                             <button class="btn btn-md btn-outline-primary league-switch dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Switch league">{cfg.shortName}</button>
