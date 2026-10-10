@@ -25,7 +25,7 @@ metric = metric || "EPAplay";
 // A stamped render reads its rows here, pinned to the stamp; any read that cannot confirm
 // that stamp clears the pin and the render shows none (the rows still render).
 const pin = sdvPin(await sdvIngestStamp(league, category));
-const { sortBy, ranked } = playerBoardSort(metric);
+const { sortBy, ranked } = playerBoardSort(category, metric);
 const rows = pin ? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, ranked, 150, season, league, pin) : undefined;
 const stamp = pin?.held ? freshnessStamp(pin.version) : null;
 

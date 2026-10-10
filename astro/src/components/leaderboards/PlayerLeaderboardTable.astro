@@ -16,7 +16,7 @@ interface Props {
 }
 
 const { season, category, metric, rows } = Astro.props;
-const { sortBy, ranked: isMetricRanked } = playerBoardSort(metric);
+const { sortBy, ranked: isMetricRanked } = playerBoardSort(category, metric);
 
 let content: SDVPlayerSummary[] = rows ?? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league);
 content = content.filter((p: any) => {
@@ -77,7 +77,7 @@ if (category == "passing") {
                         <th class="text-center" colspan="1">Games</th>
                         {
                             Object.entries(columns).map(([k, v]) => (
-                                <th class="text-center" colspan="1">{v} <i class="bi bi-arrow-down" hidden={metric != k}></i></th>
+                                <th class="text-center" colspan="1">{v.title} <i class="bi bi-arrow-down" hidden={metric != k}></i></th>
                             ))
                         }
                     </thead>

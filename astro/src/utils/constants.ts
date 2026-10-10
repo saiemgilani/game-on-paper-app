@@ -980,32 +980,39 @@ export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> 
     }
 };
 
-export const SDV_PLAYER_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
+/**
+ * A player-board metric: its title (the dropdown option and the table header) and,
+ * for a volume count, `counting`, which makes the board sort it by value rather
+ * than by its `_rank` (utils/players.ts playerBoardSort). The one list of metrics.
+ */
+export interface PlayerMetric { title: string; counting?: true }
+
+export const SDV_PLAYER_METRIC_CATEGORIES: Record<string, Record<string, PlayerMetric>> = {
     "passing": {
-        "dropbacks": "Dropbacks",
-        "sack_adj_yards": "Sack-Adj Yds",
-        "TEPA": "EPA",
-        "yardsdropback": "Yards/DB",
-        "EPAplay": "EPA/DB",
-        "success": "Pass SR%",
+        "dropbacks": { title: "Dropbacks", counting: true },
+        "sack_adj_yards": { title: "Sack-Adj Yds" },
+        "TEPA": { title: "EPA" },
+        "yardsdropback": { title: "Yards/DB" },
+        "EPAplay": { title: "EPA/DB" },
+        "success": { title: "Pass SR%" },
     }, 
     "rushing": {
-        "plays": "Carries",
-        "yards": "Yards",
-        "TEPA": "EPA",
-        "yardsplay": "Yards/Rush",
-        "EPAplay": "EPA/Rush",
-        "success": "Rush SR%",
+        "plays": { title: "Carries", counting: true },
+        "yards": { title: "Yards" },
+        "TEPA": { title: "EPA" },
+        "yardsplay": { title: "Yards/Rush" },
+        "EPAplay": { title: "EPA/Rush" },
+        "success": { title: "Rush SR%" },
     }, 
     "receiving": {
-        "comp": "Catches",
-        "targets": "Targets",
-        "catchpct": "Catch %",
-        "yards": "Yards",
-        "TEPA": "EPA",
-        "yardsplay": "Yards/Tgt",
-        "EPAplay": "EPA/Tgt",
-        "success": "Rec SR%",
+        "comp": { title: "Catches", counting: true },
+        "targets": { title: "Targets", counting: true },
+        "catchpct": { title: "Catch %" },
+        "yards": { title: "Yards" },
+        "TEPA": { title: "EPA" },
+        "yardsplay": { title: "Yards/Tgt" },
+        "EPAplay": { title: "EPA/Tgt" },
+        "success": { title: "Rec SR%" },
     }
 };
 
