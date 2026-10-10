@@ -10,6 +10,8 @@
  *  A4  a team with no red-zone snaps gets a dash, not "0%, 5th %ile" in purple.
  *  A5  a value tied with a run of breakpoints ranks at the run's middle.
  *  A6  the v2 box shows a quarter or half unranked.
+ *  A7  before week 4 of a season still being played, a game is ranked against
+ *      the previous season's ladder (the current one is a few weeks thin).
  */
 import { gunzipSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
@@ -17,6 +19,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { CURRENT_YEAR } from '../src/utils/constants';
 import { locals, parseTable } from './helpers/tables';
 
 // A ladder per season: 99 rows, `pctile` 0.01-0.99. Red-zone success has the
@@ -33,7 +36,7 @@ const ladder = (season: number) => Array.from({ length: 99 }, (_, k) => {
 });
 
 const GAME_ID = 401729745; // a 2024 game
-const LADDERS: Record<string, any[] | 'outage'> = { '2024': ladder(2024), '2026': ladder(2026), '2027': [], '2031': 'outage' };
+const LADDERS: Record<string, any[] | 'outage'> = { '2024': ladder(2024), '2025': ladder(2025), '2026': ladder(2026), '2027': [], '2031': 'outage' };
 const percentileRequests: string[] = [];
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
@@ -187,4 +190,41 @@ test('nfl: the v2 box ranks against the NFL ladder of the season it is given', a
     const html = await renderBox('v2', { percentiles: ladder(2025) }, 'nfl');
     expect(html).toContain('single-game NFL performances in that stat in 2025');
     expect(cells(html, 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
+});
+
+describe('A7: the previous season ranks the first weeks of a season still being played', () => {
+    // `current: null` leaves ESPN's flag off the header
+    const header = (year: number, week: number, type = 2, current: boolean | null = true) =>
+        ({ season: { year, type, ...(current === null ? {} : { current }) }, week });
+
+    test.each([
+        ['week 2 of the season being played: the previous season', header(2026, 2), 2025],
+        ['week 0 (college)', header(2026, 0), 2025],
+        ['week 3, the last thin week', header(2026, 3), 2025],
+        ['week 4 on: its own season', header(2026, 4), 2026],
+        ['a later week', header(2026, 10), 2026],
+        ['the postseason (its weeks restart at 1)', header(2026, 1, 3), 2026],
+        ['the preseason', header(2026, 3, 1), 2025],
+        ['a back season, even in week 2: its own, complete ladder', header(2024, 2, 2, false), 2024],
+        ['no `current` flag: the current year is the season being played', header(CURRENT_YEAR, 2, 2, null), CURRENT_YEAR - 1],
+        ['no `current` flag, an earlier year: its own', header(CURRENT_YEAR - 2, 2, 2, null), CURRENT_YEAR - 2],
+    ])('%s', async (_, h, expected) => {
+        const { percentileSeason } = await import('../src/resources/sdv');
+        expect(percentileSeason(h as any)).toBe(expected);
+    });
+
+    for (const twin of ['classic', 'v2'] as const) {
+        test(`${twin}: a week-2 game of the season being played asks for the previous season`, async () => {
+            const { retrieveProcessedGame } = await import('../src/resources/python');
+            const game = structuredClone(await retrieveProcessedGame(GAME_ID, 30));
+            game.season = { ...game.season, year: 2026 };
+            game.header.season = { year: 2026, type: 2, current: true };
+            game.header.week = 2;
+            const Page = (await import(twin === 'classic' ? '../src/components/game/classic/GamePage.astro' : '../src/components/game/GamePage.astro')).default;
+            const html = await container.renderToString(Page, { props: { id: GAME_ID, game }, request: new Request(`https://gameonpaper.com/game/${GAME_ID}`), locals: locals('cfb') });
+            expect(seasonsAsked()).toEqual(['2025']);
+            // the caption names the season the ranks came from
+            if (twin === 'classic') expect(html).toContain('performances in that stat in 2025');
+        }, 60_000);
+    }
 });

@@ -20,7 +20,7 @@ import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
-import { retrievePercentiles } from '../../resources/sdv';
+import { percentileSeason, retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -67,8 +67,9 @@ for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: an
 
 const fullGamePlays = game.plays;
 
-// ranked against the game's own season: the ladder moves by era (havoc's pass-breakup coverage, EPA levels)
-const percentiles = await retrievePercentiles(game.season.year, undefined, undefined, league);
+// ranked against the game's own season (the ladder moves by era), or the previous one
+// in the first weeks of a season still being played, while its ladder is thin (percentileSeason)
+const percentiles = await retrievePercentiles(percentileSeason(game.header), undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
