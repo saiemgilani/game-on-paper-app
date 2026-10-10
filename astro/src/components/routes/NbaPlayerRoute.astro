@@ -22,9 +22,9 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: fals
 const subject = `${player.player_name} ${label}`;
 const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
-<GenericPage title={title} subtitle={description} slug={`/nba/players/${player.person_id}`} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q)} heading={`${player.player_name} ${label} shooting`}>
+<GenericPage title={title} subtitle={description} slug={`/nba/players/${player.person_id}`} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q)}>
   <div class="container">
-    <header class="row mb-3 align-items-start">
+    <div class="row mb-3 align-items-start">
       <div class="col-auto"><NbaHeadshot src={headshot} name={player.player_name} size={140} /></div>
       <div class="col">
         <h1 class="h3 mb-1">{player.player_name}</h1>
@@ -36,7 +36,7 @@ const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games
           <a href={teamHref(player.team_id, q)}>{player.team_tricode} team page &rarr;</a>
         </div>
       </div>
-    </header>
+    </div>
     <nav aria-label="On this page" class="small mb-3">
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}

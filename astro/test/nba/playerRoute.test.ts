@@ -36,6 +36,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 }));
 
 import { prepareNbaPlayer } from '../../src/routes/nba/player';
+import { PLAYER_CACHE } from '../../src/routes/nba/cache';
 
 function fakeAstro(path: string, id: string) {
     const cache: unknown[] = [];
@@ -56,7 +57,7 @@ describe('prepareNbaPlayer', () => {
         expect(r.hisSeasons).toEqual([2024, 2025, 2026]);
         expect(r.headshot).toBe('https://a.espncdn.com/x.png');
         expect(r.teams).toEqual(['BKN']);
-        expect(cache[0]).toMatchObject({ maxAge: 3600, tags: ['nba'] });
+        expect(cache[0]).toEqual(PLAYER_CACHE);
     });
     test('test_unknown_player_is_not_found', async () => {
         for (const id of ['123', 'abc', '']) {

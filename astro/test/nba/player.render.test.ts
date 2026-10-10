@@ -54,6 +54,7 @@ describe('/nba/players/[id]', () => {
         expect(html).toContain('2024-25');
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
+        expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     });
     test('null game dates: the six charts render and the per-game views say unavailable', async () => {
         state.nullDates = true;

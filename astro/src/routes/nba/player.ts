@@ -22,7 +22,7 @@ export interface NbaPlayerParams {
     q: string;
     player: PlayerSeason;
     line: ShootingLine;
-    /** Tricodes of every team he shot for, primary first. */
+    /** Tricodes of every team he shot for, most attempts first. */
     teams: string[];
     headshot: string | null;
     prev: PlayerSeason | null;
