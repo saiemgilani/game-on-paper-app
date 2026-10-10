@@ -50,25 +50,6 @@ export function randomAxes(keys: string[], rand: () => number = Math.random): [s
     return [keys[i], keys[j]];
 }
 
-// volume and style columns: more is neither better nor worse
-const NO_BETTER_SIDE = /^(passrate|rushrate|plays|playsgame|drives|drivesgame|playsdrive)_|_strength_faced$/;
-// bad for the offense when high, so good for the defense when high
-const OFFENSE_WANTS_LOW = ['havoc', 'play_stuffed', 'third_down_distance', 'turnovers'];
-
-/**
- * Which way is better for a builder metric: 'higher', 'lower', or null for a style/volume column.
- * `shouldInvertSortForMetric` (misc.ts) misses the _pass/_rush variants of its exceptions and turnovers
- * (turnovers_def are takeaways), so v2 decides here and flips its axes by the same answer its captions use.
- */
-export function metricDirection(metric: string): 'higher' | 'lower' | null {
-    if (NO_BETTER_SIDE.test(metric)) return null;
-    if (metric.includes('_margin') || metric.startsWith('net_')) return 'higher';
-    const stat = metric.replace(/_(off|def)(_pass|_rush)?$/, '');
-    const offenseWantsLow = OFFENSE_WANTS_LOW.includes(stat);
-    const defensive = metric.includes('_def') || metric.startsWith('def_');
-    return defensive === offenseWantsLow ? 'higher' : 'lower';
-}
-
 /** Quadrant captions. Axes are flipped so better is up and right; an axis with no better side reads High/Low. */
 export function quadrantLabels(xTitle: string, yTitle: string, xRanked = true, yRanked = true) {
     const [up, down] = yRanked ? ['Better', 'Worse'] : ['High', 'Low'];

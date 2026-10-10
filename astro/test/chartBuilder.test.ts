@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { FLAGS, isFeatureEnabled } from '../src/utils/features';
-import { builderUrl, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricDirection, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { builderUrl, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { SDV_TEAM_METRIC_CATEGORIES } from '../src/utils/constants';
+import { metricHasBetterSide, shouldInvertSortForMetric } from '../src/utils/misc';
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
 // The Data API's real 2026 cfb rows for x=red_zone_success_off_pass&y=success_off (fixtures/README.md):
@@ -70,29 +72,49 @@ describe('chart builder helpers', () => {
         }
     });
 
-    test('metricDirection: lower-is-better metrics, their _pass/_rush variants, takeaways, and style columns', () => {
-        // giveaways are bad for an offense; a defense's turnovers are takeaways
-        expect(metricDirection('turnovers_off')).toBe('lower');
-        expect(metricDirection('turnovers_def')).toBe('higher');
-        expect(metricDirection('turnover_margin')).toBe('higher');
-        expect(metricDirection('adj_off_epa')).toBe('higher');
-        expect(metricDirection('adj_def_epa')).toBe('lower');
-        expect(metricDirection('havoc_off')).toBe('lower');
-        expect(metricDirection('havoc_def_pass')).toBe('higher');
-        expect(metricDirection('play_stuffed_off_rush')).toBe('lower');
-        expect(metricDirection('third_down_distance_off_rush')).toBe('lower');
-        expect(metricDirection('third_down_distance_def_pass')).toBe('higher');
-        expect(metricDirection('pts_per_opp_def')).toBe('lower');
-        for (const m of ['passrate_off', 'rushrate_def', 'plays_def_pass', 'drivesgame_off_rush', 'playsdrive_off', 'off_strength_faced', 'def_strength_faced']) {
-            expect(metricDirection(m)).toBeNull();
+    // the builder's call: a metric's own side picks the category
+    const lowerIsBetter = (m: string) => shouldInvertSortForMetric(m.includes('_def') ? 'defensive' : 'offensive', m);
+
+    test('shouldInvertSortForMetric keeps its answers on the leaderboards, team trends and national trends', () => {
+        const inverted = Object.entries(SDV_TEAM_METRIC_CATEGORIES)
+            .flatMap(([c, cols]) => Object.keys(cols).filter((m) => shouldInvertSortForMetric(c, m)).map((m) => `${c}/${m}`));
+        expect(inverted).toEqual(['tendencies/series_conv_def', 'luck/luck_opp_fg_pct_def', 'offensive/havoc_off',
+            ...['adj_def_epa', 'EPAplay_def', 'yardsplay_def', 'success_def', 'EPAplay_def_pass', 'yardsplay_def_pass', 'success_def_pass',
+                'EPAplay_def_rush', 'yardsplay_def_rush', 'success_def_rush'].map((m) => `defensive/${m}`)]);
+        // national trends passes 'offensive' with unsuffixed keys
+        for (const m of ['havoc', 'play_stuffed', 'third_down_distance']) expect(shouldInvertSortForMetric('offensive', m)).toBe(true);
+        for (const m of ['EPAplay', 'success', 'lineyards', 'GEI']) expect(shouldInvertSortForMetric('offensive', m)).toBe(false);
+        // a key whose side disagrees with the category keeps its old answer
+        expect(shouldInvertSortForMetric('defensive', 'havoc_off')).toBe(true);
+        expect(shouldInvertSortForMetric('offensive', 'havoc_def')).toBe(false);
+        expect(shouldInvertSortForMetric('differential', 'havoc_margin')).toBe(false);
+    });
+
+    test('shouldInvertSortForMetric: the _pass/_rush splits of havoc, stuffs and 3rd-down distance, and turnovers', () => {
+        for (const [m, lower] of [['havoc_off', true], ['adj_def_epa', true], ['pts_per_opp_def', true], ['adj_off_epa', false],
+            ['turnover_margin', false], ['havoc_margin', false]] as const) expect(lowerIsBetter(m)).toBe(lower);
+        // as bad for an offense, and as good for a defense, as the unsplit stat
+        for (const stat of ['havoc', 'play_stuffed', 'third_down_distance']) for (const split of ['_pass', '_rush']) {
+            expect(lowerIsBetter(`${stat}_off${split}`)).toBe(true);
+            expect(lowerIsBetter(`${stat}_def${split}`)).toBe(false);
         }
-        // every rail metric gets an answer
-        for (const m of metricRail().flatMap((f) => f.metrics)) expect([null, 'higher', 'lower']).toContain(metricDirection(m.key));
+        // giveaways are bad for an offense; a defense's turnovers are takeaways
+        expect(lowerIsBetter('turnovers_off')).toBe(true);
+        expect(lowerIsBetter('turnovers_def')).toBe(false);
+        expect(lowerIsBetter('EPAplay_def_pass')).toBe(true);
+        expect(lowerIsBetter('success_off_rush')).toBe(false);
+    });
+
+    test('metricHasBetterSide: false only for style and volume columns, which v2 neither ranks nor flips', () => {
+        for (const m of ['passrate_off', 'rushrate_def', 'plays_def_pass', 'drivesgame_off_rush', 'playsdrive_off', 'off_strength_faced', 'def_strength_faced']) {
+            expect(metricHasBetterSide(m)).toBe(false);
+        }
+        for (const m of ['adj_off_epa', 'havoc_def_pass', 'turnovers_off', 'pts_per_opp_def', 'net_adj_epa']) expect(metricHasBetterSide(m)).toBe(true);
     });
 
     test('quadrantLabels for a lower-is-better metric: its axis is flipped, so Better still reads up and right', () => {
-        // v2 reverses an axis exactly when metricDirection says lower, so the caption follows the direction
-        expect(metricDirection('turnovers_off')).toBe('lower');
+        // v2 reverses an axis exactly when lower is better, so the caption follows the direction
+        expect(lowerIsBetter('turnovers_off')).toBe(true);
         expect(quadrantLabels('Off Turnovers', 'Def Adj EPA/Play').topRight).toBe('Better Def Adj EPA/Play / Better Off Turnovers');
         // a style column has no better side: High/Low on the unflipped scale
         expect(quadrantLabels('Off Turnovers', 'Off Pass Rate', true, false)).toEqual({

@@ -3,9 +3,9 @@
     import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricDirection, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -37,8 +37,8 @@
     let selectedSort = $state("x");
     let selectedFBSClassFilter = $state("all");
     let selectedConferenceFilter = $state("all");
-    // v2 ranks and flips by metricDirection, so its quadrant captions match the axes; the public builder is unchanged
-    const lowerIsBetter = (m: string) => v2 ? metricDirection(m) === 'lower' : shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
+    // v2 never flips a style/volume column, so its High/Low captions read on the unflipped scale; the public builder flips as before
+    const lowerIsBetter = (m: string) => (!v2 || metricHasBetterSide(m)) && shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
     let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY))
     let chartedPoints = $derived(
         points
@@ -120,7 +120,7 @@
         const shouldFlipYAxis = lowerIsBetter(selectedMetricY);
         const shouldFlipXAxis = lowerIsBetter(selectedMetricX);
         const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
-            metricDirection(selectedMetricX) !== null, metricDirection(selectedMetricY) !== null);
+            metricHasBetterSide(selectedMetricX), metricHasBetterSide(selectedMetricY));
         if (v2) {
             summary = chartSummary(chartedPoints.filter((t: any) => Number.isFinite(t.x) && Number.isFinite(t.y)).length,
                 { title: generateTeamMetricTitle(selectedMetricX), median: formatNumberForMetric(selectedMetricX, centerX) },

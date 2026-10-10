@@ -879,12 +879,26 @@ export function formatNumberForMetric(metric: string, value: number): string {
     }
 }
 
+// bad for an offense when high, so good for a defense when high (turnovers_def are takeaways)
+const OFFENSE_WANTS_LOW = ["havoc", "play_stuffed", "third_down_distance", "turnovers"];
+
 export function shouldInvertSortForMetric(category: string, metric: string): boolean {
     // opponents MISSING field goals is the lucky outcome, so the lowest opp FG% leads
     if (metric == "luck_opp_fg_pct_def") return true;
     // fewer opponent series converted is the better defense
     if (metric == "series_conv_def") return true;
-    return (category == "defensive" && !["havoc_def", "havoc", "play_stuffed_def", "play_stuffed", "third_down_distance_def", "third_down_distance"].includes(metric)) || (category == "offensive" && ["havoc_off", "havoc", "play_stuffed_off", "play_stuffed", "third_down_distance_off", "third_down_distance"].includes(metric))
+    // the stat with its side and _pass/_rush split taken off: havoc_def_pass -> havoc, def
+    const [, stat, side] = metric.match(/^(.*?)(?:_(off|def)(?:_pass|_rush)?)?$/)!;
+    const exception = (s: string) => OFFENSE_WANTS_LOW.includes(stat) && (side === undefined || side === s);
+    return (category == "defensive" && !exception("def")) || (category == "offensive" && exception("off"))
+}
+
+// volume and style columns: more is neither better nor worse
+const NO_BETTER_SIDE = /^(passrate|rushrate|plays|playsgame|drives|drivesgame|playsdrive)_|_strength_faced$/;
+
+/** False for a style or volume column (pass rate, plays, drives, strength faced), which has no better side to sort or flip toward. */
+export function metricHasBetterSide(metric: string): boolean {
+    return !NO_BETTER_SIDE.test(metric);
 }
 
 export function generateCategoryForMetric(metric: string): string {
