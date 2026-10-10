@@ -48,6 +48,7 @@
         panel = false;
         open = false;
         active = -1;
+        goWhenAnswered = false;
         if (refocus) toggle.focus();
     }
 
@@ -107,6 +108,8 @@
     }
 
     function onkeydown(e: KeyboardEvent) {
+        // Esc dismisses an Enter still waiting for its answer, whether or not the list is showing
+        if (e.key === 'Escape') goWhenAnswered = false;
         if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && hits.length) {
             e.preventDefault();
             open = true;
@@ -149,6 +152,8 @@
         const to = e.relatedTarget as Node | null;
         if (form.contains(to)) return;
         open = false;
+        // leaving the box dismisses a pending Enter: a late answer must not navigate
+        goWhenAnswered = false;
         // tabbing out of the panel closes it (a click outside is onDocumentClick's)
         if (panel && to && !toggle.contains(to)) panel = false;
     }
