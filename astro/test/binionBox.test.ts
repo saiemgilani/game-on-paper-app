@@ -4,7 +4,9 @@
  *  A1  each game is ranked against its OWN season's ladder; a season without
  *      one falls back to the nearest earlier season, and an outage is not a
  *      missing season.
- *  A2  Yards/Dropback counts sack yards, the basis of the `yardsdropback` ladder.
+ *  A2  Yards/Dropback is sportsdataverse's sack-inclusive `yards_per_dropback`,
+ *      the basis of the `yardsdropback` ladder; a payload without it shows
+ *      `yards_per_pass`, as before. The frontend computes neither.
  *  A4  a team with no red-zone snaps gets a dash, not "0%, 5th %ile" in purple.
  *  A5  a value tied with a run of breakpoints ranks at the run's middle.
  *  A6  the v2 box shows a quarter or half unranked.
@@ -15,7 +17,6 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { yardsPerDropback } from '../src/utils/misc';
 import { locals, parseTable } from './helpers/tables';
 
 // A ladder per season: 99 rows, `pctile` 0.01-0.99. Red-zone success has the
@@ -108,12 +109,13 @@ describe('A1: each game is ranked against its own season', () => {
     }
 });
 
-// One game's box: the home team (2) has no red-zone snaps, a sack-inclusive
-// passing line and no `sack_yards`; the away team (1) has the lot.
+// One game's box: the home team (2) has no red-zone snaps and comes from a payload
+// processed before sportsdataverse emitted `yards_per_dropback`; the away team (1)
+// has the lot. Each `yards_per_pass` counts a sack as 0 yards.
 const box = {
     team: [
-        { pos_team: 1, scrimmage_plays: 60, yards_per_play: 6, passes: 30, pass_yards: 240, sack_yards: -20, yards_per_pass: 8, EPA_per_play: 0, EPA_passing_per_play: 0, EPA_rushing_per_play: 0, EPA_explosive_rate: 0.1, rushing_stuff_rate: 0.2 },
-        { pos_team: 2, scrimmage_plays: 60, yards_per_play: 5, passes: 30, pass_yards: 195, yards_per_pass: 6.5, EPA_per_play: 0, EPA_passing_per_play: 0, EPA_rushing_per_play: 0, EPA_explosive_rate: 0.1, rushing_stuff_rate: 0.2 },
+        { pos_team: 1, scrimmage_plays: 60, yards_per_play: 6, passes: 30, pass_yards: 240, sack_yards: -20, yards_per_pass: 8, yards_per_dropback: 220 / 30, EPA_per_play: 0, EPA_passing_per_play: 0, EPA_rushing_per_play: 0, EPA_explosive_rate: 0.1, rushing_stuff_rate: 0.2 },
+        { pos_team: 2, scrimmage_plays: 60, yards_per_play: 5, passes: 30, pass_yards: 195, sack_yards: -15, yards_per_pass: 6.5, EPA_per_play: 0, EPA_passing_per_play: 0, EPA_rushing_per_play: 0, EPA_explosive_rate: 0.1, rushing_stuff_rate: 0.2 },
     ],
     situational: [
         { pos_team: 1, EPA_success_rate: 0.45, EPA_success_rate_third: 0.4, EPA_success_rz: 3, EPA_success_rate_rz: 0.5 },
@@ -148,9 +150,10 @@ for (const twin of ['classic', 'v2'] as const) {
             expect(td).not.toContain('hulk-bg');
         });
 
-        test('A2: Yards/Dropback counts the sack yards, and falls back without them', async () => {
-            // away: (240 + -20) / 30 = 7.33, ranked 73rd on the yardsdropback ladder; home: no
-            // sack_yards in the payload, so the payload's yards_per_pass as before
+        test("A2: Yards/Dropback is the payload's yards_per_dropback, else its yards_per_pass", async () => {
+            // away: yards_per_dropback (240 + -20) / 30 = 7.33, ranked 73rd on the yardsdropback
+            // ladder; home: none in the payload, so yards_per_pass as before. Not rebuilt from
+            // the home team's pass and sack yards, which would read (195 + -15) / 30 = 6.00
             expect(cells(await renderBox(twin, {}), 'Yards/Dropback')).toEqual(['7.33 73rd %ile', '6.50 65th %ile']);
         });
 
@@ -184,22 +187,4 @@ test('nfl: the v2 box ranks against the NFL ladder of the season it is given', a
     const html = await renderBox('v2', { percentiles: ladder(2025) }, 'nfl');
     expect(html).toContain('single-game NFL performances in that stat in 2025');
     expect(cells(html, 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
-});
-
-describe('A2: yardsPerDropback', () => {
-    test('sack yards present: (pass yards + sack yards) / dropbacks', () => {
-        expect(yardsPerDropback({ passes: 30, pass_yards: 240, sack_yards: -20, yards_per_pass: 8 })).toBeCloseTo(220 / 30, 10);
-    });
-    test('sack yards arrive negative (yds_sacked), so they are added, not subtracted', () => {
-        expect(yardsPerDropback({ passes: 10, pass_yards: 70, sack_yards: -14 })).toBeCloseTo(5.6, 10);
-        expect(yardsPerDropback({ passes: 10, pass_yards: 70, sack_yards: 0 })).toBeCloseTo(7, 10);
-    });
-    test('sack yards absent: the payload yards_per_pass, as before', () => {
-        expect(yardsPerDropback({ passes: 30, pass_yards: 240, yards_per_pass: 8 })).toBe(8);
-        expect(yardsPerDropback({ passes: 30, pass_yards: 240, sack_yards: null, yards_per_pass: 8 })).toBe(8);
-    });
-    test('no dropbacks: no sack-inclusive figure, and null when the payload has none either', () => {
-        expect(yardsPerDropback({ passes: 0, pass_yards: 0, sack_yards: 0 })).toBeNull();
-        expect(yardsPerDropback(undefined)).toBeNull();
-    });
 });

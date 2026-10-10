@@ -1,6 +1,6 @@
 import type { SDVSeasonPercentile } from '../resources/sdv';
 import { BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS } from './constants';
-import { generateColorRampValue, getNumberWithOrdinal, numberOrNull, offenseYardsPerPlay, roundNumber, yardsPerDropback } from './misc';
+import { formatNumber, formatPercent, generateColorRampValue, getNumberWithOrdinal, numberOrNull, offenseYardsPerPlay } from './misc';
 
 /** The SDV percentile-ladder column each Binion box row is ranked against. */
 export const BOX_PERCENTILE_KEYS: Record<string, string> = {
@@ -49,18 +49,17 @@ export function boxScorePercentile(percentiles: SDVSeasonPercentile[], key: stri
     return { pctl, min: ladder[0], mid: ladder[Math.floor(ladder.length / 2)], max: ladder[ladder.length - 1] };
 }
 
-type Format = (x: number | null) => string;
-const decimal: Format = (x) => roundNumber(x, 2, 2);
-const percent: Format = (x) => `${roundNumber((x || 0) * 100, 2, 0)}%`;
-
-/** One team's value for a box row, null when the payload has none, and how it prints. */
-function boxValue(team: Record<string, any>, key: string): [number | null, Format] {
-    // both sack-inclusive, the basis of the `yardsplay` / `yardsdropback` ladders
-    if (key == "yards_per_play") return [offenseYardsPerPlay(team), decimal];
-    if (key == "yards_per_pass") return [yardsPerDropback(team), decimal];
-    if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(key)) return [numberOrNull(team?.[key]), decimal];
+/** One team's value for a box row (null when the payload has none), and whether it is a rate. */
+function boxValue(team: Record<string, any>, key: string): [number | null, boolean] {
+    // sack-inclusive, the basis of the `yardsplay` ladder
+    if (key == "yards_per_play") return [offenseYardsPerPlay(team), false];
+    // sportsdataverse's sack-inclusive `yards_per_dropback`, the basis of the `yardsdropback`
+    // ladder; a game processed before it existed carries only `yards_per_pass`, which counts
+    // a sack as 0 yards (the number this cell always showed)
+    if (key == "yards_per_pass") return [numberOrNull(team?.yards_per_dropback) ?? numberOrNull(team?.yards_per_pass), false];
+    if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(key)) return [numberOrNull(team?.[key]), false];
     // a rate: third-down and red-zone success carry it under their own key, the rest as `<key>_rate`
-    return [numberOrNull(BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(key) ? team?.[key] : team?.[`${key}_rate`]), percent];
+    return [numberOrNull(BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(key) ? team?.[key] : team?.[`${key}_rate`]), true];
 }
 
 /**
@@ -75,7 +74,8 @@ export function binionBoxCells(box: Record<string, any[]>, item: string, percent
     // the run-stuff rate is the defense's: shown under the team that made the stops
     if (key.includes('rushing_stuff')) teams.reverse();
     return teams.map((team) => {
-        const [value, format] = boxValue(team, key);
+        const [value, rate] = boxValue(team, key);
+        const format = (x: number | null) => (rate ? formatPercent(x, 0) : formatNumber(x, 2));
         if (value === null) return `<td class="numeral" style="text-align: center;">—</td>`;
         const pct = boxScorePercentile(percentiles, key, value);
         if (pct.pctl === null) return `<td class="numeral" style="text-align: center;">${format(value)}</td>`;
