@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { RESUME_ROWS, formatRecord, resumeRows } from '../src/utils/resume';
 
-// Both fixtures are the two Data API bodies retrieveTeamSchedule concatenates for a
+// Each fixture is the two Data API bodies retrieveTeamSchedule concatenates for a
 // team-season (home_id then away_id), captured live; see fixtures/README.md.
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
 const cfb = fixture('schedule-cfb-333-2025.json');
 const nfl = fixture('schedule-nfl-12-2025.json');
+// Dallas 2025: the 40-40 tie with Green Bay
+const dal = fixture('schedule-nfl-6-2025.json');
 const eventsOf = (f: any) => [...f.home_id.data, ...f.away_id.data];
 
 // retrieveTeamSeasonInformation, unmocked, reads the same two bodies through the
@@ -34,9 +36,10 @@ describe('resumeRows on the captured schedules', () => {
     beforeEach(() => { for (const k of Object.keys(served)) delete served[k]; });
 
     test.each([
-        ['cfb', cfb, '333'],
-        ['nfl', nfl, '12'],
-    ] as const)('%s: Home + Away + Neutral partition Overall, which matches the TeamCard record', async (league, f, id) => {
+        ['cfb', '333', cfb],
+        ['nfl', '12', nfl],
+        ['nfl', '6', dal],
+    ] as const)('%s team %s: Home + Away + Neutral partition Overall, which matches the TeamCard record', async (league, id, f) => {
         const rows = byKey(resumeRows(eventsOf(f), id, league));
         const parts = [rows.home, rows.away, rows.neutral].filter(Boolean);
         for (const k of ['wins', 'losses', 'ties'] as const) expect(sum(parts, k), k).toBe(rows.overall[k]);
@@ -73,6 +76,27 @@ describe('resumeRows on the captured schedules', () => {
         expect(keys).not.toContain('conference');
         expect(byKey(rows).division.label).toBe('Division');
         expect(formatRecord(byKey(rows).overall)).toBe('6-11');
+    });
+
+    test('nfl: Dallas 2025, whose tie is a third number everywhere, the TeamCard included', async () => {
+        const tied = eventsOf(dal).filter((g: any) => g.completed && g.home_points === g.away_points);
+        // week 4, Green Bay at Dallas, a 40-40 final
+        expect(tied.map((g: any) => [g.game_id, g.home_id, g.away_id, g.home_points])).toEqual([[401772921, 6, 9, 40]]);
+        const rows = byKey(resumeRows(eventsOf(dal), 6, 'nfl'));
+        expect(formatRecord(rows.overall)).toBe('7-9-1');
+        expect(formatRecord(rows.home)).toBe('4-3-1');
+        expect(formatRecord(rows.away)).toBe('3-6');
+        expect(rows.neutral.winPct).toBeNull();
+        expect(formatRecord(rows.one_score)).toBe('4-3-1');
+        expect(formatRecord(rows.division)).toBe('4-2');
+        expect(rows.overall.winPct).toBeCloseTo(7.5 / 17, 10);
+
+        // the TeamCard read the tie as a loss (7-10) until it counted ties too
+        Object.assign(served, dal);
+        const { retrieveTeamSeasonInformation } = await import('../src/resources/sdv');
+        const info = await retrieveTeamSeasonInformation(2025, 6, 'nfl');
+        expect(info.record).toBe('7-9-1');
+        expect(info.confRecord).toBe('4-2');
     });
 
     test('cfb: Conference, not Division', () => {

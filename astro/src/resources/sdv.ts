@@ -6,6 +6,7 @@ import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
+import { formatRecord } from '../utils/resume';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1115,8 +1116,10 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     const schedule = await retrieveTeamSchedule(season, teamId, league);
     let wins = 0;
     let losses = 0;
+    let ties = 0;
     let confWins = 0;
     let confLosses = 0;
+    let confTies = 0;
     for (const g of schedule) {
         if (!g.completed) {
             continue;
@@ -1132,6 +1135,12 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
             if (g.conference_game) {
                 confWins += 1;
             }
+        } else if (g.home_points != null && g.home_points === g.away_points) {
+            // an NFL tie is its own number, never a loss
+            ties += 1;
+            if (g.conference_game) {
+                confTies += 1;
+            }
         } else {
             losses += 1;
             if (g.conference_game) {
@@ -1143,8 +1152,8 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     return {
         team,
         events: schedule,
-        record: `${wins}-${losses}`,
-        confRecord: (confLosses + confWins) > 0 ? `${confWins}-${confLosses}` : undefined
+        record: formatRecord({ wins, losses, ties }),
+        confRecord: (confLosses + confWins + confTies) > 0 ? formatRecord({ wins: confWins, losses: confLosses, ties: confTies }) : undefined
     }
 }
 

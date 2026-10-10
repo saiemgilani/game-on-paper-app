@@ -5,29 +5,34 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 // The season team page's Record panel, rendered from the two schedule bodies the
-// Data API returned for each team-season (fixtures/schedule-*-2025.json). The real
-// retrieveTeamSeasonInformation runs; only the fetch layer is faked, so the test
-// also counts the schedule requests the page makes.
+// Data API returned for each team-season (fixtures/schedule-*-2025.json), served by
+// the team id in the request. The real retrieveTeamSeasonInformation runs; only the
+// fetch layer is faked, so the test also counts the schedule requests the page makes.
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)).toString());
-const bodies: Record<string, any> = { cfb: fixture('schedule-cfb-333-2025.json'), nfl: fixture('schedule-nfl-12-2025.json') };
+const bodies: Record<string, any> = {
+    333: fixture('schedule-cfb-333-2025.json'),
+    12: fixture('schedule-nfl-12-2025.json'),
+    6: fixture('schedule-nfl-6-2025.json'),
+};
+const LOCATION: Record<string, string> = { 333: 'Alabama', 12: 'Kansas City', 6: 'Dallas' };
 
 // `override` replaces a side's body ({ away_id: { data: [] } } drops every away game)
-const feed: { league: string; override: Record<string, any>; schedule: string[] } = { league: 'cfb', override: {}, schedule: [] };
+const feed: { override: Record<string, any>; schedule: string[] } = { override: {}, schedule: [] };
 
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string) => {
         const u = String(url);
-        const side = /\/(?:espn_)?schedule\?.*\b(home_id|away_id)=/.exec(u)?.[1];
+        const [, side, id] = /\/(?:espn_)?schedule\?.*\b(home_id|away_id)=(\d+)/.exec(u) ?? [];
         if (side) feed.schedule.push(u);
-        const body = side ? (feed.override[side] ?? bodies[feed.league][side]) : { data: [] };
+        const body = side ? (feed.override[side] ?? bodies[id][side]) : { data: [] };
         return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
     },
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
-    retrieveTeamInformation: async (id: string, league = 'cfb') =>
-        ({ id: String(id), location: league === 'nfl' ? 'Kansas City' : 'Alabama', color: '000000', alternateColor: 'ffffff' }),
+    retrieveTeamInformation: async (id: string) =>
+        ({ id: String(id), location: LOCATION[id], color: '000000', alternateColor: 'ffffff' }),
 }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
@@ -45,7 +50,6 @@ beforeEach(() => {
 });
 
 async function render(league: 'cfb' | 'nfl', id: string, preview: boolean) {
-    feed.league = league;
     const { default: Page } = await import(
         league === 'nfl' ? '../src/pages/nfl/year/[year]/team/[id].astro' : '../src/pages/year/[year]/team/[id].astro');
     return container.renderToString(Page, {
@@ -72,7 +76,9 @@ const SHAPES = [/^\d+-\d+(-\d+)?$/, /^\d+\.\d%$/, /^[+-]\d+\.\d$/];
 describe.each([
     ['cfb', '333', ['Home', 'Away', 'Neutral site', 'Conference', 'One-score', 'vs FBS', 'vs Ranked', 'Overall'], ['11-4', '73.3%', '+10.3']],
     ['nfl', '12', ['Home', 'Away', 'Neutral site', 'Division', 'One-score', 'Overall'], ['6-11', '35.3%', '+2.0']],
-] as const)('%s season team page, flag on', (league, id, labels, overall) => {
+    // Dallas played no neutral-site game; its 40-40 tie with Green Bay is the third number
+    ['nfl', '6', ['Home', 'Away', 'Division', 'One-score', 'Overall'], ['7-9-1', '44.1%', '-2.4']],
+] as const)('%s team %s season page, flag on', (league, id, labels, overall) => {
     test('a Record section in the team table shape', async () => {
         const panel = panelOf(await render(league, id, true));
         expect(panel, 'panel').toBeTruthy();
@@ -107,6 +113,19 @@ describe.each([
     }, 60_000);
 });
 
+describe('nfl Record section with a tie', () => {
+    test('Dallas: the tie shows in its splits and in the TeamCard record above them', async () => {
+        const html = await render('nfl', '6', true);
+        const rows = trs(panelOf(html));
+        expect(rowOf(rows, 'Home').cells[1].text).toBe('4-3-1');
+        expect(rowOf(rows, 'Away').cells[1].text).toBe('3-6');
+        expect(rowOf(rows, 'One-score').cells[1].text).toBe('4-3-1');
+        expect(rowOf(rows, 'Division').cells[1].text).toBe('4-2');
+        expect(html).toContain('7-9-1 (Div: 4-2)');
+        expect(html).not.toContain('7-10');
+    }, 60_000);
+});
+
 describe('cfb Record section edge cases', () => {
     test('the real rows: Alabama 5-3 vs ranked, 0-2 on neutral sites', async () => {
         const rows = trs(panelOf(await render('cfb', '333', true)));
@@ -117,7 +136,7 @@ describe('cfb Record section edge cases', () => {
 
     test('a split with no games is left out', async () => {
         // the SEC title game and the Rose Bowl are the only neutral-site games
-        const off = (side: string) => ({ data: bodies.cfb[side].data.filter((g: any) => !g.neutral_site) });
+        const off = (side: string) => ({ data: bodies[333][side].data.filter((g: any) => !g.neutral_site) });
         feed.override = { home_id: off('home_id'), away_id: off('away_id') };
         const labels = trs(panelOf(await render('cfb', '333', true))).map((r) => r.cells[0].text);
         expect(labels).not.toContain('Neutral site');
@@ -126,7 +145,7 @@ describe('cfb Record section edge cases', () => {
     }, 60_000);
 
     test('no completed games yet: no panel at all', async () => {
-        const unplayed = (side: string) => ({ data: bodies.cfb[side].data.map((g: any) => ({ ...g, completed: false })) });
+        const unplayed = (side: string) => ({ data: bodies[333][side].data.map((g: any) => ({ ...g, completed: false })) });
         feed.override = { home_id: unplayed('home_id'), away_id: unplayed('away_id') };
         const html = await render('cfb', '333', true);
         expect(html).toContain('Alabama');

@@ -196,3 +196,23 @@ and `test/resume.render.test.ts` (the Record panel on `/year/2025/team/333` and
 
 **To regenerate:** repeat both calls per league for 2025; the tests assert
 Alabama's 11-4 (5-3 vs ranked) and Kansas City's 6-11.
+
+## `schedule-nfl-6-2025.json`
+The same two bodies for Dallas's 2025 season, an NFL record with a tie: `home_id`
+is `GET /v1/nfl/espn_schedule?season=2025&home_id=6&order=-start_date` and
+`away_id` the same with `away_id`. Every column, no `select`.
+
+**Provenance (2026-10-10):** chosen by scanning the full 2025 `nfl/espn_schedule`
+(`?season=2025&limit=400`, 285 games) for a completed game with equal scores. The
+only one is game 401772921, week 4, Green Bay at Dallas, 40-40, `STATUS_FINAL`,
+both `*_winner` false (2024 has none). Captured verbatim from the live API by the
+same script that reproduces `schedule-nfl-12-2025.json` byte for byte; one row per
+line, no other edits.
+
+**Used by:** `test/resume.test.ts` (the tie is a third number in Overall, Home and
+One-score; Home + Away partition it; `retrieveTeamSeasonInformation` prints the
+same `7-9-1`, with a `4-2` division record) and `test/resume.render.test.ts` (the
+Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
+
+**To regenerate:** repeat both calls for 2025; the tests assert Dallas's 7-9-1
+(4-3-1 at home, 3-6 away).
