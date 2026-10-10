@@ -81,6 +81,15 @@ export async function prepareNbaPlayer(Astro: AstroGlobal): Promise<NbaPlayerPre
     if (gamesR.status === 'fulfilled') {
         games = playerGamesFromRows(gamesR.value);
         if (games === null) console.warn(`[player ${personId}] per-game views unavailable: a game has no log row`);
+        else {
+            // blazing's playerGames throws when a shot's game has no log row (the two reads are cached apart).
+            const logged = new Set(games.map((g) => g.game_id));
+            const missing = shots.find((s) => !logged.has(s.game_id));
+            if (missing) {
+                games = null;
+                console.warn(`[player ${personId}] per-game views unavailable: game ${missing.game_id} has shots but no log row`);
+            }
+        }
     } else {
         degraded = true;
         console.error(`player ${personId}: the games read failed: ${gamesR.reason}`);

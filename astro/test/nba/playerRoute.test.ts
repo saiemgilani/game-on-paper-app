@@ -24,14 +24,14 @@ const gameRows = playerGames[PID].map((g: any) => ({
     season: 2026, person_id: PID, game_id: g.game_id, team_id: g.team_id, team_tricode: 'BKN', attempts: g.attempts, makes: g.makes,
     fg3a: g.fg3a, fg3m: g.fg3m, game_date: g.date, opponent_id: g.opponent_id, opponent: g.opponent, venue: g.venue, win: g.win,
 }));
-const state: { fail: Set<string>; nullDates: boolean } = { fail: new Set(), nullDates: false };
+const state: { fail: Set<string>; nullDates: boolean; games: any[] | null } = { fail: new Set(), nullDates: false, games: null };
 const guard = (name: string) => { if (state.fail.has(name)) throw new Error(`${name} down`); };
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveLeagueContextRows: async () => { guard('context'); return contextRows; },
     retrieveSeasonPlayerRows: async () => { guard('players'); return playerRows; },
     retrievePlayerShots: async (_s: number, id: number) => { guard('shots'); return shots.filter((s: any) => s.person_id === id); },
-    retrievePlayerGameRows: async () => { guard('games'); return state.nullDates ? gameRows.map((r: any) => ({ ...r, game_date: null })) : gameRows; },
+    retrievePlayerGameRows: async () => { guard('games'); return state.games ?? (state.nullDates ? gameRows.map((r: any) => ({ ...r, game_date: null })) : gameRows); },
     retrievePlayerSeasons: async () => { guard('seasons'); return [2024, 2025, 2026]; },
 }));
 
@@ -93,5 +93,18 @@ describe('prepareNbaPlayer', () => {
         if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
         expect(r.explorer.games).toBeNull();
         expect(cache[0]).toMatchObject({ maxAge: 3600 });
+    });
+    test('a shot whose game has no log row means the per-game views are unavailable', async () => {
+        const shotGames = new Set(shots.filter((s: any) => s.person_id === PID).map((s: any) => String(s.game_id)));
+        const dropped = gameRows.findIndex((g: any) => shotGames.has(String(g.game_id)));
+        expect(dropped).toBeGreaterThanOrEqual(0);
+        for (const [label, rows] of [['no game rows', []], ['one game row dropped', gameRows.filter((_: any, k: number) => k !== dropped)]] as const) {
+            state.games = rows as any[];
+            const { astro } = fakeAstro(`/nba/players/${PID}`, String(PID));
+            const r = await prepareNbaPlayer(astro);
+            state.games = null;
+            if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
+            expect(r.explorer.games, label).toBeNull();
+        }
     });
 });
