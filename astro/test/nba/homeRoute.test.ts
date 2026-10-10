@@ -10,10 +10,10 @@ const rows = players.map((p: any) => ({
     usg_pct: p.stats?.usg_pct ?? null, pie: p.stats?.pie ?? null, pts_pg: p.stats?.pts_pg ?? null, fga_pg: p.stats?.fga_pg ?? null,
     min_total: p.stats?.min_total ?? null, headshot_href: null,
 }));
-const feed: { fail: boolean } = { fail: false };
+const feed: { fail: boolean; empty: boolean } = { fail: false, empty: false };
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
-    retrieveSeasonPlayerRows: async () => { if (feed.fail) throw new Error('down'); return rows; },
+    retrieveSeasonPlayerRows: async () => { if (feed.fail) throw new Error('down'); return feed.empty ? [] : rows; },
 }));
 
 import { prepareNbaHome } from '../../src/routes/nba/home';
@@ -55,6 +55,18 @@ describe('prepareNbaHome', () => {
             expect(headers.get('Cache-Control')).toBe('no-store');
         } finally {
             feed.fail = false;
+        }
+    });
+    test('a season with no rows yet renders empty and uncacheable', async () => {
+        feed.empty = true;
+        try {
+            const { astro, cache, headers } = fakeAstro('/nba');
+            const r = await prepareNbaHome(astro);
+            expect('unavailable' in r ? null : r.roster).toEqual([]);
+            expect(cache).toEqual([false]);
+            expect(headers.get('Cache-Control')).toBe('no-store');
+        } finally {
+            feed.empty = false;
         }
     });
 });

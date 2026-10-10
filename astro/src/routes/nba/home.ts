@@ -44,6 +44,8 @@ export async function prepareNbaHome(Astro: AstroGlobal): Promise<NbaHomePrep> {
         uncacheable(Astro);
         return { unavailable: true };
     }
-    setCache(Astro, SEASON_CACHE);
+    // a season not ingested yet must not hold its empty page for the 6 h season window
+    if (rows.length === 0) uncacheable(Astro);
+    else setCache(Astro, SEASON_CACHE);
     return { ...resolved, roster: playerSeasonsFromRows(rows, NETS_TEAM_ID), headshots: headshotsFromRows(rows) };
 }
