@@ -127,10 +127,7 @@ _RELEASE = (
     "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/"
     "espn_{league}_pbp/play_by_play_{{season}}.parquet"
 )
-_RELEASE_API = (
-    "https://api.github.com/repos/sportsdataverse/sportsdataverse-data/releases/tags/"
-    "espn_{league}_pbp"
-)
+_RELEASE_API = "https://api.github.com/repos/sportsdataverse/sportsdataverse-data/releases/tags/espn_{league}_pbp"
 _FIXTURE_NAME = {"cfb": "paper_index_oracle.json", "nfl": "paper_index_oracle_nfl.json"}
 # never-lower gates, measured at each league's fit time (None = first fit:
 # print the numbers, then pin them here before the weights ship). The paired
@@ -193,9 +190,7 @@ LEAGUE = "cfb"
 REFRESH = False
 TRAIN_SEASONS, HOLDOUT_SEASONS = SPLITS["cfb"]
 CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".paper_index_cache" / "cfb"
-FIXTURE_PATH = (
-    pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "paper_index_oracle.json"
-)
+FIXTURE_PATH = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "paper_index_oracle.json"
 PBP_URL = _RELEASE.format(league="cfb")
 _INPUTS: dict[int, dict] = {}
 _ASSETS: dict[str, dict[str, dict]] = {}
@@ -209,9 +204,7 @@ def configure(league: str, pbp_dir: str | None = None, refresh: bool = False) ->
     LEAGUE = league
     REFRESH = refresh
     TRAIN_SEASONS, HOLDOUT_SEASONS = SPLITS[league]
-    FIXTURE_PATH = (
-        pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / _FIXTURE_NAME[league]
-    )
+    FIXTURE_PATH = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures" / _FIXTURE_NAME[league]
     PBP_URL = (
         str(pathlib.Path(pbp_dir).resolve() / "play_by_play_{season}.parquet")
         if pbp_dir
@@ -229,17 +222,13 @@ def _release_assets(league: str) -> dict[str, dict]:
     per league per process, memoized)."""
     if league in _ASSETS:
         return _ASSETS[league]
-    req = urllib.request.Request(
-        _RELEASE_API.format(league=league), headers={"Accept": "application/vnd.github+json"}
-    )
+    req = urllib.request.Request(_RELEASE_API.format(league=league), headers={"Accept": "application/vnd.github+json"})
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=60) as resp:
         release = json.load(resp)
-    _ASSETS[league] = {
-        a["name"]: {"size": a["size"], "updated_at": a["updated_at"]} for a in release["assets"]
-    }
+    _ASSETS[league] = {a["name"]: {"size": a["size"], "updated_at": a["updated_at"]} for a in release["assets"]}
     return _ASSETS[league]
 
 
@@ -294,9 +283,7 @@ def _cache_path(kind: str, season: int) -> pathlib.Path:
     # the identity fields only: the same parquet in another directory is the
     # same input (its path stays in the provenance, not in the key)
     ident = {k: v for k, v in season_input(season).items() if k != "source"}
-    key = hashlib.sha1(
-        (json.dumps(ident, sort_keys=True) + _feature_spec(kind)).encode()
-    ).hexdigest()[:12]
+    key = hashlib.sha1((json.dumps(ident, sort_keys=True) + _feature_spec(kind)).encode()).hexdigest()[:12]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return CACHE_DIR / f"{kind}_{season}_{key}.parquet"
 
@@ -365,11 +352,8 @@ def _cast_ids(pbp: pl.DataFrame) -> pl.DataFrame:
 
 
 def _read_pbp(season: int, columns: list[str]) -> pl.DataFrame:
-    # use_pyarrow: polars 2.0's own reader asks GitHub's release CDN for the
-    # footer with a suffix range (bytes=-N), which it answers with 501
-    return _cast_ids(
-        pl.read_parquet(PBP_URL.format(season=season), columns=columns, use_pyarrow=True)
-    )
+    # polars 2.0 can't read a GitHub release URL itself (HTTP 501); pyarrow can
+    return _cast_ids(pl.read_parquet(PBP_URL.format(season=season), columns=columns, use_pyarrow=True))
 
 
 def _assert_join_kept(joined: pl.DataFrame, left: pl.DataFrame, what: str) -> None:
@@ -409,19 +393,13 @@ def season_game_rows(season: int) -> tuple[pl.DataFrame, dict]:
     if (allow := FRANCHISE_ALLOWLIST.get(LEAGUE)) is not None:
         ids = [str(i) for i in allow]
         keep = pl.col("home_id").is_in(ids) & pl.col("away_id").is_in(ids)
-        counts["non_franchise_dropped"] = sorted(
-            finals.filter(~keep)["game_id"].cast(pl.Int64).to_list()
-        )
+        counts["non_franchise_dropped"] = sorted(finals.filter(~keep)["game_id"].cast(pl.Int64).to_list())
         finals = finals.filter(keep)
     home = per_team.rename({c: f"h_{c}" for c in ("plays", "epa", "success", "explosive")})
     away = per_team.rename({c: f"a_{c}" for c in ("plays", "epa", "success", "explosive")})
-    joined = finals.join(
-        home, left_on=["game_id", "home_id"], right_on=["game_id", "pos_team_id"], how="inner"
-    )
+    joined = finals.join(home, left_on=["game_id", "home_id"], right_on=["game_id", "pos_team_id"], how="inner")
     _assert_join_kept(joined, finals, f"{season} home offense")
-    joined2 = joined.join(
-        away, left_on=["game_id", "away_id"], right_on=["game_id", "pos_team_id"], how="inner"
-    )
+    joined2 = joined.join(away, left_on=["game_id", "away_id"], right_on=["game_id", "pos_team_id"], how="inner")
     _assert_join_kept(joined2, joined, f"{season} away offense")
     counts["after_join"] = joined2.height
     games = joined2.filter(
@@ -484,9 +462,9 @@ def season_ext_rows(season: int) -> pl.DataFrame:
             start_yte=pl.col("start.yardsToEndzone").first(),
         )
     )
-    drv = drv.with_columns(
-        yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)
-    ).join(_ep_table(LEAGUE), on="yardline_own", how="left")
+    drv = drv.with_columns(yardline_own=(100 - pl.col("start_yte")).cast(pl.Int64).clip(1, 99)).join(
+        _ep_table(LEAGUE), on="yardline_own", how="left"
+    )
     drives = drv.group_by(["game_id", "pos_team_id"]).agg(
         opp_trips=pl.col("opp").cast(pl.Float64).sum(),
         opp_converted=(pl.col("opp") & pl.col("scored")).cast(pl.Float64).sum(),
@@ -846,17 +824,11 @@ def main() -> int:
         print(
             f"  {s}: {c['games_in_pbp']} games in pbp, {c['after_join']} joined, "
             f"{c['after_filters']} after filters, {c['games']} fitted"
-            + (
-                f", dropped non-franchise {c['non_franchise_dropped']}"
-                if c["non_franchise_dropped"]
-                else ""
-            )
+            + (f", dropped non-franchise {c['non_franchise_dropped']}" if c["non_franchise_dropped"] else "")
         )
     print("fitted weights:", dict(zip(FEATS, np.round(beta, 4))))
     if prov["margins_pinned_to_zero"]:
-        print(
-            f"margins pinned to zero (went negative under collinearity): {prov['margins_pinned_to_zero']}"
-        )
+        print(f"margins pinned to zero (went negative under collinearity): {prov['margins_pinned_to_zero']}")
     assert (beta >= 0).all(), f"sign-incoherent fit: {beta}"  # every margin must help
     assert (beta > 0).sum() >= 5, f"too few live margins: {beta}"
     print(
@@ -876,9 +848,7 @@ def main() -> int:
     for row in prov["calibration"]:
         print(f"  {row['bin']}  n={row['n']:>5}  p={row['mean_p']}  y={row['mean_y']}")
     print(f"league pts per opportunity (train seasons): {prov['league_pts_per_opp']:.4f}")
-    print(
-        f"field-position curve: sha256 {prov['fp_curve']['sha256'][:12]}..., points {prov['fp_curve']['points']}"
-    )
+    print(f"field-position curve: sha256 {prov['fp_curve']['sha256'][:12]}..., points {prov['fp_curve']['points']}")
 
     gates = GATES[LEAGUE]
     if gates is None:
