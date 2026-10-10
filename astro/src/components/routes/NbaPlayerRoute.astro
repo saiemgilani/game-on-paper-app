@@ -1,0 +1,51 @@
+---
+// src/components/routes/NbaPlayerRoute.astro
+// blazing-the-nets' app/players/[id]/[season]/page.tsx on GenericPage.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaHeadshot from '../nba/NbaHeadshot.astro';
+import NbaRankLists from '../nba/NbaRankLists.astro';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import PlayerExplorer from '../nba/PlayerExplorer.svelte';
+import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { playerHref, teamHref } from '../../nba/links';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaPlayerParams } from '../../routes/nba/player';
+
+interface Props { data: NbaPlayerParams }
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons } = Astro.props.data;
+const label = seasonLabel(season);
+const stats = player.stats;
+const options = seasons.filter((s) => hisSeasons.includes(s) || s === season);
+const title = `${player.player_name}, ${label} shooting | Game on Paper`;
+const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmtInt(line.makes)}/${fmtInt(line.attempts)} FG, ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG%. Hex shot chart, shooting signature and distance and side splits against the league.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Players', url: `/nba/players${q}`, active: false }, { title: player.player_name, active: true }];
+const subject = `${player.player_name} ${label}`;
+const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
+---
+<GenericPage title={title} subtitle={description} slug={`/nba/players/${player.person_id}`} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q)} heading={`${player.player_name} ${label} shooting`}>
+  <div class="container">
+    <header class="row mb-3 align-items-start">
+      <div class="col-auto"><NbaHeadshot src={headshot} name={player.player_name} size={140} /></div>
+      <div class="col">
+        <h1 class="h3 mb-1">{player.player_name}</h1>
+        <p class="text-muted mb-1">{teams.join(', ')} &middot; {label} regular season</p>
+        <p class="numeral mb-1" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P% ({fmtInt(line.fg3m)}/{fmtInt(line.fg3a)})</p>
+        {stats && (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS% &middot; {fmtPct(stats.pie)} PIE</p>)}
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <NbaSeasonSelect seasons={options} season={season} current={current} basePath={`/nba/players/${player.person_id}`} />
+          <a href={teamHref(player.team_id, q)}>{player.team_tricode} team page &rarr;</a>
+        </div>
+      </div>
+    </header>
+    <nav aria-label="On this page" class="small mb-3">
+      <span class="text-muted">On this page:</span>
+      {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
+    </nav>
+    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} />
+    <PlayerExplorer client:load data={explorer} subject={subject} />
+    <nav aria-label={`${player.team_tricode} players`} class="d-flex justify-content-between small mt-3">
+      {prev ? (<a href={playerHref(prev.person_id, q)}>&larr; {prev.player_name}</a>) : (<span></span>)}
+      {next && (<a href={playerHref(next.person_id, q)}>{next.player_name} &rarr;</a>)}
+    </nav>
+  </div>
+</GenericPage>

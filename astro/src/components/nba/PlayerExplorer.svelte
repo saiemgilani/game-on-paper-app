@@ -3,9 +3,8 @@
     // filterable by game (presets, single games, a brushed or typed date window), with every
     // chart below rebuilt from the selected games. All state is client-side; the server sends
     // the shots, the games and the league context once.
-    import { buildDashboard, type LeagueContext } from '../../nba/dashboard';
-    import { rollingLines, shootingLine, type PlayerGame } from '../../nba/data/aggregate';
-    import type { ShotLite } from '../../nba/data/shots';
+    import { buildDashboard } from '../../nba/dashboard';
+    import { rollingLines, shootingLine } from '../../nba/data/aggregate';
     import { fmtDate, fmtInt, fmtPct } from '../../nba/format';
     import { GAME_PRESETS, PRESET_LABELS, presetGames, selectedView, withTypedDate, type DateWindow, type GamePreset } from '../../nba/selection';
     import Dashboard from './Dashboard.svelte';
@@ -14,8 +13,7 @@
     import RollingChart from './charts/RollingChart.svelte';
     import Timeline from './charts/Timeline.svelte';
     import VersusChart from './charts/VersusChart.svelte';
-
-    export interface ExplorerData { shots: ShotLite[]; games: PlayerGame[] | null; league: LeagueContext; seasonFgPct: number | null }
+    import type { PlayerExplorerData as ExplorerData } from '../../routes/nba/explorer';
     let { data, subject }: { data: ExplorerData; subject: string } = $props();
 
     const WINDOWS = [5, 10, 20] as const;
