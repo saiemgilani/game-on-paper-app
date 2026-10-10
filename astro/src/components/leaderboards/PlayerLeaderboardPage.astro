@@ -2,7 +2,6 @@
 import FreshnessStamp from "../FreshnessStamp.astro";
 import { retrievePlayerSummaries, sdvIngestStamp, sdvPin, type SummaryType } from "../../resources/sdv";
 import { freshnessStamp } from "../../utils/freshness";
-import { isFeatureEnabled } from "../../utils/features";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { LEAGUES, leaguePath } from "../../utils/league";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
@@ -25,7 +24,7 @@ category = category || "passing";
 metric = metric || "EPAplay";
 // A stamped render reads its rows here, pinned to the stamp; any read that cannot confirm
 // that stamp clears the pin and the render shows none (the rows still render).
-const pin = isFeatureEnabled('freshness-stamps', Astro.locals) ? sdvPin(await sdvIngestStamp(league, category)) : undefined;
+const pin = sdvPin(await sdvIngestStamp(league, category));
 const { sortBy, ranked } = playerBoardSort(metric);
 const rows = pin ? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, ranked, 150, season, league, pin) : undefined;
 const stamp = pin?.held ? freshnessStamp(pin.version) : null;
