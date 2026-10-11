@@ -39,6 +39,15 @@ const pick = (env, all, key) => {
 };
 const devices = pick('WALKTHROUGH_DEVICES', DEVICES, (d) => d.name) ?? DEVICES;
 const schemes = pick('WALKTHROUGH_SCHEMES', SCHEMES, (s) => s) ?? ['light'];
+// A `preview`-flagged page renders only for a viewer holding the signed preview cookie:
+// WALKTHROUGH_COOKIE="name=value; name2=value2", scoped to BASE's origin (as VISUAL_CHECK_COOKIES).
+const COOKIES = (process.env.WALKTHROUGH_COOKIE ?? '').split(';')
+  .map((c) => c.trim()).filter(Boolean)
+  .map((c) => {
+    const i = c.indexOf('=');
+    const { hostname, protocol } = new URL(BASE);
+    return { name: c.slice(0, i), value: c.slice(i + 1), domain: hostname, path: '/', secure: protocol === 'https:' };
+  });
 const hasFfmpeg = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0;
 
 // Default walkthrough: load the route, then scroll it top to bottom at reading pace.
@@ -80,6 +89,7 @@ try {
         const ctx = await newThemedContext(browser, device, scheme, {
           recordVideo: { dir: tmp, size: { width: device.width, height: device.height } },
         });
+        if (COOKIES.length) await ctx.addCookies(COOKIES);
         let ok = true;
         try {
           // newPage is where a missing Playwright ffmpeg surfaces (recordVideo needs Playwright's own

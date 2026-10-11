@@ -1,0 +1,48 @@
+---
+// src/components/routes/NbaTeamsRoute.astro
+// blazing-the-nets' app/teams/list/[season]/page.tsx on GenericPage: one Bootstrap card per team,
+// a colour bar, the tricode and name, the season's shooting line.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { teamHref } from '../../nba/links';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaTeamsParams } from '../../routes/nba/teams';
+
+interface Props { data: NbaTeamsParams }
+const { season, seasons, current, q, teams, lines } = Astro.props.data;
+const label = seasonLabel(season);
+const title = `NBA teams, ${label} shooting | Game on Paper`;
+const subtitle = `Every team's ${label} regular-season shooting line, from stats.nba.com play-by-play, with a shot chart and roster for each.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Teams', active: true }];
+---
+<GenericPage title={title} subtitle={subtitle} slug="/nba/teams" breadcrumbs={breadcrumbs} canonicalPath={`/nba/teams${q}`}>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="h3">Teams, {label}</h1>
+        <p class="text-muted">{subtitle}</p>
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath="/nba/teams" />
+      </div>
+    </div>
+    {teams.length === 0 && (<p class="text-muted">No regular-season shots in {label} yet.</p>)}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="nba-teams">
+      {teams.map((t) => {
+        const line = lines.get(t.team_id);
+        return (
+          <div class="col">
+            <a href={teamHref(t.team_id, q)} class="card border rounded h-100 text-decoration-none text-reset">
+              <div class="card-body d-flex align-items-center gap-3">
+                <span aria-hidden="true" class="nba-team-bar rounded" style={`background: ${t.color}`}></span>
+                <div class="overflow-hidden">
+                  <p class="card-title h6 mb-1 text-truncate">{t.tricode} <span class="fw-normal text-muted">{t.name}</span></p>
+                  <p class="mb-0 numeral">{fmtInt(line?.attempts)} FGA &middot; {fmtPct(line?.fgPct)} FG &middot; {fmtPct(line?.efgPct)} eFG</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</GenericPage>
