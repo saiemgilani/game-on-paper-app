@@ -86,6 +86,18 @@ describe('getScoreboardForDay hardening', () => {
         await getScoreboardForDay('nba', '20250416');
         expect(kv.get('scoreboard-day:nba:20250416')?.ttl).toBe(120);
     });
+    test('a 200 without an events list is a bad body, not an empty day', async () => {
+        // ESPN's real empty day is `events: []` (2025-07-15, 2025-02-14); a missing or non-list
+        // `events` must take the degraded path, never "No games scheduled" or a sort crash
+        const { getScoreboardForDay } = await import('../../src/resources/espn');
+        for (const sbData of [{ day: { date: '2025-04-15' } }, { day: { date: '2025-04-15' }, events: null }, { day: { date: '2025-04-15' }, events: { id: '1' } }]) {
+            fetchMock.mockResolvedValueOnce(body({ content: { sbData } }));
+            expect(await getScoreboardForDay('nba', '20250415', { pastDay: true })).toMatchObject({ events: [], degraded: true });
+        }
+        fetchMock.mockResolvedValueOnce(body({ content: { sbData: { day: { date: '2026-10-21' }, events: { id: '1' } } } }));
+        expect(await getScoreboardForDay('nba', null)).toMatchObject({ events: [], degraded: true });
+        expect(kv.size).toBe(0);
+    });
     test('dated: an empty day is returned but not cached', async () => {
         fetchMock.mockResolvedValueOnce(payload('2025-07-15', []));
         const { getScoreboardForDay } = await import('../../src/resources/espn');

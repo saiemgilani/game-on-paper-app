@@ -574,8 +574,10 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
         const body: ESPNCoreScoreboardResponse = await resp.json();
         const sb = body?.content?.sbData;
         if (!espnDate && !sb?.day?.date) throw new Error('ESPN API: scoreboard response carried no day');
+        // a real empty day is `events: []` (measured: 2025-07-15, 2025-02-14); anything else is a bad body
+        if (!Array.isArray(sb?.events)) throw new Error('ESPN API: scoreboard response carried no events list');
         const day = espnDate ? isoDay(espnDate) : sb!.day!.date;
-        const events = sb?.events ?? [];
+        const events = sb!.events!;
         const value = JSON.stringify({ day, events });
         if (espnDate) {
             if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? (opts.oldDay ? OLD_DAY_SCOREBOARD_TTL : DATED_SCOREBOARD_TTL) : liveTTL, { fetchedAt: Date.now() });
