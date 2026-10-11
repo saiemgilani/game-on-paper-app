@@ -103,6 +103,12 @@ describe.each([
         expect(total.cells[0].html).toContain('<strong>Overall</strong>');
         expect(total.cells.slice(1).map((c) => c.text)).toEqual([...overall]);
         expect(rowOf(rows, 'One-score').cells[0].html).toContain('title="Final margin of 8 points or fewer"');
+        // the hover definitions also show as caption text (strip drops every attribute,
+        // so a match here is visible copy, not a title): touch and keyboard readers get them too
+        const caption = panel.match(/<caption class="text-small text-muted">([\s\S]*?)<\/caption>/)?.[1] ?? '';
+        expect(strip(caption)).toBe(league === 'cfb'
+            ? 'One-score = final margin of 8 points or fewer. vs Ranked = opponent ranked at kickoff.'
+            : 'One-score = final margin of 8 points or fewer.');
     }, 60_000);
 
     test('no extra request: the page still makes its two schedule reads', async () => {

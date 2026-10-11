@@ -9,9 +9,12 @@ interface Props {
 }
 
 const { rows } = Astro.props;
+// the hover titles, spelled out for touch and keyboard readers
+const caption = rows.filter((r) => r.title)
+    .map((r) => `${r.label} = ${r.title!.charAt(0).toLowerCase()}${r.title!.slice(1)}.`).join(' ');
 ---
 
-<TeamPlayerTable id="record-splits" title="Record" show={true} population={false}>
+<TeamPlayerTable id="record-splits" title="Record" show={true} population={false} caption={caption}>
     <Fragment slot="subtitle">All completed games, postseason included.</Fragment>
     <Fragment slot="header">
         <th rowspan="1" colspan="1"></th>

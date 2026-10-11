@@ -24,7 +24,7 @@ interface TeamGame {
 export interface ResumeRowDef {
     key: string;
     label: string;
-    /** hover copy for a label that needs its definition */
+    /** a label's definition: its hover title and its line in the table caption */
     title?: string;
     /** the leagues the row applies to; every league when absent */
     leagues?: League[];
