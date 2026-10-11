@@ -10,13 +10,15 @@ const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
 import Page from '../../src/pages/nba/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
+import { biggestPlays } from '../../src/nba/data/game';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 const pre = (over: { broadcasts?: any[]; records?: boolean; awayId?: string } = {}) => ({ pregame: true, espnGame: { gameId: 1, gamepackageJSON: { header: { competitions: [{ date: '2026-10-22T01:00Z', status: { type: { name: 'STATUS_SCHEDULED', completed: false, description: 'Scheduled' } }, broadcasts: over.broadcasts ?? [], competitors: [
     { homeAway: 'home', team: { id: '19', abbreviation: 'ORL', location: 'Orlando', name: 'Magic', displayName: 'Orlando Magic' }, ...(over.records === false ? {} : { record: [{ summary: '0-0' }] }) },
     { homeAway: 'away', team: { id: over.awayId ?? '1', abbreviation: 'ATL', location: 'Atlanta', name: 'Hawks', displayName: 'Atlanta Hawks' }, ...(over.records === false ? {} : { record: [{ summary: '0-0' }] }) } ] }] } } } });
 const plain = (h: string) => h.replace(/<[^>]+>/g, '');
-const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, ''); // layout scripts legitimately contain null/undefined
+const ISLAND = /<astro-island(?:\s+[\w-]+(?:="[^"]*")?)*\s*>/g;
+const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(ISLAND, ''); // layout scripts and island props legitimately contain null/undefined
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = () => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba' } as App.Locals });
@@ -147,5 +149,56 @@ describe('/nba/game/[id] render', () => {
         const html = await render();
         expect(html).toContain('>OT<');
         expect(html).toContain('per 53 minutes');
+    });
+    test('win probability: the chart island (no duplicate ids), the biggest plays and the plays table grouped by period', async () => {
+        const game = fromProcessor(read('game_401766458_processor'));
+        prep.mockResolvedValueOnce({ game });
+        const html = await render();
+        const tag = [...html.matchAll(ISLAND)].map((m) => m[0]).find((t) => t.includes('/WinProbabilityChart.svelte"')) ?? '';
+        expect(tag).not.toBe('');
+        const props = tag.replace(/&quot;/g, '"');
+        expect(props).toContain('"showOdds":[0,false]');
+        expect(props).toContain('"allPeriodMarkers":[0,true]');
+        expect(props).toContain('"gameSpreadAvailable":[0,');
+        expect(html).toContain('id="wp-section"');
+        expect(html).not.toContain('id="wp_container"'); // the island owns wp_container and canvas#wpChart
+        expect(html).not.toContain('id="wpChart"');
+        expect(html).toContain('Biggest plays');
+        const top = biggestPlays(game.plays)[0];
+        expect(html).toContain(top.text.slice(0, 40).replace(/&/g, '&amp;'));
+        expect(html).toContain('4th Quarter');
+        expect((html.match(/class="[^"]*nba-scoring-play/g) ?? []).length).toBeGreaterThan(50);
+        expect(plain(html)).not.toMatch(/default values|Game Excitement|-2\.5/);
+        const body = noScripts(html);
+        expect(body).not.toMatch(/NaN|undefined/);
+        expect(body).not.toContain(' · ');
+    });
+    test('win probability with no prior: footnote says so, nothing crashes', async () => {
+        prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor')), prior: null } });
+        const html = noScripts(await render());
+        expect(html).toContain('This game has no pregame prior.');
+        expect(html).toContain('id="wp-section"');
+        expect(html).not.toContain('undefined');
+    });
+    test('an overtime game: 2OT plays table section, the OT regime footnote, both periods in the swing labels', async () => {
+        const j = read('game_401766458_processor');
+        j.periods = 6;
+        const last = j.plays.at(-1);
+        j.plays.push({ ...last, period_number: 5, wp_regime: 'ot', game_play_number: 9998, home_win_prob: 0.4, wp_delta: 0.3, type_text: 'Jump Shot', text: 'OT swing play', id: 'ot1' });
+        j.plays.push({ ...last, period_number: 6, wp_regime: 'ot', game_play_number: 9999, home_win_prob: 0.7, wp_delta: -0.35, type_text: 'Jump Shot', text: '2OT swing play', id: 'ot2' });
+        const game = fromProcessor(j);
+        prep.mockResolvedValueOnce({ game });
+        const html = await render();
+        expect(html).toContain('Overtime');
+        expect(html).toContain('>2OT<');
+        expect(html).toContain('overtime regime');
+        expect(html).toContain('2OT swing play');
+        expect(html.match(/<td>OT<\/td>/)).not.toBeNull();
+        expect(html.match(/<td>2OT<\/td>/)).not.toBeNull();
+    });
+    test('football WinProbabilityChart props carry no showOdds (the NBA flag is opt-in)', () => {
+        const src = readFileSync(new URL('../../src/components/game/GamePage.astro', import.meta.url)).toString();
+        expect(src).not.toContain('showOdds');
+        expect(src).not.toContain('allPeriodMarkers');
     });
 });

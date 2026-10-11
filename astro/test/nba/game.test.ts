@@ -214,7 +214,10 @@ describe('pure helpers', () => {
     });
     test('wpChartPlays feeds the football chart home WP as pos_team = home', () => {
         const rows = wpChartPlays(proc);
-        expect(rows[0]).toEqual({ period: proc.plays[0].period, pos_team: proc.home.team.id, winProbability: { before: proc.plays[0].homeWinProb } });
+        expect(rows[0]).toEqual({ period: proc.plays[0].period, pos_team: proc.home.team.id, gameSpreadAvailable: proc.prior!.gameSpreadAvailable, winProbability: { before: proc.plays[0].homeWinProb } });
+    });
+    test('wpChartPlays passes gameSpreadAvailable through, false without a prior', () => {
+        expect(wpChartPlays({ ...proc, prior: null }).every((r) => r.gameSpreadAvailable === false)).toBe(true);
     });
     test('dash renders null as a dash', () => {
         expect(dash(null, (n) => n.toFixed(1))).toBe('–');

@@ -6,11 +6,13 @@ import NbaGameHeader from './NbaGameHeader.astro';
 import NbaFourFactors from './NbaFourFactors.astro';
 import NbaTeamBox from './NbaTeamBox.astro';
 import NbaPlayerBox from './NbaPlayerBox.astro';
+import NbaWinProbability from './NbaWinProbability.astro';
+import NbaPlaysTable from './NbaPlaysTable.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { scoreboardBackHref } from '../../../nba/scoreboard';
 import type { NbaGame } from '../../../resources/nbaGame';
-// Tasks 5c-5d fill the remaining panel bodies (win probability, plays, shots).
+// Task 5d fills the shots panel body.
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
@@ -18,18 +20,18 @@ const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', url: scoreboardBackHref(game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
 const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
-const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null; // consumed by 5c
+const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
 ---
 <GenericPage title={title} subtitle={description} slug={`/nba/game/${game.id}`} breadcrumbs={breadcrumbs} description={description}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <NbaGameHeader game={game} />
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
-    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><p class="text-muted m-0">Win probability loads here.</p></div></Panel>
+    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
     <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" /></div></div></div></Panel>
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><p class="text-muted m-0">Shot charts load here.</p></div></Panel>
-    <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><p class="text-muted m-0">Play-by-play loads here.</p></div></Panel>
+    <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>
 </GenericPage>

@@ -24,8 +24,9 @@ export function orderPlayers(rows: NbaPlayerRow[]): { starters: NbaPlayerRow[]; 
 }
 
 /** The football WinProbabilityChart reads period, pos_team and winProbability.before; feed it home WP as the home side's. */
-export function wpChartPlays(game: NbaGame): { period: number; pos_team: string; winProbability: { before: number } }[] {
-    return game.plays.filter((p) => p.homeWinProb != null).map((p) => ({ period: p.period, pos_team: game.home.team.id, winProbability: { before: p.homeWinProb! } }))
+export function wpChartPlays(game: NbaGame): { period: number; pos_team: string; gameSpreadAvailable: boolean; winProbability: { before: number } }[] {
+    const gameSpreadAvailable = game.prior?.gameSpreadAvailable ?? false
+    return game.plays.filter((p) => p.homeWinProb != null).map((p) => ({ period: p.period, pos_team: game.home.team.id, gameSpreadAvailable, winProbability: { before: p.homeWinProb! } }))
 }
 
 export function dash(v: number | null, fmt: (n: number) => string): string {

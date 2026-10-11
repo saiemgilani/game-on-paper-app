@@ -1,0 +1,30 @@
+---
+// Every play grouped by period; scoring plays carry .nba-scoring-play (hook class; bold is fw-bold);
+// WP is home WP, a dash when the play has none. Earlier periods collapse on a live game.
+import type { NbaGame } from '../../../resources/nbaGame';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { dash } from '../../../nba/data/game';
+import { fmtPct } from '../../../nba/format';
+import { periodLong } from './periodLabel';
+
+interface Props { game: NbaGame }
+const { game } = Astro.props;
+const periods = [...new Set(game.plays.map((p) => p.period))].sort((a, b) => a - b);
+const current = game.status.completed ? Infinity : (game.status.period ?? Infinity);
+const home = cleanAbbreviation(game.home.team);
+---
+{periods.length === 0 ? <p class="text-muted">No plays yet.</p> : periods.map((q) => (
+    <details open={q >= current}>
+        <summary class="h6 mt-3">{periodLong(q)}</summary>
+        <div class="table-responsive">
+        <table class="table table-sm numeral table-fix-first-col" aria-label={`${periodLong(q)} plays`}>
+            <thead><tr><th scope="col">Clock</th><th scope="col" class="text-end">Score</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th></tr></thead>
+            <tbody>
+                {game.plays.filter((p) => p.period === q).map((p) => (
+                    <tr class:list={[{ 'nba-scoring-play fw-bold': p.scoringPlay }]}><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (v) => fmtPct(v, 0))}</td></tr>
+                ))}
+            </tbody>
+        </table>
+        </div>
+    </details>
+))}
