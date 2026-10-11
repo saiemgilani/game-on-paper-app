@@ -86,3 +86,11 @@ describe('sdv.ts routes each league to its own API base', () => {
         expect(nfl).toContain('net_adj_epa');
     });
 });
+
+describe('nba stamps', () => {
+    test('nba stamps are keyed by the nba_stats schema, not the league slug', async () => {
+        // the /v1/meta datasets map is keyed <schema>.<table>; the nba league reads nba_stats
+        const { LEAGUES } = await import('../src/utils/league');
+        expect(LEAGUES.nba.sdvSchema).toBe('nba_stats');
+    });
+});

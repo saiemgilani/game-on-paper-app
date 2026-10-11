@@ -1,0 +1,15 @@
+---
+// src/components/nba/NbaTeamSelect.astro
+// The /nba/players team picker: a plain <select> of URLs (NbaSeasonSelect's pattern). ALL first,
+// then the season's teams by tricode; the Nets default and the current season drop out of the URL.
+import type { Team } from '../../nba/data/teams';
+import { withParams } from '../../nba/links';
+interface Props { teams: Team[]; team: string; season: number; defaults: { season: string; team: string }; id?: string }
+const { teams, team, season, defaults, id = 'nba-team' } = Astro.props;
+const href = (t: string) => withParams('/nba/players', { season: String(season), team: t }, defaults);
+---
+<label class="visually-hidden" for={id}>Team</label>
+<select id={id} class="form-select form-select-md" onchange="window.location.href = this.value">
+  <option value={href('ALL')} selected={team === 'ALL'}>All teams</option>
+  {teams.map((t) => (<option value={href(t.tricode)} selected={t.tricode === team}>{t.tricode} &middot; {t.name}</option>))}
+</select>
