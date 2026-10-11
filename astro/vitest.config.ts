@@ -13,7 +13,7 @@ for (const k of ['PYTHON_HTTP_TOKEN', 'SDV_AUTH_TOKEN', 'ADMIN_USER', 'ADMIN_PAS
 // dummies; cloudflare:workers is aliased to a KV stub.
 export default getViteConfig(
     {
-        resolve: { alias: { 'cloudflare:workers': fileURLToPath(new URL('./test/stubs/cloudflare-workers.ts', import.meta.url)) } },
+        resolve: { conditions: ['browser'], alias: { 'cloudflare:workers': fileURLToPath(new URL('./test/stubs/cloudflare-workers.ts', import.meta.url)) } },
         test: { include: ['test/**/*.test.ts'] },
     },
     { configFile: false, output: 'server', integrations: [svelte()], trailingSlash: 'ignore' },
