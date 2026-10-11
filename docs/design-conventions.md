@@ -49,6 +49,8 @@ Reference pages to match, by surface:
 | team / season page | `astro/src/components/team/**`, `astro/src/layouts/panel/TeamPanel.astro` |
 | schedule / scoreboard | `astro/src/components/schedule/SchedulePage.astro` |
 | static content page | `astro/src/pages/data-sources.astro` (post-`6e6c422d` form), `glossary.astro` |
+| NBA player dashboard | `/nba/players/1629008` (preview), built beside the football player page's header card and panels |
+| NBA team page | `/nba/team/1610612751` (preview), the player dashboard's header card over a team, with the roster table on sticky-table.css and `?sort=` headers (the coach leaderboard's pattern) |
 
 `PERCENTILE_FEATURE_PROPOSAL.md` at the repo root is an outside contributor's feature
 proposal, not design guidance — it is a precedent for *proposing before building*, nothing more.

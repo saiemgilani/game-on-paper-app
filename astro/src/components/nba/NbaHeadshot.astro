@@ -1,0 +1,10 @@
+---
+// ESPN headshot (350x254), or ESPN's own no-photo image when the row has none or the file fails
+// to load, never the browser's broken-image icon. `decorative` when the name is already next to it.
+interface Props { src: string | null; name: string; size?: number; decorative?: boolean; class?: string }
+const { src, name, size = 96, decorative = false, class: className } = Astro.props;
+const NOPHOTO = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=150&scale=crop';
+const h = Math.round((size * 254) / 350);
+---
+<img src={src ?? NOPHOTO} alt={decorative ? '' : name} width={size} height={h} loading="lazy"
+     class:list={['nba-headshot', 'rounded', className]} onerror={`this.onerror=null;this.src='${NOPHOTO}'`} />

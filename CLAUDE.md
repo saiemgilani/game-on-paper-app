@@ -5,6 +5,8 @@ processor (`sportsdataverse` play-by-play) in `python/`. The site renders two
 leagues: `cfb` (unprefixed, the default) and `nfl` (explicit pages under
 `astro/src/pages/nfl/**`; see `astro/src/utils/league.ts`).
 
+A third league, `nba` (`astro/src/pages/nba/**`, behind the `'nba'` flag), renders the Blazing the Nets shooting dashboards from the Data API's `nba_stats.shot_*` tables; its chart code is carried over from blazing-the-nets under `astro/src/nba/` (see `PROVENANCE.md` there).
+
 ## Local gates
 - Node here is often < 22.12, so `astro check` / `astro build` / `astro dev`
   can't run locally — **CI covers the templates**. What runs locally:
