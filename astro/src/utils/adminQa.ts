@@ -59,9 +59,10 @@ export interface QaTable {
 
 /** Windows the rule histogram offers. Only this section is window-scoped. */
 export const QA_WINDOWS = [1, 7, 14, 30];
-/** Every league the site renders: /admin is not under /nfl, so nothing but the
- *  row itself can say which league a game belongs to. */
-export const QA_LEAGUES = Object.keys(LEAGUES) as League[];
+/** Every football league the site renders: /admin is not under /nfl, so nothing but the
+ *  row itself can say which league a game belongs to. QA rows come from the play
+ *  processor, which only football has; nba has no /qa table. */
+export const QA_LEAGUES = (Object.keys(LEAGUES) as League[]).filter((lg) => LEAGUES[lg].sport === 'football');
 // Error counts shade against a fixed five, not the worst row: a scale that
 // moved with the data would make the same colour mean a different thing on
 // every load. The rule matrix DOES shade relative to its own worst cell --

@@ -3,7 +3,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import {
-    ago, asLeague, qaDayLabel, qaGamesTable, qaRulesTable, qaSeasonTable, qaSummary, statusText,
+    ago, asLeague, QA_LEAGUES, qaDayLabel, qaGamesTable, qaRulesTable, qaSeasonTable, qaSummary, statusText,
     type QaAdmin, type QaSeason,
 } from '../src/utils/adminQa';
 
@@ -138,6 +138,9 @@ describe('small helpers', () => {
         expect(asLeague('nfl')).toBe('nfl');
         expect(asLeague(null)).toBe('cfb');
         expect(asLeague('xfl')).toBe('cfb');
+    });
+    test('QA seasons load for the football leagues only (nba has no qa table)', () => {
+        expect(QA_LEAGUES).toEqual(['cfb', 'nfl']);
     });
     test('status text and age are human', () => {
         expect(statusText(null)).toBe('unknown');

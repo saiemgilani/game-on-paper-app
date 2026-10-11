@@ -80,6 +80,7 @@ function generateBreadcrumbsListHtml(): string {
         <link href="/assets/css/base.css" rel="stylesheet">
         <link href="/assets/css/nav-header.css" rel="stylesheet">
         <link href="/assets/css/dark-game.css" rel="stylesheet">
+        {Astro.locals.league === 'nba' && (<Fragment><link href="/assets/css/nba.css" rel="stylesheet"><link href="/assets/css/dark-nba.css" rel="stylesheet"></Fragment>)}
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">

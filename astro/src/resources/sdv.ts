@@ -605,7 +605,7 @@ async function sdvIngestStamp(league: League, table: string): Promise<string | u
     if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
         sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
     }
-    return (await sdvMeta.datasets)?.[`${league}.${table}`];
+    return (await sdvMeta.datasets)?.[`${LEAGUES[league].sdvSchema}.${table}`];
 }
 
 /**
@@ -681,6 +681,17 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
             "data": []
         }
     }
+}
+
+/**
+ * Rows of one Data API table for a league: `{ data: [...] }` on a good day; on a bad one
+ * `[]` by default (the historical callers' contract), or the error itself with `strict`
+ * (the player-keyed pages, which must tell an outage from an empty table).
+ */
+export async function retrieveRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number, strict = false): Promise<T[]> {
+    const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, league, strict);
+    if (strict && !Array.isArray(content?.data)) throw new SDVRequestError(502, table, 'no data array in the response');
+    return (Array.isArray(content?.data) ? content.data : []) as T[];
 }
 
 export interface SDVQaRow {

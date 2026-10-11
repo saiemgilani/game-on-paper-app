@@ -1,0 +1,16 @@
+---
+// src/pages/nba/team/[id].astro
+import NbaTeamRoute from '../../../components/routes/NbaTeamRoute.astro';
+import { prepareNbaTeam } from '../../../routes/nba/team';
+import { NBA_UNAVAILABLE } from '../../../routes/nba/cache';
+
+const r = await prepareNbaTeam(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaTeamRoute data={r} />
