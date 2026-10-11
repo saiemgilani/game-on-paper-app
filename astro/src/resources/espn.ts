@@ -170,6 +170,8 @@ export interface ESPNCompetitor {
     statistics: any[]
     curatedRank?: { current?: number }
     records: ESPNRecord[]
+    /** The summary header ships `record` (type/summary/displayValue); the scoreboard ships `records`. */
+    record?: { type?: string, summary: string, displayValue?: string }[]
 
     possession?: boolean
     rank?: number
