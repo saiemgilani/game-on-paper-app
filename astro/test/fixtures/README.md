@@ -179,6 +179,19 @@ exist) and `test/fiveFactors.render.test.ts` (the panel's cells on
 **To regenerate:** repeat the same `select` for 2025; the render test asserts on
 teams 333 and 2 (CFB) and 12 (NFL).
 
+- `nba/*.json`: the first 2,000 Nets rows of the real `nba_stats_shots/shots_2026.parquet` (2026-09-30) and both teams' rows for their 24 games, plus blazing-the-nets `lib/` outputs on those rows (its `scripts/dump-oracle.mjs`).
+
+  **To regenerate:** these are not Data API rows (the route tests build API-shaped rows from them
+  in-test). In a blazing-the-nets checkout at the commit `src/nba/PROVENANCE.md` cites, run
+  `node --experimental-strip-types scripts/dump-oracle.mjs <out-dir>`: it reads blazing's committed
+  `test/fixtures/shots_2026_bkn_2000.parquet` and `game_logs_2026_bkn.parquet` plus the live
+  `player_season_stats_2026.parquet` release (season 2026, regular season, the fixture's players).
+  Copy `shots.json`, `game_logs.json`, `league_context.json`, `season_players.json` and
+  `player_games.json` here; `player_season_stats.json` and its `README.md` are not used.
+- `season_players_2026_api.json`: every `shot_season_players` row for 2026, straight from the Data API
+  (`GET /v1/nba_stats/shot_season_players?season=2026&limit=50000`, bearer token required; `.data` only).
+  Captured 2026-10-11. Regenerate with the same request; the rows change nightly during the season.
+
 ## `team-summaries-cfb-2026-builder.json`
 The exact body the chart builder's read returns for
 `/charts/builder?season=2026&x=red_zone_success_off_pass&y=success_off`: the

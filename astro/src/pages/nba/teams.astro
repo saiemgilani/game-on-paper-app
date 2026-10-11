@@ -1,0 +1,13 @@
+---
+// src/pages/nba/teams.astro
+import NbaTeamsRoute from '../../components/routes/NbaTeamsRoute.astro';
+import { prepareNbaTeams } from '../../routes/nba/teams';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+
+const r = await prepareNbaTeams(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+---
+
+<NbaTeamsRoute data={r} />
