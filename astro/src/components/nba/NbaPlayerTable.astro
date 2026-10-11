@@ -1,0 +1,41 @@
+---
+// src/components/nba/NbaPlayerTable.astro
+// blazing-the-nets' PlayerTable as a server-rendered table: players by the sorted column, each
+// linking to his page; the header links re-sort (?sort=, ?dir=: the coach leaderboard's pattern,
+// with aria-sort on the sorted header); GP and MIN hide below the sm breakpoint. Rows arrive sorted.
+import { foldText } from '../../nba/format';
+import { playerHref, withParams } from '../../nba/links';
+import type { SortDir } from '../../nba/table';
+import { PLAYER_COLUMNS, type PlayerRow, type PlayerSortKey } from '../../nba/tables';
+interface Props { rows: PlayerRow[]; seasonQuery: string; sort: PlayerSortKey; dir: SortDir; basePath: string; params: Record<string, string>; defaults: Record<string, string>; id?: string }
+const { rows, seasonQuery, sort, dir, basePath, params, defaults, id = 'nba-players' } = Astro.props;
+// the default order (attempts desc) is the canonical URL; the sorted column links to its other direction
+const sortDefaults = { ...defaults, sort: 'attempts', dir: 'desc' };
+const hrefFor = (key: PlayerSortKey) => withParams(basePath, { ...params, sort: key, dir: key === sort && dir === 'desc' ? 'asc' : 'desc' }, sortDefaults);
+const ariaSort = (key: PlayerSortKey) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : 'none');
+const wide = (c: { wide?: boolean }) => (c.wide ? 'd-none d-sm-table-cell' : '');
+---
+<div class="table-responsive">
+  <table class="table table-sm" id={id}>
+    <thead>
+      <tr>
+        <th scope="col" class="text-start">Player</th>
+        <th scope="col" class="text-start d-none d-sm-table-cell">Team</th>
+        {PLAYER_COLUMNS.map((c) => (
+          <th scope="col" class:list={['text-end', wide(c)]} aria-sort={ariaSort(c.key)} data-sort={c.key}>
+            <a href={hrefFor(c.key)} class="link-secondary text-decoration-none">{c.label}{c.key === sort && (<span aria-hidden="true"> {dir === 'desc' ? '▾' : '▴'}</span>)}</a>
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r) => (
+        <tr data-name={foldText(r.name)}>
+          <td class="text-start"><a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>{r.acrossTeams && (<span class="text-muted ms-1" title="GP and MIN are season totals across teams">*</span>)}</td>
+          <td class="text-start text-muted d-none d-sm-table-cell">{r.team}</td>
+          {PLAYER_COLUMNS.map((c) => (<td class:list={['text-end numeral', wide(c)]}>{c.fmt(c.value(r))}</td>))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

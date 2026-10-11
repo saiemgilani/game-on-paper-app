@@ -1,0 +1,45 @@
+---
+// src/components/routes/NbaPlayersRoute.astro
+// blazing-the-nets' app/players/list/[season]/[team]/page.tsx on GenericPage.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaNameFilter from '../nba/NbaNameFilter.astro';
+import NbaPlayerTable from '../nba/NbaPlayerTable.astro';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import NbaTeamSelect from '../nba/NbaTeamSelect.astro';
+import { withParams } from '../../nba/links';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaPlayersParams } from '../../routes/nba/players';
+
+interface Props { data: NbaPlayersParams }
+const { season, seasons, current, q, teams, selected, team, defaults, rows, sort, dir } = Astro.props.data;
+const label = seasonLabel(season);
+const who = selected ? `${selected.tricode} ${selected.name}` : 'every team';
+const title = `NBA players, ${label} shooting | Game on Paper`;
+const subtitle = `Regular-season field-goal attempts from stats.nba.com play-by-play for ${who}, ${label}; FGA, FG%, eFG% and 3P% count the selected team only.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Players', active: true }];
+const params = { season: String(season), team };
+---
+<GenericPage title={title} subtitle={subtitle} slug="/nba/players" breadcrumbs={breadcrumbs} canonicalPath={withParams('/nba/players', params, defaults)}>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="h3">Players, {label}</h1>
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath="/nba/players" params={{ team }} />
+          <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} />
+        </div>
+        <p class="small text-muted mb-0">{subtitle}</p>
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-12">
+        {rows.length === 0
+          ? (<p class="text-muted">No regular-season shots for {who} in {label} yet.</p>)
+          : (<Fragment>
+              <NbaNameFilter tableId="nba-players" count={rows.length} />
+              <NbaPlayerTable rows={rows} seasonQuery={q} sort={sort} dir={dir} basePath="/nba/players" params={params} defaults={defaults} />
+            </Fragment>)}
+      </div>
+    </div>
+  </div>
+</GenericPage>

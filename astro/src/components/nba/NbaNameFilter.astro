@@ -1,0 +1,38 @@
+---
+// src/components/nba/NbaNameFilter.astro
+// A name filter over a server-rendered table: rows carry data-name (folded server-side with
+// blazing's foldText), the script folds the query the same way and hides the rest. Progressive:
+// without JavaScript the full table is already there.
+interface Props { tableId: string; count: number; noun?: string }
+const { tableId, count, noun = 'players' } = Astro.props;
+const inputId = `${tableId}-filter`;
+---
+<div class="d-flex flex-wrap align-items-center gap-2 small text-muted mb-2" data-nba-filter={tableId}>
+  <label for={inputId}>Filter</label>
+  <input id={inputId} type="search" class="form-control form-control-sm w-auto" placeholder="player name" autocomplete="off" />
+  <span data-count>{count} {noun}</span>
+</div>
+<script is:inline>
+  (() => {
+    const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    for (const box of document.querySelectorAll('[data-nba-filter]')) {
+      const input = box.querySelector('input');
+      const count = box.querySelector('[data-count]');
+      if (!input || !count) continue;
+      const noun = count.textContent.replace(/^\d+\s*/, '');
+      input.addEventListener('input', () => {
+        // the table renders after this script, so look it up when typing, not at load
+        const table = document.getElementById(box.getAttribute('data-nba-filter'));
+        if (!table) return;
+        const q = fold(input.value.trim());
+        let shown = 0;
+        for (const tr of table.querySelectorAll('tbody tr[data-name]')) {
+          const hit = !q || tr.getAttribute('data-name').includes(q);
+          tr.hidden = !hit;
+          if (hit) shown++;
+        }
+        count.textContent = `${shown} ${noun}`;
+      });
+    }
+  })();
+</script>
