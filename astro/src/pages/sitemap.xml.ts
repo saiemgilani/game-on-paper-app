@@ -4,6 +4,7 @@ import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../utils/constants
 import { LEAGUES, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
+import { TEAMS } from '../nba/data/teams';
 import { COACH_BOARD_SLUGS } from '../utils/coaches';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
@@ -37,8 +38,9 @@ function buildEntries(): Entry[] {
     // so the NFL is advertised only once the 'nfl' flag is public; until then
     // every /nfl URL is a 404 and a sitemap must never list one.
     const nflPublic = FLAGS['nfl'] === 'on';
-    // Same rule for the head-coach boards: a gated route answers 404, so no coach
-    // URL is listed until the 'coaches' flag is public.
+    // Same rule for the NBA surface (the block below) and the head-coach boards: a gated
+    // route answers 404, so no URL is listed until its flag is public.
+    const nbaPublic = FLAGS['nba'] === 'on';
     const coachesPublic = FLAGS['coaches'] === 'on';
     // TODO(player-pages): when FLAGS['player-pages'] flips to 'on', add the
     // player URLs here -- `/players/<espn id>` and the /nfl twin, per season.
@@ -86,6 +88,16 @@ function buildEntries(): Entry[] {
         const regWeeks = year <= 2020 ? 17 : nfl.regularSeasonWeeks;
         for (let w = 1; w <= regWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/2/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
         for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
+    }
+
+    // The NBA surface is read live from the Data API and sits behind the 'nba' flag; the fixed
+    // pages and the 30 team pages are listed once it is public. Player pages are not: this file
+    // makes no network calls, and the player ids are only in the API (see the player-pages note).
+    if (nbaPublic) {
+        for (const p of ['/nba', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
+            out.push({ loc: p, lastmod: today, changefreq: 'daily', priority: p === '/nba' ? '0.8' : '0.6' });
+        }
+        for (const t of TEAMS) out.push({ loc: `/nba/team/${t.team_id}`, lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }
 
     for (const year of AVAILABLE_SEASONS) {

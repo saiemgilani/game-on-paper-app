@@ -65,6 +65,10 @@ describe('sitemap.xml', () => {
     expect(xml).not.toContain('gameonpaper.com/nfl');
   });
 
+  test('no /nba URL while the nba flag is not public (a gated route answers 404)', () => {
+    expect(xml).not.toContain('gameonpaper.com/nba');
+  });
+
   test('no doubled slashes or undefined leaked into a URL', () => {
     expect(xml).not.toMatch(/gameonpaper\.com\/\//);
     expect(xml).not.toContain('undefined');
