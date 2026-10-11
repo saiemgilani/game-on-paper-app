@@ -1,13 +1,17 @@
 ---
 import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
-import { isFeatureEnabled } from "../utils/features";
+import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
 
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 const football = cfg.sport === 'football';
-// every other league a viewer may switch to (a football viewer's Header stays the cfb<->nfl switch): cfb always, the prefixed ones behind their flags
-const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league && (football ? LEAGUES[lg].sport === 'football' : true) && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
+// every other league a viewer may switch to: a football viewer's Header stays the cfb<->nfl switch
+// while a non-football league is in preview, and gains it once that league is public; a basketball
+// viewer sees cfb always and nfl behind its flag
+const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league
+    && (football ? (LEAGUES[lg].sport === 'football' || isFeaturePublic(lg, Astro.locals)) : true)
+    && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
 ---
 

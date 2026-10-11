@@ -1,0 +1,34 @@
+---
+// src/components/routes/NbaLeadersRoute.astro
+// blazing-the-nets' app/leaders/[season]/page.tsx on GenericPage.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import Leaderboards from '../nba/Leaderboards.svelte';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import { NETS_TEAM_ID } from '../../nba/data/teams';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaLeadersParams } from '../../routes/nba/leaders';
+
+interface Props { data: NbaLeadersParams }
+const { season, seasons, current, q, boards } = Astro.props.data;
+const label = seasonLabel(season);
+const title = `NBA rolling leaders, ${label} | Game on Paper`;
+const description = `Who is shooting best over their last 5, 10 and 20 games in ${label}: FG%, eFG%, 3P% and most improved, the Nets highlighted.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Leaders', active: true }];
+---
+<GenericPage title={title} subtitle={description} slug="/nba/leaders" breadcrumbs={breadcrumbs} description={description} canonicalPath={`/nba/leaders${q}`}>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="h3">Rolling leaders, {label}</h1>
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath="/nba/leaders" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        {boards
+          ? (<Leaderboards client:load boards={boards} netsTeamId={NETS_TEAM_ID} seasonQuery={q} />)
+          : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
+      </div>
+    </div>
+  </div>
+</GenericPage>
