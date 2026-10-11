@@ -1,0 +1,56 @@
+---
+// src/components/routes/NbaTeamRoute.astro
+// blazing-the-nets' app/teams/[id]/[season]/page.tsx on GenericPage: the header with the team's
+// colour bar and shooting line (the same text as blazing's team header, which carries no 3PM/3PA
+// pair, so the parity gate's team mode matches it), the six-chart Dashboard island
+// (subjectLabel Team), the roster.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import Dashboard from '../nba/Dashboard.svelte';
+import NbaNameFilter from '../nba/NbaNameFilter.astro';
+import NbaRosterTable from '../nba/NbaRosterTable.astro';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { teamHref } from '../../nba/links';
+import { seasonLabel } from '../../nba/seasons';
+import type { NbaTeamParams } from '../../routes/nba/team';
+
+interface Props { data: NbaTeamParams }
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode } = Astro.props.data;
+const label = seasonLabel(season);
+const title = `${team.name}, ${label} shooting | Game on Paper`;
+const description = `${team.name} ${label} shooting: ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG% on ${fmtInt(line.attempts)} attempts, charted against the league, with the roster's shooting splits.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Teams', url: `/nba/teams${q}`, active: false }, { title: team.tricode, active: true }];
+const basePath = `/nba/team/${team.team_id}`;
+const params = { season: String(season) };
+const defaults = { season: String(current) };
+---
+<GenericPage title={title} subtitle={description} slug={basePath} breadcrumbs={breadcrumbs} description={description} canonicalPath={teamHref(team.team_id, q)}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container">
+    <div class="row mb-3 align-items-start">
+      <div class="col-auto"><span aria-hidden="true" class="nba-team-bar rounded d-block" style={`background: ${team.color}; height: 5rem`}></span></div>
+      <div class="col">
+        <h1 class="h3 mb-1">{team.tricode} <span class="fw-normal">{team.name}</span></h1>
+        <p class="text-muted mb-1">{label} regular season</p>
+        <p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
+          <a href={`/nba/players?team=${team.tricode}${q ? `&${q.slice(1)}` : ''}`}>{team.tricode} player list &rarr;</a>
+        </div>
+      </div>
+    </div>
+    <nav aria-label="On this page" class="small mb-3">
+      <span class="text-muted">On this page:</span>
+      <a href="#charts" class="ms-2">Shot charts</a>
+      <a href="#roster" class="ms-2">Roster</a>
+    </nav>
+    <div id="charts">
+      <Dashboard client:load data={dashboard} subject={`${team.name} ${label}`} subjectLabel="Team" />
+    </div>
+    <section id="roster" aria-label="Roster by attempts" class="mt-3">
+      <h2 class="h5">Roster by attempts</h2>
+      <NbaNameFilter tableId="nba-roster" count={roster.length} />
+      <NbaRosterTable rows={roster} seasonQuery={q} sort={sort} dir={dir} mode={mode} basePath={basePath} params={params} defaults={defaults} />
+    </section>
+  </div>
+</GenericPage>

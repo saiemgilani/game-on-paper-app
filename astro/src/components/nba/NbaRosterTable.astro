@@ -1,0 +1,57 @@
+---
+// src/components/nba/NbaRosterTable.astro
+// blazing-the-nets' RosterTable (databallr-style: column groups, a sorted column, per game or
+// totals, a headshot column) as a server-rendered table. Sorting and the mode are URL state
+// (?sort=, ?dir=, ?mode=), the first column sticks (sticky-table.css), the name filter is
+// NbaNameFilter. Dropped from blazing: the j/k/h/l/s hotkeys and the photos/initials/none toggle.
+import NbaHeadshot from './NbaHeadshot.astro';
+import { foldText } from '../../nba/format';
+import { playerHref, withParams } from '../../nba/links';
+import type { SortDir } from '../../nba/table';
+import { ROSTER_COLUMNS, ROSTER_GROUPS, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
+interface Props { rows: RosterRow[]; seasonQuery: string; sort: RosterSortKey; dir: SortDir; mode: Mode; basePath: string; params: Record<string, string>; defaults: Record<string, string>; id?: string }
+const { rows, seasonQuery, sort, dir, mode, basePath, params, defaults, id = 'nba-roster' } = Astro.props;
+const urlDefaults = { ...defaults, sort: 'fga', dir: 'desc', mode: 'totals' };
+const state = { ...params, sort, dir, mode };
+const hrefFor = (key: RosterSortKey) => withParams(basePath, { ...state, sort: key, dir: key === sort && dir === 'desc' ? 'asc' : 'desc' }, urlDefaults);
+const modeHref = (m: Mode) => withParams(basePath, { ...state, mode: m }, urlDefaults);
+// aria-sort sits on the sorted header only (ARIA: at most one per table), the others carry none
+const ariaSort = (key: RosterSortKey) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : undefined);
+const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams; FGA and the percentages are this team's shots";
+---
+<div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+  <div class="btn-group btn-group-sm" role="group" aria-label="Per game or totals">
+    {(['pergame', 'totals'] as const).map((m) => (
+      <a href={modeHref(m)} class:list={['btn', 'btn-outline-secondary', { active: mode === m }]} aria-current={mode === m ? 'true' : undefined}>{m === 'pergame' ? 'Per game' : 'Totals'}</a>
+    ))}
+  </div>
+</div>
+<div class="table-responsive">
+  <table class="table table-sm table-fix-first-col" id={id}>
+    <thead>
+      <tr>
+        <td colspan="2"></td>
+        {ROSTER_GROUPS.map((g) => (<th scope="colgroup" colspan={ROSTER_COLUMNS.filter((c) => c.group === g).length} class="text-center fw-normal text-muted">{g}</th>))}
+      </tr>
+      <tr>
+        <th scope="col" class="text-start">Player</th>
+        <th scope="col" aria-label="Headshot"></th>
+        {ROSTER_COLUMNS.map((c) => (
+          <th scope="col" class="text-end" aria-sort={ariaSort(c.key)} data-sort={c.key}>
+            <a href={hrefFor(c.key)} class="link-secondary text-decoration-none">{c.label(mode)}{c.key === sort && (<span aria-hidden="true"> {dir === 'desc' ? '▾' : '▴'}</span>)}</a>
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r) => (
+        <tr data-name={foldText(r.name)}>
+          <th scope="row" class="text-start fw-normal"><a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>{r.acrossTeams && (<span class="text-muted ms-1" title={ACROSS}>*</span>)}</th>
+          <td><NbaHeadshot src={r.headshot} name={r.name} size={36} decorative /></td>
+          {ROSTER_COLUMNS.map((c) => (<td class="text-end numeral">{c.fmt(c.value(r, mode))}</td>))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted mb-0">* {ACROSS}.</p>
