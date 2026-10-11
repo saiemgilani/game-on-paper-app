@@ -1,0 +1,16 @@
+---
+// src/pages/nba/players.astro
+import NbaPlayersRoute from '../../components/routes/NbaPlayersRoute.astro';
+import { prepareNbaPlayers } from '../../routes/nba/players';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+
+const r = await prepareNbaPlayers(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaPlayersRoute data={r} />
