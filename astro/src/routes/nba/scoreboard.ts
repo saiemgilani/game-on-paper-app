@@ -52,7 +52,7 @@ export async function prepareNbaScoreboard(Astro: AstroGlobal): Promise<NbaScore
         // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
         setCache(Astro, date < live.day ? PAST_DAY_CACHE : date === dayNav(live.day).next ? LIVE_SCOREBOARD_CACHE : FUTURE_DAY_CACHE);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, stale: !fresh };
+    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, stale: useLive ? !fresh : !!board.stale };
 }
 
 /** One upserted gop.game_meta row per live event, as routes/scoreboard.ts does for football. */

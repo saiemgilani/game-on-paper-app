@@ -65,6 +65,11 @@ export function dayNav(day: string): { prev: string; next: string; label: string
     return { prev: d.minus({ days: 1 }).toISODate()!, next: d.plus({ days: 1 }).toISODate()!, label: d.setLocale('en-US').toFormat('cccc, LLLL d') };
 }
 
+/** '2026-01-14' -> 'Jan 14', the same English formatter as the heading. */
+export function shortDay(day: string): string {
+    return DateTime.fromISO(day, { zone: 'utc' }).setLocale('en-US').toFormat('LLL d');
+}
+
 /** '2026-10-11' -> '20261011', the cdn scoreboard's &date= form. */
 export function toEspnDate(iso: string): string {
     return iso.replaceAll('-', '');

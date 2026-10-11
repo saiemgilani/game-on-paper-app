@@ -5,7 +5,7 @@
 import type { ESPNScheduleEvent } from '../../resources/espn';
 import TeamRow from '../schedule/TeamRow.astro';
 import { gameLeaders, statusLine } from '../../nba/scoreboard';
-import { cx } from '../../utils/misc';
+import { cleanAbbreviation, cx } from '../../utils/misc';
 
 interface Props { game: ESPNScheduleEvent }
 const { game } = Astro.props;
@@ -39,8 +39,8 @@ const awayLine = label(leaders.away), homeLine = label(leaders.home);
             <TeamRow espnComp={home} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" />
             {(awayLine || homeLine) && (
                 <p class="small text-muted mb-3 d-none d-md-block">
-                    {awayLine && <span class="d-block">{away.team.abbreviation}: {awayLine}</span>}
-                    {homeLine && <span class="d-block">{home.team.abbreviation}: {homeLine}</span>}
+                    {awayLine && <span class="d-block">{cleanAbbreviation(away.team)}: {awayLine}</span>}
+                    {homeLine && <span class="d-block">{cleanAbbreviation(home.team)}: {homeLine}</span>}
                 </p>
             )}
             <div class="d-flex justify-content-between game-thumb-actions">

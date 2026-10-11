@@ -131,4 +131,11 @@ describe('prepareNbaScoreboard', () => {
         expect(sb).toHaveBeenLastCalledWith('nba', '20250415', {});
         expect(t.cache).toEqual([false]);
     });
+    test('a fresh dated board under a last-good live read is not marked stale', async () => {
+        sb.mockResolvedValueOnce(liveDay('2026-10-19', { stale: true }));
+        sb.mockResolvedValueOnce({ day: '2025-04-15', events: [], degraded: false });
+        const { prepareNbaScoreboard } = await import('../../src/routes/nba/scoreboard');
+        const r = await prepareNbaScoreboard(fakeAstro('/nba/scoreboard?date=2025-04-15').astro);
+        expect(!('badDate' in r) && r.stale === false).toBe(true);
+    });
 });

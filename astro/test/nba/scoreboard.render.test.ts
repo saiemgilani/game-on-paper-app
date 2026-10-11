@@ -34,6 +34,10 @@ describe('/nba/scoreboard render', () => {
         expect(html).toContain('href="/nba/scoreboard?date=2025-04-14"');
         expect(html).toContain('href="/nba/scoreboard?date=2025-04-16"');
         expect(html).toContain('type="date"');
+        expect(html).toContain('this.value &amp;&amp; this.checkValidity() &amp;&amp; this.form.submit()');
+        expect(html).toMatch(/Apr 14<\/a>/);
+        expect(html).not.toContain('NBA scoreboard</p>');
+        expect(html).toContain('500-dark/orl.png');
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     });
     test('a live game shows the period and clock; a scheduled one its tip time in the viewer zone', async () => {
@@ -67,6 +71,18 @@ describe('/nba/scoreboard render', () => {
         const html = await render();
         const max = /type="date"[^>]*max="(\d{4}-\d{2}-\d{2})"/.exec(html)![1];
         expect(max >= '2026-10-25').toBe(true);
+    });
+    test('edge days hide the link that would 400', async () => {
+        prep.mockResolvedValueOnce({ ...base, day: '1997-10-01', nav: { prev: '1997-09-30', next: '1997-10-02', label: 'Wednesday, October 1' }, games: [] });
+        let html = await render();
+        expect(html).not.toContain('date=1997-09-30');
+        expect(html).toContain('date=1997-10-02');
+        const max = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+        const next = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
+        prep.mockResolvedValueOnce({ ...base, day: max, nav: { prev: '2026-01-01', next, label: 'x' }, games: [] });
+        html = await render();
+        expect(html).not.toContain(`date=${next}`);
+        expect(html).toContain('date=2026-01-01');
     });
     test('an empty day says so and keeps the navigation', async () => {
         prep.mockResolvedValueOnce({ ...base, games: [] });
