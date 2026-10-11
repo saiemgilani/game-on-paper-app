@@ -10,7 +10,7 @@ const inputId = `${tableId}-filter`;
 <div class="d-flex flex-wrap align-items-center gap-2 small text-muted mb-2" data-nba-filter={tableId}>
   <label for={inputId}>Filter</label>
   <input id={inputId} type="search" class="form-control form-control-sm w-auto" placeholder="player name" autocomplete="off" />
-  <span data-count>{count} {noun}</span>
+  <span data-count>{count} {count === 1 ? noun.replace(/s$/, '') : noun}</span>
 </div>
 <script is:inline>
   (() => {
@@ -21,7 +21,7 @@ const inputId = `${tableId}-filter`;
       const input = box.querySelector('input');
       const count = box.querySelector('[data-count]');
       if (!input || !count) continue;
-      const noun = count.textContent.replace(/^\d+\s*/, '');
+      const noun = count.textContent.replace(/^\d+\s*/, '').replace(/([^s])$/, '$1s'); // the plural form, whatever the server rendered
       input.addEventListener('input', () => {
         // the table renders after this script, so look it up when typing, not at load
         const table = document.getElementById(box.getAttribute('data-nba-filter'));
@@ -33,7 +33,7 @@ const inputId = `${tableId}-filter`;
           tr.hidden = !hit;
           if (hit) shown++;
         }
-        count.textContent = `${shown} ${noun}`;
+        count.textContent = `${shown} ${shown === 1 ? noun.replace(/s$/, '') : noun}`;
       });
     }
   })();

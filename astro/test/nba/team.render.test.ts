@@ -53,10 +53,12 @@ describe('/nba/team/[id]', () => {
         expect(html).not.toContain('NaN');
     });
     test('?mode=pergame relabels the volume columns and the toggle links carry the other mode', async () => {
-        const html = await render(String(NETS_TEAM_ID), '?season=2026&mode=pergame');
+        const html = await render(String(NETS_TEAM_ID), '?mode=pergame'); // no ?season=: the Totals link must be the bare canonical URL whatever LAST_KNOWN_SEASON is
         expect(html).toContain('MIN/g');
         expect(html).toContain('FGA/g');
         expect(html).toContain(`href="/nba/team/${NETS_TEAM_ID}"`); // Totals: the default
+        expect(html).not.toContain('mode=totals');
+        expect(html).toMatch(/\?sort=\w+&amp;mode=pergame|\?mode=pergame&amp;sort=\w+/); // sort links keep the mode
         expect(html).toContain('aria-current="true"');
     });
     test('a traded player on the roster carries the across-teams marker', async () => {

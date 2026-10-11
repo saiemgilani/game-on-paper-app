@@ -31,7 +31,7 @@ const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams
     <thead>
       <tr>
         <td colspan="2"></td>
-        {ROSTER_GROUPS.map((g) => (<th scope="colgroup" colspan={ROSTER_COLUMNS.filter((c) => c.group === g).length} class="text-center fw-normal text-muted">{g}</th>))}
+        {ROSTER_GROUPS.map((g) => (<th scope="col" colspan={ROSTER_COLUMNS.filter((c) => c.group === g).length} class="text-center fw-normal text-muted">{g}</th>))}
       </tr>
       <tr>
         <th scope="col" class="text-start">Player</th>
