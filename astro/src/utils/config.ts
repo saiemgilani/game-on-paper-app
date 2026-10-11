@@ -4,6 +4,7 @@ import { DateTime, Interval } from "luxon";
 import type { ESPNScheduleEntry, ESPNStatus } from "../resources/espn";
 import { CURRENT_YEAR } from "./constants";
 import { GLOBAL_SCHEDULE_MAP } from "../resources/schedule";
+import type { League } from "./league";
 
 export interface SeasonConfig {
     liveGameRefreshRate: number
@@ -61,7 +62,7 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
     }
 }
 
-export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: 'cfb' | 'nfl' = 'cfb'): CacheOptions {
+export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: League = 'cfb'): CacheOptions {
     // GLOBAL_SCHEDULE_MAP is the COLLEGE calendar (bowl/CFP weeks vary by season).
     // Another league has no entry, so decide from what the page itself knows:
     // live games refresh at the scoreboard rate, a past season is done, and a
