@@ -90,9 +90,11 @@ async function islandMarkup(league: 'cfb' | 'nfl', query: string, preview: boole
 describe('chart-builder-v2 off: the public builder is what main renders', () => {
     // Hashes of the flag-off page and island markup for these fixtures on origin/main b8b8eaad,
     // before 'chart-builder-v2' existed (same test body, run against main's builder files).
+    // nfl re-pinned on main 17541e54: #314/#316 changed the NFL page's shared chrome, and main
+    // itself renders 4237a0b8 there (cfb and both island hashes did not move).
     // Another PR that changes the builder page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { cfb: 'aa30c215d693c66e', nfl: 'fc159590590e6d16' };
+    const GOLDEN = { cfb: 'aa30c215d693c66e', nfl: '4237a0b87af77701' };
     const ISLAND_GOLDEN = { cfb: 'a3765f8a15df88f2', nfl: '7d80aa9ee6adcb12' };
 
     test.each(['cfb', 'nfl'] as const)('%s: same island props, same request, same page', async (league) => {
