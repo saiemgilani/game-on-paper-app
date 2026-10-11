@@ -25,7 +25,7 @@ describe('/nba/teams', () => {
         expect(body.indexOf('ATL')).toBeLessThan(body.indexOf('BKN'));
         expect(body.indexOf('BKN')).toBeLessThan(body.indexOf('WAS'));
         expect(html).toContain('Brooklyn Nets');
-        expect(html).toMatch(/\d[\d,]* FGA · \d+\.\d% FG · \d+\.\d% eFG/);
+        expect(body).toMatch(/\d[\d,]* FGA · \d+\.\d% FG · \d+\.\d% eFG/);
         expect(html).toContain('id="nba-season"');
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');

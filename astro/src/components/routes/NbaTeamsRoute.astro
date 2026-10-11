@@ -36,7 +36,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: fals
                 <span aria-hidden="true" class="nba-team-bar rounded" style={`background: ${t.color}`}></span>
                 <div class="overflow-hidden">
                   <p class="card-title h6 mb-1 text-truncate">{t.tricode} <span class="fw-normal text-muted">{t.name}</span></p>
-                  <p class="mb-0 numeral">{fmtInt(line?.attempts)} FGA · {fmtPct(line?.fgPct)} FG · {fmtPct(line?.efgPct)} eFG</p>
+                  <p class="mb-0 numeral">{fmtInt(line?.attempts)} FGA &middot; {fmtPct(line?.fgPct)} FG &middot; {fmtPct(line?.efgPct)} eFG</p>
                 </div>
               </div>
             </a>
