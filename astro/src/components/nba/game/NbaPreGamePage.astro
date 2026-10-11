@@ -1,0 +1,26 @@
+---
+import { DateTime } from 'luxon';
+import GenericPage, { type PageBreadcrumb } from '../../../layouts/GenericPage.astro';
+import GameTitle from '../../game/GameTitle.astro';
+import LocalDate from '../../LocalDate.svelte';
+import type { ESPNPlayByPlayResponse } from '../../../resources/espn';
+
+interface Props { espnGame: ESPNPlayByPlayResponse }
+const { espnGame } = Astro.props;
+const comp = espnGame.gamepackageJSON.header.competitions[0];
+const home = comp.competitors.find((c: any) => c.homeAway === 'home') ?? comp.competitors[0];
+const away = comp.competitors.find((c: any) => c.homeAway === 'away') ?? comp.competitors[1];
+const rec = (c: any) => c?.record?.[0]?.summary ?? c?.records?.[0]?.summary ?? '';
+const title = `${away.team.displayName} at ${home.team.displayName} | Game on Paper`;
+const description = `${away.team.displayName} (${rec(away)}) at ${home.team.displayName} (${rec(home)}): tip time and broadcast. Win probability, four factors and shot charts arrive at tip-off.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', url: '/nba/scoreboard', active: false }, { title: `${away.team.abbreviation} @ ${home.team.abbreviation}`, active: true }];
+const networks = ((comp as any).broadcasts ?? []).map((b: any) => b?.media?.shortName).filter(Boolean).join(', ');
+---
+<GenericPage title={title} subtitle={description} slug={`/nba/game/${espnGame.gameId}`} breadcrumbs={breadcrumbs} description={description}>
+  <div class="container py-3 text-center">
+    <GameTitle awayTeam={away.team} homeTeam={home.team} links={false} league="nba" />
+    <LocalDate client:only divClass="text-small m-0" date={comp.date} format={DateTime.DATETIME_FULL} prefix={comp.status.type.description ?? 'Scheduled'} />
+    <p class="text-muted m-0">{away.team.abbreviation} {rec(away)}, {home.team.abbreviation} {rec(home)}</p>
+    {networks && <p class="text-muted m-0">{networks}</p>}
+  </div>
+</GenericPage>

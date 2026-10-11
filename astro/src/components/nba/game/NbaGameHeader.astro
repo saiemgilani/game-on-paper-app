@@ -1,0 +1,40 @@
+---
+// The football GameHeader's shape without its football links (team hrefs there are ESPN ids,
+// and /nba/team/[id] takes stats.nba.com ids, which this page does not carry): title, status, linescore, the line.
+import { DateTime } from 'luxon';
+import GameTitle from '../../game/GameTitle.astro';
+import LocalDate from '../../LocalDate.svelte';
+import { fmtPct } from '../../../nba/format';
+import { dash } from '../../../nba/data/game';
+import type { NbaGame } from '../../../resources/nbaGame';
+
+interface Props { game: NbaGame }
+const { game } = Astro.props;
+const prior = game.prior;
+const live = !game.status.completed && !['STATUS_SCHEDULED', 'STATUS_DELAYED', 'STATUS_POSTPONED'].includes(game.status.name);
+const cols = Math.max(game.periods, game.home.linescores.length, game.away.linescores.length);
+const colLabel = (i: number) => (i < 4 ? String(i + 1) : i === 4 ? 'OT' : `${i - 3}OT`);
+const line = prior?.gameSpreadAvailable && prior.homeTeamSpread != null
+    ? `${game.home.team.abbreviation} ${prior.homeTeamSpread > 0 ? '-' : '+'}${Math.abs(prior.homeTeamSpread)}`
+    : null;
+const int = (n: number) => String(n);
+const priorText = prior
+    ? `pregame prior ${game.home.team.abbreviation} ${fmtPct(prior.homeWinProb, 0)}${prior.source === 'hfa' ? ' (home-court advantage only, no line)' : ' (from the spread)'}`
+    : 'No prior';
+---
+<div class="py-3 text-center">
+    <a class="btn btn-sm btn-outline-primary mb-2" href="/nba/scoreboard"><i class="bi-arrow-left"></i> Scoreboard</a>
+    <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} league="nba" />
+    {live ? <p class="text-small m-0">{`LIVE - ${game.status.detail ?? ''}`}</p>
+          : <LocalDate client:only divClass="text-small m-0" date={game.date} format={DateTime.DATETIME_FULL} prefix={game.status.detail ?? 'Final'} />}
+    {game.venue && <p class="text-small text-muted m-0">{game.venue}</p>}
+    <table class="table table-sm w-auto mx-auto mt-3 mb-1 numeral" aria-label="Linescore">
+        <thead><tr><th scope="col"></th>{Array.from({ length: cols }, (_, i) => <th scope="col" class="text-end">{colLabel(i)}</th>)}<th scope="col" class="text-end">T</th></tr></thead>
+        <tbody>
+            {([game.away, game.home] as const).map((s) => (
+                <tr><th scope="row" class="text-start fw-normal">{s.team.abbreviation}</th>{Array.from({ length: cols }, (_, i) => <td class="text-end">{dash(s.linescores[i] ?? null, int)}</td>)}<td class="text-end fw-bold">{dash(s.score, int)}</td></tr>
+            ))}
+        </tbody>
+    </table>
+    <p class="text-small text-muted m-0">{line ? `Line: ${line}` : 'No line'}, {priorText}</p>
+</div>
