@@ -28,7 +28,7 @@ describe('/nba/game/[id] render', () => {
         expect(plain(html)).toContain('Atlanta 95 @ Orlando 120');
         expect(html).toContain('href="/nba/scoreboard"');
         for (const id of ['wp', 'factors', 'teambox', 'players', 'shots', 'plays']) expect(html).toContain(`id="${id}"`);
-        expect(html).toContain('Four factors load here.'); // the panel body renders, not just the id
+        expect(html).toContain('eFG%'); // the panel body renders, not just the id
         expect(html).toMatch(/<th[^>]*>1<\/th>[\s\S]*<th[^>]*>4<\/th>/);
         expect(html.match(/home-court advantage/g)?.length).toBe(1);
         expect(html).not.toContain(' · ');
@@ -118,5 +118,34 @@ describe('/nba/game/[id] render', () => {
         const src = readFileSync(new URL('../../src/pages/nba/game/[id].astro', import.meta.url)).toString();
         expect(src).toContain("'notFound' in r");
         expect(src).toContain("Astro.rewrite('/404')");
+    });
+    test('four factors, team box and player boxes with TS%, usage, DNP reasons and dashes', async () => {
+        const game = fromProcessor(read('game_401766458_processor'));
+        prep.mockResolvedValueOnce({ game });
+        const body = noScripts(await render());
+        for (const t of ['eFG%', 'ORtg', 'Pace', 'Fast break points', 'USG%', 'TS%']) expect(body).toContain(t);
+        expect(body).toContain((100 * game.home.rates!.efg_pct!).toFixed(1));
+        expect(body).toContain('id="box-away"');
+        expect(body).toContain('table-fix-first-col');
+        const dnp = [...game.home.players, ...game.away.players].find((p) => p.did_not_play);
+        if (dnp) expect(body).toContain(dnp.reason ?? 'DNP');
+        expect(body).toContain('–');
+        expect(body).not.toMatch(/>null<|>undefined<|NaN|null-null/);
+    });
+    test('null team-box counts and rates render dashes, not null or NaN', async () => {
+        const g = fromProcessor(read('game_401766458_processor'));
+        g.home.box!.field_goals_made = null; g.home.box!.total_turnovers = null; g.home.rates!.efg_pct = null; g.home.rates!.game_minutes = null; g.away.rates!.game_minutes = null;
+        prep.mockResolvedValueOnce({ game: g });
+        const body = noScripts(await render());
+        expect(body).not.toMatch(/null|NaN|undefined/);
+        expect(body).not.toContain('per 48 minutes');
+    });
+    test('an overtime game labels OT and reports 53 minutes of pace', async () => {
+        const j = read('game_401766458_processor');
+        j.periods = 5; j.teams.home.rates.game_minutes = 53; j.teams.away.rates.game_minutes = 53; j.plays.push({ ...j.plays.at(-1), period_number: 5, wp_regime: 'ot', game_play_number: 9999 });
+        prep.mockResolvedValueOnce({ game: fromProcessor(j) });
+        const html = await render();
+        expect(html).toContain('>OT<');
+        expect(html).toContain('per 53 minutes');
     });
 });

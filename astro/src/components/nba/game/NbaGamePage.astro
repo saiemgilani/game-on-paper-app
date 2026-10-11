@@ -3,11 +3,14 @@ import GenericPage, { type PageBreadcrumb } from '../../../layouts/GenericPage.a
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import NavScroller, { type ScrollerItem } from '../../NavScroller.astro';
 import NbaGameHeader from './NbaGameHeader.astro';
+import NbaFourFactors from './NbaFourFactors.astro';
+import NbaTeamBox from './NbaTeamBox.astro';
+import NbaPlayerBox from './NbaPlayerBox.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { scoreboardBackHref } from '../../../nba/scoreboard';
 import type { NbaGame } from '../../../resources/nbaGame';
-// Tasks 5b-5d fill the panel bodies below (four factors, team box, players, win probability, plays, shots).
+// Tasks 5c-5d fill the remaining panel bodies (win probability, plays, shots).
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
@@ -23,9 +26,9 @@ const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(g
     <NbaGameHeader game={game} />
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><p class="text-muted m-0">Win probability loads here.</p></div></Panel>
-    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><p class="text-muted m-0">Four factors load here.</p></div></Panel>
-    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><p class="text-muted m-0">Team box loads here.</p></div></Panel>
-    <Panel id="players" title="Players" show={true}><div slot="panel-body"><p class="text-muted m-0">Player box loads here.</p></div></Panel>
+    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
+    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
+    <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" /></div></div></div></Panel>
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><p class="text-muted m-0">Shot charts load here.</p></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><p class="text-muted m-0">Play-by-play loads here.</p></div></Panel>
   </div>
