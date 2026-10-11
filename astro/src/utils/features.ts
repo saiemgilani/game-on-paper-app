@@ -72,9 +72,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
-    // Chart Builder v2: the X/Y metric rail, median crosshair, highlight,
-    // logo/dot marks, labelled extremes, zoom and PNG export on /charts/builder
-    // (both leagues). Public traffic keeps today's builder until promoted.
+    // Chart Builder v2 on /charts/builder (both leagues): one control bar (Season, X, Y, Random axes,
+    // Plot) above the chart, and a median crosshair with quadrant labels. Off: today's builder.
     'chart-builder-v2': 'preview',
 };
 
