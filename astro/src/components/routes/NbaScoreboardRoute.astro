@@ -1,0 +1,57 @@
+---
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import ErrorPage from '../ErrorPage.astro';
+import NbaGameCard from '../nba/NbaGameCard.astro';
+import type { NbaScoreboardPrep } from '../../routes/nba/scoreboard';
+
+interface Props { data: NbaScoreboardPrep }
+const { data } = Astro.props;
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', active: true }];
+// The route accepts days up to the server's UTC date + 14; the picker's max is the same bound.
+const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+---
+{'badDate' in data ? (
+    <ErrorPage htmlTitle="Bad date" htmlSubtitle="NBA scoreboard" slug="/nba/scoreboard" humanTitle="That is not a date we can show."
+        message="Use ?date=YYYY-MM-DD for a day between October 1997 and two weeks from today." />
+) : (
+    <GenericPage title={`NBA scoreboard${data.isLive ? '' : `, ${data.nav.label}`} | Game on Paper`}
+        subtitle={`NBA scores for ${data.nav.label} with win probability, four factors and shot charts for every game.`}
+        slug="/nba/scoreboard" breadcrumbs={breadcrumbs}
+        description={`Live NBA scoreboard with Game on Paper's win probability, four factors, advanced box scores and shot charts for every game.`}
+        canonicalPath={data.isLive ? '/nba/scoreboard' : `/nba/scoreboard?date=${data.day}`}>
+      <div class="container">
+        <div class="row mb-3 align-items-center">
+          <div class="col-12 col-md">
+            <h1 class="h3 mb-1">{data.isLive ? 'Tonight' : data.nav.label}</h1>
+            {!data.isLive && <p class="text-muted mb-0">NBA scoreboard</p>}
+          </div>
+          <div class="col-12 col-md-auto d-flex align-items-center gap-2">
+            <a class="btn btn-sm btn-outline-primary" href={`/nba/scoreboard?date=${data.nav.prev}`} rel="prev">&larr; {data.nav.prev}</a>
+            <form method="get" action="/nba/scoreboard" class="d-inline">
+              <label class="visually-hidden" for="nba-date">Day</label>
+              <input id="nba-date" type="date" name="date" class="form-control form-control-sm" value={data.day} min="1997-10-01" max={maxDay} onchange="this.form.submit()" />
+            </form>
+            <a class="btn btn-sm btn-outline-primary" href={`/nba/scoreboard?date=${data.nav.next}`} rel="next">{data.nav.next} &rarr;</a>
+            {!data.isLive && <a class="btn btn-sm btn-link" href="/nba/scoreboard">Tonight</a>}
+          </div>
+        </div>
+        {data.degraded && data.games.length === 0 && <p class="text-muted">The scoreboard is unavailable right now. Please try again shortly.</p>}
+        {data.stale && data.games.length > 0 && <p class="text-muted small">Live scores are temporarily unavailable. These are the last saved scores for {data.nav.label}.</p>}
+        {!data.degraded && data.games.length === 0 && <p class="text-muted">No games scheduled.</p>}
+        <div class="row">
+          {data.games.map((g) => <NbaGameCard game={g} />)}
+        </div>
+      </div>
+      <script is:inline>
+        (() => {
+          try {
+            document.querySelectorAll('[data-gb-utc]').forEach((el) => {
+              const d = new Date(el.getAttribute('data-gb-utc'));
+              if (isNaN(d.getTime())) return;
+              el.textContent = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+            });
+          } catch { /* the ISO server text stands */ }
+        })();
+      </script>
+    </GenericPage>
+)}
