@@ -4,11 +4,14 @@ import { expect, test } from 'vitest';
 import { render } from 'svelte/server';
 import Dashboard from '../../src/components/nba/Dashboard.svelte';
 import PlayerExplorer from '../../src/components/nba/PlayerExplorer.svelte';
-import { leagueContextFromRows } from '../../src/nba/adapters';
+import ScatterExplorer from '../../src/components/nba/ScatterExplorer.svelte';
+import { headshotsFromRows, leagueContextFromRows, playerSeasonsFromRows } from '../../src/nba/adapters';
+import { scatterPoints } from '../../src/nba/data/scatter';
 import { ZONES } from '../../src/nba/data/aggregate';
 import { buildDashboard } from '../../src/nba/dashboard';
 import { toLite } from '../../src/nba/data/shots';
 import type { LeagueContextRow } from '../../src/resources/nbaShots';
+import { apiSeasonPlayerRows } from './rows';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 
@@ -38,4 +41,13 @@ test('Dashboard and PlayerExplorer server-render', () => {
   expect(ex).toContain('id="nba-hex-panel"');
   expect(ex).toContain('id="nba-games-panel"');
   expect(ex).not.toContain('undefined');
+});
+
+test('ScatterExplorer server-renders', () => {
+  const rows = apiSeasonPlayerRows();
+  const points = scatterPoints(playerSeasonsFromRows(rows), headshotsFromRows(rows), 1610612751);
+  const html = render(ScatterExplorer, { props: { points, subject: 'NBA 2025-26' } }).body;
+  expect(html).toContain('<desc>');
+  expect(html).toContain('Reset zoom');
+  expect(html).not.toContain('undefined');
 });
