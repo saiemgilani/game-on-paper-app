@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { fromDataApi, fromProcessor, parseLinescores, parseRecord } from '../../src/resources/nbaGame';
+import type { NbaPlay } from '../../src/resources/nbaGame';
 import { biggestPlays, dash, orderPlayers, shotsOf, wpChartPlays } from '../../src/nba/data/game';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
@@ -76,6 +77,82 @@ describe('NbaGame adapters', () => {
     });
 });
 
+describe("Python's values, pinned from the fixtures", () => {
+    // Read from the Python-scored frames (sdv-py nba_game_page); a key swap inside an adapter helper cannot pass both sources.
+    for (const [name, g] of [['processor', proc], ['data_api', api]] as const) {
+        test(`${name}: home team rates, box and a player row are the values Python computed`, () => {
+            expect(g.home.rates!.off_rtg).toBeCloseTo(120.70006, 4);
+            expect(g.home.rates!.def_rtg).toBeCloseTo(95.55422, 4);
+            expect(g.home.rates!.efg_pct).toBeCloseTo(0.543956, 5);
+            expect(g.home.rates!.tov_pct).toBeCloseTo(0.0885897, 5);
+            expect(g.home.rates!.orb_pct).toBeCloseTo(0.266667, 5);
+            expect(g.home.rates!.ft_rate).toBeCloseTo(0.296703, 5);
+            expect(g.home.rates!.pace).toBeCloseTo(99.42, 4);
+            expect(g.away.rates!.efg_pct).toBeCloseTo(0.404762, 5);
+            expect([g.home.rates!.total_turnovers, g.away.rates!.total_turnovers, g.home.rates!.game_minutes]).toEqual([10, 8, 48]);
+            expect([g.home.box!.team_score, g.home.box!.field_goals_made, g.home.box!.field_goals_attempted, g.home.box!.fast_break_points, g.home.box!.points_in_paint, g.home.box!.largest_lead]).toEqual([120, 44, 91, '19', '58', '29']);
+            const banchero = g.home.players.find((p) => p.athlete_id === 4432573)!;
+            expect([banchero.points, banchero.minutes, banchero.plus_minus, banchero.fg, banchero.ft]).toEqual([17, 33, '+18', '4-13', '9-11']);
+            expect(banchero.ts_pct).toBeCloseTo(0.476457, 5);
+            expect(banchero.usg_pct).toBeCloseTo(26.85394, 4);
+        });
+        test(`${name}: one team's offensive rating is the other's defensive rating`, () => {
+            expect(g.home.rates!.off_rtg).toBe(g.away.rates!.def_rtg);
+            expect(g.home.rates!.def_rtg).toBe(g.away.rates!.off_rtg);
+        });
+    }
+});
+
+describe('overtime', () => {
+    test('the processor carries periods 5, an ot play and 53 minutes', () => {
+        const j = read('game_401766458_processor');
+        j.periods = 5;
+        j.plays.at(-1).wp_regime = 'ot';
+        j.plays.at(-1).period_number = 5;
+        for (const ha of ['home', 'away']) j.teams[ha].rates.game_minutes = 53;
+        const g = fromProcessor(j);
+        expect([g.periods, g.hasOvertime, g.plays.at(-1)!.wpRegime, g.plays.at(-1)!.period, g.home.rates!.game_minutes, g.away.rates!.game_minutes]).toEqual([5, true, 'ot', 5, 53, 53]);
+        expect(g.plays[0].wpRegime).toBe('reg');
+    });
+    test('the Data API derives periods 5 from the plays and carries the ot regime and 53 minutes', () => {
+        const rows = read('game_401766458_api');
+        rows.play_wp.at(-1).wp_regime = 'ot';
+        rows.pbp.at(-1).period_number = 5;
+        for (const r of rows.game_team_rates) r.game_minutes = 53;
+        const g = fromDataApi(rows);
+        expect([g.periods, g.hasOvertime, g.plays.at(-1)!.wpRegime, g.plays.at(-1)!.period, g.home.rates!.game_minutes, g.away.rates!.game_minutes]).toEqual([5, true, 'ot', 5, 53, 53]);
+        expect(fromDataApi(read('game_401766458_api')).hasOvertime).toBe(false);
+    });
+});
+
+describe('nothing is invented', () => {
+    test('absent minutes, turnovers and box counts stay null on both adapters', () => {
+        const rows = read('game_401766458_api');
+        delete rows.game_team_rates[0].game_minutes;
+        rows.game_team_rates[0].total_turnovers = null;
+        rows.team_box[0].assists = null;
+        delete rows.team_box[0].steals;
+        const g = fromDataApi(rows);
+        const rates = [g.home.rates!, g.away.rates!].find((r) => r.game_minutes === null)!;
+        expect([rates.game_minutes, rates.total_turnovers]).toEqual([null, null]);
+        const box = [g.home.box!, g.away.box!].find((b) => b.assists === null)!;
+        expect([box.assists, box.steals]).toEqual([null, null]);
+        const j = read('game_401766458_processor');
+        delete j.teams.home.rates.game_minutes;
+        j.teams.home.rates.total_turnovers = null;
+        delete j.teams.home.box.blocks;
+        const p = fromProcessor(j);
+        expect([p.home.rates!.game_minutes, p.home.rates!.total_turnovers, p.home.box!.blocks]).toEqual([null, null, null]);
+    });
+    test('no play_wp rows means no prior, not a home-court 0.5', () => {
+        const rows = read('game_401766458_api');
+        rows.play_wp = [];
+        const g = fromDataApi(rows);
+        expect(g.prior).toBeNull();
+        expect(g.plays.every((p) => p.homeWinProb === null)).toBe(true);
+    });
+});
+
 describe('schedule list columns (G3)', () => {
     test('linescores parse from the Python repr the Data API ships', () => {
         const repr = "[{'value': 32.0, 'displayValue': '32', 'period': 1.0}\n {'value': 29.0, 'displayValue': '29', 'period': 2.0}\n {'value': 7.0, 'displayValue': '7', 'period': 5.0}]";
@@ -89,6 +166,16 @@ describe('schedule list columns (G3)', () => {
         expect(parseLinescores(JSON.parse(json))).toEqual([32, 29]);
         expect(parseLinescores(null)).toEqual([]);
     });
+    test('a period without a number is null in both paths, so later periods do not shift', () => {
+        expect(parseLinescores("[{'displayValue': '-'}\n {'displayValue': '30'}]")).toEqual([null, 30]);
+        expect(parseLinescores('[{"displayValue":"-"},{"displayValue":"30"}]')).toEqual([null, 30]);
+        expect(parseLinescores([{ displayValue: '-' }, { displayValue: '30' }])).toEqual([null, 30]);
+    });
+    test('records take the total entry even when it is not first', () => {
+        expect(parseRecord("[{'name': 'Home', 'type': 'home', 'summary': '22-19'}\n {'name': 'overall', 'type': 'total', 'summary': '41-41'}]")).toBe('41-41');
+        expect(parseRecord('[{"type":"home","summary":"22-19"},{"summary":"41-41","type":"total"}]')).toBe('41-41');
+        expect(parseRecord([{ type: 'home', summary: '22-19' }, { type: 'total', summary: '41-41' }])).toBe('41-41');
+    });
     test('records pick the overall summary from either encoding', () => {
         expect(parseRecord("[{'name': 'overall', 'abbreviation': 'Total', 'type': 'total', 'summary': '41-41'}\n {'name': 'Home', 'summary': '22-19'}]")).toBe('41-41');
         expect(parseRecord('[{"type":"total","summary":"41-41"},{"type":"home","summary":"22-19"}]')).toBe('41-41');
@@ -101,7 +188,16 @@ describe('pure helpers', () => {
         const top = biggestPlays(proc.plays);
         expect(top).toHaveLength(10);
         for (let i = 1; i < top.length; i++) expect(Math.abs(top[i].wpDelta!)).toBeLessThanOrEqual(Math.abs(top[i - 1].wpDelta!));
-        expect(Math.abs(top[0].wpDelta!)).toBe(Math.max(...proc.plays.map((p) => Math.abs(p.wpDelta ?? 0))));
+        const eligible = proc.plays.filter((p) => p.n !== 1 && p.typeText !== 'End Period' && p.typeText !== 'End Game');
+        expect(Math.abs(top[0].wpDelta!)).toBe(Math.max(...eligible.map((p) => Math.abs(p.wpDelta ?? 0))));
+    });
+    test('biggestPlays skips the first play and the period-end and game-end settle rows', () => {
+        const mk = (n: number, typeText: string, wpDelta: number): NbaPlay => ({ ...proc.plays[10], n, id: String(n), typeText, wpDelta });
+        const plays = [mk(1, 'Jumpball', 0.9), mk(2, 'End Period', -0.8), mk(3, 'End Game', 0.7), mk(4, 'Jump Shot', 0.1), mk(5, 'Jump Shot', -0.2)];
+        expect(biggestPlays(plays).map((p) => p.n)).toEqual([5, 4]);
+        const top = biggestPlays(proc.plays);
+        expect(top.some((p) => p.n === 1 || p.typeText === 'End Period' || p.typeText === 'End Game')).toBe(false);
+        expect(top).toHaveLength(10);
     });
     test('shotsOf keeps located shots of one team only', () => {
         const s = shotsOf(proc.plays, Number(proc.home.team.id));

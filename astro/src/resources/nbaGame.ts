@@ -2,12 +2,13 @@
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
 
+/** A count the source did not report stays null; the page renders a dash, never an invented 0. */
 export interface NbaTeamBox {
-    team_id: number; team_score: number; field_goals_made: number; field_goals_attempted: number
-    three_point_field_goals_made: number; three_point_field_goals_attempted: number
-    free_throws_made: number; free_throws_attempted: number
-    offensive_rebounds: number; defensive_rebounds: number; total_rebounds: number
-    assists: number; steals: number; blocks: number; turnovers: number; team_turnovers: number; total_turnovers: number; fouls: number
+    team_id: number | null; team_score: number | null; field_goals_made: number | null; field_goals_attempted: number | null
+    three_point_field_goals_made: number | null; three_point_field_goals_attempted: number | null
+    free_throws_made: number | null; free_throws_attempted: number | null
+    offensive_rebounds: number | null; defensive_rebounds: number | null; total_rebounds: number | null
+    assists: number | null; steals: number | null; blocks: number | null; turnovers: number | null; team_turnovers: number | null; total_turnovers: number | null; fouls: number | null
     fast_break_points: string | null; points_in_paint: string | null; largest_lead: string | null
 }
 
@@ -15,7 +16,7 @@ export interface NbaTeamBox {
 export interface NbaTeamRates {
     efg_pct: number | null; tov_pct: number | null; orb_pct: number | null; ft_rate: number | null
     possessions: number | null; off_rtg: number | null; def_rtg: number | null; pace: number | null
-    total_turnovers: number; game_minutes: number
+    total_turnovers: number | null; game_minutes: number | null
 }
 
 export interface NbaPlayerRow {
@@ -35,7 +36,7 @@ export interface NbaPlay {
 
 export interface NbaSide {
     team: { id: string; abbreviation: string; displayName: string; location: string; name: string; color?: string | null; alternateColor?: string | null; logo?: string | null }
-    score: number | null; winner: boolean; records: string | null; linescores: number[]
+    score: number | null; winner: boolean; records: string | null; linescores: (number | null)[]
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
 }
 
@@ -47,7 +48,8 @@ export interface NbaGame {
     venue: string | null
     periods: number
     /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
-    prior: { homeWinProb: number; source: 'spread' | 'hfa'; homeTeamSpread: number | null; gameSpreadAvailable: boolean }
+    /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
+    prior: { homeWinProb: number; source: 'spread' | 'hfa'; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
     home: NbaSide
     away: NbaSide
     plays: NbaPlay[]
@@ -64,7 +66,7 @@ export interface NbaProcessorPayload {
     status: { name: string; completed: boolean; period: number | null; display_clock: string | null; detail: string | null }
     prior: { home_win_prob: number; source: 'spread' | 'hfa'; home_team_spread: number | null; game_spread_available: boolean }
     periods: number
-    teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: number[] }>
+    teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
 }
@@ -80,22 +82,25 @@ const pair = (m: unknown, a: unknown): string => `${num(m) ?? 0}-${num(a) ?? 0}`
 
 /**
  * The schedule's list columns reach the Data API as Python reprs (single quotes, newline separators, no commas),
- * not JSON, so JSON.parse throws. Pull the displayValue numbers in order; real JSON matches the same pattern.
+ * not JSON, so JSON.parse throws. Take every displayValue in order (a period without a number is null, so the
+ * periods after it do not shift); real JSON matches the same pattern.
  */
-export function parseLinescores(raw: unknown): number[] {
-    if (Array.isArray(raw)) return raw.map((l) => num(l?.displayValue ?? l?.value) ?? 0)
-    return [...String(raw ?? '').matchAll(/displayValue['"]?\s*:\s*['"]?(-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]))
+export function parseLinescores(raw: unknown): (number | null)[] {
+    if (Array.isArray(raw)) return raw.map((l) => num(l?.displayValue ?? l?.value))
+    return [...String(raw ?? '').matchAll(/displayValue['"]?\s*:\s*(?:'([^']*)'|"([^"]*)"|([^,}\s]+))/g)].map((m) => num(m[1] ?? m[2] ?? m[3]))
 }
 
-/** The overall record ("41-41") out of the schedule's records column (repr or JSON); the first `summary` is the total. */
+/** The overall record ("41-41") out of the schedule's records column (repr or JSON): the `total` entry, else the first. */
 export function parseRecord(raw: unknown): string | null {
-    if (Array.isArray(raw)) return raw[0]?.summary ?? null
-    return String(raw ?? '').match(/summary['"]?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null
+    if (Array.isArray(raw)) return (raw.find((r) => r?.type === 'total') ?? raw[0])?.summary ?? null
+    const blocks = String(raw ?? '').match(/\{[^{}]*\}/g) ?? []
+    const block = blocks.find((b) => /type['"]?\s*:\s*['"]total['"]/.test(b)) ?? blocks[0]
+    return block?.match(/summary['"]?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null
 }
 
 function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
     if (!r) return null
-    const n = (k: string) => num(r[k]) ?? 0
+    const n = (k: string) => num(r[k])
     return {
         team_id: n('team_id'), team_score: n('team_score'), field_goals_made: n('field_goals_made'), field_goals_attempted: n('field_goals_attempted'),
         three_point_field_goals_made: n('three_point_field_goals_made'), three_point_field_goals_attempted: n('three_point_field_goals_attempted'),
@@ -110,7 +115,7 @@ function teamRates(r: Record<string, any> | null | undefined): NbaTeamRates | nu
     if (!r) return null
     return {
         efg_pct: num(r.efg_pct), tov_pct: num(r.tov_pct), orb_pct: num(r.orb_pct), ft_rate: num(r.ft_rate), possessions: num(r.possessions),
-        off_rtg: num(r.off_rtg), def_rtg: num(r.def_rtg), pace: num(r.pace), total_turnovers: num(r.total_turnovers) ?? 0, game_minutes: num(r.game_minutes) ?? 48,
+        off_rtg: num(r.off_rtg), def_rtg: num(r.def_rtg), pace: num(r.pace), total_turnovers: num(r.total_turnovers), game_minutes: num(r.game_minutes),
     }
 }
 
@@ -180,7 +185,7 @@ export function fromDataApi(rows: DataApiGameRows): NbaGame {
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: s.status_type_completed === true, period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
         date: s.date, venue: s.venue_full_name ?? null, periods,
-        prior: { homeWinProb: num(wp0?.pregame_home_prob) ?? 0.5, source: wp0?.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: p0?.game_spread_available === true },
+        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: p0?.game_spread_available === true },
         home: side('home'), away: side('away'), plays, hasOvertime: periods > 4,
     }
 }
