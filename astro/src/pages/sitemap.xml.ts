@@ -94,8 +94,8 @@ function buildEntries(): Entry[] {
     // pages and the 30 team pages are listed once it is public. Player pages are not: this file
     // makes no network calls, and the player ids are only in the API (see the player-pages note).
     if (nbaPublic) {
-        for (const p of ['/nba', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
-            out.push({ loc: p, lastmod: today, changefreq: 'daily', priority: p === '/nba' ? '0.8' : '0.6' });
+        for (const p of ['/nba', '/nba/scoreboard', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
+            out.push({ loc: p, lastmod: today, changefreq: p === '/nba/scoreboard' ? 'hourly' : 'daily', priority: p === '/nba' ? '0.8' : '0.6' });
         }
         for (const t of TEAMS) out.push({ loc: `/nba/team/${t.team_id}`, lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }

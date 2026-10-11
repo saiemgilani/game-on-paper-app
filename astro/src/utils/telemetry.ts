@@ -6,7 +6,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 export type GopEvent = {
-  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event' | 'admin_audit';
+  table: 'request_log' | 'upstream_log' | 'error_log' | 'client_event' | 'admin_audit' | 'game_meta';
   row: Record<string, unknown>;
 };
 
