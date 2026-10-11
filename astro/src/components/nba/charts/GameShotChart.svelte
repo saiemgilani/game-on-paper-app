@@ -18,4 +18,4 @@
     {/each}
 </div>
 <ChartSvg {draw} viewBox={GAME_SHOT_VIEWBOX} {title} desc={describeShots(shown)} />
-<p class="small text-muted mb-0">{describeShots(shown)}</p>
+<p class="small text-muted mb-3">{describeShots(shown)}</p>

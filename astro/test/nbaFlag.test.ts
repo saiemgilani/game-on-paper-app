@@ -24,7 +24,7 @@ async function run(path: string, cookie: string | null) {
     return { locals, res, rewrittenTo };
 }
 
-const NBA_PATHS = ['/nba', '/nba/', '/nba/players/1629008', '/nba/players/1629008?season=2024', '/nba/team/1610612751', '/nba/scoreboard', '/nba/scoreboard?date=2025-04-15'];
+const NBA_PATHS = ['/nba', '/nba/', '/nba/players/1629008', '/nba/players/1629008?season=2024', '/nba/team/1610612751', '/nba/scoreboard', '/nba/scoreboard?date=2025-04-15', '/nba/game/401766458'];
 
 describe('the nba flag', () => {
     test('is a preview feature until promoted', () => {

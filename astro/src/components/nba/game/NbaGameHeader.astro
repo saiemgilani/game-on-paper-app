@@ -22,7 +22,7 @@ const spread = prior?.gameSpreadAvailable ? prior.homeTeamSpread : null;
 const line = spread == null ? null : spread === 0 ? 'PK' : `${homeAbbr} ${spread > 0 ? '-' : '+'}${Math.abs(spread)}`;
 const int = (n: number) => String(n);
 const priorText = prior
-    ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${prior.source === 'hfa' ? ' (home-court advantage only, no line)' : ' (from the spread)'}`
+    ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${prior.source === 'hfa' ? ' (home-court advantage only)' : ' (from the spread)'}`
     : null;
 const lineText = `${line ? `Line: ${line}` : 'No line'}, ${priorText ?? 'no prior'}`;
 const back = scoreboardBackHref(game.date);

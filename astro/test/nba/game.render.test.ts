@@ -33,6 +33,7 @@ describe('/nba/game/[id] render', () => {
         expect(html).toContain('eFG%'); // the panel body renders, not just the id
         expect(html).toMatch(/<th[^>]*>1<\/th>[\s\S]*<th[^>]*>4<\/th>/);
         expect(html.match(/home-court advantage/g)?.length).toBe(1);
+        expect(plain(html).match(/no line/gi)?.length).toBe(1); // "No line, ... (home-court advantage only)", said once
         expect(html).not.toContain(' · ');
         const body = noScripts(html);
         for (const bad of ['NaN', 'null', 'undefined']) expect(body).not.toContain(bad);
