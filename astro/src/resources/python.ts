@@ -1310,18 +1310,17 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
     }
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+/**
+ * GET `${PYTHON_HTTP_URL}/${path}[?query]` with the processor's auth and the Workers cache block;
+ * returns the body text. `query` is a bare query string (no `?`); the cache key carries it after
+ * the deploy version (`?v=...&query`), never a second `?`.
+ */
+export async function requestProcessor(path: string, cacheTTL: number, query = ''): Promise<string> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
-
-    // `source` only ever arrives from the 'source-switch' preview path. It has
-    // to reach the cache key as well as the URL: two sources' payloads for one
-    // game are different responses, and a shared key would pin whichever
-    // landed first for the whole TTL (a year on a completed game).
-    const query = source ? `?source=${encodeURIComponent(source)}` : '';
     const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process${query}`, {
+    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${path}${query ? `?${query}` : ''}`, {
         headers: {
             "Authorization": `Bearer ${encodedToken}`,
             "Referer": "gameonpaper.com" 
@@ -1333,10 +1332,18 @@ async function processPlays(gameId: string | number, cacheTTL: number, league: L
             // deployed version means a deploy (a parser fix in sportsdataverse-py
             // rides in with every build) invalidates it without any zone purge; the
             // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}${source ? `&source=${encodeURIComponent(source)}` : ''}`,
+            cacheKey: `${PYTHON_HTTP_URL}/${path}?v=${APP_VERSION}${query ? `&${query}` : ''}`,
         }
     })
-    const content = await req.text();
+    return await req.text();
+}
+
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+    // `source` only ever arrives from the 'source-switch' preview path. It has
+    // to reach the cache key as well as the URL: two sources' payloads for one
+    // game are different responses, and a shared key would pin whichever
+    // landed first for the whole TTL (a year on a completed game).
+    const content = await requestProcessor(`${league}/${gameId}/process`, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '');
 
     try {
         const resp: ProcessedGame = JSON.parse(content);
