@@ -38,8 +38,8 @@ function buildEntries(): Entry[] {
     // so the NFL is advertised only once the 'nfl' flag is public; until then
     // every /nfl URL is a 404 and a sitemap must never list one.
     const nflPublic = FLAGS['nfl'] === 'on';
-    // Same rule for the head-coach boards: a gated route answers 404, so no coach
-    // URL is listed until the 'coaches' flag is public.
+    // Same rule for the NBA surface (the block below) and the head-coach boards: a gated
+    // route answers 404, so no URL is listed until its flag is public.
     const nbaPublic = FLAGS['nba'] === 'on';
     const coachesPublic = FLAGS['coaches'] === 'on';
     // TODO(player-pages): when FLAGS['player-pages'] flips to 'on', add the

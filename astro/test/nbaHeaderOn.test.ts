@@ -21,11 +21,12 @@ describe('Header with the nba flag on', () => {
         const html = await container.renderToString(Header, { locals: { league: 'cfb', preview: true } as App.Locals });
         expect(html).toContain('href="/nba"');
         expect(html).toContain('href="/nfl"');
-        expect(html).toContain('dropdown');
+        expect(html).toContain('title="Switch league"'); // two others: the dropdown, not the single anchor
     });
     test('a cfb viewer without the preview cookie still sees the NBA once it is on, and not the NFL', async () => {
         const html = await container.renderToString(Header, { locals: { league: 'cfb' } as App.Locals });
         expect(html).toContain('href="/nba"');
+        expect(html).toContain('title="Switch to NBA"'); // one other: the single anchor
         expect(html).not.toContain('href="/nfl"');
     });
 });
