@@ -23,3 +23,6 @@
 }
 /* the explorer's SVGs: full width, scale with the column */
 .nba-chart { width: 100%; height: auto; }
+
+/* /nba/teams and /nba/team/[id]: the team's colour as a bar beside its name (data colour, inline). */
+.nba-team-bar { display: inline-block; width: .5rem; height: 2.5rem; flex: 0 0 auto; }
