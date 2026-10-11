@@ -879,10 +879,12 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
     payload["limit"] = 150;
 
     try {        
+        // the count read rides alongside the summaries and can never cost them: unknown is `{}`
+        // (a weekly row's ranks are out of that week's teams, which the count is not)
+        const countsRead: Promise<Record<number, number>> = week ? Promise.resolve({}) : retrieveTeamCounts(league).catch(() => ({}));
         const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league);
-        // a weekly row's ranks are out of that week's teams, which this count is not
         if (week || !Array.isArray(content.data) || content.data.length === 0) return content.data;
-        const counts = await retrieveTeamCounts(league);
+        const counts = await countsRead;
         return content.data.map((r) => ({ ...r, team_count: counts[Number(r.season)] ?? null }));
     } catch (err) {
         console.error(`could not find team summary data from SDV in ${season}, checking ${(season || 0) - 1}`)

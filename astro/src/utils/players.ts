@@ -383,12 +383,28 @@ const GAME_PERCENTILE_GROUPS: Record<string, string> = {
 
 /**
  * The cohort a player's games are ranked in, or null for a position the API has
- * no cohort for -- those keep the all-player ladder. It is the identity's (latest)
- * roster position, so a converted player reads his old seasons in his new group.
+ * no cohort for -- those read the all-player ladder at the same play floor.
  */
 export function gamePercentileGroup(position: unknown): string | null {
     return GAME_PERCENTILE_GROUPS[String(position ?? '').trim().toUpperCase()] ?? null;
 }
+
+/**
+ * The cohort for the season being shown. sdv-db groups a season's games by that
+ * season's roster, so the producer's per-season `position_group` on the season rows
+ * wins; the identity's (latest) position is only the fallback for a season whose rows
+ * carry none, so a converted player's old season is not read in his new group.
+ */
+export function seasonGamePercentileGroup(rows: SeasonRow[], season: number, position: unknown): string | null {
+    const g = rows.find((r) => Number(r.season) === season && String(r.position_group ?? '').trim() !== '')?.position_group;
+    return g !== undefined ? gamePercentileGroup(g) : gamePercentileGroup(position);
+}
+
+/** The population a game-log ladder is over: a position group (null = every player) and a play floor (0 = none). */
+export interface GameLadderCohort { group: string | null; minPlays: number }
+
+/** No ladder was read: every player, no floor. */
+export const NO_COHORT: GameLadderCohort = { group: null, minPlays: 0 };
 
 /**
  * The whole-number percentile of `value` in a 101-breakpoint distribution

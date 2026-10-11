@@ -55,8 +55,7 @@
  */
 import { cleanTextForTeam, formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
 import { leaguePath, teamLogoUrl, weekLabel } from '../../utils/league';
-import { espnGameId, gameStatLine, percentileFromBreaks, type PlayerGameRow } from '../../utils/players';
-import type { GameLadderCohort } from '../../routes/player';
+import { espnGameId, gameStatLine, NO_COHORT, percentileFromBreaks, type GameLadderCohort, type PlayerGameRow } from '../../utils/players';
 import { nflTeamIdByAbbr } from '../../utils/teams';
 import { badgeText, type LiveGameStatus, type LiveQaBadge } from '../../utils/liveQa';
 import StatusBadge from '../StatusBadge.astro';
@@ -70,12 +69,12 @@ interface Props {
     espnGameIds?: Record<string, string>
     /** metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, number[]>
-    /** the population those breakpoints are over (`routes/player.ts` loadGameLadder) */
+    /** the population those breakpoints are over (`loadGameLadder`) */
     leagueCohort?: GameLadderCohort
     /** ESPN event id -> whether it is in progress RIGHT NOW, and (admin only) its QA verdict */
     live?: Record<string, LiveGameStatus>
 }
-const { games, espnGameIds = {}, leagueBreaks = {}, leagueCohort = { group: null, minPlays: 0 }, live = {} } = Astro.props;
+const { games, espnGameIds = {}, leagueBreaks = {}, leagueCohort = NO_COHORT, live = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 // Two different claims, two different audiences (#268): "this game is being
 // played" is public and generic, while anything about the payload's soundness
@@ -133,7 +132,9 @@ const leagueShade = (row: PlayerGameRow, key: string): string =>
 // is the only distribution there is, so it is what the log opens on
 const ranked = Math.max(...[...ranks.values()].map((c) => c.size), 0);
 const hasLeague = Object.keys(leagueBreaks).length > 0;
-const mode: 'player' | 'league' = ranked >= 3 || !hasLeague ? 'player' : 'league';
+// ...but only if some game is actually ON that ladder, else the log would open unshaded
+const onLadder = hasLeague && games.some((g: PlayerGameRow) => (numberOrNull(g.plays) ?? 0) >= leagueCohort.minPlays);
+const mode: 'player' | 'league' = ranked >= 3 || !onLadder ? 'player' : 'league';
 // the option names the season its distribution is from ("2025 Percentiles"), and
 // its title the population actually read -- his position's games of 5+ plays, or
 // the wider ladder `loadGameLadder` fell back to; the nation's for college, the

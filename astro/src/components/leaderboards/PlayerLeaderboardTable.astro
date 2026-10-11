@@ -43,8 +43,13 @@ function generateMetricCell(player: any, c: string, m: string): string {
     // shaded by the producer's percentile among EVERY qualifier, not by rank over
     // the <= 150 rows shown: with 744 receiving qualifiers, rank 145 is the 80th
     // percentile but read as the bottom of the page (audit D5)
+    const pct = percentileOf(player, m);
+    // a row with a rank but no published percentile keeps the old rank-over-rows-shown ramp
+    const rank = retrieveValue(player, m + '_rank');
+    const shade = pct !== null ? generateColorRampValue(pct, 100)
+        : generateColorRampValue(rank == "NA" ? null : parseFloat(rank), content.length, true);
     return `
-    <td class="text-center ${generateColorRampValue(percentileOf(player, m), 100) ?? ""}" colspan="1">${valString}</td>
+    <td class="text-center ${shade ?? ""}" colspan="1">${valString}</td>
     `
 }
 

@@ -39,7 +39,7 @@ import PlayerGameLog from './PlayerGameLog.astro';
 import PlayerSplits from './PlayerSplits.astro';
 import type { SDVPlayer } from '../../resources/sdv';
 import type { PlayerSections } from '../../routes/player';
-import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
+import { LEAGUES, espnLogoLeague, leaguePath, teamCountOf } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { formatHeight, playerPath, totalGameLog } from '../../utils/players';
@@ -174,7 +174,6 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
     [(t) => formatPercent(t.explosive_off), 'explosive_off_rank'],
     [(t) => formatNumber(t.EPAplay_def, 2), 'EPAplay_def_rank'],
 ];
-const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
 ---
 
 <GenericPage title={pageTitle} subtitle={season === null ? 'Career advanced stats' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
@@ -294,7 +293,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                                         </a>
                                     </td>
                                     {teamContextColumns.map(([value, rank]) => (
-                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), TEAM_RANK_FIELD, true)]} colspan="1">
+                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), teamCountOf(t, league), true)]} colspan="1">
                                             {value(t)}
                                             {numberOrNull(t[rank]) !== null && (
                                                 <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(numberOrNull(t[rank]))}</span>

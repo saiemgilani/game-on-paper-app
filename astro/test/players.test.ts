@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
-    GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
+    GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, seasonGamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
     formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
@@ -164,6 +164,14 @@ describe('formatting', () => {
         expect(percentileFromBreaks([0, 1, 2], 5)).toBe(2);
         expect(percentileFromBreaks(sr, null)).toBeNull();
         expect(percentileFromBreaks(undefined, 0.5)).toBeNull();
+    });
+
+    test("the cohort is the SEASON's roster group, else the identity's position", () => {
+        const rows = [{ category: 'rushing', season: 2023, position_group: 'QB' }, { category: 'receiving', season: 2024, position_group: 'WR' }] as any[];
+        expect(seasonGamePercentileGroup(rows, 2023, 'Wide Receiver')).toBe('QB');   // converted: his 2023 was a QB's
+        expect(seasonGamePercentileGroup(rows, 2024, 'QB')).toBe('WR');
+        expect(seasonGamePercentileGroup(rows, 2022, 'Wide Receiver')).toBe('WR');   // no row: the fallback
+        expect(seasonGamePercentileGroup([{ category: 'rushing', season: 2022, position_group: 'OL' }] as any[], 2022, 'QB')).toBeNull();   // a group with no cohort is not widened to his current one
     });
 
     test('a roster position maps to the game-percentile cohort, both spellings', () => {

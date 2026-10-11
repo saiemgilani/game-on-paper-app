@@ -10,7 +10,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { leaguePath, type League } from '../utils/league';
-import { GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
+import { GAME_PERCENTILE_MIN_PLAYS, NO_COHORT, seasonGamePercentileGroup, isEspnAthleteId, isGsisId, type GameLadderCohort, type PlayerGameRow, type SeasonRow } from '../utils/players';
 import {
     resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
     retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries,
@@ -173,8 +173,6 @@ export async function preparePlayer(Astro: AstroGlobal, league: League): Promise
 
 const TEAM_CONTEXT_METRICS = ['EPAplay_off', 'success_off', 'explosive_off', 'EPAplay_def'];
 
-export interface GameLadderCohort { group: string | null; minPlays: number }
-
 /**
  * The game log's league ladder, narrowest first: his position group's games of
  * GAME_PERCENTILE_MIN_PLAYS+ plays, then every player's at the same floor, then every
@@ -187,13 +185,13 @@ export async function loadGameLadder(season: number, league: League, group: stri
     const steps: GameLadderCohort[] = [
         ...(group ? [{ group, minPlays: GAME_PERCENTILE_MIN_PLAYS }] : []),
         { group: null, minPlays: GAME_PERCENTILE_MIN_PLAYS },
-        { group: null, minPlays: 0 },
+        NO_COHORT,
     ];
-    for (const cohort of steps) {
-        const breaks = await retrievePlayerGamePercentiles(season, league, cohort.group, cohort.minPlays);
-        if (Object.keys(breaks).length > 0) return { breaks, cohort };
-    }
-    return { breaks: {}, cohort: steps[steps.length - 1] };
+    // all steps at once (a 404 is never cached, so serial reads cost a round trip each);
+    // the first non-empty IN ORDER still wins, and a read that throws still rejects
+    const reads = await Promise.all(steps.map((c) => retrievePlayerGamePercentiles(season, league, c.group, c.minPlays)));
+    const i = reads.findIndex((b) => Object.keys(b).length > 0);
+    return i >= 0 ? { breaks: reads[i], cohort: steps[i] } : { breaks: {}, cohort: NO_COHORT };
 }
 
 /**
@@ -204,13 +202,17 @@ export async function loadGameLadder(season: number, league: League, group: stri
  */
 export async function loadPlayerSections(player: SDVPlayer, season: number | null, league: League):
     Promise<{ sections: PlayerSections, degraded: boolean }> {
+    const seasons = retrievePlayerSeasons(player.espn_id, league);
     const reads = await Promise.allSettled([
-        retrievePlayerSeasons(player.espn_id, league),
+        seasons,
         season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
         season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
         season !== null && league === 'nfl' ? retrieveNflEspnGameIds(season) : Promise.resolve({}),
         // a not-yet-deployed percentiles route is a 404 -> {}, not a failure
-        season === null ? Promise.resolve(null) : loadGameLadder(season, league, gamePercentileGroup(player.position)),
+        // the ladder's cohort is that season's roster group, so it waits on the seasons read
+        // (a failed one falls back to the identity's position; the section marks itself failed)
+        season === null ? Promise.resolve(null) : seasons.catch((): SeasonRow[] => [])
+            .then((rows) => loadGameLadder(season, league, seasonGamePercentileGroup(rows, season, player.position))),
         // one cached call for the whole season, filtered to his team(s) by the page
         season === null ? Promise.resolve([]) : retrieveTeamSummaries({ season, league, columns: TEAM_CONTEXT_METRICS }),
     ]);
@@ -225,7 +227,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         sections: {
             seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
             espnGameIds: value(3, {}), leagueBreaks: ladder?.breaks ?? {},
-            leagueCohort: ladder?.cohort ?? { group: null, minPlays: 0 }, teamRows: value(5, []),
+            leagueCohort: ladder?.cohort ?? NO_COHORT, teamRows: value(5, []),
             failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
         },
         degraded: reads.some((r) => r.status === 'rejected'),

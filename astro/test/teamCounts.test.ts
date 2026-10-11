@@ -7,12 +7,14 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 // 134 teams, but FBS has had 128 (2014), 136 (2025) and 138 (2026). Ranks 135-138
 // went below zero and the worst 2014 team plotted at the 4th percentile.
 const seen: string[] = [];
+let countFails = false;
 const SEASONS = [...Array(128).fill(2014), ...Array(136).fill(2025)].map((season) => ({ season }));
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string) => {
         seen.push(String(url));
         const select = new URL(url).searchParams.get('select');
+        if (countFails && select === 'season') throw new Error('count read blew up');
         const data = select === 'season' ? SEASONS : [{ team_id: 1, season: 2014 }, { team_id: 1, season: 2025 }, { team_id: 1, season: 2003 }];
         return new Response(JSON.stringify({ data }), { status: 200, headers: { 'content-type': 'application/json' } });
     },
@@ -28,6 +30,17 @@ describe('a season row knows how many teams its ranks are out of', () => {
         // one extra read, of one column, for every season
         const counts = seen.filter((u) => new URL(u).searchParams.get('select') === 'season');
         expect(counts).toHaveLength(1);
+    });
+
+    test('a team-count read that FAILS costs the page nothing but the count', async () => {
+        const { retrieveTeamSummaries } = await import('../src/resources/sdv');
+        countFails = true;
+        try {
+            const rows = await retrieveTeamSummaries({ team_id: 1 });
+            expect(rows.map((r) => [r.season, r.team_count])).toEqual([[2014, null], [2025, null], [2003, null]]);
+        } finally {
+            countFails = false;
+        }
     });
 
     test('teamCountOf reads it, and falls back to the league default', async () => {
