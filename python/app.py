@@ -666,10 +666,9 @@ def process_nba(game_id: int):
     converter bounds the id to 6-12 digits, so a malformed id 404s before any ESPN call
     (and cannot overflow polars' i32 downstream).
     """
-    import polars as pl
     from sportsdataverse.errors import AssetFetchError, NoDataError
     from sportsdataverse.nba.nba_game_page import game_page_frames
-    from sportsdataverse.nba.nba_pbp import espn_nba_pbp
+    from sportsdataverse.nba.nba_pbp import espn_nba_pbp, helper_nba_pbp
 
     from nba_game import build_payload
 
@@ -697,17 +696,14 @@ def process_nba(game_id: int):
 
     fetched = False
     try:
-        try:
-            with stage(timings, "espn_fetch"):
-                final = espn_nba_pbp(game_id)
-        except pl.exceptions.ColumnNotFoundError:
-            # sdv-py builds the plays frame inside the fetch and has no column to find when ESPN
-            # shipped the game shell without a plays key (a game that has not tipped off)
-            final = {}
+        with stage(timings, "espn_fetch"):
+            summary = espn_nba_pbp(game_id, raw=True)  # the one ESPN fetch; keys defaulted, nothing parsed
         fetched = True
         upstream(True, 200)
-        if not final.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
+        if not summary.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
             return failed({"status": "bad", "message": "No plays available for this game yet."}, 404)
+        with stage(timings, "parse"):
+            final = helper_nba_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
         with stage(timings, "process"):
             frames = game_page_frames(final)
         payload = build_payload(game_id, final, frames)

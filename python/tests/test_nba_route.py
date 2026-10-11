@@ -123,6 +123,8 @@ def test_nba_espn_404_is_clean_404(monkeypatch):
     r = c.get("/nba/401585607/process", headers=auth())
     assert r.status_code == 404 and r.get_json()["status"] == "bad"
     assert logged == []  # not a bug in this service: no error-log row
+    row = [r for k, r in pushes if k == "upstream_log"][-1]
+    assert row["ok"] is True and row["status"] == 404  # the fetch succeeded; nothing there
 
 
 def test_nba_espn_outage_is_502_without_error_row(monkeypatch):
@@ -173,3 +175,19 @@ def test_nba_dash_linescore_maps_to_null(monkeypatch):
 
 def test_nba_payload_carries_venue(client):
     assert client.get("/nba/401585607/process", headers=auth()).get_json()["venue"] == "Kia Center"
+
+
+def test_nba_parse_error_on_a_game_with_plays_is_500_with_error_row(monkeypatch):
+    import polars as pl
+    from sportsdataverse.nba import nba_pbp
+
+    app_mod, c = _client(monkeypatch, _summary())
+    logged = []
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
+
+    def boom(*a, **k):
+        raise pl.exceptions.ColumnNotFoundError("x")
+
+    monkeypatch.setattr(nba_pbp, "helper_nba_pbp", boom)
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 500 and len(logged) == 1
