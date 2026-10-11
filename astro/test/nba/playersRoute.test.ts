@@ -11,6 +11,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 import { NETS_TEAM_ID } from '../../src/nba/data/teams';
 import { SEASON_CACHE } from '../../src/routes/nba/cache';
 import { prepareNbaPlayers } from '../../src/routes/nba/players';
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 
 const api = apiSeasonPlayerRows();
 const ok = (r: Awaited<ReturnType<typeof prepareNbaPlayers>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(`unexpected ${JSON.stringify(r)}`); return r; };
@@ -32,9 +33,14 @@ describe('prepareNbaPlayers', () => {
         expect(r.rows[0].attempts).toBeGreaterThanOrEqual(r.rows[1].attempts);
         expect(r.sort).toBe('attempts');
         expect(r.dir).toBe('desc');
-        expect(r.defaults).toEqual({ season: '2026', team: 'BKN' });
+        expect(r.defaults).toEqual({ season: String(LAST_KNOWN_SEASON), team: 'BKN' });
         expect(cache[0]).toEqual(SEASON_CACHE);
         expect(astro.locals.league).toBe('nba');
+    });
+    test('a lower-case ?team= resolves to the team', async () => {
+        const r = ok(await prepareNbaPlayers(fakeAstro('/nba/players?team=bos').astro));
+        expect(r.selected?.tricode).toBe('BOS');
+        expect(r.team).toBe('BOS');
     });
     test('?team=ALL lists every player once, on his primary team', async () => {
         const r = ok(await prepareNbaPlayers(fakeAstro('/nba/players?team=ALL').astro));

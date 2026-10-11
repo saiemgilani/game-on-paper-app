@@ -10,6 +10,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 
 import { NETS_TEAM_ID } from '../../src/nba/data/teams';
 import { SEASON_CACHE } from '../../src/routes/nba/cache';
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 import { prepareNbaTeams } from '../../src/routes/nba/teams';
 
 function fakeAstro(path: string) {
@@ -23,7 +24,7 @@ describe('prepareNbaTeams', () => {
         const { astro, cache } = fakeAstro('/nba/teams');
         const r = await prepareNbaTeams(astro);
         if ('unavailable' in r) throw new Error('unexpected');
-        expect(r.season).toBe(2026);
+        expect(r.season).toBe(LAST_KNOWN_SEASON);
         expect(r.q).toBe('');
         expect(r.teams.length).toBe(30);
         expect(r.lines.get(NETS_TEAM_ID)?.attempts).toBeGreaterThan(0);
@@ -32,7 +33,7 @@ describe('prepareNbaTeams', () => {
     });
     test('a bad season resolves to the current one before the read', async () => {
         const r = await prepareNbaTeams(fakeAstro('/nba/teams?season=1700').astro);
-        expect('unavailable' in r ? null : r.season).toBe(2026);
+        expect('unavailable' in r ? null : r.season).toBe(LAST_KNOWN_SEASON);
     });
     test('a failed read is unavailable and uncacheable', async () => {
         feed.fail = true;

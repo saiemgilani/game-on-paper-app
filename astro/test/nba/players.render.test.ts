@@ -37,6 +37,7 @@ describe('/nba/players', () => {
         expect(text(table.rows.slice(1)[0][0])).toContain(nets[0].player_name);
         expect(html).toContain(`href="/nba/players/${nets[0].person_id}"`);
         expect(html).toContain('aria-sort="descending"');
+        expect(html).toContain('href="/nba/players?dir=asc"'); // the default sort's other direction, defaults dropped
         expect(html.match(/aria-sort=/g)).toHaveLength(1); // the sorted header only
         expect(html).toContain('id="nba-season"');
         expect(html).toContain('id="nba-team"');
