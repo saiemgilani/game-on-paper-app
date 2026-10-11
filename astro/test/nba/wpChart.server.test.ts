@@ -26,7 +26,7 @@ beforeAll(async () => {
     writeFileSync(file, js + '\n' + stub);
     const Comp = (await import(/* @vite-ignore */ pathToFileURL(file).href)).default;
     renderChart = (props) => render(Comp, { props }).body.replace(/<!--[^>]*-->/g, '').replace(/\s+/g, ' ');
-});
+}, 60_000); // compiling the Svelte compiler + chart takes ~11 s, past vitest's 10 s hook default
 const team = (id: string, abbreviation: string) => ({ id, abbreviation });
 const props = (o: { completed: boolean; wp?: number; extra?: Record<string, unknown> }) => ({
     id: 'g1', homeComp: { team: team('1', 'HOM') }, awayComp: { team: team('2', 'AWY') }, homeTeamSpread: 3.5, overUnder: 51.5, percentiles: [], gei: 3.2,

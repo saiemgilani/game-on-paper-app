@@ -172,6 +172,41 @@ describe('fix round 1', () => {
     });
 });
 
+describe('final review', () => {
+    test('a processor 404 on a game ESPN calls final is unavailable, never a cached pregame', async () => {
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce(espnPage('STATUS_FINAL', true)); proc.mockRejectedValueOnce(new ProcessorError(404, 'KeyError'));
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache, headers } = fakeAstro('401766458');
+        expect(await prepareNbaGame(astro)).toEqual({ unavailable: true });
+        expect(cache).toEqual([false]); expect(headers.get('Cache-Control')).toBe('no-store');
+    });
+    test('a live payload served after ESPN calls the game final is rendered but not cached', async () => {
+        const live = procJson(); live.status = { ...live.status, completed: false, name: 'STATUS_IN_PROGRESS' };
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce(espnPage('STATUS_FINAL', true)); proc.mockResolvedValueOnce(live);
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect('game' in (await prepareNbaGame(astro))).toBe(true);
+        expect(cache).toEqual([false]);
+    });
+    test('a failed rows read on an ingested final is logged degraded and the fall-through is not cached', async () => {
+        sched.mockResolvedValueOnce(api().schedule[0]); rows.mockRejectedValueOnce(new Error('timeout'));
+        espn.mockResolvedValueOnce(espnPage('STATUS_FINAL', true)); proc.mockResolvedValueOnce(procJson());
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect('game' in (await prepareNbaGame(astro))).toBe(true);
+        expect(pushed.some((e) => /rows read failed: timeout/.test(e.row.message))).toBe(true);
+        expect(store.render_outcome).toBe('degraded');
+        expect(cache).toEqual([false]);
+    });
+    test('an ESPN outage is unavailable, not a 404', async () => {
+        sched.mockResolvedValueOnce(null); espn.mockRejectedValueOnce(new Error('cdn down'));
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect(await prepareNbaGame(astro)).toEqual({ unavailable: true });
+        expect(cache).toEqual([false]);
+    });
+});
+
 describe('sanityGate', () => {
     test('each clause fails on its own; a late-logged free throw does not', async () => {
         const { sanityGate } = await import('../../src/routes/nba/game');

@@ -54,10 +54,13 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     try {
         const row = await retrieveNbaSchedule(id);
         if (row?.status_type_completed === true) {
-            const rows = await retrieveNbaGameRows(id);
-            const fail = sanityGate(rows);
-            let bad = fail;
-            if (!bad) {
+            // a failed read of an ingested final is not "not ingested": record it, or a broken
+            // nightly stage would quietly send every final back through ESPN
+            let rows: DataApiGameRows | null = null;
+            let bad: string | null;
+            try { rows = await retrieveNbaGameRows(id); bad = sanityGate(rows); }
+            catch (e: any) { bad = `rows read failed: ${e?.message ?? e}`; }
+            if (!bad && rows) {
                 try {
                     const game = fromDataApi(rows); // before setCache: an adapter throw falls through like a gate failure
                     setCache(Astro, FINAL_CACHE);
@@ -74,6 +77,7 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     // 2. ESPN's cdn page for status and header
     let espnGame: ESPNPlayByPlayResponse | null = null;
     let regressed = false;
+    let espnFailed = false;
     try {
         const guarded = await retrieveGamePageGuarded(id, 'nba');
         espnGame = guarded.page;
@@ -81,11 +85,14 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
         if (regressed) degraded(id, `stale ESPN payload: ${guarded.reason}`);
     } catch (e: any) {
         console.error(`nba game ${id}: ESPN failed: ${e?.message ?? e}`);
+        espnFailed = true;
     }
-    if (!espnGame) { uncacheable(Astro); return { notFound: true }; }
+    // an outage is a 503, never a 404 that tells a crawler the game does not exist
+    if (!espnGame) { uncacheable(Astro); return espnFailed ? { unavailable: true } : { notFound: true }; }
     const comp = (espnGame as any)?.gamepackageJSON?.header?.competitions?.[0];
     if (!comp?.status?.type) { uncacheable(Astro); return { notFound: true }; }
     const config = getNbaGameCacheConfig(comp.date, comp.status);
+    const espnCompleted = comp.status.type.completed === true;
     // a regressed payload is rendered (nothing fresher exists) but never held
     const cache = () => (regressed ? uncacheable(Astro) : setCache(Astro, config as any));
     if (['STATUS_SCHEDULED', 'STATUS_DELAYED'].includes(comp.status.type.name) || ESPN_INVALID_GAME_STATUS_NAMES.includes(comp.status.type.name)) {
@@ -96,11 +103,13 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     // 3. live, or final but not ingested: the processor
     try {
         const game = fromProcessor(await retrieveNbaProcessedGame(id, config.maxAge || 30));
-        // a sanity-gate fall-through rendered from the processor must not be pinned either
-        if (fellThrough) uncacheable(Astro); else cache();
+        // a sanity-gate fall-through must not be pinned, nor a live payload the processor cached
+        // moments before ESPN called the game final (it would read "LIVE" for the final's day)
+        if (fellThrough || (espnCompleted && !game.status.completed)) uncacheable(Astro); else cache();
         return { game };
     } catch (e: any) {
-        if (e instanceof ProcessorError && e.status === 404) { cache(); return { pregame: true, espnGame }; }
+        // a 404 is "no plays yet" only before the game ends; on a final it is a broken payload
+        if (e instanceof ProcessorError && e.status === 404 && !espnCompleted) { cache(); return { pregame: true, espnGame }; }
         console.error(`nba game ${id}: processor failed: ${e?.message ?? e}`);
         uncacheable(Astro);
         return { unavailable: true };
