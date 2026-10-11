@@ -10,7 +10,7 @@ const inputId = `${tableId}-filter`;
 <div class="d-flex flex-wrap align-items-center gap-2 small text-muted mb-2" data-nba-filter={tableId}>
   <label for={inputId}>Filter</label>
   <input id={inputId} type="search" class="form-control form-control-sm w-auto" placeholder="player name" autocomplete="off" />
-  <span data-count>{count} {count === 1 ? noun.replace(/s$/, '') : noun}</span>
+  <span data-count aria-live="polite">{count} {count === 1 ? noun.replace(/s$/, '') : noun}</span>
 </div>
 <script is:inline>
   (() => {

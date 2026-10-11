@@ -6,7 +6,9 @@ plan `ClaudeCowork/plans/2026-10-09-nba-shots-gop-pr1.md`, Task 3. Rules:
 - The copied files are blazing's `lib/` with the `.ts` import extensions stripped and nothing
   else changed. A behaviour change goes to blazing first, then is re-copied.
 - Rewritten here, type-only: `data/shots.ts`, `data/players.ts` (their parquet readers stay in
-  blazing). New here: `seasons.ts` (the pure part of blazing's), `adapters.ts`.
+  blazing). New here: `seasons.ts` (the pure part of blazing's), `adapters.ts`,
+  `tables.ts` (GOP-side, rewritten from blazing `lib/pageData.ts`'s `playerRows`/`rosterRows`/`teamLines`
+  and `lib/data/teams.ts`'s `teamsFromShots` over `shot_season_players` rows).
 - Adapted: `links.ts` is blazing's `lib/links.ts` with the `/nba` path prefixes (`/players/` ->
   `/nba/players/`, `/teams/` -> `/nba/team/`), GOP indentation and a shorter `seasonQuery`
   comment; `seasonQuery` and `withParams` are unchanged. A re-copy diffs it against upstream.

@@ -22,7 +22,7 @@ export default async (page, base) => {
   await page.locator('#nba-roster-filter').fill('cla');
   await page.waitForTimeout(1200);
   await page.locator('#nba-roster-filter').fill('');
-  await Promise.all([page.waitForURL(/\/nba\/players\?team=BKN/), page.getByRole('link', { name: /player list/ }).click()]);
+  await Promise.all([page.waitForURL(/\/nba\/players(\?|$)/), page.getByRole('link', { name: /player list/ }).click()]);
   await page.waitForTimeout(1200);
   await page.locator('#nba-players').scrollIntoViewIfNeeded();
   await page.waitForTimeout(1200);

@@ -10,8 +10,9 @@ import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
-import { teamHref } from '../../nba/links';
+import { teamHref, withParams } from '../../nba/links';
 import { seasonLabel } from '../../nba/seasons';
+import { netsTricode } from '../../nba/seasonRange';
 import type { NbaTeamParams } from '../../routes/nba/team';
 
 interface Props { data: NbaTeamParams }
@@ -35,7 +36,7 @@ const defaults = { season: String(current) };
         <p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
-          <a href={`/nba/players?team=${team.tricode}${q ? `&${q.slice(1)}` : ''}`}>{team.tricode} player list &rarr;</a>
+          <a href={withParams('/nba/players', { season: String(season), team: team.tricode }, { season: String(current), team: netsTricode(season) })}>{team.tricode} player list &rarr;</a>
         </div>
       </div>
     </div>
