@@ -20,6 +20,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { CURRENT_YEAR } from '../src/utils/constants';
+import { boxScorePercentile } from '../src/utils/binionBox';
 import { locals, parseTable } from './helpers/tables';
 
 // A ladder per season: 99 rows, `pctile` 0.01-0.99. Red-zone success has the
@@ -169,6 +170,30 @@ for (const twin of ['classic', 'v2'] as const) {
         });
     });
 }
+
+describe('A5: a tie ranks at the mean of its one-based ranks', () => {
+    // `success` breakpoint k is k/100 (k = 1..99); `run` flattens breakpoints lo..hi to one value
+    const run = (lo: number, hi: number, v: number) =>
+        ladder(2025).map((r, k) => (k + 1 >= lo && k + 1 <= hi ? { ...r, success: v } : r));
+    const rank = (rows: any[], value: number) => boxScorePercentile(rows, 'EPA_success', value).pctl;
+
+    test('an even-length run (65-72) is the 69th: mean 68.5, rounded up, not 68', () => {
+        expect(rank(run(65, 72, 0.65), 0.65)).toBe(69);
+    });
+
+    test('an odd-length run (55-65) is its middle, the 60th', () => {
+        expect(rank(run(55, 65, 0.55), 0.55)).toBe(60);
+    });
+
+    test('a singleton tie at breakpoint k is the kth', () => {
+        expect(rank(ladder(2025), 0.4)).toBe(40);
+    });
+
+    test('between breakpoints: the count below', () => {
+        // 0.405 sits between breakpoints 40 and 41
+        expect(rank(ladder(2025), 0.405)).toBe(40);
+    });
+});
 
 describe('A6: the v2 box ranks the full game only', () => {
     test('a quarter shows its values unranked', async () => {

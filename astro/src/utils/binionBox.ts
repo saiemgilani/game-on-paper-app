@@ -44,7 +44,8 @@ export function boxScorePercentile(percentiles: SDVSeasonPercentile[], key: stri
     if (value !== null) {
         const below = ladder.filter((x) => x < value - EPS).length;
         const tied = ladder.filter((x) => Math.abs(x - value) <= EPS).length;
-        pctl = Math.round(below + tied / 2);
+        // a tie ranks at the mean of its one-based ranks (below+1 .. below+tied); no tie keeps `below`
+        pctl = Math.round(tied ? below + (tied + 1) / 2 : below);
     }
     return { pctl, min: ladder[0], mid: ladder[Math.floor(ladder.length / 2)], max: ladder[ladder.length - 1] };
 }
