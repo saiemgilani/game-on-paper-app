@@ -193,6 +193,7 @@ describe('/nba/game/[id] render', () => {
         expect(html).toContain('>2OT<');
         expect(html).toContain('overtime regime');
         expect(html).toContain('2OT swing play');
+        expect(html).toContain('2nd Overtime');
         expect(html.match(/<td>OT<\/td>/)).not.toBeNull();
         expect(html.match(/<td>2OT<\/td>/)).not.toBeNull();
     });
@@ -200,5 +201,19 @@ describe('/nba/game/[id] render', () => {
         const src = readFileSync(new URL('../../src/components/game/GamePage.astro', import.meta.url)).toString();
         expect(src).not.toContain('showOdds');
         expect(src).not.toContain('allPeriodMarkers');
+    });
+    test('plays table: a final opens every period; a live game opens only the current one; the score header names the order', async () => {
+        const game = fromProcessor(read('game_401766458_processor'));
+        prep.mockResolvedValueOnce({ game });
+        const fin = await render();
+        const det = (h: string) => [...h.matchAll(/<details( [^>]*)?>/g)].map((m) => m[1] ?? "");
+        expect(det(fin).length).toBe(4);
+        expect(det(fin).every((a) => a.includes('open'))).toBe(true);
+        expect(plain(fin)).toContain('Score (ATL-ORL)');
+        for (const period of [3, null]) {
+            prep.mockResolvedValueOnce({ game: { ...game, status: { ...game.status, completed: false, name: 'STATUS_IN_PROGRESS', period } } });
+            const open = det(await render()).filter((a) => a.includes('open')).length;
+            expect(open).toBe(period === 3 ? 2 : 4); // Q3 and Q4 (>= current); an unknown period opens all
+        }
     });
 });

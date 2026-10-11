@@ -492,7 +492,7 @@ if (document.readyState !== 'loading') {
                 {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            {#if showOdds || gameInProgress}| {/if}<a id="wp-download" download={`game-wp-${id}.jpg`} href="#">Download Chart</a>
+            {(showOdds || gameInProgress) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>

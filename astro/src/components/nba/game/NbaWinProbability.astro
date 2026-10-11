@@ -16,6 +16,7 @@ const status = { type: { completed: game.status.completed, name: game.status.nam
 const plays = wpChartPlays(game);
 const swings = biggestPlays(game.plays);
 const home = cleanAbbreviation(game.home.team);
+const away = cleanAbbreviation(game.away.team);
 const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
 ---
 <div id="wp-section" class="mb-3">
@@ -32,7 +33,7 @@ const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
 {swings.length === 0 ? <p class="text-muted">No win-probability swings yet.</p> : (
 <div class="table-responsive">
 <table class="table table-sm numeral" aria-label="Biggest win-probability swings">
-    <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Swing</th></tr></thead>
+    <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Swing</th></tr></thead>
     <tbody>
         {swings.map((p) => (
             <tr><td>{periodShort(p.period)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(p.wpDelta, fmtPts)}</td></tr>
