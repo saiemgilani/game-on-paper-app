@@ -55,6 +55,21 @@ export function applyAdminView(url: URL, locals: { preview?: boolean; flagOverri
     if (Object.keys(overrides).length) locals.flagOverrides = overrides;
 }
 
+/**
+ * A same-site `href` carrying the page's own ?view= / ?flags= along, so what it leads to
+ * renders in the flag state the page did (the site search: an override that surfaced a gated
+ * hit must not lead to that page's 404). Absent or empty parameters add nothing, so for any
+ * page without them `href` comes back unchanged; for a non-admin they are inert anyway.
+ */
+export function carryAdminParams(href: string, search: string): string {
+    const page = new URLSearchParams(search);
+    const carried = [VIEW_PARAM, FLAGS_PARAM].filter((k) => page.get(k));
+    if (!carried.length) return href;
+    const next = new URL(href, 'https://gameonpaper.com');
+    for (const k of carried) next.searchParams.set(k, page.get(k)!);
+    return next.pathname + next.search + next.hash;
+}
+
 /** Which base state the pills should show as selected. */
 export function currentView(url: URL, locals: { preview?: boolean } | undefined): AdminView {
     const view = url.searchParams.get(VIEW_PARAM);

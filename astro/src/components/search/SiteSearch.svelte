@@ -9,11 +9,12 @@
 
 <script lang="ts">
     import { tick } from 'svelte';
+    import { carryAdminParams } from '../../utils/adminView';
     import { keepPreviewSurface } from '../../utils/preview';
 
     // The header search box. The hrefs come built from /api/search, so this island needs
-    // nothing from utils/ but the import-free preview.ts (other utils' imports would ride
-    // along into every page's bundle).
+    // nothing from utils/ but the import-free adminView.ts and preview.ts (other utils'
+    // imports would ride along into every page's bundle).
     type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
     const GROUPS = [['team', 'Teams'], ['player', 'Players'], ['game', 'Games']] as const;
 
@@ -64,14 +65,14 @@
         ctrl?.abort();
         ctrl = new AbortController();
         let next: Hit[] = [];
-        const params = new URLSearchParams({ q: term, league });
-        // an admin's per-request ?view= / ?flags= must reach the API too, or the box an
-        // override rendered would 404 (the middleware reads them only for an admin session)
-        const page = new URLSearchParams(window.location.search);
-        for (const k of ['view', 'flags']) if (page.has(k)) params.set(k, page.get(k)!);
+        // an admin's per-request ?view= / ?flags= go to the API, or the box an override
+        // rendered would 404, and onto every hit, or a hit the override surfaced would lead
+        // to a gated 404 (the middleware reads them only for an admin session)
+        const page = window.location.search;
+        const url = carryAdminParams(`/api/search?${new URLSearchParams({ q: term, league })}`, page);
         try {
-            const res = await fetch(`/api/search?${params}`, { signal: ctrl.signal });
-            if (res.ok) next = await res.json();
+            const res = await fetch(url, { signal: ctrl.signal });
+            if (res.ok) next = ((await res.json()) as Hit[]).map((h) => ({ ...h, href: carryAdminParams(h.href, page) }));
         } catch (e) {
             if ((e as Error).name === 'AbortError') return;
         }
