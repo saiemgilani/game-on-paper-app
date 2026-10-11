@@ -11,7 +11,7 @@ export const SEASON_CACHE = { maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba
 /** A player's page: the football player page's policy. */
 export const PLAYER_CACHE = { maxAge: 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] };
 
-export function setCache(Astro: AstroGlobal, config: typeof SEASON_CACHE | false): void {
+export function setCache(Astro: AstroGlobal, config: { maxAge: number; swr?: number; tags: string[] } | false): void {
     try { (Astro as any).cache?.set(config); } catch { /* cache provider absent in dev */ }
 }
 

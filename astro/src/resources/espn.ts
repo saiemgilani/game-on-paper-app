@@ -541,7 +541,8 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
     }
 }
 
-export interface ScoreboardDay { day: string; events: ESPNScheduleEvent[]; degraded: boolean }
+/** `stale`: a live read served from the last-good copy after ESPN failed; `day` is that copy's day, not ESPN's current one. */
+export interface ScoreboardDay { day: string; events: ESPNScheduleEvent[]; degraded: boolean; stale?: boolean }
 
 const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
 
@@ -589,7 +590,7 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
             const v = lastGood?.value as { day: string; events: ESPNScheduleEvent[] } | null;
             if (v?.events) {
                 console.warn(`ESPN API: serving last-good ${league} scoreboard from ${v.day}`);
-                return { ...v, degraded: false };
+                return { ...v, degraded: false, stale: true };
             }
             return { day: new Date().toISOString().slice(0, 10), events: [], degraded: true };
         }

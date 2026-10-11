@@ -47,7 +47,7 @@ describe('getScoreboardForDay', () => {
         fetchMock.mockResolvedValue(new Response('nope', { status: 503 }));
         const { getScoreboardForDay } = await import('../../src/resources/espn');
         const live = await getScoreboardForDay('nba', null);
-        expect(live).toEqual({ day: '2026-10-09', events: [{ id: 'old' }], degraded: false });
+        expect(live).toEqual({ day: '2026-10-09', events: [{ id: 'old' }], degraded: false, stale: true });
         const dated = await getScoreboardForDay('nba', '20250415');
         expect(dated).toEqual({ day: '2025-04-15', events: [], degraded: true });
         expect(kv.has('scoreboard-day:nba:20250415')).toBe(false);
@@ -69,8 +69,13 @@ describe('getScoreboardForDay hardening', () => {
         kv.set('scoreboard-day:nba:lastgood', { value: JSON.stringify({ day: '2026-10-09', events: [{ id: 'old' }] }) });
         fetchMock.mockResolvedValueOnce(body({ content: { sbData: { events: [{ id: '1' }] } } }));
         const { getScoreboardForDay } = await import('../../src/resources/espn');
-        expect(await getScoreboardForDay('nba', null)).toEqual({ day: '2026-10-09', events: [{ id: 'old' }], degraded: false });
+        expect(await getScoreboardForDay('nba', null)).toEqual({ day: '2026-10-09', events: [{ id: 'old' }], degraded: false, stale: true });
         expect(kv.has('scoreboard-day:nba')).toBe(false);
+    });
+    test('a fresh live read carries no stale flag', async () => {
+        fetchMock.mockResolvedValueOnce(payload('2026-10-21', ['1']));
+        const { getScoreboardForDay } = await import('../../src/resources/espn');
+        expect((await getScoreboardForDay('nba', null)).stale).toBeUndefined();
     });
     test('dated: TTL is a day only for a past day, else the live TTL', async () => {
         const { getScoreboardForDay } = await import('../../src/resources/espn');
