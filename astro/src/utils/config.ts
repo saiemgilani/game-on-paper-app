@@ -27,6 +27,9 @@ function retrieveSeasonConfig(): SeasonConfig {
 
 export const CURRENT_SEASON_CONFIG = retrieveSeasonConfig();
 export const CACHE_TTL_MULTIPLIER = 2;
+// The NBA board refreshes every minute all year. SEASON_MODE is the football operator's switch
+// and must not slow it down (it flips off-season for football, which is the NBA playoffs).
+export const NBA_SCOREBOARD_REFRESH = 60;
 
 export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
     const gameDate = DateTime.fromISO(date);

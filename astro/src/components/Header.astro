@@ -82,6 +82,7 @@ const lp = (p: string) => leaguePath(league, p);
                     )}
                     {!football && (
                         <Fragment>
+                            <li><a href={lp("/scoreboard")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
                             <li><a href={lp("/")} class="nav-link px-2 link-secondary">Nets</a></li>
                             <li><a href={lp("/players")} class="nav-link px-2 link-secondary">Players</a></li>
                             <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>

@@ -15,8 +15,8 @@ import { TEAMS } from '../src/nba/data/teams';
 const xml: string = await ((GET as any)({} as any) as Response).text();
 
 describe('sitemap.xml with the nba flag on', () => {
-  test('lists the five fixed pages and every team page, and no player page', () => {
-    for (const p of ['/nba', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
+  test('lists the six fixed pages and every team page, and no player page', () => {
+    for (const p of ['/nba', '/nba/scoreboard', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
       expect(xml).toContain(`<loc>https://gameonpaper.com${p}</loc>`);
     }
     expect(TEAMS.length).toBe(30);
