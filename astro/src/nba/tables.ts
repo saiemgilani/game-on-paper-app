@@ -110,6 +110,7 @@ export type PlayerSortKey = 'attempts' | 'fgPct' | 'efgPct' | 'fg3Pct' | 'gp' | 
 export type RosterSortKey = 'gp' | 'min' | 'fga' | 'fgPct' | 'efgPct' | 'fg3Pct' | 'tsPct' | 'rimPct' | 'midPct' | 'fg3Rate' | 'usgPct' | 'pie';
 
 const asPct = (v: number | null) => fmtPct(v);
+const asDec = (v: number | null) => fmtDec(v);
 const intOrDec = (v: number | null) => (v === null ? 'n/a' : Number.isInteger(v) ? fmtInt(v) : fmtDec(v));
 
 /** `wide` columns are hidden below the sm breakpoint (blazing's PlayerTable), so a phone shows name, FGA and the percentages. */
@@ -119,7 +120,7 @@ export const PLAYER_COLUMNS: readonly { key: PlayerSortKey; label: string; value
     { key: 'efgPct', label: 'eFG%', value: (r) => r.efgPct, fmt: asPct },
     { key: 'fg3Pct', label: '3P%', value: (r) => r.fg3Pct, fmt: asPct },
     { key: 'gp', label: 'GP', value: (r) => r.gp, fmt: fmtInt, wide: true },
-    { key: 'min', label: 'MIN', value: (r) => r.min, fmt: fmtDec, wide: true },
+    { key: 'min', label: 'MIN', value: (r) => r.min, fmt: asDec, wide: true },
 ];
 
 export const ROSTER_COLUMNS: readonly { key: RosterSortKey; group: 'Volume' | 'Shooting' | 'Usage'; label: (mode: Mode) => string; value: (r: RosterRow, mode: Mode) => number | null; fmt: (v: number | null) => string }[] = [

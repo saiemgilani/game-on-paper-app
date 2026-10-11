@@ -51,7 +51,9 @@ describe('playerRows', () => {
     test("one team's rows mark a traded player's season-total stats", () => {
         const traded = api.find((r) => r.n_teams > 1 && r.has_stats)!;
         const rows = playerRows(playerSeasonsFromRows(api, traded.team_id));
-        expect(rows.find((r) => r.person_id === traded.person_id)!.acrossTeams).toBe(true);
+        const row = rows.find((r) => r.person_id === traded.person_id)!;
+        expect(row.acrossTeams).toBe(true);
+        expect(row.min).toBe(traded.min_pg);
     });
 });
 
@@ -75,6 +77,7 @@ describe('rosterRows', () => {
         expect(row.fga).toBe(traded.attempts);
         expect(row.gp).toBe(traded.gp);
         expect(row.acrossTeams).toBe(true);
+        expect(row).toMatchObject({ minPg: traded.min_pg, minTotal: traded.min_total, fgaPg: traded.fga_pg, tsPct: traded.ts_pct, usgPct: traded.usg_pct, pie: traded.pie, headshot: traded.headshot_href });
         expect(rows.every((r) => api.some((a) => a.person_id === r.person_id && a.team_id === traded.team_id))).toBe(true);
     });
     test('no stats row leaves the stats columns null and the shots columns filled', () => {
@@ -97,14 +100,14 @@ describe('sorting and the query whitelists', () => {
         expect(parseMode('pergame')).toBe('pergame');
         expect(parseMode('per game')).toBe('totals');
     });
-    test('sortPlayerRows puts missing values last in both directions and breaks ties by name', () => {
+    test('sortPlayerRows sorts a copy by the column, both directions', () => {
         const rows = playerRows(playerSeasonsFromRows(api));
         const desc = sortPlayerRows(rows, 'gp', 'desc');
         const asc = sortPlayerRows(rows, 'gp', 'asc');
-        const firstNull = desc.findIndex((r) => r.gp === null);
-        expect(firstNull === -1 || desc.slice(firstNull).every((r) => r.gp === null)).toBe(true);
-        expect(asc[0].gp).not.toBeNull();
-        expect(asc[0].gp!).toBeLessThanOrEqual(asc[1].gp ?? Infinity);
+        for (let i = 1; i < rows.length; i++) {
+            expect(desc[i - 1].gp ?? -1).toBeGreaterThanOrEqual(desc[i].gp ?? -1);
+            expect(asc[i - 1].gp ?? Infinity).toBeLessThanOrEqual(asc[i].gp ?? Infinity);
+        }
         expect(rows).not.toBe(desc); // a copy
     });
     test('sortRosterRows reads the per-game column when mode is pergame', () => {
@@ -120,5 +123,7 @@ describe('sorting and the query whitelists', () => {
         for (const c of [...PLAYER_COLUMNS, ...ROSTER_COLUMNS]) expect(c.fmt(null)).toBe('n/a');
         expect(ROSTER_COLUMNS.find((c) => c.key === 'min')!.label('pergame')).toBe('MIN/g');
         expect(ROSTER_COLUMNS.find((c) => c.key === 'min')!.label('totals')).toBe('MIN');
+        expect(ROSTER_COLUMNS.find((c) => c.key === 'fga')!.label('pergame')).toBe('FGA/g');
+        expect(ROSTER_COLUMNS.find((c) => c.key === 'fga')!.label('totals')).toBe('FGA');
     });
 });
