@@ -19,7 +19,7 @@ const ab = (c: any) => cleanAbbreviation(c.team);
 const side = (c: any) => [ab(c), rec(c)].filter(Boolean).join(' ');
 const paren = (c: any) => (rec(c) ? ` (${rec(c)})` : '');
 // the line is the summary's pickcenter, shown only when ESPN has one (never a default)
-const summary = await retrieveGameSummary(espnGame.gameId, 'nba');
+const summary = await retrieveGameSummary(espnGame.gameId, 'nba', AbortSignal.timeout(3000)); // a slow ESPN must not stall a cold pregame render
 const line = summary?.pickcenter?.[0]?.details || null;
 const title = `${away.team.displayName} at ${home.team.displayName} | Game on Paper`;
 const description = `${away.team.displayName}${paren(away)} at ${home.team.displayName}${paren(home)}: tip time and broadcast. Win probability, four factors and shot charts arrive at tip-off.`;

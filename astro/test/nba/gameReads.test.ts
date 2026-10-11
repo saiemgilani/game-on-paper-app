@@ -200,6 +200,14 @@ describe('read timeouts (NBA only)', () => {
         await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 504 });
         expect(calls).toEqual([25000]);
     });
+    test('an AbortError with no timeout set is not reported as a processor timeout (football sets none)', async () => {
+        respond = () => { throw new DOMException('aborted elsewhere', 'AbortError'); };
+        const { requestProcessor } = await import('../../src/resources/python');
+        const err = await requestProcessor('cfb/401520150/process', 60).catch((e) => e);
+        respond = null;
+        expect(err.name).toBe('AbortError');
+        expect(err.message).not.toMatch(/undefinedms/);
+    });
     test('football reads and processor calls set no signal', async () => {
         const calls: number[] = [];
         abortedSignal(calls);

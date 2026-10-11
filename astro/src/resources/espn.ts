@@ -898,10 +898,10 @@ export interface ESPNGameSummary {
 // The cdn playbyplay payload carries only `header`; game context (venue,
 // weather, betting line, season leaders, recent form) lives on the site.api
 // summary endpoint. Same retry + API-host relay path as every ESPN call.
-export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb'): Promise<ESPNGameSummary | null> {
+export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb', signal?: AbortSignal): Promise<ESPNGameSummary | null> {
     const url = `https://site.api.espn.com/apis/site/v2/sports/${LEAGUES[league].sport}/${LEAGUES[league].espnPath}/summary?event=${gameId}`;
     try {
-        const resp = await requestESPN(url);
+        const resp = await requestESPN(url, signal ? { signal } : undefined);
         if (!resp.ok) {
             console.warn(`ESPN summary ${resp.status} for game ${gameId}`);
             return null;

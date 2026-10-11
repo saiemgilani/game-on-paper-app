@@ -177,6 +177,7 @@ describe('sanityGate', () => {
         const { sanityGate } = await import('../../src/routes/nba/game');
         expect(sanityGate(api())).toBeNull(); // the fixture pbp ends 119-95 against a 120-95 final
         const a = api(); a.pbp = a.pbp.filter((p: any) => p.period_number !== 4); expect(sanityGate(a)).toMatch(/period/);
+        const np = api(); np.pbp[np.pbp.length - 1] = { ...np.pbp[np.pbp.length - 1], period_number: 'x' }; expect(sanityGate(np)).toMatch(/period/);
         const b = api(); b.pbp[b.pbp.length - 1] = { ...b.pbp[b.pbp.length - 1], home_score: 1 }; expect(sanityGate(b)).toMatch(/final score/);
         const c = api(); c.team_box = c.team_box.slice(0, 1); expect(sanityGate(c)).toMatch(/team_box/);
         const d = api(); d.player_box = d.player_box.slice(0, 4); expect(sanityGate(d)).toMatch(/player_box/);

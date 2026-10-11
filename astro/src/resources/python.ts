@@ -1349,7 +1349,7 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
         })
         text = await req.text();
     } catch (e: any) {
-        if (e?.name === 'TimeoutError' || e?.name === 'AbortError') throw new ProcessorError(504, `processor timed out after ${timeoutMs}ms: ${path}`);
+        if (timeoutMs && (e?.name === 'TimeoutError' || e?.name === 'AbortError')) throw new ProcessorError(504, `processor timed out after ${timeoutMs}ms: ${path}`);
         throw e;
     }
     if (!req.ok) throw new ProcessorError(req.status, text.slice(0, 500));

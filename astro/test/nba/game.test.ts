@@ -191,6 +191,15 @@ describe('pure helpers', () => {
         const eligible = proc.plays.filter((p) => p.n !== 1 && p.typeText !== 'End Period' && p.typeText !== 'End Game');
         expect(Math.abs(top[0].wpDelta!)).toBe(Math.max(...eligible.map((p) => Math.abs(p.wpDelta ?? 0))));
     });
+    test('the unfiltered top ten of the processor fixture includes the jump ball, and the filter holds on both sources', () => {
+        const raw = [...proc.plays].filter((p) => p.wpDelta != null).sort((a, b) => Math.abs(b.wpDelta!) - Math.abs(a.wpDelta!)).slice(0, 10);
+        expect(raw.some((p) => p.n === 1)).toBe(true);
+        for (const g of [proc, api]) {
+            const top = biggestPlays(g.plays);
+            expect(top).toHaveLength(10);
+            expect(top.some((p) => p.n === 1 || p.typeText === 'End Period' || p.typeText === 'End Game')).toBe(false);
+        }
+    });
     test('biggestPlays skips the first play and the period-end and game-end settle rows', () => {
         const mk = (n: number, typeText: string, wpDelta: number): NbaPlay => ({ ...proc.plays[10], n, id: String(n), typeText, wpDelta });
         const plays = [mk(1, 'Jumpball', 0.9), mk(2, 'End Period', -0.8), mk(3, 'End Game', 0.7), mk(4, 'Jump Shot', 0.1), mk(5, 'Jump Shot', -0.2)];
