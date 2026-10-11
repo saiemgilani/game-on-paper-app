@@ -1,0 +1,36 @@
+---
+// src/components/nba/NbaRankLists.astro
+// Where the player sits league-wide on five shooting numbers, with each list's top five
+// (blazing's RankLists.tsx), as Bootstrap cards.
+import { RANK_MIN_FG3A, RANK_MIN_FGA, type RankEntry, type RankMetric, type RankSummary } from '../../nba/data/ranks';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { playerHref } from '../../nba/links';
+interface Props { ranks: RankSummary[]; personId: number; seasonQuery: string }
+const { ranks, personId, seasonQuery } = Astro.props;
+const fmt = (metric: RankMetric, v: number) => (metric === 'fga' ? fmtInt(v) : fmtPct(v));
+const why: Record<RankMetric, string> = {
+  fga: `under ${RANK_MIN_FGA} FGA`, fgPct: `under ${RANK_MIN_FGA} FGA`, efgPct: `under ${RANK_MIN_FGA} FGA`,
+  fg3Pct: `under ${RANK_MIN_FGA} FGA or ${RANK_MIN_FG3A} 3PA`, tsPct: `under ${RANK_MIN_FGA} FGA or no season stats`,
+};
+const row = (r: RankEntry, metric: RankMetric) => ({ href: playerHref(r.person_id, seasonQuery), label: `${r.rank}. ${r.name}`, value: fmt(metric, r.value), me: r.person_id === personId });
+const listOf = (s: RankSummary) => [...s.top, ...(s.me && !s.top.some((r) => r.person_id === personId) ? [null, s.me] : [])].map((r) => (r === null ? null : row(r, s.metric)));
+---
+<section id="ranks" aria-label="League ranks" class="mb-3">
+  <h2 class="h5">League ranks</h2>
+  <p class="small text-muted">Among players with {RANK_MIN_FGA}+ field-goal attempts this regular season; season stats where the release has them, else play-by-play shots. 3P% also needs {RANK_MIN_FG3A}+ three-point attempts; TS% needs a season-stats row.</p>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3">
+    {ranks.map((s) => (
+      <div class="col">
+        <div class="card h-100"><div class="card-body p-3 small">
+          <p class="text-muted mb-1">{s.label}</p>
+          {s.me ? (<p class="h5 numeral mb-2">#{s.me.rank} <small class="text-muted fw-normal">of {s.of}</small> <span class="fs-6 fw-normal">{fmt(s.metric, s.me.value)}</span></p>) : (<p class="text-muted">not ranked ({why[s.metric]})</p>)}
+          <ol class="list-unstyled mb-0">
+            {listOf(s).map((v) => v === null
+              ? (<li aria-hidden="true" class="text-muted">&hellip;</li>)
+              : (<li class:list={['d-flex', 'justify-content-between', 'gap-2', { 'fw-bold': v.me }]}><a href={v.href} class="text-truncate">{v.label}</a><span class="numeral">{v.value}</span></li>))}
+          </ol>
+        </div></div>
+      </div>
+    ))}
+  </div>
+</section>
