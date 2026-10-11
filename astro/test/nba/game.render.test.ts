@@ -37,6 +37,18 @@ describe('/nba/game/[id] render', () => {
         const body = noScripts(html);
         for (const bad of ['NaN', 'null', 'undefined']) expect(body).not.toContain(bad);
     });
+    test('shot charts: one per team, and the no-locations message when every shot is unlocated', async () => {
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor')) });
+        let html = await render();
+        expect((html.match(/class="nba-chart"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+        expect(html).toContain('aria-pressed');
+        const j = read('game_401766458_processor');
+        for (const p of j.plays) { p.x_legacy = null; p.y_legacy = null; }
+        prep.mockResolvedValueOnce({ game: fromProcessor(j) });
+        html = await render();
+        expect(html).toContain('no shot locations for this game');
+        expect(html).not.toContain('class="nba-chart"');
+    });
     test('a null prior renders "no prior" without crashing', async () => {
         prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor')), prior: null } });
         const html = await render();
