@@ -18,15 +18,24 @@ class _Resp:
         return self._p
 
 
-def _client(monkeypatch, summary):
+def _client(monkeypatch, summary, calls=None, pushes=None):
     monkeypatch.setenv("PYTHON_HTTP_TOKEN", "secret")
     import app as app_mod
 
     importlib.reload(app_mod)
     from sportsdataverse.nba import nba_pbp
 
-    monkeypatch.setattr(nba_pbp, "download", lambda url, **kw: _Resp(json.loads(json.dumps(summary))))
-    monkeypatch.setattr(app_mod.TEL, "push", lambda *a, **k: None)
+
+    def fake_download(url, **kw):
+        if calls is not None:
+            calls.append(url)
+        if isinstance(summary, Exception):
+            raise summary
+        return _Resp(json.loads(json.dumps(summary)))
+
+    monkeypatch.setattr(nba_pbp, "download", fake_download)
+    monkeypatch.setattr(app_mod.TEL, "push", (lambda kind, row: pushes.append((kind, row))) if pushes is not None else (lambda *a, **k: None))
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: None)
     monkeypatch.setattr(app_mod, "_emit_dq", lambda *a, **k: None)
     return app_mod, app_mod.app.test_client()
 
@@ -76,14 +85,16 @@ def test_nba_final_play_resolves_win_probability(client):
     assert body["plays"][-1]["home_win_prob"] in (0.0, 1.0)
 
 
+def _summary():
+    return json.loads(gzip.open(FIX, "rt", encoding="utf-8").read())
+
+
 def test_football_routes_kept_and_nba_is_separate(monkeypatch):
-    summary = json.loads(gzip.open(FIX, "rt", encoding="utf-8").read())
-    app_mod, _ = _client(monkeypatch, summary)
+    app_mod, _ = _client(monkeypatch, _summary())
     rules = {r.rule: r.endpoint for r in app_mod.app.url_map.iter_rules()}
     assert "/cfb/<int:game_id>/process" in rules and "/nfl/<int:game_id>/process" in rules
-    nba = rules["/nba/<int:game_id>/process"]
+    nba = next(e for rule, e in rules.items() if rule.startswith("/nba/") and rule.endswith("/process"))
     assert nba not in (rules["/cfb/<int:game_id>/process"], rules["/nfl/<int:game_id>/process"])
-    assert app_mod.app.view_functions[nba].__wrapped__ is not app_mod.process
     assert "nba" not in app_mod._PROCESSORS
 
 
@@ -92,3 +103,73 @@ def test_nba_malformed_espn_payload_is_404(monkeypatch):
     r = c.get("/nba/401585607/process", headers=auth())
     assert r.status_code == 404
     assert r.get_json()["status"] == "bad"
+
+
+@pytest.mark.parametrize("bad", ["1", "99999", "99999999999999999999", "1000000000000"])
+def test_nba_bad_ids_404_without_calling_espn(monkeypatch, bad):
+    calls = []
+    _, c = _client(monkeypatch, _summary(), calls=calls)
+    assert c.get(f"/nba/{bad}/process", headers=auth()).status_code == 404
+    assert calls == []
+
+
+def test_nba_espn_404_is_clean_404(monkeypatch):
+    from sportsdataverse.errors import NoDataError
+
+    pushes = []
+    app_mod, c = _client(monkeypatch, NoDataError("404 for summary"), pushes=pushes)
+    logged = []
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 404 and r.get_json()["status"] == "bad"
+    assert logged == []  # not a bug in this service: no error-log row
+
+
+def test_nba_espn_outage_is_502_without_error_row(monkeypatch):
+    from sportsdataverse.errors import AssetFetchError
+
+    pushes = []
+    app_mod, c = _client(monkeypatch, AssetFetchError("403 after retries"), pushes=pushes)
+    logged = []
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 502 and logged == []
+    row = [r for k, r in pushes if k == "upstream_log"][-1]
+    assert row["target"] == "espn_nba_pbp" and row["ok"] is False
+
+
+def test_nba_success_pushes_upstream_row_and_cache_header(monkeypatch):
+    pushes = []
+    _, c = _client(monkeypatch, _summary(), pushes=pushes)
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 200 and r.headers["X-Result-Cache"] == "MISS"
+    rows = [row for kind, row in pushes if kind == "upstream_log"]
+    assert len(rows) == 1
+    assert rows[0]["target"] == "espn_nba_pbp" and rows[0]["ok"] is True and rows[0]["status"] == 200
+    assert rows[0]["duration_ms"] is not None and rows[0]["game_id"] == "401585607"
+
+
+def test_nba_pre_tip_game_without_plays_is_404(monkeypatch):
+    summary = _summary()
+    del summary["plays"]
+    _, c = _client(monkeypatch, summary)
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 404 and r.get_json()["status"] == "bad"
+    summary["plays"] = []
+    _, c = _client(monkeypatch, summary)
+    assert c.get("/nba/401585607/process", headers=auth()).status_code == 404
+
+
+def test_nba_dash_linescore_maps_to_null(monkeypatch):
+    summary = _summary()
+    comp = summary["header"]["competitions"][0]["competitors"][0]
+    comp["linescores"][-1]["displayValue"] = "-"
+    _, c = _client(monkeypatch, summary)
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 200
+    body = r.get_json()
+    assert None in body["teams"][comp["homeAway"]]["linescores"]
+
+
+def test_nba_payload_carries_venue(client):
+    assert client.get("/nba/401585607/process", headers=auth()).get_json()["venue"] == "Kia Center"

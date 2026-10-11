@@ -656,14 +656,18 @@ def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
 
-@app.route("/nba/<int:game_id>/process", methods=["GET"])
+@app.route("/nba/<int(min=100000,max=999999999999):game_id>/process", methods=["GET"])
 @require_auth_token
 def process_nba(game_id: int):
     """One NBA game for the Astro game page: sdv-py's game_page_frames as JSON.
 
     Deliberately not in _PROCESSORS (those are the football *PlayProcess classes with
-    participants knobs); the football routes are untouched by this function.
+    participants knobs); the football routes are untouched by this function. The id
+    converter bounds the id to 6-12 digits, so a malformed id 404s before any ESPN call
+    (and cannot overflow polars' i32 downstream).
     """
+    import polars as pl
+    from sportsdataverse.errors import AssetFetchError, NoDataError
     from sportsdataverse.nba.nba_game_page import game_page_frames
     from sportsdataverse.nba.nba_pbp import espn_nba_pbp
 
@@ -671,9 +675,39 @@ def process_nba(game_id: int):
 
     timings: dict = {}
     g.gop_meta = {"game_id": str(game_id), "league": "nba"}
+    log = logging.getLogger("root")
+
+    def upstream(ok: bool, status, error=None):
+        TEL.push(
+            "upstream_log",
+            {
+                "service": "python",
+                "target": "espn_nba_pbp",
+                "status": status,
+                "duration_ms": timings.get("espn_fetch_ms"),
+                "ok": ok,
+                "game_id": str(game_id),
+                "error": error,
+            },
+        )
+
+    def failed(body, code):
+        g.gop_meta = {**g.gop_meta, "render_outcome": "failed"}
+        return jsonify(body), code
+
+    fetched = False
     try:
-        with stage(timings, "espn_fetch"):
-            final = espn_nba_pbp(game_id)
+        try:
+            with stage(timings, "espn_fetch"):
+                final = espn_nba_pbp(game_id)
+        except pl.exceptions.ColumnNotFoundError:
+            # sdv-py builds the plays frame inside the fetch and has no column to find when ESPN
+            # shipped the game shell without a plays key (a game that has not tipped off)
+            final = {}
+        fetched = True
+        upstream(True, 200)
+        if not final.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
+            return failed({"status": "bad", "message": "No plays available for this game yet."}, 404)
         with stage(timings, "process"):
             frames = game_page_frames(final)
         payload = build_payload(game_id, final, frames)
@@ -681,25 +715,36 @@ def process_nba(game_id: int):
         body = orjson.dumps(
             payload, default=_orjson_default, option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS
         )
-        return Response(body, mimetype="application/json"), 200
+        response = Response(body, mimetype="application/json")
+        response.headers["X-Result-Cache"] = "MISS"
+        return response, 200
+    except NoDataError as e:  # ESPN answered 404: a clean "nothing here", not a bug in this service
+        if not fetched:
+            upstream(True, 404)
+        log.info("nba %s: ESPN has no data: %s", game_id, e)
+        return failed({"status": "bad", "message": "No data available for this game."}, 404)
+    except AssetFetchError as e:  # the fetch FAILED (rate limit, outage): answer unknown, not a stack trace
+        upstream(False, None, ("AssetFetchError: %s" % (e,))[:500])
+        log.warning("nba %s: ESPN fetch failed: %s", game_id, e)
+        return failed({"status": "bad", "message": "ESPN is unavailable. Try again shortly."}, 502)
     except KeyError as e:
         # same answer as the football routes for a payload ESPN has no usable data in
-        logging.getLogger("root").error("nba %s: malformed ESPN payload, threw 404: %r", game_id, e)
+        log.error("nba %s: malformed ESPN payload, threw 404: %r", game_id, e)
+        if not fetched:
+            upstream(False, None, ("KeyError: %r" % (e,))[:500])
         TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
-        g.gop_meta = {**g.gop_meta, "render_outcome": "failed"}
-        return jsonify({"status": "bad", "message": "ESPN payload is malformed. Data not available."}), 404
+        return failed({"status": "bad", "message": "ESPN payload is malformed. Data not available."}, 404)
     except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
         import traceback
 
-        logging.getLogger("root").error("nba %s: processing failed, threw 500: %r", game_id, e)
+        log.error("nba %s: processing failed, threw 500: %r", game_id, e)
         TEL.log_error(
             str(e),
             stack="".join(traceback.format_tb(e.__traceback__))[:4000],
             path=request.path,
             game_id=str(game_id),
         )
-        g.gop_meta = {**g.gop_meta, "render_outcome": "failed"}
-        return jsonify({"status": "bad", "message": "Unknown error occurred, check logs."}), 500
+        return failed({"status": "bad", "message": "Unknown error occurred, check logs."}, 500)
 
 
 def _sources(league: str, game_id: int):

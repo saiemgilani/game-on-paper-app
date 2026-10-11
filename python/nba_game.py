@@ -25,6 +25,14 @@ def _rows(df: pl.DataFrame, columns: list[str] | None = None) -> list[dict[str, 
     return out
 
 
+def _int_or_none(v: Any) -> int | None:
+    """ESPN linescore displayValue: '25', '25.0', or '-' for a period not played."""
+    try:
+        return int(float(v))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _side(final: dict, home_away: str) -> dict:
     comps = final["header"]["competitions"][0]["competitors"]
     return next(c for c in comps if c.get("homeAway") == home_away)
@@ -54,13 +62,14 @@ def build_payload(game_id: int, final: dict, frames: dict) -> dict[str, Any]:
             "team_id": tid,
             "box": box[0] if box else None,
             "rates": rr[0] if rr else None,
-            "linescores": [int(float(ls.get("displayValue", 0) or 0)) for ls in side.get("linescores", [])],
+            "linescores": [_int_or_none(ls.get("displayValue")) for ls in side.get("linescores", [])],
         }
 
     return {
         "gameId": game_id,
         "source": "processor",
         "header": final["header"],
+        "venue": ((final.get("gameInfo") or {}).get("venue") or {}).get("fullName"),
         "teamInfo": {"home": home["team"], "away": away["team"]},
         "status": {
             "name": status.get("type", {}).get("name"),
