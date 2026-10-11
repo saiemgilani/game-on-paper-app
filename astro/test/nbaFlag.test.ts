@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 // The NBA surface sits behind the 'nba' feature flag (utils/features.ts), gated once in
 // middleware exactly like 'nfl': every /nba path is the site's 404 unless the viewer
 // holds the preview cookie. Promotion flips 'preview' -> 'on' once the routes the nav already
-// links to (PR 2 and PR 3) and a football-Header NBA entry exist; see the flag's comment.
+// links to (PR 3) and a football-Header NBA entry exist; see the flag's comment.
 vi.mock('astro:env/server', () => ({ getSecret: (k: string) => (k === 'ADMIN_PASS' ? 'test-secret' : undefined) }));
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 

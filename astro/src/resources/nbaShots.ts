@@ -97,6 +97,14 @@ export function retrievePlayerShots(season: number, personId: number): Promise<S
     }, SUBJECT_TTL, true);
 }
 
+/** A team's regular-season shots, the lite columns only (the team page's dashboard and line). */
+export function retrieveTeamShots(season: number, teamId: number): Promise<ShotApiRow[]> {
+    return retrieveRows<ShotApiRow>('nba', 'shots', {
+        season: String(season), team_id: String(teamId), game_id__like: '002%',
+        select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
+    }, SUBJECT_TTL, true);
+}
+
 export function retrievePlayerGameRows(season: number, personId: number): Promise<PlayerGameRow[]> {
     return retrieveRows<PlayerGameRow>('nba', 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
 }
