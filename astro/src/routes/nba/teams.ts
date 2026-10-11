@@ -8,9 +8,8 @@ import type { AstroGlobal } from 'astro';
 import type { ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import { teamLinesFromRows, teamsFromSeasonRows } from '../../nba/tables';
-import { retrieveSeasonPlayerRows } from '../../resources/nbaShots';
-import { SEASON_CACHE, setCache, uncacheable } from './cache';
 import { resolveSeason } from './home';
+import { readSeasonRows } from './season';
 
 export interface NbaTeamsParams {
     season: number;
@@ -26,15 +25,7 @@ export type NbaTeamsPrep = { unavailable: true } | NbaTeamsParams;
 export async function prepareNbaTeams(Astro: AstroGlobal): Promise<NbaTeamsPrep> {
     Astro.locals.league = 'nba';
     const resolved = resolveSeason(Astro);
-    let rows;
-    try {
-        rows = await retrieveSeasonPlayerRows(resolved.season);
-    } catch (e: any) {
-        console.error(`ERROR while loading the ${resolved.season} season players for /nba/teams: ${e}, ${e?.stack}`);
-        uncacheable(Astro);
-        return { unavailable: true };
-    }
-    if (rows.length === 0) uncacheable(Astro);
-    else setCache(Astro, SEASON_CACHE);
+    const rows = await readSeasonRows(Astro, resolved.season, '/nba/teams');
+    if (rows === null) return { unavailable: true };
     return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season), lines: teamLinesFromRows(rows) };
 }
