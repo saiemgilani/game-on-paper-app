@@ -550,14 +550,17 @@ const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
  * Caches under its OWN keys (`scoreboard-day:<league>`), never the `scoreboard:<league>` keys
  * getCurrentScoreboard stores an array under. Live: `{day, events}` for the refresh window plus a
  * day-long last-good copy. Dated: its own key, a day's TTL, never the live key, and an ESPN
- * failure is reported as `degraded` rather than cached.
+ * failure is reported as `degraded` rather than cached. A dated day is held a day only when the
+ * caller says it is `pastDay`; otherwise it gets the live TTL, and an empty day is never cached.
+ * A KV read error is a cache miss. The live day comes from ESPN's body, never the server clock.
  */
-export async function getScoreboardForDay(league: League, espnDate: string | null): Promise<ScoreboardDay> {
+export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean } = {}): Promise<ScoreboardDay> {
     const cfg = LEAGUES[league];
     const liveKey = `scoreboard-day:${league}`;
     const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
     const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    const cached = await env.ESPN_API_CACHE.get(key, 'json') as { day: string; events: ESPNScheduleEvent[] } | null;
+    const liveTTL = CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER;
+    const cached = await env.ESPN_API_CACHE.get(key, 'json').catch((e) => { console.warn(`ESPN API: KV read failed for ${key}: ${e}`); return null; }) as { day: string; events: ESPNScheduleEvent[] } | null;
     if (cached?.events) {
         console.info(`ESPN API cache hit: ${key}`);
         return { ...cached, degraded: false };
@@ -568,20 +571,21 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
         if (!resp.ok) throw new Error(`ESPN API: scoreboard request received ${resp.status}`);
         const body: ESPNCoreScoreboardResponse = await resp.json();
         const sb = body?.content?.sbData;
-        const day = espnDate ? isoDay(espnDate) : (sb?.day?.date ?? new Date().toISOString().slice(0, 10));
+        if (!espnDate && !sb?.day?.date) throw new Error('ESPN API: scoreboard response carried no day');
+        const day = espnDate ? isoDay(espnDate) : sb!.day!.date;
         const events = sb?.events ?? [];
         const value = JSON.stringify({ day, events });
         if (espnDate) {
-            await safeCachePut(env.ESPN_API_CACHE, key, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });
+            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? DATED_SCOREBOARD_TTL : liveTTL, { fetchedAt: Date.now() });
         } else {
-            await safeCachePut(env.ESPN_API_CACHE, key, value, CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER, { fetchedAt: Date.now() });
+            await safeCachePut(env.ESPN_API_CACHE, key, value, liveTTL, { fetchedAt: Date.now() });
             if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, `${liveKey}:lastgood`, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });
         }
         return { day, events, degraded: false };
     } catch (e) {
         console.error(`ERROR while pulling the ${league} scoreboard for ${espnDate ?? 'today'}: ${e}`);
         if (!espnDate) {
-            const lastGood = await env.ESPN_API_CACHE.getWithMetadata(`${liveKey}:lastgood`, 'json');
+            const lastGood = await env.ESPN_API_CACHE.getWithMetadata(`${liveKey}:lastgood`, 'json').catch(() => null);
             const v = lastGood?.value as { day: string; events: ESPNScheduleEvent[] } | null;
             if (v?.events) {
                 console.warn(`ESPN API: serving last-good ${league} scoreboard from ${v.day}`);
