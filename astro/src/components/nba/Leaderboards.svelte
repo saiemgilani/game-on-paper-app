@@ -50,6 +50,7 @@
 </p>
 <div class="table-responsive">
     <table class="table table-sm" id="nba-leaders">
+        <caption class="visually-hidden">{LEADER_LABELS[metric]}, last {n} games</caption>
         <thead>
             <tr>
                 <th scope="col">#</th>
@@ -76,7 +77,19 @@
     <details>
         <summary class="small">{moreNets.length} more Nets</summary>
         <div class="table-responsive">
-            <table class="table table-sm mt-1"><tbody>{#each moreNets as r (r.person_id)}{@render row(r)}{/each}</tbody></table>
+            <table class="table table-sm mt-1">
+                <caption class="visually-hidden">More Nets: {LEADER_LABELS[metric]}, last {n} games</caption>
+                <thead class="visually-hidden">
+                    <tr>
+                        <th scope="col">#</th><th scope="col">Player</th><th scope="col">Team</th>
+                        <th scope="col">{metric === 'improved' ? 'eFG% gain' : LEADER_LABELS[metric]}</th>
+                        <th scope="col">{metric === 'fg3Pct' ? '3PM/3PA' : 'FGM/FGA'}</th>
+                        {#if metric === 'improved'}<th scope="col">Season eFG%</th>{/if}
+                        <th scope="col">Window</th>
+                    </tr>
+                </thead>
+                <tbody>{#each moreNets as r (r.person_id)}{@render row(r)}{/each}</tbody>
+            </table>
         </div>
     </details>
 {/if}

@@ -10,9 +10,10 @@ import type { AstroGlobal } from 'astro';
 import { seasonPlayerGamesFromRows } from '../../nba/adapters';
 import { leaderBoards, type Boards } from '../../nba/data/leaders';
 import { NETS_TEAM_ID } from '../../nba/data/teams';
-import { retrieveSeasonPlayerGameRows, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrieveSeasonPlayerGameRows } from '../../resources/nbaShots';
 import { SEASON_CACHE, setCache, uncacheable } from './cache';
 import { resolveSeason } from './home';
+import { readSeasonRows } from './season';
 
 export interface NbaLeadersParams {
     season: number;
@@ -29,18 +30,17 @@ export async function prepareNbaLeaders(Astro: AstroGlobal): Promise<NbaLeadersP
     Astro.locals.league = 'nba';
     const resolved = resolveSeason(Astro);
     const { season } = resolved;
-    const reads = await Promise.allSettled([retrieveSeasonPlayerRows(season), retrieveSeasonPlayerGameRows(season)]);
-    const [playersR, gamesR] = reads;
-    for (const [name, r] of [['season players', playersR], ['season game rows', gamesR]] as const) {
-        if (r.status === 'rejected') {
-            console.error(`ERROR while loading ${name} for /nba/leaders ${season}: ${r.reason}`);
+    // the season-players read settles the cache policy; it is set below once the game rows are in too
+    const [players, games] = await Promise.all([
+        readSeasonRows(Astro, season, '/nba/leaders', false),
+        retrieveSeasonPlayerGameRows(season).catch((e: any) => {
+            console.error(`ERROR while loading season game rows for /nba/leaders ${season}: ${e}, ${e?.stack}`);
             uncacheable(Astro);
-            return { unavailable: true };
-        }
-    }
-    if (playersR.status !== 'fulfilled' || gamesR.status !== 'fulfilled') return { unavailable: true };
-    const players = seasonPlayerGamesFromRows(gamesR.value, playersR.value);
-    if (playersR.value.length === 0) uncacheable(Astro); // not ingested yet
-    else setCache(Astro, SEASON_CACHE);
-    return { ...resolved, boards: players.length ? leaderBoards(players, NETS_TEAM_ID) : null };
+            return null;
+        }),
+    ]);
+    if (!players || !games) return { unavailable: true };
+    const placed = seasonPlayerGamesFromRows(games, players);
+    if (players.length > 0) setCache(Astro, SEASON_CACHE); // empty: readSeasonRows already made it uncacheable
+    return { ...resolved, boards: placed.length ? leaderBoards(placed, NETS_TEAM_ID) : null };
 }

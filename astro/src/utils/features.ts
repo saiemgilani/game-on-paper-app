@@ -41,6 +41,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // Data API's nba_stats tables. Promote to 'on' when the design owner signs off: that is the flag flip
     // alone (PR 2 and PR 3 shipped the routes; the Header's league menu and the sitemap react to 'on',
     // see nbaHeaderOn.test.ts and sitemapNbaOn.test.ts).
+    //
+    // Promotion checklist: after the flip deploys, cached football pages keep the old Header (no NBA
+    // entry) for up to 6 h + 6 h stale -- purge, or confirm the deploy clears the cache. Before the
+    // flip, `?view=live&flags=nba:on` previews the Header entry (isFeaturePublic honours the override).
     'nba': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
@@ -96,4 +100,14 @@ export function isFeatureEnabled(
     if (state === 'on') return true;
     if (state === 'preview') return locals?.preview === true;
     return false;
+}
+
+/**
+ * Is the flag public for this request: 'on', or an admin's per-request override. Unlike
+ * isFeatureEnabled it is NOT true for a preview-cookie holder, so a 'preview' flag adds nothing to a
+ * public-facing surface (the football Header's league menu) for them.
+ */
+export function isFeaturePublic(name: string, locals: { flagOverrides?: Record<string, boolean> } | undefined): boolean {
+    const override = locals?.flagOverrides?.[name];
+    return override !== undefined ? override : FLAGS[name] === 'on';
 }

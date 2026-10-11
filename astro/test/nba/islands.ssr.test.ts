@@ -67,5 +67,7 @@ test('Leaderboards server-renders', () => {
   expect(html).toContain('10 games');
   expect(html).toContain('Nets further down');
   expect(html).toContain('more Nets');
+  expect(html).toMatch(/<caption class="visually-hidden">[^<]*last 10 games<\/caption>/); // the leaders table is named
+  expect(html).toMatch(/<details>[\s\S]*<thead class="visually-hidden">[\s\S]*<th scope="col">Player<\/th>/); // so is the <details> one
   expect(html).not.toContain('undefined');
 });

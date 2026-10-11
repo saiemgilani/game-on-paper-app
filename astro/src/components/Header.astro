@@ -1,7 +1,7 @@
 ---
 import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
-import { FLAGS, isFeatureEnabled } from "../utils/features";
+import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
 
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
@@ -10,7 +10,7 @@ const football = cfg.sport === 'football';
 // while a non-football league is in preview, and gains it once that league is public; a basketball
 // viewer sees cfb always and nfl behind its flag
 const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league
-    && (football ? (LEAGUES[lg].sport === 'football' || FLAGS[lg] === 'on') : true)
+    && (football ? (LEAGUES[lg].sport === 'football' || isFeaturePublic(lg, Astro.locals)) : true)
     && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
 ---
