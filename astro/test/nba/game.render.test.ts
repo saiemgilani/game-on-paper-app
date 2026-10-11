@@ -108,7 +108,7 @@ describe('/nba/game/[id] render', () => {
         summary.mockResolvedValueOnce({ pickcenter: [{ details: 'ORL -3.5' }] });
         prep.mockResolvedValueOnce(pre());
         expect(noScripts(await render())).toContain('Line: ORL -3.5');
-        expect(summary).toHaveBeenLastCalledWith(1, 'nba');
+        expect(summary).toHaveBeenLastCalledWith(1, 'nba', expect.any(AbortSignal));
         summary.mockResolvedValueOnce({ pickcenter: [] });
         prep.mockResolvedValueOnce(pre());
         expect(noScripts(await render())).not.toContain('Line:');
@@ -145,6 +145,26 @@ describe('/nba/game/[id] render', () => {
         if (dnp) expect(body).toContain(dnp.reason ?? 'DNP');
         expect(body).toContain('–');
         expect(body).not.toMatch(/>null<|>undefined<|NaN|null-null/);
+    });
+    test('four factors: bold marks the better side (lower TOV% wins), both tables scroll and name the metric column', async () => {
+        const game = fromProcessor(read('game_401766458_processor'));
+        prep.mockResolvedValueOnce({ game });
+        const body = noScripts(await render());
+        const row = (label: string) => body.match(new RegExp(`<th scope="row"[^>]*>${label}</th>(.*?)</tr>`))![1];
+        const tov = row('TOV%');
+        expect(tov).toMatch(/<td class="[^"]*fw-bold[^"]*">7\.5%<\/td>\s*<td class="[^"]*">8\.9%<\/td>/); // ATL (away) 7.5 beats ORL 8.9
+        expect(tov).not.toMatch(/8\.9%<\/td>.*fw-bold/);
+        expect(row('Possessions')).not.toContain('fw-bold');
+        expect(body.match(/<div class="table-responsive"><table[^>]*aria-label="(Four factors|Team box score)"/g)).toHaveLength(2);
+        expect(body.match(/<span class="visually-hidden">Metric<\/span>/g)!.length).toBeGreaterThanOrEqual(2);
+    });
+    test('a null leading total collapses the parenthesised team-box cells to a single dash', async () => {
+        const g = fromProcessor(read('game_401766458_processor'));
+        g.home.box!.total_rebounds = null; g.home.box!.total_turnovers = null;
+        prep.mockResolvedValueOnce({ game: g });
+        const body = noScripts(await render());
+        expect(body).not.toMatch(/–\s*\(/);
+        expect(body).not.toContain('– + –');
     });
     test('null team-box counts and rates render dashes, not null or NaN', async () => {
         const g = fromProcessor(read('game_401766458_processor'));

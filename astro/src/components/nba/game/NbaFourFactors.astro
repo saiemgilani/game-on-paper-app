@@ -24,8 +24,8 @@ const minutes = h?.game_minutes ?? a?.game_minutes ?? null; // from Python; noth
 ---
 {(!h || !a) ? <p class="text-muted">Four factors are unavailable for this game.</p> : (
 <>
-<table class="table table-sm numeral w-auto" aria-label="Four factors">
-    <thead><tr><th scope="col"></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Four factors">
+    <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
     <tbody>
         {rows.map((r) => (
             <tr>
@@ -35,7 +35,7 @@ const minutes = h?.game_minutes ?? a?.game_minutes ?? null; // from Python; noth
             </tr>
         ))}
     </tbody>
-</table>
+</table></div>
 <p class="small text-muted">Bold marks the better side. Possessions are Oliver's estimate (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams); ratings are per 100 possessions{minutes != null ? `; pace is per ${minutes} minutes${minutes > 48 ? ' (overtime included)' : ''}` : ''}.</p>
 </>
 )}
