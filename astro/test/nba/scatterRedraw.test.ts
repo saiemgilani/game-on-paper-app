@@ -31,7 +31,7 @@ test('changing the y axis redraws with the kept zoom; Reset zoom redraws at iden
     const render = vi.mocked(renderScatter);
     FakeResizeObserver.last!.fire(600);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(render.mock.calls[0][2]).toMatchObject({ x: 'ptsPg', y: 'efgPct', faces: false, filter: '' });
+    expect(render.mock.calls[0][2]).toMatchObject({ x: 'ptsPg', y: 'efgPct', faces: false, filter: '', canvas: expect.any(HTMLCanvasElement) });
     const y = [...target.querySelectorAll('select')].find((s) => s.name === 'y')!;
     y.value = 'fgPct';
     y.dispatchEvent(new Event('change'));

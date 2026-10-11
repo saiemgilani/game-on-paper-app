@@ -11,6 +11,7 @@
     let { points, x, y, faces, filter, resetKey, title }: { points: ScatterPoint[]; x: ScatterMetric; y: ScatterMetric; faces: boolean; filter: string; resetKey: number; title: string } = $props();
     let canvas: HTMLCanvasElement | null = $state(null);
     let transform: ZoomTransform = zoomIdentity;
+    // svelte-ignore state_referenced_locally -- the initial key is the baseline (blazing's useRef(resetKey)); later keys are read eagerly in the derived below
     let lastReset = resetKey;
     // read every input here, not inside the closure: that is what makes the derived change and Svelte call the action's update
     const draw: Draw = $derived.by(() => {
