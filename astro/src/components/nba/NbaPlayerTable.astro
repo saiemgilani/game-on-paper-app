@@ -12,7 +12,8 @@ const { rows, seasonQuery, sort, dir, basePath, params, defaults, id = 'nba-play
 // the default order (attempts desc) is the canonical URL; the sorted column links to its other direction
 const sortDefaults = { ...defaults, sort: 'attempts', dir: 'desc' };
 const hrefFor = (key: PlayerSortKey) => withParams(basePath, { ...params, sort: key, dir: key === sort && dir === 'desc' ? 'asc' : 'desc' }, sortDefaults);
-const ariaSort = (key: PlayerSortKey) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : 'none');
+// aria-sort sits on the sorted header only (ARIA: at most one per table), the others carry none
+const ariaSort = (key: PlayerSortKey) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : undefined);
 const wide = (c: { wide?: boolean }) => (c.wide ? 'd-none d-sm-table-cell' : '');
 ---
 <div class="table-responsive">

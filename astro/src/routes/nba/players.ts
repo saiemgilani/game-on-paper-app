@@ -43,7 +43,7 @@ export async function prepareNbaPlayers(Astro: AstroGlobal): Promise<NbaPlayersP
     const resolved = resolveSeason(Astro);
     const { season } = resolved;
     const defaults = { season: String(resolved.current), team: netsTricode(season) };
-    const requested = (Astro.url.searchParams.get('team') ?? defaults.team).toUpperCase();
+    const requested = (Astro.url.searchParams.get('team') || defaults.team).toUpperCase(); // `?team=` (empty) is the default too
     const sort = parseSort(PLAYER_SORT_KEYS, Astro.url.searchParams.get('sort'), 'attempts');
     const dir = parseDir(Astro.url.searchParams.get('dir'));
 

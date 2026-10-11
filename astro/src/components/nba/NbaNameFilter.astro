@@ -16,6 +16,8 @@ const inputId = `${tableId}-filter`;
   (() => {
     const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     for (const box of document.querySelectorAll('[data-nba-filter]')) {
+      if (box.dataset.bound) continue; // every inline copy of this script runs; bind each box once
+      box.dataset.bound = '1';
       const input = box.querySelector('input');
       const count = box.querySelector('[data-count]');
       if (!input || !count) continue;
