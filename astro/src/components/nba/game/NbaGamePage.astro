@@ -4,7 +4,8 @@ import Panel from '../../../layouts/panel/GenericPanel.astro';
 import NavScroller, { type ScrollerItem } from '../../NavScroller.astro';
 import NbaGameHeader from './NbaGameHeader.astro';
 import { isFeatureEnabled } from '../../../utils/features';
-import { pickGameColors } from '../../../utils/misc';
+import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
+import { scoreboardBackHref } from '../../../nba/scoreboard';
 import type { NbaGame } from '../../../resources/nbaGame';
 // Tasks 5b-5d fill the panel bodies below (four factors, team box, players, win probability, plays, shots).
 
@@ -12,7 +13,7 @@ interface Props { game: NbaGame }
 const { game } = Astro.props;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
-const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', url: '/nba/scoreboard', active: false }, { title: `${game.away.team.abbreviation} @ ${game.home.team.abbreviation}`, active: true }];
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', url: scoreboardBackHref(game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
 const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null; // consumed by 5c
 ---
