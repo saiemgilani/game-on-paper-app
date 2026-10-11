@@ -11,7 +11,11 @@ import { ZONES } from '../../src/nba/data/aggregate';
 import { buildDashboard } from '../../src/nba/dashboard';
 import { toLite } from '../../src/nba/data/shots';
 import type { LeagueContextRow } from '../../src/resources/nbaShots';
-import { apiSeasonPlayerRows } from './rows';
+import { apiSeasonPlayerRows, seasonPlayerRows } from './rows';
+import Leaderboards from '../../src/components/nba/Leaderboards.svelte';
+import { leaderBoards } from '../../src/nba/data/leaders';
+import { seasonPlayerGamesFromRows } from '../../src/nba/adapters';
+import type { PlayerGameRow } from '../../src/resources/nbaShots';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 
@@ -49,5 +53,18 @@ test('ScatterExplorer server-renders', () => {
   const html = render(ScatterExplorer, { props: { points, subject: 'NBA 2025-26' } }).body;
   expect(html).toContain('<desc>');
   expect(html).toContain('Reset zoom');
+  expect(html).not.toContain('undefined');
+});
+
+test('Leaderboards server-renders', () => {
+  const byPlayer = read('player_games') as Record<string, any[]>;
+  const gameRows = (): PlayerGameRow[] => Object.entries(byPlayer).flatMap(([pid, gs]) => gs.map((g) => ({
+    season: 2026, person_id: Number(pid), game_id: g.game_id, team_id: g.team_id, team_tricode: 'BKN', attempts: g.attempts, makes: g.makes,
+    fg3a: g.fg3a, fg3m: g.fg3m, game_date: g.date, opponent_id: g.opponent_id, opponent: g.opponent, venue: g.venue, win: g.win,
+  })));
+  const boards = leaderBoards(seasonPlayerGamesFromRows(gameRows(), seasonPlayerRows()), 1610612751);
+  const html = render(Leaderboards, { props: { boards, netsTeamId: 1610612751, seasonQuery: '' } }).body;
+  expect(html).toContain('id="nba-leaders"');
+  expect(html).toContain('10 games');
   expect(html).not.toContain('undefined');
 });
