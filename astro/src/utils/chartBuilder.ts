@@ -20,6 +20,15 @@ export function median(values: readonly (number | null | undefined)[]): number |
     return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
 
+/**
+ * The crosshair: both medians and the team count over the teams that plot (x and y both finite),
+ * so a team missing one axis moves neither line.
+ */
+export function plottedMedians(points: readonly { x: unknown; y: unknown }[]) {
+    const plotted = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)) as { x: number; y: number }[];
+    return { teams: plotted.length, x: median(plotted.map((p) => p.x)), y: median(plotted.map((p) => p.y)) };
+}
+
 export interface RailFamily { family: string; metrics: { key: string; title: string }[] }
 const FAMILY_ORDER = ['Differential: Passing', 'Differential: Rushing', 'Differential: Other', 'Offensive: Passing',
     'Defensive: Passing', 'Offensive: Rushing', 'Defensive: Rushing', 'Offensive: Other', 'Defensive: Other'];

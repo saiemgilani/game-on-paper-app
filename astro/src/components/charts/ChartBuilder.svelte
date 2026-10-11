@@ -5,7 +5,7 @@
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, metricRail, plottedMedians, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -95,9 +95,10 @@
         // the public builder's mean, as on main (it drops zeros, so a column of zeros throws into the error note)
         const mean = (k: 'x' | 'y') => (chartedPoints.map((t: any) => parseFloat(t[k])).filter((t: any) => !!t).reduce((a: number, b: number) => a + b)) / chartedPoints.length
         // v2 draws the MEDIAN crosshair (quadrants split the field in half), and never computes the mean.
-        // A team with no value (null) is skipped by median(), never read as 0; a column of zeros has median 0.
-        const centerX = v2 ? (median(chartedPoints.map((t: any) => t.x)) ?? 0) : mean('x');
-        const centerY = v2 ? (median(chartedPoints.map((t: any) => t.y)) ?? 0) : mean('y');
+        // Both medians come from the teams that plot (x and y both present), never reading a null as 0.
+        const crosshair = v2 ? plottedMedians(chartedPoints) : null;
+        const centerX = crosshair ? (crosshair.x ?? 0) : mean('x');
+        const centerY = crosshair ? (crosshair.y ?? 0) : mean('y');
         console.log(`X: centre - ${centerX}, min - ${minX}, max - ${maxX}`)
         console.log(`Y: centre - ${centerY}, min - ${minY}, max - ${maxY}`)
 
@@ -121,8 +122,8 @@
         const shouldFlipXAxis = lowerIsBetter(selectedMetricX);
         const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
             metricHasBetterSide(selectedMetricX), metricHasBetterSide(selectedMetricY));
-        if (v2) {
-            summary = chartSummary(chartedPoints.filter((t: any) => Number.isFinite(t.x) && Number.isFinite(t.y)).length,
+        if (crosshair) {
+            summary = chartSummary(crosshair.teams,
                 { title: generateTeamMetricTitle(selectedMetricX), median: formatNumberForMetric(selectedMetricX, centerX) },
                 { title: generateTeamMetricTitle(selectedMetricY), median: formatNumberForMetric(selectedMetricY, centerY) }, quadrants);
         }

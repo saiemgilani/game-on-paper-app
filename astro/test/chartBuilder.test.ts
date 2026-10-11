@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { FLAGS, isFeatureEnabled } from '../src/utils/features';
-import { builderUrl, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
+import { builderUrl, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, median, metricRail, plottedMedians, quadrantLabels, randomAxes } from '../src/utils/chartBuilder';
 import { SDV_TEAM_METRIC_CATEGORIES } from '../src/utils/constants';
 import { metricHasBetterSide, shouldInvertSortForMetric } from '../src/utils/misc';
 
@@ -36,6 +36,13 @@ describe('chart builder helpers', () => {
         expect(cfb2026.filter((r) => r.red_zone_success_off_pass === null).map((r) => r.team_id)).toEqual([242]);
         // 137 values -> the 69th; counting Rice as 0 would give 0.3798…
         expect(median(cfb2026.map((r) => r.red_zone_success_off_pass))).toBe(0.38461538461538464);
+    });
+
+    test('plottedMedians: both crosshair medians come from the teams that plot, so Rice moves neither line', () => {
+        const points = cfb2026.map((r) => ({ x: r.red_zone_success_off_pass, y: r.success_off }));
+        // 137 teams have both; the y median over all 138 (Rice included) would be 0.436575…
+        expect(plottedMedians(points)).toEqual({ teams: 137, x: 0.38461538461538464, y: 0.4369369369369369 });
+        expect(plottedMedians([{ x: null, y: 1 }, { x: 2, y: undefined }])).toEqual({ teams: 0, x: null, y: null });
     });
 
     test('metricRail: every plottable column once, in the fixed family order, canonical titles', () => {

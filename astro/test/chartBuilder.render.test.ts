@@ -5,7 +5,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { render as renderSvelte } from 'svelte/server';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { median, metricRail } from '../src/utils/chartBuilder';
+import { metricRail, plottedMedians } from '../src/utils/chartBuilder';
 import { LEAGUES } from '../src/utils/league';
 
 // /charts/builder and its /nfl twin, rendered from real Data API rows: the cfb
@@ -152,10 +152,9 @@ describe('chart-builder-v2 on', () => {
         expect(props).toMatchObject({ mode: 'logos', highlight: 'x'.repeat(60) });
     });
 
-    test('the crosshair median over the island points skips the team with no value', async () => {
+    test('the crosshair medians over the island points skip the team with no x, on both axes', async () => {
         const { points } = island(await render('cfb', QUERY.cfb, true));
         expect(points.find((p: any) => p.team_id === 242).x).toBeNull();
-        expect(median(points.map((p: any) => p.x))).toBe(0.38461538461538464);
-        expect(median(points.map((p: any) => p.y))).toBe((0.43621399176954734 + 0.4369369369369369) / 2);
+        expect(plottedMedians(points)).toEqual({ teams: 137, x: 0.38461538461538464, y: 0.4369369369369369 });
     });
 });
