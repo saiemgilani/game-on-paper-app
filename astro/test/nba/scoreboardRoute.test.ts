@@ -62,6 +62,15 @@ describe('prepareNbaScoreboard', () => {
         expect(sb).toHaveBeenNthCalledWith(2, 'nba', '20261025', {});
         expect(cache[0]).toEqual(FUTURE_DAY_CACHE);
     });
+    test("ESPN's next day (live KV lag at rollover) keeps the live cache; a fresh page is not stale", async () => {
+        sb.mockResolvedValueOnce(liveDay());
+        sb.mockResolvedValueOnce({ day: '2026-10-22', events: [], degraded: false });
+        const { prepareNbaScoreboard, LIVE_SCOREBOARD_CACHE } = await import('../../src/routes/nba/scoreboard');
+        const { astro, cache } = fakeAstro('/nba/scoreboard?date=2026-10-22');
+        const r = await prepareNbaScoreboard(astro);
+        expect(cache[0]).toEqual(LIVE_SCOREBOARD_CACHE);
+        expect(!('badDate' in r) && r.stale === false && !r.isLive).toBe(true);
+    });
     test('a bad date makes zero ESPN calls and is uncacheable', async () => {
         const { prepareNbaScoreboard } = await import('../../src/routes/nba/scoreboard');
         for (const [q, reason] of [['2025-02-30', 'calendar'], ['x', 'format'], ['1990-01-01', 'range'], ['2999-01-01', 'range']] as const) {
@@ -102,7 +111,7 @@ describe('prepareNbaScoreboard', () => {
         const r = await prepareNbaScoreboard(astro);
         expect(cache).toEqual([false]);
         expect(headers.get('Cache-Control')).toBe('no-store');
-        expect(!('badDate' in r) && r.degraded && r.games.length === 0).toBe(true);
+        expect(!('badDate' in r) && r.degraded && r.games.length === 0 && r.stale && !r.isLive).toBe(true);
         expect(pushed).toHaveLength(0);
     });
     test('stale (last-good) live read: games render, uncacheable, no telemetry; a dated past day is not pastDay', async () => {
@@ -110,7 +119,7 @@ describe('prepareNbaScoreboard', () => {
         const { prepareNbaScoreboard } = await import('../../src/routes/nba/scoreboard');
         let t = fakeAstro('/nba/scoreboard');
         const r = await prepareNbaScoreboard(t.astro);
-        expect(!('badDate' in r) && r.games.length === 1).toBe(true);
+        expect(!('badDate' in r) && r.games.length === 1 && r.stale && !r.isLive && r.day === '2026-10-19').toBe(true);
         expect(t.cache).toEqual([false]);
         expect(t.headers.get('Cache-Control')).toBe('no-store');
         expect(pushed).toHaveLength(0);

@@ -13,6 +13,8 @@ import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from '../../utils/config'
 export type NbaScoreboardParams = {
     day: string; isLive: boolean; degraded: boolean; games: ESPNScheduleEvent[];
     nav: { prev: string; next: string; label: string }; today: string;
+    /** The live board was last-good or degraded: `day` is what was served, never "tonight". */
+    stale: boolean;
 };
 export type NbaScoreboardPrep = { badDate: 'format' | 'calendar' | 'range' } | NbaScoreboardParams;
 
@@ -35,20 +37,22 @@ export async function prepareNbaScoreboard(Astro: AstroGlobal): Promise<NbaScore
     const live = await getScoreboardForDay('nba', null);
     const fresh = !live.degraded && !live.stale;
     const date = raw ?? live.day;
-    const isLive = raw === null || (fresh && raw === live.day);
-    const board = isLive ? live : await getScoreboardForDay('nba', toEspnDate(date), fresh && date < live.day ? { pastDay: true } : {});
+    const useLive = raw === null || (fresh && raw === live.day);
+    const isLive = useLive && fresh;
+    const board = useLive ? live : await getScoreboardForDay('nba', toEspnDate(date), fresh && date < live.day ? { pastDay: true } : {});
     const games = sortScoreboard(board.events);
 
-    if (board.degraded || board.stale || (!isLive && !fresh)) {
+    if (board.degraded || board.stale || (!useLive && !fresh)) {
         // Not ESPN-confirmed: no cache (a fresh retry beats an hour of a guess) and no telemetry.
         uncacheable(Astro);
     } else if (isLive) {
         setCache(Astro, LIVE_SCOREBOARD_CACHE);
         feedGameMeta(games);
     } else {
-        setCache(Astro, date < live.day ? PAST_DAY_CACHE : FUTURE_DAY_CACHE);
+        // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
+        setCache(Astro, date < live.day ? PAST_DAY_CACHE : date === dayNav(live.day).next ? LIVE_SCOREBOARD_CACHE : FUTURE_DAY_CACHE);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day };
+    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, stale: !fresh };
 }
 
 /** One upserted gop.game_meta row per live event, as routes/scoreboard.ts does for football. */
