@@ -109,6 +109,11 @@ export function retrievePlayerGameRows(season: number, personId: number): Promis
     return retrieveRows<PlayerGameRow>('nba', 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
 }
 
+/** Every player's game rows for the season (the leaders page's input; ~25k rows, under the cap). */
+export function retrieveSeasonPlayerGameRows(season: number): Promise<PlayerGameRow[]> {
+    return retrieveRows<PlayerGameRow>('nba', 'shot_player_games', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+}
+
 /** Every season he took a regular-season shot in, ascending (the season picker). */
 export async function retrievePlayerSeasons(personId: number): Promise<number[]> {
     const rows = await retrieveRows<{ season: number }>('nba', 'shot_season_players', { person_id: String(personId), select: 'season', limit: LIMIT }, SEASON_TTL, true);
