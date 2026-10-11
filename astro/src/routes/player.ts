@@ -187,11 +187,15 @@ export async function loadGameLadder(season: number, league: League, group: stri
         { group: null, minPlays: GAME_PERCENTILE_MIN_PLAYS },
         NO_COHORT,
     ];
-    // all steps at once (a 404 is never cached, so serial reads cost a round trip each);
-    // the first non-empty IN ORDER still wins, and a read that throws still rejects
-    const reads = await Promise.all(steps.map((c) => retrievePlayerGamePercentiles(season, league, c.group, c.minPlays)));
-    const i = reads.findIndex((b) => Object.keys(b).length > 0);
-    return i >= 0 ? { breaks: reads[i], cohort: steps[i] } : { breaks: {}, cohort: NO_COHORT };
+    // all steps at once (a 404 is never cached, so serial reads cost a round trip each),
+    // read back in order exactly as the serial chain would: the first non-empty wins, an
+    // empty one moves on, and a throw counts only if no earlier step had answered
+    const reads = await Promise.allSettled(steps.map((c) => retrievePlayerGamePercentiles(season, league, c.group, c.minPlays)));
+    for (const [i, r] of reads.entries()) {
+        if (r.status === 'rejected') throw r.reason;
+        if (Object.keys(r.value).length > 0) return { breaks: r.value, cohort: steps[i] };
+    }
+    return { breaks: {}, cohort: NO_COHORT };
 }
 
 /**
