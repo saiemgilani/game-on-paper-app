@@ -38,11 +38,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // The whole NBA surface (pages/nba/**, the Header's league menu entry). Gated once
     // in middleware like 'nfl': a viewer without the preview cookie gets the site's 404
     // for any /nba path. The Blazing the Nets shooting dashboards, read live from the
-    // Data API's nba_stats tables. Promote to 'on' when the design owner signs off AND:
-    // PR 3 has shipped /nba/scatter, /nba/leaders and the sitemap's /nba URLs (PR 2's
-    // routes shipped) -- the Header's basketball entries, the "All players"/"All teams"
-    // links and the Players breadcrumb already point there; and the football Header has
-    // gained an NBA entry (it lists football leagues only today).
+    // Data API's nba_stats tables. Promote to 'on' when the design owner signs off: that is the flag flip
+    // alone (PR 2 and PR 3 shipped the routes; the Header's league menu and the sitemap react to 'on',
+    // see nbaHeaderOn.test.ts and sitemapNbaOn.test.ts).
     'nba': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
