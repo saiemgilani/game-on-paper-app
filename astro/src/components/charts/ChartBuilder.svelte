@@ -37,6 +37,8 @@
     let selectedSort = $state("x");
     let selectedFBSClassFilter = $state("all");
     let selectedConferenceFilter = $state("all");
+    // v2: one answer for "is a filter on", read by the chart title and the canvas's accessible name
+    let filtered = $derived(selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all');
     // v2 never flips a style/volume column, so its High/Low captions read on the unflipped scale; the public builder flips as before
     const lowerIsBetter = (m: string) => (!v2 || metricHasBetterSide(m)) && shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
     let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY))
@@ -353,7 +355,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all') : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
+                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered) : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
                         // v2: drop the title below the credit lines, which it overlaps at desktop width (drawn on lg/xl only)
                         ...(v2 && (viewport == "xl" || viewport == "lg") ? { padding: { top: 34, bottom: 10 } } : {}),
@@ -553,7 +555,7 @@
     </form>
 </div>
 <div class="container mb-3" id="chart_container">
-    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, false)} aria-describedby="chart-summary"></canvas>
+    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered)} aria-describedby="chart-summary"></canvas>
 </div>
 <p class="visually-hidden" id="chart-summary">{summary}</p>
 {:else}
