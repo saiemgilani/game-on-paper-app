@@ -656,6 +656,52 @@ def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
 
+@app.route("/nba/<int:game_id>/process", methods=["GET"])
+@require_auth_token
+def process_nba(game_id: int):
+    """One NBA game for the Astro game page: sdv-py's game_page_frames as JSON.
+
+    Deliberately not in _PROCESSORS (those are the football *PlayProcess classes with
+    participants knobs); the football routes are untouched by this function.
+    """
+    from sportsdataverse.nba.nba_game_page import game_page_frames
+    from sportsdataverse.nba.nba_pbp import espn_nba_pbp
+
+    from nba_game import build_payload
+
+    timings: dict = {}
+    g.gop_meta = {"game_id": str(game_id), "league": "nba"}
+    try:
+        with stage(timings, "espn_fetch"):
+            final = espn_nba_pbp(game_id)
+        with stage(timings, "process"):
+            frames = game_page_frames(final)
+        payload = build_payload(game_id, final, frames)
+        g.gop_meta = {**g.gop_meta, "render_outcome": "ok", "timings": timings}
+        body = orjson.dumps(
+            payload, default=_orjson_default, option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS
+        )
+        return Response(body, mimetype="application/json"), 200
+    except KeyError as e:
+        # same answer as the football routes for a payload ESPN has no usable data in
+        logging.getLogger("root").error("nba %s: malformed ESPN payload, threw 404: %r", game_id, e)
+        TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
+        g.gop_meta = {**g.gop_meta, "render_outcome": "failed"}
+        return jsonify({"status": "bad", "message": "ESPN payload is malformed. Data not available."}), 404
+    except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
+        import traceback
+
+        logging.getLogger("root").error("nba %s: processing failed, threw 500: %r", game_id, e)
+        TEL.log_error(
+            str(e),
+            stack="".join(traceback.format_tb(e.__traceback__))[:4000],
+            path=request.path,
+            game_id=str(game_id),
+        )
+        g.gop_meta = {**g.gop_meta, "render_outcome": "failed"}
+        return jsonify({"status": "bad", "message": "Unknown error occurred, check logs."}), 500
+
+
 def _sources(league: str, game_id: int):
     """The sources this deploy can process `league` from, in failover order.
 
