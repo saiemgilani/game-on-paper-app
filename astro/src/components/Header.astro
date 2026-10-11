@@ -5,7 +5,9 @@ import { isFeatureEnabled } from "../utils/features";
 
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
-const other: League = league === 'cfb' ? 'nfl' : 'cfb';
+const football = cfg.sport === 'football';
+// every other league a viewer may switch to (a football viewer's Header stays the cfb<->nfl switch): cfb always, the prefixed ones behind their flags
+const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league && (football ? LEAGUES[lg].sport === 'football' : true) && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
 ---
 
@@ -18,6 +20,8 @@ const lp = (p: string) => leaguePath(league, p);
             </button>
             <div class="collapse navbar-collapse" id="navOptions">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {football && (
+                    <Fragment>
                     <li><a href={lp("/")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
                     <li class="nav-item dropdown">
                         <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
@@ -70,25 +74,44 @@ const lp = (p: string) => leaguePath(league, p);
                         </ul>
                     </li>
                     <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
+                    </Fragment>
+                    )}
+                    {!football && (
+                        <Fragment>
+                            <li><a href={lp("/")} class="nav-link px-2 link-secondary">Nets</a></li>
+                            <li><a href={lp("/players")} class="nav-link px-2 link-secondary">Players</a></li>
+                            <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
+                            <li><a href={lp("/scatter")} class="nav-link px-2 link-secondary">Scatter</a></li>
+                            <li><a href={lp("/leaders")} class="nav-link px-2 link-secondary">Leaders</a></li>
+                        </Fragment>
+                    )}
                     <li class="nav-item dropdown">
                         <a class="nav-link px-2 link-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             Tools
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>
+                            {football && (<li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>)}
                             <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
                             <li><a href="/data-sources" class="nav-link px-2 link-secondary">Data & Sources</a></li>
                             <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
                         </ul>
                     </li>
                 </ul>
-                {
-                    (isFeatureEnabled("nfl", Astro.locals)) && (
-                        <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
-                        <a href={leaguePath(other, "/")} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[other].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[other].shortName}</a>
-                        </form>
-                    )
-                }
+                {others.length === 1 && (
+                    <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
+                    <a href={leaguePath(others[0], "/")} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[others[0]].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[others[0]].shortName}</a>
+                    </form>
+                )}
+                {others.length > 1 && (
+                    <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
+                        <div class="dropdown">
+                            <button class="btn btn-md btn-outline-primary league-switch dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Switch league">{cfg.shortName}</button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                {others.map((lg) => (<li><a class="dropdown-item" href={leaguePath(lg, "/")}>{LEAGUES[lg].name}</a></li>))}
+                            </ul>
+                        </div>
+                    </form>
+                )}
             </div>
         </div>
     </nav>
