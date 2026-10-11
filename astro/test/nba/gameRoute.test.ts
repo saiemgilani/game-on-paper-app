@@ -116,6 +116,62 @@ describe('prepareNbaGame', () => {
     });
 });
 
+describe('fix round 1', () => {
+    const proc200 = () => { espn.mockResolvedValueOnce(espnPage('STATUS_FINAL', true)); proc.mockResolvedValueOnce(procJson()); };
+    test('a missing middle period falls through even when the last play looks final', async () => {
+        const bad = api(); bad.pbp = bad.pbp.filter((p: any) => p.period_number !== 2);
+        sched.mockResolvedValueOnce(bad.schedule[0]); rows.mockResolvedValueOnce(bad); proc200();
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const r = await prepareNbaGame(fakeAstro('401766458').astro);
+        expect('game' in r && r.game.source === 'processor').toBe(true);
+        expect(pushed.some((e) => /period 2/.test(e.row.message))).toBe(true);
+    });
+    test('a header-less ESPN page is not found and uncacheable', async () => {
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: 1, gamepackageJSON: {} }, regressed: false });
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect(await prepareNbaGame(astro)).toEqual({ notFound: true });
+        expect(cache).toEqual([false]);
+    });
+    test('a gate fall-through is uncacheable even with no telemetry store', async () => {
+        store = undefined;
+        const bad = api(); bad.pbp = bad.pbp.slice(0, 100);
+        sched.mockResolvedValueOnce(bad.schedule[0]); rows.mockResolvedValueOnce(bad); proc200();
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect('game' in (await prepareNbaGame(astro))).toBe(true);
+        expect(cache).toEqual([false]);
+    });
+    test('an adapter throw falls through with a degraded row and no year-long cache', async () => {
+        const mod = await import('../../src/resources/nbaGame');
+        const spy = vi.spyOn(mod, 'fromDataApi').mockImplementationOnce(() => { throw new Error('boom'); });
+        sched.mockResolvedValueOnce(api().schedule[0]); rows.mockResolvedValueOnce(api()); proc200();
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        const r = await prepareNbaGame(astro);
+        spy.mockRestore();
+        expect('game' in r && r.game.source === 'processor').toBe(true);
+        expect(pushed.some((e) => /adapter: boom/.test(e.row.message))).toBe(true);
+        expect(cache).toEqual([false]);
+    });
+    test('rows rejecting on a completed schedule row falls through to the processor', async () => {
+        sched.mockResolvedValueOnce(api().schedule[0]); rows.mockRejectedValueOnce(new Error('503')); proc200();
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        expect('game' in (await prepareNbaGame(fakeAstro('401766458').astro))).toBe(true);
+    });
+    test('the processor-404 pregame path carries the cache policy; a regressed pregame is uncacheable', async () => {
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce(espnPage('STATUS_IN_PROGRESS', false)); proc.mockRejectedValueOnce(new ProcessorError(404, 'x'));
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        let t = fakeAstro('401766458');
+        await prepareNbaGame(t.astro);
+        expect(t.cache[0]).toMatchObject({ maxAge: 60, swr: 120 });
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce(espnPage('STATUS_SCHEDULED', false, true));
+        t = fakeAstro('401766458');
+        expect('pregame' in (await prepareNbaGame(t.astro))).toBe(true);
+        expect(t.cache).toEqual([false]);
+    });
+});
+
 describe('sanityGate', () => {
     test('each clause fails on its own; a late-logged free throw does not', async () => {
         const { sanityGate } = await import('../../src/routes/nba/game');
@@ -126,6 +182,7 @@ describe('sanityGate', () => {
         const d = api(); d.player_box = d.player_box.slice(0, 4); expect(sanityGate(d)).toMatch(/player_box/);
         const e = api(); e.play_wp = e.play_wp.slice(1); expect(sanityGate(e)).toMatch(/play_wp/);
         const f = api(); f.game_team_rates = []; expect(sanityGate(f)).toMatch(/game_team_rates/);
+        const h = api(); h.pbp[h.pbp.length - 1] = { ...h.pbp[h.pbp.length - 1], home_score: 'x' }; expect(sanityGate(h)).toMatch(/final score/);
         const g = api(); g.game_player_rates = g.game_player_rates.slice(1); expect(sanityGate(g)).toMatch(/game_player_rates/);
     });
 });

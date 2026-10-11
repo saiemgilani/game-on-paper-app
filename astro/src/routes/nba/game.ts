@@ -24,8 +24,11 @@ export function sanityGate(rows: DataApiGameRows): string | null {
     const periods = Math.max(4, Number(s.status_period ?? 4) || 4);
     const last = [...rows.pbp].sort((a, b) => Number(a.game_play_number) - Number(b.game_play_number)).at(-1);
     if (!last) return 'pbp: no plays';
-    if (Number(last.period_number) < periods) return `pbp: last play is in period ${last.period_number} of ${periods}`;
-    if (Math.abs(Number(last.home_score) - Number(s.home_score)) > SCORE_TOLERANCE || Math.abs(Number(last.away_score) - Number(s.away_score)) > SCORE_TOLERANCE) return 'pbp: last play is far from the final score';
+    const seen = new Set(rows.pbp.map((p) => Number(p.period_number)));
+    for (let q = 1; q <= periods; q++) if (!seen.has(q)) return `pbp: no plays in period ${q}`;
+    if (!(Number(last.period_number) >= periods)) return `pbp: last play is in period ${last.period_number} of ${periods}`;
+    const off = (a: unknown, b: unknown) => !(Math.abs(Number(a) - Number(b)) <= SCORE_TOLERANCE); // NaN fails
+    if (off(last.home_score, s.home_score) || off(last.away_score, s.away_score)) return 'pbp: last play is far from the final score';
     if (rows.team_box.length !== 2) return `team_box: ${rows.team_box.length} rows`;
     for (const tid of [s.home_id, s.away_id]) if (rows.player_box.filter((p) => Number(p.team_id) === Number(tid)).length < 5) return `player_box: fewer than five rows for team ${tid}`;
     if (rows.play_wp.length !== rows.pbp.length) return `play_wp: ${rows.play_wp.length} rows for ${rows.pbp.length} plays`;
@@ -46,14 +49,23 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     const id = Astro.params.id ?? '';
     if (!ID.test(id)) { uncacheable(Astro); return { notFound: true }; }
 
+    let fellThrough = false;
     // 1. the Data API knows the game and says it is final: render from it, no ESPN
     try {
         const row = await retrieveNbaSchedule(id);
         if (row?.status_type_completed === true) {
             const rows = await retrieveNbaGameRows(id);
             const fail = sanityGate(rows);
-            if (!fail) { setCache(Astro, FINAL_CACHE); return { game: fromDataApi(rows) }; }
-            degraded(id, `Data API sanity gate failed (${fail}); falling through to the processor`);
+            let bad = fail;
+            if (!bad) {
+                try {
+                    const game = fromDataApi(rows); // before setCache: an adapter throw falls through like a gate failure
+                    setCache(Astro, FINAL_CACHE);
+                    return { game };
+                } catch (e: any) { bad = `adapter: ${e?.message ?? e}`; }
+            }
+            fellThrough = true;
+            degraded(id, `Data API sanity gate failed (${bad}); falling through to the processor`);
         }
     } catch (e: any) {
         console.warn(`nba game ${id}: Data API unavailable (${e?.message ?? e}); falling through to ESPN`);
@@ -71,7 +83,8 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
         console.error(`nba game ${id}: ESPN failed: ${e?.message ?? e}`);
     }
     if (!espnGame) { uncacheable(Astro); return { notFound: true }; }
-    const comp = espnGame.gamepackageJSON.header.competitions[0];
+    const comp = (espnGame as any)?.gamepackageJSON?.header?.competitions?.[0];
+    if (!comp?.status?.type) { uncacheable(Astro); return { notFound: true }; }
     const config = getNbaGameCacheConfig(comp.date, comp.status);
     // a regressed payload is rendered (nothing fresher exists) but never held
     const cache = () => (regressed ? uncacheable(Astro) : setCache(Astro, config as any));
@@ -84,7 +97,7 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     try {
         const game = fromProcessor(await retrieveNbaProcessedGame(id, config.maxAge || 30));
         // a sanity-gate fall-through rendered from the processor must not be pinned either
-        if (gopStorage.getStore()?.render_outcome === 'degraded') uncacheable(Astro); else cache();
+        if (fellThrough) uncacheable(Astro); else cache();
         return { game };
     } catch (e: any) {
         if (e instanceof ProcessorError && e.status === 404) { cache(); return { pregame: true, espnGame }; }
