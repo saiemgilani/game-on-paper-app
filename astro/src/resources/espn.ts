@@ -173,6 +173,7 @@ export interface ESPNCompetitor {
 
     possession?: boolean
     rank?: number
+    leaders?: { name: string, abbreviation?: string, leaders: { displayValue: string, athlete?: { id?: string, displayName?: string, shortName?: string } }[] }[]
 }
 
 export interface ESPNTeam {
