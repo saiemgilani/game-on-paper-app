@@ -42,14 +42,14 @@ describe('prepareNbaScoreboard', () => {
         expect(pushed).toHaveLength(1);
         expect(!('badDate' in r) && r.isLive).toBe(true);
     });
-    test('a past day reads the dated scoreboard as pastDay, caches a day, writes no telemetry', async () => {
+    test('an old past day reads the dated scoreboard as pastDay+oldDay, caches 14 days, writes no telemetry', async () => {
         sb.mockResolvedValueOnce(liveDay());
         sb.mockResolvedValueOnce({ day: '2025-04-15', events: [game('9', '2025-04-15', 'STATUS_FINAL')], degraded: false });
-        const { prepareNbaScoreboard, PAST_DAY_CACHE } = await import('../../src/routes/nba/scoreboard');
+        const { prepareNbaScoreboard, OLD_DAY_CACHE } = await import('../../src/routes/nba/scoreboard');
         const { astro, cache } = fakeAstro('/nba/scoreboard?date=2025-04-15');
         const r = await prepareNbaScoreboard(astro);
-        expect(sb).toHaveBeenNthCalledWith(2, 'nba', '20250415', { pastDay: true });
-        expect(cache[0]).toEqual(PAST_DAY_CACHE);
+        expect(sb).toHaveBeenNthCalledWith(2, 'nba', '20250415', { pastDay: true, oldDay: true });
+        expect(cache[0]).toEqual(OLD_DAY_CACHE);
         expect(pushed).toHaveLength(0);
         expect(!('badDate' in r) && !r.isLive && r.games[0].id === '9' && r.nav.prev === '2025-04-14').toBe(true);
     });

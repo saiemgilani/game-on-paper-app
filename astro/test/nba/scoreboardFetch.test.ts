@@ -79,13 +79,12 @@ describe('getScoreboardForDay hardening', () => {
     });
     test('dated: TTL is a day only for a past day, else the live TTL', async () => {
         const { getScoreboardForDay } = await import('../../src/resources/espn');
-        const { CURRENT_SEASON_CONFIG, CACHE_TTL_MULTIPLIER } = await import('../../src/utils/config');
         fetchMock.mockResolvedValueOnce(payload('2025-04-15', ['9']));
         await getScoreboardForDay('nba', '20250415', { pastDay: true });
         expect(kv.get('scoreboard-day:nba:20250415')?.ttl).toBe(86400);
         fetchMock.mockResolvedValueOnce(payload('2025-04-16', ['9']));
         await getScoreboardForDay('nba', '20250416');
-        expect(kv.get('scoreboard-day:nba:20250416')?.ttl).toBe(CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER);
+        expect(kv.get('scoreboard-day:nba:20250416')?.ttl).toBe(120);
     });
     test('dated: an empty day is returned but not cached', async () => {
         fetchMock.mockResolvedValueOnce(payload('2025-07-15', []));

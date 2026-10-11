@@ -75,6 +75,20 @@ export function toEspnDate(iso: string): string {
     return iso.replaceAll('-', '');
 }
 
+/** ESPN's lower-case spellings of the 30 teams, each verified to serve nba/500-dark/<abbr>.png. */
+export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(
+    'atl bos bkn cha chi cle dal den det gs hou ind lac lal mem mia mil min no ny okc orl phi phx por sac sa tor utah wsh'.split(' '));
+
+/** Dark-mode logo rules, only for numeric team ids and allowlisted abbreviations; nothing raw reaches the style block. */
+export function darkLogoCss(teams: Iterable<{ id?: unknown; abbreviation?: unknown } | undefined>): string {
+    const seen = new Map<string, string>();
+    for (const t of teams) {
+        const id = String(t?.id ?? ''), ab = String(t?.abbreviation ?? '').toLowerCase();
+        if (/^\d+$/.test(id) && NBA_DARK_LOGO_ABBRS.has(ab)) seen.set(id, ab);
+    }
+    return [...seen].map(([id, ab]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500-dark/${ab}.png&h=120&w=120')}`).join('');
+}
+
 /** The scoreboard competitor's leaders block: points, rebounds, assists as '26 C. Anthony'. */
 export function gameLeaders(comp: ESPNCompetitor): { pts?: string; reb?: string; ast?: string } {
     const out: { pts?: string; reb?: string; ast?: string } = {};

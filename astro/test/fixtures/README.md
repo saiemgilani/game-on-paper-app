@@ -191,3 +191,4 @@ teams 333 and 2 (CFB) and 12 (NFL).
 - `season_players_2026_api.json`: every `shot_season_players` row for 2026, straight from the Data API
   (`GET /v1/nba_stats/shot_season_players?season=2026&limit=50000`, bearer token required; `.data` only).
   Captured 2026-10-11. Regenerate with the same request; the rows change nightly during the season.
+- `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.

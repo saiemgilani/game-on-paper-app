@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers"
 import { safeCachePut } from "../utils/misc"
 import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
 import { wrappedFetch } from "../utils/telemetry"
-import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG, NBA_SCOREBOARD_REFRESH } from "../utils/config"
 import { LEAGUES, type League } from "../utils/league"
 
 export interface ESPNCoreScoreboardResponse {
@@ -545,6 +545,7 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
 export interface ScoreboardDay { day: string; events: ESPNScheduleEvent[]; degraded: boolean; stale?: boolean }
 
 const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
+const OLD_DAY_SCOREBOARD_TTL = 60 * 60 * 24 * 14;
 
 /**
  * The cdn scoreboard for ESPN's current day (`espnDate === null`) or for one day (`YYYYMMDD`).
@@ -555,12 +556,12 @@ const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
  * caller says it is `pastDay`; otherwise it gets the live TTL, and an empty day is never cached.
  * A KV read error is a cache miss. The live day comes from ESPN's body, never the server clock.
  */
-export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean } = {}): Promise<ScoreboardDay> {
+export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean; oldDay?: boolean } = {}): Promise<ScoreboardDay> {
     const cfg = LEAGUES[league];
     const liveKey = `scoreboard-day:${league}`;
     const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
     const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    const liveTTL = CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER;
+    const liveTTL = (league === 'nba' ? NBA_SCOREBOARD_REFRESH : CURRENT_SEASON_CONFIG.scoreboardRefreshRate) * CACHE_TTL_MULTIPLIER;
     const cached = await env.ESPN_API_CACHE.get(key, 'json').catch((e) => { console.warn(`ESPN API: KV read failed for ${key}: ${e}`); return null; }) as { day: string; events: ESPNScheduleEvent[] } | null;
     if (cached?.events) {
         console.info(`ESPN API cache hit: ${key}`);
@@ -577,7 +578,7 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
         const events = sb?.events ?? [];
         const value = JSON.stringify({ day, events });
         if (espnDate) {
-            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? DATED_SCOREBOARD_TTL : liveTTL, { fetchedAt: Date.now() });
+            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? (opts.oldDay ? OLD_DAY_SCOREBOARD_TTL : DATED_SCOREBOARD_TTL) : liveTTL, { fetchedAt: Date.now() });
         } else {
             await safeCachePut(env.ESPN_API_CACHE, key, value, liveTTL, { fetchedAt: Date.now() });
             if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, `${liveKey}:lastgood`, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });

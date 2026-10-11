@@ -8,22 +8,27 @@ import { getScoreboardForDay, type ESPNScheduleEvent } from '../../resources/esp
 import { dayNav, parseDateParam, sortScoreboard, toEspnDate } from '../../nba/scoreboard';
 import { setCache, uncacheable } from './cache';
 import { gopStorage } from '../../utils/telemetry';
-import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from '../../utils/config';
+import { CACHE_TTL_MULTIPLIER, NBA_SCOREBOARD_REFRESH } from '../../utils/config';
 
 export type NbaScoreboardParams = {
     day: string; isLive: boolean; degraded: boolean; games: ESPNScheduleEvent[];
     nav: { prev: string; next: string; label: string }; today: string;
     /** The live board was last-good or degraded: `day` is what was served, never "tonight". */
     stale: boolean;
+    /** No ?date= was given. With `degraded` the day is the server's guess, so the page names no date. */
+    undated?: boolean;
 };
 export type NbaScoreboardPrep = { badDate: 'format' | 'calendar' | 'range' } | NbaScoreboardParams;
 
 export const LIVE_SCOREBOARD_CACHE = {
-    maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
-    swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
+    maxAge: NBA_SCOREBOARD_REFRESH,
+    swr: NBA_SCOREBOARD_REFRESH * CACHE_TTL_MULTIPLIER,
     tags: ['scoreboard', 'league:nba', 'nba'],
 };
 export const PAST_DAY_CACHE = { maxAge: 60 * 60 * 24, tags: ['nba'] };
+// A final does not change: days more than a week behind ESPN's day are held two weeks.
+export const OLD_DAY_CACHE = { maxAge: 60 * 60 * 24 * 14, tags: ['nba'] };
+export const OLD_DAY_AFTER_DAYS = 7;
 export const FUTURE_DAY_CACHE = { maxAge: 60 * 60, tags: ['nba'] };
 
 export async function prepareNbaScoreboard(Astro: AstroGlobal): Promise<NbaScoreboardPrep> {
@@ -39,7 +44,7 @@ export async function prepareNbaScoreboard(Astro: AstroGlobal): Promise<NbaScore
     const date = raw ?? live.day;
     const useLive = raw === null || (fresh && raw === live.day);
     const isLive = useLive && fresh;
-    const board = useLive ? live : await getScoreboardForDay('nba', toEspnDate(date), fresh && date < live.day ? { pastDay: true } : {});
+    const board = useLive ? live : await getScoreboardForDay('nba', toEspnDate(date), fresh && date < live.day ? (isOld(date, live.day) ? { pastDay: true, oldDay: true } : { pastDay: true }) : {});
     const games = sortScoreboard(board.events);
 
     if (board.degraded || board.stale || (!useLive && !fresh)) {
@@ -50,10 +55,12 @@ export async function prepareNbaScoreboard(Astro: AstroGlobal): Promise<NbaScore
         feedGameMeta(games);
     } else {
         // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
-        setCache(Astro, date < live.day ? PAST_DAY_CACHE : date === dayNav(live.day).next ? LIVE_SCOREBOARD_CACHE : FUTURE_DAY_CACHE);
+        setCache(Astro, date < live.day ? (isOld(date, live.day) ? OLD_DAY_CACHE : PAST_DAY_CACHE) : date === dayNav(live.day).next ? LIVE_SCOREBOARD_CACHE : FUTURE_DAY_CACHE);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, stale: useLive ? !fresh : !!board.stale };
+    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale };
 }
+
+const isOld = (date: string, liveDay: string) => (Date.parse(liveDay) - Date.parse(date)) / 86400000 > OLD_DAY_AFTER_DAYS;
 
 /** One upserted gop.game_meta row per live event, as routes/scoreboard.ts does for football. */
 function feedGameMeta(games: ESPNScheduleEvent[]): void {
