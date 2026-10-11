@@ -8,7 +8,7 @@ import { LEAGUES, type League } from "../utils/league"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
-        sbData: ESPNScoreboardResponse
+        sbData: ESPNScoreboardResponse & { day?: { date: string } }
     }
 }
 
@@ -538,6 +538,58 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
     } catch (e) {
         console.error(`ERROR while pulling latest scoreboard: ${e}`)
         throw e;
+    }
+}
+
+export interface ScoreboardDay { day: string; events: ESPNScheduleEvent[]; degraded: boolean }
+
+const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
+
+/**
+ * The cdn scoreboard for ESPN's current day (`espnDate === null`) or for one day (`YYYYMMDD`).
+ * Caches under its OWN keys (`scoreboard-day:<league>`), never the `scoreboard:<league>` keys
+ * getCurrentScoreboard stores an array under. Live: `{day, events}` for the refresh window plus a
+ * day-long last-good copy. Dated: its own key, a day's TTL, never the live key, and an ESPN
+ * failure is reported as `degraded` rather than cached.
+ */
+export async function getScoreboardForDay(league: League, espnDate: string | null): Promise<ScoreboardDay> {
+    const cfg = LEAGUES[league];
+    const liveKey = `scoreboard-day:${league}`;
+    const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
+    const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+    const cached = await env.ESPN_API_CACHE.get(key, 'json') as { day: string; events: ESPNScheduleEvent[] } | null;
+    if (cached?.events) {
+        console.info(`ESPN API cache hit: ${key}`);
+        return { ...cached, degraded: false };
+    }
+    try {
+        const url = `https://cdn.espn.com/core/${cfg.espnPath}/scoreboard?${cfg.scoreboardQuery}xhr=1&${espnDate ? `date=${espnDate}&` : ''}${Date.now()}`;
+        const resp = await requestESPN(url);
+        if (!resp.ok) throw new Error(`ESPN API: scoreboard request received ${resp.status}`);
+        const body: ESPNCoreScoreboardResponse = await resp.json();
+        const sb = body?.content?.sbData;
+        const day = espnDate ? isoDay(espnDate) : (sb?.day?.date ?? new Date().toISOString().slice(0, 10));
+        const events = sb?.events ?? [];
+        const value = JSON.stringify({ day, events });
+        if (espnDate) {
+            await safeCachePut(env.ESPN_API_CACHE, key, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });
+        } else {
+            await safeCachePut(env.ESPN_API_CACHE, key, value, CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER, { fetchedAt: Date.now() });
+            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, `${liveKey}:lastgood`, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });
+        }
+        return { day, events, degraded: false };
+    } catch (e) {
+        console.error(`ERROR while pulling the ${league} scoreboard for ${espnDate ?? 'today'}: ${e}`);
+        if (!espnDate) {
+            const lastGood = await env.ESPN_API_CACHE.getWithMetadata(`${liveKey}:lastgood`, 'json');
+            const v = lastGood?.value as { day: string; events: ESPNScheduleEvent[] } | null;
+            if (v?.events) {
+                console.warn(`ESPN API: serving last-good ${league} scoreboard from ${v.day}`);
+                return { ...v, degraded: false };
+            }
+            return { day: new Date().toISOString().slice(0, 10), events: [], degraded: true };
+        }
+        return { day: isoDay(espnDate), events: [], degraded: true };
     }
 }
 
