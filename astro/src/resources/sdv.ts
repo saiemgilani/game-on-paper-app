@@ -621,7 +621,7 @@ export class SDVRequestError extends Error {
     }
 }
 
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, source: SdvSource = leagueSource('cfb'), strict = false): Promise<any> {
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL: number | ((content: any) => number) = 60, cacheEnabled = true, source: SdvSource = leagueSource('cfb'), strict = false, timeoutMs?: number): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
@@ -651,7 +651,8 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         headers: {
             "Authorization": `Bearer ${SDV_AUTH_TOKEN}`
         },
-        body
+        body,
+        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {})
     }
     try {
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
@@ -669,13 +670,15 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         // it always carries `espn_id` -- an `{ error }`/`{ detail }` body never does.
         if (cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined)) {
             console.info(`SDV API cache update: ${endpointURL}`)
-            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
+            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, typeof cacheTTL === 'function' ? cacheTTL(content) : cacheTTL)
         } else if (cacheEnabled) {
             console.warn(`SDV API response without a data array, not cached: ${endpointURL}`)
         }
         return content;
-    } catch (e) {
+    } catch (e: any) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
+        // a read timeout is a 504 the caller can branch on, like any other strict failure
+        if (strict && (e?.name === 'TimeoutError' || e?.name === 'AbortError')) throw new SDVRequestError(504, endpointURL, `timed out after ${timeoutMs}ms`)
         if (strict) throw e
         return {
             "data": []
@@ -688,8 +691,8 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
  * `[]` by default (the historical callers' contract), or the error itself with `strict`
  * (the player-keyed pages, which must tell an outage from an empty table).
  */
-export async function retrieveRowsFrom<T>(source: SdvSource, table: string, query: Record<string, string>, cacheTTL: number, strict = false): Promise<T[]> {
-    const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, source, strict);
+export async function retrieveRowsFrom<T>(source: SdvSource, table: string, query: Record<string, string>, cacheTTL: number | ((content: any) => number), strict = false, timeoutMs?: number): Promise<T[]> {
+    const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, source, strict, timeoutMs);
     if (strict && !Array.isArray(content?.data)) throw new SDVRequestError(502, table, 'no data array in the response');
     return (Array.isArray(content?.data) ? content.data : []) as T[];
 }

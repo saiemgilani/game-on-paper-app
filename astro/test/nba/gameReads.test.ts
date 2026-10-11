@@ -1,8 +1,11 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 const urls: string[] = [];
 const inits: Record<string, any> = {};
 const puts: string[] = [];
+const putTtls: { k: string; ttl: number }[] = [];
+// per-test override of the mocked upstream: return a Response to take over, undefined to fall through
+let respond: ((u: string) => Response | undefined) | null = null;
 let envelope: any = { data: [{ game_id: 1 }], next: null };
 const PROCESSOR = { plays: [{}], teamInfo: { home: { id: '1' }, away: { id: '2' } }, header: { competitions: [{ status: { type: { completed: false } } }] } };
 
@@ -11,12 +14,15 @@ vi.mock('../../src/utils/telemetry', async (orig) => ({ ...(await orig<typeof im
         const u = String(url);
         urls.push(u);
         inits[u] = init;
+        if (init?.signal?.aborted) throw init.signal.reason;
+        const custom = respond?.(u);
+        if (custom) return custom;
         if (u.endsWith('/v1/meta')) return new Response(JSON.stringify({ datasets: { 'nba.play_wp': '2026-10-11T04:00:00Z' } }), { status: 200 });
         if (u.startsWith('http://python:5000/')) return new Response(JSON.stringify(PROCESSOR), { status: 200 });
         return new Response(JSON.stringify(envelope), { status: 200 });
     } }));
 vi.mock('cloudflare:workers', () => {
-    const kv = { get: async () => null, getWithMetadata: async () => ({ value: null }), put: async (k: string) => { puts.push(k); }, delete: async () => {} };
+    const kv = { get: async () => null, getWithMetadata: async () => ({ value: null }), put: async (k: string, _v: string, o?: any) => { puts.push(k); putTtls.push({ k, ttl: o?.expirationTtl }); }, delete: async () => {} };
     return { env: new Proxy({}, { get: (_, k) => (typeof k === 'string' && k.endsWith('_CACHE') ? kv : undefined) }) };
 });
 
@@ -98,5 +104,109 @@ describe('requestProcessor cache key', () => {
     test('retrieveNbaProcessedGame fetches nba/<id>/process', async () => {
         const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
         await expect(retrieveNbaProcessedGame('401766458', 60)).resolves.toMatchObject({ plays: [{}] });
+    });
+});
+
+const YEAR = 60 * 60 * 24 * 365;
+const HOUR = 60 * 60;
+afterEach(() => { respond = null; vi.restoreAllMocks(); });
+
+describe('typed processor errors', () => {
+    test('a non-2xx throws ProcessorError carrying the status (404 vs 5xx), for football too', async () => {
+        const { requestProcessor, ProcessorError } = await import('../../src/resources/python');
+        const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
+        for (const status of [404, 502, 500]) {
+            respond = (u) => (u.startsWith('http://python:5000/') ? new Response('{"status":"bad"}', { status }) : undefined);
+            await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status });
+            const err = await requestProcessor('cfb/401520150/process', 60).catch((e) => e);
+            expect(err).toBeInstanceOf(ProcessorError);
+            expect(err).toBeInstanceOf(Error);
+            expect(err.status).toBe(status);
+        }
+    });
+    test('a 200 without plays is a 502 ProcessorError', async () => {
+        respond = (u) => (u.startsWith('http://python:5000/') ? new Response('{"status":"bad","message":"nope"}', { status: 200 }) : undefined);
+        const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
+        await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 502 });
+    });
+});
+
+describe('game id checks', () => {
+    test.each(['', '12345', '1234567890123', '../../v1/meta', '401766458?x=1', '40176645a'])('a bad id (%j) never reaches fetch', async (bad) => {
+        const g = await import('../../src/resources/nbaGames');
+        urls.length = 0;
+        await expect(g.retrieveNbaSchedule(bad)).rejects.toThrow(/invalid NBA game id/);
+        await expect(g.retrieveNbaGameRows(bad)).rejects.toThrow(/invalid NBA game id/);
+        await expect(g.retrieveNbaProcessedGame(bad, 60)).rejects.toThrow(/invalid NBA game id/);
+        expect(urls).toEqual([]);
+    });
+});
+
+describe('cache lifetimes and read shape', () => {
+    const schedule = (completed: unknown) => (u: string) =>
+        u.includes('/v1/nba/schedule?') ? new Response(JSON.stringify({ data: [{ id: 401766458, status_type_completed: completed }] }), { status: 200 }) : undefined;
+    test('a completed schedule row is cached a year, anything else an hour', async () => {
+        const { retrieveNbaSchedule } = await import('../../src/resources/nbaGames');
+        for (const [completed, ttl] of [[true, YEAR], ['True', YEAR], [false, HOUR], ['False', HOUR], [null, HOUR]] as const) {
+            respond = schedule(completed);
+            putTtls.length = 0;
+            await expect(retrieveNbaSchedule('401766458')).resolves.toMatchObject({ id: 401766458 });
+            expect(putTtls.filter((p) => p.k !== 'sdv-meta:datasets').map((p) => p.ttl)).toEqual([ttl]);
+        }
+    });
+    test('the game read shares the schedule key and TTL rule; the other six tables are a year', async () => {
+        const { retrieveNbaGameRows, retrieveNbaSchedule } = await import('../../src/resources/nbaGames');
+        respond = schedule(false);
+        putTtls.length = 0;
+        await retrieveNbaSchedule('401766458');
+        const solo = putTtls.filter((p) => p.k !== 'sdv-meta:datasets');
+        putTtls.length = 0;
+        await retrieveNbaGameRows('401766458');
+        const all = putTtls.filter((p) => p.k !== 'sdv-meta:datasets');
+        expect(all).toHaveLength(7);
+        expect(all.filter((p) => p.ttl === YEAR)).toHaveLength(6);
+        expect(all.find((p) => p.k === solo[0].k)?.ttl).toBe(HOUR);
+    });
+    test('pbp and play_wp ask for limit=5000, ordered', async () => {
+        const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
+        urls.length = 0;
+        await retrieveNbaGameRows('401766458');
+        for (const t of ['pbp', 'play_wp']) {
+            const u = urls.find((x) => x.includes(`/v1/nba/${t}?`))!;
+            expect(u).toContain('limit=5000');
+            expect(u).toContain('order=game_play_number');
+        }
+    });
+});
+
+describe('read timeouts (NBA only)', () => {
+    const abortedSignal = (calls: number[]) =>
+        vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => { calls.push(ms); return AbortSignal.abort(new DOMException('timed out', 'TimeoutError')); });
+    test('NBA Data API reads carry an 8 s signal and a timeout surfaces as SDVRequestError 504', async () => {
+        const calls: number[] = [];
+        abortedSignal(calls);
+        const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
+        const { SDVRequestError } = await import('../../src/resources/sdv');
+        const err = await retrieveNbaGameRows('401766458').catch((e) => e);
+        expect(err).toBeInstanceOf(SDVRequestError);
+        expect(err.status).toBe(504);
+        await new Promise((r) => setTimeout(r, 20)); // Promise.all rejects on the first; let the other reads settle under this spy
+        expect(new Set(calls)).toEqual(new Set([8000]));
+    });
+    test('the NBA processor fetch carries a 25 s signal and a timeout surfaces as ProcessorError 504', async () => {
+        const calls: number[] = [];
+        abortedSignal(calls);
+        const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
+        await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 504 });
+        expect(calls).toEqual([25000]);
+    });
+    test('football reads and processor calls set no signal', async () => {
+        const calls: number[] = [];
+        abortedSignal(calls);
+        const { retrieveRows } = await import('../../src/resources/sdv');
+        const { requestProcessor } = await import('../../src/resources/python');
+        await retrieveRows('cfb', 'team_summaries', { season: '2027' }, 60);
+        await requestProcessor('cfb/401520150/process', 60);
+        expect(calls).toEqual([]);
     });
 });
