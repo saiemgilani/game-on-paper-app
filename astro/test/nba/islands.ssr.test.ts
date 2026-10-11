@@ -5,17 +5,15 @@ import { render } from 'svelte/server';
 import Dashboard from '../../src/components/nba/Dashboard.svelte';
 import PlayerExplorer from '../../src/components/nba/PlayerExplorer.svelte';
 import ScatterExplorer from '../../src/components/nba/ScatterExplorer.svelte';
-import { headshotsFromRows, leagueContextFromRows, playerSeasonsFromRows } from '../../src/nba/adapters';
+import { headshotsFromRows, leagueContextFromRows, playerSeasonsFromRows, seasonPlayerGamesFromRows } from '../../src/nba/adapters';
 import { scatterPoints } from '../../src/nba/data/scatter';
 import { ZONES } from '../../src/nba/data/aggregate';
 import { buildDashboard } from '../../src/nba/dashboard';
 import { toLite } from '../../src/nba/data/shots';
-import type { LeagueContextRow } from '../../src/resources/nbaShots';
+import type { LeagueContextRow, PlayerGameRow } from '../../src/resources/nbaShots';
 import { apiSeasonPlayerRows, seasonPlayerRows } from './rows';
 import Leaderboards from '../../src/components/nba/Leaderboards.svelte';
 import { leaderBoards } from '../../src/nba/data/leaders';
-import { seasonPlayerGamesFromRows } from '../../src/nba/adapters';
-import type { PlayerGameRow } from '../../src/resources/nbaShots';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 
@@ -62,9 +60,12 @@ test('Leaderboards server-renders', () => {
     season: 2026, person_id: Number(pid), game_id: g.game_id, team_id: g.team_id, team_tricode: 'BKN', attempts: g.attempts, makes: g.makes,
     fg3a: g.fg3a, fg3m: g.fg3m, game_date: g.date, opponent_id: g.opponent_id, opponent: g.opponent, venue: g.venue, win: g.win,
   })));
-  const boards = leaderBoards(seasonPlayerGamesFromRows(gameRows(), seasonPlayerRows()), 1610612751);
+  // top=2: the all-Nets fixture has 8 eligible 10-game shooters, so 2 lead, 5 sit in "Nets further down" and 1 lands in the <details>
+  const boards = leaderBoards(seasonPlayerGamesFromRows(gameRows(), seasonPlayerRows()), 1610612751, 2);
   const html = render(Leaderboards, { props: { boards, netsTeamId: 1610612751, seasonQuery: '' } }).body;
   expect(html).toContain('id="nba-leaders"');
   expect(html).toContain('10 games');
+  expect(html).toContain('Nets further down');
+  expect(html).toContain('more Nets');
   expect(html).not.toContain('undefined');
 });

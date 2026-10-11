@@ -55,7 +55,7 @@
                 <th scope="col">#</th>
                 <th scope="col">Player</th>
                 <th scope="col">Team</th>
-                <th scope="col" class="text-end">{LEADER_LABELS[metric]}</th>
+                <th scope="col" class="text-end">{metric === 'improved' ? 'eFG% gain' : LEADER_LABELS[metric]}</th>
                 <th scope="col" class="text-end d-none d-sm-table-cell">{metric === 'fg3Pct' ? '3PM/3PA' : 'FGM/FGA'}</th>
                 {#if metric === 'improved'}<th scope="col" class="text-end d-none d-sm-table-cell">Season eFG%</th>{/if}
                 <th scope="col" class="text-end d-none d-md-table-cell">Window</th>
