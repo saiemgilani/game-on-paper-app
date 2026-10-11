@@ -58,6 +58,72 @@ describe('dayNav and toEspnDate', () => {
     });
 });
 
+// Fix round 1: regressions for the status line, live/delayed ordering, postponed/canceled rank and English headings.
+const typed = (name: string, state: string, detail: string, extra: Record<string, unknown> = {}) => ({
+    clock: 0, displayClock: '0.0', period: 1,
+    type: { id: '1', name, state, completed: false, description: detail, detail, shortDetail: detail },
+    ...extra,
+}) as any;
+const evs = (id: string, date: string, name: string, state = 'post') => ({ id, date, competitions: [{ competitors: [] }], status: typed(name, state, 'x') }) as any;
+
+describe('statusLine without a usable period or clock', () => {
+    test('a live game with period 0 falls back to the status detail, not "Q0 1:00"', () => {
+        expect(statusLine(typed('STATUS_IN_PROGRESS', 'in', 'Tip-off pending', { period: 0, displayClock: '1:00' }))).toEqual({ kind: 'live', text: 'Tip-off pending' });
+    });
+    test('a live game with no clock omits the clock instead of printing "undefined"', () => {
+        expect(statusLine(typed('STATUS_IN_PROGRESS', 'in', 'x', { period: 2, displayClock: undefined })).text).toBe('Q2');
+        expect(statusLine(typed('STATUS_IN_PROGRESS', 'in', 'x', { period: 2, displayClock: '  ' })).text).toBe('Q2');
+    });
+    test('end of period with period 0 falls back to the status detail, not "End of "', () => {
+        expect(statusLine(typed('STATUS_END_PERIOD', 'in', 'End of period', { period: 0 })).text).toBe('End of period');
+    });
+});
+
+describe('sortScoreboard for interrupted and cancelled games', () => {
+    test('a mid-game delay or suspension sorts with the live games; a pre-game delay stays scheduled', () => {
+        const out = sortScoreboard([
+            evs('f', '2026-10-21T20:00Z', 'STATUS_FINAL'),
+            evs('pp', '2026-10-21T10:00Z', 'STATUS_POSTPONED'),
+            evs('cc', '2026-10-21T10:30Z', 'STATUS_CANCELED'),
+            evs('s', '2026-10-22T03:00Z', 'STATUS_SCHEDULED', 'pre'),
+            evs('d2', '2026-10-22T02:00Z', 'STATUS_DELAYED', 'pre'),
+            evs('d1', '2026-10-22T01:00Z', 'STATUS_DELAYED', 'in'),
+            evs('su', '2026-10-22T00:30Z', 'STATUS_SUSPENDED', 'in'),
+        ]);
+        expect(out.map((e) => e.id)).toEqual(['su', 'd1', 'd2', 's', 'f', 'pp', 'cc']);
+    });
+});
+
+describe('statusLine for interrupted games', () => {
+    test('a delayed or suspended game shows its detail', () => {
+        expect(statusLine(typed('STATUS_SUSPENDED', 'in', 'Suspended - power outage', { period: 3 }))).toEqual({ kind: 'other', text: 'Suspended - power outage' });
+    });
+});
+
+describe('dayNav is never localised', () => {
+    test('the heading stays English whatever the default locale', async () => {
+        const { Settings } = await import('luxon');
+        const prior = Settings.defaultLocale;
+        Settings.defaultLocale = 'fr-FR';
+        try {
+            expect(dayNav('2026-10-31').label).toBe('Saturday, October 31');
+        } finally {
+            Settings.defaultLocale = prior;
+        }
+    });
+});
+
+describe('parseDateParam boundaries', () => {
+    test('a non-leap February 29 is a calendar error', () => {
+        expect(parseDateParam('2025-02-29', '2026-10-11')).toEqual({ ok: false, reason: 'calendar' });
+    });
+    test('today + 14 is in range and today + 15 is out, across a month boundary', () => {
+        const today = '2026-10-17';
+        expect(parseDateParam('2026-10-31', today)).toEqual({ ok: true, date: '2026-10-31' });
+        expect(parseDateParam('2026-11-01', today)).toEqual({ ok: false, reason: 'range' });
+    });
+});
+
 describe('gameLeaders', () => {
     test('reads points, rebounds and assists and tolerates a missing block', () => {
         const comp = { leaders: [

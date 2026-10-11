@@ -7,9 +7,12 @@ import { FIRST_SEASON } from './seasonRange';
 const LIVE = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME'];
 
 function rank(e: ESPNScheduleEvent): number {
-    const n = e.status?.type?.name ?? '';
-    if (LIVE.includes(n)) return 0;
-    if (n === 'STATUS_SCHEDULED' || n === 'STATUS_DELAYED') return 1;
+    const t = e.status?.type;
+    const n = t?.name ?? '';
+    // state 'in' catches a mid-game delay or suspension; a pre-game delay is state 'pre' and stays scheduled.
+    if (t?.state === 'in' || LIVE.includes(n)) return 0;
+    if (n === 'STATUS_SCHEDULED' || (n === 'STATUS_DELAYED' && t?.state === 'pre')) return 1;
+    if (n === 'STATUS_POSTPONED' || n === 'STATUS_CANCELED') return 3;
     return 2;
 }
 
@@ -28,13 +31,19 @@ function periodLabel(period: number): string {
 /** The one line under the teams: tip time is rendered elsewhere, so 'scheduled' carries no text. */
 export function statusLine(status: ESPNStatus): { kind: 'scheduled' | 'live' | 'final' | 'other'; text: string } {
     const name = status?.type?.name ?? '';
+    const detail = status?.type?.detail ?? '';
     const period = Number(status?.period ?? 0);
+    const hasPeriod = period >= 1; // !(>= 1) also catches NaN
     if (name === 'STATUS_SCHEDULED') return { kind: 'scheduled', text: '' };
     if (name === 'STATUS_FINAL') return { kind: 'final', text: period > 4 ? `Final/${periodLabel(period).replace('Q', '')}` : 'Final' };
     if (name === 'STATUS_HALFTIME') return { kind: 'live', text: 'Halftime' };
-    if (name === 'STATUS_END_PERIOD') return { kind: 'live', text: period <= 4 ? `End of ${ORD[period]}` : `End of ${periodLabel(period)}` };
-    if (LIVE.includes(name)) return { kind: 'live', text: `${periodLabel(period)} ${status.displayClock}` };
-    return { kind: 'other', text: status?.type?.detail ?? '' };
+    if (name === 'STATUS_END_PERIOD') return { kind: 'live', text: !hasPeriod ? detail : period <= 4 ? `End of ${ORD[period]}` : `End of ${periodLabel(period)}` };
+    if (LIVE.includes(name)) {
+        if (!hasPeriod) return { kind: 'live', text: detail };
+        const clock = String(status.displayClock ?? '').trim();
+        return { kind: 'live', text: [periodLabel(period), clock].filter(Boolean).join(' ') };
+    }
+    return { kind: 'other', text: detail };
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -53,7 +62,7 @@ export function parseDateParam(raw: string | null, today: string): { ok: true; d
 /** Previous and next calendar day plus the heading. Dates are days, so UTC arithmetic is exact. */
 export function dayNav(day: string): { prev: string; next: string; label: string } {
     const d = DateTime.fromISO(day, { zone: 'utc' });
-    return { prev: d.minus({ days: 1 }).toISODate()!, next: d.plus({ days: 1 }).toISODate()!, label: d.toFormat('cccc, LLLL d') };
+    return { prev: d.minus({ days: 1 }).toISODate()!, next: d.plus({ days: 1 }).toISODate()!, label: d.setLocale('en-US').toFormat('cccc, LLLL d') };
 }
 
 /** '2026-10-11' -> '20261011', the cdn scoreboard's &date= form. */
