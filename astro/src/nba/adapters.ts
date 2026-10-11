@@ -139,7 +139,10 @@ export function playerGamesFromRows(rows: PlayerGameRow[]): PlayerGame[] | null 
  */
 export function seasonPlayerGamesFromRows(gameRows: PlayerGameRow[], playerRows: SeasonPlayerRow[]): PlayerGames[] {
     const byPerson = new Map<number, PlayerGameRow[]>();
-    for (const r of gameRows) byPerson.set(r.person_id, [...(byPerson.get(r.person_id) ?? []), r]);
+    for (const r of gameRows) {
+        const mine = byPerson.get(r.person_id);
+        if (mine) mine.push(r); else byPerson.set(r.person_id, [r]);
+    }
     const names = new Map<number, string>();
     for (const r of playerRows) if (r.is_primary || !names.has(r.person_id)) names.set(r.person_id, r.player_name);
     const out: PlayerGames[] = [];

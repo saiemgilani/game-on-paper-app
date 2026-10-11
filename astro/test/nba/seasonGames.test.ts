@@ -33,7 +33,8 @@ describe('seasonPlayerGamesFromRows', () => {
         const mine = rows.filter((r) => r.person_id === pid).sort((a, b) => a.game_date!.localeCompare(b.game_date!));
         const last = mine[mine.length - 1];
         last.team_id = 1610612738; last.team_tricode = 'BOS';
-        const p = seasonPlayerGamesFromRows(rows, seasonPlayerRows()).find((x) => x.person_id === pid)!;
+        // rows reversed: the latest game must be found by date, not by row order
+        const p = seasonPlayerGamesFromRows([...rows].reverse(), seasonPlayerRows()).find((x) => x.person_id === pid)!;
         expect(p.team_id).toBe(1610612738);
         expect(p.team).toBe('BOS');
     });

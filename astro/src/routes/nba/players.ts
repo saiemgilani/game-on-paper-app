@@ -47,7 +47,7 @@ export async function prepareNbaPlayers(Astro: AstroGlobal): Promise<NbaPlayersP
     const sort = parseSort(PLAYER_SORT_KEYS, Astro.url.searchParams.get('sort'), 'attempts');
     const dir = parseDir(Astro.url.searchParams.get('dir'));
 
-    const rows = await readSeasonRows(Astro, season, '/nba/players', false);
+    const rows = await readSeasonRows(Astro, season, '/nba/players', false); // the cache is set below, after the 404 check
     if (rows === null) return { unavailable: true };
     if (rows.length === 0) {
         // not ingested yet: the empty page (readSeasonRows already made it uncacheable)
