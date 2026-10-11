@@ -131,6 +131,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if ((effectivePath === '/nfl' || effectivePath.startsWith('/nfl/')) && !isFeatureEnabled('nfl', context.locals)) {
     previewRewrite = '/404';
   }
+  // The NBA surface is its own 'preview' namespace (utils/features.ts), gated the same way.
+  if ((effectivePath === '/nba' || effectivePath.startsWith('/nba/')) && !isFeatureEnabled('nba', context.locals)) {
+    previewRewrite = '/404';
+  }
   // The head-coach boards are a 'preview' feature of their own, for both
   // leagues -- the same namespace gate, so a public /coaches or
   // /year/N/coaches/<board> (and the /nfl twins) is the site's 404.

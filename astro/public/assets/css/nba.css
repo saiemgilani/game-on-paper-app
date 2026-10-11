@@ -1,0 +1,25 @@
+/* The Blazing the Nets charts' six tokens, mapped onto the site's own colours; no new colours.
+   --bg    #fff     base.css:229 (--bs-body-bg fallback)
+   --surface #f9f9f9 index.css:32
+   --fg    #333     base.css:68
+   --muted #727272  base.css:73 / index.css:30
+   --line  #e5e5e5  base.css:132 / index.css:29
+   --accent #007bff base.css:77
+   `--theme` is read by src/nba/charts/theme.ts chartTheme() so the SVGs follow prefers-color-scheme. */
+:root {
+  --bg: #fff;
+  --surface: #f9f9f9;
+  --fg: #333;
+  --muted: #727272;
+  --line: #e5e5e5;
+  --accent: #007bff;
+  --theme: light;
+}
+/* TeamPlayerCard.astro's headshot treatment, shared here because that rule is component-scoped */
+.nba-headshot {
+  background: rgba(0, 0, 0, 0.1);
+  -webkit-clip-path: circle(closest-side);
+  clip-path: circle(closest-side);
+}
+/* the explorer's SVGs: full width, scale with the column */
+.nba-chart { width: 100%; height: auto; }
