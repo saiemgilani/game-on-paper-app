@@ -604,8 +604,11 @@ async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> |
 
 /** When `<league>.<table>` last ingested, per /v1/meta; undefined when meta does not say.
  *  Exported for the "Last updated" stamps (utils/freshness.ts): the stamp a page shows is
- *  the one that keys its rows, so the rows are never older than the stamp. Never rejects. */
-export async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
+ *  the one that keys its rows, so the rows are never older than the stamp. Never rejects.
+ *  `fresh` asks /v1/meta itself, past the isolate's and KV's copies: the re-pin after a
+ *  pinned read saw a newer ingest (TrendsRoute), which those copies may not show yet. */
+export async function sdvIngestStamp(league: League, table: string, fresh = false): Promise<string | undefined> {
+    if (fresh) return (await fetchSDVDatasets(true))?.[`${league}.${table}`];
     if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
         sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
     }

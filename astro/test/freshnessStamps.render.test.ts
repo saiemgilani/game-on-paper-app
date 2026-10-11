@@ -11,17 +11,25 @@ const h = vi.hoisted(() => ({
     datasets: {} as Record<string, string>,
     asked: [] as string[],
     teamArgs: [] as any[], playerArgs: [] as any[][], pctArgs: [] as any[][],
-    // an ingest landing mid-render: the nth read of the render cannot confirm its pin
-    reads: 0, moveAt: 0,
+    // an ingest landing mid-render: each listed read of the render cannot confirm its pin
+    reads: 0, moveAt: [] as number[], ingests: 0,
 }));
-const read = (pin: any) => { h.reads += 1; if (pin && h.reads === h.moveAt) pin.held = false; return []; };
+// the stamps a fresh meta read shows after the first and second mid-render ingest
+const MOVED = ['2026-09-21T06:00:00Z', '2026-09-22T06:00:00Z'];
+const read = (pin: any) => { h.reads += 1; if (pin && h.moveAt.includes(h.reads)) { pin.held = false; h.ingests += 1; } return []; };
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    sdvIngestStamp: async (league: string, table: string) => { h.asked.push(`${league}.${table}`); return h.datasets[`${league}.${table}`]; },
+    sdvIngestStamp: async (league: string, table: string, fresh = false) => {
+        h.asked.push(`${league}.${table}${fresh ? ' (fresh)' : ''}`);
+        return fresh && h.ingests ? MOVED[h.ingests - 1] : h.datasets[`${league}.${table}`];
+    },
     retrieveTeamSummaries: async (req: any) => { h.teamArgs.push(req); return read(req.pin); },
     retrievePlayerSummaries: async (...a: any[]) => { h.playerArgs.push(a); return read(a[8]); },
-    retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); return read(a[4]); },
+    // each row carries the number of ingests that had landed when it was read: its version
+    retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); read(a[4]); return [{ season: 2025, pctile: a[1], EPAplay: h.ingests }]; },
 }));
+/** the version of each percentile row the chart island received (its serialized `value`s) */
+const chartVersions = (html: string) => [...html.matchAll(/&quot;value&quot;:\[0,(\d+)\]/g)].map((m) => Number(m[1]));
 
 const DATASETS = {
     'cfb.team_summaries': '2026-09-26T13:14:00Z',
@@ -32,7 +40,7 @@ const DATASETS = {
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-beforeEach(() => { h.datasets = { ...DATASETS }; h.reads = 0; h.moveAt = 0; for (const a of [h.asked, h.teamArgs, h.playerArgs, h.pctArgs]) a.length = 0; });
+beforeEach(() => { h.datasets = { ...DATASETS }; h.reads = 0; h.moveAt = []; h.ingests = 0; for (const a of [h.asked, h.teamArgs, h.playerArgs, h.pctArgs]) a.length = 0; });
 
 async function page(path: string, props: Record<string, unknown>, locals: Partial<App.Locals>) {
     const { default: Page } = await import(path);
@@ -83,33 +91,51 @@ describe('national trends stamp', () => {
         // client:only islands serialize their props; the chart receives the ISO and draws it in the viewer's zone
         expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;2026-09-20T04:00:00Z&quot;\]/);
         expect(h.asked).toEqual(['cfb.percentiles']);
-        // all five percentile reads share one pin, and it held
+        // all five percentile reads share one pin, it held, and that one batch is what renders
         expect(h.pctArgs).toHaveLength(5);
         expect(new Set(h.pctArgs.map((a) => a[4])).size).toBe(1);
         expect(h.pctArgs[0][4]).toEqual({ version: '2026-09-20T04:00:00Z', held: true });
+        expect(chartVersions(html)).toEqual([0, 0, 0, 0, 0]);
     }, 60_000);
 });
 
 describe('an ingest landing mid-render drops the stamp (the rows still render)', () => {
     test('team board: no stamp, and the rows the page read are the ones rendered', async () => {
-        h.moveAt = 1;
+        h.moveAt = [1];
         const html = await page(TEAMS, teamProps, {});
         expect(html).not.toContain('Last updated:');
         expect(html).toContain('2025 Net Team Rankings');
         expect(h.teamArgs).toHaveLength(1); // the table renders the page's rows, no second read
     }, 60_000);
     test('player board: no stamp', async () => {
-        h.moveAt = 1;
+        h.moveAt = [1];
         const html = await page(PLAYERS, { season: 2025, category: 'passing', metric: 'EPAplay' }, {});
         expect(html).not.toContain('Last updated:');
         expect(h.playerArgs).toHaveLength(1);
     }, 60_000);
-    test('trends: one of the five reads moving drops the stamp for the whole render, canvas included', async () => {
-        h.moveAt = 3;
+});
+
+describe('trends: an ingest landing mid-batch re-reads the whole batch once', () => {
+    // reads 1-2 held the old version and read 3 the new one: rendering that batch would mix them
+    test('read 3 moves: all five re-read under a fresh stamp, every row is the new version, stamp shown', async () => {
+        h.moveAt = [3];
         const html = await page(TRENDS, { league: 'cfb' }, {});
+        expect(h.asked).toEqual(['cfb.percentiles', 'cfb.percentiles (fresh)']);
+        expect(h.pctArgs).toHaveLength(10);
+        expect(h.pctArgs.slice(5).map((a) => a[1])).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
+        expect(new Set(h.pctArgs.slice(5).map((a) => a[4])).size).toBe(1);
+        expect(h.pctArgs[5][4]).toEqual({ version: MOVED[0], held: true });
+        expect(chartVersions(html)).toEqual([1, 1, 1, 1, 1]);
+        expect(html).toContain(`<time datetime="${MOVED[0]}" data-freshness>Sep 21, 2026, 6:00 AM UTC</time>`);
+        expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;2026-09-21T06:00:00Z&quot;\]/);
+    }, 60_000);
+    test('the re-read moves too (read 8): its rows render, with no stamp on the page or the canvas', async () => {
+        h.moveAt = [3, 8];
+        const html = await page(TRENDS, { league: 'cfb' }, {});
+        expect(h.pctArgs).toHaveLength(10); // one re-read, never a third batch
+        expect(chartVersions(html)).toEqual([1, 1, 2, 2, 2]);
         expect(html).not.toContain('Last updated:');
         expect(html).not.toContain('&quot;freshness&quot;');
-        expect(h.pctArgs).toHaveLength(5);
     }, 60_000);
 });
 

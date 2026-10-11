@@ -131,6 +131,23 @@ describe('SDV_API_CACHE key carries the table ingest stamp', () => {
         expect(pin.held).toBe(false); // so the page shows no stamp beside them
     });
 
+    test('the re-pin after a lost pin takes a fresh stamp, and the re-read keys by it, caches, and holds', async () => {
+        const sdv = await load();
+        const pin = sdv.sdvPin(await sdv.sdvIngestStamp('cfb', 'percentiles'))!;
+        meta = stamped('2026-09-28T15:00:00+00:00');
+        await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', pin);
+        expect(pin.held).toBe(false);
+        // the isolate's copy still shows the old stamp; only a fresh read sees the ingest
+        expect(await sdv.sdvIngestStamp('cfb', 'percentiles')).toBe('2026-09-27T12:05:07+00:00');
+        const repin = sdv.sdvPin(await sdv.sdvIngestStamp('cfb', 'percentiles', true))!;
+        expect(repin.version).toBe('2026-09-28T15:00:00+00:00');
+        await sdv.retrievePercentiles(2025, 50, undefined, 'cfb', repin);
+        const key = await sha256(`${TABLE_URL}#2026-09-28T15:00:00+00:00`);
+        expect(tableKey()).toBe(key);
+        expect(puts.some(p => p.key === key)).toBe(true);
+        expect(repin.held).toBe(true);
+    });
+
     test('a pinned read that fails cannot confirm its stamp either', async () => {
         const sdv = await load();
         const pin = sdv.sdvPin('2026-09-27T12:05:07+00:00')!;
