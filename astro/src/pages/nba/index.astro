@@ -1,0 +1,12 @@
+---
+import NbaHomeRoute from '../../components/routes/NbaHomeRoute.astro';
+import { prepareNbaHome } from '../../routes/nba/home';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+
+const r = await prepareNbaHome(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+---
+
+<NbaHomeRoute data={r} />

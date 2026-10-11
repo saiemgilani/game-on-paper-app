@@ -1,0 +1,19 @@
+/* The dark half, under the same media query as dark-index.css; every value is already in the dark sheets.
+   --bg     #181a1b  dark-index.css:24
+   --surface #181a1b dark-game.css:1698 (.card background, rgb(24, 26, 27))
+   --fg     #e8e6e3  dark-index.css:28
+   --muted  #b2aba1  dark-index.css:40
+   --line   #545b5e  dark-index.css:37
+   --accent #3391ff  dark-index.css:34 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #181a1b;
+    --surface: #181a1b;
+    --fg: #e8e6e3;
+    --muted: #b2aba1;
+    --line: #545b5e;
+    --accent: #3391ff;
+    --theme: dark;
+  }
+  .nba-headshot { background: rgba(255, 255, 255, 0.1); }
+}
