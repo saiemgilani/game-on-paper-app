@@ -81,7 +81,9 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     try {
         const guarded = await retrieveGamePageGuarded(id, 'nba');
         espnGame = guarded.page;
-        regressed = guarded.regressed;
+        // the guard swallows a failed fetch and may hand back KV's last copy: render that, never hold it
+        espnFailed = guarded.fetchFailed === true;
+        regressed = guarded.regressed || (espnFailed && espnGame != null);
         if (regressed) degraded(id, `stale ESPN payload: ${guarded.reason}`);
     } catch (e: any) {
         console.error(`nba game ${id}: ESPN failed: ${e?.message ?? e}`);

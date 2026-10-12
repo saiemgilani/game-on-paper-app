@@ -207,10 +207,21 @@ describe('final review', () => {
         expect(espn).not.toHaveBeenCalled();
     });
     test('an ESPN outage is unavailable, not a 404', async () => {
-        sched.mockResolvedValueOnce(null); espn.mockRejectedValueOnce(new Error('cdn down'));
+        // what the guard really returns on a failed fetch with an empty KV: it never throws
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: null, regressed: false, reason: null, fetchFailed: true });
         const { prepareNbaGame } = await import('../../src/routes/nba/game');
         const { astro, cache } = fakeAstro('401766458');
         expect(await prepareNbaGame(astro)).toEqual({ unavailable: true });
+        expect(cache).toEqual([false]);
+    });
+    test("an outage served from KV's last copy is rendered, logged degraded, and not cached", async () => {
+        sched.mockResolvedValueOnce(null);
+        espn.mockResolvedValueOnce({ ...espnPage('STATUS_IN_PROGRESS', false), reason: 'pulled cached content due to ESPN fetch error', fetchFailed: true });
+        proc.mockResolvedValueOnce(procJson());
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const { astro, cache } = fakeAstro('401766458');
+        expect('game' in (await prepareNbaGame(astro))).toBe(true);
+        expect(store.render_outcome).toBe('degraded');
         expect(cache).toEqual([false]);
     });
 });

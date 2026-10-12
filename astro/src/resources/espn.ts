@@ -618,6 +618,8 @@ export type GuardedGamePage = {
     /** true when even the retry was older than what we have already served */
     regressed: boolean;
     reason: string | null;
+    /** true when the cdn fetch itself failed (any non-2xx or network error), whether or not KV had a copy */
+    fetchFailed?: boolean;
 };
 
 const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
@@ -642,9 +644,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
     const gameContentKey = `gamecontent:${ns}${gameId}`;
 
     let page: ESPNPlayByPlayResponse | null = null;
+    let fetchFailed = false;
     try {
         page = await retrieveGamePage(gameId, league);
     } catch (e: any) {
+        fetchFailed = true;
         console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
     }
 
@@ -653,11 +657,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
         try {
             console.error(`game-content guard: pulling cached content from KV for ${gameId}`);
             page = await env.ESPN_API_CACHE.get(gameContentKey, "json") as ESPNPlayByPlayResponse;
-            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error" };
+            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error", fetchFailed };
         } catch (e: any) {
             // if this cache request fails, just return a bad result.
             console.error(`game-content guard: KV read failed for ${gameId}: ${e}, ${e.stack}`);
-            return { page: null, regressed: false, reason: null };
+            return { page: null, regressed: false, reason: null, fetchFailed };
         }
     }
 
