@@ -1244,20 +1244,10 @@ function calculateGEI(plays: ProcessedPlay[], homeTeamId: string | number): numb
             return homeWP
         }
         
-        var finalWP = 0
-        if (play.homeScore > play.awayScore) {
-            if (play.pos_team == homeTeamId) {
-                finalWP = 1.0
-            } else {
-                finalWP = 0.0
-            }
-        } else {
-            if (play.pos_team == homeTeamId) {
-                finalWP = 0.0
-            } else {
-                finalWP = 1.0
-            }
-        }
+        // The last play's "next" home WP is the result, whoever has the ball:
+        // keying it on possession flipped it whenever the away team took the
+        // final snap. 0.5 for a tie (NFL).
+        const finalWP = (play.homeScore > play.awayScore) ? 1.0 : (play.homeScore < play.awayScore) ? 0.0 : 0.5
         let nextPlayWP = (nextPlay != null) ? calculateHomeWP(nextPlay) : finalWP
         
         wpDiffs.push((nextPlayWP - calculateHomeWP(play)))
