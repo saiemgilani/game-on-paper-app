@@ -2,11 +2,12 @@
 // ESPN's cdn for status and header, then the processor for a live or un-ingested game.
 import type { AstroGlobal } from 'astro';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
-import { fromDataApi, fromProcessor, isTrue, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
+import { fromDataApi, fromProcessor, isTrue, requiredPeriods, scheduleRegulation, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { ProcessorError } from '../../resources/python';
 import { getNbaGameCacheConfig } from '../../utils/config';
 import { gopStorage } from '../../utils/telemetry';
+import type { BasketballLeague } from '../../utils/league';
 import { setCache, uncacheable } from './cache';
 
 export type NbaGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame };
@@ -18,10 +19,10 @@ const FINAL_CACHE = { maxAge: 60 * 60 * 24 * 7 * 52, tags: ['game-completed', 'n
 const SCORE_TOLERANCE = 3;
 
 /** The clause an ingested game fails, or null. Guards against hoopR's known ESPN pathologies. */
-export function sanityGate(rows: DataApiGameRows): string | null {
+export function sanityGate(rows: DataApiGameRows, league: BasketballLeague = 'nba'): string | null {
     const s = rows.schedule[0];
     if (!s) return 'schedule: no row';
-    const periods = Math.max(4, Number(s.status_period ?? 4) || 4);
+    const periods = requiredPeriods(s, scheduleRegulation(s, league).periods);
     const last = [...rows.pbp].sort((a, b) => Number(a.game_play_number) - Number(b.game_play_number)).at(-1);
     if (!last) return 'pbp: no plays';
     const seen = new Set(rows.pbp.map((p) => Number(p.period_number)));
