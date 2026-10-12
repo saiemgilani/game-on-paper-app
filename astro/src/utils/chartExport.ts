@@ -1,4 +1,4 @@
-import { cleanLocation } from './misc';
+import { gameTitleText } from './gameTitle';
 
 export interface WpExportMeta {
     title: string
@@ -8,9 +8,9 @@ export interface WpExportMeta {
     updatedAt: string | null
 }
 
-/** "away 30 @ home 27: Win Probability (Final)": the page's own h1 wording, then what the image is. */
+/** "away 30 @ home 27: Win Probability (Final)": the page's h1 (gameTitleText, the same helper GameTitle renders), then what the image is. */
 export function wpExportTitle(awayComp: any, homeComp: any, statusDetail: string): string {
-    return `${cleanLocation(awayComp.team)} ${awayComp.score} @ ${cleanLocation(homeComp.team)} ${homeComp.score}: Win Probability (${statusDetail})`;
+    return `${gameTitleText(awayComp.team, homeComp.team, awayComp.score, homeComp.score)}: Win Probability (${statusDetail})`;
 }
 
 /** A data time for a shared image: the viewer's local time, with its zone named so the image reads anywhere. */

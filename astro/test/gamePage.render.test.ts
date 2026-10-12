@@ -532,6 +532,14 @@ describe('chart islands serialize only the fields their charts read', () => {
         expect(meta.completed[1]).toBe(true);
     });
 
+    test('v2: the export title opens with the page h1, word for word', () => {
+        // both come from gameTitleParts (utils/gameTitle.ts): a change to either shows up here
+        const [wp] = islandProps(renders.v2, 'WinProbabilityChart');
+        const h1s = [...renders.v2.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => unescape(m[1].replace(/<[^>]+>/g, '')));
+        expect(h1s).toHaveLength(2);
+        for (const h1 of h1s) expect(wp.exportMeta[1].title[1]).toBe(`${h1}: Win Probability (Final)`);
+    });
+
     test('classic: the WP chart keeps today\'s download, no export context', () => {
         const [wp] = islandProps(renders.classic, 'WinProbabilityChart');
         expect(wp).not.toHaveProperty('exportMeta');

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { exportTime, wpExportFooter, wpExportTitle } from '../src/utils/chartExport';
 import { cleanLocation } from '../src/utils/misc';
+import { gameTitleText } from '../src/utils/gameTitle';
 import { loadGzJson } from './helpers/tables';
 
 const g = loadGzJson('usage-cfb-400869270.json.gz');   // CMU 30 at OKST 27, final
@@ -11,6 +12,11 @@ describe('WP chart export text', () => {
     test('the title is the header line, then the chart and its state', () => {
         expect(wpExportTitle(away, home, 'Final'))
             .toBe(`${cleanLocation(away.team)} 30 @ ${cleanLocation(home.team)} 27: Win Probability (Final)`);
+    });
+
+    test('the title starts from the h1 helper, which drops scores it is not given', () => {
+        expect(wpExportTitle(away, home, 'Final')).toBe(`${gameTitleText(away.team, home.team, 30, 27)}: Win Probability (Final)`);
+        expect(gameTitleText(away.team, home.team)).toBe(`${cleanLocation(away.team)} @ ${cleanLocation(home.team)}`);
     });
 
     test('a final game carries its URL; a live one also carries its data time', () => {
