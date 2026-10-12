@@ -5,13 +5,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
-import { retrieveTeamSummaries, type SDVTeamSummary } from '../resources/sdv';
+import { retrievePercentiles, retrieveTeamSummaries, type SDVSeasonPercentile, type SDVTeamSummary } from '../resources/sdv';
 import type { League } from '../utils/league';
 
 export interface TeamProfileData {
     league: League;
     id: string;
     team: ESPNTeam;
+    percentiles: SDVSeasonPercentile[];
     teamSummaries: SDVTeamSummary[];
 }
 
@@ -36,8 +37,10 @@ export async function loadTeamProfile(Astro: AstroGlobal, league: League): Promi
         Astro.cache.set(false);
         return { notFound: true };
     }
-    // No national bands behind the trend chart: the only ones published are the
-    // team-GAME ladder, far wider than a distribution of season means (audit C7)
+    let percentiles: SDVSeasonPercentile[] = [];
+    for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+        percentiles = percentiles.concat(await retrievePercentiles(undefined, p, undefined, league));
+    }
     const teamSummaries = await retrieveTeamSummaries({ team_id: Number(id), league });
-    return { league, id, team, teamSummaries };
+    return { league, id, team, percentiles, teamSummaries };
 }
