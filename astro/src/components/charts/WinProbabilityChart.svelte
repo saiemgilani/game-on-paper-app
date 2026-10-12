@@ -456,7 +456,7 @@ async function generateChart() {
     // a property, not a listener: a theme redraw must replace the handler bound to the old chart
     document.getElementById("wp-download").onclick = function() {
         var a =  document.getElementById("wp-download");
-        a.href = exportMeta ? composeExport(wpChart.canvas, exportMeta, exportStyle) : wpChart.toBase64Image();
+        a.href = exportMeta ? composeExport(wpChart.canvas, exportMeta, exportStyle) : wpChart.toBase64Image('image/png');
     };
 }
 
@@ -514,7 +514,7 @@ if (document.readyState !== 'loading') {
                 {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            {(showOdds || gameInProgress) ? '| ' : ''}<a id="wp-download" download={exportMeta ? `game-wp-${id}.png` : `game-wp-${id}.jpg`} href="#">Download Chart</a>
+            {(showOdds || gameInProgress) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.png`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
