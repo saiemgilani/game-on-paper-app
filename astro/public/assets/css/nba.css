@@ -26,3 +26,6 @@
 
 /* /nba/teams and /nba/team/[id]: the team's colour as a bar beside its name (data colour, inline). */
 .nba-team-bar { display: inline-block; width: .5rem; height: 2.5rem; flex: 0 0 auto; }
+
+/* the scatter canvas sits at z-index -1 under its svg; keep that inside the chart box */
+.nba-scatter { isolation: isolate; }

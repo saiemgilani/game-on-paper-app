@@ -10,14 +10,18 @@ interface Props {
     homeScore?: string | number | null
     links: boolean
     league?: League
+    /** overrides the football-shaped team href (/team/<ESPN id>): a null result leaves that side plain text */
+    hrefOf?: (team: any) => string | null
 }
-const { awayTeam, homeTeam, awayScore = null, homeScore = null, links, league } = Astro.props;
+const { awayTeam, homeTeam, awayScore = null, homeScore = null, links, league, hrefOf } = Astro.props;
 const score = (s: string | number | null) => (s == null ? '' : ` ${s}`);
 const teamHref = (t: any) => leaguePath(league, `/team/${t.id}`);
 // a placeholder competitor (an unset bowl or playoff slot) has no team page: ESPN gives it a
 // non-positive id ("-1", "-2"; "0" in older payloads) and the abbreviation "TBD", so that side stays plain text
 const real = (t: any) => Number(t?.id) > 0 && t?.abbreviation !== 'TBD';
 ---
-<h1 class="h2 mb-0">{links
+<h1 class="h2 mb-0">{hrefOf
+    ? <Fragment>{hrefOf(awayTeam) ? <a class="text-reset" href={hrefOf(awayTeam)}>{cleanLocation(awayTeam)}</a> : cleanLocation(awayTeam)}{`${score(awayScore)} @ `}{hrefOf(homeTeam) ? <a class="text-reset" href={hrefOf(homeTeam)}>{cleanLocation(homeTeam)}</a> : cleanLocation(homeTeam)}{score(homeScore)}</Fragment>
+    : links
     ? <Fragment>{real(awayTeam) ? <a class="text-reset" href={teamHref(awayTeam)}>{cleanLocation(awayTeam)}</a> : cleanLocation(awayTeam)}{`${score(awayScore)} @ `}{real(homeTeam) ? <a class="text-reset" href={teamHref(homeTeam)}>{cleanLocation(homeTeam)}</a> : cleanLocation(homeTeam)}{score(homeScore)}</Fragment>
     : `${cleanLocation(awayTeam)}${score(awayScore)} @ ${cleanLocation(homeTeam)}${score(homeScore)}`}</h1>

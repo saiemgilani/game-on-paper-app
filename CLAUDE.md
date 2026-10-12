@@ -5,7 +5,7 @@ processor (`sportsdataverse` play-by-play) in `python/`. The site renders two
 leagues: `cfb` (unprefixed, the default) and `nfl` (explicit pages under
 `astro/src/pages/nfl/**`; see `astro/src/utils/league.ts`).
 
-A third league, `nba` (`astro/src/pages/nba/**`, behind the `'nba'` flag), renders the Blazing the Nets shooting dashboards from the Data API's `nba_stats.shot_*` tables; its chart code is carried over from blazing-the-nets under `astro/src/nba/` (see `PROVENANCE.md` there).
+A third league, `nba` (`astro/src/pages/nba/**`, behind the `'nba'` flag), renders the Blazing the Nets shooting dashboards from the Data API's `nba_stats.shot_*` tables; its chart code is carried over from blazing-the-nets under `astro/src/nba/` (see `PROVENANCE.md` there). The same flag covers `/nba/scoreboard` and `/nba/game/<id>`: the game page reads the Data API (`nba.*` tables) first and falls through to the Flask processor's `GET /nba/<id>/process` (`python/nba_game.py`, which builds the payload from ESPN) when the game is not ingested or fails the sanity gate; the payload's `source` says which.
 
 ## Local gates
 - Node here is often < 22.12, so `astro check` / `astro build` / `astro dev`
