@@ -8,7 +8,7 @@
  *
  * The state comes from ESPN, never from the URL: `?state=` only keeps cards of
  * different states under different URLs, so a URL that asks for `final` while
- * the game is live gets the live card under the live card's one-minute cache,
+ * the game is live gets the live card under the live card's five-minute cache,
  * never a year-long one.
  */
 import type { APIContext, APIRoute } from 'astro';

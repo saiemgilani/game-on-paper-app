@@ -1304,7 +1304,7 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
 /**
  * A game's share card from the API (python/share_card.py) as PNG bytes, or null when
  * the API cannot render one. Cached at the edge for as long as the card itself may
- * be (CARD_MAX_AGE: a final card for a year, a live one for a minute), keyed per
+ * be (CARD_MAX_AGE: a final card for a year, a live one for five minutes), keyed per
  * deploy, state, variant and projection, so a new renderer redraws every card.
  * `pregame` is GOP's projection: home-relative margin and the home side's win probability.
  */

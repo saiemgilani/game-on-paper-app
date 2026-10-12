@@ -120,7 +120,7 @@ describe('shareTags', () => {
         expect(t.image).toBe(`https://gameonpaper.com/nfl/game/${GAME_ID}/card.png?state=live&variant=full&v=live-${Math.floor(now / 300_000)}`);
         // the bucket moves every five minutes, not every render
         expect(shareTags({ ...SPEC, state: 'live' }, { spoilerFree: false, now: now + 60_000 }).image).toContain(`v=live-${Math.floor(now / 300_000)}`);
-        expect(cardCacheControl('live')).toBe('public, max-age=60');
+        expect(cardCacheControl('live')).toBe('public, max-age=300');
         expect(cardCacheControl('pre')).toBe('public, max-age=3600');
     });
 
@@ -289,7 +289,7 @@ describe('the card route', () => {
 
     test.each([
         ['post', 'final', 'public, max-age=31536000, immutable', 31536000],
-        ['in', 'live', 'public, max-age=60', 60],
+        ['in', 'live', 'public, max-age=300', 300],
         ['pre', 'pre', 'public, max-age=3600', 3600],
     ] as const)('ESPN %s: the %s card, cached for its state', async (espnState, state, cacheControl, ttl) => {
         const id = espnState === 'pre' ? PREGAME_ID : GAME_ID;
@@ -317,9 +317,9 @@ describe('the card route', () => {
         expect(Number(q.get('proj_wp'))).toBeGreaterThan(0.5);
     });
 
-    test('the state is ESPN\'s, not the URL\'s: a live game asked for as final is a live card, cached a minute', async () => {
+    test('the state is ESPN\'s, not the URL\'s: a live game asked for as final is a live card, cached five minutes', async () => {
         const { res, api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=spoilerfree`, header('in'));
-        expect(res.headers.get('cache-control')).toBe('public, max-age=60');
+        expect(res.headers.get('cache-control')).toBe('public, max-age=300');
         expect(api!.url).toContain('state=live&variant=spoilerfree');
     });
 

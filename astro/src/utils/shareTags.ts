@@ -18,8 +18,12 @@ export type CardVariant = 'full' | 'spoilerfree';
 export const CARD_STATES: readonly CardState[] = ['pre', 'live', 'final'];
 export const CARD_VARIANTS: readonly CardVariant[] = ['full', 'spoilerfree'];
 
-/** How long a card may be cached: a final card never changes, a live one is a minute old at most. */
-export const CARD_MAX_AGE: Record<CardState, number> = { final: 31536000, live: 60, pre: 3600 };
+/**
+ * How long a card may be cached: a final card never changes; a live one lives as long as
+ * its URL's five-minute bucket (shareTags), so each bucket's card is drawn once. Every
+ * live miss is a full play-by-play run on the API, which is why this is not a minute.
+ */
+export const CARD_MAX_AGE: Record<CardState, number> = { final: 31536000, live: 300, pre: 3600 };
 
 export function cardCacheControl(state: CardState): string {
     return `public, max-age=${CARD_MAX_AGE[state]}${state === 'final' ? ', immutable' : ''}`;
