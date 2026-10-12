@@ -198,6 +198,14 @@ describe('final review', () => {
         expect(store.render_outcome).toBe('degraded');
         expect(cache).toEqual([false]);
     });
+    test('a stringified "True" completed flag still takes the Data API path, read as completed', async () => {
+        const s = api(); s.schedule[0] = { ...s.schedule[0], status_type_completed: 'True' };
+        sched.mockResolvedValueOnce(s.schedule[0]); rows.mockResolvedValueOnce(s);
+        const { prepareNbaGame } = await import('../../src/routes/nba/game');
+        const r = await prepareNbaGame(fakeAstro('401766458').astro);
+        expect('game' in r && r.game.source === 'data_api' && r.game.status.completed).toBe(true);
+        expect(espn).not.toHaveBeenCalled();
+    });
     test('an ESPN outage is unavailable, not a 404', async () => {
         sched.mockResolvedValueOnce(null); espn.mockRejectedValueOnce(new Error('cdn down'));
         const { prepareNbaGame } = await import('../../src/routes/nba/game');

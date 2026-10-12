@@ -77,6 +77,8 @@ export interface DataApiGameRows {
     play_wp: Record<string, any>[]; game_team_rates: Record<string, any>[]; game_player_rates: Record<string, any>[]
 }
 
+/** A Data API boolean: the warehouse can hand one back as the string 'True'/'true', which `=== true` would read as false. */
+export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v === 'true';
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 const pair = (m: unknown, a: unknown): string => `${num(m) ?? 0}-${num(a) ?? 0}`
 
@@ -122,8 +124,8 @@ function teamRates(r: Record<string, any> | null | undefined): NbaTeamRates | nu
 function playerRow(r: Record<string, any>): NbaPlayerRow {
     return {
         athlete_id: num(r.athlete_id) ?? 0, name: r.athlete_display_name ?? '', short_name: r.athlete_short_name ?? null, headshot: r.athlete_headshot_href ?? null,
-        position: r.athlete_position_abbreviation ?? null, jersey: r.athlete_jersey ?? null, starter: r.starter === true, did_not_play: r.did_not_play === true,
-        reason: r.did_not_play === true ? (r.reason ?? null) : null, ejected: r.ejected === true, minutes: num(r.minutes), points: num(r.points), rebounds: num(r.rebounds),
+        position: r.athlete_position_abbreviation ?? null, jersey: r.athlete_jersey ?? null, starter: isTrue(r.starter), did_not_play: isTrue(r.did_not_play),
+        reason: isTrue(r.did_not_play) ? (r.reason ?? null) : null, ejected: isTrue(r.ejected), minutes: num(r.minutes), points: num(r.points), rebounds: num(r.rebounds),
         assists: num(r.assists), steals: num(r.steals), blocks: num(r.blocks), turnovers: num(r.turnovers),
         fg: pair(r.field_goals_made, r.field_goals_attempted), fg3: pair(r.three_point_field_goals_made, r.three_point_field_goals_attempted), ft: pair(r.free_throws_made, r.free_throws_attempted),
         plus_minus: r.plus_minus == null ? null : String(r.plus_minus), ts_pct: num(r.ts_pct), usg_pct: num(r.usg_pct),
@@ -135,7 +137,7 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
     return {
         id: String(r.id), n: num(r.game_play_number) ?? 0, period: num(r.period_number) ?? 0, clock: r.clock_display_value ?? '',
         secondsRemaining: num(r.start_game_seconds_remaining), homeScore: num(r.home_score) ?? 0, awayScore: num(r.away_score) ?? 0, teamId: num(r.team_id),
-        text: r.text ?? '', typeText: r.type_text ?? null, scoringPlay: r.scoring_play === true, scoreValue: num(r.score_value) ?? 0, shootingPlay: r.shooting_play === true,
+        text: r.text ?? '', typeText: r.type_text ?? null, scoringPlay: isTrue(r.scoring_play), scoreValue: num(r.score_value) ?? 0, shootingPlay: isTrue(r.shooting_play),
         athleteId: num(r.athlete_id_1), homeWinProb: num(wp?.home_win_prob), wpDelta: num(wp?.wp_delta), wpRegime: wp?.wp_regime === 'ot' ? 'ot' : 'reg',
         xLegacy: num(wp?.x_legacy), yLegacy: num(wp?.y_legacy),
     }
@@ -175,7 +177,7 @@ export function fromDataApi(rows: DataApiGameRows): NbaGame {
         const prates = new Map(rows.game_player_rates.filter((p) => num(p.team_id) === tid).map((p) => [num(p.athlete_id), p]))
         return {
             team: { id: String(tid), abbreviation: s[`${ha}_abbreviation`], displayName: s[`${ha}_display_name`], location: s[`${ha}_location`], name: s[`${ha}_name`], color: s[`${ha}_color`] ?? null, alternateColor: s[`${ha}_alternate_color`] ?? null, logo: s[`${ha}_logo`] ?? null },
-            score: num(s[`${ha}_score`]), winner: s[`${ha}_winner`] === true, records: parseRecord(s[`${ha}_records`]),
+            score: num(s[`${ha}_score`]), winner: isTrue(s[`${ha}_winner`]), records: parseRecord(s[`${ha}_records`]),
             linescores: parseLinescores(s[`${ha}_linescores`]),
             box: teamBox(rows.team_box.find((b) => num(b.team_id) === tid)), rates: teamRates(rows.game_team_rates.find((b) => num(b.team_id) === tid)),
             players: rows.player_box.filter((p) => num(p.team_id) === tid).map((p) => playerRow({ ...p, ...(prates.get(num(p.athlete_id)) ?? {}) })),
@@ -183,9 +185,9 @@ export function fromDataApi(rows: DataApiGameRows): NbaGame {
     }
     return {
         id: String(s.id), source: 'data_api',
-        status: { name: s.status_type_name, completed: s.status_type_completed === true, period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
+        status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
         date: s.date, venue: s.venue_full_name ?? null, periods,
-        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: p0?.game_spread_available === true },
+        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
         home: side('home'), away: side('away'), plays, hasOvertime: periods > 4,
     }
 }

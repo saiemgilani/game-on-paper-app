@@ -2,7 +2,7 @@
 // ESPN's cdn for status and header, then the processor for a live or un-ingested game.
 import type { AstroGlobal } from 'astro';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
-import { fromDataApi, fromProcessor, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
+import { fromDataApi, fromProcessor, isTrue, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { ProcessorError } from '../../resources/python';
 import { getNbaGameCacheConfig } from '../../utils/config';
@@ -53,7 +53,7 @@ export async function prepareNbaGame(Astro: AstroGlobal): Promise<NbaGamePrep> {
     // 1. the Data API knows the game and says it is final: render from it, no ESPN
     try {
         const row = await retrieveNbaSchedule(id);
-        if (row?.status_type_completed === true) {
+        if (isTrue(row?.status_type_completed)) {
             // a failed read of an ingested final is not "not ingested": record it, or a broken
             // nightly stage would quietly send every final back through ESPN
             let rows: DataApiGameRows | null = null;

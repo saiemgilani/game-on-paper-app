@@ -2,7 +2,7 @@
 import { retrieveRowsFrom } from './sdv';
 import { requestProcessor, ProcessorError } from './python';
 import { NBA_GAMES_SOURCE } from '../utils/league';
-import type { DataApiGameRows, NbaProcessorPayload } from './nbaGame';
+import { isTrue, type DataApiGameRows, type NbaProcessorPayload } from './nbaGame';
 
 const YEAR = 60 * 60 * 24 * 365;
 const HOUR = 60 * 60;
@@ -27,9 +27,8 @@ function assertGameId(id: string): void {
     if (!/^\d{6,12}$/.test(String(id))) throw new Error(`invalid NBA game id: ${JSON.stringify(id)}`);
 }
 
-const isCompleted = (v: unknown) => v === true || v === 'True' || v === 'true';
 /** A finished game's schedule row never changes (a year); anything else is re-read hourly. The row says. */
-const scheduleTTL = (content: any) => (isCompleted(content?.data?.[0]?.status_type_completed) ? YEAR : HOUR);
+const scheduleTTL = (content: any) => (isTrue(content?.data?.[0]?.status_type_completed) ? YEAR : HOUR);
 
 // retrieveNbaSchedule and retrieveNbaGameRows read the schedule through this one function: same query,
 // same cache key, same TTL rule, so neither can pin the other's entry at a different lifetime.
