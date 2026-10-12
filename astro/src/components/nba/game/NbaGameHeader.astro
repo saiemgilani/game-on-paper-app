@@ -14,7 +14,8 @@ import type { NbaGame } from '../../../resources/nbaGame';
 interface Props { game: NbaGame }
 const { game } = Astro.props;
 const prior = game.prior;
-const live = !game.status.completed && !['STATUS_SCHEDULED', 'STATUS_DELAYED', 'STATUS_POSTPONED'].includes(game.status.name);
+// listed positively, as WinProbabilityChart does: a suspended or postponed game is not "LIVE"
+const live = !game.status.completed && ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME', 'STATUS_END_PERIOD'].includes(game.status.name);
 const cols = Math.max(game.periods, game.home.linescores.length, game.away.linescores.length);
 const colLabel = (i: number) => (i < 4 ? String(i + 1) : i === 4 ? 'OT' : `${i - 3}OT`);
 const homeAbbr = cleanAbbreviation(game.home.team);
@@ -31,10 +32,10 @@ const back = scoreboardBackHref(game.date);
     <a class="btn btn-sm btn-outline-primary mb-2" href={back}><i class="bi-arrow-left"></i> Scoreboard</a>
     <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} hrefOf={teamHrefFromEspn} league="nba" />
     {live ? <p class="text-small m-0">{game.status.detail ? `LIVE - ${game.status.detail}` : 'LIVE'}</p>
-          : <LocalDate client:only divClass="text-small m-0" date={game.date} format={DateTime.DATETIME_FULL} prefix={game.status.detail ?? 'Final'} />}
+          : <LocalDate client:only divClass="text-small m-0" date={game.date} format={DateTime.DATETIME_FULL} prefix={game.status.detail ?? 'Final'}><p slot="fallback" class="text-small m-0">&nbsp;</p></LocalDate>}
     {game.venue && <p class="text-small text-muted m-0">{game.venue}</p>}
     <table class="table table-sm w-auto mx-auto mt-3 mb-1 numeral" aria-label="Linescore">
-        <thead><tr><th scope="col"></th>{Array.from({ length: cols }, (_, i) => <th scope="col" class="text-center">{colLabel(i)}</th>)}<th scope="col" class="text-center">T</th></tr></thead>
+        <thead><tr><th scope="col"><span class="visually-hidden">Team</span></th>{Array.from({ length: cols }, (_, i) => <th scope="col" class="text-center">{colLabel(i)}</th>)}<th scope="col" class="text-center">T</th></tr></thead>
         <tbody>
             {([game.away, game.home] as const).map((s) => (
                 <tr><th scope="row" class="text-start fw-normal">{cleanAbbreviation(s.team)}</th>{Array.from({ length: cols }, (_, i) => <td class="text-center">{dash(s.linescores[i] ?? null, int)}</td>)}<td class="text-center fw-bold">{dash(s.score, int)}</td></tr>

@@ -80,7 +80,7 @@ export interface DataApiGameRows {
 /** A Data API boolean: the warehouse can hand one back as the string 'True'/'true', which `=== true` would read as false. */
 export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v === 'true';
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
-const pair = (m: unknown, a: unknown): string => `${num(m) ?? 0}-${num(a) ?? 0}`
+const pair = (m: unknown, a: unknown): string => (num(m) == null || num(a) == null ? '–' : `${num(m)}-${num(a)}`) // a missing count is a dash, never 0-0
 
 /**
  * The schedule's list columns reach the Data API as Python reprs (single quotes, newline separators, no commas),

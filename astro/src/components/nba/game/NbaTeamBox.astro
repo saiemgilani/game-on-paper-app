@@ -17,7 +17,7 @@ const rows: { label: string; v: (b: Box) => string }[] = [
     { label: 'Assists', v: (b) => int(b.assists) },
     { label: 'Steals', v: (b) => int(b.steals) },
     { label: 'Blocks', v: (b) => int(b.blocks) },
-    { label: 'Turnovers (player + team)', v: (b) => (b.total_turnovers == null ? '–' : `${int(b.total_turnovers)} (${int(b.turnovers)} + ${int(b.team_turnovers)})`) },
+    { label: 'Turnovers (player + team)', v: (b) => (b.total_turnovers == null ? '–' : b.team_turnovers == null ? int(b.total_turnovers) : `${int(b.total_turnovers)} (${int(b.turnovers)} + ${int(b.team_turnovers)})`) },
     { label: 'Fouls', v: (b) => int(b.fouls) },
     { label: 'Fast break points', v: (b) => txt(b.fast_break_points) },
     { label: 'Points in the paint', v: (b) => txt(b.points_in_paint) },

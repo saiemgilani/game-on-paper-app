@@ -18,7 +18,7 @@ const n = (v: number | null) => dash(v, (x) => String(Math.round(x)));
     <tbody>
         {[...starters, ...bench].map((p, i) => (
             <tr class:list={[{ 'border-top': i === starters.length }]}>
-                <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.position ? <span class="text-muted"> {p.position}</span> : null}</th>
+                <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.position ? <span class="text-muted"> {p.position}</span> : null}{p.ejected ? <span class="text-muted" title="Ejected"> EJ</span> : null}</th>
                 <td class="text-end">{n(p.minutes)}</td><td class="text-end">{n(p.points)}</td><td class="text-end">{n(p.rebounds)}</td><td class="text-end">{n(p.assists)}</td>
                 <td class="text-end">{n(p.steals)}</td><td class="text-end">{n(p.blocks)}</td><td class="text-end">{n(p.turnovers)}</td>
                 <td class="text-end">{p.fg}</td><td class="text-end">{p.fg3}</td><td class="text-end">{p.ft}</td>

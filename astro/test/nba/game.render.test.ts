@@ -250,3 +250,26 @@ describe('/nba/game/[id] render', () => {
         }
     });
 });
+
+describe('self-review round 1', () => {
+    const procGame = () => fromProcessor(read('game_401766458_processor'));
+    test('the WP chart and the date hold their space before hydration; the linescore corner is named', async () => {
+        prep.mockResolvedValueOnce({ game: procGame() });
+        const html = await render();
+        expect(html).toContain('aspect-ratio: 2 / 1');
+        expect(html).toMatch(/<th scope="col"><span class="visually-hidden">Team<\/span><\/th>/);
+    });
+    test('a suspended game is not LIVE', async () => {
+        const g = procGame();
+        prep.mockResolvedValueOnce({ game: { ...g, status: { ...g.status, completed: false, name: 'STATUS_SUSPENDED', detail: 'Suspended' } } });
+        expect(plain(noScripts(await render()))).not.toContain('LIVE');
+    });
+    test('a missing shooting count is a dash, never 0-0; an ejected player is marked', async () => {
+        const raw = read('game_401766458_processor');
+        raw.players.home[0] = { ...raw.players.home[0], field_goals_made: null, ejected: true };
+        const g = fromProcessor(raw);
+        expect(g.home.players[0].fg).toBe('–');
+        prep.mockResolvedValueOnce({ game: g });
+        expect(await render()).toContain('title="Ejected"');
+    });
+});
