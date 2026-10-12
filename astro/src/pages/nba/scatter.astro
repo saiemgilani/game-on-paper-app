@@ -1,0 +1,13 @@
+---
+// src/pages/nba/scatter.astro
+import NbaScatterRoute from '../../components/routes/NbaScatterRoute.astro';
+import { prepareNbaScatter } from '../../routes/nba/scatter';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+
+const r = await prepareNbaScatter(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+---
+
+<NbaScatterRoute data={r} />

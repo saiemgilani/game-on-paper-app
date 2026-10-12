@@ -1,0 +1,16 @@
+---
+// src/pages/nba/game/[id].astro
+import NbaGameRoute from '../../../components/routes/NbaGameRoute.astro';
+import { prepareNbaGame } from '../../../routes/nba/game';
+import { NBA_UNAVAILABLE } from '../../../routes/nba/cache';
+
+const r = await prepareNbaGame(Astro);
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE('This game is temporarily unavailable. Please try again shortly.');
+}
+---
+
+<NbaGameRoute data={r} />
