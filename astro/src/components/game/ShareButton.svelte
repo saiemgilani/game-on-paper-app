@@ -43,7 +43,7 @@
         <li>
             <button class="dropdown-item" type="button" onclick={() => share(spoilerFreeUrl)}>
                 <i class="bi-eye-slash me-2"></i>Share without the score
-                <span class="d-block text-muted small ms-4">Preview hides the score</span>
+                <span class="d-block text-muted small ms-4 mt-1">Preview hides the score</span>
             </button>
         </li>
     </ul>
