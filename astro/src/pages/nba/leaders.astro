@@ -1,0 +1,13 @@
+---
+// src/pages/nba/leaders.astro
+import NbaLeadersRoute from '../../components/routes/NbaLeadersRoute.astro';
+import { prepareNbaLeaders } from '../../routes/nba/leaders';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+
+const r = await prepareNbaLeaders(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+---
+
+<NbaLeadersRoute data={r} />

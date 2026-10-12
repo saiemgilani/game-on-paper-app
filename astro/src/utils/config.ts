@@ -27,6 +27,9 @@ function retrieveSeasonConfig(): SeasonConfig {
 
 export const CURRENT_SEASON_CONFIG = retrieveSeasonConfig();
 export const CACHE_TTL_MULTIPLIER = 2;
+// The NBA board refreshes every minute all year. SEASON_MODE is the football operator's switch
+// and must not slow it down (it flips off-season for football, which is the NBA playoffs).
+export const NBA_SCOREBOARD_REFRESH = 60;
 
 export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
     const gameDate = DateTime.fromISO(date);
@@ -60,6 +63,20 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
             tags: ['game-in-progress', "favorites-enabled"],
         }
     }
+}
+
+/**
+ * getGameCacheConfig for an NBA game page: the live branch follows the NBA's own all-year refresh
+ * (NBA_SCOREBOARD_REFRESH), not the football SEASON_MODE switch; a final that reached here came from
+ * the processor (a Data API-served final is cached by the route for a year), so it gets one day;
+ * every branch carries the `nba` purge tag.
+ */
+export function getNbaGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
+    const base = getGameCacheConfig(date, status);
+    const tags = [...(base.tags ?? []), 'nba'];
+    if (status.type.completed) return { maxAge: 60 * 60 * 24, tags };
+    if (tags.includes('game-in-progress')) return { maxAge: NBA_SCOREBOARD_REFRESH, swr: NBA_SCOREBOARD_REFRESH * CACHE_TTL_MULTIPLIER, tags };
+    return { ...base, tags };
 }
 
 export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: League = 'cfb'): CacheOptions {

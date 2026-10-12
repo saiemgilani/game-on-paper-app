@@ -1,0 +1,47 @@
+---
+// The football WinProbabilityChart (x = play index; home WP as the home side's) plus the ten largest swings.
+// The island renders its own #wp_container / canvas#wpChart; the wrapper must not repeat those ids.
+import WinProbabilityChart from '../../charts/WinProbabilityChart.svelte';
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { ThemedGameColors } from '../../../utils/misc';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { biggestPlays, dash, wpChartPlays } from '../../../nba/data/game';
+import { fmtPct, fmtPts } from '../../../nba/format';
+import { periodShort } from './periodLabel';
+
+interface Props { game: NbaGame; colors: ThemedGameColors | null }
+const { game, colors } = Astro.props;
+const comp = (s: typeof game.home) => ({ team: s.team, winner: s.winner, score: String(s.score ?? 0), id: s.team.id });
+const status = { type: { completed: game.status.completed, name: game.status.name } };
+const plays = wpChartPlays(game);
+const swings = biggestPlays(game.plays);
+const home = cleanAbbreviation(game.home.team);
+const away = cleanAbbreviation(game.away.team);
+const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
+---
+<div id="wp-section" class="mb-3">
+    {plays.length > 1
+        ? <WinProbabilityChart client:only="svelte" id={`wp-${game.id}`} homeComp={comp(game.home)} awayComp={comp(game.away)} gameStatus={status} homeTeamSpread={game.prior?.homeTeamSpread ?? 0} overUnder={null} plays={plays} percentiles={[]} gei={null} colors={colors} showOdds={false} allPeriodMarkers={true}>
+            {/* client:only renders nothing on the server: hold the chart's box (a text line, then Chart.js's default 2:1 canvas) so the page below does not jump */}
+            <div slot="fallback" aria-hidden="true"><p class="text-small">&nbsp;</p><div style="aspect-ratio: 2 / 1"></div></div>
+          </WinProbabilityChart>
+        : <p class="text-muted">Win probability arrives with the first plays.</p>}
+</div>
+<p class="small text-muted">
+    Game on Paper's in-game model: score margin, time remaining, the pregame prior and possession. The x-axis counts plays.
+    {game.prior == null && ' This game has no pregame prior.'}
+    {hasOt && ' Overtime plays use the overtime regime, scored period by period as a five-minute endgame, an approximation.'}
+</p>
+<h3 class="h5">Biggest plays</h3>
+{swings.length === 0 ? <p class="text-muted">No win-probability swings yet.</p> : (
+<div class="table-responsive">
+<table class="table table-sm numeral" aria-label="Biggest win-probability swings">
+    <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Swing</th></tr></thead>
+    <tbody>
+        {swings.map((p) => (
+            <tr><td>{periodShort(p.period)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(p.wpDelta, fmtPts)}</td></tr>
+        ))}
+    </tbody>
+</table>
+</div>
+)}

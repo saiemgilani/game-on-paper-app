@@ -1,0 +1,51 @@
+---
+// One scoreboard card: the football GameThumb's frame (same column classes, border, button)
+// with TeamRow for the two teams and basketball status copy. No possession, no red zone,
+// no linescore (the linescore lives on the game page).
+import type { ESPNScheduleEvent } from '../../resources/espn';
+import TeamRow from '../schedule/TeamRow.astro';
+import { gameLeaders, statusLine } from '../../nba/scoreboard';
+import { cleanAbbreviation, cx } from '../../utils/misc';
+
+interface Props { game: ESPNScheduleEvent }
+const { game } = Astro.props;
+const comp = game.competitions[0];
+const rawStatus = comp.status ?? game.status!;
+const state = rawStatus.type.state;
+// A game that has not started (including a pre-game delay) must not print 0-0: TeamRow hides the
+// score for STATUS_SCHEDULED, so present any 'pre' game to it that way.
+const status = state === 'pre' ? { ...rawStatus, type: { ...rawStatus.type, name: 'STATUS_SCHEDULED' } } : rawStatus;
+const home = comp.competitors.find((c) => c.homeAway === 'home')!;
+const away = comp.competitors.find((c) => c.homeAway === 'away')!;
+const homeScore = Number(home.score ?? 0), awayScore = Number(away.score ?? 0);
+const line = statusLine(rawStatus);
+const completed = rawStatus.type.completed === true;
+const leaders = { home: gameLeaders(home), away: gameLeaders(away) };
+const label = (l: { pts?: string; reb?: string; ast?: string }) =>
+    [l.pts && `${l.pts} PTS`, l.reb && `${l.reb} REB`, l.ast && `${l.ast} AST`].filter(Boolean).join(', ');
+const awayLine = label(leaders.away), homeLine = label(leaders.home);
+---
+<div class="col-xl-3 col-lg-6">
+    <div class={cx('row border rounded m-2 mb-4', state === 'in' && 'border-primary')}>
+        <div class="col p-3">
+            <div class="d-flex justify-content-between">
+                <strong class="d-inline-block mb-2 text-primary text-small">
+                    {line.kind === 'scheduled'
+                        ? <span data-gb-utc={comp.date}>{comp.date}</span>
+                        : <span>{line.text}</span>}
+                </strong>
+            </div>
+            <TeamRow espnComp={away} espnStatus={status} winner={awayScore > homeScore} completed={completed} hasBall={false} spacer="" />
+            <TeamRow espnComp={home} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" />
+            {(awayLine || homeLine) && (
+                <p class="small text-muted mb-3 d-none d-md-block">
+                    {awayLine && <span class="d-block">{cleanAbbreviation(away.team)}: {awayLine}</span>}
+                    {homeLine && <span class="d-block">{cleanAbbreviation(home.team)}: {homeLine}</span>}
+                </p>
+            )}
+            <div class="d-flex justify-content-between game-thumb-actions">
+                <a class="btn btn-sm btn-outline-primary" role="button" href={`/nba/game/${game.id}`}>{state === 'pre' ? 'Preview' : 'Stats'}</a>
+            </div>
+        </div>
+    </div>
+</div>

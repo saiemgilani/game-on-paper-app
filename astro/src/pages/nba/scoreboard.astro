@@ -1,0 +1,12 @@
+---
+// Renders NbaScoreboardRoute (Task 4).
+import NbaScoreboardRoute from '../../components/routes/NbaScoreboardRoute.astro';
+import { prepareNbaScoreboard } from '../../routes/nba/scoreboard';
+
+const r = await prepareNbaScoreboard(Astro);
+if ('badDate' in r) {
+    Astro.response.status = 400;
+}
+---
+
+<NbaScoreboardRoute data={r} />

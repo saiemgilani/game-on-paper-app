@@ -4,6 +4,7 @@
  * key the player's own hexbin produces (see sdv-db nba_shot_dashboards.py).
  */
 import { lineOf, ZONES, type DistanceBin, type PlayerGame, type SideBin, type Split, type Zone } from './data/aggregate';
+import type { PlayerGames } from './data/leaders';
 import type { PlayerSeason, PlayerStats } from './data/players';
 import type { ShotLite } from './data/shots';
 import { BAR_BIN_FT, HEX_RADIUS, type LeagueContext } from './dashboard';
@@ -128,6 +129,31 @@ export function playerGamesFromRows(rows: PlayerGameRow[]): PlayerGame[] | null 
         });
     }
     return out.sort((a, b) => a.date.localeCompare(b.date) || a.game_id.localeCompare(b.game_id));
+}
+
+/**
+ * blazing's `seasonPlayerGames` over the derived rows: every player's games in date order for
+ * the rolling leaderboards. A player with a game the logs cannot place (NULL date, opponent or
+ * venue) is left out rather than failing the page, as blazing does; his team is the one in his
+ * latest game.
+ */
+export function seasonPlayerGamesFromRows(gameRows: PlayerGameRow[], playerRows: SeasonPlayerRow[]): PlayerGames[] {
+    const byPerson = new Map<number, PlayerGameRow[]>();
+    for (const r of gameRows) {
+        const mine = byPerson.get(r.person_id);
+        if (mine) mine.push(r); else byPerson.set(r.person_id, [r]);
+    }
+    const names = new Map<number, string>();
+    for (const r of playerRows) if (r.is_primary || !names.has(r.person_id)) names.set(r.person_id, r.player_name);
+    const out: PlayerGames[] = [];
+    for (const [person_id, rows] of byPerson) {
+        const games = playerGamesFromRows(rows);
+        if (games === null || games.length === 0) continue;
+        const last = games[games.length - 1];
+        const lastRow = rows.find((r) => r.game_id === last.game_id) ?? rows[0];
+        out.push({ person_id, name: names.get(person_id) ?? String(person_id), team_id: last.team_id, team: lastRow.team_tricode, games });
+    }
+    return out;
 }
 
 export function shotsFromRows(rows: ShotApiRow[]): ShotLite[] {
