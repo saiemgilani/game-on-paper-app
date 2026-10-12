@@ -43,10 +43,5 @@ def _body(monkeypatch):
 
 def test_nba_process_payload_is_unchanged(monkeypatch):
     kept = {k: v for k, v in _body(monkeypatch).items() if k not in ADDED_IN_PR0}
-    if (
-        not SNAP.exists()
-    ):  # first run, on 81dbaf1e only: write it, commit it, never rewrite it in PR 0
-        SNAP.write_text(
-            json.dumps(kept, sort_keys=True, indent=1), encoding="utf-8", newline="\n"
-        )
+    assert SNAP.exists(), "PR 0 snapshot missing; never regenerate"
     assert kept == json.loads(SNAP.read_text(encoding="utf-8"))
