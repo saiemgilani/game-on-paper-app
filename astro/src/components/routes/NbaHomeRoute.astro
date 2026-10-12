@@ -26,6 +26,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: fals
         <p class="text-muted">{subtitle}</p>
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath="/nba" />
+          <a href="/nba/scoreboard">Scoreboard &rarr;</a>
           <a href={withParams('/nba/players', { season: String(season) }, { season: String(current) })}>All players &rarr;</a>
           <a href={withParams('/nba/teams', { season: String(season) }, { season: String(current) })}>All teams &rarr;</a>
         </div>

@@ -76,3 +76,5 @@ carries both runs.
   (2004-2025 per its card), all span the holdouts; see
   `provenance.holdout_contamination` and the curve sensitivity run
   (NFL: train-only curve gives holdout Brier 0.1177 vs 0.1174).
+
+- `nba_summary_401585607.json.gz`: ESPN NBA summary (ORL vs TOR, 2024-03-17, 450 plays), the same capture sdv-py tests `espn_nba_pbp` on; no pickcenter line, so the prior is home-court only.

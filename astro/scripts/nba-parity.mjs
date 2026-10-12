@@ -9,11 +9,16 @@ const BASE = process.env.BASE ?? 'http://localhost:4321';
 const COOKIE = process.env.COOKIE ?? '';
 const SEASON = process.env.SEASON ?? '2026';
 const ids = process.argv.slice(2);
-if (!ids.length) throw new Error('usage: nba-parity.mjs <person_id|team:<team_id>>...');
+if (!ids.length) throw new Error('usage: nba-parity.mjs <person_id|team:<team_id>|scatter|leaders>...');
 
 const line = (t, { team = false } = {}) => { const m = /(\d[\d,]*)\/(\d[\d,]*) FG[^\d]*([\d.]+)% FG%[^\d]*([\d.]+)% eFG%[^\d]*([\d.]+)% 3P%(?:[^\d]*(\d[\d,]*)\/(\d[\d,]*))?/.exec(t); if (!m) throw new Error(`no shooting line in: ${t.slice(0, 200)}`); if (!team && m[6] === undefined) throw new Error('no 3PM/3PA pair in a player header'); return m.slice(1).filter((v) => v !== undefined).join(' '); };
 // every chart's <desc>, whitespace-collapsed and sorted (both sites render one per chart svg)
 const descs = (page) => page.$$eval('svg > desc', (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).sort());
+// the default leaders board: first 15 rows, 'rank name team value', whitespace-collapsed (player cell: link text, else minus a trailing "last game ...")
+const leaderRows = (page, sel) => page.$$eval(sel, (trs) => trs.slice(0, 15).map((tr) => [...tr.querySelectorAll('td,th')].slice(0, 4).map((c, i) => {
+  let t = i === 1 ? (c.querySelector('a')?.textContent ?? c.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/\s*last game.*$/i, '') : (c.textContent ?? '').replace(/\s+/g, ' ').trim();
+  return t;
+}).join(' ')));
 const cut = (t) => (t.length > 200 ? `${t.slice(0, 200)}...` : t);
 const chromium = await loadChromium();
 const browser = await chromium.launch(launchOptions());
@@ -29,6 +34,23 @@ try {
   if (cookies.length) await ctx.addCookies(cookies);
   const page = await ctx.newPage();
   for (const arg of ids) {
+    if (arg === 'scatter' || arg === 'leaders') {
+      const theirUrl = `https://blazingthenets.com/${arg}?season=${SEASON}`;
+      const ourUrl = `${BASE}/nba/${arg}?season=${SEASON}`;
+      const grab = async (url, ours) => {
+        const r = await page.goto(url, { waitUntil: 'networkidle' });
+        if (!r || !r.ok()) throw new Error(`goto ${url} failed: status ${r ? r.status() : '(no response)'}`);
+        return arg === 'scatter' ? descs(page) : leaderRows(page, ours ? '#nba-leaders tbody:first-of-type tr' : 'table tbody tr');
+      };
+      const a = await grab(theirUrl, false);
+      const b = await grab(ourUrl, true);
+      const k = Array.from({ length: Math.max(a.length, b.length) }, (_, j) => j).find((j) => a[j] !== b[j]);
+      const pass = k === undefined && a.length > 0;
+      if (!pass) failed++;
+      console.log(`${pass ? 'OK  ' : 'DIFF'} ${arg}: ${pass ? `${b.length} ${arg === 'scatter' ? 'desc texts' : 'rows'} equal` : `blazing ${a.length}, gop ${b.length}`}`);
+      if (!pass && k !== undefined) { console.log(`     first difference [${k}]:`); console.log(`       blazing: ${cut(a[k] ?? '(none)')}`); console.log(`       gop:     ${cut(b[k] ?? '(none)')}`); }
+      continue;
+    }
     const team = arg.startsWith('team:');
     const id = team ? arg.slice(5) : arg;
     if (!/^\d+$/.test(id)) throw new Error(`not an id: ${arg}`);

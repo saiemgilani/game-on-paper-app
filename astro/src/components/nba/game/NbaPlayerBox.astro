@@ -1,0 +1,33 @@
+---
+// One team's box: starters by minutes, bench by minutes, DNPs as a row with the reason.
+import type { NbaSide } from '../../../resources/nbaGame';
+import { dash, orderPlayers } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+interface Props { side: NbaSide; id: string }
+const { side, id } = Astro.props;
+const { starters, bench, dnp } = orderPlayers(side.players);
+const abbr = cleanAbbreviation(side.team);
+const cols = ['MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'FG', '3PT', 'FT', 'TS%', 'USG%', '+/-'];
+const n = (v: number | null) => dash(v, (x) => String(Math.round(x)));
+---
+<div class="table-responsive">
+<table class="table table-sm numeral table-fix-first-col" id={id} aria-label={`${abbr} player box score`}>
+    <thead><tr><th scope="col" class="text-start">{abbr}</th>{cols.map((c) => <th scope="col" class="text-end">{c}</th>)}</tr></thead>
+    <tbody>
+        {[...starters, ...bench].map((p, i) => (
+            <tr class:list={[{ 'border-top': i === starters.length }]}>
+                <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.position ? <span class="text-muted"> {p.position}</span> : null}{p.ejected ? <span class="text-muted" title="Ejected"> EJ</span> : null}</th>
+                <td class="text-end">{n(p.minutes)}</td><td class="text-end">{n(p.points)}</td><td class="text-end">{n(p.rebounds)}</td><td class="text-end">{n(p.assists)}</td>
+                <td class="text-end">{n(p.steals)}</td><td class="text-end">{n(p.blocks)}</td><td class="text-end">{n(p.turnovers)}</td>
+                <td class="text-end">{p.fg}</td><td class="text-end">{p.fg3}</td><td class="text-end">{p.ft}</td>
+                <td class="text-end">{dash(p.ts_pct, (x) => fmtPct(x, 1))}</td><td class="text-end">{dash(p.usg_pct, (x) => fmtDec(x, 1))}</td><td class="text-end">{p.plus_minus ?? '–'}</td>
+            </tr>
+        ))}
+        {dnp.map((p) => (
+            <tr class="text-muted"><th scope="row" class="text-start fw-normal text-nowrap">{p.name}</th><td colspan={cols.length} class="text-start small">{p.reason ?? 'DNP'}</td></tr>
+        ))}
+    </tbody>
+</table>
+</div>
