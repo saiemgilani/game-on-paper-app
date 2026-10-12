@@ -10,11 +10,13 @@ export default async (page, base) => {
   await page.waitForTimeout(1200);
   // the visible Overall EPA/Play cell (4th column), offense then defense
   const epa = page.locator('#team-splits tr[data-split="overall"]:not(.d-none) td:nth-child(4)');
-  const off = (await epa.innerText()).trim();
-  const want = (await page.locator('#team-splits tr[data-side="def"][data-split="overall"] td:nth-child(4)').textContent())?.trim();
+  // the cell carries its rank too ("0.18 #5"); whitespace normalised so innerText and textContent compare
+  const norm = (t) => (t ?? '').replace(/\s+/g, ' ').trim();
+  const off = norm(await epa.innerText());
+  const want = norm(await page.locator('#team-splits tr[data-side="def"][data-split="overall"] td:nth-child(4)').textContent());
   await select.selectOption('def');
   await page.waitForTimeout(1200);
-  const def = (await epa.innerText()).trim();
+  const def = norm(await epa.innerText());
   if (def !== want || def === off) throw new Error(`Overall EPA/Play after switching: ${def} (offense ${off}, defense ${want})`);
   if (!page.url().includes('side=def')) throw new Error(`URL did not take ?side=def: ${page.url()}`);
   await page.locator('#team-splits tr[data-split="vs_ranked"]:not(.d-none)').scrollIntoViewIfNeeded();
