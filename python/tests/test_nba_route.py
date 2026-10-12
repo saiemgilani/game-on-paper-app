@@ -98,10 +98,24 @@ def test_football_routes_kept_and_nba_is_separate(monkeypatch):
     assert "nba" not in app_mod._PROCESSORS
 
 
-def test_nba_malformed_espn_payload_is_404(monkeypatch):
-    _, c = _client(monkeypatch, {})
+def test_nba_empty_espn_payload_is_404(monkeypatch):
+    _, c = _client(monkeypatch, {})  # no plays: the pre-tip answer
     r = c.get("/nba/401585607/process", headers=auth())
     assert r.status_code == 404
+    assert r.get_json()["status"] == "bad"
+
+
+def test_nba_malformed_espn_payload_is_502(monkeypatch):
+    summary = json.loads(gzip.open(FIX, "rt", encoding="utf-8").read())
+    _, c = _client(monkeypatch, summary)
+    from sportsdataverse.nba import nba_pbp
+
+    def boom(*a, **k):
+        raise KeyError("header")
+
+    monkeypatch.setattr(nba_pbp, "helper_nba_pbp", boom)
+    r = c.get("/nba/401585607/process", headers=auth())
+    assert r.status_code == 502  # never the 404 the page reads as "no plays yet"
     assert r.get_json()["status"] == "bad"
 
 

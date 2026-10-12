@@ -724,12 +724,13 @@ def process_nba(game_id: int):
         log.warning("nba %s: ESPN fetch failed: %s", game_id, e)
         return failed({"status": "bad", "message": "ESPN is unavailable. Try again shortly."}, 502)
     except KeyError as e:
-        # same answer as the football routes for a payload ESPN has no usable data in
-        log.error("nba %s: malformed ESPN payload, threw 404: %r", game_id, e)
+        # 502, not the football routes' 404: the page reads an NBA 404 as "no plays yet" and would
+        # cache a pregame page for a live game; a garbled payload is an unknown, so it is not cached
+        log.error("nba %s: malformed ESPN payload, threw 502: %r", game_id, e)
         if not fetched:
             upstream(False, None, ("KeyError: %r" % (e,))[:500])
         TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
-        return failed({"status": "bad", "message": "ESPN payload is malformed. Data not available."}, 404)
+        return failed({"status": "bad", "message": "ESPN payload is malformed. Data not available."}, 502)
     except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
         import traceback
 
