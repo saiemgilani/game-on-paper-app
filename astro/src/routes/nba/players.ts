@@ -13,9 +13,9 @@ import { franchiseOf, type Team } from '../../nba/data/teams';
 import { netsTricode } from '../../nba/seasonRange';
 import type { SortDir } from '../../nba/table';
 import { PLAYER_COLUMNS, parseDir, parseSort, playerRows, sortPlayerRows, teamsFromSeasonRows, type PlayerRow, type PlayerSortKey } from '../../nba/tables';
-import { retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { SEASON_CACHE, setCache, uncacheable } from './cache';
 import { resolveSeason } from './home';
+import { readSeasonRows } from './season';
 
 export interface NbaPlayersParams {
     season: number;
@@ -47,17 +47,10 @@ export async function prepareNbaPlayers(Astro: AstroGlobal): Promise<NbaPlayersP
     const sort = parseSort(PLAYER_SORT_KEYS, Astro.url.searchParams.get('sort'), 'attempts');
     const dir = parseDir(Astro.url.searchParams.get('dir'));
 
-    let rows;
-    try {
-        rows = await retrieveSeasonPlayerRows(season);
-    } catch (e: any) {
-        console.error(`ERROR while loading the ${season} season players for /nba/players: ${e}, ${e?.stack}`);
-        uncacheable(Astro);
-        return { unavailable: true };
-    }
+    const rows = await readSeasonRows(Astro, season, '/nba/players', false); // the cache is set below, after the 404 check
+    if (rows === null) return { unavailable: true };
     if (rows.length === 0) {
-        // not ingested yet: the empty page, never cached for the season window
-        uncacheable(Astro);
+        // not ingested yet: the empty page (readSeasonRows already made it uncacheable)
         return { ...resolved, teams: [], selected: null, team: requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir };
     }
     const teams = teamsFromSeasonRows(rows, season);

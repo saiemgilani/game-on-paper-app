@@ -10,8 +10,7 @@ import type { PlayerSeason } from '../../nba/data/players';
 import { NETS_TEAM_ID } from '../../nba/data/teams';
 import { seasonQuery } from '../../nba/links';
 import { parseSeason, siteSeasons } from '../../nba/seasons';
-import { retrieveSeasonPlayerRows } from '../../resources/nbaShots';
-import { SEASON_CACHE, setCache, uncacheable } from './cache';
+import { readSeasonRows } from './season';
 
 export interface NbaHomeParams {
     season: number;
@@ -36,16 +35,7 @@ export function resolveSeason(Astro: AstroGlobal): { season: number; seasons: nu
 export async function prepareNbaHome(Astro: AstroGlobal): Promise<NbaHomePrep> {
     Astro.locals.league = 'nba';
     const resolved = resolveSeason(Astro);
-    let rows;
-    try {
-        rows = await retrieveSeasonPlayerRows(resolved.season);
-    } catch (e: any) {
-        console.error(`ERROR while loading the ${resolved.season} season players: ${e}, ${e?.stack}`);
-        uncacheable(Astro);
-        return { unavailable: true };
-    }
-    // a season not ingested yet must not hold its empty page for the 6 h season window
-    if (rows.length === 0) uncacheable(Astro);
-    else setCache(Astro, SEASON_CACHE);
+    const rows = await readSeasonRows(Astro, resolved.season, '/nba');
+    if (rows === null) return { unavailable: true };
     return { ...resolved, roster: playerSeasonsFromRows(rows, NETS_TEAM_ID), headshots: headshotsFromRows(rows) };
 }
