@@ -17,8 +17,11 @@ What the fork started from (kept as history; the files have since diverged where
 | dashboard.ts, debounce.ts, format.ts, scatterMetrics.ts, selection.ts, table.ts, seasonRange.ts | lib/… |
 | links.ts | lib/links.ts, with the `/nba` prefixes (now league-aware: `leaguePath`) |
 
-Written in GOP from the start: `data/shots.ts`, `data/players.ts` (type-only rewrites), `seasons.ts`, `adapters.ts`,
-`tables.ts`, `data/game.ts`, `scoreboard.ts`. Not carried over: blazing's `data/releases.ts`, `data/rosters.ts`,
+Written in GOP from the start: `data/shots.ts`, `data/players.ts` (type-only rewrites), `seasons.ts`, `adapters.ts`
+(apart from the function below), `data/game.ts`, `scoreboard.ts`. Rewritten in GOP from blazing functions, over the Data
+API's `shot_*` rows: `tables.ts` (from `lib/pageData.ts`'s `playerRows`/`rosterRows`/`teamLines` and `lib/data/teams.ts`'s
+`teamsFromShots`, over `shot_season_players` rows) and `adapters.ts`'s `seasonPlayerGamesFromRows` (from `lib/pageData.ts`'s
+`seasonPlayerGames`, over `shot_player_games` rows). Not carried over: blazing's `data/releases.ts`, `data/rosters.ts`,
 `pageData.ts`, `routes.ts`, `ui.ts`. Tests: `test/nba/*.test.ts` began as blazing's
 `test/{aggregate,charts,court,explorer,views}.test.ts` on vitest over `test/fixtures/nba/*.json`.
 
