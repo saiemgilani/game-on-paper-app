@@ -9,11 +9,15 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  * unprefixed default, so every pre-existing URL, cache key and KV key is
  * untouched.
  */
-export type League = 'cfb' | 'nfl' | 'nba';
+/** The basketball leagues, in the order their prefixes are tried. Adding a league starts here: the compiler then
+ *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
+export const BASKETBALL_LEAGUES = ['nba'] as const;
+export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
+export type League = 'cfb' | 'nfl' | BasketballLeague;
 export type Sport = 'football' | 'basketball';
 export const DEFAULT_LEAGUE: League = 'cfb';
 /** The leagues that live under a URL prefix, in the order `splitLeague` tries them. */
-export const PREFIXED_LEAGUES: readonly Exclude<League, 'cfb'>[] = ['nfl', 'nba'];
+export const PREFIXED_LEAGUES: readonly Exclude<League, 'cfb'>[] = ['nfl', ...BASKETBALL_LEAGUES];
 
 export interface LeagueConfig {
     slug: League;
@@ -22,11 +26,11 @@ export interface LeagueConfig {
     name: string;
     shortName: string;
     /** site URL prefix; '' for the default league */
-    urlPrefix: '' | '/nfl' | '/nba';
+    urlPrefix: '' | `/${Exclude<League, 'cfb'>}`;
     /** cdn.espn.com/core/<espnPath>/…, www.espn.com/<espnPath>/…, s.espncdn.com stitcher path */
-    espnPath: 'college-football' | 'nfl' | 'nba';
+    espnPath: 'college-football' | 'nfl' | 'nba' | 'wnba' | 'mens-college-basketball' | 'womens-college-basketball';
     /** sports.core.api.espn.com/v2/sports/football/leagues/<espnCoreLeague> */
-    espnCoreLeague: 'college-football' | 'nfl' | 'nba';
+    espnCoreLeague: 'college-football' | 'nfl' | 'nba' | 'wnba' | 'mens-college-basketball' | 'womens-college-basketball';
     /** extra query prepended on the cdn scoreboard call (cfb: FBS group + limit) */
     scoreboardQuery: string;
     /** cdn schedule `group` param; null = the league has no conference grouping */
@@ -45,7 +49,7 @@ export interface LeagueConfig {
     regularSeasonWeeks: number;
     postseasonWeeks: number;
     /** a.espncdn.com/i/teamlogos/<logoLeague>/500/<team id>.png */
-    logoLeague: 'ncaa' | 'nfl' | 'nba';
+    logoLeague: 'ncaa' | 'nfl' | 'nba' | 'wnba';
     /** teams ranked in a season table; the rank colour ramp scales to it */
     teamCount: number;
     /** the population the season tables describe, for copy ("FBS vs FBS games only") */
@@ -94,6 +98,11 @@ export const LEAGUES: Record<League, LeagueConfig> = {
     },
 };
 
+/** A league rendered by the basketball pages (routes/basketball, components/nba). */
+export function isBasketball(league: League | undefined | null): league is BasketballLeague {
+    return league != null && LEAGUES[league]?.sport === 'basketball';
+}
+
 /** A Data API schema to read from, when it is not the league's own (`nba` games vs `nba_stats` shooting). */
 export interface SdvSource { apiBase: string; schema: string; /** cache-key prefix; '' keeps cfb's historical keys */ namespace: string }
 export const NBA_GAMES_SOURCE: SdvSource = { apiBase: 'https://data.sportsdataverse.org/v1/nba', schema: 'nba', namespace: 'nba-games' };
@@ -102,7 +111,7 @@ export function leagueSource(league: League): SdvSource {
 }
 
 /** ESPN logo path segment for a league's team ids (numeric ids resolve for both). */
-export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' | 'nba' {
+export function espnLogoLeague(league: League | undefined): LeagueConfig['logoLeague'] {
     return LEAGUES[league ?? DEFAULT_LEAGUE].logoLeague;
 }
 
