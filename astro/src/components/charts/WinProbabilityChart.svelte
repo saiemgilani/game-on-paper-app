@@ -7,7 +7,7 @@ import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, exportMeta = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, exportMeta = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -215,8 +215,10 @@ async function generateChart() {
         const prevPlay = plays[j];
         const curPlay = plays[i];
 
-        if (!prevPlay || ((parseInt(prevPlay.period) < parseInt(curPlay.period)) && (parseInt(curPlay.period) <= 5))) {
-            const title = parseInt(curPlay.period) < 5 ? `Q${curPlay.period}` : `OT`;
+        if (!prevPlay || ((parseInt(prevPlay.period) < parseInt(curPlay.period)) && (allPeriodMarkers || parseInt(curPlay.period) <= 5))) {
+            const per = parseInt(curPlay.period)
+            // allPeriodMarkers (NBA): every overtime gets its own marker, OT then 2OT, 3OT...; football keeps one OT marker
+            const title = per < 5 ? `Q${curPlay.period}` : (allPeriodMarkers && per > 5 ? `${per - 4}OT` : `OT`);
 
             if (Object.keys(periodTracks).includes(title)) {
                 continue;
@@ -493,22 +495,26 @@ if (document.readyState !== 'loading') {
 
 <div class="row">
     <div>
+        {#if showOdds}
         <h2 class="mb-0">Win Probability</h2>
         <p class="m-0 text-muted text-small" hidden={lastPlay.gameSpreadAvailable}>ESPN does not list betting odds for this game, so we've used default values: {cleanAbbreviation(homeTeam)} -2.5, O/U 55.5.</p>
+        {/if}
         <p class="text-small">
+            {#if showOdds}
             {#if !gameInProgress}
             <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={`${geiPctl.ramp_class} px-1`} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
             {/if}
             Odds: {printSpread()}, O/U {roundNumber(parseFloat(overUnder), 2, 1)}
+            {/if}
             {#if gameInProgress}
                 {#if (lastPlay.winProbability.before >= 0.5) }
-                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
+                {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
                 {#if (lastPlay.winProbability.before < 0.5) }
-                | Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
+                {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            | <a id="wp-download" download={exportMeta ? `game-wp-${id}.png` : `game-wp-${id}.jpg`} href="#">Download Chart</a>
+            {(showOdds || gameInProgress) ? '| ' : ''}<a id="wp-download" download={exportMeta ? `game-wp-${id}.png` : `game-wp-${id}.jpg`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
