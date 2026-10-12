@@ -1,4 +1,4 @@
-"""The /nba/<id>/process payload: sdv-py's game-page frames as JSON for the Astro NbaGame adapter."""
+"""The /<league>/<id>/process payload: sdv-py's game-page frames as JSON for the Astro NbaGame adapter."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def _side(final: dict, home_away: str) -> dict:
     return next(c for c in comps if c.get("homeAway") == home_away)
 
 
-def build_payload(game_id: int, final: dict, frames: dict) -> dict[str, Any]:
+def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: int | None = None) -> dict[str, Any]:
     """Shape sdv-py's frames into the NbaProcessorPayload the Astro adapter reads."""
     comp = final["header"]["competitions"][0]
     status = comp.get("status", {})
@@ -80,6 +80,7 @@ def build_payload(game_id: int, final: dict, frames: dict) -> dict[str, Any]:
         },
         "prior": frames["prior"],
         "periods": frames["periods"],
+        "regulation_periods": regulation_periods,
         "teams": {"home": team(home), "away": team(away)},
         "players": {
             "home": _rows(players.filter(pl.col("team_id") == int(home["id"]))),
