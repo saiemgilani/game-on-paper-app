@@ -72,6 +72,9 @@ describe.each([
         expect(html).toContain('id="vs-opponent-panel"');
         expect(html).toContain('Results by Opponent');
         expect(html).toContain(subtitle);
+        // the dashed line is explained; Margin, being obvious, is not (Akshay on #308)
+        expect(html).toContain('The dashed line is the season average, weighted by plays.');
+        expect(html).not.toContain('Margin is the team');
         expect(feed.calls).toEqual([{ season: 2025, id, league }]);
 
         const tag = islandTag(html);
