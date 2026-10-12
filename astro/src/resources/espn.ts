@@ -606,6 +606,10 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
 export async function retrieveGamePage(gameId: string | number, league: League = 'cfb'): Promise<ESPNPlayByPlayResponse> {
     const req = await requestESPN(`https://cdn.espn.com/core/${LEAGUES[league].espnPath}/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
     const contentRaw = await req.text();
+    // ESPN answers an unknown game id with a 302 to an HTML scoreboard (or a 404): that is "no such game",
+    // tagged so the guard does not report it as a failed fetch
+    const notFound = req.status === 404 || (req.ok && (req.redirected || contentRaw.trimStart().startsWith('<')));
+    if (notFound) throw Object.assign(new Error(`ESPN has no game_id ${gameId} (status ${req.status})`), { notFound: true });
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
     }
@@ -648,7 +652,7 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
     try {
         page = await retrieveGamePage(gameId, league);
     } catch (e: any) {
-        fetchFailed = true;
+        fetchFailed = e?.notFound !== true;
         console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
     }
 

@@ -25,3 +25,16 @@ describe('retrieveGamePageGuarded', () => {
         expect(await retrieveGamePageGuarded('401766458', 'nba')).toMatchObject({ page: { gameId: 401766458 }, fetchFailed: true });
     });
 });
+
+describe('an unknown game id', () => {
+    test("ESPN's redirect to an HTML scoreboard is not found, not a failed fetch", async () => {
+        fetchMock.mockResolvedValue(new Response('<!DOCTYPE html><html>scoreboard</html>', { status: 200 }));
+        const { retrieveGamePageGuarded } = await import('../../src/resources/espn');
+        expect(await retrieveGamePageGuarded('999999999', 'nba')).toMatchObject({ page: null, fetchFailed: false });
+    });
+    test('a 404 is not found, not a failed fetch', async () => {
+        fetchMock.mockResolvedValue(new Response('not found', { status: 404 }));
+        const { retrieveGamePageGuarded } = await import('../../src/resources/espn');
+        expect(await retrieveGamePageGuarded('999999999', 'nba')).toMatchObject({ page: null, fetchFailed: false });
+    });
+});
