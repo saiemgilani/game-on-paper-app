@@ -14,10 +14,12 @@ import type { SeasonTeamData } from "../../routes/seasonTeam";
 import { cleanLocation, roundNumber } from "../../utils/misc";
 import TeamCard from "../../components/team/TeamCard.astro";
 import FiveFactorsTable from "../../components/team/FiveFactorsTable.astro";
+import RecordSplitsTable from "../../components/team/RecordSplitsTable.astro";
 import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
+import { resumeRows } from "../../utils/resume";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
@@ -55,6 +57,15 @@ const leaders = [
         subtitle: `${roundNumber(leadingReceiver.EPAplay, 2, 2)} EPA/Play, ${leadingReceiver.plays} Cat, ${leadingReceiver.yards} yd${ (Math.abs(leadingReceiver.yards) == 1) ? "" : "s"}, ${leadingReceiver.passing_td} TD`
     }
 ].filter(d => !!d);
+
+// the schedule rows the TeamCard's record already reads; a row with no games is dropped.
+// The schedule is two reads (home_id, away_id) and a failed one comes back empty, so a
+// season with no home row or no away row is half a schedule: no panel, not a wrong total.
+const events = teamSeason?.events ?? [];
+const bothSides = events.some((g) => String(g.home_id) === id) && events.some((g) => String(g.away_id) === id);
+const recordRows = isFeatureEnabled('team-record-splits', Astro.locals) && bothSides
+    ? resumeRows(events, id, league).filter((r) => r.winPct !== null)
+    : [];
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
@@ -99,6 +110,11 @@ const breadcrumbs: PageBreadcrumb[] = [
     {isFeatureEnabled('five-factors', Astro.locals) && teamSummaries[0] && (
         <div class="container mb-3">
             <FiveFactorsTable summary={teamSummaries[0]} />
+        </div>
+    )}
+    {recordRows.length > 0 && (
+        <div class="container mb-3">
+            <RecordSplitsTable rows={recordRows} />
         </div>
     )}
     <div class="container">
