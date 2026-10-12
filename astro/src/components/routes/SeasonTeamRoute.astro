@@ -25,7 +25,7 @@ import { resumeRows } from "../../utils/resume";
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, teamTendency } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, teamTendency, seasonTendencies } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -121,7 +121,7 @@ const breadcrumbs: PageBreadcrumb[] = [
     {/* teamTendency is read only with the flag on; no row, no panel */}
     {isFeatureEnabled('team-splits', Astro.locals) && teamTendency && (
         <div class="container mb-3">
-            <TeamSplitsTable row={teamTendency} />
+            <TeamSplitsTable row={teamTendency} season={seasonTendencies ?? []} />
         </div>
     )}
     <div class="container">

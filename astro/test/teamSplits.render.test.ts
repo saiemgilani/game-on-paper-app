@@ -1,16 +1,18 @@
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { formatNumber, formatPercent } from '../src/utils/misc';
-import { teamSplitColumns } from '../src/utils/teamSplits';
+import { formatNumber, formatPercent, formatRank } from '../src/utils/misc';
+import { teamSplitColumns, teamSplitRows } from '../src/utils/teamSplits';
 
 // The season team page's Situational Splits panel, rendered from the Data API's
-// real 2025 team_tendencies rows (fixtures/team-tendencies-{cfb-333,nfl-12}-2025.json).
-const fixture = (name: string) =>
-    JSON.parse(readFileSync(new URL(`./fixtures/team-tendencies-${name}-2025.json`, import.meta.url)).toString()).data;
-const rows: Record<string, any[]> = { cfb: fixture('cfb-333'), nfl: fixture('nfl-12') };
+// real 2025 team_tendencies body for the whole season, the page's own select
+// (fixtures/team-tendencies-{cfb,nfl}-2025.json.gz).
+const fixture = (league: string) =>
+    JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/team-tendencies-${league}-2025.json.gz`, import.meta.url))).toString()).data;
+const rows: Record<string, any[]> = { cfb: fixture('cfb'), nfl: fixture('nfl') };
 
 // `override`, when set, is the whole row list the API returns (`[]` = no row for the team)
 const feed: { override: any[] | null; calls: any[]; order: string[] } = { override: null, calls: [], order: [] };
@@ -70,8 +72,8 @@ const trs = (panel: string) => [...panel.split('<tbody')[1].matchAll(/<tr([^>]*)
 const side = (panel: string, s: 'off' | 'def') => trs(panel).filter((r) => r.attrs.includes(`data-side="${s}"`));
 
 describe.each([
-    ['cfb', '333', 18, 'All regular-season and postseason games, FCS opponents included.'],
-    ['nfl', '12', 17, 'All regular-season and postseason games.'],
+    ['cfb', '333', 20, 'All regular-season and postseason games, FCS opponents included.'],
+    ['nfl', '12', 19, 'All regular-season and postseason games.'],
 ] as const)('%s season team page, flag on', (league, id, count, note) => {
     test('one row per split and side; Offense shows, Defense waits', async () => {
         const panel = panelOf(await render(league, id, true));
@@ -90,25 +92,43 @@ describe.each([
         expect(panel).toMatch(/<option value="off" selected/);
     }, 60_000);
 
-    test('Overall prints the fixture through formatNumber / formatPercent, numeral cells', async () => {
+    test('Overall prints the fixture through formatNumber / formatPercent, ranks beside EPA/Play and Success Rate', async () => {
         const panel = panelOf(await render(league, id, true));
-        const row = rows[league][0];
+        const row = rows[league].find((t) => String(t.pos_team_id) === id);
         for (const [s, p] of [['off', ''], ['def', 'def_']] as const) {
             const overall = side(panel, s)[0];
+            const ranks = teamSplitRows(row, s, rows[league])[0];
+            expect(ranks.epa_rank).not.toBeNull();
             expect(overall.attrs).toContain('data-split="overall"');
-            expect(overall.cells.map((c) => c.text)).toEqual([
+            expect(overall.cells.map((c) => c.text.replace(/\s+/g, ' '))).toEqual([
                 'Overall', formatNumber(row[`${p}plays`], 0), formatPercent(row[`${p}pass_rate`]),
-                formatNumber(row[`${p}epa_per_play`], 2), formatPercent(row[`${p}success_rate`]),
+                `${formatNumber(row[`${p}epa_per_play`], 2)} #${formatRank(ranks.epa_rank)}`,
+                `${formatPercent(row[`${p}success_rate`])} #${formatRank(ranks.success_rank)}`,
             ]);
             expect(overall.cells.slice(1).every((c) => c.cls.includes('numeral'))).toBe(true);
-            // no producer rank for split rates yet, so no shading
-            expect(overall.cells.some((c) => c.cls.includes('hulk-'))).toBe(false);
+            // plays and pass rate are never shaded; a shaded cell is a quality column
+            expect(overall.cells.slice(1, 3).some((c) => c.cls.includes('hulk-'))).toBe(false);
         }
     }, 60_000);
 
-    test('one request: the team\'s row, with the split columns', async () => {
+    test('Early and Late downs head their downs, which are indented under them', async () => {
+        const off = side(panelOf(await render(league, id, true)), 'off');
+        expect(off.slice(1, 9).map((r) => [r.cells[0].text, r.cells[0].cls.includes('ps-4')])).toEqual([
+            ['Early downs', false], ['1st down', true], ['2nd down', true], ['Late downs', false],
+            // the label text as rendered, HTML-escaped
+            ['3rd &amp; short', true], ['3rd &amp; medium', true], ['3rd &amp; long', true], ['4th down', true],
+        ]);
+    }, 60_000);
+
+    test('the caption names the rank population', async () => {
+        const html = await render(league, id, true);
+        const n = rows[league].filter((t) => t.plays >= 300).length;
+        expect(html.split('id="team-splits-panel"')[1]).toContain(`rank among the ${n} teams with 300+ plays this season.`);
+    }, 60_000);
+
+    test('one request: the whole season, with the split columns', async () => {
         await render(league, id, true);
-        expect(feed.calls).toEqual([{ season: 2025, league, columns: teamSplitColumns(league), teamId: Number(id) }]);
+        expect(feed.calls).toEqual([{ season: 2025, league, columns: teamSplitColumns(league) }]);
     }, 60_000);
 
     test('the tendency read starts before any player read finishes (no added round trip)', async () => {

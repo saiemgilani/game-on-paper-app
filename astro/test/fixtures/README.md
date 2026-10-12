@@ -267,3 +267,19 @@ exists; the defense perspective swaps) and `test/teamSplits.render.test.ts` (the
 Situational Splits panel on `/year/2025/team/333` and `/nfl/year/2025/team/12`).
 
 **To regenerate:** repeat the two requests for 2025.
+
+## `team-tendencies-cfb-2025.json.gz` / `team-tendencies-nfl-2025.json.gz`
+The whole 2025 season of the same table, as the season team page reads it for
+the Situational Splits ranks: `GET /v1/{cfb|nfl}/team_tendencies?season=2025&limit=400`
+with `select=` the route's keys (`season,pos_team_id,pos_team,games,plays,drives`)
+plus `teamSplitColumns(league)`. 236 CFB rows (138 with 300+ plays; every other
+row is an FCS team with 3 or fewer FBS games) and 32 NFL rows; gzipped, no edits.
+
+**Provenance (2026-10-12):** captured from the live API; Alabama's and Kansas
+City's rows match `team-tendencies-{cfb-333,nfl-12}-2025.json` on every shared column.
+
+**Used by:** `test/teamSplits.test.ts` (the ranks against every qualifying team,
+written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cells
+and caption).
+
+**To regenerate:** repeat the two requests with the current `teamSplitColumns`.
