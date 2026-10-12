@@ -21,6 +21,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.colors import TABLEAU_COLORS, to_rgb
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
+from matplotlib.patches import Rectangle
 from PIL import Image, ImageOps
 
 import excitement
@@ -231,7 +232,11 @@ class _Card:
                 alpha=0.35,
                 lw=0,
             )
-            ax.plot(xs, ys, color=INK, lw=2.5, solid_capstyle="round")
+            # the line in the leader's color, like the page's chart (resources/chart.ts):
+            # home above 50%, away below, each half clipped to its side of the even line
+            for team, y0 in ((home, 0.5), (away, 0.0)):
+                (line,) = ax.plot(xs, ys, color=team["color"], lw=2.5, solid_capstyle="round")
+                line.set_clip_path(Rectangle((0, y0), 1, 0.5, transform=ax.transAxes))
         for team, y, va in ((home, 0.97, "top"), (away, 0.03, "bottom")):
             ax.text(
                 0.005,

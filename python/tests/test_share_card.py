@@ -455,6 +455,24 @@ def test_final_line_ends_at_the_result(processed):
     assert ys[-1] == 0.0  # OKST, the home side, lost
 
 
+def test_wp_line_is_drawn_in_the_team_colors(processed):
+    # the page's chart strokes the line in the home color above 50% and the away
+    # color below it (resources/chart.ts GradientFillLineController), never in ink
+    game = processed("cfb")
+    comp = game["header"]["competitions"][0]
+    home, away = share_card._side(comp, "home"), share_card._side(comp, "away")
+    png, _ = _render(game, "final", "full")
+    # the chart band right of the team labels: the line, its fills and the rules
+    band = Image.open(io.BytesIO(png)).convert("RGB").crop((200, 200, 1150, 520))
+    seen = set(band.getdata())
+    for team in (home, away):
+        rgb = tuple(int(team["color"][i : i + 2], 16) for i in (1, 3, 5))
+        assert rgb in seen, team["abbr"]
+    assert (0, 0, 0) not in seen  # the old ink line
+    ys, _ = _wp_line(game, completed=True)
+    assert min(ys) < 0.5 < max(ys)  # the game crosses 50%, so both halves are drawn
+
+
 def test_tied_final_line_ends_at_even(processed):
     # a tied final (NFL): ESPN marks neither side the winner
     game = copy.deepcopy(processed("nfl"))
