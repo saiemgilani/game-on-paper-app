@@ -36,6 +36,6 @@ const minutes = h?.game_minutes ?? a?.game_minutes ?? null; // from Python; noth
         ))}
     </tbody>
 </table></div>
-<p class="small text-muted">Bold marks the better side. Possessions are Oliver's estimate (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams); ratings are per 100 possessions{minutes != null ? `; pace is per ${minutes} minutes${minutes > 48 ? ' (overtime included)' : ''}` : ''}.</p>
+<p class="small text-muted">Bold marks the better side. Possessions are Oliver's estimate (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams); ratings are per 100 possessions{minutes != null ? `; pace is per ${minutes} minutes${game.hasOvertime ? ' (overtime included)' : ''}` : ''}.</p>
 </>
 )}

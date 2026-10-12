@@ -6,9 +6,13 @@ import type { ESPNScheduleEvent } from '../../resources/espn';
 import TeamRow from '../schedule/TeamRow.astro';
 import { gameLeaders, statusLine } from '../../nba/scoreboard';
 import { cleanAbbreviation, cx } from '../../utils/misc';
+import { gameHref } from '../../nba/links';
+import { basketball, regulationFor } from '../../basketball/config';
 
 interface Props { game: ESPNScheduleEvent }
 const { game } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
 const comp = game.competitions[0];
 const rawStatus = comp.status ?? game.status!;
 const state = rawStatus.type.state;
@@ -18,7 +22,8 @@ const status = state === 'pre' ? { ...rawStatus, type: { ...rawStatus.type, name
 const home = comp.competitors.find((c) => c.homeAway === 'home')!;
 const away = comp.competitors.find((c) => c.homeAway === 'away')!;
 const homeScore = Number(home.score ?? 0), awayScore = Number(away.score ?? 0);
-const line = statusLine(rawStatus);
+const reg = regulationFor(league, game.season?.year ?? null, comp.format?.regulation?.periods);
+const line = statusLine(rawStatus, reg.periods, reg.kind);
 const completed = rawStatus.type.completed === true;
 const leaders = { home: gameLeaders(home), away: gameLeaders(away) };
 const label = (l: { pts?: string; reb?: string; ast?: string }) =>
@@ -44,7 +49,7 @@ const awayLine = label(leaders.away), homeLine = label(leaders.home);
                 </p>
             )}
             <div class="d-flex justify-content-between game-thumb-actions">
-                <a class="btn btn-sm btn-outline-primary" role="button" href={`/nba/game/${game.id}`}>{state === 'pre' ? 'Preview' : 'Stats'}</a>
+                <a class="btn btn-sm btn-outline-primary" role="button" href={gameHref(league, game.id)}>{state === 'pre' ? 'Preview' : 'Stats'}</a>
             </div>
         </div>
     </div>
