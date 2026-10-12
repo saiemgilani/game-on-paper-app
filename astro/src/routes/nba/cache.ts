@@ -11,7 +11,7 @@ export const SEASON_CACHE = { maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba
 /** A player's page: the football player page's policy. */
 export const PLAYER_CACHE = { maxAge: 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] };
 
-export function setCache(Astro: AstroGlobal, config: typeof SEASON_CACHE | false): void {
+export function setCache(Astro: AstroGlobal, config: { maxAge: number; swr?: number; tags: string[] } | false): void {
     try { (Astro as any).cache?.set(config); } catch { /* cache provider absent in dev */ }
 }
 
@@ -21,7 +21,7 @@ export function uncacheable(Astro: AstroGlobal): void {
 }
 
 /** The answer to a Data API read that failed: a 503 monitoring can see, never a 404. */
-export const NBA_UNAVAILABLE = (): Response => new Response(
-    'NBA shot data is temporarily unavailable. Please try again shortly.',
+export const NBA_UNAVAILABLE = (message = 'NBA shot data is temporarily unavailable. Please try again shortly.'): Response => new Response(
+    message,
     { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '60' } },
 );

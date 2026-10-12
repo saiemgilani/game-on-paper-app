@@ -105,6 +105,13 @@ export function teamCountOf(row: { team_count?: unknown } | null | undefined, le
     return Number.isFinite(n) && n > 0 ? n : LEAGUES[league ?? DEFAULT_LEAGUE].teamCount;
 }
 
+/** A Data API schema to read from, when it is not the league's own (`nba` games vs `nba_stats` shooting). */
+export interface SdvSource { apiBase: string; schema: string; /** cache-key prefix; '' keeps cfb's historical keys */ namespace: string }
+export const NBA_GAMES_SOURCE: SdvSource = { apiBase: 'https://data.sportsdataverse.org/v1/nba', schema: 'nba', namespace: 'nba-games' };
+export function leagueSource(league: League): SdvSource {
+    return { apiBase: LEAGUES[league].sdvApiBase, schema: LEAGUES[league].sdvSchema, namespace: league === 'cfb' ? '' : league };
+}
+
 /** ESPN logo path segment for a league's team ids (numeric ids resolve for both). */
 export function espnLogoLeague(league: League | undefined): 'ncaa' | 'nfl' | 'nba' {
     return LEAGUES[league ?? DEFAULT_LEAGUE].logoLeague;

@@ -4,8 +4,9 @@ import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } 
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry"
-import { LEAGUES, type League, teamCategoriesFor } from '../utils/league';
+import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
+import { formatRecord } from '../utils/resume';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -603,11 +604,11 @@ async function fetchSDVDatasets(): Promise<Record<string, string> | null> {
     }
 }
 
-async function sdvIngestStamp(league: League, table: string): Promise<string | undefined> {
+async function sdvIngestStamp(schema: string, table: string): Promise<string | undefined> {
     if (!sdvMeta || Date.now() - sdvMeta.at >= SDV_META_TTL * 1000) {
         sdvMeta = { at: Date.now(), datasets: fetchSDVDatasets() };
     }
-    return (await sdvMeta.datasets)?.[`${LEAGUES[league].sdvSchema}.${table}`];
+    return (await sdvMeta.datasets)?.[`${schema}.${table}`];
 }
 
 /**
@@ -623,11 +624,11 @@ export class SDVRequestError extends Error {
     }
 }
 
-async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL = 60, cacheEnabled = true, league: League = 'cfb', strict = false): Promise<any> {
+async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLSearchParams, cacheTTL: number | ((content: any) => number) = 60, cacheEnabled = true, source: SdvSource = leagueSource('cfb'), strict = false, timeoutMs?: number): Promise<any> {
     if (!SDV_AUTH_TOKEN) {
         throw Error("SDV_AUTH_TOKEN not set, can not fire request")
     }
-    const SDV_HTTP_URL = LEAGUES[league].sdvApiBase;
+    const SDV_HTTP_URL = source.apiBase;
 
     let endpointURL = `${endpoint}`
     if (query && (query?.size || 0) > 0) {
@@ -635,8 +636,8 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
     }
 
     // cfb keeps its historical cache keys; other leagues are namespaced
-    const unversioned = league === 'cfb' ? endpointURL : `${league}/${endpointURL}`;
-    const stamp = cacheEnabled ? await sdvIngestStamp(league, endpoint) : undefined;
+    const unversioned = source.namespace ? `${source.namespace}/${endpointURL}` : endpointURL;
+    const stamp = cacheEnabled ? await sdvIngestStamp(source.schema, endpoint) : undefined;
     const cacheKey = await generateSDVCacheKey(stamp ? `${unversioned}#${stamp}` : unversioned);
 
     // check cache first
@@ -653,7 +654,8 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         headers: {
             "Authorization": `Bearer ${SDV_AUTH_TOKEN}`
         },
-        body
+        body,
+        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {})
     }
     try {
         console.info(`SDV API live request: ${SDV_HTTP_URL}/${endpointURL}`)
@@ -671,13 +673,15 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         // it always carries `espn_id` -- an `{ error }`/`{ detail }` body never does.
         if (cacheEnabled && (Array.isArray(content?.data) || content?.espn_id !== undefined)) {
             console.info(`SDV API cache update: ${endpointURL}`)
-            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, cacheTTL)
+            await safeCachePut(env.SDV_API_CACHE, cacheKey, contentRaw, typeof cacheTTL === 'function' ? cacheTTL(content) : cacheTTL)
         } else if (cacheEnabled) {
             console.warn(`SDV API response without a data array, not cached: ${endpointURL}`)
         }
         return content;
-    } catch (e) {
+    } catch (e: any) {
         console.error(`ERROR while loading data from SDV API endpoint (${endpointURL}): ${e}`)
+        // a read timeout is a 504 the caller can branch on, like any other strict failure
+        if (strict && (e?.name === 'TimeoutError' || e?.name === 'AbortError')) throw new SDVRequestError(504, endpointURL, `timed out after ${timeoutMs}ms`)
         if (strict) throw e
         return {
             "data": []
@@ -690,10 +694,13 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
  * `[]` by default (the historical callers' contract), or the error itself with `strict`
  * (the player-keyed pages, which must tell an outage from an empty table).
  */
-export async function retrieveRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number, strict = false): Promise<T[]> {
-    const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, league, strict);
+export async function retrieveRowsFrom<T>(source: SdvSource, table: string, query: Record<string, string>, cacheTTL: number | ((content: any) => number), strict = false, timeoutMs?: number): Promise<T[]> {
+    const content = await requestSDV(table, new URLSearchParams(query), undefined, cacheTTL, true, source, strict, timeoutMs);
     if (strict && !Array.isArray(content?.data)) throw new SDVRequestError(502, table, 'no data array in the response');
     return (Array.isArray(content?.data) ? content.data : []) as T[];
+}
+export async function retrieveRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number, strict = false): Promise<T[]> {
+    return retrieveRowsFrom<T>(leagueSource(league), table, query, cacheTTL, strict);
 }
 
 export interface SDVQaRow {
@@ -721,7 +728,7 @@ export async function retrieveQaSeason(season: number, league: League = 'cfb'): 
     if (!LEAGUES[league].sdvEnabled) return { rows: [], ok: true };
     try {
         const content = await requestSDV('qa', new URLSearchParams({ season: String(season) }),
-            undefined, 60 * 60, true, league);
+            undefined, 60 * 60, true, leagueSource(league));
         // requestSDV swallows its own errors into `{data: []}`, so an absent
         // array is the only signal left that the request did not come back
         return Array.isArray(content?.data) ? { rows: content.data, ok: true } : { rows: [], ok: false };
@@ -748,7 +755,7 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
         }
    
 
-        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, league);
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, leagueSource(league));
         return content.data;
     } catch (err) {
         console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
@@ -799,7 +806,7 @@ export async function retrieveLeagueAverages(season: number, filters: { entity?:
     // the API defaults to 1000 rows; one season across every level can run past that
     const query: Record<string, string> = { season: String(season), limit: '5000' };
     for (const [k, v] of Object.entries(filters)) if (v) query[k] = v;
-    const content = await requestSDV('league_averages', new URLSearchParams(query), undefined, 60 * 60 * 24, true, league);
+    const content = await requestSDV('league_averages', new URLSearchParams(query), undefined, 60 * 60 * 24, true, leagueSource(league));
     return content?.data ?? [];
 }
 
@@ -821,7 +828,7 @@ export interface SDVTeamSummaryRequest {
  * read is `{}`, and a reader falls back to the league's `teamCount`.
  */
 export async function retrieveTeamCounts(league: League = 'cfb'): Promise<Record<number, number>> {
-    const content = await requestSDV('team_summaries', new URLSearchParams({ select: 'season', limit: '50000' }), undefined, 60 * 60 * 24, true, league);
+    const content = await requestSDV('team_summaries', new URLSearchParams({ select: 'season', limit: '50000' }), undefined, 60 * 60 * 24, true, leagueSource(league));
     const out: Record<number, number> = {};
     for (const r of (content?.data ?? [])) {
         const s = Number(r?.season);
@@ -882,7 +889,7 @@ export async function retrieveTeamSummaries({ season, week, fbs_class, category,
         // the count read rides alongside the summaries and can never cost them: unknown is `{}`
         // (a weekly row's ranks are out of that week's teams, which the count is not)
         const countsRead: Promise<Record<number, number>> = week ? Promise.resolve({}) : retrieveTeamCounts(league).catch(() => ({}));
-        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league);
+        const content: SDVAPIResponse<SDVTeamSummary> = await requestSDV(endpoint, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, leagueSource(league));
         if (week || !Array.isArray(content.data) || content.data.length === 0) return content.data;
         const counts = await countsRead;
         return content.data.map((r) => ({ ...r, team_count: counts[Number(r.season)] ?? null }));
@@ -926,7 +933,7 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     try {        
         let content: SDVAPIResponse<SDVPlayerSummary>;
         if (Object.values(SummaryType).includes(category)) {
-            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, league);
+            content = await requestSDV(category, new URLSearchParams(payload), undefined, 60 * 60 * 24 * 3, true, leagueSource(league));
         } else {
             throw Error(`Category '${category}' not implemented`)
         }
@@ -1036,6 +1043,10 @@ export interface SDVGame {
     away_pregame_elo?: number
     away_postgame_elo?: number
 
+    // cfb only: the poll rank at kickoff, 1-25, null when unranked
+    home_rank?: number | null
+    away_rank?: number | null
+
     excitement_index?: number
     highlights?: string
     notes?: string
@@ -1043,7 +1054,7 @@ export interface SDVGame {
 
 export async function retrieveTeam(teamId: string | number, league: League = 'cfb'): Promise<SDVTeam | null> {
     if (!LEAGUES[league].sdvEnabled) return null;
-    const content: SDVAPIResponse<SDVTeam> = await requestSDV("team_info", new URLSearchParams({ team_id: String(teamId), limit: "1" }), undefined, 60 * 60 * 24 * 7, true, league);
+    const content: SDVAPIResponse<SDVTeam> = await requestSDV("team_info", new URLSearchParams({ team_id: String(teamId), limit: "1" }), undefined, 60 * 60 * 24 * 7, true, leagueSource(league));
     const result = content.data.length == 0 ? null : content.data[0]
     if (!result) {
         return result
@@ -1064,7 +1075,7 @@ export async function retrieveTeamGames(payload: SDVTeamScheduleRequest): Promis
     const { league = 'cfb', ...rest } = payload;
     if (!LEAGUES[league].sdvEnabled) return [];
     const params = new URLSearchParams(cleanUpParams({...rest, order: "-start_date"}))
-    const content: SDVAPIResponse<SDVGame>  = await requestSDV(LEAGUES[league].scheduleTable, params, undefined, 60 * 60 * 24, true, league);
+    const content: SDVAPIResponse<SDVGame>  = await requestSDV(LEAGUES[league].scheduleTable, params, undefined, 60 * 60 * 24, true, leagueSource(league));
     return content.data
 }
 
@@ -1145,8 +1156,10 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     const schedule = await retrieveTeamSchedule(season, teamId, league);
     let wins = 0;
     let losses = 0;
+    let ties = 0;
     let confWins = 0;
     let confLosses = 0;
+    let confTies = 0;
     for (const g of schedule) {
         if (!g.completed) {
             continue;
@@ -1162,6 +1175,12 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
             if (g.conference_game) {
                 confWins += 1;
             }
+        } else if (g.home_points != null && g.home_points === g.away_points) {
+            // an NFL tie is its own number, never a loss
+            ties += 1;
+            if (g.conference_game) {
+                confTies += 1;
+            }
         } else {
             losses += 1;
             if (g.conference_game) {
@@ -1173,8 +1192,8 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     return {
         team,
         events: schedule,
-        record: `${wins}-${losses}`,
-        confRecord: (confLosses + confWins) > 0 ? `${confWins}-${confLosses}` : undefined
+        record: formatRecord({ wins, losses, ties }),
+        confRecord: (confLosses + confWins + confTies) > 0 ? formatRecord({ wins: confWins, losses: confLosses, ties: confTies }) : undefined
     }
 }
 
@@ -1230,7 +1249,7 @@ async function requestTendencyTable<T>(table: string, keys: string[], filters: R
         limit: String(COACH_ROW_LIMIT),
     };
     try {
-        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, league);
+        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league));
         return Array.isArray(content?.data) ? content.data : [];
     } catch (err) {
         console.error(`ERROR while loading ${table} from SDV (${JSON.stringify(filters)}): ${err}`);
@@ -1299,7 +1318,7 @@ export interface SDVPlayerSplit {
 /** A 404 is "no such player"; anything else is a real failure and is rethrown. */
 async function requestPlayer(league: League, path: string, query: Record<string, string>, ttl: number): Promise<any | null> {
     try {
-        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, league, true);
+        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true);
     } catch (e) {
         if (e instanceof SDVRequestError && e.status === 404) return null;
         throw e;
