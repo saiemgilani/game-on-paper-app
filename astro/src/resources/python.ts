@@ -1310,33 +1310,58 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
     }
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+/** A processor answer that was not a 2xx (or never arrived): `status` is the HTTP status, 504 for a timeout. */
+export class ProcessorError extends Error {
+    constructor(public status: number, message: string) {
+        super(message);
+        this.name = 'ProcessorError';
+    }
+}
+
+/**
+ * GET `${PYTHON_HTTP_URL}/${path}[?query]` with the processor's auth and the Workers cache block;
+ * returns the body text. `query` is a bare query string (no `?`); the cache key carries it after
+ * the deploy version (`?v=...&query`), never a second `?`. A non-2xx answer throws `ProcessorError`;
+ * `timeoutMs` (the NBA path only) aborts a slow fetch as `ProcessorError(504)`.
+ */
+export async function requestProcessor(path: string, cacheTTL: number, query = '', timeoutMs?: number): Promise<string> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
+    const encodedToken = btoa(PYTHON_HTTP_TOKEN);
+    let req: Response, text: string;
+    try {
+        req = await wrappedFetch(`${PYTHON_HTTP_URL}/${path}${query ? `?${query}` : ''}`, {
+            ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+            headers: {
+                "Authorization": `Bearer ${encodedToken}`,
+                "Referer": "gameonpaper.com" 
+            },
+            cf: {
+                cacheEverything: true,
+                cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
+                // A completed game's API response is cached for a year. Keying it on the
+                // deployed version means a deploy (a parser fix in sportsdataverse-py
+                // rides in with every build) invalidates it without any zone purge; the
+                // page-side tag purge then re-renders from a fresh API response.
+                cacheKey: `${PYTHON_HTTP_URL}/${path}?v=${APP_VERSION}${query ? `&${query}` : ''}`,
+            }
+        })
+        text = await req.text();
+    } catch (e: any) {
+        if (timeoutMs && (e?.name === 'TimeoutError' || e?.name === 'AbortError')) throw new ProcessorError(504, `processor timed out after ${timeoutMs}ms: ${path}`);
+        throw e;
+    }
+    if (!req.ok) throw new ProcessorError(req.status, text.slice(0, 500));
+    return text;
+}
 
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     // `source` only ever arrives from the 'source-switch' preview path. It has
     // to reach the cache key as well as the URL: two sources' payloads for one
     // game are different responses, and a shared key would pin whichever
     // landed first for the whole TTL (a year on a completed game).
-    const query = source ? `?source=${encodeURIComponent(source)}` : '';
-    const encodedToken = btoa(PYTHON_HTTP_TOKEN);
-    const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/process${query}`, {
-        headers: {
-            "Authorization": `Bearer ${encodedToken}`,
-            "Referer": "gameonpaper.com" 
-        },
-        cf: {
-            cacheEverything: true,
-            cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
-            // A completed game's API response is cached for a year. Keying it on the
-            // deployed version means a deploy (a parser fix in sportsdataverse-py
-            // rides in with every build) invalidates it without any zone purge; the
-            // page-side tag purge then re-renders from a fresh API response.
-            cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/process?v=${APP_VERSION}${source ? `&source=${encodeURIComponent(source)}` : ''}`,
-        }
-    })
-    const content = await req.text();
+    const content = await requestProcessor(`${league}/${gameId}/process`, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '');
 
     try {
         const resp: ProcessedGame = JSON.parse(content);

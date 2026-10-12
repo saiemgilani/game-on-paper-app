@@ -170,6 +170,8 @@ export interface ESPNCompetitor {
     statistics: any[]
     curatedRank?: { current?: number }
     records: ESPNRecord[]
+    /** The summary header ships `record` (type/summary/displayValue); the scoreboard ships `records`. */
+    record?: { type?: string, summary: string, displayValue?: string }[]
 
     possession?: boolean
     rank?: number
@@ -604,6 +606,10 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
 export async function retrieveGamePage(gameId: string | number, league: League = 'cfb'): Promise<ESPNPlayByPlayResponse> {
     const req = await requestESPN(`https://cdn.espn.com/core/${LEAGUES[league].espnPath}/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
     const contentRaw = await req.text();
+    // ESPN answers an unknown game id with a 302 to an HTML scoreboard (or a 404): that is "no such game",
+    // tagged so the guard does not report it as a failed fetch
+    const notFound = req.status === 404 || (req.ok && (req.redirected || contentRaw.trimStart().startsWith('<')));
+    if (notFound) throw Object.assign(new Error(`ESPN has no game_id ${gameId} (status ${req.status})`), { notFound: true });
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
     }
@@ -616,6 +622,8 @@ export type GuardedGamePage = {
     /** true when even the retry was older than what we have already served */
     regressed: boolean;
     reason: string | null;
+    /** true when the cdn fetch itself failed (any non-2xx or network error), whether or not KV had a copy */
+    fetchFailed?: boolean;
 };
 
 const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
@@ -640,9 +648,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
     const gameContentKey = `gamecontent:${ns}${gameId}`;
 
     let page: ESPNPlayByPlayResponse | null = null;
+    let fetchFailed = false;
     try {
         page = await retrieveGamePage(gameId, league);
     } catch (e: any) {
+        fetchFailed = e?.notFound !== true;
         console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
     }
 
@@ -651,11 +661,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
         try {
             console.error(`game-content guard: pulling cached content from KV for ${gameId}`);
             page = await env.ESPN_API_CACHE.get(gameContentKey, "json") as ESPNPlayByPlayResponse;
-            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error" };
+            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error", fetchFailed };
         } catch (e: any) {
             // if this cache request fails, just return a bad result.
             console.error(`game-content guard: KV read failed for ${gameId}: ${e}, ${e.stack}`);
-            return { page: null, regressed: false, reason: null };
+            return { page: null, regressed: false, reason: null, fetchFailed };
         }
     }
 
@@ -896,10 +906,10 @@ export interface ESPNGameSummary {
 // The cdn playbyplay payload carries only `header`; game context (venue,
 // weather, betting line, season leaders, recent form) lives on the site.api
 // summary endpoint. Same retry + API-host relay path as every ESPN call.
-export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb'): Promise<ESPNGameSummary | null> {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/football/${LEAGUES[league].espnPath}/summary?event=${gameId}`;
+export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb', signal?: AbortSignal): Promise<ESPNGameSummary | null> {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${LEAGUES[league].sport}/${LEAGUES[league].espnPath}/summary?event=${gameId}`;
     try {
-        const resp = await requestESPN(url);
+        const resp = await requestESPN(url, signal ? { signal } : undefined);
         if (!resp.ok) {
             console.warn(`ESPN summary ${resp.status} for game ${gameId}`);
             return null;

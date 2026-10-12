@@ -1,0 +1,41 @@
+---
+import type { NbaGame, NbaTeamRates } from '../../../resources/nbaGame';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+interface Props { game: NbaGame }
+const { game } = Astro.props;
+const h = game.home.rates, a = game.away.rates;
+type Row = { label: string; key: keyof NbaTeamRates; fmt: (n: number) => string; better: 'high' | 'low' | 'none' };
+const rows: Row[] = [
+    { label: 'eFG%', key: 'efg_pct', fmt: (n) => fmtPct(n, 1), better: 'high' },
+    { label: 'TOV%', key: 'tov_pct', fmt: (n) => fmtPct(n, 1), better: 'low' },
+    { label: 'ORB%', key: 'orb_pct', fmt: (n) => fmtPct(n, 1), better: 'high' },
+    { label: 'FT rate', key: 'ft_rate', fmt: (n) => fmtDec(n, 3), better: 'high' },
+    { label: 'Possessions', key: 'possessions', fmt: (n) => fmtDec(n, 1), better: 'none' },
+    { label: 'ORtg', key: 'off_rtg', fmt: (n) => fmtDec(n, 1), better: 'high' },
+    { label: 'DRtg', key: 'def_rtg', fmt: (n) => fmtDec(n, 1), better: 'low' },
+    { label: 'Pace', key: 'pace', fmt: (n) => fmtDec(n, 1), better: 'none' },
+];
+const wins = (r: Row, mine: number | null, theirs: number | null) =>
+    r.better !== 'none' && mine != null && theirs != null && (r.better === 'high' ? mine > theirs : mine < theirs);
+const minutes = h?.game_minutes ?? a?.game_minutes ?? null; // from Python; nothing is assumed when absent
+---
+{(!h || !a) ? <p class="text-muted">Four factors are unavailable for this game.</p> : (
+<>
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Four factors">
+    <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
+    <tbody>
+        {rows.map((r) => (
+            <tr>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                <td class:list={['text-end', { 'fw-bold': wins(r, a[r.key], h[r.key]) }]}>{dash(a[r.key], r.fmt)}</td>
+                <td class:list={['text-end', { 'fw-bold': wins(r, h[r.key], a[r.key]) }]}>{dash(h[r.key], r.fmt)}</td>
+            </tr>
+        ))}
+    </tbody>
+</table></div>
+<p class="small text-muted">Bold marks the better side. Possessions are Oliver's estimate (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams); ratings are per 100 possessions{minutes != null ? `; pace is per ${minutes} minutes${minutes > 48 ? ' (overtime included)' : ''}` : ''}.</p>
+</>
+)}

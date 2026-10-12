@@ -100,3 +100,9 @@ export function gameLeaders(comp: ESPNCompetitor): { pts?: string; reb?: string;
     }
     return out;
 }
+
+/** The scoreboard day a game belongs to (its tip in America/New_York): `/nba/scoreboard?date=`, or the bare page when that day is out of range. */
+export function scoreboardBackHref(gameDate: string | null | undefined, today: string = DateTime.now().setZone('America/New_York').toISODate()!): string {
+    const day = gameDate ? DateTime.fromISO(gameDate).setZone('America/New_York').toISODate() : null;
+    return day && parseDateParam(day, today).ok ? `/nba/scoreboard?date=${day}` : '/nba/scoreboard';
+}

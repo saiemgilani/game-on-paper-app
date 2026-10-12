@@ -21,7 +21,7 @@ export function uncacheable(Astro: AstroGlobal): void {
 }
 
 /** The answer to a Data API read that failed: a 503 monitoring can see, never a 404. */
-export const NBA_UNAVAILABLE = (): Response => new Response(
-    'NBA shot data is temporarily unavailable. Please try again shortly.',
+export const NBA_UNAVAILABLE = (message = 'NBA shot data is temporarily unavailable. Please try again shortly.'): Response => new Response(
+    message,
     { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '60' } },
 );

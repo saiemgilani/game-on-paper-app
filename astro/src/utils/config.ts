@@ -65,6 +65,20 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
     }
 }
 
+/**
+ * getGameCacheConfig for an NBA game page: the live branch follows the NBA's own all-year refresh
+ * (NBA_SCOREBOARD_REFRESH), not the football SEASON_MODE switch; a final that reached here came from
+ * the processor (a Data API-served final is cached by the route for a year), so it gets one day;
+ * every branch carries the `nba` purge tag.
+ */
+export function getNbaGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
+    const base = getGameCacheConfig(date, status);
+    const tags = [...(base.tags ?? []), 'nba'];
+    if (status.type.completed) return { maxAge: 60 * 60 * 24, tags };
+    if (tags.includes('game-in-progress')) return { maxAge: NBA_SCOREBOARD_REFRESH, swr: NBA_SCOREBOARD_REFRESH * CACHE_TTL_MULTIPLIER, tags };
+    return { ...base, tags };
+}
+
 export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: League = 'cfb'): CacheOptions {
     // GLOBAL_SCHEDULE_MAP is the COLLEGE calendar (bowl/CFP weeks vary by season).
     // Another league has no entry, so decide from what the page itself knows:
