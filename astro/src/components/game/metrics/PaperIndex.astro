@@ -9,7 +9,7 @@ interface Props {
         homeShare: number
         margins: Record<string, number>
         /** per margin, the percentage points it alone moved the home share (paper_index.py) */
-        impact?: Record<string, number>
+        impact?: Record<string, number | null>
         byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
     homeTeam: ESPNTeam
@@ -48,11 +48,12 @@ const MARGINS: [string, string, (v: number) => string][] = [
     ["havoc", "Havoc Rate", pct],
     ["turnovers", "Turnovers", (v) => fmt(v, 0)],
 ];
-// biggest mover first when the payload carries impact; display order otherwise (stable sort)
+// impact descending (most in the home team's favour first), rows without one last; the sort is
+// stable, so ties and a payload without impact keep display order
 const marginRows = MARGINS
     .filter(([k]) => m[k] != null)
-    .map(([k, label, format]) => ({ label, value: format(m[k]), pos: m[k] >= 0, impact: impact?.[k] }))
-    .sort((a, b) => Math.abs(b.impact ?? 0) - Math.abs(a.impact ?? 0));
+    .map(([k, label, format]) => ({ label, value: format(m[k]), pos: m[k] >= 0, impact: impact?.[k] ?? null }))
+    .sort((a, b) => Number(a.impact == null) - Number(b.impact == null) || (b.impact ?? 0) - (a.impact ?? 0));
 // per-window strip, canonical order; a missing window simply doesn't render
 const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
 const periods = PERIOD_ORDER
@@ -96,6 +97,7 @@ const periods = PERIOD_ORDER
         </div>
         <div class="col-lg-4 col-12">
             <table class="table table-sm align-middle mb-0">
+                {impact && <caption class="text-muted text-small">Sorted by each metric's relative impact on the Deserved Win %.</caption>}
                 <thead>
                     <tr>
                         <th>Margin</th>
@@ -108,7 +110,9 @@ const periods = PERIOD_ORDER
                         <tr>
                             <td class="text-small">{r.label}</td>
                             <td class="text-center fw-bold" style={r.pos ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{r.value}</td>
-                            {impact && <td class="text-center fw-bold" style={(r.impact ?? 0) >= 0 ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{fmt(r.impact ?? 0)} pts</td>}
+                            {impact && (r.impact == null
+                                ? <td class="text-center text-muted">—</td>
+                                : <td class="text-center fw-bold" style={r.impact >= 0 ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{fmt(r.impact)}%</td>)}
                         </tr>
                     ))}
                 </tbody>
