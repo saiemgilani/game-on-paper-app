@@ -197,3 +197,19 @@ teams 333 and 2 (CFB) and 12 (NFL).
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+
+## `nba/pregame_401898403.json`
+A real *scheduled* NBA game page: Cleveland at Orlando (401898403), 2026-27
+preseason, `STATUS_SCHEDULED`, tip 2026-10-13T23:00Z.
+
+**Provenance (2026-10-12):** captured from
+`cdn.espn.com/core/nba/playbyplay?gameId=401898403&xhr=1&render=false&userab=18`
+(the body `retrieveGamePage` returns) with the `requestESPN` User-Agent, then
+trimmed to `{ gameId, gamepackageJSON: { header } }` (the only part the NBA
+pregame path reads). No hand edits inside `header`.
+
+**Used by:** `test/nba/byteIdentity.render.test.ts` (the `pregame` state; spec
+D15: real fixtures only).
+
+**To regenerate:** do not; the snapshot pins this exact page. A new capture
+needs a new id and a new snapshot in its own PR.
