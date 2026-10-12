@@ -63,6 +63,15 @@ def test_regulation_is_null_when_the_summary_has_no_format(monkeypatch):
     assert body["regulation_periods"] is None and body["periods"] == 4
 
 
+def test_regulation_is_null_when_format_is_not_a_dict(monkeypatch):
+    summary = _summary()
+    summary["format"] = "4 quarters"  # labelled in-test mutation of the real capture: a non-dict `format`
+    app_mod = _app(monkeypatch, summary)
+    r = app_mod.app.test_client().get("/nba/401585607/process", headers=AUTH)
+    assert r.status_code == 200
+    assert r.get_json()["regulation_periods"] is None
+
+
 def test_an_unmapped_league_has_no_route(monkeypatch):
     app_mod = _app(monkeypatch, _summary())
     assert app_mod.app.test_client().get("/wnba/401585607/process", headers=AUTH).status_code == 404

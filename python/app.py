@@ -670,7 +670,8 @@ def _regulation_periods(summary: dict) -> int | None:
     """ESPN's per-game regulation (4 quarters, 2 halves) from the summary's top-level `format`."""
     try:
         return int(((summary.get("format") or {}).get("regulation") or {}).get("periods"))
-    except (TypeError, ValueError):
+    # AttributeError: a non-dict `format` / `format.regulation` is "unknown", not a whole-game 500
+    except (TypeError, ValueError, AttributeError):
         return None
 
 
