@@ -3,12 +3,12 @@ import { env } from "cloudflare:workers"
 import { safeCachePut } from "../utils/misc"
 import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
 import { wrappedFetch } from "../utils/telemetry"
-import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG, NBA_SCOREBOARD_REFRESH } from "../utils/config"
 import { LEAGUES, type League } from "../utils/league"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
-        sbData: ESPNScoreboardResponse
+        sbData: ESPNScoreboardResponse & { day?: { date: string } }
     }
 }
 
@@ -170,9 +170,12 @@ export interface ESPNCompetitor {
     statistics: any[]
     curatedRank?: { current?: number }
     records: ESPNRecord[]
+    /** The summary header ships `record` (type/summary/displayValue); the scoreboard ships `records`. */
+    record?: { type?: string, summary: string, displayValue?: string }[]
 
     possession?: boolean
     rank?: number
+    leaders?: { name: string, abbreviation?: string, leaders: { displayValue: string, athlete?: { id?: string, displayName?: string, shortName?: string } }[] }[]
 }
 
 export interface ESPNTeam {
@@ -540,9 +543,73 @@ export async function getCurrentScoreboard(cacheReadEnabled = true, cacheWriteEn
     }
 }
 
+/** `stale`: a live read served from the last-good copy after ESPN failed; `day` is that copy's day, not ESPN's current one. */
+export interface ScoreboardDay { day: string; events: ESPNScheduleEvent[]; degraded: boolean; stale?: boolean }
+
+const DATED_SCOREBOARD_TTL = 60 * 60 * 24;
+const OLD_DAY_SCOREBOARD_TTL = 60 * 60 * 24 * 14;
+
+/**
+ * The cdn scoreboard for ESPN's current day (`espnDate === null`) or for one day (`YYYYMMDD`).
+ * Caches under its OWN keys (`scoreboard-day:<league>`), never the `scoreboard:<league>` keys
+ * getCurrentScoreboard stores an array under. Live: `{day, events}` for the refresh window plus a
+ * day-long last-good copy. Dated: its own key, a day's TTL, never the live key, and an ESPN
+ * failure is reported as `degraded` rather than cached. A dated day is held a day only when the
+ * caller says it is `pastDay`; otherwise it gets the live TTL, and an empty day is never cached.
+ * A KV read error is a cache miss. The live day comes from ESPN's body, never the server clock.
+ */
+export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean; oldDay?: boolean } = {}): Promise<ScoreboardDay> {
+    const cfg = LEAGUES[league];
+    const liveKey = `scoreboard-day:${league}`;
+    const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
+    const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+    const liveTTL = (league === 'nba' ? NBA_SCOREBOARD_REFRESH : CURRENT_SEASON_CONFIG.scoreboardRefreshRate) * CACHE_TTL_MULTIPLIER;
+    const cached = await env.ESPN_API_CACHE.get(key, 'json').catch((e) => { console.warn(`ESPN API: KV read failed for ${key}: ${e}`); return null; }) as { day: string; events: ESPNScheduleEvent[] } | null;
+    if (cached?.events) {
+        console.info(`ESPN API cache hit: ${key}`);
+        return { ...cached, degraded: false };
+    }
+    try {
+        const url = `https://cdn.espn.com/core/${cfg.espnPath}/scoreboard?${cfg.scoreboardQuery}xhr=1&${espnDate ? `date=${espnDate}&` : ''}${Date.now()}`;
+        const resp = await requestESPN(url);
+        if (!resp.ok) throw new Error(`ESPN API: scoreboard request received ${resp.status}`);
+        const body: ESPNCoreScoreboardResponse = await resp.json();
+        const sb = body?.content?.sbData;
+        if (!espnDate && !sb?.day?.date) throw new Error('ESPN API: scoreboard response carried no day');
+        // a real empty day is `events: []` (measured: 2025-07-15, 2025-02-14); anything else is a bad body
+        if (!Array.isArray(sb?.events)) throw new Error('ESPN API: scoreboard response carried no events list');
+        const day = espnDate ? isoDay(espnDate) : sb!.day!.date;
+        const events = sb!.events!;
+        const value = JSON.stringify({ day, events });
+        if (espnDate) {
+            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? (opts.oldDay ? OLD_DAY_SCOREBOARD_TTL : DATED_SCOREBOARD_TTL) : liveTTL, { fetchedAt: Date.now() });
+        } else {
+            await safeCachePut(env.ESPN_API_CACHE, key, value, liveTTL, { fetchedAt: Date.now() });
+            if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, `${liveKey}:lastgood`, value, DATED_SCOREBOARD_TTL, { fetchedAt: Date.now() });
+        }
+        return { day, events, degraded: false };
+    } catch (e) {
+        console.error(`ERROR while pulling the ${league} scoreboard for ${espnDate ?? 'today'}: ${e}`);
+        if (!espnDate) {
+            const lastGood = await env.ESPN_API_CACHE.getWithMetadata(`${liveKey}:lastgood`, 'json').catch(() => null);
+            const v = lastGood?.value as { day: string; events: ESPNScheduleEvent[] } | null;
+            if (v?.events) {
+                console.warn(`ESPN API: serving last-good ${league} scoreboard from ${v.day}`);
+                return { ...v, degraded: false, stale: true };
+            }
+            return { day: new Date().toISOString().slice(0, 10), events: [], degraded: true };
+        }
+        return { day: isoDay(espnDate), events: [], degraded: true };
+    }
+}
+
 export async function retrieveGamePage(gameId: string | number, league: League = 'cfb'): Promise<ESPNPlayByPlayResponse> {
     const req = await requestESPN(`https://cdn.espn.com/core/${LEAGUES[league].espnPath}/playbyplay?gameId=${gameId}&xhr=1&render=false&userab=18`);
     const contentRaw = await req.text();
+    // ESPN answers an unknown game id with a 302 to an HTML scoreboard (or a 404): that is "no such game",
+    // tagged so the guard does not report it as a failed fetch
+    const notFound = req.status === 404 || (req.ok && (req.redirected || contentRaw.trimStart().startsWith('<')));
+    if (notFound) throw Object.assign(new Error(`ESPN has no game_id ${gameId} (status ${req.status})`), { notFound: true });
     if (!req.ok) {
         throw new Error(`ESPN Fetch of game_id ${gameId} failed, received status: ${req.statusText} and content ${contentRaw}`)
     }
@@ -555,6 +622,8 @@ export type GuardedGamePage = {
     /** true when even the retry was older than what we have already served */
     regressed: boolean;
     reason: string | null;
+    /** true when the cdn fetch itself failed (any non-2xx or network error), whether or not KV had a copy */
+    fetchFailed?: boolean;
 };
 
 const GAME_STATE_TTL = 60 * 60 * 24;   // a day covers any game plus overtime
@@ -579,9 +648,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
     const gameContentKey = `gamecontent:${ns}${gameId}`;
 
     let page: ESPNPlayByPlayResponse | null = null;
+    let fetchFailed = false;
     try {
         page = await retrieveGamePage(gameId, league);
     } catch (e: any) {
+        fetchFailed = e?.notFound !== true;
         console.error(`game-content guard: fetch failed for ${gameId}: ${e}, ${e.stack}`);
     }
 
@@ -590,11 +661,11 @@ export async function retrieveGamePageGuarded(gameId: string | number, league: L
         try {
             console.error(`game-content guard: pulling cached content from KV for ${gameId}`);
             page = await env.ESPN_API_CACHE.get(gameContentKey, "json") as ESPNPlayByPlayResponse;
-            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error" };
+            return { page: page, regressed: false, reason: "pulled cached content due to ESPN fetch error", fetchFailed };
         } catch (e: any) {
             // if this cache request fails, just return a bad result.
             console.error(`game-content guard: KV read failed for ${gameId}: ${e}, ${e.stack}`);
-            return { page: null, regressed: false, reason: null };
+            return { page: null, regressed: false, reason: null, fetchFailed };
         }
     }
 
@@ -835,10 +906,10 @@ export interface ESPNGameSummary {
 // The cdn playbyplay payload carries only `header`; game context (venue,
 // weather, betting line, season leaders, recent form) lives on the site.api
 // summary endpoint. Same retry + API-host relay path as every ESPN call.
-export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb'): Promise<ESPNGameSummary | null> {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/football/${LEAGUES[league].espnPath}/summary?event=${gameId}`;
+export async function retrieveGameSummary(gameId: string | number, league: League = 'cfb', signal?: AbortSignal): Promise<ESPNGameSummary | null> {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${LEAGUES[league].sport}/${LEAGUES[league].espnPath}/summary?event=${gameId}`;
     try {
-        const resp = await requestESPN(url);
+        const resp = await requestESPN(url, signal ? { signal } : undefined);
         if (!resp.ok) {
             console.warn(`ESPN summary ${resp.status} for game ${gameId}`);
             return null;
