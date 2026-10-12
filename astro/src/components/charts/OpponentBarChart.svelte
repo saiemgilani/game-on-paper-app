@@ -6,16 +6,13 @@
 
     type Average = { raw: number | null, margin: number | null };
     type Colors = Record<'light' | 'dark', { bar: string, line: string }>;
-    const { epaBars, successBars, epaAvg, successAvg, colors }: { epaBars: OpponentBar[], successBars: OpponentBar[], epaAvg: Average, successAvg: Average, colors: Colors } = $props();
+    // one entry per GAME_METRICS metric; `key` is from the metric register, so the titles match the leaderboards'
+    type Metric = { key: string, format: MetricFormat, bars: OpponentBar[], avg: Average };
+    const { metrics, colors }: { metrics: Metric[], colors: Colors } = $props();
 
-    // keys from the metric register, so the titles match the leaderboards'
-    const METRICS: Record<string, { bars: OpponentBar[], avg: Average, format: MetricFormat }> = $derived({
-        EPAplay: { bars: epaBars, avg: epaAvg, format: 'num2' },
-        success: { bars: successBars, avg: successAvg, format: 'pct' },
-    });
-    let metric = $state('EPAplay');
+    let metric = $state(metrics[0].key);
     let view: 'raw' | 'margin' = $state('raw');
-    const selected = $derived(METRICS[metric]);
+    const selected = $derived(metrics.find((m) => m.key === metric) ?? metrics[0]);
     const title = $derived(generateTeamMetricTitle(`${metric}_${view === 'raw' ? 'off' : 'margin'}`));
     const average = $derived(selected.avg[view]);
     const fmt = (v: unknown) => formatMetricValue(v, selected.format, view === 'margin');
@@ -95,8 +92,8 @@
 
 <div class="d-flex flex-wrap gap-2 align-items-center mb-2 mt-1">
     <select id="vs-opponent-metric" aria-label="Metric" class="form-select form-select-sm" style="width:auto" bind:value={metric}>
-        {#each Object.keys(METRICS) as m}
-        <option value={m}>{generateTeamMetricTitle(m)}</option>
+        {#each metrics as m}
+        <option value={m.key}>{generateTeamMetricTitle(m.key)}</option>
         {/each}
     </select>
     <select id="vs-opponent-view" aria-label="Raw value or margin" class="form-select form-select-sm" style="width:auto" bind:value={view}>

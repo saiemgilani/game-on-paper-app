@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
-import { aggregateGames, averageAxisBounds, opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { aggregateGames, averageAxisBounds, GAME_METRICS, opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { generateTeamMetricTitle } from '../src/utils/misc';
 
 // The Data API's real 2025 bodies (fixtures/team-opponent-splits-2025.json):
 // team_opponent_splits by team_id and by opponent_id, and the schedule rows,
@@ -29,6 +30,22 @@ const load = (league: 'cfb' | 'nfl' | 'cfb_155') => {
         events: [...f.schedule.home_id.data, ...f.schedule.away_id.data],
     };
 };
+
+describe('GAME_METRICS', () => {
+    // the columns every row carries that are not the game's identity or result
+    const CONTEXT = new Set(['season', 'season_type', 'week', 'game_id', 'nflverse_game_id', 'team_id', 'opponent_id', 'opponent', 'is_home', 'points_for', 'points_against', 'plays']);
+
+    test('one entry per rate column the rows carry, in both leagues', () => {
+        for (const league of ['cfb', 'nfl'] as const) {
+            const rates = new Set(load(league).splits.team.flatMap((r: any) => Object.keys(r)).filter((c: string) => !CONTEXT.has(c)));
+            expect(GAME_METRICS.map((m) => m.column).sort(), league).toEqual([...rates].sort());
+        }
+    });
+
+    test('titled from the metric register the leaderboards use', () => {
+        expect(GAME_METRICS.map((m) => generateTeamMetricTitle(m.key))).toEqual(['EPA/Play', 'Success %']);
+    });
+});
 
 describe('opponentBars', () => {
     test('cfb: one bar per game, in kickoff order, labelled at/vs the opponent abbreviation', () => {
@@ -111,7 +128,7 @@ describe('aggregateGames / opponentAverages', () => {
     test('the season average is play-weighted, not the mean of the bars', () => {
         for (const league of ['cfb', 'nfl'] as const) {
             const { splits, events } = load(league);
-            for (const metric of ['epa_per_play', 'success_rate'] as const) {
+            for (const { column: metric } of GAME_METRICS) {
                 const plays = splits.team.reduce((s: number, r: any) => s + r.plays, 0);
                 const weighted = splits.team.reduce((s: number, r: any) => s + r[metric] * r.plays, 0) / plays;
                 expect(aggregateGames(splits.team)[metric], `${league} ${metric}`).toBeCloseTo(weighted, 12);
@@ -129,7 +146,7 @@ describe('aggregateGames / opponentAverages', () => {
             rows.reduce((s, r) => s + r[metric] * r.plays, 0) / rows.reduce((s, r) => s + r.plays, 0);
         for (const league of ['cfb', 'nfl'] as const) {
             const { splits } = load(league);
-            for (const metric of ['epa_per_play', 'success_rate'] as const) {
+            for (const { column: metric } of GAME_METRICS) {
                 const avg = opponentAverages(splits, metric);
                 const off = weighted(splits.team, metric), def = weighted(splits.opponent, metric);
                 expect(avg.raw, `${league} ${metric}`).toBeCloseTo(off, 5);

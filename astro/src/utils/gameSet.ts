@@ -1,16 +1,26 @@
 import type { SDVGame, SDVTeamOpponentSplit } from '../resources/sdv';
-import { cleanTextForTeam, numberOrNull } from './misc';
+import { cleanTextForTeam, numberOrNull, type MetricFormat } from './misc';
 
 /**
  * A team-season's games from `{league}.team_opponent_splits`, one row per
  * team-game. Season numbers are play-weighted sums over the rows, never the
  * mean of the per-game rates.
  */
-export type GameMetric = 'epa_per_play' | 'success_rate';
+/**
+ * Every per-game rate the rows carry: its column, the metric-register key that
+ * titles it (`generateTeamMetricTitle`), and its cell format. Each is a per-play
+ * rate, so its season average is weighted by `plays`. A rate column the table
+ * gains is one entry here; `test/gameSet.test.ts` fails until it is added.
+ */
+export const GAME_METRICS = [
+    { column: 'epa_per_play', key: 'EPAplay', format: 'num2' },
+    { column: 'success_rate', key: 'success', format: 'pct' },
+] as const satisfies readonly { column: keyof SDVTeamOpponentSplit, key: string, format: MetricFormat }[];
+export type GameMetric = (typeof GAME_METRICS)[number]['column'];
 export type GameSplits = { team: SDVTeamOpponentSplit[], opponent: SDVTeamOpponentSplit[] };
 
 /** Each rate weighted by the game's plays; a null rate or a zero-play game carries no weight. */
-export function aggregateGames(rows: SDVTeamOpponentSplit[]): { games: number, plays: number, epa_per_play: number | null, success_rate: number | null } {
+export function aggregateGames(rows: SDVTeamOpponentSplit[]): { games: number, plays: number } & Record<GameMetric, number | null> {
     const weighted = (metric: GameMetric) => {
         let sum = 0, plays = 0;
         for (const r of rows) {
@@ -24,8 +34,7 @@ export function aggregateGames(rows: SDVTeamOpponentSplit[]): { games: number, p
     return {
         games: rows.length,
         plays: rows.reduce((s, r) => s + (numberOrNull(r.plays) ?? 0), 0),
-        epa_per_play: weighted('epa_per_play'),
-        success_rate: weighted('success_rate'),
+        ...(Object.fromEntries(GAME_METRICS.map((m) => [m.column, weighted(m.column)])) as Record<GameMetric, number | null>),
     };
 }
 

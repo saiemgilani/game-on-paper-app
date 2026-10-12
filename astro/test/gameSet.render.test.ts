@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { GAME_METRICS, opponentAverages, opponentBars } from '../src/utils/gameSet';
 import { formatMetricValue, pickGameColors, STANDARD_THEME_COLOR } from '../src/utils/misc';
 
 // Results by Opponent ('vs-opponent') on the season team page, rendered from the
@@ -82,13 +82,17 @@ describe.each([
         // idle, not visible: a full-page capture never scrolls it into view, so it would stay blank
         expect(tag).toContain('client="idle"');
         const props = propsOf(tag!);
-        expect(Object.keys(props).sort()).toEqual(['colors', 'epaAvg', 'epaBars', 'successAvg', 'successBars']);
+        expect(Object.keys(props).sort()).toEqual(['colors', 'metrics']);
         const splits = splitsOf(league), events = eventsOf(league);
-        expect(props.epaBars).toEqual(opponentBars(splits, events, 'epa_per_play'));
-        expect(props.successBars).toEqual(opponentBars(splits, events, 'success_rate'));
-        expect(props.epaBars).toHaveLength(splits.team.length);
-        expect(props.epaAvg).toEqual(opponentAverages(splits, 'epa_per_play'));
-        expect(props.successAvg).toEqual(opponentAverages(splits, 'success_rate'));
+        // one entry per GAME_METRICS metric, in its order, each with its own bars and averages
+        expect(props.metrics.map((m: any) => m.key)).toEqual(['EPAplay', 'success']);
+        expect(props.metrics).toEqual(GAME_METRICS.map((m) => ({
+            key: m.key,
+            format: m.format,
+            bars: opponentBars(splits, events, m.column),
+            avg: opponentAverages(splits, m.column),
+        })));
+        expect(props.metrics[0].bars).toHaveLength(splits.team.length);
         // one decision per theme: the team (bars) against the theme blue (the line).
         // On white, the mocked crimson and the blue both read and stand apart, so
         // both are kept as they are; dark is whatever the shared rule lifts them to.
