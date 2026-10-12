@@ -48,18 +48,21 @@ describe('GAME_METRICS', () => {
 });
 
 describe('opponentBars', () => {
-    test('cfb: one bar per game, in kickoff order, labelled at/vs the opponent abbreviation', () => {
+    test('cfb: one bar per game, in kickoff order, labelled by date and at/vs the opponent abbreviation', () => {
         const { splits, events } = load('cfb');
         const bars = opponentBars(splits, events, 'epa_per_play');
         expect(bars.length).toBe(splits.team.length);
         // Georgia is on the meme list, so it prints lowercase; the SEC title game and
         // the Rose Bowl were neutral (vs), the CFP first round was at Oklahoma
+        // kickoff dates in Eastern time: LSU (00:30Z Nov 9), Auburn and the CFP first
+        // round kicked off on the evening before their UTC date
         expect(bars.map((b) => b.label)).toEqual([
-            'at FSU', 'vs ULM', 'vs WIS', 'at uga', 'vs VAN', 'at MIZ', 'vs TENN', 'at SC',
-            'vs LSU', 'vs OU', 'vs EIU', 'at AUB', 'vs uga', 'at OU', 'vs IU',
+            '8/30 at FSU', '9/6 vs ULM', '9/13 vs WIS', '9/27 at uga', '10/4 vs VAN', '10/11 at MIZ', '10/18 vs TENN', '10/25 at SC',
+            '11/8 vs LSU', '11/15 vs OU', '11/22 vs EIU', '11/29 at AUB', '12/6 vs uga', '12/19 at OU', '1/1 vs IU',
         ]);
-        expect(bars[0].title).toBe('at Florida State (L 17-31)');
-        expect(bars[1].title).toBe('vs UL Monroe (W 73-0)');
+        expect(bars[0].title).toBe('8/30/2025 at Florida State (L 17-31)');
+        expect(bars[1].title).toBe('9/6/2025 vs UL Monroe (W 73-0)');
+        expect(bars[14].title).toMatch(/^1\/1\/2026 vs Indiana/);
     });
 
     test('raw is the team\'s own value; margin subtracts the opponent\'s in the same game', () => {
@@ -80,12 +83,13 @@ describe('opponentBars', () => {
         const bars = opponentBars(splits, events, 'success_rate');
         expect(bars.length).toBe(17);
         // week 1 in Sao Paulo was a neutral-site "home" game for the Chargers
-        expect(bars.slice(0, 4).map((b) => b.label)).toEqual(['vs LAC', 'vs PHI', 'at NYG', 'vs BAL']);
-        expect(bars[0].title).toBe('vs Los Angeles Chargers (L 21-27)');
-        expect(bars[16].label).toBe('at LV');
+        // the Sao Paulo game kicked off Friday 8pm ET, Saturday 00:00 UTC
+        expect(bars.slice(0, 4).map((b) => b.label)).toEqual(['9/5 vs LAC', '9/14 vs PHI', '9/21 at NYG', '9/28 vs BAL']);
+        expect(bars[0].title).toBe('9/5/2025 vs Los Angeles Chargers (L 21-27)');
+        expect(bars[16].label).toBe('1/4 at LV');
     });
 
-    test('without schedule rows: ordered by season type then week, labelled by the F7 name', () => {
+    test('without schedule rows: no date, ordered by season type then week, labelled by the F7 name', () => {
         const { splits } = load('cfb');
         const bars = opponentBars(splits, [], 'epa_per_play');
         expect(bars.length).toBe(15);
@@ -100,7 +104,7 @@ describe('opponentBars', () => {
         // move Kansas City's week-7 Raiders game to between weeks 1 and 2
         const moved = events.map((e: any) => (e.game_id === 401772753 ? { ...e, start_date: '2025-09-10T17:00:00.000Z' } : e));
         const labels = opponentBars(splits, moved, 'epa_per_play').map((b) => b.label);
-        expect(labels.slice(0, 3)).toEqual(['vs LAC', 'vs LV', 'vs PHI']);
+        expect(labels.slice(0, 3)).toEqual(['9/5 vs LAC', '9/10 vs LV', '9/14 vs PHI']);
         expect(labels.length).toBe(17);
     });
 
@@ -110,7 +114,8 @@ describe('opponentBars', () => {
         const bars = opponentBars(splits, partial, 'epa_per_play');
         // week 7, sixth in week order (weeks 1-6 before it), labelled from F7
         expect(bars[6].label).toBe('vs 13');
-        expect(bars.map((b) => b.label).slice(0, 2)).toEqual(['vs LAC', 'vs PHI']);
+        expect(bars[6].title).toBe('vs 13 (W 31-0)');
+        expect(bars.map((b) => b.label).slice(0, 2)).toEqual(['9/5 vs LAC', '9/14 vs PHI']);
     });
 
     test('a game with no opponent row keeps its raw bar and has no margin', () => {

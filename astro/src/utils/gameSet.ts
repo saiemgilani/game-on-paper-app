@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { SDVGame, SDVTeamOpponentSplit } from '../resources/sdv';
 import { cleanTextForTeam, numberOrNull, type MetricFormat } from './misc';
 
@@ -39,9 +40,9 @@ export function aggregateGames(rows: SDVTeamOpponentSplit[]): { games: number, p
 }
 
 export interface OpponentBar {
-    /** the axis label: "at UGA" / "vs LSU" */
+    /** the axis label: "9/27 at UGA" / "11/8 vs LSU" */
     label: string
-    /** the tooltip title: "at Georgia Bulldogs (W 24-21)" */
+    /** the tooltip title: "9/27/2025 at Georgia Bulldogs (W 24-21)" */
     title: string
     /** the team's own value in the game */
     raw: number | null
@@ -52,6 +53,14 @@ export interface OpponentBar {
 // what the chart is handed: six decimals, where the axis prints two (EPA) or one
 // of a percent; a full float per value only bloats the page's island props
 const chartValue = (x: number | null) => (x === null ? null : Math.round(x * 1e6) / 1e6);
+
+// the kickoff's date in Eastern time, as the schedule and the game page's SEO
+// line print it: a 7:30pm ET Saturday is Sunday in UTC. The title's is luxon's
+// DATE_SHORT, the matchup history's format; the axis drops the season's year.
+const kickoffDate = (start: string | undefined) => {
+    const d = start ? DateTime.fromISO(start, { zone: 'America/New_York' }) : null;
+    return d?.isValid ? { short: d.toFormat('M/d'), full: d.setLocale('en-US').toLocaleString(DateTime.DATE_SHORT) } : null;
+};
 
 const result = (r: SDVTeamOpponentSplit) => {
     const pf = numberOrNull(r.points_for), pa = numberOrNull(r.points_against);
@@ -82,9 +91,10 @@ export function opponentBars(splits: GameSplits, events: SDVGame[], metric: Game
             const abbreviation = e && (home ? e.away_abbreviation : e.home_abbreviation);
             const raw = numberOrNull(r[metric]);
             const theirs = numberOrNull(against.get(String(r.game_id))?.[metric]);
+            const date = kickoffDate(e?.start_date);
             return {
-                label: `${atVs} ${cleanTextForTeam(abbreviation || name, r.opponent_id)}`,
-                title: `${atVs} ${cleanTextForTeam(name, r.opponent_id)}${result(r)}`,
+                label: `${date ? `${date.short} ` : ''}${atVs} ${cleanTextForTeam(abbreviation || name, r.opponent_id)}`,
+                title: `${date ? `${date.full} ` : ''}${atVs} ${cleanTextForTeam(name, r.opponent_id)}${result(r)}`,
                 raw: chartValue(raw),
                 margin: raw === null || theirs === null ? null : chartValue(raw - theirs),
             };
