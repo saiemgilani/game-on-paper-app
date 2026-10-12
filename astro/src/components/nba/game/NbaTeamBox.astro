@@ -1,0 +1,32 @@
+---
+import type { NbaGame, NbaTeamBox as Box } from '../../../resources/nbaGame';
+import { dash } from '../../../nba/data/game';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+interface Props { game: NbaGame }
+const { game } = Astro.props;
+const h = game.home.box, a = game.away.box;
+const int = (v: number | null) => dash(v, (x) => String(Math.round(x)));
+const pair = (m: number | null, t: number | null) => (m == null || t == null ? '–' : `${int(m)}-${int(t)}`);
+const txt = (v: string | null) => (v == null || v === '' ? '–' : v);
+const rows: { label: string; v: (b: Box) => string }[] = [
+    { label: 'FG', v: (b) => pair(b.field_goals_made, b.field_goals_attempted) },
+    { label: '3PT', v: (b) => pair(b.three_point_field_goals_made, b.three_point_field_goals_attempted) },
+    { label: 'FT', v: (b) => pair(b.free_throws_made, b.free_throws_attempted) },
+    { label: 'Rebounds (off-def)', v: (b) => (b.total_rebounds == null ? '–' : `${int(b.total_rebounds)} (${pair(b.offensive_rebounds, b.defensive_rebounds)})`) },
+    { label: 'Assists', v: (b) => int(b.assists) },
+    { label: 'Steals', v: (b) => int(b.steals) },
+    { label: 'Blocks', v: (b) => int(b.blocks) },
+    { label: 'Turnovers (player + team)', v: (b) => (b.total_turnovers == null ? '–' : b.team_turnovers == null ? int(b.total_turnovers) : `${int(b.total_turnovers)} (${int(b.turnovers)} + ${int(b.team_turnovers)})`) },
+    { label: 'Fouls', v: (b) => int(b.fouls) },
+    { label: 'Fast break points', v: (b) => txt(b.fast_break_points) },
+    { label: 'Points in the paint', v: (b) => txt(b.points_in_paint) },
+    { label: 'Largest lead', v: (b) => txt(b.largest_lead) },
+];
+---
+{(!h || !a) ? <p class="text-muted">The team box is unavailable for this game.</p> : (
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Team box score">
+    <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
+    <tbody>{rows.map((r) => <tr><th scope="row" class="fw-normal">{r.label}</th><td class="text-end">{r.v(a)}</td><td class="text-end">{r.v(h)}</td></tr>)}</tbody>
+</table></div>
+)}
