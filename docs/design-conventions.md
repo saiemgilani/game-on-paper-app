@@ -51,6 +51,10 @@ Reference pages to match, by surface:
 | static content page | `astro/src/pages/data-sources.astro` (post-`6e6c422d` form), `glossary.astro` |
 | NBA player dashboard | `/nba/players/1629008` (preview), built beside the football player page's header card and panels |
 | NBA team page | `/nba/team/1610612751` (preview), the player dashboard's header card over a team, with the roster table on sticky-table.css and `?sort=` headers (the coach leaderboard's pattern) |
+| NBA scatter | `/nba/scatter` (preview), a Svelte island around the copied d3 scatter (svg + canvas faces), Bootstrap selects and button groups for its controls |
+| NBA leaders | `/nba/leaders` (preview), a Svelte island of window and board button groups over one table with two tbody groups (Nets further down), .numeral cells |
+
+The NBA scatter's `.nba-scatter { isolation: isolate }` rule (nba.css) and inline `z-index: -1` exist because the bundled Bootstrap 5.0.2 has no z-index or isolation utilities.
 
 `PERCENTILE_FEATURE_PROPOSAL.md` at the repo root is an outside contributor's feature
 proposal, not design guidance — it is a precedent for *proposing before building*, nothing more.

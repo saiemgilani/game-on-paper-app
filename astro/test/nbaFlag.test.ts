@@ -2,8 +2,8 @@ import { describe, expect, test, vi } from 'vitest';
 
 // The NBA surface sits behind the 'nba' feature flag (utils/features.ts), gated once in
 // middleware exactly like 'nfl': every /nba path is the site's 404 unless the viewer
-// holds the preview cookie. Promotion flips 'preview' -> 'on' once the routes the nav already
-// links to (PR 3) and a football-Header NBA entry exist; see the flag's comment.
+// holds the preview cookie. Promotion flips 'preview' -> 'on'; the Header and the sitemap
+// react to 'on' by themselves (nbaHeaderOn.test.ts, sitemapNbaOn.test.ts).
 vi.mock('astro:env/server', () => ({ getSecret: (k: string) => (k === 'ADMIN_PASS' ? 'test-secret' : undefined) }));
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 
@@ -24,7 +24,7 @@ async function run(path: string, cookie: string | null) {
     return { locals, res, rewrittenTo };
 }
 
-const NBA_PATHS = ['/nba', '/nba/', '/nba/players/1629008', '/nba/players/1629008?season=2024', '/nba/team/1610612751'];
+const NBA_PATHS = ['/nba', '/nba/', '/nba/players/1629008', '/nba/players/1629008?season=2024', '/nba/team/1610612751', '/nba/scoreboard', '/nba/scoreboard?date=2025-04-15', '/nba/game/401766458'];
 
 describe('the nba flag', () => {
     test('is a preview feature until promoted', () => {

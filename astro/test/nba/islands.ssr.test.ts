@@ -4,11 +4,16 @@ import { expect, test } from 'vitest';
 import { render } from 'svelte/server';
 import Dashboard from '../../src/components/nba/Dashboard.svelte';
 import PlayerExplorer from '../../src/components/nba/PlayerExplorer.svelte';
-import { leagueContextFromRows } from '../../src/nba/adapters';
+import ScatterExplorer from '../../src/components/nba/ScatterExplorer.svelte';
+import { headshotsFromRows, leagueContextFromRows, playerSeasonsFromRows, seasonPlayerGamesFromRows } from '../../src/nba/adapters';
+import { scatterPoints } from '../../src/nba/data/scatter';
 import { ZONES } from '../../src/nba/data/aggregate';
 import { buildDashboard } from '../../src/nba/dashboard';
 import { toLite } from '../../src/nba/data/shots';
-import type { LeagueContextRow } from '../../src/resources/nbaShots';
+import type { LeagueContextRow, PlayerGameRow } from '../../src/resources/nbaShots';
+import { apiSeasonPlayerRows, seasonPlayerRows } from './rows';
+import Leaderboards from '../../src/components/nba/Leaderboards.svelte';
+import { leaderBoards } from '../../src/nba/data/leaders';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 
@@ -38,4 +43,31 @@ test('Dashboard and PlayerExplorer server-render', () => {
   expect(ex).toContain('id="nba-hex-panel"');
   expect(ex).toContain('id="nba-games-panel"');
   expect(ex).not.toContain('undefined');
+});
+
+test('ScatterExplorer server-renders', () => {
+  const rows = apiSeasonPlayerRows();
+  const points = scatterPoints(playerSeasonsFromRows(rows), headshotsFromRows(rows), 1610612751);
+  const html = render(ScatterExplorer, { props: { points, subject: 'NBA 2025-26' } }).body;
+  expect(html).toContain('<desc>');
+  expect(html).toContain('Reset zoom');
+  expect(html).not.toContain('undefined');
+});
+
+test('Leaderboards server-renders', () => {
+  const byPlayer = read('player_games') as Record<string, any[]>;
+  const gameRows = (): PlayerGameRow[] => Object.entries(byPlayer).flatMap(([pid, gs]) => gs.map((g) => ({
+    season: 2026, person_id: Number(pid), game_id: g.game_id, team_id: g.team_id, team_tricode: 'BKN', attempts: g.attempts, makes: g.makes,
+    fg3a: g.fg3a, fg3m: g.fg3m, game_date: g.date, opponent_id: g.opponent_id, opponent: g.opponent, venue: g.venue, win: g.win,
+  })));
+  // top=2: the all-Nets fixture has 8 eligible 10-game shooters, so 2 lead, 5 sit in "Nets further down" and 1 lands in the <details>
+  const boards = leaderBoards(seasonPlayerGamesFromRows(gameRows(), seasonPlayerRows()), 1610612751, 2);
+  const html = render(Leaderboards, { props: { boards, netsTeamId: 1610612751, seasonQuery: '' } }).body;
+  expect(html).toContain('id="nba-leaders"');
+  expect(html).toContain('10 games');
+  expect(html).toContain('Nets further down');
+  expect(html).toContain('more Nets');
+  expect(html).toMatch(/<caption class="visually-hidden">[^<]*last 10 games<\/caption>/); // the leaders table is named
+  expect(html).toMatch(/<details>[\s\S]*<thead class="visually-hidden">[\s\S]*<th scope="col">Player<\/th>/); // so is the <details> one
+  expect(html).not.toContain('undefined');
 });
