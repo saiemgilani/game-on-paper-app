@@ -2,6 +2,7 @@
 import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
+import { basketball } from "../basketball/config";
 
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
@@ -82,12 +83,7 @@ const lp = (p: string) => leaguePath(league, p);
                     )}
                     {!football && (
                         <Fragment>
-                            <li><a href={lp("/scoreboard")} class="nav-link px-2 link-secondary">Scoreboard</a></li>
-                            <li><a href={lp("/")} class="nav-link px-2 link-secondary">Nets</a></li>
-                            <li><a href={lp("/players")} class="nav-link px-2 link-secondary">Players</a></li>
-                            <li><a href={lp("/teams")} class="nav-link px-2 link-secondary">Teams</a></li>
-                            <li><a href={lp("/scatter")} class="nav-link px-2 link-secondary">Scatter</a></li>
-                            <li><a href={lp("/leaders")} class="nav-link px-2 link-secondary">Leaders</a></li>
+                            {basketball(league).headerMenu.map((m) => (<li><a href={lp(m.path)} class="nav-link px-2 link-secondary">{m.label}</a></li>))}
                         </Fragment>
                     )}
                     <li class="nav-item dropdown">
