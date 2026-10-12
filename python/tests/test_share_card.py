@@ -163,17 +163,17 @@ def test_missing_logo_prints_the_abbreviation(processed):
     assert {"CMU", "OKST"} <= set(drawn)
 
 
-def test_colours_are_the_teams_own(processed):
+def test_colors_are_the_teams_own(processed):
     game = processed("cfb")
     comp = game["header"]["competitions"][0]
     okst = next(c["team"] for c in comp["competitors"] if c["homeAway"] == "home")
-    assert share_card._colour(okst) == "#" + okst["color"]
-    # a colour that would vanish on the white card falls back to the alternate, then ink
+    assert share_card._color(okst) == "#" + okst["color"]
+    # a color that would vanish on the white card falls back to the alternate, then ink
     assert (
-        share_card._colour({"color": "ffffff", "alternateColor": "4c0027"}) == "#4c0027"
+        share_card._color({"color": "ffffff", "alternateColor": "4c0027"}) == "#4c0027"
     )
     assert (
-        share_card._colour({"color": "ffffff", "alternateColor": "f0f0f0"})
+        share_card._color({"color": "ffffff", "alternateColor": "f0f0f0"})
         == share_card.INK
     )
     # ... and reaches the image: the team labels are drawn in it
@@ -182,7 +182,7 @@ def test_colours_are_the_teams_own(processed):
     assert rgb in {
         px[:3] for px in Image.open(io.BytesIO(png)).convert("RGB").getdata()
     }
-    # no palette of our own: the only literal colours are matplotlib's defaults
+    # no palette of our own: the only literal colors are matplotlib's defaults
     assert not re.search(r"#[0-9a-fA-F]{3,6}\b", Path(share_card.__file__).read_text())
 
 
@@ -422,7 +422,7 @@ def test_small_art_is_scaled_to_the_logo_box():
     buf = io.BytesIO()
     Image.new("RGBA", (96, 96), (200, 0, 0, 255)).save(buf, format="PNG")
     card = share_card._Card(None)
-    card.logo({"id": "61", "abbr": "uga", "colour": share_card.INK, "logo": "x"}, "cfb", lambda url: buf.getvalue(), 330, 315, 200)
+    card.logo({"id": "61", "abbr": "uga", "color": share_card.INK, "logo": "x"}, "cfb", lambda url: buf.getvalue(), 330, 315, 200)
     (image,) = card.fig.images
     assert image.get_array().shape[:2] == (200, 200)
 

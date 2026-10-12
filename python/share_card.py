@@ -5,7 +5,7 @@ direction-free excitement numbers (excitement.py) in place of the score, the WP
 line and Deserved Win %. A pregame card has nothing to spoil, so both variants
 draw the same pregame card.
 
-Colours are the teams' own ESPN colours plus neutrals from matplotlib's default
+Colors are the teams' own ESPN colors plus neutrals from matplotlib's default
 style; the type is Chivo, the site's font (assets/fonts, copied from
 astro/public/assets/fonts/chivo).
 """
@@ -41,8 +41,8 @@ RULE = rcParamsDefault["grid.color"]
 MEME_TEAM_IDS = {"61"}
 
 
-def _colour(team):
-    """The team's colour when it reads on the white card, else its alternate, else ink."""
+def _color(team):
+    """The team's color when it reads on the white card, else its alternate, else ink."""
     for key in ("color", "alternateColor"):
         hexv = team.get(key) or ""
         if len(hexv) == 6:
@@ -64,7 +64,7 @@ def _side(comp, home_away):
         "name": clean(t.get("location") or t.get("displayName")),
         "abbr": clean(t.get("abbreviation")),
         "score": c.get("score"),
-        "colour": _colour(t),
+        "color": _color(t),
         "rank": rank if isinstance(rank, int) and 0 < rank <= 25 else None,
         "record": next(
             (r.get("summary") for r in records if r.get("type") in ("total", None)),
@@ -120,14 +120,14 @@ class _Card:
         s,
         px,
         font=REGULAR,
-        colour=INK,
+        color=INK,
         ha="center",
         va="baseline",
         max_w=None,
     ):
         """`s` at pixel (x, y) from the top left, `px` tall, shrunk until it fits `max_w`."""
         t = self.fig.text(
-            x / W, 1 - y / H, s, fontproperties=font, color=colour, ha=ha, va=va
+            x / W, 1 - y / H, s, fontproperties=font, color=color, ha=ha, va=va
         )
         t.set_fontsize(px * 72 / DPI)
         while max_w and px > 16 and t.get_window_extent(self.renderer).width > max_w:
@@ -148,9 +148,9 @@ class _Card:
                 img = ImageOps.contain(img, (size, size), Image.LANCZOS)
             except Exception:
                 img = None
-        if img is None:  # no logo: the abbreviation, in the team's colour
+        if img is None:  # no logo: the abbreviation, in the team's color
             self.text(
-                cx, cy, team["abbr"], size * 0.32, BOLD, team["colour"], va="center"
+                cx, cy, team["abbr"], size * 0.32, BOLD, team["color"], va="center"
             )
             return
         self.fig.figimage(
@@ -217,7 +217,7 @@ class _Card:
                 0.5,
                 where=ys >= 0.5,
                 interpolate=True,
-                color=home["colour"],
+                color=home["color"],
                 alpha=0.35,
                 lw=0,
             )
@@ -227,7 +227,7 @@ class _Card:
                 0.5,
                 where=ys <= 0.5,
                 interpolate=True,
-                color=away["colour"],
+                color=away["color"],
                 alpha=0.35,
                 lw=0,
             )
@@ -239,7 +239,7 @@ class _Card:
                 team["abbr"],
                 transform=ax.transAxes,
                 va=va,
-                color=team["colour"],
+                color=team["color"],
                 fontproperties=BOLD,
                 fontsize=22 * 72 / DPI,
             )
@@ -309,7 +309,7 @@ def render(
             58,
             " / ".join(x for x in (context, when, tv) if x),
             26,
-            colour=MUTED,
+            color=MUTED,
             max_w=W - 2 * PAD,
         )
         named = [
@@ -320,7 +320,7 @@ def render(
         for team, cx in ((away, 330), (home, 870)):
             card.logo(team, league, logo_fetch, cx, 315, 200)
             if team["record"]:
-                card.text(cx, 470, team["record"], 28, colour=MUTED)
+                card.text(cx, 470, team["record"], 28, color=MUTED)
         card.text(W / 2, 330, "@", 60, BOLD, MUTED, va="center")
         venue = (game.get("gameInfo") or {}).get("venue") or {}
         address = venue.get("address") or {}
@@ -330,7 +330,7 @@ def render(
             if x
         )
         if where:
-            card.text(W / 2, 525, where, 26, colour=MUTED, max_w=W - 2 * PAD)
+            card.text(W / 2, 525, where, 26, color=MUTED, max_w=W - 2 * PAD)
         proj = game.get("projection") or {}
         if proj.get("margin") is not None:
             fav, wp = (
@@ -365,7 +365,7 @@ def render(
                 detail if detail.startswith("Final") and not spoilerfree else "Final"
             )
             stamp = " / ".join(x for x in (final, context, day) if x)
-        card.text(W / 2, 58, stamp, 26, colour=MUTED, max_w=W - 2 * PAD)
+        card.text(W / 2, 58, stamp, 26, color=MUTED, max_w=W - 2 * PAD)
         title = (
             f"{away['name']} @ {home['name']}"
             if spoilerfree
@@ -392,8 +392,8 @@ def render(
             )
             for (value, label), cx in zip(tiles, (W / 6, W / 2, 5 * W / 6)):
                 card.text(cx, 375, value, 88, BOLD)
-                card.text(cx, 430, label, 26, colour=MUTED, max_w=W / 3 - PAD)
-            card.text(PAD, 590, "Score hidden", 26, colour=MUTED, ha="left")
+                card.text(cx, 430, label, 26, color=MUTED, max_w=W / 3 - PAD)
+            card.text(PAD, 590, "Score hidden", 26, color=MUTED, ha="left")
         else:
             completed = state == "final"
             card.wp(
@@ -416,5 +416,5 @@ def render(
                     BOLD,
                     ha="left",
                 )
-    card.text(W - PAD, 590, "gameonpaper.com", 26, colour=MUTED, ha="right")
+    card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
     return card.png()

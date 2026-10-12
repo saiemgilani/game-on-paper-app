@@ -13,7 +13,7 @@ The spoiler-free share card prints these three numbers in place of the score.
   points, with no team named.
 """
 
-# the WP chart's normalisation (astro/src/resources/python.ts calculateGEI)
+# the WP chart's normalization (astro/src/resources/python.ts calculateGEI)
 GEI_SCALE = 179.01777401608126
 
 
