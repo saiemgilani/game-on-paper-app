@@ -1,0 +1,9 @@
+---
+import NbaGamePage from '../nba/game/NbaGamePage.astro';
+import NbaPreGamePage from '../nba/game/NbaPreGamePage.astro';
+import type { NbaGamePrep } from '../../routes/nba/game';
+
+interface Props { data: Exclude<NbaGamePrep, { notFound: true } | { unavailable: true }> }
+const { data } = Astro.props;
+---
+{'pregame' in data ? <NbaPreGamePage espnGame={data.espnGame} /> : <NbaGamePage game={data.game} />}
