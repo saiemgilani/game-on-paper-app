@@ -6,8 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { apiSeasonPlayerRows, seasonPlayerRows } from './rows';
+
+// A container render of eleven pages can exceed the 5 s default on a loaded host; a timeout must never read as a byte change.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 const shots = read('shots') as any[];
@@ -66,6 +69,9 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 afterAll(() => { vi.useRealTimers(); });
+// Each test queues its own Once values (the scoreboard test sets its implementation inline); a queue left by a failed or
+// timed-out test must not leak into the next one and show up as a false snapshot mismatch.
+beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(espn)]) m.mockReset(); });
 
 async function page(path: string, url: string, params: Record<string, string> = {}) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
