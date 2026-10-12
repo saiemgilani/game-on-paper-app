@@ -50,6 +50,7 @@ export const TEAMS: readonly Team[] = [
 ];
 
 const BY_ID = new Map(TEAMS.map((t) => [t.team_id, t]));
+const BY_ESPN_ID = new Map(TEAMS.map((t) => [t.espn_id, t]));
 
 /**
  * Names a franchise used before its current one, with the tricode the release files use for it and
@@ -68,6 +69,11 @@ export const FORMER_NAMES: readonly { team_id: number; tricode: string; through:
   { team_id: 1610612740, tricode: "NOH", through: 2013, name: "New Orleans Hornets" },
   { team_id: 1610612746, tricode: "LAC", through: 2015, name: "Los Angeles Clippers" },
 ];
+
+/** The team for an ESPN team id (the game pages carry ESPN ids), or undefined. */
+export function teamByEspnId(espnId: number): Team | undefined {
+  return BY_ESPN_ID.get(espnId);
+}
 
 export function teamById(teamId: number): Team | undefined {
   return BY_ID.get(teamId);
