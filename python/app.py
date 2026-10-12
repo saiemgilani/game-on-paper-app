@@ -516,9 +516,10 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             )
 
         # Drive starts in EP units (the Drives table's EP row), for the whole game
-        # and every window: paper_index.avg_start_ep over the drives with a snap in
-        # the window (the span boxes' own expressions), each at its real start.
-        # Fail-open like everything else here.
+        # and every window. sportsdataverse-py ships it in the drives box
+        # (sportsdataverse-py#836); until the lock moves past that merge,
+        # paper_index.add_start_ep fills the rows that lack it (the drives with a
+        # snap in the window, each at its real start). Fail-open like everything else here.
         try:
             frame = getattr(game, "plays_frame", None)
             if frame is not None:

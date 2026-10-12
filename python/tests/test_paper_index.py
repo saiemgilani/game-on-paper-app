@@ -375,6 +375,16 @@ def test_add_start_ep_stamps_every_row():
     assert rows[1]["avg_start_ep"] is None
 
 
+def test_add_start_ep_keeps_the_package_value():
+    # sportsdataverse-py ships avg_start_ep in the drives box (sportsdataverse-py#836);
+    # the helper only fills rows that lack it, i.e. on a lock from before that merge
+    rows = [{"pos_team": 10, "avg_start_ep": 1.23}, {"pos_team": 10, "avg_start_ep": None}, {"pos_team": 10}]
+    paper_index.add_start_ep(rows, _frame())
+    assert rows[0]["avg_start_ep"] == 1.23
+    assert rows[1]["avg_start_ep"] is None
+    assert rows[2]["avg_start_ep"] == pytest.approx(paper_index.avg_start_ep(_frame(), 10), abs=1e-12)
+
+
 def test_a_window_values_a_carried_over_drive_at_its_real_start():
     # team 10's drive a starts at the 75 in period 1 and is still going in period 2
     # (its period-2 snap is at the 40); drive b is all period 2

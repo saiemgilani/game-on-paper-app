@@ -267,9 +267,17 @@ def avg_start_ep(
 def add_start_ep(
     drive_rows, frame: pl.DataFrame, league: str = "cfb", window: pl.Expr | None = None
 ) -> None:
-    """Stamp ``avg_start_ep`` onto each team row of a box score's ``drives`` section."""
+    """Stamp ``avg_start_ep`` onto each team row of a box score's ``drives`` section
+    that does not already carry it.
+
+    sportsdataverse-py computes it in the drives box itself (sportsdataverse-py#836,
+    the same definition, whole game and windows), so a row from the package keeps
+    the package's value. This fills the rows only while the lock predates that
+    merge; remove it with the lock bump.
+    """
     for row in drive_rows or []:
-        row["avg_start_ep"] = avg_start_ep(frame, row.get("pos_team"), league, window)
+        if "avg_start_ep" not in row:
+            row["avg_start_ep"] = avg_start_ep(frame, row.get("pos_team"), league, window)
 
 
 def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
