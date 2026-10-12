@@ -96,7 +96,7 @@ export const LEAGUES: Record<League, LeagueConfig> = {
 
 /**
  * The n a season row's `_rank`s are out of: the season's own team count
- * (`team_count`, attached by `retrieveTeamSummaries`), else the league default.
+ * (`team_count`, once the producer publishes it on the row), else the league default.
  * FBS has been 128 to 138 teams; a fixed 134 put ranks 135-138 below zero and
  * read the worst 2014 team as the 4th percentile (audit C3).
  */
