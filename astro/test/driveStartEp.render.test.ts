@@ -1,7 +1,7 @@
 /**
  * G10: the v2 Team Stats "Drives" table prints the expected points of each
- * team's average drive start ("Avg Starting Field Position (EP)") under the
- * yards row, for the whole game and for every "Show only" window.
+ * team's average drive start as an indented "Expected Points" sub-row under
+ * the yards row, for the whole game and for every "Show only" window.
  *
  * The value is the processor's `drives[*].avg_start_ep` (python/paper_index.py
  * add_start_ep), read off the real `usage-*` fixtures through the route's own
@@ -43,7 +43,8 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-const LABEL = 'Avg Starting Field Position (EP)';
+// an indented sub-row of "Avg Starting Field Position", like "Per Carry" under Line Yards
+const LABEL = 'Expected Points';
 
 describe('Drives table: drive-start EP', () => {
     for (const league of Object.keys(FIXTURES) as Lg[]) {
