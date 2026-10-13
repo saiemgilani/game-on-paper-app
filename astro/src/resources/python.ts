@@ -2,7 +2,7 @@ import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
-import { CARD_MAX_AGE, type CardState, type CardVariant } from "../utils/shareTags"
+import { CARD_MAX_AGE, cardState, type CardState, type CardVariant } from "../utils/shareTags"
 
 export interface ProcessedModelInput {
     down: number
@@ -1301,14 +1301,41 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
     }
 }
 
+/** What a card draws from the page's processed game: the plays' win-probability track and the Paper Index. */
+export interface CardPage { plays: Record<string, unknown>[], paperIndex?: { homeShare: number }, state: CardState }
+const CARD_PLAY_KEYS = ['scrimmage_play', 'winProbability', 'period', 'pos_team', 'homeScore', 'awayScore', 'scoringPlay'];
+
+/**
+ * The game page's own processed game, slimmed to what a card reads, or null when the API has
+ * none. It is the page's `/process` request (same path, same cache entry, same TTL), so a card
+ * costs the API drawing only: the play-by-play pipeline runs once per page cache window, for the
+ * page, and never again for a card. `state` is the state that payload was processed in.
+ */
+export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number): Promise<CardPage | null> {
+    try {
+        const game: ProcessedGame = JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL));
+        const homeShare = (game as any).paperIndex?.homeShare;
+        return {
+            plays: game.plays.map((p) => Object.fromEntries(CARD_PLAY_KEYS.filter((k) => k in p).map((k) => [k, (p as any)[k]]))),
+            paperIndex: typeof homeShare === 'number' ? { homeShare } : undefined,
+            state: cardState(game.header.competitions[0].status),
+        };
+    } catch (e) {
+        console.error(`ERROR while fetching the processed game for a share card, ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
 /**
  * A game's share card from the API (python/share_card.py) as PNG bytes, or null when
- * the API cannot render one. Cached at the edge for as long as the card itself may
- * be (CARD_MAX_AGE: a final card for a year, a live one for five minutes), keyed per
- * deploy, state, variant and projection, so a new renderer redraws every card.
- * `pregame` is GOP's projection: home-relative margin and the home side's win probability.
+ * the API cannot render one. `pregame` is GOP's projection: home-relative margin and the
+ * home side's win probability. A pregame card is the API's GET, cached at the edge for as
+ * long as the card may be (CARD_MAX_AGE), keyed per deploy, state, variant and projection,
+ * so a new renderer redraws every card. A played game's card is a POST carrying `page` (the
+ * plays the game page already processed, retrieveCardPage), which has no edge cache of its
+ * own: the route's `cache.set` keeps it for CARD_MAX_AGE, and a deploy clears that.
  */
-export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }, logos?: { home: string, away: string }): Promise<ArrayBuffer | null> {
+export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }, logos?: { home: string, away: string }, page?: CardPage | null): Promise<ArrayBuffer | null> {
     if (!PYTHON_HTTP_TOKEN) return null;
     const query = new URLSearchParams({ state, variant });
     if (pregame) {
@@ -1317,18 +1344,23 @@ export async function retrieveShareCard(gameId: string | number, league: League,
     }
     // each side's art (shareTags cardLogoUrl): fixed per team and deploy, so it stays out of the cache key
     const art = new URLSearchParams(logos ? { home_logo: logos.home, away_logo: logos.away } : {});
+    const url = `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`;
+    const auth = { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com" };
     try {
-        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`, {
-            headers: {
-                "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`,
-                "Referer": "gameonpaper.com",
-            },
-            cf: {
-                cacheEverything: true,
-                cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
-                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
-            }
-        });
+        const req = state === 'pre'
+            ? await wrappedFetch(url, {
+                headers: auth,
+                cf: {
+                    cacheEverything: true,
+                    cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
+                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
+                }
+            })
+            : await wrappedFetch(url, {
+                method: 'POST',
+                headers: { ...auth, "Content-Type": "application/json" },
+                body: JSON.stringify(page ? { plays: page.plays, paperIndex: page.paperIndex } : {}),
+            });
         if (!req.ok) {
             console.error(`ERROR share card ${league} ${gameId} ${query}: HTTP ${req.status}`);
             return null;

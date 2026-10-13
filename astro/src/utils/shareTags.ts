@@ -19,11 +19,12 @@ export const CARD_STATES: readonly CardState[] = ['pre', 'live', 'final'];
 export const CARD_VARIANTS: readonly CardVariant[] = ['full', 'spoilerfree'];
 
 /**
- * How long a card may be cached: a final card never changes; a live one lives as long as
- * its URL's five-minute bucket (shareTags), so each bucket's card is drawn once. Every
- * live miss is a full play-by-play run on the API, which is why this is not a minute.
+ * How long a card may be cached: a final card never changes; a live one is a minute, so a
+ * direct viewer sees a fresh score. A played card is drawn from the page's already-processed
+ * game (retrieveCardPage), so a miss costs drawing, not a play-by-play run. The URL's
+ * five-minute bucket (above) is what keeps platforms from fetching it more than once per bucket.
  */
-export const CARD_MAX_AGE: Record<CardState, number> = { final: 31536000, live: 300, pre: 3600 };
+export const CARD_MAX_AGE: Record<CardState, number> = { final: 31536000, live: 60, pre: 3600 };
 
 export function cardCacheControl(state: CardState): string {
     return `public, max-age=${CARD_MAX_AGE[state]}${state === 'final' ? ', immutable' : ''}`;

@@ -8,13 +8,14 @@
  *
  * The state comes from ESPN, never from the URL: `?state=` only keeps cards of
  * different states under different URLs, so a URL that asks for `final` while
- * the game is live gets the live card under the live card's five-minute cache,
+ * the game is live gets the live card under the live card's one-minute cache,
  * never a year-long one.
  */
 import type { APIContext, APIRoute } from 'astro';
 import { retrieveGamePageGuarded } from '../resources/espn';
-import { retrieveShareCard } from '../resources/python';
+import { retrieveCardPage, retrieveShareCard } from '../resources/python';
 import { calculatePredictedPointMargin, calculatePredictedWinProb, retrieveTeamSummaries } from '../resources/sdv';
+import { getGameCacheConfig } from '../utils/config';
 import { CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
 import { CARD_MAX_AGE, CARD_STATES, CARD_VARIANTS, cardCacheControl, cardLogoUrl, cardState, type CardState, type CardVariant } from '../utils/shareTags';
 import type { League } from '../utils/league';
@@ -56,13 +57,21 @@ export function shareCardRoute(league: League): APIRoute {
         const state = cardState(header.competitions[0].status);
         const teamId = (ha: string): string => header.competitions[0].competitors.find((c: any) => c.homeAway === ha)?.team?.id ?? '';
         const logos = { home: cardLogoUrl(league, teamId('home')), away: cardLogoUrl(league, teamId('away')) };
-        const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined, logos);
+        // A played card is drawn from the game the page already processed (same /process request,
+        // same cache entry, same TTL as the page), so it costs the API drawing, not a second
+        // play-by-play run.
+        const comp = header.competitions[0];
+        const page = state === 'pre' ? null : await retrieveCardPage(id, league, getGameCacheConfig(comp.date, comp.status).maxAge || 30);
+        const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined, logos, page);
         if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
 
-        // an ESPN payload older than one already shown is drawn but never kept
-        const cacheControl = guarded.regressed ? 'no-store' : cardCacheControl(state);
+        // Drawn but never kept: an ESPN payload older than one already shown, and a played card whose
+        // plays are missing or were processed in another state (the page's cache lags a transition),
+        // which would otherwise stand as the final card for a year.
+        const keep = !guarded.regressed && (state === 'pre' || page?.state === state);
+        const cacheControl = keep ? cardCacheControl(state) : 'no-store';
         try {
-            if (guarded.regressed) cache?.set(false);
+            if (!keep) cache?.set(false);
             else cache?.set({ maxAge: CARD_MAX_AGE[state], tags: ['share-card'] });
         } catch { /* cache provider absent in dev and tests */ }
         return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': cacheControl } });

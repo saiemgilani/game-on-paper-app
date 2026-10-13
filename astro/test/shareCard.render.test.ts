@@ -7,6 +7,7 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { cardCacheControl, cardLogoUrl, cardState, shareTags, type ShareTagGame } from '../src/utils/shareTags';
 import { SPECIAL_IMAGES } from '../src/utils/constants';
+import { getGameCacheConfig } from '../src/utils/config';
 
 // 'share-card': game links preview with the API's card (python/share_card.py), and
 // ?spoilers=off previews without the score. Real fixtures: the /process payload of
@@ -22,6 +23,9 @@ const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const upstream = vi.hoisted(() => ({
     fetched: [] as { url: string; init?: any }[],
     cardStatus: 200,
+    processStatus: 200,
+    processBody: null as string | null, // a payload a test pins
+    autoBody: null as string | null, // else: the final game, in whatever state ESPN's header says (what the page's cache holds)
     guarded: null as any,
 }));
 vi.mock('../src/utils/telemetry', async (orig) => ({
@@ -29,7 +33,7 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     wrappedFetch: async (url: string, init?: any) => {
         const u = String(url);
         upstream.fetched.push({ url: u, init });
-        if (u.includes(`/cfb/${GAME_ID}/process`)) return new Response(apiPayload, { status: 200, headers: { 'content-type': 'application/json' } });
+        if (u.includes(`/cfb/${GAME_ID}/process`)) return new Response(upstream.processStatus === 200 ? (upstream.processBody ?? upstream.autoBody ?? apiPayload) : 'no', { status: upstream.processStatus, headers: { 'content-type': 'application/json' } });
         if (u.includes('/card.png')) return new Response(upstream.cardStatus === 200 ? PNG : 'no', { status: upstream.cardStatus });
         throw new Error(`unexpected fetch in test: ${u}`);
     },
@@ -120,7 +124,7 @@ describe('shareTags', () => {
         expect(t.image).toBe(`https://gameonpaper.com/nfl/game/${GAME_ID}/card.png?state=live&variant=full&v=live-${Math.floor(now / 300_000)}`);
         // the bucket moves every five minutes, not every render
         expect(shareTags({ ...SPEC, state: 'live' }, { spoilerFree: false, now: now + 60_000 }).image).toContain(`v=live-${Math.floor(now / 300_000)}`);
-        expect(cardCacheControl('live')).toBe('public, max-age=300');
+        expect(cardCacheControl('live')).toBe('public, max-age=60');
         expect(cardCacheControl('pre')).toBe('public, max-age=3600');
     });
 
@@ -278,6 +282,9 @@ describe('the card route', () => {
     };
     async function get(path: string, h: any, { regressed = false } = {}) {
         upstream.fetched.length = 0;
+        const processed = structuredClone(game);
+        if (h) processed.header.competitions[0].status = h.competitions[0].status;
+        upstream.autoBody = JSON.stringify(processed);
         upstream.guarded = h ? { page: { gamepackageJSON: { header: h } }, regressed, reason: null } : { page: null, regressed: false, reason: null };
         const { shareCardRoute } = await import('../src/routes/shareCard');
         const url = new URL(`https://gameonpaper.com${path}`);
@@ -289,7 +296,7 @@ describe('the card route', () => {
 
     test.each([
         ['post', 'final', 'public, max-age=31536000, immutable', 31536000],
-        ['in', 'live', 'public, max-age=300', 300],
+        ['in', 'live', 'public, max-age=60', 60],
         ['pre', 'pre', 'public, max-age=3600', 3600],
     ] as const)('ESPN %s: the %s card, cached for its state', async (espnState, state, cacheControl, ttl) => {
         const id = espnState === 'pre' ? PREGAME_ID : GAME_ID;
@@ -299,15 +306,76 @@ describe('the card route', () => {
         expect(res.headers.get('cache-control')).toBe(cacheControl);
         expect(new Uint8Array(await res.arrayBuffer())).toEqual(PNG);
         expect(api!.url).toContain(`/cfb/${id}/card.png?state=${state}&variant=full`);
-        expect(api!.init.cf.cacheTtlByStatus['200-299']).toBe(ttl);
-        expect(api!.init.cf.cacheKey).toContain(`state=${state}&variant=full`);
+        expect(api!.init.method).toBe(state === 'pre' ? undefined : 'POST');
+        // a pregame card is the API's cacheable GET; a played game's POST has no edge cache, the route's `cache.set` below is its layer
+        if (state === 'pre') {
+            expect(api!.init.cf.cacheTtlByStatus['200-299']).toBe(ttl);
+            expect(api!.init.cf.cacheKey).toContain(`state=${state}&variant=full`);
+        }
         // each side's art rides along to the API, never into the cache key or the public URL
         const q = new URL(api!.url).searchParams;
         const ids = Object.fromEntries(header(espnState).competitions[0].competitors.map((c: any) => [c.homeAway, c.team.id]));
         expect(q.get('home_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.home}.png`);
         expect(q.get('away_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.away}.png`);
-        expect(api!.init.cf.cacheKey).not.toContain('logo');
+        if (state === 'pre') expect(api!.init.cf.cacheKey).not.toContain('logo');
         expect(set).toHaveBeenCalledWith({ maxAge: ttl, tags: ['share-card'] });
+    });
+
+    describe('a played card is drawn from the game the page already processed', () => {
+        const PLAY_KEYS = ['scrimmage_play', 'winProbability', 'period', 'pos_team', 'homeScore', 'awayScore', 'scoringPlay'];
+        const processed = () => upstream.fetched.find((f) => f.url.includes('/process'));
+
+        test.each(['full', 'spoilerfree'])('%s: the API gets the page\'s plays in the body, not a reason to rerun the pipeline', async (variant) => {
+            const h = header('post');
+            const { api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=${variant}`, h);
+            const body = JSON.parse(api!.init.body);
+            expect(body.plays).toHaveLength(game.plays.length);
+            expect(Object.keys(body.plays[0]).every((k) => PLAY_KEYS.includes(k))).toBe(true);
+            expect(body.plays.map((p: any) => p.winProbability?.before)).toEqual(game.plays.map((p: any) => p.winProbability?.before));
+            expect(body.paperIndex).toEqual({ homeShare: game.paperIndex.homeShare });
+            expect(api!.init.headers['Content-Type']).toBe('application/json');
+        });
+
+        test('it asks for the page\'s own /process, under the page\'s cache TTL, so the page\'s cache entry is the one hit', async () => {
+            const h = header('in');
+            await get(`/game/${GAME_ID}/card.png?state=live&variant=full`, h);
+            const ttl = getGameCacheConfig(h.competitions[0].date, h.competitions[0].status).maxAge || 30;
+            expect(processed()!.url).toMatch(new RegExp(`/cfb/${GAME_ID}/process$`));
+            expect(processed()!.init.cf.cacheTtlByStatus['200-299']).toBe(ttl);
+        });
+
+        test('a pregame card has no plays and never touches /process', async () => {
+            const { api } = await get(`/game/${PREGAME_ID}/card.png?state=pre&variant=full`, header('pre'));
+            expect(processed()).toBeUndefined();
+            expect(api!.init.body).toBeUndefined();
+        });
+
+        test('no processed game: the card is drawn without the chart and kept for no time', async () => {
+            upstream.processStatus = 404;
+            try {
+                const { res, api, set } = await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
+                expect(res.status).toBe(200);
+                expect(JSON.parse(api!.init.body)).toEqual({});
+                expect(res.headers.get('cache-control')).toBe('no-store');
+                expect(set).toHaveBeenCalledWith(false);
+            } finally {
+                upstream.processStatus = 200;
+            }
+        });
+
+        test('the page\'s cached game lags a transition: drawn, but never kept as a year-long final', async () => {
+            const lagging = structuredClone(game);
+            lagging.header.competitions[0].status.type = { ...lagging.header.competitions[0].status.type, completed: false, state: 'in', name: 'STATUS_IN_PROGRESS' };
+            upstream.processBody = JSON.stringify(lagging);
+            try {
+                const { res, set } = await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
+                expect(res.status).toBe(200);
+                expect(res.headers.get('cache-control')).toBe('no-store');
+                expect(set).toHaveBeenCalledWith(false);
+            } finally {
+                upstream.processBody = null;
+            }
+        });
     });
 
     test('the pregame card carries the projection the pregame page shows', async () => {
@@ -317,9 +385,9 @@ describe('the card route', () => {
         expect(Number(q.get('proj_wp'))).toBeGreaterThan(0.5);
     });
 
-    test('the state is ESPN\'s, not the URL\'s: a live game asked for as final is a live card, cached five minutes', async () => {
+    test('the state is ESPN\'s, not the URL\'s: a live game asked for as final is a live card, cached a minute', async () => {
         const { res, api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=spoilerfree`, header('in'));
-        expect(res.headers.get('cache-control')).toBe('public, max-age=300');
+        expect(res.headers.get('cache-control')).toBe('public, max-age=60');
         expect(api!.url).toContain('state=live&variant=spoilerfree');
     });
 
