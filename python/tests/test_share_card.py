@@ -242,27 +242,69 @@ def client(monkeypatch):
     return app_mod, app_mod.app.test_client()
 
 
+def _page_plays(processed):
+    """What the Worker forwards from the page's cached /process payload: the plays the card reads, and the Paper Index."""
+    keep = ("scrimmage_play", "winProbability", "period", "pos_team", "homeScore", "awayScore", "scoringPlay")
+    game = processed("cfb")
+    return {
+        "plays": [{k: p[k] for k in keep if k in p} for p in game["plays"]],
+        "paperIndex": {"homeShare": game["paperIndex"]["homeShare"]},
+    }
+
+
+@pytest.fixture
+def no_pipeline(monkeypatch, processed):
+    """A card render costs drawing only: the play-by-play pipeline (the ~7.5 s of model work) must never run."""
+    processed("cfb")  # the real payload is built first, with the pipeline intact
+
+    def boom(self, *a, **k):
+        raise AssertionError("the card route ran the play-by-play pipeline")
+
+    monkeypatch.setattr(CFBPlayProcess, "run_processing_pipeline", boom)
+
+
 @pytest.mark.parametrize("variant", ["full", "spoilerfree"])
 @pytest.mark.parametrize("state", ["pre", "live", "final"])
-def test_route_every_state_and_variant(client, monkeypatch, state, variant):
+def test_route_every_state_and_variant(client, monkeypatch, no_pipeline, processed, state, variant):
     app_mod, c = client
     monkeypatch.setitem(app_mod._PROCESSORS, "cfb", _as(state))
     calls = []
     real = share_card.render
 
     def spy(game, league, st, va, *a, **k):
-        calls.append((st, va, "plays" in game))
+        calls.append((st, va, game.get("plays"), game.get("paperIndex")))
         return real(game, league, st, va, *a, **k)
 
     monkeypatch.setattr(app_mod.share_card, "render", spy)
-    r = c.get(
-        f"/cfb/{GAMES['cfb']}/card.png?state={state}&variant={variant}", headers=_auth()
-    )
+    page = _page_plays(processed)
+    url = f"/cfb/{GAMES['cfb']}/card.png?state={state}&variant={variant}"
+    # a pregame card has no plays: the Worker's GET, cacheable at the edge; a played game's POST carries them
+    r = c.get(url, headers=_auth()) if state == "pre" else c.post(url, json=page, headers=_auth())
     assert r.status_code == 200, r.get_data(as_text=True)[:300]
     assert r.mimetype == "image/png"
     assert _size(r.get_data()) == (1200, 630)
-    # the card drawn is the one asked for, and only a played game runs the pipeline
-    assert calls == [(state, variant, state != "pre")]
+    # the card drawn is the one asked for, from the plays the page already processed
+    assert calls == [
+        (state, variant, *((page["plays"], page["paperIndex"]) if state != "pre" else (None, None)))
+    ]
+
+
+def test_route_without_the_page_plays_draws_a_card_without_a_chart(client, monkeypatch, no_pipeline):
+    # the page's payload was unavailable: the card still draws (as it did for a game with no plays), and no pipeline runs
+    app_mod, c = client
+    monkeypatch.setitem(app_mod._PROCESSORS, "cfb", _as("live"))
+    seen = {}
+    real = share_card.render
+    monkeypatch.setattr(app_mod.share_card, "render", lambda game, *a, **k: seen.update(game) or real(game, *a, **k))
+    assert c.get(f"/cfb/{GAMES['cfb']}/card.png?state=live&variant=full", headers=_auth()).status_code == 200
+    assert "plays" not in seen and "paperIndex" not in seen
+
+
+@pytest.mark.parametrize("body", [{"plays": "x"}, {"plays": [1]}, {"plays": [], "paperIndex": 3}, [1]])
+def test_route_rejects_a_malformed_body(client, body):
+    _, c = client
+    r = c.post(f"/cfb/{GAMES['cfb']}/card.png?state=live&variant=full", json=body, headers=_auth())
+    assert r.status_code == 400
 
 
 @pytest.mark.parametrize("asked", ["pre", "live"])

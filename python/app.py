@@ -823,13 +823,19 @@ def _logo_fetch(url):
         return None
 
 
+_CARD_BODY_MAX = 4_000_000  # a game's slimmed plays are tens of KB
+
+
 def _card(league: str, game_id: int):
     """The game's 1200x630 share card (share_card.py) as a PNG.
 
     The Worker names the state it read from ESPN (`pre|live|final`) and the
     variant (`full|spoilerfree`); a pregame card may carry GOP's projection
     (`proj_margin`, home-relative points, and `proj_wp`, the home side's win
-    probability). Caching is the Worker's: this route renders every call.
+    probability). A played game's POST body carries what the page already processed
+    (`plays`, `paperIndex`): the Worker takes it from the page's cached `/process`,
+    so a card costs drawing and never a second play-by-play run. Caching is the
+    Worker's: this route renders every call.
     """
     state, variant = request.args.get("state"), request.args.get("variant", "full")
     if state not in share_card.STATES or variant not in share_card.VARIANTS:
@@ -851,6 +857,19 @@ def _card(league: str, game_id: int):
         return jsonify(
             {"status": "bad", "message": "proj_margin / proj_wp must be numbers"}
         ), 400
+
+    page = request.get_json(silent=True) if request.method == "POST" else None
+    if request.method == "POST" and (
+        request.content_length is None
+        or request.content_length > _CARD_BODY_MAX
+        or not isinstance(page, dict)
+        or not (
+            isinstance(page.get("plays", []), list)
+            and all(isinstance(p, dict) for p in page.get("plays", []))
+            and isinstance(page.get("paperIndex", {}), dict)
+        )
+    ):
+        return jsonify({"status": "bad", "message": "body is {plays: [..], paperIndex: {..}}"}), 400
 
     cls, fetch_name = _PROCESSORS[league]
     try:
@@ -880,24 +899,10 @@ def _card(league: str, game_id: int):
         # the Worker resolves each side's art (astro utils/shareTags.ts cardLogoUrl)
         "logos": {side: request.args.get(f"{side}_logo") for side in ("home", "away")},
     }
-    if state != "pre":
-        try:
-            card["plays"] = game.run_processing_pipeline()["plays"]
-            _reshape_records(card["plays"])
-        except Exception as e:  # a game with no plays yet still gets its card
-            logging.getLogger("root").warning(
-                f"card: no plays for {league} {game_id}: {e!r}"
-            )
-        try:
-            frame = getattr(game, "plays_frame", None)
-            if frame is not None:
-                card["paperIndex"] = paper_index.compute(
-                    frame, frame["homeTeamId"][0], frame["awayTeamId"][0], league=league
-                )
-        except Exception as e:  # the card drops the line, as the page drops the panel
-            logging.getLogger("root").warning(
-                f"card: paper index failed for {game_id}: {e!r}"
-            )
+    # the page's own processed plays; a card without them draws without the chart
+    for key in ("plays", "paperIndex"):
+        if state != "pre" and (page or {}).get(key):
+            card[key] = page[key]
     try:
         png = share_card.render(card, league, state, variant, _logo_fetch, dt.now(tz.utc))
     except Exception as e:  # not a 401: require_auth_token answers that for any raise
@@ -906,13 +911,13 @@ def _card(league: str, game_id: int):
     return Response(png, mimetype="image/png")
 
 
-@app.route("/cfb/<int:game_id>/card.png", methods=["GET"])
+@app.route("/cfb/<int:game_id>/card.png", methods=["GET", "POST"])
 @require_auth_token
 def card(game_id: int):
     return _card("cfb", game_id)
 
 
-@app.route("/nfl/<int:game_id>/card.png", methods=["GET"])
+@app.route("/nfl/<int:game_id>/card.png", methods=["GET", "POST"])
 @require_auth_token
 def card_nfl(game_id: int):
     return _card("nfl", game_id)
