@@ -6,10 +6,12 @@
  * identically here and on `/year/N/players/<category>`. That is also where
  * `EPA/DB` comes from: a passer's `EPAplay` is per dropback, not per play.
  *
- * Rows are the producer's own season rows, so they carry `_rank` and `_pct`.
- * Both ride in the metric cell, the way `team/TeamCard.astro` shows a team's:
- * the cell is shaded by the percentile on the site's green -> purple ramp and
- * carries the rank as small faded text beside the number. A traded player has
+ * Rows are the producer's own season rows, so they carry `_rank` and `_pct`
+ * (and `_pos_pct`, the percentile within his position group). Both ride in the
+ * metric cell, the way `team/TeamCard.astro` shows a team's: the cell is shaded
+ * by his position's percentile (`percentileOf`, falling back to `_pct`) on the
+ * site's green -> purple ramp and carries the rank as small faded text beside
+ * the number. A traded player has
  * one row per team-season; two or more rows of a category add a career roll-up
  * whose rates are recomputed from the summed counts, never averaged
  * (`utils/players.ts` rollUpSeasons).
@@ -25,7 +27,7 @@
  * ranks the producer withheld -- the player did not clear the leaderboard
  * minimum -- is named in the table's caption rather than left as a row of blanks.
  */
-import { cleanTextForTeam, formatRank, generateColorRampValue, joinWithAnd, numberOrNull } from '../../utils/misc';
+import { cleanTextForTeam, formatRank, generateColorRampValue, joinWithAnd, numberOrNull, ordinal } from '../../utils/misc';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, PLAYER_CATEGORIES, PLAYER_STAT_MINIMUMS, rollUpSeasons, unrankedSeasons, type SeasonRow } from '../../utils/players';
 import { teamAbbr } from '../../utils/teams';
@@ -41,6 +43,12 @@ interface Props {
 }
 const { rows, season, espnId } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
+
+/** The shading's meaning in words, when it is the position percentile (colour alone carries nothing). */
+const posPctTitle = (row: SeasonRow, k: string): string | undefined => {
+    const pos = numberOrNull(row[`${k}_pos_pct`]);
+    return pos === null ? undefined : `${ordinal(Math.round(Math.min(Math.max(pos, 0), 100)))} percentile among ${row.position_group ? `${row.position_group}s` : 'his position'}`;
+};
 
 const TITLES: Record<string, string> = { passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving' };
 
@@ -107,7 +115,7 @@ const careerValue = (b: Block, key: string): unknown => (b.career ? b.career[key
                             </a>
                         </td>
                         {b.columns.map(([k]) => (
-                            <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k), 100)]} colspan="1">
+                            <td class:list={["text-center", "numeral", generateColorRampValue(percentileOf(row, k, true), 100)]} colspan="1" title={posPctTitle(row, k)}>
                                 {formatPlayerMetric(b.category, k, row[k])}
                                 {rankOf(row, k) !== null && (
                                     <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(row, k))}</span>

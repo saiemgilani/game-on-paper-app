@@ -1,5 +1,5 @@
 import type { ChartConfiguration, ChartData } from "chart.js";
-import { DEFAULT_LEAGUE, LEAGUES, type League } from "./league";
+import { DEFAULT_LEAGUE, teamCountOf, type League } from "./league";
 import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal, cleanField, type ThemedGameColors } from "./misc";
 
 
@@ -12,10 +12,11 @@ function generatePercentile(input: number, max: number): number {
     return step
 }
 
-// `max` is the league's team count: an NFL rank of 32 is last, not the 76th
-// percentile the 134-team CFB scale used to plot it at.
+// `max` is the row's own season's team count (`teamCountOf`): an NFL rank of 32 is
+// last, not the 76th percentile a 134-team scale plotted it at, and the last of 2014's
+// 128 FBS teams is the 0th, not the 4th.
 export function generateRadarPercentiles(breakdown: any, titleKey: string, league: League = DEFAULT_LEAGUE) {
-    const max = LEAGUES[league ?? DEFAULT_LEAGUE].teamCount
+    const max = teamCountOf(breakdown, league ?? DEFAULT_LEAGUE)
     const key = titleKey.toLocaleLowerCase()
     let suffix = ""
     if (key == "defensive") {
