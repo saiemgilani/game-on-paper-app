@@ -1,0 +1,17 @@
+---
+// The pre-Astro site's "Last updated" line, revived. Renders nothing without a stamp.
+import type { FreshnessStamp } from "../utils/freshness";
+interface Props { stamp: FreshnessStamp | null }
+const { stamp } = Astro.props;
+---
+{stamp && (
+    <p class="m-0 mb-2 text-muted text-small">Last updated: <abbr title="If this is more than one week out of date during the season, please let us know at @gameonpaper.com on BlueSky."><time datetime={stamp.iso} data-freshness>{stamp.text}</time></abbr></p>
+)}
+<script>
+    // The server wrote the time in UTC (what a viewer without JS reads); this rewrites it into
+    // the viewer's own zone, as the schedule page does with kickoff times.
+    import { freshnessTime } from "../utils/freshness";
+    for (const el of document.querySelectorAll<HTMLTimeElement>("time[data-freshness]")) {
+        try { el.textContent = freshnessTime(el.dateTime); } catch { /* the UTC text stands */ }
+    }
+</script>
