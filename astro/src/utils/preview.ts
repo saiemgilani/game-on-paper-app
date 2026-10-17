@@ -26,6 +26,16 @@ export const PREVIEW_LINK_PARAM = 'preview_key';
 export const PREVIEW_PATH_PREFIX = '/preview';
 export const PREVIEW_LINK_TTL_S = 14 * 24 * 60 * 60;
 
+/**
+ * A same-site path, kept on the /preview surface when the page is on it. Footer.astro
+ * rewrites links at click time; this is for script navigations (window.location) that
+ * the rewrite never sees. `/previewer` is not the surface.
+ */
+export function keepPreviewSurface(target: string, pathname: string): string {
+    const onPreview = pathname === PREVIEW_PATH_PREFIX || pathname.startsWith(`${PREVIEW_PATH_PREFIX}/`);
+    return onPreview ? `${PREVIEW_PATH_PREFIX}${target}` : target;
+}
+
 async function hmacHex(secret: string, msg: string): Promise<string> {
     const key = await crypto.subtle.importKey(
         'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
