@@ -6,11 +6,12 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, retrieveTeamSeasonInformation, teamSummaryColumns,
+    SummaryType, retrievePlayerSummaries, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
+import type { GameSplits } from '../utils/gameSet';
 import type { League } from '../utils/league';
 
 export interface SeasonTeamData {
@@ -23,6 +24,8 @@ export interface SeasonTeamData {
     passers: SDVPassingSummary[];
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
+    /** 'vs-opponent' only: null with the flag off (no read) or when either read failed */
+    opponentSplits: GameSplits | null;
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -57,5 +60,6 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers };
+    const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits };
 }

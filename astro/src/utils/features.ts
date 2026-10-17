@@ -83,6 +83,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // Results by Opponent on the season team page (/year/N/team/<id> and the
+    // /nfl twin): one bar per game from team_opponent_splits, EPA/Play or
+    // Success %, raw or margin, with a dashed season average. Only this path
+    // reads team_opponent_splits; every other viewer's requests are unchanged.
+    'vs-opponent': 'preview',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl
     // twin): the team's record split by home/away/neutral, conference (division
     // in the NFL), one-score games, vs FBS and vs ranked. It pivots the schedule

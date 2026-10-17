@@ -208,6 +208,32 @@ teams 333 and 2 (CFB) and 12 (NFL).
   (`GET /v1/nba_stats/shot_season_players?season=2026&limit=50000`, bearer token required; `.data` only).
   Captured 2026-10-11. Regenerate with the same request; the rows change nightly during the season.
 
+## `team-opponent-splits-2025.json`
+The Data API bodies the season team page's Results by Opponent panel reads, for
+Alabama (`cfb`, 333) and Kansas City (`nfl`, 12), keyed by league:
+`team_id` (`GET /v1/{league}/team_opponent_splits?season=2025&team_id=<id>`),
+`opponent_id` (the same with `opponent_id=<id>`: each opponent's row against
+the team) and `schedule.home_id` / `schedule.away_id` (the two schedule reads
+`retrieveTeamSchedule` makes: `cfb` `schedule`, `nfl` `espn_schedule`, with
+`order=-start_date`). CFB rows carry `opponent` and cover FCS opponents and
+the postseason (two postseason week-1 games); NFL rows carry no name and are
+regular season only.
+
+`cfb_155` holds the same six reads for North Dakota (FCS, `cfb` 155), whose
+2025 rows cover two games. Its Margin view's season average (-0.124 EPA/play,
+offense and defense each weighted by their own plays) sits beyond both bars
+(-0.09, -0.10): the real case that the chart's value axis must include the
+average line.
+
+**Provenance (2026-10-08):** captured verbatim from the live API; no edits.
+
+**Used by:** `test/gameSet.test.ts` (bar order, labels, raw and margin values,
+play-weighted averages) and `test/gameSet.render.test.ts` (the panel on
+`/year/2025/team/333` and `/nfl/year/2025/team/12`, its island props, the gates).
+
+**To regenerate:** repeat the six reads for 2025; the tests assert on those
+teams' games, labels and scores.
+
 ## `schedule-cfb-333-2025.json` / `schedule-nfl-12-2025.json`
 The two Data API bodies `retrieveTeamSchedule` concatenates for one team-season,
 keyed by the query side: `home_id` is `GET /v1/cfb/schedule?season=2025&home_id=333&order=-start_date`
