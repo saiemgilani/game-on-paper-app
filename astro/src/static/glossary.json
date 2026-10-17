@@ -91,6 +91,13 @@
             "source": "https://www.footballstudyhall.com/2011/4/13/2102634/the-toolbox-highlight-yards"
         }
     ],
+    "I": [
+        {
+            "term": "Impact (Deserved Win %)",
+            "definition": "How many percentage points one margin moved the home team's Deserved Win % on the game page: the home team's share minus the share the model gives with that margin alone set to even. A positive impact helped the home team. The model is a logistic curve, so the impacts do not add up to the final share.",
+            "source": ""
+        }
+    ],
     "L": [
         {
             "term": "Late down",

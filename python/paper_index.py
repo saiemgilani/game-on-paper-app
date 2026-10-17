@@ -233,7 +233,11 @@ def team_inputs(frame: pl.DataFrame, team_id, league: str = "cfb") -> dict | Non
 def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     """Margins + the logistic share, from two team_inputs() dicts.
 
-    The returned margins are the league's FITTED inputs only (weight > 0)."""
+    The returned margins are the league's FITTED inputs only (weight > 0).
+    `impact` holds, per fitted margin, the home share minus the share with
+    that one margin set to zero, in percentage points: what that margin alone
+    moved Deserved Win %. The logistic is not additive, so the impacts do not
+    sum to homeShare - 0.5."""
     margins = {
         "success": home["successRate"] - away["successRate"],
         "explosive": home["explosiveRate"] - away["explosiveRate"],
@@ -252,7 +256,15 @@ def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     # only the fitted inputs: a margin pinned to zero at fit time carries no
     # weight in the share, so it is not reported as one of its factors
     fitted = {k: v for k, v in margins.items() if weights[k] > 0}
-    return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": fitted}
+
+    def sigmoid(x: float) -> float:
+        return 1.0 / (1.0 + math.exp(-x))
+
+    share = sigmoid(z)
+    impact = {
+        k: 100.0 * (share - sigmoid(z - weights[k] * v)) for k, v in fitted.items()
+    }
+    return {"homeShare": share, "margins": fitted, "impact": impact}
 
 
 def by_period(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict:
