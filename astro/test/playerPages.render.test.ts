@@ -16,8 +16,12 @@ import { weekLabel } from '../src/utils/league';
 // API is a 404 page rather than an identity shell.
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
+const nb = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
 const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true };
+// call counter for the flag-off assertion below: the gate must stop the fetch,
+// not just hide the panel, so the test resets and reads this around each render
+let rankedRowsCalls = 0;
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -49,6 +53,10 @@ vi.mock('../src/resources/sdv', async (orig) => {
             { team_id: 20, pos_team: 'NYJ', EPAplay_off: -0.02, success_off: 0.44, explosive_off: 0.10, EPAplay_def: -0.04, EPAplay_off_rank: 21, success_off_rank: 18, explosive_off_rank: 20, EPAplay_def_rank: 6 },
         ],
         resolveEspnAthleteId: async (gsis: string) => (gsis === '00-0031381' ? '16800' : null),
+        retrieveRankedRows: async (req: any) => {
+            rankedRowsCalls++;
+            return req.league === 'nfl' ? nb.nfl_receiving_2024 : nb.cfb_passing_2024;
+        },
     };
 });
 
@@ -851,5 +859,46 @@ describe('round-4 review (PR #267)', () => {
         } finally {
             feed.cfb = before;
         }
+    }, 60_000);
+});
+
+describe('nearby ranks on the player page', () => {
+    test('CFB passer: four lists, marked once each, only when the flag admits the viewer', async () => {
+        rankedRowsCalls = 0;
+        const html = await renderPage('cfb', '4433971', 2024);
+        expect(rankedRowsCalls).toBe(1);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="table-secondary"/g) ?? []).length).toBe(4);
+        expect(block).toContain('Kyle McCord');
+        const { default: Page } = await import('../src/pages/players/[id].astro');
+        rankedRowsCalls = 0;
+        const off = await container.renderToString(Page, {
+            params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'),
+            locals: { preview: true, flagOverrides: { 'rank-neighbors': false } },
+        });
+        expect(off).not.toContain('data-neighbor-ranks');
+        // program risk #3: the flag-off gate has to stop the read, not just hide
+        // the panel around it -- remove the gate at routes/player.ts and this goes red
+        expect(rankedRowsCalls).toBe(0);
+    }, 60_000);
+
+    test('a failed nearby-ranks read says so, not that there is no ranked row', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const spy = vi.spyOn(sdv, 'retrieveRankedRows').mockRejectedValue(new Error('ranked rows route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('id="player-neighbor-ranks-unavailable"');
+            expect(html).not.toContain('data-neighbor-ranks');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('NFL traded receiver: the lists come from his ranked NYJ row', async () => {
+        const html = await renderPage('nfl', '16800', 2024);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect(block).toContain('data-nb-key="00-0031381"');
     }, 60_000);
 });

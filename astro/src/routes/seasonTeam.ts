@@ -12,6 +12,7 @@ import {
 import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
 import type { League } from '../utils/league';
+import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 
 export interface SeasonTeamData {
     league: League;
@@ -23,6 +24,7 @@ export interface SeasonTeamData {
     passers: SDVPassingSummary[];
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
+    neighborLists: NeighborList[];
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -57,5 +59,12 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers };
+    // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the
+    // same KV entry) for every team page of the season. Not made when the flag is
+    // off, so the public page's reads are exactly today's.
+    const neighborRows = isFeatureEnabled('rank-neighbors', Astro.locals)
+        ? await retrieveTeamSummaries({ season: Number(year), columns: TEAM_NEIGHBOR_METRICS, league })
+        : [];
+    const neighborLists = teamNeighborLists(neighborRows, id, league, Number(year));
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, neighborLists };
 }

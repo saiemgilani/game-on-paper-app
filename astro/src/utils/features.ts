@@ -83,6 +83,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // Nearby-rank lists on the team-season and player pages: for each key
+    // metric, the teams or players ranked within five places, the page's own
+    // row marked. Promote once both leagues' lists have been reviewed.
+    'rank-neighbors': 'preview',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl
     // twin): the team's record split by home/away/neutral, conference (division
     // in the NFL), one-score games, vs FBS and vs ranked. It pivots the schedule
