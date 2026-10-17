@@ -208,6 +208,21 @@ teams 333 and 2 (CFB) and 12 (NFL).
   (`GET /v1/nba_stats/shot_season_players?season=2026&limit=50000`, bearer token required; `.data` only).
   Captured 2026-10-11. Regenerate with the same request; the rows change nightly during the season.
 
+## `team-summaries-cfb-2026-builder.json`
+The exact body the chart builder's read returns for
+`/charts/builder?season=2026&x=red_zone_success_off_pass&y=success_off`: the
+Data API's `GET /v1/cfb/team_summaries?season=2026&select=pos_team,team_id,season,conference,division,fbs_class,red_zone_success_off_pass,success_off,red_zone_success_off_pass_rank,success_off_rank&limit=150`
+(every team, 138). Rice (242) has a null `red_zone_success_off_pass`, which is
+what the median tests need: a team with no value is skipped, not read as 0.
+
+**Provenance (2026-10-04):** captured from the live API mid-season; no edits.
+
+**Used by:** `test/chartBuilder.test.ts` (the builder's median on an even-count
+column and on a column with a null, and the route's flag-off/on render).
+
+**To regenerate:** repeat the same request; the tests pin Rice as the only null
+and the two medians, so re-pin them from the new body.
+
 ## `schedule-cfb-333-2025.json` / `schedule-nfl-12-2025.json`
 The two Data API bodies `retrieveTeamSchedule` concatenates for one team-season,
 keyed by the query side: `home_id` is `GET /v1/cfb/schedule?season=2025&home_id=333&order=-start_date`
