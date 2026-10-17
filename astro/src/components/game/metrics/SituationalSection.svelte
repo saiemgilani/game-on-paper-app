@@ -14,7 +14,7 @@ const EMPTY_PROCESSED_BOX_SCORE = {
   turnover: [],
 }
 
-const { season, advBoxScoreSpans, league, percentiles } = $props();
+const { season, advBoxScoreSpans, league, percentiles, teamIds } = $props();
 const availableSpans = Object.keys(advBoxScoreSpans).map(parseSpan).filter(p => !!p)
 let selectedSpan = $state("all");
 let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSED_BOX_SCORE)
@@ -40,6 +40,7 @@ function onChangeSpan(e: Event) {
             title="Expected Points"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -59,6 +60,7 @@ function onChangeSpan(e: Event) {
             title="Production"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -87,6 +89,7 @@ function onChangeSpan(e: Event) {
             title="Rushing"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -111,6 +114,7 @@ function onChangeSpan(e: Event) {
             title="Special Teams"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -133,6 +137,7 @@ function onChangeSpan(e: Event) {
             title="Explosiveness"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -157,6 +162,7 @@ function onChangeSpan(e: Event) {
             title="Success"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -180,6 +186,7 @@ function onChangeSpan(e: Event) {
             title="Early Downs"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -203,6 +210,7 @@ function onChangeSpan(e: Event) {
             title="Late Downs"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -231,6 +239,7 @@ function onChangeSpan(e: Event) {
             title="Middle 8"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -255,11 +264,13 @@ function onChangeSpan(e: Event) {
             title="Drives"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
                     "drives.drives",
                     "drives.avg_field_position",
+                    "drives.avg_start_ep",
                     "drives.plays_per_drive",
                     "drives.yards_per_drive",
                     "drives.drive_total_gained_yards_rate",
@@ -299,6 +310,7 @@ function onChangeSpan(e: Event) {
             title="Defensive"
             league={league}
             teamKey='def_pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
@@ -326,6 +338,7 @@ function onChangeSpan(e: Event) {
             title="Turnovers"
             league={league}
             teamKey='pos_team'
+            teamIds={teamIds}
             season={season}
             columns={
                 [
