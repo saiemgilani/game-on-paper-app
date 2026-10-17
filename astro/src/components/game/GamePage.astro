@@ -33,6 +33,7 @@ import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
 import UsageBoxScore from './metrics/UsageBoxScore.astro';
 import { withoutUsageSections } from '../../utils/usage';
+import { wpExportTitle, type WpExportMeta } from '../../utils/chartExport';
 
 interface Props {
    id: string | number
@@ -88,6 +89,13 @@ const colorProps = gameColors ? { colors: gameColors } : {};
 // nothing to match a query against. Rendered names stay lowercased.
 const hasScore = gameStatus.type.completed == true || gameStatus.type.name.includes("STATUS_IN_PROGRESS") || (gameStatus.type.name.includes("STATUS_DELAYED") && game.plays.length > 0);
 const statusDescription = gameStatus.type.description ?? "Scheduled";
+// what the downloaded WP image says about itself: the header line, the page URL and, while live, when the data was built
+const wpExport: WpExportMeta = {
+    title: wpExportTitle(awayComp, homeComp, gameStatus.type.detail ?? statusDescription),
+    url: canonicalUrl,
+    completed: gameStatus.type.completed == true,
+    updatedAt: game.updatedAt ?? null,
+};
 const gameSpec = {
     id, hasScore,
     away: cleanLocation(awayComp.team), home: cleanLocation(homeComp.team),
@@ -254,7 +262,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
      inside the Svelte charts, and a duplicate id makes getElementById hand
      Chart.js the wrapper div -- both charts then silently never draw. -->
                 <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles.map(({ GEI }) => ({ GEI }))} gei={game.gei} {...colorProps}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles.map(({ GEI }) => ({ GEI }))} gei={game.gei} exportMeta={wpExport} {...colorProps}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
