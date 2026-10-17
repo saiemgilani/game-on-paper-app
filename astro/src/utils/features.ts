@@ -83,6 +83,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // Game link previews: og:image becomes the API's 1200x630 card for the
+    // game's state (utils/shareTags.ts), ?spoilers=off previews without the
+    // score (head tags only; the page renders as normal), and GameHeader shows
+    // a Share button beside Watch. Read in both game-page twins, PreGamePage and
+    // GameHeader. Off: every head is exactly today's and ?spoilers=off is ignored.
+    // The card endpoint itself is not gated (routes/shareCard.ts).
+    'share-card': 'preview',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl
     // twin): the team's record split by home/away/neutral, conference (division
     // in the NFL), one-score games, vs FBS and vs ranked. It pivots the schedule
