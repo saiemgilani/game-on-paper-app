@@ -1347,20 +1347,23 @@ export async function retrieveShareCard(gameId: string | number, league: League,
     const url = `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`;
     const auth = { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com" };
     try {
-        const req = state === 'pre'
-            ? await wrappedFetch(url, {
+        let req: Response;
+        if (state === 'pre') {
+            req = await wrappedFetch(url, {
                 headers: auth,
                 cf: {
                     cacheEverything: true,
                     cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
                     cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
                 }
-            })
-            : await wrappedFetch(url, {
+            });
+        } else {
+            req = await wrappedFetch(url, {
                 method: 'POST',
                 headers: { ...auth, "Content-Type": "application/json" },
                 body: JSON.stringify(page ? { plays: page.plays, paperIndex: page.paperIndex } : {}),
             });
+        }
         if (!req.ok) {
             console.error(`ERROR share card ${league} ${gameId} ${query}: HTTP ${req.status}`);
             return null;
