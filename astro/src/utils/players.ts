@@ -40,6 +40,21 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
     receiving: 'min. 1.875 targets per team-game',
 };
 
+/** The column the player leaderboard sorts on, and whether that column is a rank (sorted ascending). */
+export interface PlayerBoardSort {
+    sortBy: string;
+    ranked: boolean;
+}
+
+/**
+ * How the player leaderboard sorts a metric: a `counting` metric in the dropdown's own
+ * config (SDV_PLAYER_METRIC_CATEGORIES) by value, the rest by rank (ranked = ascending).
+ */
+export function playerBoardSort(category: string, metric: string): PlayerBoardSort {
+    const counting = SDV_PLAYER_METRIC_CATEGORIES[category]?.[metric]?.counting === true;
+    return counting ? { sortBy: metric, ranked: false } : { sortBy: `${metric}_rank`, ranked: true };
+}
+
 /**
  * A roster height, which both leagues publish as INCHES, as the site writes one
  * ("6-3"). Anything that is not a number of inches reads as absent.
@@ -240,7 +255,7 @@ export function rollUpSeasons(rows: SeasonRow[]): Record<string, number | string
 /** The columns a category's line table shows: the leaderboards' own set, games first. */
 export function categoryColumns(category: string): [string, string][] {
     const cols = SDV_PLAYER_METRIC_CATEGORIES[category];
-    return cols ? [['games', 'G'], ...Object.entries(cols)] : [];
+    return cols ? [['games', 'G'], ...Object.entries(cols).map(([k, m]): [string, string] => [k, m.title])] : [];
 }
 
 /** The `_pct` (0-100) beside a metric, when the producer computed one. */
