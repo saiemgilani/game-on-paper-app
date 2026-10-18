@@ -15,12 +15,21 @@ const RELEASE_SCORE_ROWS: Record<string, number[]> = {};
 /**
  * Release-vs-live differences that are source facts, not bugs (spec D7 sibling; controller ruling 2026-10-18). ESPN's raw
  * 2005 final for 250603003 carries 19 team stats and neither fast-break points nor points in the paint, so the release's
- * team box has them null; and Erin Thorn (510) is `active: false` with every stat "--", which the release maps to null
- * while ESPN's live box now prints 0. The Data API side must be null on exactly these fields; everything else is equal.
+ * team box has them null; and Erin Thorn (510) is `active: false` with every stat "--", which the release keeps absent
+ * (null, or the adapter's dash) while ESPN's live box now prints 0 / "0-0". The Data API side must be absent on exactly
+ * these fields and the processor present; every other box field and every other player field (IDENTITY aside) is equal.
  */
 const RELEASE_SOURCE_FACTS: Record<string, { box: (keyof NbaTeamBox)[]; players: Record<string, (keyof NbaPlayerRow)[]> }> = {
-    '250603003': { box: ['fast_break_points', 'points_in_paint'], players: { '510': ['points'] } },
+    '250603003': {
+        box: ['fast_break_points', 'points_in_paint'],
+        players: { '510': ['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers', 'fg', 'fg3', 'ft', 'plus_minus'] },
+    },
 };
+
+/** Identity strings, not numbers: never compared (ESPN renamed 3054590 Coffey -> Brodie; the live 2005 box has no jerseys). */
+const IDENTITY: (keyof NbaPlayerRow)[] = ['name', 'short_name', 'jersey'];
+/** A stat the source did not report: null, or the dash the adapter prints for a missing made-attempted / plus-minus. */
+const absent = (v: unknown) => v === null || v === '–' || v === '--';
 
 const GAMES = [
     { id: '401736287', label: 'regulation', regulation: 4, kind: 'quarter', periods: 4, ot: false, prior: 'hfa', minutes: 40 },
@@ -63,10 +72,10 @@ describe.each(GAMES)('wnba $id ($label): processor and Data API', (g) => {
             expect(Object.keys(a).sort()).toEqual(Object.keys(p).sort());
             for (const k of Object.keys(a)) {
                 const named = facts.players[k] ?? [];
-                for (const f of named) expect([a[k][f], p[k][f] === null], `player ${k}.${f}: null in the release, reported live`).toEqual([null, false]);
+                for (const f of named) expect([absent(a[k][f]), absent(p[k][f])], `player ${k}.${f}: absent in the release, reported live`).toEqual([true, false]);
                 if (named.length) seen.push(k);
-                const pick = (r: NbaPlayerRow) => (['ts_pct', 'usg_pct', 'points', 'minutes'] as const).map((f) => (named.includes(f) ? 'named' : r[f]));
-                expect(pick(a[k]), `player ${k}`).toEqual(pick(p[k]));
+                const drop = [...IDENTITY, ...named];
+                expect(without(a[k], drop), `player ${k}`).toEqual(without(p[k], drop));
             }
             expect(proc[side].rates!.game_minutes).toBe(g.minutes);
             expect(proc[side].linescores).toHaveLength(g.periods);

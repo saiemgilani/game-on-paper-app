@@ -328,6 +328,9 @@ needs a new id and a new snapshot in its own PR.
     rebuilt yet; spec D7) is empty: none remained at capture, 401736325's rows 126-127 included. `RELEASE_SOURCE_FACTS` names the
     release-vs-live source facts of 250603003, read from ESPN's raw 2005 final: its boxscore carries 19 team stats and neither
     `fast_break_points` nor `points_in_paint` (null in the release, reported by the live box), and Erin Thorn (510) is `active: false`
-    with every stat `--` (release `points` null; the live box now prints 0). The Data API side is asserted null on exactly those
-    fields and equal to the processor everywhere else.
+    with every stat `--` (release `points`, `rebounds`, `assists`, `steals`, `blocks`, `turnovers` null, `fg` / `fg3` / `ft` `–` and
+    `plus_minus` `--`; the live box now prints 0 / `0-0` / `0`). The Data API side is asserted absent on exactly those fields and the
+    processor present. Everything else is asserted equal: plays, scores, shot coordinates, WP, the prior, team box, rates,
+    linescores, records, and every player field except the identity strings `name`, `short_name` and `jersey`, which are not
+    compared (ESPN renamed 401736325's 3054590 Nia Coffey to Nia Brodie; the live 2005 box has no jerseys where the release does).
   - **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 3 Steps 1-3.
