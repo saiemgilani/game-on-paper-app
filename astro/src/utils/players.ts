@@ -40,11 +40,17 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
     receiving: 'min. 1.875 targets per team-game',
 };
 
+/** The column the player leaderboard sorts on, and whether that column is a rank (sorted ascending). */
+export interface PlayerBoardSort {
+    sortBy: string;
+    ranked: boolean;
+}
+
 /**
  * How the player leaderboard sorts a metric: a `counting` metric in the dropdown's own
  * config (SDV_PLAYER_METRIC_CATEGORIES) by value, the rest by rank (ranked = ascending).
  */
-export function playerBoardSort(category: string, metric: string): { sortBy: string; ranked: boolean } {
+export function playerBoardSort(category: string, metric: string): PlayerBoardSort {
     const counting = SDV_PLAYER_METRIC_CATEGORIES[category]?.[metric]?.counting === true;
     return counting ? { sortBy: metric, ranked: false } : { sortBy: `${metric}_rank`, ranked: true };
 }
