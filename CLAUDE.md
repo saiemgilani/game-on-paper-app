@@ -97,7 +97,8 @@ PRs confined to docs, CI, or repo config are exempt.
 same-repo PR and keeps them in one PR comment. It compares GitHub's PR merge
 commit against the base tip it merged onto, so only this PR's changes differ even
 after `main` moves. Choose pages with an `Evidence routes: /a /b` line in the PR
-description; the default is a final game with full play-by-play (`/game/401856682`),
+description (up to 4; a query string of letters, digits and `_.=&-` is kept, e.g.
+`/players/4837248?season=2025`); the default is a final game with full play-by-play (`/game/401856682`),
 the heaviest page. Fork PRs get no secrets, so their evidence (screenshots and the
 walkthrough) is produced locally and pasted into the template. When the workflow fails, fix the cause or explain
 in the PR; never paste numbers the workflow didn't measure.

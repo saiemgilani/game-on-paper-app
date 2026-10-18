@@ -51,6 +51,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { aggregate, fmt, normalizeHtml, verdicts, withRange } from './lighthouse-verdicts.mjs';
+import { pageKey, slug } from './lib/browser.mjs';
 
 const { values: opt, positionals: routes } = parseArgs({
   allowPositionals: true,
@@ -98,12 +99,11 @@ if (!PRESETS.every((p) => p === 'mobile' || p === 'desktop')) usage(`unknown pre
 if (opt['backend-cmd'] && !opt['python-url']) usage('--backend-cmd needs --python-url (the address it serves)');
 // file names derive from routes (the same slug visual-check.mjs uses), so two routes
 // that slug alike would overwrite each other's HTML, reports and screenshots
-const slugOf = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
 const slugOwner = new Map();
 for (const r of routes) {
-  const other = slugOwner.get(slugOf(r));
-  if (other !== undefined && other !== r) usage(`routes ${other} and ${r} map to the same file name "${slugOf(r)}"; pass only one`);
-  slugOwner.set(slugOf(r), r);
+  const other = slugOwner.get(slug(r));
+  if (other !== undefined && other !== r) usage(`routes ${other} and ${r} map to the same file name "${slug(r)}"; pass only one`);
+  slugOwner.set(slug(r), r);
 }
 
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8' }).trim();
@@ -114,7 +114,6 @@ const WORK = resolve(opt.work ?? join(tmpdir(), 'gop-lighthouse'));
 mkdirSync(join(OUT, 'reports'), { recursive: true });
 mkdirSync(join(OUT, 'logs'), { recursive: true });
 
-const slug = slugOf;
 const say = (msg) => console.log(`[lighthouse-compare] ${msg}`);
 
 // ---------------------------------------------------------------- lighthouse CLI
@@ -340,14 +339,12 @@ const TYPES = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
   '.gif': 'image/gif', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2',
 };
-const trimSlash = (p) => p.replace(/\/+$/, '') || '/';
-
 function serveStatic(tree, pages, port) {
   const client = existsSync(join(tree.astro, 'dist', 'client')) ? join(tree.astro, 'dist', 'client') : join(tree.astro, 'dist');
-  const html = new Map(Object.entries(pages).map(([route, p]) => [trimSlash(route), p.file]));
+  const html = new Map(Object.entries(pages).map(([route, p]) => [pageKey(route), p.file]));
   const server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    let file = html.get(trimSlash(path));
+    let file = html.get(pageKey(req.url));
     let type = TYPES['.html'];
     if (!file) {
       const candidate = resolve(client, `.${path}`);

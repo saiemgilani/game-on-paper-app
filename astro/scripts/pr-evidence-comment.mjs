@@ -10,6 +10,7 @@
 import { parseArgs } from 'node:util';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { slug } from './lib/browser.mjs';
 
 export const MARKER = '<!-- pr-evidence -->';
 
@@ -30,7 +31,6 @@ if (!opt.out) {
 const summaryPath = join(opt.out, 'summary.json');
 const summary = existsSync(summaryPath) ? JSON.parse(readFileSync(summaryPath, 'utf8')) : null;
 const lighthouse = existsSync(join(opt.out, 'lighthouse.md')) ? readFileSync(join(opt.out, 'lighthouse.md'), 'utf8') : null;
-const slug = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
 const short = (s) => (s ?? '').slice(0, 7);
 
 const out = [MARKER];
@@ -58,7 +58,7 @@ if (!summary) {
       if (!opt['image-base']) return `\`shots/${stem}.jpg\``;
       const full = `${opt['image-base']}/${stem}.jpg`;
       const thumb = existsSync(join(shots, `${stem}-thumb.jpg`)) ? `${opt['image-base']}/${stem}-thumb.jpg` : full;
-      return `<a href="${full}"><img src="${thumb}" width="${width}" alt="${route} ${device} ${scheme}"></a>`;
+      return `<a href="${full}"><img src="${thumb}" width="${width}" alt="${route.replaceAll('&', '&amp;')} ${device} ${scheme}"></a>`;
     };
     out.push('', `**\`${route}\`**${summary.newRoutes?.includes(route) ? ' — new in this PR (the base has no such page)' : ''}`, '', '| | light | dark |', '|---|---|---|');
     out.push(`| **desktop 1280×800** | ${cell('desktop', 'light', 440)} | ${cell('desktop', 'dark', 440)} |`);

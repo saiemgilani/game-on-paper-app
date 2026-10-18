@@ -32,7 +32,22 @@ export const DEVICES = [
 ];
 export const SCHEMES = ['light', 'dark'];
 
-export const slug = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
+// A route's file-name stem (screenshots, clips, saved HTML, reports). A query string
+// (`/players/1?season=2025`) is kept, after a `_`, so it never collides with the bare
+// path; a query-free route keeps the stem it always had, so older evidence links hold.
+export const slug = (r) => {
+  const q = r.indexOf('?');
+  const path = q < 0 ? r : r.slice(0, q);
+  const stem = path === '/' ? 'home' : path.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-');
+  return q < 0 ? stem : `${stem}_${r.slice(q + 1).replace(/[^\w-]+/g, '_')}`;
+};
+
+// What identifies a saved page: path (trailing slash ignored) plus query string, so
+// `/players/1` and `/players/1?season=2025` are two pages.
+export const pageKey = (url) => {
+  const u = new URL(url, 'http://x');
+  return (decodeURIComponent(u.pathname).replace(/\/+$/, '') || '/') + u.search;
+};
 
 // Dark mode is driven by prefers-color-scheme (public/assets/css/dark-*.css), so emulating
 // the scheme is exactly what a real dark-mode viewer hits.
