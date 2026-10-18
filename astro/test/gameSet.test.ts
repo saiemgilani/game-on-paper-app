@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
-import { aggregateGames, averageAxisBounds, GAME_METRICS, opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { aggregateGames, availableMetrics, averageAxisBounds, GAME_METRICS, opponentAverages, opponentBars } from '../src/utils/gameSet';
 import { generateTeamMetricTitle } from '../src/utils/misc';
 
 // The Data API's real 2025 bodies (fixtures/team-opponent-splits-2025.json):
 // team_opponent_splits by team_id and by opponent_id, and the schedule rows,
 // for Alabama (cfb 333) and Kansas City (nfl 12).
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/team-opponent-splits-2025.json', import.meta.url)).toString());
+// the same reads for 2026 (fixtures/team-opponent-splits-2026.json), a season the
+// producers built after cfb-data #141 / nfl-data #82: the pass and rush columns
+const fixture2026 = JSON.parse(readFileSync(new URL('./fixtures/team-opponent-splits-2026.json', import.meta.url)).toString());
 // the Data API, for retrieveTeamOpponentSplits: team 333 answers both reads; 9001's
 // opponent read is a 500 and 9002's a 200 with no data array
 vi.mock('../src/utils/telemetry', async (orig) => ({
@@ -23,8 +26,8 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
     },
 }));
 
-const load = (league: 'cfb' | 'nfl' | 'cfb_155') => {
-    const f = fixture[league];
+const load = (league: 'cfb' | 'nfl' | 'cfb_155', season: 2025 | 2026 = 2025) => {
+    const f = (season === 2026 ? fixture2026 : fixture)[league];
     return {
         splits: { team: f.team_id.data, opponent: f.opponent_id.data },
         events: [...f.schedule.home_id.data, ...f.schedule.away_id.data],
@@ -32,18 +35,43 @@ const load = (league: 'cfb' | 'nfl' | 'cfb_155') => {
 };
 
 describe('GAME_METRICS', () => {
-    // the columns every row carries that are not the game's identity or result
-    const CONTEXT = new Set(['season', 'season_type', 'week', 'game_id', 'nflverse_game_id', 'team_id', 'opponent_id', 'opponent', 'is_home', 'points_for', 'points_against', 'plays']);
+    // the columns every row carries that are not the game's identity, result or play counts
+    const COUNTS = ['plays', 'pass_plays', 'rush_plays'];
+    const CONTEXT = new Set(['season', 'season_type', 'week', 'game_id', 'nflverse_game_id', 'team_id', 'opponent_id', 'opponent', 'is_home', 'points_for', 'points_against', ...COUNTS]);
 
-    test('one entry per rate column the rows carry, in both leagues', () => {
+    test('one entry per rate column the current rows carry, in both leagues', () => {
         for (const league of ['cfb', 'nfl'] as const) {
-            const rates = new Set(load(league).splits.team.flatMap((r: any) => Object.keys(r)).filter((c: string) => !CONTEXT.has(c)));
-            expect(GAME_METRICS.map((m) => m.column).sort(), league).toEqual([...rates].sort());
+            const columns = new Set<string>(load(league, 2026).splits.team.flatMap((r: any) => Object.keys(r)));
+            const rates = [...columns].filter((c) => !CONTEXT.has(c));
+            expect(GAME_METRICS.map((m) => m.column).sort(), league).toEqual(rates.sort());
+            // each weight is a play count the rows carry
+            for (const m of GAME_METRICS) expect(columns.has(m.weight) && COUNTS.includes(m.weight), `${league} ${m.column}`).toBe(true);
         }
     });
 
     test('titled from the metric register the leaderboards use', () => {
-        expect(GAME_METRICS.map((m) => generateTeamMetricTitle(m.key))).toEqual(['EPA/Play', 'Success %']);
+        expect(GAME_METRICS.map((m) => generateTeamMetricTitle(m.key)))
+            .toEqual(['EPA/Play', 'EPA/Dropback', 'EPA/Rush', 'Success %', 'Pass Success %', 'Rush Success %']);
+    });
+});
+
+describe('availableMetrics', () => {
+    test('a season built since the pass and rush columns offers all six', () => {
+        for (const league of ['cfb', 'nfl'] as const) {
+            expect(availableMetrics(load(league, 2026).splits), league).toEqual([...GAME_METRICS]);
+        }
+    });
+
+    test('a season without them, absent or null, offers only per-play EPA and success', () => {
+        const overall = GAME_METRICS.filter((m) => m.weight === 'plays');
+        for (const league of ['cfb', 'nfl'] as const) {
+            const { splits } = load(league);
+            // the 2025 body predates the columns
+            expect(availableMetrics(splits), league).toEqual(overall);
+            // a season not rebuilt since carries them as null, which the Data API returned for 2025 on 2026-10-18
+            const nulled = { team: splits.team.map((r: any) => ({ ...r, pass_plays: null, epa_per_pass: null, success_rate_pass: null, rush_plays: null, epa_per_rush: null, success_rate_rush: null })), opponent: splits.opponent };
+            expect(availableMetrics(nulled), league).toEqual(overall);
+        }
     });
 });
 
@@ -130,32 +158,38 @@ describe('opponentBars', () => {
 });
 
 describe('aggregateGames / opponentAverages', () => {
-    test('the season average is play-weighted, not the mean of the bars', () => {
+    // spelled out here rather than through aggregateGames, so a helper that
+    // ignores its metric or its weight cannot agree with itself
+    const weighted = (rows: any[], metric: string, weight: string) =>
+        rows.reduce((s, r) => s + r[metric] * r[weight], 0) / rows.reduce((s, r) => s + r[weight], 0);
+
+    test('the season average is weighted by each rate\'s own count, not the mean of the bars', () => {
         for (const league of ['cfb', 'nfl'] as const) {
-            const { splits, events } = load(league);
-            for (const { column: metric } of GAME_METRICS) {
-                const plays = splits.team.reduce((s: number, r: any) => s + r.plays, 0);
-                const weighted = splits.team.reduce((s: number, r: any) => s + r[metric] * r.plays, 0) / plays;
-                expect(aggregateGames(splits.team)[metric], `${league} ${metric}`).toBeCloseTo(weighted, 12);
-                const bars = opponentBars(splits, events, metric);
-                const barMean = bars.reduce((s, b) => s + (b.raw as number), 0) / bars.length;
-                expect(Math.abs(barMean - weighted), `${league} ${metric}`).toBeGreaterThan(1e-6);
+            for (const season of [2025, 2026] as const) {
+                const { splits, events } = load(league, season);
+                for (const { column: metric, weight } of availableMetrics(splits)) {
+                    const expected = weighted(splits.team, metric, weight);
+                    expect(aggregateGames(splits.team)[metric], `${league} ${season} ${metric}`).toBeCloseTo(expected, 12);
+                    const bars = opponentBars(splits, events, metric);
+                    const barMean = bars.reduce((s, b) => s + (b.raw as number), 0) / bars.length;
+                    expect(Math.abs(barMean - expected), `${league} ${season} ${metric}`).toBeGreaterThan(1e-6);
+                    // a pass or rush rate is over dropbacks or rushes, not every play
+                    if (weight !== 'plays') expect(Math.abs(weighted(splits.team, metric, 'plays') - expected), `${league} ${metric}`).toBeGreaterThan(1e-6);
+                }
             }
         }
     });
 
-    test('the margin average is offense minus defense, each play-weighted, for both metrics', () => {
-        // spelled out here rather than through aggregateGames, so a helper that
-        // ignores its metric cannot agree with itself
-        const weighted = (rows: any[], metric: string) =>
-            rows.reduce((s, r) => s + r[metric] * r.plays, 0) / rows.reduce((s, r) => s + r.plays, 0);
+    test('the margin average is offense minus defense, each weighted by its own count, for every metric', () => {
         for (const league of ['cfb', 'nfl'] as const) {
-            const { splits } = load(league);
-            for (const { column: metric } of GAME_METRICS) {
-                const avg = opponentAverages(splits, metric);
-                const off = weighted(splits.team, metric), def = weighted(splits.opponent, metric);
-                expect(avg.raw, `${league} ${metric}`).toBeCloseTo(off, 5);
-                expect(avg.margin, `${league} ${metric}`).toBeCloseTo(off - def, 5);
+            for (const season of [2025, 2026] as const) {
+                const { splits } = load(league, season);
+                for (const { column: metric, weight } of availableMetrics(splits)) {
+                    const avg = opponentAverages(splits, metric);
+                    const off = weighted(splits.team, metric, weight), def = weighted(splits.opponent, metric, weight);
+                    expect(avg.raw, `${league} ${season} ${metric}`).toBeCloseTo(off, 5);
+                    expect(avg.margin, `${league} ${season} ${metric}`).toBeCloseTo(off - def, 5);
+                }
             }
         }
         // Kansas City 2025: 468 successes on 1,045 plays across the fixture's 17 rows
@@ -172,10 +206,11 @@ describe('aggregateGames / opponentAverages', () => {
     });
 
     test('nulls and zero-play rows carry no weight; no rows is null, not NaN', () => {
-        const row = { game_id: 1, plays: 10, epa_per_play: 0.5, success_rate: null };
-        const out = aggregateGames([row, { ...row, game_id: 2, plays: 0, epa_per_play: 9 }] as any);
-        expect(out).toEqual({ games: 2, plays: 10, epa_per_play: 0.5, success_rate: null });
-        expect(aggregateGames([])).toEqual({ games: 0, plays: 0, epa_per_play: null, success_rate: null });
+        const none = { epa_per_pass: null, epa_per_rush: null, success_rate_pass: null, success_rate_rush: null };
+        const row = { game_id: 1, plays: 10, epa_per_play: 0.5, success_rate: null, pass_plays: 4, epa_per_pass: 0.2 };
+        const out = aggregateGames([row, { ...row, game_id: 2, plays: 0, epa_per_play: 9, pass_plays: 0, epa_per_pass: 9 }] as any);
+        expect(out).toEqual({ games: 2, plays: 10, ...none, epa_per_play: 0.5, success_rate: null, epa_per_pass: 0.2 });
+        expect(aggregateGames([])).toEqual({ games: 0, plays: 0, ...none, epa_per_play: null, success_rate: null });
     });
 });
 

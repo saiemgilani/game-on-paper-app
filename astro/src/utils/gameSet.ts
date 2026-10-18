@@ -4,38 +4,53 @@ import { cleanTextForTeam, numberOrNull, type MetricFormat } from './misc';
 
 /**
  * A team-season's games from `{league}.team_opponent_splits`, one row per
- * team-game. Season numbers are play-weighted sums over the rows, never the
+ * team-game. Season numbers are count-weighted sums over the rows, never the
  * mean of the per-game rates.
  */
 /**
- * Every per-game rate the rows carry: its column, the metric-register key that
- * titles it (`generateTeamMetricTitle`), and its cell format. Each is a per-play
- * rate, so its season average is weighted by `plays`. A rate column the table
- * gains is one entry here; `test/gameSet.test.ts` fails until it is added.
+ * Every per-game rate the rows carry: its column, the count column it is a rate
+ * over (its season average is weighted by that count: plays, dropbacks or
+ * rushes), the metric-register key that titles it (`generateTeamMetricTitle`),
+ * and its cell format. The producers compute every rate (cfb-data #141, nfl-data
+ * #82); GOP only weights them into a season line. A rate column the table gains
+ * is one entry here; `test/gameSet.test.ts` fails until it is added.
  */
 export const GAME_METRICS = [
-    { column: 'epa_per_play', key: 'EPAplay', format: 'num2' },
-    { column: 'success_rate', key: 'success', format: 'pct' },
-] as const satisfies readonly { column: keyof SDVTeamOpponentSplit, key: string, format: MetricFormat }[];
+    { column: 'epa_per_play', weight: 'plays', key: 'EPAplay', format: 'num2' },
+    { column: 'epa_per_pass', weight: 'pass_plays', key: 'EPAplay_pass', format: 'num2' },
+    { column: 'epa_per_rush', weight: 'rush_plays', key: 'EPAplay_rush', format: 'num2' },
+    { column: 'success_rate', weight: 'plays', key: 'success', format: 'pct' },
+    { column: 'success_rate_pass', weight: 'pass_plays', key: 'success_pass', format: 'pct' },
+    { column: 'success_rate_rush', weight: 'rush_plays', key: 'success_rush', format: 'pct' },
+] as const satisfies readonly { column: keyof SDVTeamOpponentSplit, weight: keyof SDVTeamOpponentSplit, key: string, format: MetricFormat }[];
 export type GameMetric = (typeof GAME_METRICS)[number]['column'];
 export type GameSplits = { team: SDVTeamOpponentSplit[], opponent: SDVTeamOpponentSplit[] };
 
-/** Each rate weighted by the game's plays; a null rate or a zero-play game carries no weight. */
+/**
+ * The metrics with a value in at least one of the team's games. A season the
+ * producers have not rebuilt since a column was added carries it as null (or,
+ * from an older cached body, not at all), and offers only the metrics it has.
+ */
+export function availableMetrics(splits: GameSplits): (typeof GAME_METRICS)[number][] {
+    return GAME_METRICS.filter((m) => splits.team.some((r) => numberOrNull(r[m.column]) !== null));
+}
+
+/** Each rate weighted by its own count in each game; a null rate or a zero count carries no weight. */
 export function aggregateGames(rows: SDVTeamOpponentSplit[]): { games: number, plays: number } & Record<GameMetric, number | null> {
-    const weighted = (metric: GameMetric) => {
-        let sum = 0, plays = 0;
+    const weighted = ({ column, weight }: (typeof GAME_METRICS)[number]) => {
+        let sum = 0, total = 0;
         for (const r of rows) {
-            const v = numberOrNull(r[metric]), n = numberOrNull(r.plays);
+            const v = numberOrNull(r[column]), n = numberOrNull(r[weight]);
             if (v === null || !n) continue;
             sum += v * n;
-            plays += n;
+            total += n;
         }
-        return plays > 0 ? sum / plays : null;
+        return total > 0 ? sum / total : null;
     };
     return {
         games: rows.length,
         plays: rows.reduce((s, r) => s + (numberOrNull(r.plays) ?? 0), 0),
-        ...(Object.fromEntries(GAME_METRICS.map((m) => [m.column, weighted(m.column)])) as Record<GameMetric, number | null>),
+        ...(Object.fromEntries(GAME_METRICS.map((m) => [m.column, weighted(m)])) as Record<GameMetric, number | null>),
     };
 }
 

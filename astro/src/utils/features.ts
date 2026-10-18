@@ -84,8 +84,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // table has been reviewed on production data.
     'five-factors': 'preview',
     // Results by Opponent on the season team page (/year/N/team/<id> and the
-    // /nfl twin): one bar per game from team_opponent_splits, EPA/Play or
-    // Success %, raw or margin, with a dashed season average. Only this path
+    // /nfl twin): one bar per game from team_opponent_splits, EPA and Success %
+    // per play, dropback and rush, raw or margin, with a dashed season average. Only this path
     // reads team_opponent_splits; every other viewer's requests are unchanged.
     'vs-opponent': 'preview',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl

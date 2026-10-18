@@ -1193,6 +1193,14 @@ export interface SDVTeamOpponentSplit {
     plays: number | null
     epa_per_play: number | null
     success_rate: number | null
+    // cfb-data #141 / nfl-data #82: null in a season not rebuilt since, absent
+    // from a body cached before. pass = dropbacks in the NFL, passes in CFB.
+    pass_plays?: number | null
+    rush_plays?: number | null
+    epa_per_pass?: number | null
+    epa_per_rush?: number | null
+    success_rate_pass?: number | null
+    success_rate_rush?: number | null
 }
 
 /**

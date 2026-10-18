@@ -234,6 +234,25 @@ play-weighted averages) and `test/gameSet.render.test.ts` (the panel on
 **To regenerate:** repeat the six reads for 2025; the tests assert on those
 teams' games, labels and scores.
 
+## `team-opponent-splits-2026.json`
+The same six reads as `team-opponent-splits-2025.json`, for 2026, for Alabama
+(`cfb`, 333; 7 games) and Kansas City (`nfl`, 12; 4 games). 2026 is the first
+season the producers built after cfbfastR-cfb-data#141 / nfl-data#82 added
+`pass_plays`, `rush_plays`, `epa_per_pass`, `epa_per_rush`, `success_rate_pass`
+and `success_rate_rush`, so every row carries them. The 2025 fixture predates
+those columns and is kept as it is: it is the shape of a season not yet rebuilt.
+
+**Provenance (2026-10-18):** captured verbatim from the live API (bearer token),
+one read per body, `indent=1`; no edits. The schedule reads include the season's
+unplayed games.
+
+**Used by:** `test/gameSet.test.ts` (one `GAME_METRICS` entry per rate column, each
+rate weighted by its own count, `availableMetrics`) and `test/gameSet.render.test.ts`
+(all six metrics in the select).
+
+**To regenerate:** repeat the six reads for 2026. The values move with every
+week the season adds; the tests assert only on the columns and the arithmetic.
+
 ## `schedule-cfb-333-2025.json` / `schedule-nfl-12-2025.json`
 The two Data API bodies `retrieveTeamSchedule` concatenates for one team-season,
 keyed by the query side: `home_id` is `GET /v1/cfb/schedule?season=2025&home_id=333&order=-start_date`

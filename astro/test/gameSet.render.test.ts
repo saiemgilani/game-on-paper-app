@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { GAME_METRICS, opponentAverages, opponentBars } from '../src/utils/gameSet';
+import { availableMetrics, opponentAverages, opponentBars } from '../src/utils/gameSet';
 import { formatMetricValue, pickGameColors, STANDARD_THEME_COLOR } from '../src/utils/misc';
 
 // Results by Opponent ('vs-opponent') on the season team page, rendered from the
@@ -84,9 +84,10 @@ describe.each([
         const props = propsOf(tag!);
         expect(Object.keys(props).sort()).toEqual(['colors', 'metrics']);
         const splits = splitsOf(league), events = eventsOf(league);
-        // one entry per GAME_METRICS metric, in its order, each with its own bars and averages
+        // one entry per metric the season has, in GAME_METRICS order, each with its own bars and
+        // averages; the 2025 bodies predate the pass and rush columns, so per-play EPA and success only
         expect(props.metrics.map((m: any) => m.key)).toEqual(['EPAplay', 'success']);
-        expect(props.metrics).toEqual(GAME_METRICS.map((m) => ({
+        expect(props.metrics).toEqual(availableMetrics(splits).map((m) => ({
             key: m.key,
             format: m.format,
             bars: opponentBars(splits, events, m.column),
@@ -128,6 +129,25 @@ describe('Results by Opponent, gates', () => {
         expect(html).not.toContain('vs-opponent');
         expect(html).not.toContain('Results by Opponent');
         expect(feed.calls).toHaveLength(0);
+    }, 60_000);
+
+    test('a season with the pass and rush columns: all six metrics in the select', async () => {
+        const f = JSON.parse(readFileSync(new URL('./fixtures/team-opponent-splits-2026.json', import.meta.url)).toString());
+        feed.override = { team: f.nfl.team_id.data, opponent: f.nfl.opponent_id.data };
+        const panel = (await render('nfl', '12', true)).split('id="vs-opponent-panel"')[1];
+        const options = [...panel.split('</select>')[0].matchAll(/<option value="([^"]+)"[^>]*>([^<]*)<\/option>/g)].map((m) => [m[1], m[2]]);
+        expect(options).toEqual([
+            ['EPAplay', 'EPA/Play'], ['EPAplay_pass', 'EPA/Dropback'], ['EPAplay_rush', 'EPA/Rush'],
+            ['success', 'Success %'], ['success_pass', 'Pass Success %'], ['success_rush', 'Rush Success %'],
+        ]);
+    }, 60_000);
+
+    test('no rate in any game: no panel', async () => {
+        const { team, opponent } = splitsOf('nfl');
+        feed.override = { team: team.map((r: any) => ({ ...r, epa_per_play: null, success_rate: null })), opponent };
+        const html = await render('nfl', '12', true);
+        expect(html).toContain('Kansas City');
+        expect(html).not.toContain('vs-opponent-panel');
     }, 60_000);
 
     test('no games yet: no panel', async () => {

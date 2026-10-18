@@ -2,7 +2,7 @@
 import OpponentBarChart from '../charts/OpponentBarChart.svelte';
 import GenericPanel from '../../layouts/panel/GenericPanel.astro';
 import type { SDVGame } from '../../resources/sdv';
-import { GAME_METRICS, opponentAverages, opponentBars, type GameSplits } from '../../utils/gameSet';
+import { availableMetrics, opponentAverages, opponentBars, type GameSplits } from '../../utils/gameSet';
 import type { League } from '../../utils/league';
 import { pickGameColors, STANDARD_THEME_COLOR } from '../../utils/misc';
 
@@ -19,12 +19,15 @@ const { league, splits, events, teamColors } = Astro.props;
 // apart from the average line, which keeps the site's theme blue where it can
 const { light, dark } = pickGameColors(teamColors, { color: STANDARD_THEME_COLOR });
 const colors = { light: { bar: light.home, line: light.away }, dark: { bar: dark.home, line: dark.away } };
-const metrics = GAME_METRICS.map((m) => ({ key: m.key, format: m.format, bars: opponentBars(splits, events, m.column), avg: opponentAverages(splits, m.column) }));
+const metrics = availableMetrics(splits).map((m) => ({ key: m.key, format: m.format, bars: opponentBars(splits, events, m.column), avg: opponentAverages(splits, m.column) }));
 ---
 
-<GenericPanel id="vs-opponent" title="Results by Opponent" show={true}>
-    <p slot="panel-subtitle" class="text-muted text-small m-0">The dashed line is the season average, weighted by plays. {league === 'cfb' ? 'Data shown is from every game, FCS opponents and the postseason included.' : 'Data shown is from regular season games only.'}</p>
-    <div slot="panel-body">
-        <OpponentBarChart client:idle metrics={metrics} colors={colors} />
-    </div>
-</GenericPanel>
+{/* a season with no rate in any game has nothing to draw */}
+{metrics.length > 0 && (
+    <GenericPanel id="vs-opponent" title="Results by Opponent" show={true}>
+        <p slot="panel-subtitle" class="text-muted text-small m-0">The dashed line is the season average, weighted by plays. {league === 'cfb' ? 'Data shown is from every game, FCS opponents and the postseason included.' : 'Data shown is from regular season games only.'}</p>
+        <div slot="panel-body">
+            <OpponentBarChart client:idle metrics={metrics} colors={colors} />
+        </div>
+    </GenericPanel>
+)}
