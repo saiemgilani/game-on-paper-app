@@ -743,7 +743,7 @@ export function retrieveValue(dictionary: any, key: string): string {
 
 
 export function getPercentileKey(metric: string): string {
-    // a margin is centred on 0, not a level: it has no ladder column (the default
+    // a margin is centered on 0, not a level: it has no ladder column (the default
     // below hands the metric back, which the ladder rows do not carry)
     const cleanedMetric = (
         metric

@@ -13,7 +13,7 @@ describe('team trend band keys', () => {
     });
 
     test('a margin is not a level, so it maps to no ladder column', () => {
-        // stripping `_margin` drew EPA/play margins (centred on 0) over EPA/play
+        // stripping `_margin` drew EPA/play margins (centered on 0) over EPA/play
         // level bands (median 0.054)
         for (const m of ['EPAplay_margin', 'success_margin', 'yardsplay_margin']) {
             expect(getPercentileKey(m), m).toBe(m);
