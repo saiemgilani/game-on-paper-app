@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
@@ -12,7 +13,7 @@ const META = 'https://data.sportsdataverse.org/v1/meta';
 const ROUTE = 'https://data.sportsdataverse.org/v1/cfb/team_summaries/percentiles';
 const STAMP = '2026-10-18T09:00:00+00:00';
 
-const net = vi.hoisted(() => ({ seen: [] as string[], status: 200, puts: [] as string[] }));
+const net = vi.hoisted(() => ({ seen: [] as string[], status: 200, puts: [] as string[], kvDown: false }));
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string) => {
@@ -25,7 +26,7 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
 vi.mock('cloudflare:workers', () => {
     const store = new Map<string, string>();
     const kv = {
-        get: async (key: string, type?: string) => { const v = store.get(key); return v && type === 'json' ? JSON.parse(v) : v ?? null; },
+        get: async (key: string, type?: string) => { if (net.kvDown) throw new Error('KV unavailable'); const v = store.get(key); return v && type === 'json' ? JSON.parse(v) : v ?? null; },
         put: async (key: string, value: string) => { net.puts.push(key); store.set(key, value); },
         delete: async (key: string) => { store.delete(key); },
     };
@@ -45,7 +46,7 @@ vi.mock('../src/resources/espn', async (orig) => ({
 
 import { retrieveTeamSeasonPercentiles, teamSeasonBands } from '../src/resources/sdv';
 
-beforeEach(() => { net.seen.length = 0; net.puts.length = 0; net.status = 200; reads.ladder.length = 0; });
+beforeEach(() => { net.seen.length = 0; net.puts.length = 0; net.status = 200; net.kvDown = false; reads.ladder.length = 0; });
 
 describe('teamSeasonBands: route rows -> five ladder points', () => {
     test('2024 EPAplay_off is breaks[1|25|50|75|99] of the live row, to 4 decimals', () => {
@@ -67,7 +68,9 @@ describe('teamSeasonBands: route rows -> five ladder points', () => {
             { ...row, season: '2024' },
             null,
         ];
-        expect(teamSeasonBands([...bad, row])).toHaveLength(1);
+        // the valid row itself survives, not a malformed one in its place
+        expect(teamSeasonBands([...bad, row])).toEqual(teamSeasonBands([row]));
+        expect(teamSeasonBands([row])).toEqual([expect.objectContaining({ season: row.season, metric: row.metric })]);
         expect(teamSeasonBands({ error: 'x' })).toEqual([]);
     });
 });
@@ -77,10 +80,16 @@ describe('retrieveTeamSeasonPercentiles', () => {
         const rows = await retrieveTeamSeasonPercentiles('cfb');
         expect(rows).toHaveLength(BODY.data.length);
         expect(net.seen.filter(u => u !== META)).toEqual([ROUTE]);
-        // the pinned read confirmed its stamp against team_summaries' meta entry, so it was stored
-        expect(net.puts.filter(k => !k.startsWith('sdv-meta'))).toHaveLength(1);
+        // the pinned read confirmed its stamp against team_summaries' meta entry, so it was stored under that stamp
+        const stamped = createHash('sha256').update(`team_summaries/percentiles#${STAMP}`).digest('hex');
+        expect(net.puts.filter(k => !k.startsWith('sdv-meta'))).toEqual([stamped]);
         await retrieveTeamSeasonPercentiles('cfb');
         expect(net.seen.filter(u => u !== META)).toHaveLength(1);
+    });
+
+    test('a throw before the request (KV read fails) is no bands, not a failed page', async () => {
+        net.kvDown = true;
+        expect(await retrieveTeamSeasonPercentiles('cfb')).toEqual([]);
     });
 
     test('a 404 (no season with enough teams) is no bands', async () => {

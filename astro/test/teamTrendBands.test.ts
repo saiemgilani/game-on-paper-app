@@ -39,8 +39,10 @@ describe('team-season band filter', () => {
     });
 
     test('a margin draws bands centred near 0, from its own rows', () => {
-        const median = teamSeasonBandsFor(rows, 'EPAplay_margin').find(p => p.season === 2024 && p.pctile === 0.5)!;
-        expect(Math.abs(median.value)).toBeLessThan(0.05);
+        const pts = teamSeasonBandsFor(rows, 'EPAplay_margin').filter(p => p.season === 2024).map(p => p.value);
+        // the fixture's 2024 EPAplay_margin row (breaks[1|50|99]), not EPAplay_off's (-0.1721, 0.0346, 0.2177)
+        expect([pts[0], pts[2], pts[4]]).toEqual([-0.3889, -0.0077, 0.2806]);
+        expect(Math.abs(pts[2])).toBeLessThan(0.05);
         expect(teamSeasonBandsFor(rows, 'net_adj_epa')).toEqual([]); // trimmed out of the fixture: no rows, no bands
     });
 });

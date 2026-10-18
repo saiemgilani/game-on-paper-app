@@ -861,15 +861,21 @@ export function teamSeasonBands(rows: unknown): SDVTeamSeasonBand[] {
 /**
  * The team-season distribution of every trend-chart metric, every season (sdv-db `team_summaries/percentiles`),
  * flattened to the five ladder points so only those reach the client. One read per league (~1.2 MB cfb), keyed by
- * team_summaries' ingest stamp so it moves when that table re-ingests. A 404 (no season with enough teams) or a
- * failed read is no bands: `[]`.
+ * team_summaries' ingest stamp so it moves when that table re-ingests. A 404 (no season with enough teams), a
+ * failed read or a throw (no token, KV down) is no bands: `[]`.
  */
 export async function retrieveTeamSeasonPercentiles(league: League = 'cfb'): Promise<SDVTeamSeasonBand[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     const stamp = await sdvIngestStamp(league, 'team_summaries');
     const pin = stamp ? { version: stamp, held: true, table: 'team_summaries' } : undefined;
-    const content = await requestSDV('team_summaries/percentiles', undefined, undefined, 60 * 60 * 24 * 7, true, leagueSource(league), false, undefined, pin);
-    return teamSeasonBands(content?.data);
+    try {
+        // requestSDV throws before its own catch on a missing token or a failed KV read: no bands, like the ladder reads
+        const content = await requestSDV('team_summaries/percentiles', undefined, undefined, 60 * 60 * 24 * 7, true, leagueSource(league), false, undefined, pin);
+        return teamSeasonBands(content?.data);
+    } catch (err) {
+        console.error(`could not load team season percentiles for ${league}: ${err}`);
+        return [];
+    }
 }
 
 /**
