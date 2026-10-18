@@ -396,3 +396,15 @@ needs a new id and a new snapshot in its own PR.
     linescores, records, and every player field except the identity strings `name`, `short_name` and `jersey`, which are not
     compared (ESPN renamed 401736325's 3054590 Nia Coffey to Nia Brodie; the live 2005 box has no jerseys where the release does).
   - **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 3 Steps 1-3.
+- `wnba/espn_page_401736287.json` and `wnba/pregame_401918306.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/wnba/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, User-Agent: `resources/espn.ts`
+  `requestESPN`'s Safari UA; a Chrome UA gets an AWS WAF challenge, 202 with an empty body), trimmed to
+  `{ gameId, gamepackageJSON: { header } }` (the only keys the route and the pregame page read). 401736287 is the final of Task 3's
+  pair, captured 2026-10-18T23:43Z. 401918306 (WNBA Finals Game 2, Atlanta Dream at Golden State Valkyries, home GS, tip
+  2026-10-20T00:00Z) was captured 2026-10-18T22:12Z while `STATUS_SCHEDULED` and staged in ClaudeCowork
+  `plans/2026-10-11-bball-fixtures-staging/wnba_pregame_401918306.json` (commit `fcfc0971`); the plan's 401918305 went final on
+  2026-10-17 before its summary was staged, so this is the plan's own fallback. `wnba/pregame_401918306_summary.json` is
+  `{ pickcenter }` (one provider) of `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=401918306`, captured at
+  the same time and staged beside it (`wnba_pregame_401918306_summary.json`, same commit). **Used by:** `test/wnba/gameRoute.test.ts`,
+  `test/wnba/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 4 Step 1 (a pregame page can only be
+  taken before tip-off; never flip a final's status, D15).
