@@ -37,7 +37,8 @@ export default async (page, base) => {
   // a random pair can be one the season has no values for: then the chart is one line of text, not a canvas
   const empty = page.locator('#chart_container > p');
   if (await empty.count()) {
-    if (!/^No data for .+ in 2025\.$/.test(await empty.innerText())) throw new Error(`unexpected empty state: ${await empty.innerText()}`);
+    // the note is the ChartNoteError message: "No data for X vs Y in 2025." plus the contact line
+    if (!/^No data for .+ in 2025\./.test(await empty.innerText())) throw new Error(`unexpected empty state: ${await empty.innerText()}`);
   } else if ((await chart()).equals(before)) throw new Error('the chart did not redraw');
   const head = await page.locator('#points_table thead').innerText();
   if (!titles.every((t) => head.includes(t))) throw new Error(`the table is not titled ${titles.join(' / ')}: ${head}`);
