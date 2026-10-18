@@ -21,12 +21,13 @@ import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
+import NeighborRanks from "../../components/leaderboards/NeighborRanks.astro";
 import { resumeRows } from "../../utils/resume";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -113,6 +114,13 @@ const breadcrumbs: PageBreadcrumb[] = [
         <div class="container mb-3">
             <FiveFactorsTable summary={teamSummaries[0]} />
         </div>
+    )}
+    {neighborLists.length > 0 && (
+    <div class="container mb-3">
+        <GenericPanel id="nearby-ranks" title="Nearby Ranks" show={true}>
+            <NeighborRanks slot="panel-body" lists={neighborLists} kind="team" />
+        </GenericPanel>
+    </div>
     )}
     {recordRows.length > 0 && (
         <div class="container mb-3">

@@ -90,6 +90,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // GameHeader. Off: every head is exactly today's and ?spoilers=off is ignored.
     // The card endpoint itself is not gated (routes/shareCard.ts).
     'share-card': 'preview',
+    // Nearby-rank lists on the team-season and player pages: for each key
+    // metric, the teams or players ranked within five places, the page's own
+    // row marked. Promote once both leagues' lists have been reviewed.
+    'rank-neighbors': 'preview',
     // The Situational Splits panel on the season team page (/year/N/team/<id> and
     // the /nfl twin): the team's team_tendencies row by down, field, score and
     // game context, for offense or defense, ranked against the season's other
