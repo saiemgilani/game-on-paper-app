@@ -46,7 +46,7 @@ export interface LeagueConfig {
     postseasonWeeks: number;
     /** a.espncdn.com/i/teamlogos/<logoLeague>/500/<team id>.png */
     logoLeague: 'ncaa' | 'nfl' | 'nba';
-    /** teams ranked in a season table; the rank colour ramp scales to it */
+    /** teams ranked in a season table, when the season's own count (`teamCountOf`) is unknown */
     teamCount: number;
     /** the population the season tables describe, for copy ("FBS vs FBS games only") */
     pool: string;
@@ -93,6 +93,17 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         logoLeague: 'nba', teamCount: 30, pool: 'NBA', extraTeamCategories: [],
     },
 };
+
+/**
+ * The n a season row's `_rank`s are out of: the season's own team count
+ * (`team_count`, once the producer publishes it on the row), else the league default.
+ * FBS has been 128 to 138 teams; a fixed 134 put ranks 135-138 below zero and
+ * read the worst 2014 team as the 4th percentile (audit C3).
+ */
+export function teamCountOf(row: { team_count?: unknown } | null | undefined, league?: League): number {
+    const n = Number(row?.team_count);
+    return Number.isFinite(n) && n > 0 ? n : LEAGUES[league ?? DEFAULT_LEAGUE].teamCount;
+}
 
 /** A Data API schema to read from, when it is not the league's own (`nba` games vs `nba_stats` shooting). */
 export interface SdvSource { apiBase: string; schema: string; /** cache-key prefix; '' keeps cfb's historical keys */ namespace: string }
