@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getSecret } from 'astro:env/server';
 import { env } from 'cloudflare:workers';
 import { isFeatureEnabled } from '../../utils/features';
-import { safeCachePut } from '../../utils/misc';
+import { jsonResponse, safeCachePut } from '../../utils/misc';
 import { rankHits, searchQuery, type SearchRow } from '../../utils/search';
 import { wrappedFetch } from '../../utils/telemetry';
 
@@ -26,9 +26,9 @@ export const GET: APIRoute = async ({ url, locals }) => {
     const q = searchQuery(url.searchParams.get('q'));
     const league = url.searchParams.get('league') ?? 'cfb';
     const nfl = isFeatureEnabled('nfl', locals);
-    if (!q || (league !== 'cfb' && league !== 'nfl') || (league === 'nfl' && !nfl)) return json([]);
+    if (!q || (league !== 'cfb' && league !== 'nfl') || (league === 'nfl' && !nfl)) return jsonResponse([], NO_STORE);
     const rows = await upstream(q, league);
-    return json(rankHits(rows, { players: isFeatureEnabled('player-pages', locals), nfl }));
+    return jsonResponse(rankHits(rows, { players: isFeatureEnabled('player-pages', locals), nfl }), NO_STORE);
 };
 
 async function upstream(q: string, league: string): Promise<SearchRow[]> {
@@ -50,8 +50,4 @@ async function upstream(q: string, league: string): Promise<SearchRow[]> {
         console.warn(`site search: upstream failed for ${league}: ${e}`);
         return [];
     }
-}
-
-function json(body: unknown): Response {
-    return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json', ...NO_STORE } });
 }

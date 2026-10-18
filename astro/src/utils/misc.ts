@@ -1092,3 +1092,8 @@ export function countRegexMatches(str: string, pattern: RegExp): number {
     }
     return (str.match(pattern) || []).length
 }
+
+/** A JSON body as a Response: `Content-Type: application/json` plus whatever headers the caller adds. */
+export function jsonResponse(body: unknown, headers: Record<string, string> = {}, status = 200): Response {
+    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
+}
