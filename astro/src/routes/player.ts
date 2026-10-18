@@ -13,7 +13,7 @@ import { leaguePath, type League } from '../utils/league';
 import { isEspnAthleteId, isGsisId, type PlayerGameRow, type SeasonRow } from '../utils/players';
 import {
     resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
-    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrieveTeamSummaries,
+    retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrievePlayerSplitPercentiles, retrieveTeamSummaries,
     type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
 } from '../resources/sdv';
 
@@ -26,6 +26,8 @@ export interface PlayerSections {
     espnGameIds: Record<string, string>;
     /** the league-season distribution the game log's second shading reads */
     leagueBreaks: Record<string, number[]>;
+    /** split -> metric -> the league-season distribution the splits table shades against */
+    splitBreaks: Record<string, Record<string, number[]>>;
     /** the season's team_summaries rows, for the Team Context panel */
     teamRows: SDVTeamSummary[];
     /** which panels have to say "unavailable" instead of "nothing to show" */
@@ -187,6 +189,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         season === null ? Promise.resolve({}) : retrievePlayerGamePercentiles(season, league),
         // one cached call for the whole season, filtered to his team(s) by the page
         season === null ? Promise.resolve([]) : retrieveTeamSummaries({ season, league, columns: TEAM_CONTEXT_METRICS }),
+        season === null ? Promise.resolve({}) : retrievePlayerSplitPercentiles(season, league),
     ]);
     const value = (i: number, empty: any): any => {
         const r = reads[i];
@@ -197,7 +200,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
     return {
         sections: {
             seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
-            espnGameIds: value(3, {}), leagueBreaks: value(4, {}), teamRows: value(5, []),
+            espnGameIds: value(3, {}), leagueBreaks: value(4, {}), teamRows: value(5, []), splitBreaks: value(6, {}),
             failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
         },
         degraded: reads.some((r) => r.status === 'rejected'),

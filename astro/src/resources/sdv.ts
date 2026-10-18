@@ -1437,6 +1437,29 @@ export async function retrievePlayerGamePercentiles(season: number, league: Leag
     return out;
 }
 
+/** The split-percentile population's floor: a player-season needs this many plays in a split to be in it. */
+export const SPLIT_PERCENTILE_MIN_PLAYS = 10;
+
+/**
+ * Percentile breakpoints for the Situational Splits metrics over EVERY player-season
+ * in a league-season with at least `SPLIT_PERCENTILE_MIN_PLAYS` plays in the split
+ * (sdv-db `players/splits/percentiles`): split -> metric -> 101 breaks, 0th..100th.
+ *
+ * A split with too few qualifying player-seasons is left out by the route (overtime
+ * usually is), and a season with none at all is a 404 -> {}: no league distribution,
+ * the same as `retrievePlayerGamePercentiles`.
+ */
+export async function retrievePlayerSplitPercentiles(season: number, league: League = 'cfb'): Promise<Record<string, Record<string, number[]>>> {
+    const content = await requestPlayer(league, 'players/splits/percentiles',
+        { season: String(season), min_plays: String(SPLIT_PERCENTILE_MIN_PLAYS) }, 60 * 60 * 24);
+    const out: Record<string, Record<string, number[]>> = {};
+    for (const row of (content?.data ?? [])) {
+        if (!row?.split || !row?.metric || !Array.isArray(row?.breaks)) continue;
+        (out[String(row.split)] ??= {})[String(row.metric)] = row.breaks.map(Number);
+    }
+    return out;
+}
+
 export async function retrievePlayerSplits(espnId: string, season: number, league: League = 'cfb'): Promise<SDVPlayerSplit[]> {
     const content = await requestPlayer(league, `players/${espnId}/splits`, { season: String(season) }, 60 * 60 * 6);
     return content?.data ?? [];

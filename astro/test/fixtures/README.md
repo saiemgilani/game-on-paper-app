@@ -345,3 +345,16 @@ written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cel
 and caption).
 
 **To regenerate:** repeat the two requests with the current `teamSplitColumns`.
+
+## `player-splits-percentiles-cfb-2025.json`
+The body sdv-db's `GET /v1/cfb/players/splits/percentiles?season=2025` returns
+(sdv-db #170): the envelope `{league, season, min_plays, count, data}` and, per row,
+`{split, metric, players, breaks[101]}`.
+
+**Provenance (2026-10-18):** fetched from the live Data API
+(`https://data.sportsdataverse.org`) with the read key. Trimmed to three of the 24
+rows (`all/epa_per_play`, `all/success_rate`, `red_zone/epa_per_play`) and `count`
+set to 3; the rows themselves are untouched.
+
+**Used by:** `test/playerSplitPercentiles.test.ts` (the request and the
+split -> metric -> breaks mapping in `retrievePlayerSplitPercentiles`).
