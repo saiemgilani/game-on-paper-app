@@ -16,6 +16,8 @@ const plain = (h: string) => h.replace(/<[^>]+>/g, '');
 const ISLAND = /<astro-island(?:\s+[\w-]+(?:="[^"]*")?)*\s*>/g;
 const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(ISLAND, '');
 // every header cell, inner tags stripped: the first is the visually-hidden "Team"
+const summaries = (h: string) => [...h.matchAll(/<summary[^>]*>([\s\S]*?)<\/summary>/g)].map((m) => plain(m[1]).trim());
+const buttons = (h: string) => [...h.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map((m) => plain(m[1]).trim()).filter((t) => t && t !== 'WNBA');
 const linescoreHeads = (h: string) => [...(h.match(/aria-label="Linescore">[\s\S]*?<\/thead>/)?.[0] ?? '').matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => plain(m[1]));
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
@@ -40,9 +42,10 @@ describe('/wnba/game/[id] render (real captures)', () => {
         common(html);
         expect(plain(html)).toContain('New York 66 @ Detroit 68');
         expect(linescoreHeads(html).slice(1)).toEqual(['1', '2', 'OT', 'T']);
-        for (const g of ['1st Half', '2nd Half', 'Overtime']) expect(plain(html)).toContain(g);
+        // the play groups' own <summary> labels and the shot chart's own buttons, not any text that mentions a half
+        expect(summaries(html)).toEqual(['1st Half', '2nd Half', 'Overtime']);
         expect(plain(html)).not.toMatch(/(1st|2nd|3rd|4th) Quarter/);
-        expect(html).toMatch(/>H1</); expect(html).toMatch(/>H2</); expect(html).not.toMatch(/>Q1</);
+        expect(buttons(html)).toEqual(['All', 'H1', 'H2', 'OT', 'All', 'H1', 'H2', 'OT']);
         expect(html).toContain('href="/wnba/scoreboard?date=2005-06-03"');
         expect(html).toContain('overtime included');
         expect(html.match(/home-court advantage/g)).toHaveLength(1);
@@ -52,7 +55,7 @@ describe('/wnba/game/[id] render (real captures)', () => {
         const html = await render('401736289');
         common(html);
         expect(linescoreHeads(html).slice(1)).toEqual(['1', '2', '3', '4', 'OT', '2OT', 'T']);
-        for (const g of ['4th Quarter', 'Overtime', '2nd Overtime']) expect(plain(html)).toContain(g);
+        expect(summaries(html)).toEqual(['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter', 'Overtime', '2nd Overtime']);
         expect(html).toContain('href="/wnba/scoreboard?date=2025-08-01"'); // a 10 pm ET tip on Aug 1
     });
     test('401736325 from the Data API: "Neutral site, no line", never home-court (D13, Review Focus 3)', async () => {
