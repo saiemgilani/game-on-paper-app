@@ -3,8 +3,9 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, seasonGamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
+    formatHeight, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
+import { SDV_PLAYER_METRIC_CATEGORIES } from '../src/utils/constants';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
 
 // The arithmetic the player pages do over the Data API's player-keyed reads,
@@ -306,5 +307,29 @@ describe('the bio line', () => {
         expect(formatHeight(null)).toBeNull();
         expect(formatHeight(0)).toBeNull();
         expect(formatHeight('tall')).toBeNull();
+    });
+});
+
+describe('the player board sorts from the dropdown config (one list, so they cannot drift)', () => {
+    test('every metric in the dropdown: a counting one by value, every other by its _rank', () => {
+        for (const [category, metrics] of Object.entries(SDV_PLAYER_METRIC_CATEGORIES)) {
+            for (const [metric, m] of Object.entries(metrics)) {
+                expect(playerBoardSort(category, metric), `${category}.${metric}`).toEqual(
+                    m.counting ? { sortBy: metric, ranked: false } : { sortBy: `${metric}_rank`, ranked: true });
+            }
+        }
+    });
+    test('the four counting stats the board always sorted by value still do, and only they', () => {
+        const counting = Object.entries(SDV_PLAYER_METRIC_CATEGORIES)
+            .flatMap(([c, ms]) => Object.entries(ms).filter(([, m]) => m.counting).map(([k]) => `${c}.${k}`));
+        expect(counting.sort()).toEqual(['passing.dropbacks', 'receiving.comp', 'receiving.targets', 'rushing.plays']);
+        expect(playerBoardSort('passing', 'dropbacks')).toEqual({ sortBy: 'dropbacks', ranked: false });
+        expect(playerBoardSort('rushing', 'plays')).toEqual({ sortBy: 'plays', ranked: false });
+        expect(playerBoardSort('receiving', 'comp')).toEqual({ sortBy: 'comp', ranked: false });
+        expect(playerBoardSort('receiving', 'targets')).toEqual({ sortBy: 'targets', ranked: false });
+        expect(playerBoardSort('passing', 'EPAplay')).toEqual({ sortBy: 'EPAplay_rank', ranked: true });
+    });
+    test('a metric the config does not know sorts by rank, as before', () => {
+        expect(playerBoardSort('passing', 'nonsense')).toEqual({ sortBy: 'nonsense_rank', ranked: true });
     });
 });

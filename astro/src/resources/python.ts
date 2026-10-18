@@ -845,6 +845,8 @@ export interface ProcessedDefensiveBoxScore {
 
 export interface ProcessedDriveBoxScore {
   avg_field_position: number
+  /** EP of the average drive start on the league's field-position curve; null when the team had no drive in the window */
+  avg_start_ep?: number | null
   drive_total_available_yards: number
   drive_total_gained_yards: number
   drive_total_gained_yards_rate: number
@@ -1068,6 +1070,8 @@ export interface ProcessedTeamBoxScore {
   total_pen_yards: number
   total_yards: number
   yards_per_pass: number
+  /** sack-inclusive, (pass_yards + sack_yards) / passes; absent from a game processed before sportsdataverse emitted it */
+  yards_per_dropback?: number
   yards_per_play: number
   yards_per_rush: number
 }
