@@ -169,7 +169,7 @@ def test_margins_are_the_fitted_inputs_only(monkeypatch):
     f = _frame().with_columns(pl.Series("period", [1, 1, 2, 2, 1, 1, 2, 2]))
     out = paper_index.compute(f, 10, 20, league="nfl")
     assert set(out["margins"]) == _fitted("nfl")
-    assert set(out["impact"]) == _fitted("nfl")
+    assert set(out["impact"]) == set(out["importance"]) == _fitted("nfl")
     for w in out["byPeriod"].values():
         assert set(w["margins"]) == set(w["impact"]) == _fitted("nfl")
 
@@ -203,6 +203,18 @@ def test_impact_is_what_each_margin_alone_moved(league):
             zeroed = paper_index.share_from_inputs(even, g["away"], league)
             assert zeroed["margins"][k] == 0
             assert abs(v - 100 * (out["homeShare"] - zeroed["homeShare"])) < 1e-9
+
+
+def test_importance_covers_every_weight_and_ships_with_the_index():
+    """IMPORTANCE is the table's row order: one positive number per weighted
+    margin, served as-is on the fitted margins only."""
+    for league in LEAGUES:
+        assert set(paper_index.IMPORTANCE[league]) == set(paper_index.WEIGHTS[league])
+        assert all(v > 0 for v in paper_index.IMPORTANCE[league].values())
+        out = paper_index.compute(_frame(), 10, 20, league)
+        assert out["importance"] == {
+            k: paper_index.IMPORTANCE[league][k] for k in _fitted(league)
+        }
 
 
 def test_impact_of_an_even_game_is_zero():

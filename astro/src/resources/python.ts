@@ -1107,6 +1107,8 @@ export interface ProcessedGame {
         margins: Record<string, number>
         /** per margin, the percentage points it alone moved homeShare; same keys as margins */
         impact?: Record<string, number>
+        /** per margin, its importance in the model (weight x spread); the table's row order */
+        importance?: Record<string, number>
         teams: Record<string, Record<string, number>>
         byPeriod: Record<string, { homeShare: number; margins: Record<string, number>; impact?: Record<string, number> }>
     }

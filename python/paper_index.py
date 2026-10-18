@@ -105,6 +105,36 @@ WEIGHTS = {
     },
 }
 
+# Each margin's importance in the model: its weight times the standard
+# deviation of that margin over the league's train games (log-odds per SD),
+# so margins on different scales compare. The game page sorts the margins
+# table by it, the same order every game. Measured 2026-10-18 for the
+# WEIGHTS above on the trainer's current train panel (cfb 6,648 games, nfl
+# 1,615); tools/fit_paper_index.py records it as provenance["importance"]
+# and prints it on every refit, so paste it alongside the weights.
+IMPORTANCE = {
+    "cfb": {
+        "success": 2.8484,
+        "explosive": 0.1217,
+        "explosive_epa": 1.1618,
+        "opp_conversion": 1.1390,
+        "pts_per_opp": 0.4604,
+        "field_position": 1.4995,
+        "havoc": 0.4481,
+        "turnovers": 1.0590,
+    },
+    "nfl": {
+        "success": 0.7734,
+        "explosive": 0.0524,
+        "explosive_epa": 0.4561,
+        "opp_conversion": 0.6040,
+        "pts_per_opp": 0.6887,
+        "field_position": 0.8294,
+        "havoc": 0.4280,
+        "turnovers": 0.8587,
+    },
+}
+
 # A league without its own fit gets no index rather than another league's
 # weights wearing its name.
 FITTED_LEAGUES = frozenset(WEIGHTS)
@@ -302,6 +332,7 @@ def compute(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict 
     if home is None or away is None:
         return None
     out = share_from_inputs(home, away, league)
+    out["importance"] = {k: IMPORTANCE[league][k] for k in out["margins"]}
     out["teams"] = {str(home_id): home, str(away_id): away}
     try:
         out["byPeriod"] = by_period(frame, home_id, away_id, league)
