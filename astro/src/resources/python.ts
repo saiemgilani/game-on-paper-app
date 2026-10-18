@@ -1070,6 +1070,8 @@ export interface ProcessedTeamBoxScore {
   total_pen_yards: number
   total_yards: number
   yards_per_pass: number
+  /** sack-inclusive, (pass_yards + sack_yards) / passes; absent from a game processed before sportsdataverse emitted it */
+  yards_per_dropback?: number
   yards_per_play: number
   yards_per_rush: number
 }
