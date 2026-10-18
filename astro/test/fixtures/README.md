@@ -313,3 +313,21 @@ needs a new id and a new snapshot in its own PR.
   5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
   Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
   `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.
+- `wnba/game_<id>_processor.json` and `wnba/game_<id>_api.json` for 401736287 (Golden State at Chicago, 2025-08-01, 73-66, four quarters),
+  401736289 (Los Angeles at Seattle, 2025-08-01, 108-106, double overtime), 250603003 (New York at Detroit, 2005-06-03, 66-68, two halves
+  and one overtime) and 401736325 (Seattle vs Atlanta at Rogers Arena, Vancouver, 2025-08-15, 80-78, neutral site). Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /wnba/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="wnba")` at the
+    `python/uv.lock` commit `b4229f1c`). No pickcenter on any of the four, so the prior is `hfa`, or `neutral` (0.5) for 401736325.
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns from a LOCAL sdv-db Data API over a local warehouse loaded from the
+    wehoop-wnba-data release parquet (commit `f0856757`, which carries wehoop-wnba-data #33 `aba90e67`: the 2002-2022 schedules
+    republished with `*_records` / `*_linescores` filled from each game's final; every other input file is byte-identical to
+    `82e2d218`), `play_wp` and `game_*_rates` built by the sdv-db WNBA game-page build (`6391dda`) scoring with sdv-py `cd6f7f25`
+    (the same game-page code as the lock's `b4229f1c`). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/wnba/game.test.ts`): `RELEASE_SCORE_ROWS` (rows where the published running score has not been
+    rebuilt yet; spec D7) is empty: none remained at capture, 401736325's rows 126-127 included. `RELEASE_SOURCE_FACTS` names the
+    release-vs-live source facts of 250603003, read from ESPN's raw 2005 final: its boxscore carries 19 team stats and neither
+    `fast_break_points` nor `points_in_paint` (null in the release, reported by the live box), and Erin Thorn (510) is `active: false`
+    with every stat `--` (release `points` null; the live box now prints 0). The Data API side is asserted null on exactly those
+    fields and equal to the processor everywhere else.
+  - **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 3 Steps 1-3.

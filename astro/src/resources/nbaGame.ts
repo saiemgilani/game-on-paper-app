@@ -56,7 +56,7 @@ export interface NbaGame {
     periodKind: PeriodKind
     /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
     /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
-    prior: { homeWinProb: number; source: 'spread' | 'hfa'; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
+    prior: { homeWinProb: number; source: PriorSource; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
     home: NbaSide
     away: NbaSide
     plays: NbaPlay[]
@@ -71,12 +71,18 @@ export interface NbaProcessorPayload {
     venue?: string | null
     teamInfo: { home: Record<string, any>; away: Record<string, any> }
     status: { name: string; completed: boolean; period: number | null; display_clock: string | null; detail: string | null }
-    prior: { home_win_prob: number; source: 'spread' | 'hfa'; home_team_spread: number | null; game_spread_available: boolean }
+    prior: { home_win_prob: number; source: PriorSource; home_team_spread: number | null; game_spread_available: boolean }
     periods: number
     regulation_periods?: number | null
     teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
+}
+
+/** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
+export type PriorSource = 'spread' | 'hfa' | 'neutral';
+export function priorSource(v: unknown): PriorSource {
+    return v === 'spread' || v === 'neutral' ? v : 'hfa';
 }
 
 /** The seven Data API reads for one game (resources/nbaGames.ts). */
@@ -180,7 +186,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague =
         id: String(j.gameId), source: 'processor',
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
-        prior: { homeWinProb: j.prior.home_win_prob, source: j.prior.source, homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
+        prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
     }
 }
@@ -208,7 +214,7 @@ export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'n
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
         date: s.date, venue: s.venue_full_name ?? null, periods, season: num(s.season), regulation: reg.periods, periodKind: reg.kind,
-        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
+        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: priorSource(wp0.prior_source), homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
         home: side('home'), away: side('away'), plays, hasOvertime: periods > reg.periods,
     }
 }
