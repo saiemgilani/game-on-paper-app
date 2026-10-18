@@ -297,3 +297,34 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+
+## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
+The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
+bodies, no `select`: one row each (Alabama, Kansas City) with every column the
+table serves (598 CFB, 578 NFL; the NFL has no `*_vs_ranked`).
+
+**Provenance (2026-10-08):** captured from the live API after the IF-1 republish
+(splits carry `epa_*` / `successes_*` and their rates; the d3 buckets, red zone,
+own/opp half, one score and the `ctx_*` game-context splits). No edits.
+
+**Used by:** `test/teamSplits.test.ts` (every `teamSplitColumns` select column
+exists; the defense perspective swaps) and `test/teamSplits.render.test.ts` (the
+Situational Splits panel on `/year/2025/team/333` and `/nfl/year/2025/team/12`).
+
+**To regenerate:** repeat the two requests for 2025.
+
+## `team-tendencies-cfb-2025.json.gz` / `team-tendencies-nfl-2025.json.gz`
+The whole 2025 season of the same table, as the season team page reads it for
+the Situational Splits ranks: `GET /v1/{cfb|nfl}/team_tendencies?season=2025&limit=400`
+with `select=` the route's keys (`season,pos_team_id,pos_team,games,plays,drives`)
+plus `teamSplitColumns(league)`. 236 CFB rows (138 with 300+ plays; every other
+row is an FCS team with 3 or fewer FBS games) and 32 NFL rows; gzipped, no edits.
+
+**Provenance (2026-10-12):** captured from the live API; Alabama's and Kansas
+City's rows match `team-tendencies-{cfb-333,nfl-12}-2025.json` on every shared column.
+
+**Used by:** `test/teamSplits.test.ts` (the ranks against every qualifying team,
+written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cells
+and caption).
+
+**To regenerate:** repeat the two requests with the current `teamSplitColumns`.
