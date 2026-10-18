@@ -85,6 +85,7 @@ export function darkLogoCss(
         const id = String(t?.id ?? ''), ab = String(t?.abbreviation ?? '').toLowerCase();
         if (!/^\d+$/.test(id)) continue;
         if (strategy.kind === 'id') seen.set(id, id);
+        else if (strategy.kind === 'idKeyed') { const k = strategy.abbrById[id]; if (k) seen.set(id, k); }
         else if (strategy.abbrs.has(ab)) seen.set(id, ab);
     }
     return [...seen].map(([id, key]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${strategy.logoLeague}/500-dark/${key}.png&h=120&w=120')}`).join('');

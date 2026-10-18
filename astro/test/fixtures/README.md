@@ -299,3 +299,17 @@ D15: real fixtures only).
 
 **To regenerate:** do not; the snapshot pins this exact page. A new capture
 needs a new id and a new snapshot in its own PR.
+
+## `wnba/`
+
+- `wnba/sdv_db_wnba_courts.json`: `{ courts }` = sdv-db's WNBA court eras (`sdv_db.nba_shot_dashboards.WNBA_COURTS`, plan #3 Task 5, which
+  cites the WNBA restricted-area adoption season: `WNBA_RESTRICTED_FROM = 2013`, `WNBA_RESTRICTED_RADIUS = 40`), printed in GOP's `Court`
+  key names by `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 0 from sdv-db `6391dda` (branch `feat/bball-derived-builds`; the court
+  definitions are identical on sdv-db `origin/main` `fd9b268`, `nba_shot_dashboards.py:144-148`), captured 2026-10-18. First era 0 is
+  written as 1997. **Used by:** `test/wnba/config.test.ts` (GOP's `BASKETBALL.wnba.courts` must equal it era for era) and plan #6's
+  `test/wnba/courts.test.ts`. **To regenerate:** the same command after a plan #3 court change; GOP's eras must follow in the same PR.
+- `wnba/team_crosswalk_2002_2026.json`: the distinct (ESPN team id, ESPN name, stats.wnba.com team id, stats tricode) rows of
+  wehoop-wnba-data `wnba/crosswalk/parquet/wnba_team_crosswalk_{2002..2026}.parquet` (commit 62b7ca5a; the table is unchanged from
+  5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
+  Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
+  `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.

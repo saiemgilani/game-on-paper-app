@@ -1,5 +1,5 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
-import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
+import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
  * The site renders one league per request. The NFL and the NBA live at explicit pages
@@ -11,7 +11,7 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  */
 /** The basketball leagues, in the order their prefixes are tried. Adding a league starts here: the compiler then
  *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
-export const BASKETBALL_LEAGUES = ['nba'] as const;
+export const BASKETBALL_LEAGUES = ['nba', 'wnba'] as const;
 export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
 export type League = 'cfb' | 'nfl' | BasketballLeague;
 export type Sport = 'football' | 'basketball';
@@ -96,6 +96,19 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         regularSeasonWeeks: 0, postseasonWeeks: 0,
         logoLeague: 'nba', teamCount: 30, pool: 'NBA', extraTeamCategories: [],
     },
+    wnba: {
+        slug: 'wnba', sport: 'basketball', name: 'WNBA', shortName: 'WNBA', urlPrefix: '/wnba',
+        espnPath: 'wnba', espnCoreLeague: 'wnba',
+        scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:wnba',
+        // stats.wnba.com-keyed tables (shots, player_game_logs, shot_* derived: plan #6); the ESPN-keyed wnba.* game
+        // tables are BASKETBALL.wnba.gamesSource
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/wnba_stats', sdvSchema: 'wnba_stats', sdvEnabled: true,
+        scheduleTable: 'schedule',
+        // a WNBA season is its calendar year
+        get seasons() { return range(WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON); },
+        regularSeasonWeeks: 0, postseasonWeeks: 0,
+        logoLeague: 'wnba', teamCount: 15, pool: 'WNBA', extraTeamCategories: [],
+    },
 };
 
 /** A league rendered by the basketball pages (routes/basketball, components/nba). */
@@ -126,14 +139,24 @@ export const NFL_LOGO_ABBR: Record<string, string> = {
     '25': 'sf', '26': 'sea', '27': 'tb', '28': 'wsh', '29': 'car', '30': 'jax', '33': 'bal', '34': 'hou',
 };
 
+// ESPN serves WNBA logos only under the abbreviation: `wnba/500-dark/<id>.png` is a 404 for all 15 teams and `wnba/500/<id>.png`
+// for Golden State (129689), Toronto (131935) and Portland (132052). ESPN team id -> abbreviation, all 15 verified 2026-10-12
+// (re-probed 2026-10-18) against both 500 and 500-dark. A defunct franchise's id is not listed and keeps the id path.
+export const WNBA_LOGO_ABBR: Record<string, string> = {
+    '20': 'atl', '19': 'chi', '18': 'con', '3': 'dal', '129689': 'gs', '5': 'ind', '17': 'lv', '6': 'la',
+    '8': 'min', '9': 'ny', '11': 'phx', '132052': 'por', '14': 'sea', '131935': 'tor', '16': 'wsh',
+};
+
 /**
  * ESPN logo URL for a team, light or dark. Dark NFL logos go through the abbreviation
  * path; an NFL id missing from the map falls back to the light logo rather than a 404.
+ * A current WNBA team's light and dark logos both go through its abbreviation (WNBA_LOGO_ABBR).
  */
 export function teamLogoUrl(league: League | undefined, teamId: string | number, dark: boolean): string {
     const logoLeague = espnLogoLeague(league);
     const id = String(teamId);
     const light = `https://a.espncdn.com/i/teamlogos/${logoLeague}/500/${id}.png`;
+    if (logoLeague === 'wnba' && WNBA_LOGO_ABBR[id]) return `https://a.espncdn.com/i/teamlogos/wnba/${dark ? '500-dark' : '500'}/${WNBA_LOGO_ABBR[id]}.png`;
     if (!dark) return light;
     if (logoLeague === 'nfl') {
         const abbr = NFL_LOGO_ABBR[id];

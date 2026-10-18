@@ -1,0 +1,226 @@
+[
+ {
+  "espn_team_id": 1,
+  "espn_display_name": "Charlotte Sting",
+  "wnba_team_id": "1611661314",
+  "wnba_team_tricode": "CHA",
+  "first": 2002,
+  "last": 2006
+ },
+ {
+  "espn_team_id": 2,
+  "espn_display_name": "Cleveland Rockers",
+  "wnba_team_id": "1611661315",
+  "wnba_team_tricode": "CLE",
+  "first": 2002,
+  "last": 2003
+ },
+ {
+  "espn_team_id": 3,
+  "espn_display_name": "Detroit Shock",
+  "wnba_team_id": "1611661321",
+  "wnba_team_tricode": "DET",
+  "first": 2002,
+  "last": 2009
+ },
+ {
+  "espn_team_id": 3,
+  "espn_display_name": "Tulsa Shock",
+  "wnba_team_id": "1611661321",
+  "wnba_team_tricode": "TUL",
+  "first": 2010,
+  "last": 2015
+ },
+ {
+  "espn_team_id": 3,
+  "espn_display_name": "Dallas Wings",
+  "wnba_team_id": "1611661321",
+  "wnba_team_tricode": "DAL",
+  "first": 2016,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 4,
+  "espn_display_name": "Houston Comets",
+  "wnba_team_id": "1611661316",
+  "wnba_team_tricode": "HOU",
+  "first": 2002,
+  "last": 2008
+ },
+ {
+  "espn_team_id": 5,
+  "espn_display_name": "Indiana Fever",
+  "wnba_team_id": "1611661325",
+  "wnba_team_tricode": "IND",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 6,
+  "espn_display_name": "Los Angeles Sparks",
+  "wnba_team_id": "1611661320",
+  "wnba_team_tricode": "LAS",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 7,
+  "espn_display_name": "Miami Sol",
+  "wnba_team_id": "1611661326",
+  "wnba_team_tricode": "MIA",
+  "first": 2002,
+  "last": 2002
+ },
+ {
+  "espn_team_id": 8,
+  "espn_display_name": "Minnesota Lynx",
+  "wnba_team_id": "1611661324",
+  "wnba_team_tricode": "MIN",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 9,
+  "espn_display_name": "New York Liberty",
+  "wnba_team_id": "1611661313",
+  "wnba_team_tricode": "NYL",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 10,
+  "espn_display_name": "Orlando Miracle",
+  "wnba_team_id": "1611661323",
+  "wnba_team_tricode": "ORL",
+  "first": 2002,
+  "last": 2002
+ },
+ {
+  "espn_team_id": 11,
+  "espn_display_name": "Phoenix Mercury",
+  "wnba_team_id": "1611661317",
+  "wnba_team_tricode": "PHO",
+  "first": 2002,
+  "last": 2024
+ },
+ {
+  "espn_team_id": 11,
+  "espn_display_name": "Phoenix Mercury",
+  "wnba_team_id": "1611661317",
+  "wnba_team_tricode": "PHX",
+  "first": 2025,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 12,
+  "espn_display_name": "Portland Fire",
+  "wnba_team_id": "1611661327",
+  "wnba_team_tricode": "POR",
+  "first": 2002,
+  "last": 2002
+ },
+ {
+  "espn_team_id": 13,
+  "espn_display_name": "Sacramento Monarchs",
+  "wnba_team_id": "1611661318",
+  "wnba_team_tricode": "SAC",
+  "first": 2002,
+  "last": 2009
+ },
+ {
+  "espn_team_id": 14,
+  "espn_display_name": "Seattle Storm",
+  "wnba_team_id": "1611661328",
+  "wnba_team_tricode": "SEA",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 15,
+  "espn_display_name": "Utah Starzz",
+  "wnba_team_id": "1611661319",
+  "wnba_team_tricode": "UTA",
+  "first": 2002,
+  "last": 2002
+ },
+ {
+  "espn_team_id": 16,
+  "espn_display_name": "Washington Mystics",
+  "wnba_team_id": "1611661322",
+  "wnba_team_tricode": "WAS",
+  "first": 2002,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 17,
+  "espn_display_name": "San Antonio Silver Stars",
+  "wnba_team_id": "1611661319",
+  "wnba_team_tricode": "SAN",
+  "first": 2003,
+  "last": 2013
+ },
+ {
+  "espn_team_id": 17,
+  "espn_display_name": "San Antonio Stars",
+  "wnba_team_id": "1611661319",
+  "wnba_team_tricode": "SAN",
+  "first": 2014,
+  "last": 2017
+ },
+ {
+  "espn_team_id": 17,
+  "espn_display_name": "Las Vegas Aces",
+  "wnba_team_id": "1611661319",
+  "wnba_team_tricode": "LVA",
+  "first": 2018,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 18,
+  "espn_display_name": "Connecticut Sun",
+  "wnba_team_id": "1611661323",
+  "wnba_team_tricode": "CON",
+  "first": 2003,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 19,
+  "espn_display_name": "Chicago Sky",
+  "wnba_team_id": "1611661329",
+  "wnba_team_tricode": "CHI",
+  "first": 2006,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 20,
+  "espn_display_name": "Atlanta Dream",
+  "wnba_team_id": "1611661330",
+  "wnba_team_tricode": "ATL",
+  "first": 2008,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 129689,
+  "espn_display_name": "Golden State Valkyries",
+  "wnba_team_id": "1611661331",
+  "wnba_team_tricode": "GSV",
+  "first": 2025,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 131935,
+  "espn_display_name": "Toronto Tempo",
+  "wnba_team_id": "1611661332",
+  "wnba_team_tricode": "TOR",
+  "first": 2026,
+  "last": 2026
+ },
+ {
+  "espn_team_id": 132052,
+  "espn_display_name": "Portland Fire",
+  "wnba_team_id": "1611661327",
+  "wnba_team_tricode": "PDX",
+  "first": 2026,
+  "last": 2026
+ }
+]

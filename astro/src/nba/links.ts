@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { BASKETBALL } from '../basketball/config';
+import { BASKETBALL, hasTeamPages } from '../basketball/config';
 import { leaguePath, type BasketballLeague } from '../utils/league';
 import { parseDateParam } from './scoreboard';
 
@@ -20,6 +20,7 @@ export function withParams(path: string, params: Record<string, string>, default
 
 /** /<league>/team/<team key> for an ESPN team object ({id}); null for a team the league's team module does not know. */
 export function teamHrefFromEspn(t: { id?: unknown } | null | undefined, league: BasketballLeague = 'nba'): string | null {
+    if (!hasTeamPages(league)) return null; // no team pages yet (the WNBA until plan #6): plain team names, never a 404 link
     const team = BASKETBALL[league].teams.byEspnId(Number(t?.id));
     return team ? teamHref(team.team_id, '', league) : null;
 }
