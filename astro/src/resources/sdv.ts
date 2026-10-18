@@ -1,11 +1,13 @@
 import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
-import { SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import type { ESPNGameHeader } from "./espn";
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
+import { formatRecord } from '../utils/resume';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -734,39 +736,58 @@ export async function retrieveQaSeason(season: number, league: League = 'cfb'): 
     }
 }
 
+/**
+ * The season whose percentile ladder a game is ranked against: its own, except
+ * early in a season that is still being played. That season's ladder is built
+ * from the games played so far, so before week `MIN_PERCENTILE_WEEK` it rests on
+ * a few weeks of games and its tails move week to week; those games (and
+ * preseason ones) rank against the previous season's full ladder, and the box
+ * caption names that season. A finished season is always its own: its ladder
+ * is complete, and the eras differ (havoc's pass-breakup coverage, EPA levels).
+ *
+ * The rule goes by week because the ladder carries no sample size: the
+ * endpoint answers 99 rows, one per `pctile`, and nothing about how many
+ * team-games built them. A count from the data side would make it exact.
+ * "Still being played" is ESPN's `season.current`; a header without it falls
+ * back to `CURRENT_YEAR`.
+ */
+export function percentileSeason(header: Pick<ESPNGameHeader, 'season' | 'week'>): number {
+    const { year, type, current } = header.season;
+    if (!(current ?? year >= CURRENT_YEAR)) return year;
+    const early = type == 1 || (type == 2 && header.week < MIN_PERCENTILE_WEEK);
+    return early ? year - 1 : year;
+}
+
 export async function retrievePercentiles(season?: number, percentile?: number, maxLookback = SDV_MAX_LOOKBACK_YEAR, league: League = 'cfb'): Promise<SDVSeasonPercentile[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     if (!season && !percentile) {
         console.error(`failed to retreive percentiles, must provide 'season' AND/OR 'pctile'`)
         return [];
     }
-    try {
-        const payload: Record<string, any> = {};
-        // not a supported param yet
-        if (season) {
-            payload["season"] = String(season)
-        }
-
-        if (percentile) {
-            payload["pctile"] = percentile
-        }
-   
-
-        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, leagueSource(league));
-        return content.data;
-    } catch (err) {
-        console.error(`could not find percentiles (${percentile}) for league in ${season}, checking ${(season || 0) - 1}`)
-        if (err) {
-            console.error(`also err: ${err}`);
-        }
-        if (!season) {
-            return [];
-        } else if ((season >= SDV_MAX_LOOKBACK_YEAR) && ((season - 1) < maxLookback)) {
-            return [];
-        } else {
-            return await retrievePercentiles(season - 1, percentile, maxLookback, league);
-        }
+    const payload: Record<string, any> = {};
+    if (season) {
+        payload["season"] = String(season)
     }
+    if (percentile) {
+        payload["pctile"] = percentile
+    }
+    let rows: SDVSeasonPercentile[];
+    try {
+        // strict: a service that did not answer throws here, so it is not mistaken
+        // for a season without a ladder (an earlier season would not answer either)
+        const content = await requestSDV("percentiles", new URLSearchParams(payload), undefined, 60 * 60 * 24 * 7, true, leagueSource(league), true);
+        rows = Array.isArray(content?.data) ? content.data : [];
+    } catch (err) {
+        console.error(`could not load percentiles (${percentile}) for ${league} in ${season}: ${err}`);
+        return [];
+    }
+    if (rows.length > 0 || !season || (season - 1) < maxLookback) {
+        return rows;
+    }
+    // no ladder published for this season yet (a new season before its first
+    // build): rank against the nearest earlier season that has one
+    console.warn(`no percentiles for ${league} in ${season}, checking ${season - 1}`);
+    return await retrievePercentiles(season - 1, percentile, maxLookback, league);
 }
 
 /**
@@ -1019,6 +1040,10 @@ export interface SDVGame {
     away_pregame_elo?: number
     away_postgame_elo?: number
 
+    // cfb only: the poll rank at kickoff, 1-25, null when unranked
+    home_rank?: number | null
+    away_rank?: number | null
+
     excitement_index?: number
     highlights?: string
     notes?: string
@@ -1128,8 +1153,10 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     const schedule = await retrieveTeamSchedule(season, teamId, league);
     let wins = 0;
     let losses = 0;
+    let ties = 0;
     let confWins = 0;
     let confLosses = 0;
+    let confTies = 0;
     for (const g of schedule) {
         if (!g.completed) {
             continue;
@@ -1145,6 +1172,12 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
             if (g.conference_game) {
                 confWins += 1;
             }
+        } else if (g.home_points != null && g.home_points === g.away_points) {
+            // an NFL tie is its own number, never a loss
+            ties += 1;
+            if (g.conference_game) {
+                confTies += 1;
+            }
         } else {
             losses += 1;
             if (g.conference_game) {
@@ -1156,8 +1189,8 @@ export async function retrieveTeamSeasonInformation(season: string | number, tea
     return {
         team,
         events: schedule,
-        record: `${wins}-${losses}`,
-        confRecord: (confLosses + confWins) > 0 ? `${confWins}-${confLosses}` : undefined
+        record: formatRecord({ wins, losses, ties }),
+        confRecord: (confLosses + confWins + confTies) > 0 ? formatRecord({ wins: confWins, losses: confLosses, ties: confTies }) : undefined
     }
 }
 
