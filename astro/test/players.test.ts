@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
-    percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, totalGameLog, unrankedSeasons, type SeasonRow,
+    GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, seasonGamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
+    formatHeight, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, type SeasonRow,
 } from '../src/utils/players';
+import { SDV_PLAYER_METRIC_CATEGORIES } from '../src/utils/constants';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
 
 // The arithmetic the player pages do over the Data API's player-keyed reads,
@@ -142,6 +143,53 @@ describe('formatting', () => {
         expect(percentileOf({ x_pct: -3 }, 'x')).toBe(0);
     });
 
+    test('within his position, the percentile is the producer\'s _pos_pct, else _pct', () => {
+        // Justice Haynes 2025: 93.7 among every rusher (QBs included), 99.5 among RBs
+        const row = { EPAplay_pct: 93.7, EPAplay_pos_pct: 99.5, yards_pct: 80 };
+        expect(percentileOf(row, 'EPAplay', true)).toBe(99.5);
+        expect(percentileOf(row, 'EPAplay')).toBe(93.7);
+        // no position percentile published: the all-qualifier one
+        expect(percentileOf(row, 'yards', true)).toBe(80);
+        expect(percentileOf({ x_pos_pct: 120 }, 'x', true)).toBe(100);
+        expect(percentileOf({}, 'x', true)).toBeNull();
+    });
+
+    test('a value tied across breakpoints reads the middle of its tie run, not the top', () => {
+        // success rate is lumpy: 20% of player-games at exactly 0, 14% at exactly 1.0
+        const sr = Array.from({ length: 101 }, (_, i) => (i <= 19 ? 0 : i >= 87 ? 1 : (i - 19) / 68));
+        expect(percentileFromBreaks(sr, 0)).toBe(10);     // was 19
+        expect(percentileFromBreaks(sr, 1)).toBe(94);     // was 100
+        // an untied value keeps the largest breakpoint at or below it
+        expect(percentileFromBreaks(sr, (50.5 - 19) / 68)).toBe(50);
+        expect(percentileFromBreaks(sr, -1)).toBe(0);
+        expect(percentileFromBreaks([0, 1, 2], 5)).toBe(2);
+        expect(percentileFromBreaks(sr, null)).toBeNull();
+        expect(percentileFromBreaks(undefined, 0.5)).toBeNull();
+    });
+
+    test("the cohort is the SEASON's roster group, else the identity's position", () => {
+        const rows = [{ category: 'rushing', season: 2023, position_group: 'QB' }, { category: 'receiving', season: 2024, position_group: 'WR' }] as any[];
+        expect(seasonGamePercentileGroup(rows, 2023, 'Wide Receiver')).toBe('QB');   // converted: his 2023 was a QB's
+        expect(seasonGamePercentileGroup(rows, 2024, 'QB')).toBe('WR');
+        expect(seasonGamePercentileGroup(rows, 2022, 'Wide Receiver')).toBe('WR');   // no row: the fallback
+        expect(seasonGamePercentileGroup([{ category: 'rushing', season: 2022, position_group: 'OL' }] as any[], 2022, 'QB')).toBeNull();   // a group with no cohort is not widened to his current one
+    });
+
+    test('a roster position maps to the game-percentile cohort, both spellings', () => {
+        // NFL and pre-2025 CFB rosters abbreviate; CFB 2025+ spells the position out
+        expect(gamePercentileGroup('QB')).toBe('QB');
+        expect(gamePercentileGroup('Quarterback')).toBe('QB');
+        expect(gamePercentileGroup('FB')).toBe('RB');
+        expect(gamePercentileGroup('Running Back')).toBe('RB');
+        expect(gamePercentileGroup('Wide Receiver')).toBe('WR');
+        expect(gamePercentileGroup('Tight End')).toBe('TE');
+        // no cohort: the all-player ladder
+        expect(gamePercentileGroup('Linebacker')).toBeNull();
+        expect(gamePercentileGroup('K')).toBeNull();
+        expect(gamePercentileGroup(null)).toBeNull();
+        expect(GAME_PERCENTILE_MIN_PLAYS).toBe(5);
+    });
+
     test('the stat line reads the league its box came from', () => {
         const cfbGame = cfb.games.data[0];
         expect(gameStatLine(cfbGame, 'cfb')).toBe('27/39, 354 yds, 4 TD, 1 INT; 5 car, -1 yds, 0 TD');
@@ -259,5 +307,29 @@ describe('the bio line', () => {
         expect(formatHeight(null)).toBeNull();
         expect(formatHeight(0)).toBeNull();
         expect(formatHeight('tall')).toBeNull();
+    });
+});
+
+describe('the player board sorts from the dropdown config (one list, so they cannot drift)', () => {
+    test('every metric in the dropdown: a counting one by value, every other by its _rank', () => {
+        for (const [category, metrics] of Object.entries(SDV_PLAYER_METRIC_CATEGORIES)) {
+            for (const [metric, m] of Object.entries(metrics)) {
+                expect(playerBoardSort(category, metric), `${category}.${metric}`).toEqual(
+                    m.counting ? { sortBy: metric, ranked: false } : { sortBy: `${metric}_rank`, ranked: true });
+            }
+        }
+    });
+    test('the four counting stats the board always sorted by value still do, and only they', () => {
+        const counting = Object.entries(SDV_PLAYER_METRIC_CATEGORIES)
+            .flatMap(([c, ms]) => Object.entries(ms).filter(([, m]) => m.counting).map(([k]) => `${c}.${k}`));
+        expect(counting.sort()).toEqual(['passing.dropbacks', 'receiving.comp', 'receiving.targets', 'rushing.plays']);
+        expect(playerBoardSort('passing', 'dropbacks')).toEqual({ sortBy: 'dropbacks', ranked: false });
+        expect(playerBoardSort('rushing', 'plays')).toEqual({ sortBy: 'plays', ranked: false });
+        expect(playerBoardSort('receiving', 'comp')).toEqual({ sortBy: 'comp', ranked: false });
+        expect(playerBoardSort('receiving', 'targets')).toEqual({ sortBy: 'targets', ranked: false });
+        expect(playerBoardSort('passing', 'EPAplay')).toEqual({ sortBy: 'EPAplay_rank', ranked: true });
+    });
+    test('a metric the config does not know sorts by rank, as before', () => {
+        expect(playerBoardSort('passing', 'nonsense')).toEqual({ sortBy: 'nonsense_rank', ranked: true });
     });
 });

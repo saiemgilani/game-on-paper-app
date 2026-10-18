@@ -49,8 +49,8 @@
                 {#each Object.entries(SDV_PLAYER_METRIC_CATEGORIES) as [c, metrics]}
 					{#if category == c}
                     <optgroup label={toTitleCase(c)}>
-                        {#each Object.entries(metrics) as [key, title]}
-                            <option value={key} selected={(metric == key)}>{title}</option>
+                        {#each Object.entries(metrics) as [key, m]}
+                            <option value={key} selected={(metric == key)}>{m.title}</option>
                         {/each}
                     </optgroup>
                     {/if}

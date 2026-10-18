@@ -11,7 +11,9 @@ import type { ChartBuilderData } from '../../routes/charts';
 // Route component: routes/charts.ts (per-league page) read the query, the
 // season table and set the cache policy; this renders.
 type Props = ChartBuilderData;
-const { league, season, metricX, metricY, points } = Astro.props;
+const { league, season, metricX, metricY, points, v2, highlight, mode } = Astro.props;
+// the v2 props reach the island only for a viewer the flag admits, so the public island is unchanged
+const v2Props = v2 ? { v2, highlight, mode } : {};
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
@@ -33,7 +35,7 @@ const pool = league === 'nfl' ? 'NFL' : 'FBS';
 
 <GenericPage title={title} subtitle={`${season}: ${generateTeamMetricTitle(metricX)} vs ${generateTeamMetricTitle(metricY)}`} description={`Plot any two ${season} ${sport} advanced stats against each other: EPA per play, success rate, explosiveness, havoc and win probability for every ${pool} team.`} slug={leaguePath(league, "/charts/builder")} breadcrumbs={breadcrumbs}>
     <DarkModeLogos teamIds={points.map(t => t.team_id)} />
-    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} league={league}>
+    <ChartBuilder client:only season={season} x={metricX} y={metricY} points={points} league={league} {...v2Props}>
         <FallbackSpinner slot="fallback" />
     </ChartBuilder>
 </GenericPage>

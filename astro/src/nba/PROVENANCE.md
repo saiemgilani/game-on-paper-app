@@ -39,7 +39,6 @@ used to wrap and space labels without measuring). Measured 2026-10-10 on the loc
   blazingthenets.com's chart text measures the same 5.556 on the same machine (its stack also
   resolves to Segoe UI), and the rendered 11 px chart labels average 4.977 px per character on both.
 
-The constant is not a GOP divergence: both sites draw with the same font and the same 6.2. If
-6.2 is to change (it over-estimates widths by about 10% for system-ui on Windows, so labels wrap
-early rather than overflow), that is a blazing-first change, then a re-copy; `theme.ts` stays
-verbatim here.
+The constant is not (yet) a GOP divergence: both sites draw with the same font and the same 6.2.
+If 6.2 is to change (it over-estimates widths by about 10% for system-ui on Windows, so labels
+wrap early rather than overflow), the change is made and reviewed here like any other GOP change.

@@ -93,6 +93,14 @@ export const FLAGS: Record<string, FeatureState> = {
     // rows. Only this path reads team_tendencies there; for every other viewer
     // the page and its requests are unchanged.
     'team-splits': 'preview',
+    // Results by Opponent on the season team page (/year/N/team/<id> and the
+    // /nfl twin): one bar per game from team_opponent_splits, EPA and Success %
+    // per play, dropback and rush, raw or margin, with a dashed season average. Only this path
+    // reads team_opponent_splits; every other viewer's requests are unchanged.
+    'vs-opponent': 'preview',
+    // Chart Builder v2 on /charts/builder (both leagues): one control bar (Season, X, Y, Random axes,
+    // Plot) above the chart, and a median crosshair with quadrant labels. Off: today's builder.
+    'chart-builder-v2': 'preview',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl
     // twin): the team's record split by home/away/neutral, conference (division
     // in the NFL), one-score games, vs FBS and vs ranked. It pivots the schedule

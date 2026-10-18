@@ -6,11 +6,12 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
+    SummaryType, retrievePlayerSummaries, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary, type SDVTeamTendency,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
+import type { GameSplits } from '../utils/gameSet';
 import type { League } from '../utils/league';
 import { teamSplitColumns } from '../utils/teamSplits';
 
@@ -24,6 +25,8 @@ export interface SeasonTeamData {
     passers: SDVPassingSummary[];
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
+    /** 'vs-opponent' only: null with the flag off (no read) or when either read failed */
+    opponentSplits: GameSplits | null;
     /** the team's team_tendencies row; read only with 'team-splits' on */
     teamTendency?: SDVTeamTendency;
     /** every team's row for the season, the splits' rank population (same read) */
@@ -70,7 +73,8 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
+    const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
     const seasonTendencies = await tendencies;
     const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, teamTendency, seasonTendencies };
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies };
 }
