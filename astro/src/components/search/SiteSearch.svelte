@@ -15,7 +15,7 @@
     // The header search box. The hrefs come built from /api/search, so this island needs
     // nothing from utils/ but the import-free adminView.ts and preview.ts (other utils'
     // imports would ride along into every page's bundle).
-    type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string };
+    type Hit = { type: 'team' | 'player' | 'game'; id: string; label: string; sublabel: string; href: string; logo?: string; logoDark?: string };
     const GROUPS = [['team', 'Teams'], ['player', 'Players'], ['game', 'Games']] as const;
 
     const { league = 'cfb' } = $props();
@@ -239,15 +239,26 @@
                     {#each group as hit (hit.href)}
                         {@const i = hits.indexOf(hit)}
                         <a
-                            class="dropdown-item text-wrap"
+                            class="dropdown-item text-wrap d-flex align-items-center"
                             class:active={i === active}
                             href={hit.href}
                             id="site-search-option-{i}"
                             role="option"
                             aria-selected={i === active}
                         >
-                            {hit.label}
-                            {#if hit.sublabel}<span class="d-block small" class:text-muted={i !== active}>{hit.sublabel}</span>{/if}
+                            <!-- teams only (the API sends no logo for a game or a player), 20px like the
+                                 leaderboards' logos; the dark art and the overrides come resolved from
+                                 the API, as DarkModeLogos.astro would emit them -->
+                            {#if hit.logo}
+                                <picture class="flex-shrink-0 me-2">
+                                    <source media="(prefers-color-scheme: dark)" srcset={hit.logoDark} />
+                                    <img class="d-block" src={hit.logo} width="20" height="20" alt="" />
+                                </picture>
+                            {/if}
+                            <span>
+                                {hit.label}
+                                {#if hit.sublabel}<span class="d-block small" class:text-muted={i !== active}>{hit.sublabel}</span>{/if}
+                            </span>
                         </a>
                     {/each}
                 </div>

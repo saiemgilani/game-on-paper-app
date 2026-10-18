@@ -76,15 +76,33 @@ describe('rankHits', () => {
 
     test('the real alab rows: hrefs built by GOP, slashes for dots', () => {
         const hits = rankHits(ALAB, all);
-        expect(hits[0]).toEqual({ type: 'team', id: '333', label: 'Alabama', sublabel: 'ALA / SEC', href: '/team/333' });
+        expect(hits[0]).toEqual({ type: 'team', id: '333', label: 'Alabama', sublabel: 'ALA / SEC', href: '/team/333', logo: 'https://a.espncdn.com/i/teamlogos/ncaa/500/333.png', logoDark: 'https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png' });
         expect(hits.map((h) => h.type)).toEqual(['team', 'team', 'team', 'team', 'team', 'team', 'player', 'game']);
         expect(hits.find((h) => h.type === 'player')).toMatchObject({ sublabel: 'UCF / 2008–2012', href: '/players/383842' });
         expect(hits.find((h) => h.type === 'game')).toMatchObject({ label: 'Alabama @ LSU', href: '/game/401856740' });
     });
 
-    test("a meme-list team's own name is lowercased, as cleanField does", () => {
+    test("a meme-list team's own name and abbreviation are lowercased, not its conference", () => {
         const [hit] = rankHits([{ type: 'team', id: '61', label: 'Georgia', sublabel: 'UGA · SEC', league: 'cfb', score: 4 }], all);
         expect(hit.label).toBe('georgia');
+        expect(hit.sublabel).toBe('uga / SEC');
+    });
+
+    test('teams carry light and dark logos with the SPECIAL_IMAGES overrides; players and games none', () => {
+        const hits = rankHits([
+            { type: 'team', id: '61', label: 'Georgia', sublabel: 'UGA · SEC', league: 'cfb', score: 4 },
+            { type: 'team', id: '59', label: 'Georgia Tech', sublabel: 'GT · ACC', league: 'cfb', score: 3 },
+            { type: 'team', id: '12', label: 'Kansas City Chiefs', sublabel: 'KC · AFC West', league: 'nfl', score: 2 },
+        ], all);
+        expect(hits.map((h) => [h.logo, h.logoDark])).toEqual([
+            // an override with no dark twin is used in both modes, as DarkModeLogos does
+            ['/assets/img/ennui-uga.png', '/assets/img/ennui-uga.png'],
+            ['/assets/img/gt-old-gold.png', '/assets/img/gt-old-gold-dark.png'],
+            ['https://a.espncdn.com/i/teamlogos/nfl/500/12.png', 'https://a.espncdn.com/i/teamlogos/nfl/500-dark/kc.png'],
+        ]);
+        const others = rankHits(ALAB, all).filter((h) => h.type !== 'team');
+        expect(others.length).toBe(2);
+        expect(others.every((h) => !('logo' in h) && !('logoDark' in h))).toBe(true);
     });
 
     test("a player follows his latest team's meme list, name and team both, as his page does", () => {
@@ -151,7 +169,7 @@ describe('GET /api/search', () => {
         const res = await call('q=alab&league=cfb');
         expect(res.status).toBe(200);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
-        expect(await res.json()).toEqual([{ type: 'team', id: '333', label: 'Alabama', sublabel: 'ALA / SEC', href: '/team/333' }]);
+        expect(await res.json()).toEqual([{ type: 'team', id: '333', label: 'Alabama', sublabel: 'ALA / SEC', href: '/team/333', logo: 'https://a.espncdn.com/i/teamlogos/ncaa/500/333.png', logoDark: 'https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png' }]);
     });
 
     test('the upstream URL and the bearer token', async () => {

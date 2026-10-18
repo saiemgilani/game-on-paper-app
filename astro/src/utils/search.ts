@@ -1,4 +1,5 @@
-import { leaguePath, type League } from './league';
+import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from './constants';
+import { leaguePath, teamLogoUrl, type League } from './league';
 import { cleanTextForTeam } from './misc';
 import { playerPath } from './players';
 import { teamIdByAbbr } from './teams';
@@ -19,7 +20,20 @@ export interface SearchRow {
     score?: number;
 }
 
-export interface SearchHit { type: SearchType; id: string; label: string; sublabel: string; href: string }
+export interface SearchHit {
+    type: SearchType; id: string; label: string; sublabel: string; href: string;
+    /** Teams only: the light and dark logo, with the SPECIAL_IMAGES overrides DarkModeLogos.astro applies. */
+    logo?: string; logoDark?: string;
+}
+
+/** A team's light and dark logo, overrides first, as DarkModeLogos.astro resolves them. */
+export function teamLogos(league: League, id: string): { logo: string; logoDark: string } {
+    const special = SPECIAL_IMAGES[id];
+    return {
+        logo: special ?? teamLogoUrl(league, id, false),
+        logoDark: SPECIAL_IMAGES_DARK[id] ?? special ?? teamLogoUrl(league, id, true),
+    };
+}
 
 export function hrefFor(row: { type: SearchType; id: string; league: League }): string {
     return row.type === 'player' ? playerPath(row.league, row.id) : leaguePath(row.league, `/${row.type}/${row.id}`);
@@ -63,12 +77,16 @@ export function rankHits(rows: SearchRow[], opts: { players: boolean; nfl: boole
             // and his name and that team are lowercased together, as on his page
             const memeId = type === 'team' ? id
                 : type === 'player' ? teamIdByAbbr(league, sublabel.split(' / ')[0]) : null;
+            // a team's sublabel opens with its abbreviation, which follows the list too (not the conference)
+            const [abbr, ...rest] = sublabel.split(' / ');
             return {
                 type,
                 id,
                 label: cleanTextForTeam(r.label, memeId),
-                sublabel: type === 'player' ? cleanTextForTeam(sublabel, memeId) : sublabel,
+                sublabel: type === 'player' ? cleanTextForTeam(sublabel, memeId)
+                    : type === 'team' ? [cleanTextForTeam(abbr, memeId), ...rest].join(' / ') : sublabel,
                 href: hrefFor({ type, id, league }),
+                ...(type === 'team' ? teamLogos(league, id) : {}),
             };
         });
 }
