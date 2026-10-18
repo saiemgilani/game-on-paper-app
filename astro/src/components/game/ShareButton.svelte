@@ -36,7 +36,10 @@
 />
 <div class="dropdown" bind:this={root}>
     <button class="btn btn-sm btn-outline-primary align-middle text-nowrap" class:p-2={label} type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
-        <i class="bi-share"></i>{label ? ' Share' : ''}
+        <!-- Bootstrap Icons' share.svg inline, not <i class="bi-share">: Fanboy's
+             Social list (in Safari/uBlock/AdGuard annoyance blockers) hides `.bi-share`,
+             which left an empty button. Keep the bi-share class off this element. -->
+        <svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="vertical-align: -.125em"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5m-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"/></svg>{label ? ' Share' : ''}
     </button>
     <ul class="dropdown-menu dropdown-menu-end" class:show={open} data-bs-popper="static">
         <li><button class="dropdown-item" type="button" onclick={() => share(url)}><i class="bi-link-45deg me-2"></i>Share link</button></li>

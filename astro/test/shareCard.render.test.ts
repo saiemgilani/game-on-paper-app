@@ -263,8 +263,11 @@ describe('Share button beside Watch', () => {
         // desktop: the icon alone in the right column; phone: "Share" in the row under the title
         // (Astro puts its client:load bootstrap <script> before the first island)
         const after = (cls: string) => html.slice(html.indexOf(`class="${cls}"`)).replace(/<script>[\s\S]*?<\/script>/g, '').slice(0, 1500);
-        expect(after('col-2 d-flex justify-content-end align-items-center gap-2')).toMatch(/^[^>]*><astro-island\b[^>]*ShareButton[\s\S]*?<i class="bi-share"><\/i><\/button>/);
-        expect(after('d-flex align-items-center gap-2')).toMatch(/^[^>]*><astro-island\b[^>]*ShareButton[\s\S]*?<i class="bi-share"><\/i> Share<\/button>/);
+        expect(after('col-2 d-flex justify-content-end align-items-center gap-2')).toMatch(/^[^>]*><astro-island\b[^>]*ShareButton[\s\S]*?<svg [^>]*viewBox="0 0 16 16"[^>]*>[\s\S]*?<\/svg><\/button>/);
+        expect(after('d-flex align-items-center gap-2')).toMatch(/^[^>]*><astro-island\b[^>]*ShareButton[\s\S]*?<svg [^>]*viewBox="0 0 16 16"[^>]*>[\s\S]*?<\/svg> Share<\/button>/);
+        // Fanboy's Social list (Safari/uBlock/AdGuard annoyance blockers) hides `.bi-share`;
+        // as the button's only content it left an empty pill (#309)
+        expect(html).not.toMatch(/class="[^"]*\bbi-share\b/);
     });
 
     test('off: no button and the header markup of today', async () => {
