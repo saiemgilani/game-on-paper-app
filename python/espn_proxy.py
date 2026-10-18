@@ -20,7 +20,14 @@ from flask import Blueprint, Response, jsonify, request
 bp = Blueprint("espn_proxy", __name__)
 log = logging.getLogger("root")
 
-ESPN_HOSTS = frozenset({"cdn.espn.com", "site.api.espn.com", "site.web.api.espn.com"})
+ESPN_HOSTS = frozenset(
+    {
+        "cdn.espn.com",
+        "site.api.espn.com",
+        "site.web.api.espn.com",
+        "sports.core.api.espn.com",
+    }
+)
 ESPN_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
     "(KHTML, like Gecko) Version/26.5.2 Safari/605.1.15"

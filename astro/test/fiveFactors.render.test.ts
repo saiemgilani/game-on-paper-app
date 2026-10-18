@@ -156,6 +156,21 @@ describe('cfb season team page, Five Factors edge cases', () => {
         expect(cells[at('Start (yds)') + 2].cls).toContain('hulk-bg-level-2');
     }, 60_000);
 
+    test('ranks shade against the row\'s own season\'s team count, not a fixed 134', async () => {
+        // audit C3: 122nd of 2014's 128 is the bottom bucket; on a 134 scale it read
+        // one bucket up. The team card on the same page reads the same count.
+        const row = rows.cfb.find((r) => r.team_id === 333);
+        feed.override = [{ ...row, team_count: 128, turnovers_off_rank: 122, net_adj_epa_rank: 122 }];
+        const html = await render('cfb', '333', true);
+        const cell = tds(panelOf(html))[at('Turnovers') + 2];
+        expect(cell.text).toContain('#122');
+        expect(cell.cls).toContain('hulk-bg-level-0');
+        expect(cell.cls).not.toContain('hulk-bg-level-1');
+        // the team card's Net Adj EPA/Play cell (TeamCard.astro), the only width-33% one ranked 122
+        const card = html.match(/<td style="width: 33%" class="[^"]*">[^<]*<span[^>]*> #122<\/span><\/td>/)?.[0] ?? '';
+        expect(card).toContain('hulk-bg-level-0');
+    }, 60_000);
+
     test('no team_summaries row: no panel at all, rather than a table of dashes', async () => {
         feed.override = [];
         const html = await render('cfb', '333', true);

@@ -60,6 +60,8 @@ describe('coach tendency reads', () => {
         expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/cfb/team_tendencies');
         expect(u.searchParams.get('season')).toBe('2023');
         expect(u.searchParams.has('role')).toBe(false);
+        // no team filter: every team's row (the season team page ranks against them)
+        expect(u.searchParams.has('pos_team_id')).toBe(false);
         expect(u.searchParams.get('limit')).toBe('400');
         const sel = select(u);
         for (const k of ['season', 'pos_team_id', 'pos_team', 'games', 'plays', 'drives', 'pass_rate']) expect(sel).toContain(k);

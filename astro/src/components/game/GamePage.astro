@@ -20,9 +20,8 @@ import Linescore from './metrics/Linescore.astro';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
-import { retrievePercentiles } from '../../resources/sdv';
+import { percentileSeason, retrievePercentiles } from '../../resources/sdv';
 import DarkModeLogos from '../DarkModeLogos.astro';
-import { PERCENTILE_YEAR } from '../../utils/constants';
 import Footer from '../Footer.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import FallbackSpinner from '../FallbackSpinner.astro';
@@ -69,7 +68,9 @@ for (const n of threeAndOutPlays(game.plays)) { const p = game.plays.find((x: an
 
 const fullGamePlays = game.plays;
 
-const percentiles = await retrievePercentiles(PERCENTILE_YEAR, undefined, undefined, league);
+// ranked against the game's own season (the ladder moves by era), or the previous one
+// in the first weeks of a season still being played, while its ladder is thin (percentileSeason)
+const percentiles = await retrievePercentiles(percentileSeason(game.header), undefined, undefined, league);
 const homeComp = game.header.competitions[0].competitors[0];
 const awayComp = game.header.competitions[0].competitors[1];
 const homeTeam = homeComp.team;
@@ -287,7 +288,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true}>
-                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]}>
                         </SituationalSection>
                     </Panel>
                 </div>
