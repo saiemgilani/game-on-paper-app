@@ -6,13 +6,15 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveTeamSummaries, retrieveTeamSeasonInformation, teamSummaryColumns,
-    type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary,
+    SummaryType, retrievePlayerSummaries, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
+    type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary, type SDVTeamTendency,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
+import type { GameSplits } from '../utils/gameSet';
 import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
+import { teamSplitColumns } from '../utils/teamSplits';
 
 export interface SeasonTeamData {
     league: League;
@@ -25,6 +27,12 @@ export interface SeasonTeamData {
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
     neighborLists: NeighborList[];
+    /** 'vs-opponent' only: null with the flag off (no read) or when either read failed */
+    opponentSplits: GameSplits | null;
+    /** the team's team_tendencies row; read only with 'team-splits' on */
+    teamTendency?: SDVTeamTendency;
+    /** every team's row for the season, the splits' rank population (same read) */
+    seasonTendencies?: SDVTeamTendency[];
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -56,9 +64,20 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         Astro.cache.set(false);
         return { notFound: true };
     }
+    // started before the player reads and awaited after them, so it overlaps them
+    // instead of adding a round trip; it never rejects ([] on any failure). Flag
+    // off: no request, and the player reads run exactly as before. The whole
+    // season, not the one team: every team's row is the splits' rank population,
+    // and one season-keyed read is shared by every team page in that season.
+    const tendencies = isFeatureEnabled('team-splits', Astro.locals)
+        ? retrieveTeamTendencies({ season: Number(year), league, columns: teamSplitColumns(league) })
+        : undefined;
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
+    const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
+    const seasonTendencies = await tendencies;
+    const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
     // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the
     // same KV entry) for every team page of the season. Not made when the flag is
     // off, so the public page's reads are exactly today's.
@@ -66,5 +85,5 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         ? await retrieveTeamSummaries({ season: Number(year), columns: TEAM_NEIGHBOR_METRICS, league })
         : [];
     const neighborLists = teamNeighborLists(neighborRows, id, league, Number(year));
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, neighborLists };
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists };
 }

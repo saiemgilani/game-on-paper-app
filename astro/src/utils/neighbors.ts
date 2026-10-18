@@ -123,7 +123,7 @@ export function playerNeighborLists(rows: any[], selfKey: string, category: Play
         const shade = metricShade(rows, key);
         return {
             metric: key,
-            title: SDV_PLAYER_METRIC_CATEGORIES[category][key],
+            title: SDV_PLAYER_METRIC_CATEGORIES[category][key].title,
             rows: neighborWindow(rows, playerKey, selfKey, key).map((n) => ({
                 // the highlight key is the PLAYER, so a traded player lights up whichever team row a list holds
                 key: String(n.row.player_id),

@@ -40,7 +40,7 @@ import PlayerSplits from './PlayerSplits.astro';
 import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import type { SDVPlayer } from '../../resources/sdv';
 import type { PlayerSections } from '../../routes/player';
-import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
+import { LEAGUES, espnLogoLeague, leaguePath, teamCountOf } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { formatHeight, playerPath, totalGameLog } from '../../utils/players';
@@ -58,7 +58,7 @@ const { player, season, sections } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
-const { seasonRows, games, splits, espnGameIds, leagueBreaks, teamRows, neighborLists, failed } = sections;
+const { seasonRows, games, splits, espnGameIds, leagueBreaks, leagueCohort, teamRows, neighborLists, failed } = sections;
 
 // the summary tiles count what was PLAYED, so they sum the API's rows and
 // never the synthetic live row below
@@ -175,7 +175,6 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
     [(t) => formatPercent(t.explosive_off), 'explosive_off_rank'],
     [(t) => formatNumber(t.EPAplay_def, 2), 'EPAplay_def_rank'],
 ];
-const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
 ---
 
 <GenericPage title={pageTitle} subtitle={season === null ? 'Career advanced stats' : `${season} game log, splits and percentile ranks`} description={description} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]} heading={heading}>
@@ -252,7 +251,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
         <Fragment>
         <Panel id="player-game-log-panel" title={`${season} Game Log`} show={true} class="mb-md-3">
             <Fragment slot="panel-body">
-                <PlayerGameLog games={gameLog} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} live={live} />
+                <PlayerGameLog games={gameLog} espnGameIds={espnGameIds} leagueBreaks={leagueBreaks} leagueCohort={leagueCohort} live={live} />
                 {failed.games
                     ? <p class="m-0 text-muted text-small" id="player-game-log-unavailable">{UNAVAILABLE}</p>
                     : gameLog.length === 0 && <p class="m-0 text-muted text-small">No games for {season}.</p>}
@@ -295,7 +294,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
                                         </a>
                                     </td>
                                     {teamContextColumns.map(([value, rank]) => (
-                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), TEAM_RANK_FIELD, true)]} colspan="1">
+                                        <td class:list={["text-center", "numeral", generateColorRampValue(numberOrNull(t[rank]), teamCountOf(t, league), true)]} colspan="1">
                                             {value(t)}
                                             {numberOrNull(t[rank]) !== null && (
                                                 <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(numberOrNull(t[rank]))}</span>

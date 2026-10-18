@@ -23,11 +23,16 @@ def test_allowlist():
         "https://cdn.espn.com/core/college-football/scoreboard?xhr=1"
     )
     assert espn_proxy.espn_url_allowed("https://site.web.api.espn.com/apis/site/v2/x")
+    assert espn_proxy.espn_url_allowed(
+        "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/teams/333/"
+    )
     assert not espn_proxy.espn_url_allowed("http://cdn.espn.com/x")  # not https
     assert not espn_proxy.espn_url_allowed(
         "https://evil.com/cdn.espn.com"
     )  # host, not path
     assert not espn_proxy.espn_url_allowed("https://cdn.espn.com.evil.com/x")
+    assert not espn_proxy.espn_url_allowed("http://sports.core.api.espn.com/x")
+    assert not espn_proxy.espn_url_allowed("https://sports.core.api.espn.com.evil.com/x")
     assert not espn_proxy.espn_url_allowed("")
 
 
@@ -71,3 +76,34 @@ def test_relays_body_status_and_content_type(client, monkeypatch):
         and seen["url"] == "https://cdn.espn.com/core/scoreboard?xhr=1"
     )
     assert seen["ua"].startswith("Mozilla/5.0 (Macintosh")
+
+
+@pytest.mark.parametrize("league,team_id", [("college-football", "333"), ("nfl", "2")])
+def test_relays_team_information(client, monkeypatch, league, team_id):
+    url = (
+        f"https://sports.core.api.espn.com/v2/sports/football/leagues/{league}"
+        f"/teams/{team_id}/?lang=en&region=us"
+    )
+    body = f'{{"id":"{team_id}","displayName":"Test Team"}}'.encode()
+
+    class R:
+        status_code = 200
+        content = body
+
+        def __init__(self):
+            self.headers = {"Content-Type": "application/json"}
+
+    def fake_get(request_url, headers, timeout):
+        assert request_url == url
+        assert headers["User-Agent"] == espn_proxy.ESPN_UA
+        assert timeout == espn_proxy.TIMEOUT_S
+        return R()
+
+    monkeypatch.setattr(espn_proxy.requests, "get", fake_get)
+    response = client.get(
+        "/espn/proxy", query_string={"url": url}, headers=auth()
+    )
+    assert response.status_code == 200
+    assert response.data == body
+    assert response.json["id"] == team_id
+    assert response.headers["X-Espn-Proxy"] == "1"

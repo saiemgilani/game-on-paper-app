@@ -52,6 +52,11 @@ This will setup the containers to run under the same constraints as in DigitalOc
 
 You can make sure the API is live by sending a HTTP GET to http://localhost:8080/healthcheck via Postman.
 
+The authenticated `/espn/proxy` relay handles ESPN 403 responses from the
+Cloudflare frontend. Its explicit HTTPS host allowlist includes
+`sports.core.api.espn.com` for CFB and NFL team information; without that host,
+team pages can return 404 even while the API healthcheck succeeds.
+
 ## Admin observability
 
 `/admin` (basic auth: `ADMIN_USER`/`ADMIN_PASS`, enforced in Astro middleware)
