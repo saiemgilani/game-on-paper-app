@@ -12,6 +12,13 @@
  * Rows come from `utils/neighbors.ts`; this only renders them, in the
  * `CoachLeaderboardTable` format: rank right, name left, value centred, the
  * value cell shaded as the season leaderboards shade it (`hulk-bg-level-*`).
+ * Team lists carry the logo beside the name; player lists add the Team column
+ * exactly as `PlayerLeaderboardTable` renders it (logo + abbreviation, linked).
+ *
+ * Below `md` (the site's 768px breakpoint) only one table shows, picked from a
+ * `<select>` in `PlayerGameLog`'s labelled-select format (Akshay on #296);
+ * every other column is `d-none d-md-block`, so desktop keeps all N tables and
+ * a phone without JS still gets the first one.
  */
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { espnLogoLeague } from '../../utils/league';
@@ -19,23 +26,36 @@ import type { NeighborList } from '../../utils/neighbors';
 
 interface Props {
     lists: NeighborList[]
-    /** team lists show a logo beside each name; player lists do not */
-    logos: boolean
+    kind: 'team' | 'player'
 }
-const { lists, logos } = Astro.props;
+const { lists, kind } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
-const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.teamId)))] : [];
+const logoSrc = (teamId: string) => `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${teamId}.png`;
+const teamIds = [...new Set(lists.flatMap((l) => l.rows.filter((r) => kind === 'team' || r.team).map((r) => r.teamId)))];
+const pickerId = `nb-metric-${kind}`;
+// the player tables carry a Team column, so their four lists sit two to a row
+// (a third of the container wrapped team names and headers); six team lists stay three across
 ---
-{logos && <DarkModeLogos teamIds={teamIds} />}
-<div class="row" data-neighbor-ranks>
-    {lists.map((l) => (
-        <div class="col-md-6 col-lg-4 mb-3">
+<DarkModeLogos teamIds={teamIds} />
+<div data-neighbor-ranks>
+    {lists.length > 1 && (
+    <div class="d-flex d-md-none justify-content-start align-items-center flex-wrap gap-2 mb-2">
+        <label class="text-muted text-small mb-0" for={pickerId}>Metric:</label>
+        <select id={pickerId} class="form-select form-select-sm w-auto" data-nb-select>
+            {lists.map((l, i) => <option value={l.metric} selected={i === 0}>{l.title}</option>)}
+        </select>
+    </div>
+    )}
+    <div class="row">
+    {lists.map((l, i) => (
+        <div class:list={['col-md-6 mb-3', kind === 'team' && 'col-lg-4', i > 0 && 'd-none d-md-block']} data-nb-col={l.metric}>
             <div class="table-responsive">
                 <table class="table table-sm" data-nb-metric={l.metric}>
                     <thead>
                         <tr>
                             <th class="text-right" colspan="1">Rk</th>
-                            <th class="text-left text-nowrap" colspan="1">{logos ? 'Team' : 'Player'}</th>
+                            <th class="text-left text-nowrap" colspan="1">{kind === 'team' ? 'Team' : 'Player'}</th>
+                            {kind === 'player' && <th class="text-left" colspan="1">Team</th>}
                             <th class="text-center" colspan="1">{l.title}</th>
                         </tr>
                     </thead>
@@ -45,9 +65,12 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
                                 <td class="text-right numeral" colspan="1">{r.rank}</td>
                                 <td class="text-left text-nowrap" colspan="1" aria-current={!r.href && r.self ? 'page' : undefined}>
                                     {r.href ? (
-                                        <a href={r.href} aria-current={r.self ? 'page' : undefined}>{logos && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" loading="lazy" decoding="async" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.teamId}.png`} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
+                                        <a href={r.href} aria-current={r.self ? 'page' : undefined}>{kind === 'team' && <img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" loading="lazy" decoding="async" src={logoSrc(r.teamId)} alt={`${r.label} logo`} />}<strong>{r.label}</strong></a>
                                     ) : <strong>{r.label}</strong>}
                                 </td>
+                                {kind === 'player' && (
+                                    <td class="text-left" colspan="1">{r.team && <a href={r.team.href}><img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" loading="lazy" decoding="async" src={logoSrc(r.teamId)} alt={`ESPN team id ${r.teamId} ${r.team.label}`} title={r.team.label}/><span>{r.team.label}</span></a>}</td>
+                                )}
                                 <td class:list={['text-center', 'numeral', r.shade]} colspan="1">{r.value}</td>
                             </tr>
                         ))}
@@ -56,6 +79,7 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
             </div>
         </div>
     ))}
+    </div>
 </div>
 
 <script>
@@ -82,5 +106,19 @@ const teamIds = logos ? [...new Set(lists.flatMap((l) => l.rows.map((r) => r.tea
             const next = (e as FocusEvent).relatedTarget as Node | null;
             if (!next || !root.contains(next)) light();
         });
+        // Mobile metric picker: hide every column but the picked one below md. Applied
+        // on load too, since a restored back/forward page keeps the select's value.
+        const pick = root.querySelector('select[data-nb-select]') as HTMLSelectElement | null;
+        const show = (metric: string) => {
+            for (const col of root.querySelectorAll<HTMLElement>('[data-nb-col]')) {
+                const hide = col.dataset.nbCol !== metric;
+                col.classList.toggle('d-none', hide);
+                col.classList.toggle('d-md-block', hide);
+            }
+        };
+        if (pick) {
+            show(pick.value);
+            pick.addEventListener('change', () => show(pick.value));
+        }
     }
 </script>

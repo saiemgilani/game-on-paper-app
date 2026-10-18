@@ -871,6 +871,12 @@ describe('nearby ranks on the player page', () => {
         expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
         expect((block.match(/class="table-secondary"/g) ?? []).length).toBe(4);
         expect(block).toContain('Kyle McCord');
+        // Akshay on #296: the Team column as PlayerLeaderboardTable renders it (logo + team, linked)
+        expect(block).toMatch(/<th class="text-left" colspan="1">Team<\/th>/);
+        expect(block).toMatch(/<a href="\/year\/2024\/team\/\d+"><img class="img-fluid team-logo-\d+ me-2"[^>]*teamlogos\/ncaa\/500\/\d+\.png/);
+        // ...and below md one table plus a metric picker: every column but the first is d-none d-md-block
+        expect((block.match(/<option value=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="col-md-6 mb-3 d-none d-md-block"/g) ?? []).length).toBe(3);
         const { default: Page } = await import('../src/pages/players/[id].astro');
         rankedRowsCalls = 0;
         const off = await container.renderToString(Page, {

@@ -7,6 +7,20 @@ export default async (page, base) => {
   const root = page.locator('[data-neighbor-ranks]');
   if ((await root.count()) !== 1) throw new Error(`expected one nearby-ranks block, found ${await root.count()}`);
   await root.scrollIntoViewIfNeeded();
+  // Below md one table shows at a time, switched from the metric picker (Akshay on #296);
+  // the cross-table hover below is a desktop interaction, so a phone run steps the picker instead.
+  const pick = root.locator('select[data-nb-select]');
+  if (await pick.isVisible()) {
+    const metrics = await pick.locator('option').evaluateAll((os) => os.map((o) => o.value));
+    for (const m of metrics) {
+      await pick.selectOption(m);
+      await root.locator(`[data-nb-col="${m}"]`).waitFor({ state: 'visible', timeout: 5000 });
+      const shown = await root.locator('[data-nb-col]:visible').count();
+      if (shown !== 1) throw new Error(`picker on ${m}: ${shown} tables visible, expected 1`);
+      await page.waitForTimeout(700);
+    }
+    return;
+  }
   await page.waitForTimeout(1200);
   // an "other" player: appears in two tables and is not the page's own row
   const key = await root.evaluate((el) => {

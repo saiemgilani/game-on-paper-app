@@ -66,7 +66,8 @@ export const PLAYER_NEIGHBOR_METRICS: Record<PlayerCategory, string[]> = {
     receiving: ['EPAplay', 'success', 'yardsplay', 'TEPA'],
 };
 
-export interface NeighborCell { key: string; rank: string; label: string; href: string | null; teamId: string; value: string; shade: string | null; self: boolean }
+/** `team` is the player lists' Team column (PlayerLeaderboardTable's): null on team lists, whose label is the team. */
+export interface NeighborCell { key: string; rank: string; label: string; href: string | null; teamId: string; team: { label: string; href: string } | null; value: string; shade: string | null; self: boolean }
 export interface NeighborList { metric: string; title: string; rows: NeighborCell[] }
 
 export function teamNeighborLists(rows: any[], teamId: string | number, league: League, season: number): NeighborList[] {
@@ -90,6 +91,7 @@ export function teamNeighborLists(rows: any[], teamId: string | number, league: 
                     label: cleanField(n.row, 'pos_team'),
                     href: leaguePath(league, `/year/${season}/team/${n.row.team_id}`),
                     teamId: String(n.row.team_id),
+                    team: null,
                     value: valString + (pct ? '%' : ''),
                     shade: shade(n.rank),
                     self: n.self,
@@ -129,6 +131,9 @@ export function playerNeighborLists(rows: any[], selfKey: string, category: Play
                 label: cleanField(n.row, PLAYER_NAME_FIELD[category]),
                 href: playerHref(n.row.player_id, locals, season),
                 teamId: String(n.row.team_id),
+                // a row with no team id has no logo or team page to link: the cell stays empty
+                team: n.row.team_id == null ? null
+                    : { label: cleanField(n.row, 'pos_team'), href: leaguePath(locals.league, `/year/${season}/team/${n.row.team_id}`) },
                 value: formatPlayerMetric(category, key, n.value),
                 shade: shade(n.rank),
                 self: n.self,

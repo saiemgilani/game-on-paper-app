@@ -17,12 +17,15 @@ describe('NeighborRanks', () => {
     test('one table per list, the team marked once per table, league links and logos, leaderboard shading', async () => {
         const { default: NeighborRanks } = await import('../src/components/leaderboards/NeighborRanks.astro');
         const lists = teamNeighborLists(fx.nfl_team_summaries_2025, 14, 'nfl', 2025);
-        const html = await container.renderToString(NeighborRanks, { props: { lists, logos: true }, locals: { league: 'nfl' } });
+        const html = await container.renderToString(NeighborRanks, { props: { lists, kind: 'team' }, locals: { league: 'nfl' } });
         expect((html.match(/data-nb-metric=/g) ?? []).length).toBe(lists.length);
         expect((html.match(/class="table-secondary"/g) ?? []).length).toBe(lists.length);
         expect(html).toMatch(/href="\/nfl\/year\/2025\/team\/\d+"/);
         expect(html).toContain('teamlogos/nfl/500/');
         expect(html).not.toContain('teamlogos/ncaa/');
+        // team lists: the logo sits beside the name, no separate Team column
+        expect((html.match(/>Team<\/th>/g) ?? []).length).toBe(lists.length);
+        expect(html).toContain('data-nb-select');
         expect(html).toContain('>Off EPA/Play<');
         // metric cells carry the leaderboards' ramp (Akshay's #296 sign-off): LA is #1 of 32
         // in Net Adj EPA/Play (green) and #12 in Off Explosive Rate (level 6); rank and name

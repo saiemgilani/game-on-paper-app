@@ -116,7 +116,7 @@ const breadcrumbs: PageBreadcrumb[] = [
     {neighborLists.length > 0 && (
     <div class="container mb-3">
         <GenericPanel id="nearby-ranks" title="Nearby Ranks" show={true}>
-            <NeighborRanks slot="panel-body" lists={neighborLists} logos={true} />
+            <NeighborRanks slot="panel-body" lists={neighborLists} kind="team" />
         </GenericPanel>
     </div>
     )}

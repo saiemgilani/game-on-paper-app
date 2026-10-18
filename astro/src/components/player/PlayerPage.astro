@@ -316,7 +316,7 @@ const TEAM_RANK_FIELD = league === 'nfl' ? 32 : 134;
             <Fragment slot="panel-body">
                 {failed.neighbors
                     ? <p class="m-0 text-muted text-small" id="player-neighbor-ranks-unavailable">{UNAVAILABLE}</p>
-                    : <NeighborRanks lists={neighborLists} logos={false} />}
+                    : <NeighborRanks lists={neighborLists} kind="player" />}
             </Fragment>
         </Panel>
         )}
