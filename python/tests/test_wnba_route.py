@@ -1,4 +1,3 @@
-# python/tests/test_wnba_route.py
 """/wnba/<id>/process: the WNBA fetch and parse, sdv-py's game page with league="wnba", two halves, a neutral site."""
 
 import base64
@@ -11,7 +10,7 @@ import pytest
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
 AUTH = {"Authorization": "Bearer " + base64.b64encode(b"secret").decode()}
-# ESPN's linescores in the two captures (home, away), read 2026-10-12 and re-printed by Task 2 Step 1
+# ESPN's linescores in the two captures (home, away), captured 2026-10-18 (Task 2 Step 1)
 LINESCORES = {
     250603003: (
         [18, 36, 14],
