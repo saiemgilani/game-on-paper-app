@@ -4,13 +4,22 @@
  */
 import { SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from './constants';
 import { leaguePath, type League } from './league';
-import { generateCategoryForMetric, generateSubCategoryForMetric, generateTeamMetricTitle } from './misc';
+import { generateCategoryForMetric, generateSubCategoryForMetric, generateTeamMetricTitle, metricHasBetterSide, shouldInvertSortForMetric } from './misc';
 import { PREVIEW_PATH_PREFIX } from './preview';
 
 /** The caption colours the builder already draws in. */
 export const CHART_TEXT = { light: '#525252', dark: '#e8e6e3' } as const;
 
 export type MarkMode = 'logos' | 'dots';
+
+/**
+ * The builder's one answer for "is lower better" on an axis: a metric's own side picks the category.
+ * v2 never flips a style/volume column (no better side), so its High/Low captions read on the
+ * unflipped scale; the public builder (v2 off) flips as before.
+ */
+export function lowerIsBetter(metric: string, v2: boolean): boolean {
+    return (!v2 || metricHasBetterSide(metric)) && shouldInvertSortForMetric(metric.includes('_def') ? 'defensive' : 'offensive', metric);
+}
 
 /** Median of the finite values; a team with no value (null) is skipped, never read as 0. */
 export function median(values: readonly (number | null | undefined)[]): number | null {

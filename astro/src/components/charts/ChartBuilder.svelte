@@ -3,9 +3,9 @@
     import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, shouldInvertSortForMetric, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite } from '../../utils/misc'
+    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite, escapeHtml } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, metricRail, plottedMedians, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, lowerIsBetter, metricRail, plottedMedians, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
@@ -39,9 +39,7 @@
     let selectedConferenceFilter = $state("all");
     // v2: one answer for "is a filter on", read by the chart title and the canvas's accessible name
     let filtered = $derived(selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all');
-    // v2 never flips a style/volume column, so its High/Low captions read on the unflipped scale; the public builder flips as before
-    const lowerIsBetter = (m: string) => (!v2 || metricHasBetterSide(m)) && shouldInvertSortForMetric(m.includes("_def") ? "defensive" : "offensive", m);
-    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY))
+    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY, v2))
     let chartedPoints = $derived(
         points
             .filter((p) => (selectedFBSClassFilter == "all") || (selectedFBSClassFilter == p.fbs_class))
@@ -120,8 +118,8 @@
         const lineMultiplier = 0.125
         const xAdjust = 0.05
 
-        const shouldFlipYAxis = lowerIsBetter(selectedMetricY);
-        const shouldFlipXAxis = lowerIsBetter(selectedMetricX);
+        const shouldFlipYAxis = lowerIsBetter(selectedMetricY, v2);
+        const shouldFlipXAxis = lowerIsBetter(selectedMetricX, v2);
         const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
             metricHasBetterSide(selectedMetricX), metricHasBetterSide(selectedMetricY));
         if (crosshair) {
@@ -400,23 +398,26 @@
         }
     }
 
+    /** An error whose message is the user-facing note, shown in place of "Unable to generate chart." */
+    class ChartNoteError extends Error {}
+
     async function waitToGenerateChart() {
-        // v2: a season with no values for the pair says so in the error note instead of asking to reach out
-        let empty: string | null = null;
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
-            empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
-            if (empty || chartedPoints.length == 0) {
-                throw new Error(empty ?? "Unable to generate chart, no points available.")
+            // v2: a season with no values for the pair names what is missing in the error note
+            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
+            if (empty) throw new ChartNoteError(empty);
+            if (chartedPoints.length == 0) {
+                throw new Error("Unable to generate chart, no points available.")
             }
             generateChart(context, selectedMetricX, selectedMetricY)
         } catch (e) {
             console.error(e);
             const container = document.getElementById("chart_container");
             if (container) {
-                container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>Unable to generate chart. Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
-                // textContent: the metric keys in the empty line come from the URL
-                if (empty) container.firstElementChild!.textContent = empty;
+                // escapeHtml: the metric keys in a ChartNoteError come from the URL
+                const note = e instanceof ChartNoteError ? escapeHtml(e.message) : "Unable to generate chart.";
+                container.innerHTML = `<p class='m-0 mb-3 text-muted text-small'>${note} Please reach out to <a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a> or <a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a> on Bluesky with the page and chart options you're trying to access.</p>`
             }
         }
     }
