@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { env } from 'cloudflare:workers';
 import { cardCacheControl, cardLogoUrl, cardState, shareTags, type ShareTagGame } from '../src/utils/shareTags';
 import { SPECIAL_IMAGES } from '../src/utils/constants';
 import { getGameCacheConfig } from '../src/utils/config';
@@ -375,6 +376,133 @@ describe('the card route', () => {
             } finally {
                 upstream.processBody = null;
             }
+        });
+    });
+
+    describe('KV keeps played cards: the page load writes them, the route reads them first', () => {
+        const store = new Map<string, ArrayBuffer>();
+        const puts: { key: string; ttl: number }[] = [];
+        const KEPT = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+        const cardFetches = () => upstream.fetched.filter((f) => f.url.includes('/card.png'));
+        beforeEach(() => {
+            store.clear();
+            puts.length = 0;
+            vi.spyOn(env.ESPN_API_CACHE, 'get').mockImplementation((async (key: string) => store.get(key) ?? null) as any);
+            vi.spyOn(env.ESPN_API_CACHE, 'put').mockImplementation((async (key: string, value: ArrayBuffer, opts: any) => {
+                store.set(key, value);
+                puts.push({ key, ttl: opts.expirationTtl });
+            }) as any);
+        });
+        afterEach(() => vi.restoreAllMocks());
+
+        test.each([['post', 'final', 31536000], ['in', 'live', 60]] as const)('a miss on a %s game draws the %s card and writes it back for its state', async (espnState, state, ttl) => {
+            const { cardKey } = await import('../src/routes/shareCard');
+            const { res, api } = await get(`/game/${GAME_ID}/card.png?state=${state}&variant=full`, header(espnState));
+            expect(api).toBeDefined();
+            expect(res.status).toBe(200);
+            const key = cardKey('cfb', String(GAME_ID), state, 'full');
+            expect(puts).toEqual([{ key, ttl }]);
+            expect(new Uint8Array(store.get(key)!)).toEqual(PNG);
+        });
+
+        test('a hit is the kept card: no /process, no API draw, cached for its state', async () => {
+            const { cardKey } = await import('../src/routes/shareCard');
+            store.set(cardKey('cfb', String(GAME_ID), 'final', 'spoilerfree'), KEPT.buffer);
+            const { res, api, set } = await get(`/game/${GAME_ID}/card.png?state=final&variant=spoilerfree`, header('post'));
+            expect(new Uint8Array(await res.arrayBuffer())).toEqual(KEPT);
+            expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+            expect(set).toHaveBeenCalledWith({ maxAge: 31536000, tags: ['share-card'] });
+            expect(api).toBeUndefined();
+            expect(upstream.fetched.some((f) => f.url.includes('/process'))).toBe(false);
+            expect(puts).toEqual([]);
+        });
+
+        test('KV is keyed per league, game, state, variant and deploy', async () => {
+            const { cardKey } = await import('../src/routes/shareCard');
+            const { APP_VERSION } = await import('../src/resources/python');
+            expect(cardKey('cfb', 1, 'final', 'full')).toBe(`card:1:final:full:${APP_VERSION}`);
+            expect(cardKey('nfl', 1, 'live', 'spoilerfree')).toBe(`card:nfl:1:live:spoilerfree:${APP_VERSION}`);
+        });
+
+        test('a card not kept is not written: a lagging /process, a regressed ESPN payload, a pregame card', async () => {
+            const lagging = structuredClone(game);
+            lagging.header.competitions[0].status.type = { ...lagging.header.competitions[0].status.type, completed: false, state: 'in', name: 'STATUS_IN_PROGRESS' };
+            upstream.processBody = JSON.stringify(lagging);
+            try {
+                await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
+            } finally {
+                upstream.processBody = null;
+            }
+            await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'), { regressed: true });
+            await get(`/game/${PREGAME_ID}/card.png?state=pre&variant=full`, header('pre'));
+            expect(puts).toEqual([]);
+        });
+
+        test('a KV failure fails open: the card is drawn', async () => {
+            vi.mocked(env.ESPN_API_CACHE.get).mockRejectedValue(new Error('kv down'));
+            const { res, api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
+            expect(res.status).toBe(200);
+            expect(api).toBeDefined();
+        });
+
+        // the game page's data step (routes/game.ts), as the page calls it
+        async function loadPage(h: any, on: boolean) {
+            upstream.fetched.length = 0;
+            const processed = structuredClone(game);
+            processed.header.competitions[0].status = h.competitions[0].status;
+            upstream.autoBody = JSON.stringify(processed);
+            upstream.guarded = { page: { gamepackageJSON: { header: h } }, regressed: false, reason: null };
+            const waitUntil = vi.fn();
+            const { loadGameRoute } = await import('../src/routes/game');
+            await loadGameRoute({
+                params: { id: String(GAME_ID) }, url: new URL(`https://gameonpaper.com/game/${GAME_ID}`),
+                locals: { flagOverrides: { 'share-card': on }, cfContext: { waitUntil } },
+                cache: { set: vi.fn() }, response: { headers: new Headers() },
+            } as any, 'cfb');
+            await Promise.all(waitUntil.mock.calls.map(([p]) => p));
+            return waitUntil;
+        }
+
+        test('on: a page load keeps both variants of the played card, after the page is sent, and a second load draws nothing', async () => {
+            const { cardKey } = await import('../src/routes/shareCard');
+            const waitUntil = await loadPage(header('post'), true);
+            expect(waitUntil).toHaveBeenCalledTimes(1);
+            expect(cardFetches().map((f) => f.init.method)).toEqual(['POST', 'POST']);
+            expect(JSON.parse(cardFetches()[0].init.body).plays).toHaveLength(game.plays.length);
+            expect([...puts].sort((a, b) => a.key.localeCompare(b.key))).toEqual([
+                { key: cardKey('cfb', String(GAME_ID), 'final', 'full'), ttl: 31536000 },
+                { key: cardKey('cfb', String(GAME_ID), 'final', 'spoilerfree'), ttl: 31536000 },
+            ]);
+            await loadPage(header('post'), true);
+            expect(cardFetches()).toEqual([]);
+            expect(puts).toHaveLength(2);
+            // and the route then serves the kept card without drawing
+            const { api } = await get(`/game/${GAME_ID}/card.png?state=final&variant=full`, header('post'));
+            expect(api).toBeUndefined();
+        });
+
+        test('on: a live game keeps a one-minute card; a /process lagging ESPN keeps none', async () => {
+            await loadPage(header('in'), true);
+            expect(puts.map((p) => p.ttl)).toEqual([60, 60]);
+            puts.length = 0;
+            store.clear();
+            const lagging = structuredClone(game);
+            lagging.header.competitions[0].status.type = { ...lagging.header.competitions[0].status.type, completed: false, state: 'in', name: 'STATUS_IN_PROGRESS' };
+            upstream.processBody = JSON.stringify(lagging);
+            try {
+                await loadPage(header('post'), true);
+            } finally {
+                upstream.processBody = null;
+            }
+            expect(puts).toEqual([]);
+            expect(cardFetches()).toEqual([]);
+        });
+
+        test('off: a page load never draws or writes a card', async () => {
+            const waitUntil = await loadPage(header('post'), false);
+            expect(waitUntil).not.toHaveBeenCalled();
+            expect(cardFetches()).toEqual([]);
+            expect(puts).toEqual([]);
         });
     });
 

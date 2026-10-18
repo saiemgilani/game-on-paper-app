@@ -1161,7 +1161,7 @@ export interface ProcessedGame {
 
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
-const APP_VERSION = getSecret("APP_VERSION") || "dev";
+export const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
 function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
     const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
@@ -1305,6 +1305,16 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
 export interface CardPage { plays: Record<string, unknown>[], paperIndex?: { homeShare: number }, state: CardState }
 const CARD_PLAY_KEYS = ['scrimmage_play', 'winProbability', 'period', 'pos_team', 'homeScore', 'awayScore', 'scoringPlay'];
 
+/** A processed game slimmed to what a card reads (copies: the page may mutate its plays while rendering). */
+export function cardPage(game: ProcessedGame): CardPage {
+    const homeShare = (game as any).paperIndex?.homeShare;
+    return {
+        plays: game.plays.map((p) => Object.fromEntries(CARD_PLAY_KEYS.filter((k) => k in p).map((k) => [k, (p as any)[k]]))),
+        paperIndex: typeof homeShare === 'number' ? { homeShare } : undefined,
+        state: cardState(game.header.competitions[0].status),
+    };
+}
+
 /**
  * The game page's own processed game, slimmed to what a card reads, or null when the API has
  * none. It is the page's `/process` request (same path, same cache entry, same TTL), so a card
@@ -1313,13 +1323,7 @@ const CARD_PLAY_KEYS = ['scrimmage_play', 'winProbability', 'period', 'pos_team'
  */
 export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number): Promise<CardPage | null> {
     try {
-        const game: ProcessedGame = JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL));
-        const homeShare = (game as any).paperIndex?.homeShare;
-        return {
-            plays: game.plays.map((p) => Object.fromEntries(CARD_PLAY_KEYS.filter((k) => k in p).map((k) => [k, (p as any)[k]]))),
-            paperIndex: typeof homeShare === 'number' ? { homeShare } : undefined,
-            state: cardState(game.header.competitions[0].status),
-        };
+        return cardPage(JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL)));
     } catch (e) {
         console.error(`ERROR while fetching the processed game for a share card, ${league} ${gameId}: ${e}`);
         return null;
@@ -1333,7 +1337,8 @@ export async function retrieveCardPage(gameId: string | number, league: League, 
  * long as the card may be (CARD_MAX_AGE), keyed per deploy, state, variant and projection,
  * so a new renderer redraws every card. A played game's card is a POST carrying `page` (the
  * plays the game page already processed, retrieveCardPage), which has no edge cache of its
- * own: the route's `cache.set` keeps it for CARD_MAX_AGE, and a deploy clears that.
+ * own: the route keeps it in KV and its `cache.set` for CARD_MAX_AGE, both per deploy
+ * (routes/shareCard.ts).
  */
 export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }, logos?: { home: string, away: string }, page?: CardPage | null): Promise<ArrayBuffer | null> {
     if (!PYTHON_HTTP_TOKEN) return null;
