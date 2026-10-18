@@ -103,6 +103,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // rows the page already reads for the TeamCard, so no request changes.
     // Promote to 'on' once the table has been reviewed on production data.
     'team-record-splits': 'preview',
+    // The team profile's Metric History (/team/<id> and the /nfl twin) draws its boxes from the national
+    // distribution of team SEASONS (sdv-db `team_summaries/percentiles`, one read) instead of the team-GAME
+    // ladder, and Net Statistics get boxes too. Off: the five ladder reads and today's chart, unchanged. The
+    // national trends page and game pages keep the game ladder either way.
+    'team-season-bands': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

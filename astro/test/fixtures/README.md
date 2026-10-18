@@ -345,3 +345,20 @@ written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cel
 and caption).
 
 **To regenerate:** repeat the two requests with the current `teamSplitColumns`.
+
+## `team-season-percentiles-cfb.json`
+The Data API's `GET https://data.sportsdataverse.org/v1/cfb/team_summaries/percentiles`
+body (no `season`: every season, oldest first), trimmed: of the 598 rows (23
+seasons x 26 metrics) it keeps the 12 for seasons 2023-2025 and metrics
+`EPAplay_off`, `EPAplay_margin`, `success_off_pass` and `havoc_def`, and `count`
+is set to 12 to match. Each row is untouched: `{season, metric, teams, breaks[101]}`.
+
+**Provenance (2026-10-18):** captured from the live API with the read key, the
+day sdv-db #171 deployed the route. 2024 `EPAplay_off`: 134 teams, breaks[1|25|50|75|99]
+= -0.172 / -0.023 / 0.035 / 0.096 / 0.218.
+
+**Used by:** `test/teamSeasonBands.test.ts` (the flatten/validate mapping, the
+404 case, the profile route with the `team-season-bands` flag on and off) and
+`test/teamTrendBands.test.ts` (the metric filter).
+
+**To regenerate:** repeat the request and apply the same trim.

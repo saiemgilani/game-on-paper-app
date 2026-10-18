@@ -796,6 +796,12 @@ export function getPercentileKey(metric: string): string {
     }
 }
 
+/** 'team-season-bands': one metric's team-season ladder points (retrieveTeamSeasonPercentiles rows carry the
+ *  team_summaries column name, so a margin matches its own rows -- no ladder-key translation). */
+export function teamSeasonBandsFor(rows: { season: number, pctile: number, metric: string, value: number }[], metric: string): { season: number, pctile: number, value: number }[] {
+    return rows.filter(r => r.metric === metric).map(({ season, pctile, value }) => ({ season, pctile, value }));
+}
+
 export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
     if (!input && input != 0) {
         return null;
