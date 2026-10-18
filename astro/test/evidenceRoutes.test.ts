@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 // @ts-ignore -- plain .mjs script module, no type declarations
-import { pageKey, slug } from '../scripts/lib/browser.mjs';
+import { pageKey, slug, slugger } from '../scripts/lib/browser.mjs';
+// @ts-ignore -- plain .mjs script module, no type declarations
+import { serveStatic } from '../scripts/lib/serve-static.mjs';
 
 // the exact filter pr-evidence.yml applies to the PR body's `Evidence routes:` tokens
 const workflow = readFileSync(new URL('../../.github/workflows/pr-evidence.yml', import.meta.url), 'utf8');
@@ -38,16 +42,41 @@ describe('slug', () => {
   });
 });
 
+describe('slugger (stems for one run)', () => {
+  test('routes that slug alike get distinct stems; the rest keep their slug', () => {
+    const routes = ['/a-b', '/a/b', '/a?x=1', '/a?x_1', '/game/1', '/game/1'];
+    const stem = slugger(routes);
+    expect(stem('/game/1')).toBe('game-1');
+    expect(new Set(['/a-b', '/a/b', '/a?x=1', '/a?x_1'].map(stem)).size).toBe(4);
+    expect(stem('/a-b')).toMatch(/^a-b_[0-9a-f]{8}$/);
+    expect(slugger([...routes].reverse())('/a/b')).toBe(stem('/a/b')); // order-independent
+  });
+});
+
 describe('pageKey (saved-page lookup)', () => {
   test('path plus query, trailing slash ignored', () => {
     expect(pageKey('/players/4837248?season=2025')).toBe('/players/4837248?season=2025');
     expect(pageKey('/players/4837248/?season=2025')).toBe('/players/4837248?season=2025');
     expect(pageKey('/players/4837248')).toBe('/players/4837248');
     expect(pageKey('/')).toBe('/');
+    expect(pageKey('//a/b')).toBe('/a/b'); // a path, not the host `a`
   });
-  test('a route and its request URL resolve to the same page, distinct from the bare path', () => {
-    const pages = new Map([['/players/1', 'bare.html'], ['/players/1?season=2025', 'season.html']].map(([r, f]) => [pageKey(r), f]));
-    expect(pages.get(pageKey('/players/1?season=2025'))).toBe('season.html');
-    expect(pages.get(pageKey('/players/1/'))).toBe('bare.html');
+  test('the static server serves each route its own saved page', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gop-serve-'));
+    const page = (name: string) => {
+      writeFileSync(join(dir, name), name);
+      return { file: join(dir, name) };
+    };
+    const pages = { '/players/1': page('bare'), '/players/1?season=2025': page('season'), '/b': page('b'), '//a/b': page('ab') };
+    const server = await serveStatic({ astro: dir }, pages, 0);
+    const get = async (p: string) => (await fetch(`http://127.0.0.1:${server.address().port}${p}`)).text();
+    try {
+      expect(await get('/players/1?season=2025')).toBe('season');
+      expect(await get('/players/1/')).toBe('bare');
+      expect(await get('/b')).toBe('b');
+      expect(await get('//a/b')).toBe('ab');
+    } finally {
+      server.close();
+    }
   });
 });

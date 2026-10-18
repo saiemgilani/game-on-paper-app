@@ -10,7 +10,7 @@
 import { parseArgs } from 'node:util';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { slug } from './lib/browser.mjs';
+import { slugger } from './lib/browser.mjs';
 
 export const MARKER = '<!-- pr-evidence -->';
 
@@ -51,6 +51,7 @@ if (!summary) {
   out.push('', 'No results: the comparison did not run. See the run log.');
 } else {
   out.push('', `PR branch (merged onto base \`${short(summary.base.sha)}\`), rendered with preview flags on.`);
+  const slug = slugger(summary.routes);
   for (const route of summary.routes) {
     const cell = (device, scheme, width) => {
       const stem = `${slug(route)}-${device}-${scheme}`;

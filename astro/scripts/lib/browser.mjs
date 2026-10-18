@@ -4,6 +4,7 @@
 import { delimiter, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 export async function loadChromium() {
   try { return (await import('playwright-core')).chromium; } catch {}
@@ -42,10 +43,19 @@ export const slug = (r) => {
   return q < 0 ? stem : `${stem}_${r.slice(q + 1).replace(/[^\w-]+/g, '_')}`;
 };
 
+// The stem for each route of a run. Distinct routes can slug alike (`/a-b` and `/a/b`,
+// `/a?x=1` and `/a?x_1`); those get a short hash of the route appended, so neither
+// overwrites the other's files. Every tool of a run builds this from the same route list.
+export const slugger = (routes) => {
+  const count = new Map();
+  for (const r of new Set(routes)) count.set(slug(r), (count.get(slug(r)) ?? 0) + 1);
+  return (r) => (count.get(slug(r)) > 1 ? `${slug(r)}_${createHash('sha1').update(r).digest('hex').slice(0, 8)}` : slug(r));
+};
+
 // What identifies a saved page: path (trailing slash ignored) plus query string, so
 // `/players/1` and `/players/1?season=2025` are two pages.
 export const pageKey = (url) => {
-  const u = new URL(url, 'http://x');
+  const u = new URL(url.replace(/^\/+/, '/'), 'http://x'); // `//a/b` is a path, not a host
   return (decodeURIComponent(u.pathname).replace(/\/+$/, '') || '/') + u.search;
 };
 
