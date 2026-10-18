@@ -408,3 +408,12 @@ needs a new id and a new snapshot in its own PR.
   the same time and staged beside it (`wnba_pregame_401918306_summary.json`, same commit). **Used by:** `test/wnba/gameRoute.test.ts`,
   `test/wnba/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 4 Step 1 (a pregame page can only be
   taken before tip-off; never flip a final's status, D15).
+- `wnba/scoreboard-20250801.json` and `wnba/scoreboard-20050603.json`: ESPN cdn WNBA scoreboards
+  (`https://cdn.espn.com/core/wnba/scoreboard?xhr=1&date=<YYYYMMDD>`, User-Agent: `resources/espn.ts` `requestESPN`'s Safari UA),
+  captured 2026-10-18T23:55Z, every event kept, trimmed to `{ content: { sbData: { events } } }` with competitor `statistics` and
+  `linescores` removed (as `nba/scoreboard-20250115.json`). 2025-08-01: five finals, one double overtime (401736289), Golden State's
+  new ESPN id 129689. 2005-06-03: two finals in the halves era (`format.regulation.periods` 2), one in overtime (250603003, period 3;
+  ESPN's own `status.type.detail` says "Final", GOP's `Final/OT` comes from the period and the regulation, D14); the board spells
+  WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
+  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
+  Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
