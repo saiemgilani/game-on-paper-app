@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { jsonResponse } from '../src/utils/misc';
 import { hrefFor, rankHits, searchQuery, type SearchRow } from '../src/utils/search';
 
 // The header search: the pure helpers, then the /api/search proxy with the Data API
@@ -84,6 +85,31 @@ describe('rankHits', () => {
     test("a meme-list team's own name is lowercased, as cleanField does", () => {
         const [hit] = rankHits([{ type: 'team', id: '61', label: 'Georgia', sublabel: 'UGA · SEC', league: 'cfb', score: 4 }], all);
         expect(hit.label).toBe('georgia');
+    });
+
+    test("a player follows his latest team's meme list, name and team both, as his page does", () => {
+        const hits = rankHits([
+            { type: 'player', id: '4432577', label: 'Carson Beck', sublabel: 'UGA · 2021–2024', league: 'cfb', score: 3 },
+            { type: 'player', id: '4426348', label: 'Jalen Milroe', sublabel: 'ALA · 2021–2024', league: 'cfb', score: 2 },
+            // NFL ids never reach the list, so an NFL player keeps his name
+            { type: 'player', id: '3139477', label: 'Patrick Mahomes', sublabel: 'KC · 2017–2026', league: 'nfl', score: 1 },
+        ], all);
+        expect(hits.map((h) => [h.label, h.sublabel])).toEqual([
+            ['carson beck', 'uga / 2021–2024'],
+            ['Jalen Milroe', 'ALA / 2021–2024'],
+            ['Patrick Mahomes', 'KC / 2017–2026'],
+        ]);
+    });
+});
+
+describe('jsonResponse', () => {
+    test('a JSON body with its content type, the caller\'s headers and status', async () => {
+        const res = jsonResponse({ a: 1 }, { 'Cache-Control': 'no-store' }, 400);
+        expect(res.status).toBe(400);
+        expect(res.headers.get('Content-Type')).toBe('application/json');
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
+        expect(await res.json()).toEqual({ a: 1 });
+        expect(jsonResponse([]).status).toBe(200);
     });
 });
 

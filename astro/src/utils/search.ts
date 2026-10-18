@@ -1,6 +1,7 @@
 import { leaguePath, type League } from './league';
 import { cleanTextForTeam } from './misc';
 import { playerPath } from './players';
+import { teamIdByAbbr } from './teams';
 
 /** What the header search returns, in the order its groups are shown. */
 export const SEARCH_TYPES = ['team', 'player', 'game'] as const;
@@ -54,14 +55,20 @@ export function rankHits(rows: SearchRow[], opts: { players: boolean; nfl: boole
         .map((r) => {
             const type = r.type as SearchType;
             const id = String(r.id);
+            const league = r.league as League;
+            // the site separates with slashes, not dots (docs/design-conventions.md §8)
+            const sublabel = (r.sublabel ?? '').replaceAll(' · ', ' / ');
+            // a team's own name follows the meme list, as cleanField does everywhere else; a
+            // player follows his latest team (the abbreviation that opens his context line),
+            // and his name and that team are lowercased together, as on his page
+            const memeId = type === 'team' ? id
+                : type === 'player' ? teamIdByAbbr(league, sublabel.split(' / ')[0]) : null;
             return {
                 type,
                 id,
-                // a team's own name follows the meme list, as cleanField does everywhere else
-                label: type === 'team' ? cleanTextForTeam(r.label, id) : r.label,
-                // the site separates with slashes, not dots (docs/design-conventions.md §8)
-                sublabel: (r.sublabel ?? '').replaceAll(' · ', ' / '),
-                href: hrefFor({ type, id, league: r.league as League }),
+                label: cleanTextForTeam(r.label, memeId),
+                sublabel: type === 'player' ? cleanTextForTeam(sublabel, memeId) : sublabel,
+                href: hrefFor({ type, id, league }),
             };
         });
 }

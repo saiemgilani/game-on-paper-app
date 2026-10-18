@@ -60,6 +60,20 @@ export function cfbTeamIdByName(name: string | null | undefined): number | null 
     return key ? (CFB_ID_BY_NAME[key] ?? null) : null;
 }
 
+/**
+ * ESPN team id for a league's abbreviation ("UGA" -> 61, "LAC" -> 24). The Data API's
+ * player search row names his latest team by abbreviation only, and the meme list
+ * needs the id.
+ */
+const CFB_ID_BY_ABBR: Record<string, number> = Object.fromEntries(
+    ((teamsRaw.teams ?? []) as TeamIndex[]).filter((t) => t.abbr).map((t) => [(t.abbr as string).toUpperCase(), t.team_id]),
+);
+
+export function teamIdByAbbr(league: League, abbr: string | null | undefined): number | null {
+    if (league === 'nfl') return nflTeamIdByAbbr(abbr);
+    return CFB_ID_BY_ABBR[String(abbr ?? '').trim().toUpperCase()] ?? null;
+}
+
 /** Every team the site knows for a league, name-sorted. ESPN ids; cfb is the historical default. */
 export function retrieveAllTeams(league: League = 'cfb'): TeamIndex[] {
     try {
