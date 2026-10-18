@@ -2,8 +2,7 @@
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { espnLogoLeague, leagueFromLocation } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
-import { roundNumber, getNumberWithOrdinal, retrieveValue, generateColorRampValue, metricDecimalPoints, offenseYardsPerPlay } from '../../../utils/misc';
-import { BOX_SCORE_NON_RATE_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, METRIC_KEY_TITLE_MAPPING } from '../../../utils/constants';
+import { binionBoxCells } from '../../../utils/binionBox';
 import type { SDVSeasonPercentile } from '../../../resources/sdv';
 import { LEAGUES, type League } from '../../../utils/league';
 
@@ -12,26 +11,16 @@ interface Props {
     advancedBoxScore: ProcessedBoxScore
     percentiles: SDVSeasonPercentile[]
     league?: League
+    /** the SituationalSection span shown; "all" is the full game */
+    span?: string
 }
 
-const {season, advancedBoxScore, percentiles, league = 'cfb'}: Props = $props();
+const {season, advancedBoxScore, percentiles, league = 'cfb', span = 'all'}: Props = $props();
+// the ladder is single full games: a quarter or half shows its values unranked
+const ladder = $derived(span === 'all' ? percentiles : []);
 // the population the percentiles describe: "FBS vs FBS" for college, "NFL" for the pros
 const percentilePool = league === 'cfb' ? `${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool}` : LEAGUES[league].pool;
 const groups = $derived(advancedBoxScore.team.map((group: any) => group.pos_team));
-
-const percentile_title_key_mapping: Record<string, string> = {
-    "EPA_per_play" : "EPAplay",
-    "EPA_passing_per_play" : "EPAdropback",
-    "EPA_rushing_per_play" : "EPArush",
-    "havoc_total" : "havoc",
-    "EPA_success" : "success",
-    "EPA_explosive" : "explosive",
-    "yards_per_pass": "yardsdropback",
-    "yards_per_play": "yardsplay",
-    "rushing_stuff" : "play_stuffed",
-    "EPA_success_rate_third" : "third_down_success",
-    "EPA_success_rate_rz" : "red_zone_success"
-}
 
 const slim_title_mapping: Record<string, string> = {
     "EPA_per_play" : "EPA/Play",
@@ -47,142 +36,6 @@ const slim_title_mapping: Record<string, string> = {
     "yards_per_play": "Yards/Play",
 }
 
-interface BoxScorePercentile {
-    pctl: number | null,
-    min: number | null,
-    mid: number | null,
-    max: number | null
-}
-
-
-function retrieveBoxScorePercentile(value: number, key: string): BoxScorePercentile {
-    if (percentiles.length == 0) {
-        //console.log('no pctls available')
-        return {
-            pctl: null,
-            min: null,
-            mid: null,
-            max: null
-        }
-    }
-
-    const adjKey = percentile_title_key_mapping[key];
-    if (!adjKey) {
-        //console.log('bailing out of percentile title key with key ' + key)
-        return {
-            pctl: null,
-            min: null,
-            mid: null,
-            max: null
-        }
-    }
-
-    //console.log(`calc pctl for key ${adjKey} w/ val ${value}`)
-
-    let basePctls: number[] = percentiles.map(item => {
-        let val = retrieveValue(item, adjKey);
-        return parseFloat(val)
-    })
-    basePctls.sort((a, b) => (a - b))
-
-    if (basePctls[0] == null || basePctls.length == 0) {
-        //console.log('all ptcls null for key ' + adjKey)
-        return {
-            pctl: null,
-            min: null,
-            mid: null,
-            max: null
-        }
-    }
-    
-    let pctls = [...basePctls];
-    //console.log(`mapped pctls for key ${adjKey}: ${JSON.stringify(pctls, null, 2)}`)
-    pctls = pctls.filter(item => (item <= value));
-
-    const pct = pctls.length
-    // console.log(`pct calc for key ${key} is ${pct}`)
-    return {
-        pctl: pct,
-        min: basePctls[0],//, 2, 2),
-        mid: basePctls[Math.floor(basePctls.length / 2)],//, 2, 2),
-        max: basePctls[basePctls.length - 1]//, 2, 2),
-    }
-}
-
-function handleBoxScoreMetricRows(item: string, useSuffix: boolean, decimalPoints: number): string {
-    let subKeys = item.split('.');
-    if (subKeys.length == 1) {
-        subKeys.splice(0, 0, 'team');
-    }
-
-    let finalTeamInfo = [...(advancedBoxScore as any)[subKeys[0]]]
-    const finalKey = subKeys[1];
-    if (finalKey.includes('rushing_stuff')) {
-        finalTeamInfo.reverse()
-    }
-
-    let finalDecimalPoints = metricDecimalPoints(decimalPoints);
-    var result = ""
-    if (item == "yards_per_play") {
-        // Sack yardage included (offenseYardsPerPlay): the same basis as the SDV
-        // `yardsplay` percentiles this cell is ranked against.
-        finalTeamInfo.forEach((teamData: any) => {
-            const val = offenseYardsPerPlay(teamData);
-            if (val === null) {
-                result += `<td class="numeral" style="text-align: center;">—</td>`;
-            } else {
-                let pct = retrieveBoxScorePercentile(val, finalKey);
-                let colorRampClass = generateColorRampValue(pct.pctl, 100)
-                result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${roundNumber(pct.min, 2, finalDecimalPoints)}\nMedian: ${roundNumber(pct.mid, 2, finalDecimalPoints)}\nBest: ${roundNumber(pct.max, 2, finalDecimalPoints)}">${roundNumber(val, 2, finalDecimalPoints)} <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
-            }
-        });
-    } else if (BOX_SCORE_NON_RATE_PERCENT_COLUMNS.includes(finalKey)) {
-        finalTeamInfo.forEach(teamData => {
-            let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
-            let rate = parseFloat(JSON.parse(JSON.stringify(val)));
-            let pct = retrieveBoxScorePercentile(val, finalKey);
-            let colorRampClass = generateColorRampValue(pct.pctl, 100)
-            let multiplier = 1
-            if (finalKey.includes('_third') || finalKey.includes('_rz')) {
-                multiplier = 100
-            }
-            //console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${roundNumber((pct.min || 0) * multiplier, 2, 0)}%\nMedian: ${roundNumber((pct.mid || 0) * multiplier, 2, 0)}%\nBest: ${roundNumber((pct.max || 0) * multiplier, 2, 0)}%">${roundNumber(rate * multiplier, 2, 0)}% <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
-        });
-    } else if (BOX_SCORE_NON_RATE_DECIMAL_COLUMNS.includes(finalKey)) {
-        finalTeamInfo.forEach(teamData => {
-            let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
-            let pct = retrieveBoxScorePercentile(val, finalKey);
-            let colorRampClass = generateColorRampValue(pct.pctl, 100)
-            //console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${roundNumber(pct.min, 2, finalDecimalPoints)}\nMedian: ${roundNumber(pct.mid, 2, finalDecimalPoints)}\nBest: ${roundNumber(pct.max, 2, finalDecimalPoints)}">${roundNumber(val, 2, finalDecimalPoints)} <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
-        });
-    } else if (BOX_SCORE_NON_RATE_COLUMNS.includes(finalKey)) {
-        finalTeamInfo.forEach(teamData => {
-            let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
-            let pct = retrieveBoxScorePercentile(val, finalKey);
-            let colorRampClass = generateColorRampValue(pct.pctl, 100)
-            //console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${pct.min}\nMedian: ${pct.mid}\nBest: ${pct.max}">${val} <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
-        });
-    } else { 
-        finalTeamInfo.forEach(teamData => {
-            let val = parseFloat(retrieveValue(teamData, finalKey) || "0");
-            var rate = 0.0;
-            if (useSuffix) {
-                rate = parseFloat(retrieveValue(teamData,`${finalKey}_rate`))
-            } else {
-                rate = (val / parseFloat(retrieveValue(teamData,'scrimmage_plays')))
-            }
-            let pct = retrieveBoxScorePercentile(rate, finalKey);
-            let colorRampClass = generateColorRampValue(pct.pctl, 100)
-            //console.log(`calculated pctl for key ${finalKey} with pct value ${pct} and class ${colorRampClass}`)
-            result += `<td class="numeral ${colorRampClass}" style="text-align: center;" title="Worst: ${roundNumber((100.0 * (pct.min || 0)), 2, 0)}%\nMedian: ${roundNumber((100.0 * (pct.mid || 0)), 2, 0)}%\nBest: ${roundNumber((100.0 * (pct.max || 0)), 2, 0)}%">${roundNumber((100.0 * rate), 2, 0)}% <small class="align-self-center" style="opacity: 50%" ${percentiles.length == 0 ? 'hidden' : ''}>${getNumberWithOrdinal(pct.pctl || 0)} %ile</small></td>`;
-        });
-    }
-    return result;
-}
-
 const columns = [
     "EPA_per_play",
     "situational.EPA_success", 
@@ -196,13 +49,13 @@ const columns = [
     "rushing_stuff", 
     "defensive.havoc_total"
 ]
-const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].season;
+const percentileSeason = $derived(ladder.length == 0 ? season : ladder[0].season);
 </script>
 
 <div class="table-responsive">
     <table class="table table-sm table-responsive">
         <caption class="text-muted small">Concept from Robert Binion (<a href="https://twitter.com/robert_binion">@robert_binion</a>). Data from GameOnPaper.com by Akshay Easwaran (<a href="https://bsky.app/profile/akeaswaran.me">@akeaswaran.me</a>) and Saiem Gilani (<a href="https://bsky.app/profile/saiemgilani.bsky.social">@saiemgilani</a>) with kneel downs removed.
-        {#if percentiles.length > 0}
+        {#if ladder.length > 0}
             <span> Cell colors reflect the percentile of a team's performance against all single-game {percentilePool} performances in that stat in {percentileSeason}.</span>
         {/if}
         </caption>
@@ -222,7 +75,7 @@ const percentileSeason = (percentiles.length == 0) ? season : percentiles[0].sea
             {#each columns as item}
             <tr>
                 <td style="text-align: left;">{@html slim_title_mapping[item] || item}</td>
-                {@html handleBoxScoreMetricRows(item, true, 2)}
+                {@html binionBoxCells(advancedBoxScore as any, item, ladder)}
             </tr>
             {/each}
         </tbody>
