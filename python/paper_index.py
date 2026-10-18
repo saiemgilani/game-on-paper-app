@@ -108,7 +108,7 @@ WEIGHTS = {
 # Each margin's importance in the model: its weight times the standard
 # deviation of that margin over the league's train games (log-odds per SD),
 # so margins on different scales compare. The game page sorts the margins
-# table by it, the same order every game. Measured 2026-10-18 for the
+# table by each game's impact and breaks ties by this. Measured 2026-10-18 for the
 # WEIGHTS above on the trainer's current train panel (cfb 6,648 games, nfl
 # 1,615); tools/fit_paper_index.py records it as provenance["importance"]
 # and prints it on every refit, so paste it alongside the weights.

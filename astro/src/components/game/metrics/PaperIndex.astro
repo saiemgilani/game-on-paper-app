@@ -10,7 +10,7 @@ interface Props {
         margins: Record<string, number>
         /** per margin, its push on the home share in log-odds, weight x margin (paper_index.py) */
         impact?: Record<string, number | null>
-        /** per margin, its importance in the model; the table's row order (paper_index.py) */
+        /** per margin, its importance in the model; breaks impact ties in the row order (paper_index.py) */
         importance?: Record<string, number>
         byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
@@ -58,8 +58,11 @@ const importance = result.importance;
 const IMPACT_STEPS = [0.25, 0.75, 1.5];
 const impactLevel = (v: number) => IMPACT_STEPS.filter((s) => Math.abs(v) >= s).length;
 const LEVEL_WORDS = ["", "slightly", "clearly", "strongly"];
-// the model's importance (weight x spread, python/paper_index.py IMPORTANCE) descending: the same
-// order every game; rows without one last, and the stable sort keeps display order otherwise
+// arrows bolded (Akshay on #306): bootstrap-icons pins `.bi::before { font-weight: normal !important }`,
+// so fw-bold can't reach the glyph; the arrow cell's inherited -webkit-text-stroke thickens it instead
+// this game's impact, largest push either way first (Akshay on #306, from user feedback); ties by
+// the model's importance (weight x spread, python/paper_index.py IMPORTANCE), then display order
+// (stable sort). Rows without an impact or importance sort after those with one.
 const marginRows = MARGINS
     .filter(([k]) => m[k] != null)
     .map(([k, label, format]) => {
@@ -67,11 +70,12 @@ const marginRows = MARGINS
         const level = v == null ? 0 : impactLevel(v);
         return {
             label, value: format(m[k]), pos: m[k] >= 0, importance: importance?.[k] ?? null,
-            level, up: v != null && v > 0,
+            size: v == null ? null : Math.abs(v), level, up: v != null && v > 0,
             impactText: v == null ? "not measured" : level ? `${LEVEL_WORDS[level]} ${v > 0 ? "helped" : "hurt"} ${homeTeam.abbreviation}` : "little impact",
         };
     })
-    .sort((a, b) => Number(a.importance == null) - Number(b.importance == null) || (b.importance ?? 0) - (a.importance ?? 0));
+    .sort((a, b) => Number(a.size == null) - Number(b.size == null) || (b.size ?? 0) - (a.size ?? 0)
+        || Number(a.importance == null) - Number(b.importance == null) || (b.importance ?? 0) - (a.importance ?? 0));
 // per-window strip, canonical order; a missing window simply doesn't render
 const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
 const periods = PERIOD_ORDER
@@ -115,7 +119,7 @@ const periods = PERIOD_ORDER
         </div>
         <div class="col-lg-4 col-12">
             <table class="table table-sm align-middle mb-0">
-                {impact && <caption class="text-muted text-small">Sorted by each metric's importance in the model. Arrows show how much it moved this game's Deserved Win %.</caption>}
+                {impact && <caption class="text-muted text-small">Sorted by impact: how much each metric moved this game's Deserved Win %.</caption>}
                 <thead>
                     <tr>
                         <th>Margin</th>
@@ -130,7 +134,7 @@ const periods = PERIOD_ORDER
                             <td class="text-center fw-bold" style={r.pos ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{r.value}</td>
                             {impact && (r.level === 0
                                 ? <td class="text-center text-muted"><span aria-hidden="true">—</span><span class="visually-hidden">{r.impactText}</span></td>
-                                : <td class="text-center text-nowrap" style={r.up ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>
+                                : <td class="text-center text-nowrap" style={`color: var(--bs-${r.up ? "green" : "purple"}); -webkit-text-stroke: 1px`}>
                                     {Array.from({ length: r.level }, () => <i class={`bi bi-arrow-${r.up ? "up" : "down"}`} aria-hidden="true"></i>)}
                                     <span class="visually-hidden">{r.impactText}</span>
                                 </td>)}

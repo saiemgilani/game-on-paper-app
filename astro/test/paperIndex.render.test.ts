@@ -1,7 +1,8 @@
 /**
  * The Deserved Win % margins table with the producer's per-margin impact
- * (python/paper_index.py `share_from_inputs` -> `impact`) shown as arrows, and
- * rows in the model's importance order (`compute` -> `importance`).
+ * (python/paper_index.py `share_from_inputs` -> `impact`) shown as bold arrows,
+ * rows sorted by the size of that impact, ties in the model's importance order
+ * (`compute` -> `importance`).
  *
  * The fixture is the real `/cfb/400869270/process` body, which predates
  * `impact`. IMPACT below is what `share_from_inputs` returns for this
@@ -60,7 +61,7 @@ const render = async (result: any) => {
     return { html, ...parseTable(html) };
 };
 
-const CAPTION = "Sorted by each metric's importance in the model. Arrows show how much it moved this game's Deserved Win %.";
+const CAPTION = "Sorted by impact: how much each metric moved this game's Deserved Win %.";
 const caption = (html: string) => html.match(/<caption[^>]*>([\s\S]*?)<\/caption>/)?.[1].replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
 // the impact cell of a body row: its arrow icons and its em-dash
 const arrows = (row: string) => {
@@ -74,25 +75,26 @@ const arrows = (row: string) => {
 };
 
 describe('Deserved Win %: margin impact', () => {
-    test('rows in importance order; impact as one to three arrows or an em-dash, no percents', async () => {
+    test('rows by impact, largest either way first; impact as one to three bold arrows or an em-dash, no percents', async () => {
         expect(Object.keys(IMPACT).sort()).toEqual(Object.keys(game.paperIndex.margins).sort());
         const { html, headers, rows, rowHtml } = await render({ ...game.paperIndex, impact: IMPACT, importance: IMPORTANCE });
         expect(headers).toEqual(['Margin', '', 'Impact']);
         const body = rows.slice(1);
         expect(body.map((r) => r[0])).toEqual([
-            'Success Rate', 'Field position (EP)', 'Explosiveness (EPA/success)', 'Opportunity Conversion Rate',
-            'Turnovers', 'Points per opportunity', 'Havoc Rate', 'Explosive Play Rate',
+            'Field position (EP)', 'Explosiveness (EPA/success)', 'Opportunity Conversion Rate', 'Turnovers',
+            'Success Rate', 'Explosive Play Rate', 'Points per opportunity', 'Havoc Rate',
         ]);
-        // IMPACT: success -0.30, fp +2.42, epa -1.91, conv -0.98, TO +0.60, ppo -0.09, havoc -0.05, explosive -0.17
+        // |IMPACT|: fp +2.42, epa -1.91, conv -0.98, TO +0.60, success -0.30, explosive -0.17, ppo -0.09, havoc -0.05
         expect(rowHtml.slice(1).map((r) => { const a = arrows(r); return a.dash ? '—' : a.up ? `up${a.up}` : `down${a.down}`; }))
-            .toEqual(['down1', 'up3', 'down3', 'down2', 'up1', '—', '—', '—']);
+            .toEqual(['up3', 'down3', 'down2', 'up1', 'down1', '—', '—', '—']);
         expect(body.map((r) => r[2])).toEqual([
-            'slightly hurt TEX', 'strongly helped TEX', 'strongly hurt TEX', 'clearly hurt TEX',
-            'slightly helped TEX', '— little impact', '— little impact', '— little impact',
+            'strongly helped TEX', 'strongly hurt TEX', 'clearly hurt TEX', 'slightly helped TEX',
+            'slightly hurt TEX', '— little impact', '— little impact', '— little impact',
         ].map((t) => t.replace('TEX', homeTeam.abbreviation)));
         expect(body.every((r) => !r[2].includes('%'))).toBe(true);
-        expect(arrows(rowHtml[2]).style).toContain('var(--bs-green)');
-        expect(arrows(rowHtml[1]).style).toContain('var(--bs-purple)');
+        expect(arrows(rowHtml[1]).style).toContain('var(--bs-green)');
+        expect(arrows(rowHtml[2]).style).toContain('var(--bs-purple)');
+        expect(arrows(rowHtml[1]).style).toContain('-webkit-text-stroke');
         expect(arrows(rowHtml[6]).style).toContain('text-muted');
         expect(caption(html)).toBe(CAPTION);
     }, 30_000);
@@ -115,9 +117,23 @@ describe('Deserved Win %: margin impact', () => {
         expect(rows.find((r) => r[0] === 'Turnovers')![2]).toBe('— not measured');
     }, 30_000);
 
-    test('without importance the rows keep display order', async () => {
-        const { rows } = await render({ ...game.paperIndex, impact: IMPACT });
-        expect(rows.slice(1).map((r) => r[0])).toEqual(Object.values(LABELS));
+    test('equal impact ties by importance, then display order; a missing impact sorts last', async () => {
+        const impact: Record<string, number | null> = {
+            success: 0.5, explosive: -0.5, explosive_epa: 0.5, opp_conversion: null,
+            pts_per_opp: 0.1, field_position: 0.1, havoc: 0.1, turnovers: 0.1,
+        };
+        const order = async (importance?: Record<string, number>) =>
+            (await render({ ...game.paperIndex, impact, importance })).rows.slice(1).map((r) => r[0]);
+        expect(await order(IMPORTANCE)).toEqual([
+            'Success Rate', 'Explosiveness (EPA/success)', 'Explosive Play Rate',
+            'Field position (EP)', 'Turnovers', 'Points per opportunity', 'Havoc Rate',
+            'Opportunity Conversion Rate',
+        ]);
+        expect(await order()).toEqual([
+            'Success Rate', 'Explosive Play Rate', 'Explosiveness (EPA/success)',
+            'Points per opportunity', 'Field position (EP)', 'Havoc Rate', 'Turnovers',
+            'Opportunity Conversion Rate',
+        ]);
     }, 30_000);
 
     test('a payload without impact keeps the two-column table in display order, no caption', async () => {
