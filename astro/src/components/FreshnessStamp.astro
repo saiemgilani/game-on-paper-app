@@ -10,8 +10,6 @@ const { stamp } = Astro.props;
 <script>
     // The server wrote the time in UTC (what a viewer without JS reads); this rewrites it into
     // the viewer's own zone, as the schedule page does with kickoff times.
-    import { freshnessTime } from "../utils/freshness";
-    for (const el of document.querySelectorAll<HTMLTimeElement>("time[data-freshness]")) {
-        try { el.textContent = freshnessTime(el.dateTime); } catch { /* the UTC text stands */ }
-    }
+    import { localizeFreshness } from "../utils/freshness";
+    localizeFreshness(document);
 </script>

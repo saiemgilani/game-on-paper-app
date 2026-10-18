@@ -20,6 +20,16 @@ export function freshnessTime(iso: string, opts: { locale?: string; timeZone?: s
         .replace(/\s+/g, ' ');
 }
 
+/**
+ * The page's rewrite (FreshnessStamp.astro's script): every `time[data-freshness]` under `root`
+ * into the viewer's own zone. An element whose time will not format keeps the server's UTC text.
+ */
+export function localizeFreshness(root: Pick<ParentNode, 'querySelectorAll'>, locale?: string): void {
+    for (const el of root.querySelectorAll<HTMLTimeElement>('time[data-freshness]')) {
+        try { el.textContent = freshnessTime(el.dateTime, { locale }); } catch { /* the UTC text stands */ }
+    }
+}
+
 /** The server-rendered stamp: UTC, labelled. Null when the time is absent or unparseable: a stamp is never invented. */
 export function freshnessStamp(iso: string | null | undefined): FreshnessStamp | null {
     if (!iso || !Number.isFinite(Date.parse(iso))) return null;

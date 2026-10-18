@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { localizeFreshness } from '../src/utils/freshness';
+import { useSystemZone } from './helpers/systemZone';
 
 // "Last updated" stamps, shown to every viewer: each surface stamps from its
 // own table's /v1/meta ingest time, the same stamp that keys its cached rows
@@ -81,6 +83,23 @@ describe('leaderboard freshness stamps', () => {
         expect(html).not.toContain('Last updated:');
         expect(html).toContain('Rushing');
         expect(h.playerArgs.at(-1)![8]).toBeUndefined(); // the table reads unpinned, as today
+    }, 60_000);
+});
+
+describe('the stamp under a non-UTC system zone (CI runs in UTC, so the zone is stubbed)', () => {
+    afterEach(() => { vi.unstubAllEnvs(); });
+    test.each([
+        ['America/New_York', 240, 'Sep 26, 2026, 9:14 AM EDT'],
+        ['America/Los_Angeles', 420, 'Sep 26, 2026, 6:14 AM PDT'],
+    ])('%s: the server writes UTC whatever the zone, and the page script rewrites it into that zone', async (zone, offset, local) => {
+        useSystemZone(zone, offset, DATASETS['cfb.team_summaries']);
+        const html = await page(TEAMS, teamProps, {});
+        expect(html).toContain('<time datetime="2026-09-26T13:14:00Z" data-freshness>Sep 26, 2026, 1:14 PM UTC</time>');
+        // the rendered <time>, through the same rewrite FreshnessStamp.astro's script runs in the browser
+        const [, iso, text] = html.match(/<time datetime="([^"]+)" data-freshness>([^<]+)<\/time>/)!;
+        const el = { dateTime: iso, textContent: text };
+        localizeFreshness({ querySelectorAll: (() => [el]) as any }, 'en-US');
+        expect(el.textContent).toBe(local);
     }, 60_000);
 });
 
