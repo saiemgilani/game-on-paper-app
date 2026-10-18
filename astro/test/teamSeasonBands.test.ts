@@ -48,11 +48,12 @@ import { retrieveTeamSeasonPercentiles, teamSeasonBands } from '../src/resources
 beforeEach(() => { net.seen.length = 0; net.puts.length = 0; net.status = 200; reads.ladder.length = 0; });
 
 describe('teamSeasonBands: route rows -> five ladder points', () => {
-    test('2024 EPAplay_off is breaks[1|25|50|75|99] of the live row', () => {
-        const pts = teamSeasonBands(BODY.data).filter(p => p.season === 2024 && p.metric === 'EPAplay_off');
-        expect(pts.map(p => p.pctile)).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
-        expect(pts.map(p => Number(p.value.toFixed(3)))).toEqual([-0.172, -0.023, 0.035, 0.096, 0.218]);
-        expect(teamSeasonBands(BODY.data)).toHaveLength(BODY.data.length * 5);
+    test('2024 EPAplay_off is breaks[1|25|50|75|99] of the live row, to 4 decimals', () => {
+        const rows = teamSeasonBands(BODY.data);
+        expect(rows).toHaveLength(BODY.data.length);
+        const row = rows.find(p => p.season === 2024 && p.metric === 'EPAplay_off')!;
+        expect(row.values).toEqual([-0.1721, -0.0233, 0.0346, 0.0961, 0.2177]);
+        expect(Object.keys(row).sort()).toEqual(['metric', 'season', 'values']); // no `teams`, no 101 breaks
     });
 
     test('a row with an unknown metric or bad breaks is dropped, the rest kept', () => {
@@ -66,7 +67,7 @@ describe('teamSeasonBands: route rows -> five ladder points', () => {
             { ...row, season: '2024' },
             null,
         ];
-        expect(teamSeasonBands([...bad, row])).toHaveLength(5);
+        expect(teamSeasonBands([...bad, row])).toHaveLength(1);
         expect(teamSeasonBands({ error: 'x' })).toEqual([]);
     });
 });
@@ -74,7 +75,7 @@ describe('teamSeasonBands: route rows -> five ladder points', () => {
 describe('retrieveTeamSeasonPercentiles', () => {
     test('one read, cached under the team_summaries ingest stamp', async () => {
         const rows = await retrieveTeamSeasonPercentiles('cfb');
-        expect(rows).toHaveLength(BODY.data.length * 5);
+        expect(rows).toHaveLength(BODY.data.length);
         expect(net.seen.filter(u => u !== META)).toEqual([ROUTE]);
         // the pinned read confirmed its stamp against team_summaries' meta entry, so it was stored
         expect(net.puts.filter(k => !k.startsWith('sdv-meta'))).toHaveLength(1);
@@ -120,7 +121,7 @@ describe('team profile route', () => {
         const { data, props } = await render(true);
         expect(reads.ladder).toEqual([]);
         expect(data.seasonBands).toBe(true);
-        expect(data.percentiles).toHaveLength(BODY.data.length * 5);
+        expect(data.percentiles).toHaveLength(BODY.data.length);
         expect(props.seasonBands).toEqual([0, true]);
     });
 });

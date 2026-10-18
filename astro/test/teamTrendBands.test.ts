@@ -34,7 +34,8 @@ describe('team-season band filter', () => {
         const pts = teamSeasonBandsFor(rows, 'success_off_pass');
         expect(pts).toHaveLength(3 * 5);
         expect(new Set(pts.map(p => p.season))).toEqual(new Set([2023, 2024, 2025]));
-        expect(Object.keys(pts[0]).sort()).toEqual(['pctile', 'season', 'value']);
+        expect(pts.filter(p => p.season === 2024).map(p => [p.pctile, p.value])).toEqual(
+            [[0.01, 0.3158], [0.25, 0.3974], [0.5, 0.4287], [0.75, 0.459], [0.99, 0.5355]].map(([p, v]) => [p, expect.closeTo(v, 4)]));
     });
 
     test('a margin draws bands centred near 0, from its own rows', () => {

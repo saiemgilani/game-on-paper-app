@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
-import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES } from "../utils/constants";
 import type { ESPNGameHeader } from "./espn";
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
@@ -827,21 +827,20 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     return await retrievePercentiles(season - 1, percentile, maxLookback, league, pin);
 }
 
-/** One ladder point of the team-SEASON distribution ('team-season-bands'): `value` is the `pctile` quantile of
- *  `metric` over every team's season in `season` -- a team_summaries column name, so it needs no key translation. */
+/** The team-SEASON distribution of one metric in one season ('team-season-bands'): `values` are its
+ *  TEAM_SEASON_PCTILES quantiles over every team's season. `metric` is the team_summaries column name, so it needs
+ *  no key translation. One row per (season, metric) rather than one per point keeps the island's props under
+ *  today's team-game ladder (~600 rows for cfb instead of ~3,000). */
 export interface SDVTeamSeasonBand {
     season: number
-    pctile: number
     metric: string
-    value: number
+    values: number[]
 }
 
-// the five points the trend chart's box draws (min, q1, median, q3, max), as indexes into the route's 101 breaks
-const TEAM_SEASON_LADDER: [number, number][] = [[0.01, 1], [0.25, 25], [0.5, 50], [0.75, 75], [0.99, 99]];
 // the trend chart's dropdown metrics -- the 26 the route serves
 const TEAM_SEASON_METRICS = new Set(['differential', 'offensive', 'defensive'].flatMap(c => Object.keys(SDV_TEAM_METRIC_CATEGORIES[c])));
 
-/** The route's rows -> the five ladder points each, dropping any row whose shape is off (a metric the chart does not
+/** The route's rows -> their five ladder points, dropping any row whose shape is off (a metric the chart does not
  *  know, or breaks that are not 101 finite, non-decreasing numbers). */
 export function teamSeasonBands(rows: unknown): SDVTeamSeasonBand[] {
     if (!Array.isArray(rows)) return [];
@@ -852,7 +851,8 @@ export function teamSeasonBands(rows: unknown): SDVTeamSeasonBand[] {
         const ok = Number.isInteger(row?.season) && TEAM_SEASON_METRICS.has(row?.metric) && Array.isArray(breaks) && breaks.length === 101
             && breaks.every((b: unknown, i: number) => typeof b === 'number' && Number.isFinite(b) && (i === 0 || b >= breaks[i - 1]));
         if (!ok) { dropped++; continue; }
-        for (const [pctile, i] of TEAM_SEASON_LADDER) out.push({ season: row.season, pctile, metric: row.metric, value: breaks[i] });
+        // 4 decimals is far below a pixel on any of these axes, and halves the bytes
+        out.push({ season: row.season, metric: row.metric, values: TEAM_SEASON_PCTILES.map(p => Math.round(breaks[Math.round(p * 100)] * 1e4) / 1e4) });
     }
     if (dropped) console.warn(`team season percentiles: dropped ${dropped} malformed row(s)`);
     return out;
