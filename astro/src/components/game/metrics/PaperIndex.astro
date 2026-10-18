@@ -8,7 +8,7 @@ interface Props {
     result: {
         homeShare: number
         margins: Record<string, number>
-        /** per margin, the percentage points it alone moved the home share (paper_index.py) */
+        /** per margin, its push on the home share in log-odds, weight x margin (paper_index.py) */
         impact?: Record<string, number | null>
         /** per margin, its importance in the model; the table's row order (paper_index.py) */
         importance?: Record<string, number>
@@ -51,10 +51,11 @@ const MARGINS: [string, string, (v: number) => string][] = [
     ["turnovers", "Turnovers", (v) => fmt(v, 0)],
 ];
 const importance = result.importance;
-// impact as a level, not a number: one to three arrows by how many percentage points the margin
-// alone moved the home share, an em-dash under the first step. Steps fitted to Akshay's mockup on
-// #306 (a 68% game: 14 pts = 1, 16 and 23 = 2, 26 and 55 = 3, 3 and under = none).
-const IMPACT_STEPS = [5, 15, 25];
+// impact as a level, not a number: one to three arrows by the margin's push in log-odds, an
+// em-dash under the first step. Log-odds, not percentage points, so a blowout's margins still
+// read (at 99% no single margin moves the share). Steps match Akshay's mockup on #306 (OSU-TEX
+// 2025: 0.6 = 1, 0.9 and 1.0 = 2, 2.0 and 2.7 = 3, 0.1 = none).
+const IMPACT_STEPS = [0.25, 0.75, 1.5];
 const impactLevel = (v: number) => IMPACT_STEPS.filter((s) => Math.abs(v) >= s).length;
 const LEVEL_WORDS = ["", "slightly", "clearly", "strongly"];
 // the model's importance (weight x spread, python/paper_index.py IMPORTANCE) descending: the same

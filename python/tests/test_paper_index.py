@@ -174,35 +174,20 @@ def test_margins_are_the_fitted_inputs_only(monkeypatch):
         assert set(w["margins"]) == set(w["impact"]) == _fitted("nfl")
 
 
-# the team_inputs() key each margin is the home-minus-away difference of
-_MARGIN_INPUT = {
-    "success": "successRate",
-    "explosive": "explosiveRate",
-    "explosive_epa": "explosivenessEpa",
-    "opp_conversion": "oppConversion",
-    "pts_per_opp": "ptsPerOpp",
-    "field_position": "avgStartEp",
-    "havoc": "havocAllowedRate",
-    "turnovers": "turnoversCommitted",
-}
-
-
 @pytest.mark.parametrize("league", LEAGUES)
-def test_impact_is_what_each_margin_alone_moved(league):
-    """impact[k]: home share minus the share with margin k evened out, in
-    percentage points, on the real oracle games. Same keys as margins, same
-    sign (every weight is >= 0), bounded by 100."""
-    assert set(_MARGIN_INPUT) == set(paper_index.WEIGHTS[league])
+def test_impact_is_each_margins_log_odds(league):
+    """impact[k] = weight * margin on the real oracle games: same keys as
+    margins, same sign (every weight is >= 0), and they add up to
+    logit(homeShare)."""
     for g in FIXTURES[league]["games"]:
         out = paper_index.share_from_inputs(g["home"], g["away"], league)
         assert set(out["impact"]) == set(out["margins"]) == _fitted(league)
         for k, v in out["impact"].items():
-            assert abs(v) <= 100
+            assert v == paper_index.WEIGHTS[league][k] * out["margins"][k]
             assert np.sign(v) == np.sign(out["margins"][k]), (league, g["gameId"], k)
-            even = {**g["home"], _MARGIN_INPUT[k]: g["away"][_MARGIN_INPUT[k]]}
-            zeroed = paper_index.share_from_inputs(even, g["away"], league)
-            assert zeroed["margins"][k] == 0
-            assert abs(v - 100 * (out["homeShare"] - zeroed["homeShare"])) < 1e-9
+        share = out["homeShare"]
+        # logit is ill-conditioned near 1 (one oracle game sits at 1 - 6e-11)
+        assert sum(out["impact"].values()) == pytest.approx(np.log(share / (1 - share)), rel=1e-6)
 
 
 def test_importance_covers_every_weight_and_ships_with_the_index():

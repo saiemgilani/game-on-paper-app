@@ -13,14 +13,14 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { loadGzJson, locals, parseTable } from './helpers/tables';
 
 const IMPACT: Record<string, number> = {
-    success: -7.30226,
-    explosive: -4.058488,
-    explosive_epa: -42.381306,
-    opp_conversion: -24.007154,
-    pts_per_opp: -2.219311,
-    field_position: 33.034883,
-    havoc: -1.257118,
-    turnovers: 12.889572,
+    success: -0.300563,
+    explosive: -0.168824,
+    explosive_epa: -1.905242,
+    opp_conversion: -0.979429,
+    pts_per_opp: -0.093,
+    field_position: 2.420635,
+    havoc: -0.052904,
+    turnovers: 0.6005,
 };
 // python/paper_index.py IMPORTANCE["cfb"]: success, field position, explosiveness,
 // opportunity conversion, turnovers, points per opportunity, havoc, explosive rate
@@ -83,7 +83,7 @@ describe('Deserved Win %: margin impact', () => {
             'Success Rate', 'Field position (EP)', 'Explosiveness (EPA/success)', 'Opportunity Conversion Rate',
             'Turnovers', 'Points per opportunity', 'Havoc Rate', 'Explosive Play Rate',
         ]);
-        // IMPACT: success -7.3, fp +33.0, epa -42.4, conv -24.0, TO +12.9, ppo -2.2, havoc -1.3, explosive -4.1
+        // IMPACT: success -0.30, fp +2.42, epa -1.91, conv -0.98, TO +0.60, ppo -0.09, havoc -0.05, explosive -0.17
         expect(rowHtml.slice(1).map((r) => { const a = arrows(r); return a.dash ? '—' : a.up ? `up${a.up}` : `down${a.down}`; }))
             .toEqual(['down1', 'up3', 'down3', 'down2', 'up1', '—', '—', '—']);
         expect(body.map((r) => r[2])).toEqual([
@@ -97,10 +97,10 @@ describe('Deserved Win %: margin impact', () => {
         expect(caption(html)).toBe(CAPTION);
     }, 30_000);
 
-    test('the steps: under 5 points is an em-dash, then 5, 15 and 25; a missing impact is an em-dash', async () => {
+    test('the steps: under 0.25 is an em-dash, then 0.25, 0.75 and 1.5; a missing impact is an em-dash', async () => {
         const impact: Record<string, number | null> = {
-            success: 4.99, explosive: 5, explosive_epa: 15, opp_conversion: 25,
-            pts_per_opp: -5, field_position: -24.99, havoc: null,
+            success: 0.249, explosive: 0.25, explosive_epa: 0.75, opp_conversion: 1.5,
+            pts_per_opp: -0.25, field_position: -1.499, havoc: null,
         };
         const { rows, rowHtml } = await render({ ...game.paperIndex, impact, importance: IMPORTANCE });
         const byLabel = Object.fromEntries(rows.slice(1).map((r, i) => [r[0], arrows(rowHtml[i + 1])]));
