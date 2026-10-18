@@ -63,7 +63,7 @@ describe('sdv.ts routes each league to its own API base', () => {
         await sdv.retrievePlayerSummaries(2025, sdv.SummaryType.PASSING, null, 'plays', false, 10, 2025, 'nfl').catch(() => {});
         await sdv.retrieveTeamSummaries({ season: 2025 }).catch(() => {});
         const urls = seen.filter(u => u.includes('sportsdataverse.org'));
-        expect(urls.find(u => u.includes('/v1/nfl/team_summaries?'))).toContain('season=2025');
+        expect(urls.find(u => u.includes('/v1/nfl/team_summaries?') && !u.includes('limit=50000'))).toContain('season=2025');
         expect(urls.some(u => u.includes('/v1/nfl/percentiles?'))).toBe(true);
         expect(urls.some(u => u.includes('/v1/nfl/passing?'))).toBe(true);
         expect(urls.some(u => u.includes('/v1/cfb/team_summaries?'))).toBe(true);
@@ -71,13 +71,26 @@ describe('sdv.ts routes each league to its own API base', () => {
         expect(urls.filter(u => u.includes('/v1/nfl/')).every(u => !u.includes('fbs_class='))).toBe(true);
     });
 
+    test('game-log percentiles ask for the position cohort and the play floor', async () => {
+        const sdv = await import('../src/resources/sdv');
+        await sdv.retrievePlayerGamePercentiles(2025, 'cfb', 'QB', 5).catch(() => {});
+        await sdv.retrievePlayerGamePercentiles(2024, 'nfl').catch(() => {});
+        const url = (lg: string) => new URL(seen.find(u => u.includes(`/v1/${lg}/players/games/percentiles?`))!);
+        expect(url('cfb').searchParams.get('season')).toBe('2025');
+        expect(url('cfb').searchParams.get('position_group')).toBe('QB');
+        expect(url('cfb').searchParams.get('min_plays')).toBe('5');
+        // no cohort asked for, none sent: the all-player, all-games ladder
+        expect(url('nfl').searchParams.has('position_group')).toBe(false);
+        expect(url('nfl').searchParams.has('min_plays')).toBe(false);
+    });
+
     test('a no-category team read selects only the columns its league has', async () => {
         const sdv = await import('../src/resources/sdv');
         await sdv.retrieveTeamSummaries({ team_id: 59 }).catch(() => {});
         await sdv.retrieveTeamSummaries({ team_id: 12, league: 'nfl' }).catch(() => {});
         const sel = (u: string) => decodeURIComponent(new URL(u).searchParams.get('select') ?? '').split(',');
-        const cfb = sel(seen.find(u => u.includes('/v1/cfb/team_summaries?'))!);
-        const nfl = sel(seen.find(u => u.includes('/v1/nfl/team_summaries?'))!);
+        const cfb = sel(seen.find(u => u.includes('/v1/cfb/team_summaries?') && !u.includes('limit=50000'))!);
+        const nfl = sel(seen.find(u => u.includes('/v1/nfl/team_summaries?') && !u.includes('limit=50000'))!);
         // the rbsdm columns exist in nfl.team_summaries only; asking cfb for one is a 400
         expect(cfb).not.toContain('pass_oe_off');
         expect(cfb).not.toContain('luck_opp_fg_pct_def_rank');
