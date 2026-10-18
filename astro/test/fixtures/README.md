@@ -358,3 +358,19 @@ set to 3; the rows themselves are untouched.
 
 **Used by:** `test/playerSplitPercentiles.test.ts` (the request and the
 split -> metric -> breaks mapping in `retrievePlayerSplitPercentiles`).
+
+## `player-splits-percentiles-cfb-2025-qb.json`
+The same route with a position group:
+`GET /v1/cfb/players/splits/percentiles?season=2025&position_group=QB&min_plays=10`.
+The envelope adds `position_group`; the rows are the same shape, over the QB
+roster group's player-seasons only (480 in `all`, 217 in `red_zone`).
+
+**Provenance (2026-10-18):** fetched from the live Data API
+(`https://data.sportsdataverse.org`) with the read key. Trimmed to three of the 24
+rows (`all/epa`, `all/epa_per_play`, `red_zone/epa`) and `count` set to 3; the rows
+themselves are untouched. (The TE group's response that day had 20 rows: no
+`red_zone`, under the route's 30 player-season minimum, which is the per-split
+fallback `loadSplitBreaks` handles.)
+
+**Used by:** `test/playerSplitPercentiles.test.ts` (the `position_group` request
+and its mapping).

@@ -31,6 +31,8 @@ export interface PlayerSections {
     leagueCohort: GameLadderCohort;
     /** split -> metric -> the league-season distribution the splits table shades against */
     splitBreaks: Record<string, Record<string, number[]>>;
+    /** split -> the position group its breakpoints are over, or null for every player */
+    splitCohorts: Record<string, string | null>;
     /** the season's team_summaries rows, for the Team Context panel */
     teamRows: SDVTeamSummary[];
     /** which panels have to say "unavailable" instead of "nothing to show" */
@@ -201,6 +203,31 @@ export async function loadGameLadder(season: number, league: League, group: stri
 }
 
 /**
+ * The splits table's distributions, resolved PER SPLIT: his position group's
+ * player-seasons where the group response has that split, every player's otherwise.
+ * The route leaves out a split whose group cohort is under 30 player-seasons (red zone
+ * for a TE group) and 404s (`{}`) when none qualifies, so a split widens on its own
+ * rather than the whole table. Both read at once; a read that FAILS throws, so the
+ * section is marked degraded rather than quietly widened. No group (OL, defense) is
+ * the all-players read alone.
+ */
+export async function loadSplitBreaks(season: number, league: League, group: string | null):
+    Promise<{ breaks: Record<string, Record<string, number[]>>, cohorts: Record<string, string | null> }> {
+    const [all, byGroup] = await Promise.all([
+        retrievePlayerSplitPercentiles(season, league),
+        group ? retrievePlayerSplitPercentiles(season, league, group) : Promise.resolve({}),
+    ]);
+    const breaks: Record<string, Record<string, number[]>> = {};
+    const cohorts: Record<string, string | null> = {};
+    for (const split of new Set([...Object.keys(all), ...Object.keys(byGroup)])) {
+        const mine = (byGroup as Record<string, Record<string, number[]>>)[split];
+        breaks[split] = mine ?? all[split];
+        cohorts[split] = mine ? group : null;
+    }
+    return { breaks, cohorts };
+}
+
+/**
  * Every section's read, settled independently: `Promise.all` would let one
  * upstream hiccup reject the lot and blank a page whose other sections were
  * fine. The career view needs only the season rows; the season-only reads are
@@ -221,7 +248,9 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
             .then((rows) => loadGameLadder(season, league, seasonGamePercentileGroup(rows, season, player.position))),
         // one cached call for the whole season, filtered to his team(s) by the page
         season === null ? Promise.resolve([]) : retrieveTeamSummaries({ season, league, columns: TEAM_CONTEXT_METRICS }),
-        season === null ? Promise.resolve({}) : retrievePlayerSplitPercentiles(season, league),
+        // the splits table's cohort is the same roster group, so it waits on the seasons read too
+        season === null ? Promise.resolve(null) : seasons.catch((): SeasonRow[] => [])
+            .then((rows) => loadSplitBreaks(season, league, seasonGamePercentileGroup(rows, season, player.position))),
     ]);
     const value = (i: number, empty: any): any => {
         const r = reads[i];
@@ -230,11 +259,13 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         return empty;
     };
     const ladder: { breaks: Record<string, number[]>, cohort: GameLadderCohort } | null = value(4, null);
+    const splitLadder: Awaited<ReturnType<typeof loadSplitBreaks>> | null = value(6, null);
     return {
         sections: {
             seasonRows: value(0, []), games: value(1, []), splits: value(2, []),
             espnGameIds: value(3, {}), leagueBreaks: ladder?.breaks ?? {},
-            leagueCohort: ladder?.cohort ?? NO_COHORT, teamRows: value(5, []), splitBreaks: value(6, {}),
+            leagueCohort: ladder?.cohort ?? NO_COHORT, teamRows: value(5, []),
+            splitBreaks: splitLadder?.breaks ?? {}, splitCohorts: splitLadder?.cohorts ?? {},
             failed: { seasons: reads[0].status === 'rejected', games: reads[1].status === 'rejected', splits: reads[2].status === 'rejected' },
         },
         degraded: reads.some((r) => r.status === 'rejected'),

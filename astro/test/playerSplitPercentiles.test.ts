@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 // the min-plays floor the tooltip states) and the split -> metric -> breaks mapping,
 // and that a season with no qualifying split (the route's 404) is no distribution.
 const body = readFileSync(new URL('./fixtures/player-splits-percentiles-cfb-2025.json', import.meta.url)).toString();
+// the same route with `position_group=QB` (captured 2026-10-18, trimmed to three rows)
+const qbBody = readFileSync(new URL('./fixtures/player-splits-percentiles-cfb-2025-qb.json', import.meta.url)).toString();
 const seen: string[] = [];
 let respond: () => Response = () => new Response(body, { status: 200 });
 
@@ -58,6 +60,21 @@ describe('retrievePlayerSplitPercentiles', () => {
         respond = () => new Response(JSON.stringify({ detail: 'no cfb split with >= 30 player-seasons' }), { status: 404 });
         const sdv = await import('../src/resources/sdv');
         expect(await sdv.retrievePlayerSplitPercentiles(1990, 'cfb')).toEqual({});
+    });
+
+    test('a position group is sent as position_group and maps the same way', async () => {
+        respond = () => new Response(qbBody, { status: 200 });
+        const sdv = await import('../src/resources/sdv');
+        const out = await sdv.retrievePlayerSplitPercentiles(2025, 'cfb', 'QB');
+        const u = new URL(seen[0]);
+        expect(u.searchParams.get('position_group')).toBe('QB');
+        expect(u.searchParams.get('min_plays')).toBe(String(sdv.SPLIT_PERCENTILE_MIN_PLAYS));
+        const fx = JSON.parse(qbBody);
+        expect(fx.position_group).toBe('QB');
+        for (const row of fx.data) expect(out[row.split][row.metric]).toEqual(row.breaks);
+        // no group -> no position_group param at all
+        await sdv.retrievePlayerSplitPercentiles(2025, 'cfb');
+        expect(new URL(seen[1]).searchParams.has('position_group')).toBe(false);
     });
 
     test('a row with malformed breaks, or an unknown split or metric, is dropped', async () => {

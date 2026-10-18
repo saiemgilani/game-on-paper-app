@@ -14,7 +14,9 @@
  *
  * The three rate/value cells are shaded the way the game log's league mode shades
  * its own (`PlayerGameLog.astro`): read off the season's whole player-season
- * distribution for THAT split (`players/splits/percentiles`, sdv-db), on the site's
+ * distribution for THAT split (`players/splits/percentiles`, sdv-db) -- his position
+ * group's player-seasons where the group has that split, every player's where it does
+ * not (`loadSplitBreaks`), the tooltip naming which -- on the site's
  * green -> purple ramp, with the percentile printed beside the number as small faded
  * `94th %ile`. Plays is a count, not a performance, so it gets neither -- as in the
  * log. A split the player is under the population's play floor in is left unshaded
@@ -29,8 +31,10 @@ interface Props {
     splits: SDVPlayerSplit[]
     /** split -> metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, Record<string, number[]>>
+    /** split -> the position group those breakpoints are over, or null/absent for every player */
+    leagueCohorts?: Record<string, string | null>
 }
-const { splits, leagueBreaks = {} } = Astro.props;
+const { splits, leagueBreaks = {}, leagueCohorts = {} } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 
 const by = new Map(splits.map((s) => [s.split, s]));
@@ -50,7 +54,10 @@ const leaguePct = (row: SDVPlayerSplit | undefined, key: string): number | null 
         : null;
 const leagueShade = (row: SDVPlayerSplit | undefined, key: string): string =>
     generateColorRampValue(leaguePct(row, key), 100) ?? '';
-const leagueTitle = `Percentile among every player-season in the ${league === 'cfb' ? 'nation' : 'league'} that season, min ${SPLIT_PERCENTILE_MIN_PLAYS} plays in the split`;
+const leagueTitle = (split: string): string => {
+    const group = leagueCohorts[split];
+    return `Percentile among every ${group ? `${group} ` : ''}player-season in the ${league === 'cfb' ? 'nation' : 'league'} that season, min ${SPLIT_PERCENTILE_MIN_PLAYS} plays in the split`;
+};
 ---
 {rows.length > 0 && (
 <div class="table-responsive" id="player-splits-table">
@@ -75,7 +82,7 @@ const leagueTitle = `Percentile among every player-season in the ${league === 'c
                         <td class:list={["text-center", "align-middle", "numeral", leagueShade(s.row, String(key))]} colspan="1">
                             {format(s.row?.[key])}
                             {leaguePct(s.row, String(key)) !== null && (
-                                <small class="align-self-center d-block" style="opacity: 50%" title={leagueTitle}
+                                <small class="align-self-center d-block" style="opacity: 50%" title={leagueTitle(s.key)}
                                     data-league-pct> {ordinal(leaguePct(s.row, String(key)) as number)} %ile</small>
                             )}
                         </td>

@@ -19,7 +19,8 @@ const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.js
 
 // `cohortMissing(args)`: true -> that percentiles read 404s (`{}`), as a cohort under
 // the API's 30-game minimum does; `pctlCalls` records every read in order
-const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true, cohortMissing: () => false, pctlCalls: [], splitPercentiles: true };
+const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true, cohortMissing: () => false, pctlCalls: [], splitPercentiles: true,
+    groupSplitMissing: (_split: string) => false, splitCalls: [] };
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -46,12 +47,15 @@ vi.mock('../src/resources/sdv', async (orig) => {
             }
             : {}),
         // the splits table's per-split distribution, the same straight ramps (epa
-        // 0..300 here, so a season total lands mid-ramp). Overtime is left out, as
-        // the route leaves out any split with too few player-seasons.
-        retrievePlayerSplitPercentiles: async () => (feed.splitPercentiles
-            ? Object.fromEntries(['all', 'standard_downs', 'passing_downs', 'red_zone', 'first_half', 'second_half'].map((k) => [k, {
+        // 0..300 here, so a season total lands mid-ramp; 0..600 for a position group,
+        // so which cohort a cell read is visible in its percentile). Overtime is left
+        // out, as the route leaves out any split with too few player-seasons, and
+        // `groupSplitMissing(split)` drops a split from the GROUP response only.
+        retrievePlayerSplitPercentiles: async (...args: unknown[]) => (feed.splitCalls.push(args), feed.splitThrows?.(args) ? Promise.reject(new Error('Data API 503')) : feed.splitPercentiles
+            ? Object.fromEntries(['all', 'standard_downs', 'passing_downs', 'red_zone', 'first_half', 'second_half']
+                .filter((k) => !args[2] || !feed.groupSplitMissing(k)).map((k) => [k, {
                 plays: Array.from({ length: 101 }, (_, i) => i * 10),
-                epa: Array.from({ length: 101 }, (_, i) => i * 3),
+                epa: Array.from({ length: 101 }, (_, i) => i * (args[2] ? 6 : 3)),
                 epa_per_play: Array.from({ length: 101 }, (_, i) => i / 100),
                 success_rate: Array.from({ length: 101 }, (_, i) => i / 100),
             }]))
@@ -72,6 +76,7 @@ beforeAll(async () => {
 
 async function render(league: 'cfb' | 'nfl', id: string, query: string) {
     feed.pctlCalls = [];   // per render: the ladder's first (narrowest) read is `pctlCalls[0]`
+    feed.splitCalls = [];
     const path = league === 'nfl' ? `/nfl/players/${id}` : `/players/${id}`;
     const { default: Page } = await import(
         league === 'nfl' ? '../src/pages/nfl/players/[id].astro' : '../src/pages/players/[id].astro');
@@ -380,9 +385,9 @@ describe('CFB player page', () => {
         const allRow = rows[rows.length - 1];
         const metric = [...allRow.matchAll(/<td[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]).slice(2);
         expect(metric).toHaveLength(3);
-        // the straight ramps make the percentile arithmetic: EPA/play 0.31 -> 31st,
-        // EPA 203.0 on 0..300 by 3s -> 67th, SR 53.1% -> 53rd
-        const want = [Math.floor(all.epa_per_play * 100), Math.floor(all.epa / 3), Math.floor(all.success_rate * 100)];
+        // he is a QB, so every split reads the QB cohort's ramps: EPA/play 0.31 -> 31st,
+        // EPA 203.0 on the group's 0..600 by 6s -> 33rd, SR 53.1% -> 53rd
+        const want = [Math.floor(all.epa_per_play * 100), Math.floor(all.epa / 6), Math.floor(all.success_rate * 100)];
         metric.forEach((cell, i) => {
             // the ramp leaves its middle (40th-59th) unshaded, as every table on the site does
             const cls = generateColorRampValue(want[i], 100);
@@ -390,7 +395,9 @@ describe('CFB player page', () => {
             else expect(cell).not.toContain('hulk-bg-level-');
             expect(cell).toMatch(new RegExp(`<small[^>]*data-league-pct[^>]*> ${want[i]}(st|nd|rd|th) %ile</small>`));
         });
-        expect(allRow).toContain('title="Percentile among every player-season in the nation that season, min 10 plays in the split"');
+        expect(allRow).toContain('title="Percentile among every QB player-season in the nation that season, min 10 plays in the split"');
+        // both cohorts read at once: every player's, and his group's
+        expect(feed.splitCalls).toEqual([[2024, 'cfb'], [2024, 'cfb', 'QB']]);
         // plays is a count, not a performance: no shading, no percentile (as in the game log)
         const plays = [...allRow.matchAll(/<td[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0])[1];
         expect(plays).not.toContain('hulk-bg-level-');
@@ -423,7 +430,62 @@ describe('CFB player page', () => {
     test('splits: the NFL tooltip names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
         const table = html.split('id="player-splits-table"')[1].split('</table>')[0];
-        expect(table).toContain('title="Percentile among every player-season in the league that season, min 10 plays in the split"');
+        expect(table).toContain('title="Percentile among every WR player-season in the league that season, min 10 plays in the split"');
+        expect(feed.splitCalls).toEqual([[2024, 'nfl'], [2024, 'nfl', 'WR']]);
+    }, 60_000);
+
+    test("splits: a split the group response lacks reads every player's, for that split only", async () => {
+        // the route drops a group split under 30 player-seasons (red zone for a TE group)
+        feed.groupSplitMissing = (split: string) => split === 'red_zone';
+        try {
+            const rows = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-splits-table');
+            const rz = rows.find((r) => r.includes('Red zone'))!;
+            const rzRow = cfb.splits.data.find((s: any) => s.split === 'red_zone');
+            const epa = (row: string) => [...row.matchAll(/<td[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0])[3];
+            // red zone on the all-players ramp (by 3s), with the all-players hover
+            expect(epa(rz)).toMatch(new RegExp(`> ${Math.floor(rzRow.epa / 3)}(st|nd|rd|th) %ile</small>`));
+            expect(rz).toContain('title="Percentile among every player-season in the nation that season, min 10 plays in the split"');
+            expect(rz).not.toContain('every QB player-season');
+            // the other splits keep the group's
+            const pd = rows.find((r) => r.includes('Passing downs'))!;
+            const pdRow = cfb.splits.data.find((s: any) => s.split === 'passing_downs');
+            expect(epa(pd)).toMatch(new RegExp(`> ${Math.floor(pdRow.epa / 6)}(st|nd|rd|th) %ile</small>`));
+            expect(pd).toContain('title="Percentile among every QB player-season in the nation that season, min 10 plays in the split"');
+        } finally {
+            feed.groupSplitMissing = () => false;
+        }
+    }, 60_000);
+
+    test('splits: a group 404 widens every split; a group read that FAILS rejects, never widens', async () => {
+        const { loadSplitBreaks } = await import('../src/routes/player');
+        feed.groupSplitMissing = () => true;   // the route's 404 -> {}
+        try {
+            const out = await loadSplitBreaks(2024, 'cfb', 'TE');
+            expect(Object.values(out.cohorts).every((c) => c === null)).toBe(true);
+            expect(out.breaks.all.epa[100]).toBe(300);   // the all-players ramp
+        } finally {
+            feed.groupSplitMissing = () => false;
+        }
+        feed.splitThrows = (args: unknown[]) => args[2] === 'TE';
+        try {
+            await expect(loadSplitBreaks(2024, 'cfb', 'TE')).rejects.toThrow('Data API 503');
+        } finally {
+            feed.splitThrows = undefined;
+        }
+    }, 60_000);
+
+    test('splits: a position with no group (OL, defense) reads every player, in one request', async () => {
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, identity: { ...cfb.identity, position: 'Offensive Lineman' } };
+        try {
+            const table = (await renderPage('cfb', '4433971', 2024)).split('id="player-splits-table"')[1].split('</table>')[0];
+            expect(feed.splitCalls).toEqual([[2024, 'cfb']]);
+            expect(table).toContain('data-league-pct');
+            expect(table).toContain('title="Percentile among every player-season in the nation that season, min 10 plays in the split"');
+            expect(table).not.toMatch(/every [A-Z]{2} player-season/);
+        } finally {
+            feed.cfb = before;
+        }
     }, 60_000);
 
     test('percentiles shade the season table\'s own cells, on the green to purple ramp', async () => {
