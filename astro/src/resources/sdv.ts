@@ -1513,8 +1513,12 @@ export async function retrievePlayerSplitPercentiles(
     const content = await requestPlayer(league, 'players/splits/percentiles', query, 60 * 60 * 24);
     const out: Record<string, Record<string, number[]>> = {};
     for (const row of (content?.data ?? [])) {
-        const split = String(row?.split), metric = String(row?.metric), breaks = percentileBreaks(row?.breaks);
-        if (!SPLIT_PERCENTILE_SPLITS.has(split) || !SPLIT_PERCENTILE_METRICS.has(metric) || !breaks) continue;
+        const split = String(row?.split);
+        const metric = String(row?.metric);
+        const breaks = percentileBreaks(row?.breaks);
+        if (!SPLIT_PERCENTILE_SPLITS.has(split)
+            || !SPLIT_PERCENTILE_METRICS.has(metric)
+            || !breaks) continue;
         (out[split] ??= {})[metric] = breaks;
     }
     return out;
