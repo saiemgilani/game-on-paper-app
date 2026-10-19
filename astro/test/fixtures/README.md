@@ -379,3 +379,14 @@ written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cel
 and caption).
 
 **To regenerate:** repeat the two requests with the current `teamSplitColumns`.
+
+## `standings-cfb-8-2026.json.gz`, `standings-cfb-37-2026.json.gz`, `standings-nfl-8-2026.json.gz`
+Real ESPN CFB standings bodies, `site.api.espn.com/apis/v2/sports/football/college-football/standings?group=<id>`,
+for the SEC (8: 16 entries on the group itself) and the Sun Belt (37: no entries on the group; its 7+7 teams sit on
+the `children` East 167 / West 168), plus the NFL AFC (`.../nfl/standings?group=8`: no entries, four division
+children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No edits.
+
+**Used by:** `test/standings.test.ts` (`loadStandings`, issue #334).
+
+**To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
+change will need the assertion updated too.

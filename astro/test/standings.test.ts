@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { parseStandingsEntry, sortStandings } from "../src/utils/standings";
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import { describe, expect, it, vi } from "vitest";
+import { loadStandings, parseStandingsEntry, sortStandings } from "../src/utils/standings";
+
+// Real ESPN `standings?group=` bodies, captured 2026-10-18 (see fixtures/README.md).
+const capture = (league: string, g: string) =>
+    JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/standings-${league}-${g}-2026.json.gz`, import.meta.url))).toString());
+const CAPTURED: Record<string, string[]> = { cfb: ["8", "37"], nfl: ["8"] };
+vi.mock("../src/resources/espn", () => ({
+    retrieveConferenceStandings: async (g: string, league = "cfb") =>
+        CAPTURED[league]?.includes(String(g)) ? capture(league, String(g)) : null,
+}));
 
 // the real shape: repeated stat blocks, overall first, records named exactly
 const entry = {
@@ -82,5 +93,32 @@ describe("sortStandings", () => {
         ] as any[];
         expect(sortStandings(rows, "nfl").map((r: any) => r.name)).toEqual(["divStrong", "confStrong"]);
         expect(sortStandings(rows, "cfb").map((r: any) => r.name)).toEqual(["confStrong", "divStrong"]);
+    });
+});
+
+describe("loadStandings (cfb)", () => {
+    it("renders the Sun Belt's East and West divisions, which carry its entries (#334)", async () => {
+        // The SEC has its 16 teams on the group itself; the Sun Belt's group has
+        // none -- they sit on its two division children (167 East, 168 West).
+        const groups = await loadStandings("cfb");
+        expect(groups.map((g) => [g.groupId, g.name, g.rows.length])).toEqual([
+            ["8", "Southeastern Conference", 16],
+            ["167", "Sun Belt - East", 7],
+            ["168", "Sun Belt - West", 7],
+        ]);
+        expect(groups[1].rows.map((r) => r.name)).toContain("James Madison");
+        expect(groups[2].rows.map((r) => r.name)).toContain("Louisiana");
+    });
+});
+
+describe("loadStandings (nfl)", () => {
+    it("still flattens an NFL conference into its four divisions, full names kept", async () => {
+        const groups = await loadStandings("nfl");
+        expect(groups.map((g) => [g.groupId, g.shortName, g.rows.length])).toEqual([
+            ["4", "AFC East", 4],
+            ["12", "AFC North", 4],
+            ["13", "AFC South", 4],
+            ["6", "AFC West", 4],
+        ]);
     });
 });

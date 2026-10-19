@@ -8,9 +8,9 @@ import type { League } from "./league";
 export const STANDINGS_CONFERENCES = ["8", "5", "4", "1", "151", "17", "37", "15", "12", "9", "18"];
 
 /**
- * NFL conference group ids, AFC then NFC. Unlike CFB, the conference itself
- * carries no entries -- its four divisions come back as `children`, so two
- * fetches yield the eight blocks the page renders.
+ * NFL conference group ids, AFC then NFC. The conference itself carries no
+ * entries -- its four divisions come back as `children`, so two fetches yield
+ * the eight blocks the page renders.
  */
 export const NFL_CONFERENCES = ["8", "7"];
 
@@ -46,18 +46,19 @@ function toGroup(
 /**
  * Every standings block for a league, in display order.
  *
- * CFB is one fetch per conference with entries on the group itself; the NFL is
- * one fetch per conference whose divisions arrive as `children`. Both flatten to
- * the same shape, so the page does not branch. A failed fetch drops its own
- * block and costs no other.
+ * One fetch per conference. A conference without divisions carries its entries
+ * on the group itself; one with divisions carries none and nests them as
+ * `children` -- every NFL conference, and in CFB the Sun Belt (East/West, #334).
+ * Both flatten to the same shape, so the page does not branch. A failed fetch
+ * drops its own block and costs no other.
  */
 export async function loadStandings(league: League): Promise<StandingsGroup[]> {
     const ids = league === 'nfl' ? NFL_CONFERENCES : STANDINGS_CONFERENCES;
     const results = await Promise.all(ids.map((g) => retrieveConferenceStandings(g, league)));
     return results.flatMap((c, i) =>
-        league === 'nfl'
-            ? (c?.children ?? []).map((d) => toGroup(d, `${ids[i]}-${d.id ?? ""}`, league, true))
-            : [toGroup(c, ids[i], league)],
+        c?.standings?.entries?.length
+            ? [toGroup(c, ids[i], league)]
+            : (c?.children ?? []).map((d) => toGroup(d, `${ids[i]}-${d.id ?? ""}`, league, league === 'nfl')),
     ).filter((g): g is StandingsGroup => !!g);
 }
 
