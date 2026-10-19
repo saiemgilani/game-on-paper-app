@@ -13,6 +13,7 @@ import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
 import type { GameSplits } from '../utils/gameSet';
 import type { League } from '../utils/league';
+import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 import { teamSplitColumns } from '../utils/teamSplits';
 
 export interface SeasonTeamData {
@@ -25,6 +26,7 @@ export interface SeasonTeamData {
     passers: SDVPassingSummary[];
     rushers: SDVRushingSummary[];
     receivers: SDVReceivingSummary[];
+    neighborLists: NeighborList[];
     /** 'vs-opponent' only: null with the flag off (no read) or when either read failed */
     opponentSplits: GameSplits | null;
     /** the team's team_tendencies row; read only with 'team-splits' on */
@@ -76,5 +78,12 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
     const seasonTendencies = await tendencies;
     const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies };
+    // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the
+    // same KV entry) for every team page of the season. Not made when the flag is
+    // off, so the public page's reads are exactly today's.
+    const neighborRows = isFeatureEnabled('rank-neighbors', Astro.locals)
+        ? await retrieveTeamSummaries({ season: Number(year), columns: TEAM_NEIGHBOR_METRICS, league })
+        : [];
+    const neighborLists = teamNeighborLists(neighborRows, id, league, Number(year));
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists };
 }
