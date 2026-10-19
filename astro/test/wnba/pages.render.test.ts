@@ -86,6 +86,24 @@ describe('the WNBA dashboard pages', () => {
         expect(html).toContain(hexDesc(leagueShots2003().filter((s) => s.team_id === SEA).map(lite), 2003));
         expect(html).toContain('424 of 2,045 shots this season have no recorded location.');
     });
+    test("a team page's season picker lists only its franchise's seasons (Charlotte 1997-2006, Detroit's franchise 1998-2026)", async () => {
+        const options = (html: string) => [...html.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
+        const cha = options(await page('team/[id].astro', '/wnba/team/1611661314?season=2003', { id: '1611661314' }));
+        expect(cha).toEqual(Array.from({ length: 10 }, (_, i) => `/wnba/team/1611661314?season=${2006 - i}`));
+        const det = options(await page('team/[id].astro', '/wnba/team/1611661321?season=2003', { id: '1611661321' }));
+        expect([det.length, det[0], det.at(-1)]).toEqual([29, '/wnba/team/1611661321', '/wnba/team/1611661321?season=1998']);
+    });
+    test("the players page's season picker carries the team only to its franchise's seasons (no 2026 PDX to the 2000-02 Fire)", async () => {
+        const options = (html: string) => [...html.match(/<select id="nba-season"[\s\S]*?<\/select>/)![0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1].replaceAll('&amp;', '&'));
+        const pdx = options(await page('players.astro', '/wnba/players?team=PDX'));
+        expect(pdx[0]).toBe('/wnba/players?team=PDX');
+        expect(pdx).toContain('/wnba/players?season=2002');
+        expect(pdx.filter((o) => o.includes('team='))).toEqual(['/wnba/players?team=PDX']);
+        const sea = options(await page('players.astro', '/wnba/players?team=SEA'));
+        expect(sea).toContain('/wnba/players?team=SEA&season=2002');
+        expect(sea).toContain('/wnba/players?season=1999'); // Seattle's first season is 2000
+        expect(sea.filter((o) => o.includes('team=SEA'))).toHaveLength(27);
+    });
     test('/wnba/players: every 2026 shooter, the WNBA source', async () => {
         const html = await page('players.astro', '/wnba/players');
         wnbaPage(html, 'WNBA players, 2026');

@@ -6,12 +6,12 @@
  * (games, his seasons) degrade and turn caching off.
  */
 import type { AstroGlobal } from 'astro';
-import { basketball, courtFor, rankMins } from '../../basketball/config';
+import { courtFor, placeholderFor, rankMins } from '../../basketball/config';
 import { headshotsFromRows, leagueContextFromRows, playerGamesFromRows, playerSeasonsFromRows, shotsFromRows, teamsOfPlayer } from '../../nba/adapters';
 import type { PlayerExplorerData } from '../nba/explorer';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import { COURT } from '../../nba/data/court';
-import { placeholderAt, placeholderSplit } from '../../nba/data/placeholder';
+import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
@@ -81,7 +81,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const shots = shotsFromRows(shotsR.value);
     const context = leagueContextFromRows(contextR.value);
     const court = courtFor(league, season);
-    const placeholder = placeholderAt(basketball(league).placeholderLocation, season); // R22: null after `through` and for the NBA
+    const placeholder = placeholderFor(league, season); // R22: null after `through` and for the NBA
     const line = shootingLine(shots);
     const roster = playerSeasonsFromRows(rows, player.team_id);
     const i = roster.findIndex((p) => p.person_id === personId);

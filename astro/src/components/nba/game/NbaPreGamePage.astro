@@ -31,7 +31,7 @@ const networks = ((comp as any).broadcasts ?? []).map((b: any) => b?.media?.shor
 ---
 <GenericPage title={title} subtitle={description} slug={gameHref(league, espnGame.gameId)} breadcrumbs={breadcrumbs} description={description}>
   <div class="container py-3 text-center">
-    <GameTitle awayTeam={away.team} homeTeam={home.team} links={false} hrefOf={(t) => teamHrefFromEspn(t, league)} league={league} />
+    <GameTitle awayTeam={away.team} homeTeam={home.team} links={false} hrefOf={(t) => teamHrefFromEspn(t, league, espnGame.gamepackageJSON.header.season?.year)} league={league} />
     <LocalDate client:only divClass="text-small m-0" date={comp.date} format={DateTime.DATETIME_FULL} prefix={comp.status.type.description ?? 'Scheduled'}><p slot="fallback" class="text-small m-0">&nbsp;</p></LocalDate>
     <p class="text-muted m-0">{side(away)}, {side(home)}</p>
     {line && <p class="text-muted m-0">{`Line: ${line}`}</p>}

@@ -1,11 +1,11 @@
 // The per-league basketball config: everything the basketball pages need that differs between the NBA, the WNBA and
 // men's and women's college basketball. One entry per BASKETBALL_LEAGUES slug (the Record type refuses a missing one).
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
-import { leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
+import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
-import type { PlaceholderLocation } from '../nba/data/placeholder';
-import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamInSeason, type Team } from '../nba/data/teams';
-import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
+import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
+import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
+import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
 import { NBA_LEADER_BARS, type LeaderBars } from '../nba/data/leaders';
 import { RANK_MIN, type RankMins } from '../nba/data/ranks';
 import { netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
@@ -38,6 +38,8 @@ export interface TeamModule {
     inSeason(teamId: number, season: number): Team | undefined;
     /** a current franchise's team id for any tricode it has used */
     franchiseOf(tricode: string): number | undefined;
+    /** the seasons of the franchise holding `teamId` in `season` (the season pickers' options); undefined = unknown id */
+    seasonsOf(teamId: number, season: number): readonly number[] | undefined;
 }
 
 export interface BasketballConfig {
@@ -100,7 +102,8 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: { statsTeamId: NETS_TEAM_ID, espnTeamId: 17, menuLabel: 'Nets', tricode: netsTricode },
         // court.ts draws the 1997-98-on line (seasonRange.ts: 1996-97's 22 ft line is not drawn, and is not listed)
         courts: [{ from: 1998, court: COURT }],
-        teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf },
+        // every NBA team id is in every listed season (the pickers list them all, as before)
+        teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf, seasonsOf: (id) => (teamById(id) ? LEAGUES.nba.seasons : undefined) },
         landing: 'featured-team',
         headerMenu: [
             { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Nets', path: '/' }, { label: 'Players', path: '/players' },
@@ -139,7 +142,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
             [{ from: 1997, court: WNBA_COURT_1997 }, { from: 2004, court: WNBA_COURT_2004 }, { from: 2013, court: WNBA_COURT }],
             WNBA_RESTRICTED_AREA,
         ),
-        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId, inSeason: wnbaTeamInSeason, franchiseOf: wnbaFranchiseOf },
+        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId, inSeason: wnbaTeamInSeason, franchiseOf: wnbaFranchiseOf, seasonsOf: wnbaSeasonsOf },
         // pages/wnba/index.astro: the season's teams index with links to the scoreboard and the shooting pages
         landing: 'teams-index',
         // no featured-team entry (spec §3.4); /teams here is what turns on team links and sitemap team pages (hasTeamPages)
@@ -190,6 +193,11 @@ export function courtFor(league: BasketballLeague, season: number | null | undef
     const eras = BASKETBALL[league].courts;
     const s = season == null ? NaN : Number(season);
     return ([...eras].reverse().find((e) => Number.isNaN(s) || s >= e.from) ?? eras[0]).court;
+}
+
+/** D29 / R22: the league's placeholder shot location in `season`, or null (after its `through`, or a league without one). */
+export function placeholderFor(league: BasketballLeague, season: number): PlaceholderLocation | null {
+    return placeholderAt(BASKETBALL[league].placeholderLocation, season);
 }
 
 /**

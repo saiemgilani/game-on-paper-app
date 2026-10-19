@@ -33,7 +33,7 @@ const back = scoreboardDayHref(league, game.date);
 ---
 <div class="py-3 text-center">
     <a class="btn btn-sm btn-outline-primary mb-2" href={back}><i class="bi-arrow-left"></i> Scoreboard</a>
-    <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} hrefOf={(t) => teamHrefFromEspn(t, league)} league={league} />
+    <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} hrefOf={(t) => teamHrefFromEspn(t, league, game.season)} league={league} />
     {live ? <p class="text-small m-0">{game.status.detail ? `LIVE - ${game.status.detail}` : 'LIVE'}</p>
           : <LocalDate client:only divClass="text-small m-0" date={game.date} format={DateTime.DATETIME_FULL} prefix={game.status.detail ?? 'Final'}><p slot="fallback" class="text-small m-0">&nbsp;</p></LocalDate>}
     {game.venue && <p class="text-small text-muted m-0">{game.venue}</p>}

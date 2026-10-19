@@ -381,6 +381,12 @@ needs a new id and a new snapshot in its own PR.
   5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
   Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
   `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.
+- `wnba/team_seasons_1997_2026.json`: each (stats.wnba.com team id, tricode) pair's first and last season with regular-season
+  (`102…` game id) shots in wehoop-wnba-stats-data `wnba_stats/shots/parquet/shots_{1997..2026}.parquet` (commit 2d052bc, the
+  team_id 0 rows left out). Every pair's seasons are contiguous. 27 rows. Captured 2026-10-18 (plan #6 final-review fix, Important 2).
+  **Used by:** `test/wnba/teamsBySeason.test.ts` (`WNBA_FIRST_SEASONS`, `WNBA_DEFUNCT.from` and `wnbaSeasonsOf` are this table).
+  **To regenerate:** a polars scan of those files, filter the `102` prefix and `team_id != 0`, unique (season, team_id, team_tricode),
+  group by (team_id, team_tricode), min / max season.
 - `wnba/game_<id>_processor.json` and `wnba/game_<id>_api.json` for 401736287 (Golden State at Chicago, 2025-08-01, 73-66, four quarters),
   401736289 (Los Angeles at Seattle, 2025-08-01, 108-106, double overtime), 250603003 (New York at Detroit, 2005-06-03, 66-68, two halves
   and one overtime) and 401736325 (Seattle vs Atlanta at Rogers Arena, Vancouver, 2025-08-15, 80-78, neutral site). Captured 2026-10-18.
