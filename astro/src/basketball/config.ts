@@ -217,9 +217,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: null,
         courts: NCAA_COURTS,
         teams: { all: MBB_TEAMS, byEspnId: mbbTeamByEspnId, inSeason: mbbTeamInSeason, franchiseOf: mbbFranchiseOf, seasonsOf: mbbSeasonsOf },
-        // plan #9 builds the teams index; until then pages/mbb/index.astro redirects to the scoreboard
+        // pages/mbb/index.astro: the season's teams by conference with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'ncaa',
         regularSeasonGames: mbbSeasonGames,
         pronoun: 'his',

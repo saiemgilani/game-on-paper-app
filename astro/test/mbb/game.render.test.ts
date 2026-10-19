@@ -28,7 +28,7 @@ function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).toContain('href="/mbb"');
     expect([...html.matchAll(/href="\/nba[^"]*"/g)].map((m) => m[0])).toEqual(['href="/nba"']); // the Header's league switch only
-    expect(html).not.toContain('/mbb/team/'); // no MBB team pages yet (plan #9)
+    expect(html).toMatch(/href="\/mbb\/team\/\d+(\?season=\d{4})?"/); // D-I team names link the team pages (plan #9); a past season's game, that season's (R-P2)
     expect(html).toContain('aspect-ratio: 2 / 1'); // the WP island's client:only fallback box (#319 R1 I1)
     expect(plain(html)).toContain(BASKETBALL.mbb.wpModelNote); // D21
     expect(html).toContain('/i/teamlogos/ncaa/');
@@ -99,7 +99,7 @@ describe('/mbb/game/[id] render (real captures)', () => {
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
         for (const c of pg.gamepackageJSON.header.competitions[0].competitors) expect(html).toContain(c.team.displayName);
         expect(html).toContain('href="/mbb/scoreboard?date=2026-11-01&group=all"'); // GenericPage writes breadcrumbs as raw HTML (unescaped &)
-        expect(html).not.toContain('/mbb/team/');
+        for (const c of pg.gamepackageJSON.header.competitions[0].competitors) expect(html).toContain(`href="/mbb/team/${c.team.id}"`);
         expect(summary.mock.calls[0][1]).toBe('mbb');
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {
