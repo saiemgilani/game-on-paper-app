@@ -8,6 +8,7 @@ import { cleanAbbreviation } from '../../../utils/misc';
 import { biggestPlays, dash, wpChartPlays } from '../../../nba/data/game';
 import { fmtPct, fmtPts } from '../../../nba/format';
 import { islandPeriodProps, periodShort } from '../../../basketball/periods';
+import { basketball } from '../../../basketball/config';
 
 interface Props { game: NbaGame; colors: ThemedGameColors | null }
 const { game, colors } = Astro.props;
@@ -18,17 +19,18 @@ const swings = biggestPlays(game.plays);
 const home = cleanAbbreviation(game.home.team);
 const away = cleanAbbreviation(game.away.team);
 const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
+const cfg = basketball(Astro.locals.league); // the season only keys WNBA logos (wnbaLogoId); the NBA island's props stay as they were
 ---
 <div id="wp-section" class="mb-3">
     {plays.length > 1
-        ? <WinProbabilityChart client:only="svelte" id={`wp-${game.id}`} homeComp={comp(game.home)} awayComp={comp(game.away)} gameStatus={status} homeTeamSpread={game.prior?.homeTeamSpread ?? 0} overUnder={null} plays={plays} percentiles={[]} gei={null} colors={colors} showOdds={false} allPeriodMarkers={true} {...islandPeriodProps(game.regulation, game.periodKind)}>
+        ? <WinProbabilityChart client:only="svelte" id={`wp-${game.id}`} homeComp={comp(game.home)} awayComp={comp(game.away)} gameStatus={status} homeTeamSpread={game.prior?.homeTeamSpread ?? 0} overUnder={null} plays={plays} percentiles={[]} gei={null} colors={colors} showOdds={false} allPeriodMarkers={true} {...(cfg.league === 'wnba' ? { season: game.season } : {})} {...islandPeriodProps(game.regulation, game.periodKind)}>
             {/* client:only renders nothing on the server: hold the chart's box (a text line, then Chart.js's default 2:1 canvas) so the page below does not jump */}
             <div slot="fallback" aria-hidden="true"><p class="text-small">&nbsp;</p><div style="aspect-ratio: 2 / 1"></div></div>
           </WinProbabilityChart>
         : <p class="text-muted">Win probability arrives with the first plays.</p>}
 </div>
 <p class="small text-muted">
-    Game on Paper's in-game model: score margin, time remaining, the pregame prior and possession. The x-axis counts plays.
+    <Fragment set:html={cfg.wpModelNote} /> The x-axis counts plays.
     {game.prior == null && ' This game has no pregame prior.'}
     {hasOt && ' Overtime plays use the overtime regime, scored period by period as a five-minute endgame, an approximation.'}
 </p>

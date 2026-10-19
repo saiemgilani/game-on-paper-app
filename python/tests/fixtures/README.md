@@ -78,3 +78,11 @@ carries both runs.
   (NFL: train-only curve gives holdout Brier 0.1177 vs 0.1174).
 
 - `nba_summary_401585607.json.gz`: ESPN NBA summary (ORL vs TOR, 2024-03-17, 450 plays), the same capture sdv-py tests `espn_nba_pbp` on; no pickcenter line, so the prior is home-court only.
+- `wnba_summary_250603003.json.gz`: ESPN WNBA summary (`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=250603003`,
+  captured 2026-10-18, verbatim, gzip -9 -n): 2005-06-03, New York (ESPN 9) at Detroit (ESPN 3, abbreviation "TUL" in ESPN's data), 66-68,
+  `format.regulation.periods` 2, one overtime (period 3), 459 plays, no pickcenter, not neutral. The pre-2006 halves game (spec §3.1, D14).
+- `wnba_summary_401736325.json.gz`: same endpoint, `event=401736325`, captured 2026-10-18, verbatim: 2025-08-15, Seattle (14) vs Atlanta (20,
+  home) at Rogers Arena, Vancouver, 80-78, `neutralSite` true, no pickcenter, four quarters, 391 plays. The neutral-site prior (D13).
+- `nba_process_401585607.payload.json` regenerated 2026-10-18 on the sportsdataverse lock b4229f1c (sdv-py main, includes #900's
+  `format` guard) through `test_nba_process_parity._body`: differs from 4298cacf only on sdv-py plan #1's 17 rebuilt running-score
+  rows (`home_score` / `away_score` / `home_win_prob`) and `wp_delta` on them and the row after each (resolution R15; first at sequence 128, 26-24).

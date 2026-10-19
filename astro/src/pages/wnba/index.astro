@@ -1,0 +1,10 @@
+---
+// /wnba: BASKETBALL.wnba.landing is 'teams-index', which plan #6 builds (it reads the wnba_stats shot tables). Until then the
+// scoreboard is the landing. Never cached, so plan #6's page is not hidden behind a held redirect.
+import { uncacheable } from '../../routes/basketball/cache';
+import { leaguePath } from '../../utils/league';
+
+Astro.locals.league = 'wnba';
+uncacheable(Astro);
+return new Response(null, { status: 302, headers: { Location: leaguePath('wnba', '/scoreboard'), 'Cache-Control': 'no-store' } });
+---
