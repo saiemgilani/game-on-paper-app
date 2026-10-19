@@ -5,19 +5,20 @@ import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astr
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import ScatterExplorer from '../nba/ScatterExplorer.svelte';
 import type { NbaScatterParams } from '../../routes/nba/scatter';
-import { basketball, seasonLabelFor } from '../../basketball/config';
+import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaScatterParams }
-const { season, seasons, current, q, points } = Astro.props.data;
+const { season, seasons, current, q, points, min } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const ft = cfg.featuredTeam;
 const label = seasonLabelFor(league, season);
+const ip = islandLeagueProps(league, season);
 const title = `${name} scatter, ${label} | Game on Paper`;
-const description = `Every ${name} player with 100+ field-goal attempts in ${label}, plotted on two shooting or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
+const description = `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two shooting or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scatter', active: true }];
 ---
 <GenericPage title={title} subtitle={description} slug={lp('/scatter')} breadcrumbs={breadcrumbs} description={description} canonicalPath={`${lp('/scatter')}${q}`}>
@@ -32,7 +33,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
       <div class="col-12">
         {points.length === 0
           ? (<p class="text-muted">No regular-season shots in {label} yet.</p>)
-          : (<ScatterExplorer client:load points={points} subject={`${name} ${label}`} />)}
+          : (<ScatterExplorer client:load points={points} subject={`${name} ${label}`} {...('highlight' in ip ? { highlight: ip.highlight } : {})} {...(ip.minFga ? { minFga: ip.minFga } : {})} />)}
       </div>
     </div>
   </div>

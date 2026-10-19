@@ -1,4 +1,6 @@
-/** The season range as plain constants: no imports, so the proxy can use it without the data layer. */
+/** The season range as plain constants: no runtime imports, so the proxy can use it without the data layer. */
+
+import type { LeaderBars } from "./data/leaders";
 
 /**
  * First season the site lists: 1997-98. Every shots file from 1998 has the columns, dtypes and legacy
@@ -30,3 +32,24 @@ export function netsTricode(season: number): "BKN" | "NJN" {
 /** The WNBA's first season (1997) and the last one the shots and schedule releases hold (checked 2026-10-12). Bump when a season lands. */
 export const WNBA_FIRST_SEASON = 1997;
 export const WNBA_LAST_KNOWN_SEASON = 2026;
+
+/**
+ * WNBA regular-season games per team: [first season, games], ascending. Measured 2026-10-12 as the distinct regular-season
+ * (102…) game ids per team in wehoop-wnba-stats-data's shots and player game logs, 1997-2026 (every team the same count).
+ */
+const WNBA_SEASON_GAMES: readonly (readonly [number, number])[] = [
+  [1997, 28], [1998, 30], [1999, 32], [2003, 34], [2020, 22], [2021, 32], [2022, 36], [2023, 40], [2025, 44],
+];
+/** A season's length; a season after the table takes the latest length until the table is bumped with LAST_KNOWN_SEASON. */
+export function wnbaSeasonGames(season: number): number {
+  return [...WNBA_SEASON_GAMES].reverse().find(([from]) => season >= from)?.[1] ?? WNBA_SEASON_GAMES[0][1];
+}
+
+/**
+ * D31: the rolling leaders' per-game bars, the NBA's 5 FGA / 3 3PA scaled by WNBA ÷ NBA team FGA per game that season.
+ * Measured 2026-10-12 on the regular-season shots (wehoop-wnba-stats-data, hoopR-nba-stats-data; Task 5 Step 0): the ratio
+ * is 0.707-0.827 in every season 1997-2026 (2026: 68.63 / 89.09), so the rounded bars are 4 and 2 in every one.
+ */
+export function wnbaLeaderBars(_season: number): LeaderBars {
+  return { fga: 4, fg3a: 2 }; // ponytail: one value for every measured season; a season that rounds differently gets a table
+}

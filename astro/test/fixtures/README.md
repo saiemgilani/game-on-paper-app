@@ -348,6 +348,11 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+- `nba/shots_2003_njn.json.gz`: New Jersey's 2003 regular-season shots (team 1610612751, `game_id` 002…), the six lite columns,
+  from hoopR-nba-stats-data `nba_stats/shots/parquet/shots_2003.parquet` (commit `fe3e515f`), the
+  release the Data API ingests. 6,585 shots, 2,078 at the hoop centre (0, 0), the NBA's 1998–2010 placeholder. Captured
+  2026-10-18. **Used by:** `test/basketball/placeholder.test.ts` (the NBA has no `placeholderLocation`, so these stay in
+  every NBA chart: D29 / R4). **To regenerate:** `plans/2026-10-11-wnba-shots-gop.md` Task 3 Step 0.
 
 ## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
@@ -404,11 +409,18 @@ needs a new id and a new snapshot in its own PR.
   definitions are identical on sdv-db `origin/main` `fd9b268`, `nba_shot_dashboards.py:144-148`), captured 2026-10-18. First era 0 is
   written as 1997. **Used by:** `test/wnba/config.test.ts` (GOP's `BASKETBALL.wnba.courts` must equal it era for era) and plan #6's
   `test/wnba/courts.test.ts`. **To regenerate:** the same command after a plan #3 court change; GOP's eras must follow in the same PR.
+  `placeholder` = `{ x, y, through }` read from sdv-db's WNBA `located` predicate by plans/2026-10-11-wnba-shots-gop.md Task 3 Step 0 (R22).
 - `wnba/team_crosswalk_2002_2026.json`: the distinct (ESPN team id, ESPN name, stats.wnba.com team id, stats tricode) rows of
   wehoop-wnba-data `wnba/crosswalk/parquet/wnba_team_crosswalk_{2002..2026}.parquet` (commit 62b7ca5a; the table is unchanged from
   5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
   Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
   `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.
+- `wnba/team_seasons_1997_2026.json`: each (stats.wnba.com team id, tricode) pair's first and last season with regular-season
+  (`102…` game id) shots in wehoop-wnba-stats-data `wnba_stats/shots/parquet/shots_{1997..2026}.parquet` (commit 2d052bc, the
+  team_id 0 rows left out). Every pair's seasons are contiguous. 27 rows. Captured 2026-10-18 (plan #6 final-review fix, Important 2).
+  **Used by:** `test/wnba/teamsBySeason.test.ts` (`WNBA_FIRST_SEASONS`, `WNBA_DEFUNCT.from` and `wnbaSeasonsOf` are this table).
+  **To regenerate:** a polars scan of those files, filter the `102` prefix and `team_id != 0`, unique (season, team_id, team_tricode),
+  group by (team_id, team_tricode), min / max season.
 - `wnba/game_<id>_processor.json` and `wnba/game_<id>_api.json` for 401736287 (Golden State at Chicago, 2025-08-01, 73-66, four quarters),
   401736289 (Los Angeles at Seattle, 2025-08-01, 108-106, double overtime), 250603003 (New York at Detroit, 2005-06-03, 66-68, two halves
   and one overtime) and 401736325 (Seattle vs Atlanta at Rogers Arena, Vancouver, 2025-08-15, 80-78, neutral site). Captured 2026-10-18.
@@ -456,3 +468,19 @@ needs a new id and a new snapshot in its own PR.
   2000-02 Portland Fire, which ESPN files under the 2026 Fire's id 132052 (`POR`). The board also has Utah (15, `UTH`) and
   Orlando (10, `ORL`), relocated franchises with no ESPN logo. **Used by:** `test/wnba/scoreboard.render.test.ts`.
   **To regenerate:** the request above with `date=20020615`.
+- `wnba/dashboards/*`: the WNBA shot dashboards' Data API reads, verbatim (`.data` of each response, `.gz` = gzip of the same
+  JSON), from a LOCAL sdv-db Data API over a local warehouse loaded from the real wehoop-wnba-stats-data / wehoop-wnba-data
+  release parquet (`wnba_stats` 2d052bc, `wnba` from the wehoop-wnba-data checkout, HEAD f0856757 at capture; the
+  TypeScript-oracle side reads hoopR-nba-stats-data fe3e515f), the three `wnba_stats.shot_*` tables built by sdv-db
+  `wnba_shot_dashboards` (sdv-db 6391dda, plan 2026-10-11-bball-derived-builds-sdv-db; season stats from
+  `wnba_stats.player_stats_advanced` + `player_stats_base`, the leaguedash assets, D19; crosswalk floor 2002, D18). Captured
+  2026-10-19T02:05Z. Queries are `resources/nbaShots.ts`'s: `shots` with `game_id__like=102%` and the six lite columns
+  (`shots_2003` adds `person_id,team_id`: every 2003 regular-season shot, for the SQL-vs-TypeScript parity test;
+  `shots_2026_origin` adds `x_legacy=0&y_legacy=0`: every 2026 regular-season shot at the hoop centre, genuine after the
+  placeholder seasons, R22), `shot_league_context` / `shot_season_players` by season, `shot_player_games` by season (2026) or
+  person (the 2003 player), `limit=50000`. Seattle (1611661328) is plan #3 Task 6's team. Players: the 2026 one is Seattle's
+  most-attempts shooter (1643428), the 2003 one the season's most-attempts shooter without a headshot (100682).
+  Facts the tests pin: 28,436 regular-season shots in 2003 (Seattle 2,045), Seattle 2,112 in 2008 and 3,061 in 2026; season
+  attempts 28,436 / 31,006 / 38,535 / 45,296 (2003 / 2008 / 2025 / 2026); one `team_id` 0 row in 2025; 5,677 2003 shots at
+  (0, 0) (Seattle 424), counted in the 2003 league total's `placeholder_shots`. **Used by:** `test/wnba/dashboardFixtures.ts`.
+  **To regenerate:** plan 2026-10-11-wnba-shots-gop Task 2 (local warehouse, local API, `capture_wnba_dashboards.py`).

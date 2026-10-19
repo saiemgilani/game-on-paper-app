@@ -64,10 +64,10 @@ function face(url: string): HTMLImageElement {
   return img;
 }
 
-export function describeScatter(points: ScatterPoint[], x: ScatterMetric, y: ScatterMetric): string {
+export function describeScatter(points: ScatterPoint[], x: ScatterMetric, y: ScatterMetric, highlight: string | null = "Nets", minFga = 100): string {
   const { visible, medianX, medianY } = scatterLayout(points, x, y);
-  const nets = visible.filter((d) => d.p.nets).map((d) => `${d.p.name} ${fmtMetric(x, d.x)}, ${fmtMetric(y, d.y)}`);
-  return `${visible.length} players with 100+ FGA, ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}; medians ${fmtMetric(x, medianX)} and ${fmtMetric(y, medianY)}. Nets: ${nets.join("; ")}.`;
+  const named = visible.filter((d) => d.p.nets).map((d) => `${d.p.name} ${fmtMetric(x, d.x)}, ${fmtMetric(y, d.y)}`);
+  return `${visible.length} players with ${minFga}+ FGA, ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}; medians ${fmtMetric(x, medianX)} and ${fmtMetric(y, medianY)}.${highlight ? ` ${highlight}: ${named.join("; ")}.` : ""}`;
 }
 
 /**

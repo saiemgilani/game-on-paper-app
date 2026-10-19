@@ -6,10 +6,12 @@
 import { playerSeasonsFromRows } from './adapters';
 import { lineOf, type ShootingLine } from './data/aggregate';
 import type { PlayerSeason } from './data/players';
-import { teamById, teamName, type Team } from './data/teams';
+import type { Team } from './data/teams';
 import { fmtDec, fmtInt, fmtPct } from './format';
 import { sortRows, type SortDir } from './table';
 import type { SeasonPlayerRow } from '../resources/nbaShots';
+import { BASKETBALL } from '../basketball/config';
+import type { BasketballLeague } from '../utils/league';
 
 export type Mode = 'pergame' | 'totals';
 
@@ -83,13 +85,15 @@ export function rosterRows(rows: SeasonPlayerRow[], teamId: number): RosterRow[]
 }
 
 /** The season's teams as the rows name them, with that season's tricode and name, sorted by tricode (blazing's teamsFromShots). */
-export function teamsFromSeasonRows(rows: SeasonPlayerRow[], season: number): Team[] {
+export function teamsFromSeasonRows(rows: SeasonPlayerRow[], season: number, league: BasketballLeague = 'nba'): Team[] {
+    const { inSeason } = BASKETBALL[league].teams;
     const seen = new Map<number, string>();
-    for (const r of rows) if (!seen.has(r.team_id)) seen.set(r.team_id, r.team_tricode);
+    // team_id 0 is a shot the source could not put on a team (WNBA 1997 and 2025 hold one each): it is not a team
+    for (const r of rows) if (r.team_id !== 0 && !seen.has(r.team_id)) seen.set(r.team_id, r.team_tricode);
     return [...seen]
         .map(([team_id, tricode]) => {
-            const known = teamById(team_id);
-            return known ? { ...known, tricode, name: teamName(team_id, season) ?? known.name } : { team_id, tricode, name: tricode, color: '#888888', espn_id: 0 };
+            const known = inSeason(team_id, season);
+            return known ? { ...known, tricode } : { team_id, tricode, name: tricode, color: '#888888', espn_id: 0 };
         })
         .sort((a, b) => a.tricode.localeCompare(b.tricode));
 }

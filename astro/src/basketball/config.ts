@@ -1,11 +1,14 @@
 // The per-league basketball config: everything the basketball pages need that differs between the NBA, the WNBA and
 // men's and women's college basketball. One entry per BASKETBALL_LEAGUES slug (the Record type refuses a missing one).
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
-import { leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
+import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
-import { NETS_TEAM_ID, TEAMS, teamByEspnId, type Team } from '../nba/data/teams';
-import { WNBA_TEAMS, wnbaLogoId, wnbaTeamByEspnId } from '../nba/data/wnbaTeams';
-import { netsTricode } from '../nba/seasonRange';
+import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
+import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
+import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
+import { NBA_LEADER_BARS, type LeaderBars } from '../nba/data/leaders';
+import { RANK_MIN, type RankMins } from '../nba/data/ranks';
+import { netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
 import { NBA_DARK_LOGO_ABBRS } from '../nba/scoreboard';
 
@@ -16,6 +19,7 @@ export interface Regulation { periods: number; kind: PeriodKind; periodMinutes: 
 export type Court = { readonly [K in keyof typeof COURT]: number };
 export interface CourtEra { from: number; court: Court }
 export type SeasonLabelStyle = 'span' | 'year';
+export type Pronoun = 'his' | 'her';
 export type DarkLogoStrategy =
     | { kind: 'abbr'; logoLeague: string; abbrs: ReadonlySet<string> }
     | { kind: 'id'; logoLeague: string }
@@ -27,7 +31,16 @@ export interface FeaturedTeam { statsTeamId: number; espnTeamId: number; menuLab
 export type LandingKind = 'featured-team' | 'teams-index';
 export type ShotDashboardsSource = 'stats-api' | 'ncaa' | 'none';
 export interface MenuItem { label: string; path: string }
-export interface TeamModule { all: readonly Team[]; byEspnId(espnId: number): Team | undefined }
+export interface TeamModule {
+    all: readonly Team[];
+    byEspnId(espnId: number): Team | undefined;
+    /** the team as it was that season; undefined = unknown id */
+    inSeason(teamId: number, season: number): Team | undefined;
+    /** a current franchise's team id for any tricode it has used */
+    franchiseOf(tricode: string): number | undefined;
+    /** the seasons of the franchise holding `teamId` in `season` (the season pickers' options); undefined = unknown id */
+    seasonsOf(teamId: number, season: number): readonly number[] | undefined;
+}
 
 export interface BasketballConfig {
     league: BasketballLeague;
@@ -60,6 +73,14 @@ export interface BasketballConfig {
     /** the Header's basketball entries, paths relative to the league prefix */
     headerMenu: readonly MenuItem[];
     shotDashboards: ShotDashboardsSource;
+    /** regular-season games per team in a season: the scale of the season-total thresholds (rankMins) */
+    regularSeasonGames(season: number): number;
+    /** the players' pronoun in chart copy ("her season FG%") */
+    pronoun: Pronoun;
+    /** D31: the rolling leaders' per-game bars in a season (the NBA's 5 FGA / 3 3PA, scaled by game volume) */
+    leaderBars(season: number): LeaderBars;
+    /** D29: the provider's placeholder shot location, left out of the location charts and counted; unset = every shot is located */
+    placeholderLocation?: PlaceholderLocation;
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -81,13 +102,17 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: { statsTeamId: NETS_TEAM_ID, espnTeamId: 17, menuLabel: 'Nets', tricode: netsTricode },
         // court.ts draws the 1997-98-on line (seasonRange.ts: 1996-97's 22 ft line is not drawn, and is not listed)
         courts: [{ from: 1998, court: COURT }],
-        teams: { all: TEAMS, byEspnId: teamByEspnId },
+        // every NBA team id is in every listed season (the pickers list them all, as before)
+        teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf, seasonsOf: (id) => (teamById(id) ? LEAGUES.nba.seasons : undefined) },
         landing: 'featured-team',
         headerMenu: [
             { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Nets', path: '/' }, { label: 'Players', path: '/players' },
             { label: 'Teams', path: '/teams' }, { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
         ],
         shotDashboards: 'stats-api',
+        regularSeasonGames: () => NBA_SEASON_GAMES,
+        pronoun: 'his',
+        leaderBars: () => NBA_LEADER_BARS,
     },
     wnba: {
         league: 'wnba',
@@ -117,11 +142,20 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
             [{ from: 1997, court: WNBA_COURT_1997 }, { from: 2004, court: WNBA_COURT_2004 }, { from: 2013, court: WNBA_COURT }],
             WNBA_RESTRICTED_AREA,
         ),
-        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId },
-        // plan #6 builds the teams index; until then pages/wnba/index.astro redirects to the scoreboard
+        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId, inSeason: wnbaTeamInSeason, franchiseOf: wnbaFranchiseOf, seasonsOf: wnbaSeasonsOf },
+        // pages/wnba/index.astro: the season's teams index with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here is what turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'stats-api',
+        regularSeasonGames: wnbaSeasonGames,
+        pronoun: 'her',
+        leaderBars: wnbaLeaderBars,
+        // D29 / R22: stats.wnba.com's hoop-centre placeholder, 1997-through only (sdv-db's located predicate, same bound)
+        placeholderLocation: { x: 0, y: 0, through: 2010 },
     },
 };
 
@@ -161,6 +195,11 @@ export function courtFor(league: BasketballLeague, season: number | null | undef
     return ([...eras].reverse().find((e) => Number.isNaN(s) || s >= e.from) ?? eras[0]).court;
 }
 
+/** D29 / R22: the league's placeholder shot location in `season`, or null (after its `through`, or a league without one). */
+export function placeholderFor(league: BasketballLeague, season: number): PlaceholderLocation | null {
+    return placeholderAt(BASKETBALL[league].placeholderLocation, season);
+}
+
 /**
  * D32: a league's line eras split at the season it adopted the restricted-area arc. Before it the arc is neither drawn nor
  * zoned (restrictedRadius 0); from it, the recorded radius. A court that already carries that radius is kept as is, so an
@@ -183,4 +222,31 @@ export function seasonLabelFor(league: BasketballLeague, endYear: number): strin
 /** A league has team pages exactly when its Header lists Teams; until then nothing links to /<league>/team/<id>. */
 export function hasTeamPages(league: BasketballLeague): boolean {
     return BASKETBALL[league].headerMenu.some((m) => m.path === '/teams');
+}
+
+/** The 82 games the shipped NBA bars (100 FGA, 50 3PA) were set for. */
+export const NBA_SEASON_GAMES = 82;
+
+/** A season's rank / scatter bars: the NBA's per-game rate over this league-season's games (the NBA: 100 / 50 always). */
+export function rankMins(league: BasketballLeague, season: number): RankMins {
+    const g = BASKETBALL[league].regularSeasonGames(season);
+    return { fga: Math.round((RANK_MIN.fga * g) / NBA_SEASON_GAMES), fg3a: Math.round((RANK_MIN.fg3a * g) / NBA_SEASON_GAMES) };
+}
+
+export interface IslandLeagueProps { highlight?: string | null; minFga?: number; pronoun?: Pronoun; leaderBars?: LeaderBars }
+/**
+ * The league props the scatter, leaders and player islands take, minus every one equal to the island's own default (the
+ * NBA's: 'Nets', 100, 'his', 5 / 3), so the NBA's serialized island props stay byte-identical (plan #4's islandPeriodProps rule).
+ */
+export function islandLeagueProps(league: BasketballLeague, season: number): IslandLeagueProps {
+    const cfg = BASKETBALL[league];
+    const highlight = cfg.featuredTeam?.menuLabel ?? null;
+    const { fga } = rankMins(league, season);
+    const bars = cfg.leaderBars(season);
+    return {
+        ...(highlight === 'Nets' ? {} : { highlight }),
+        ...(fga === RANK_MIN.fga ? {} : { minFga: fga }),
+        ...(cfg.pronoun === 'his' ? {} : { pronoun: cfg.pronoun }),
+        ...(bars.fga === NBA_LEADER_BARS.fga && bars.fg3a === NBA_LEADER_BARS.fg3a ? {} : { leaderBars: bars }),
+    };
 }

@@ -8,17 +8,19 @@ import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import PlayerExplorer from '../nba/PlayerExplorer.svelte';
 import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { playerHref, teamHref } from '../../nba/links';
+import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaPlayerParams } from '../../routes/nba/player';
-import { basketball, seasonLabelFor } from '../../basketball/config';
+import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
+const ip = islandLeagueProps(league, season);
 const stats = player.stats;
 const options = seasons.filter((s) => hisSeasons.includes(s) || s === season);
 const title = `${player.player_name}, ${label} shooting | Game on Paper`;
@@ -46,8 +48,9 @@ const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
     </nav>
-    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} />
-    <PlayerExplorer client:load data={explorer} subject={subject} />
+    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} />
+    {unlocated && <p class="small text-muted">{placeholderNote(unlocated.count, unlocated.total, 'season')}</p>}
+    <PlayerExplorer client:load data={explorer} subject={subject} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} />
     <nav aria-label={`${player.team_tricode} players`} class="d-flex justify-content-between small mt-3">
       {prev ? (<a href={playerHref(prev.person_id, q, league)}>&larr; {prev.player_name}</a>) : (<span></span>)}
       {next && (<a href={playerHref(next.person_id, q, league)}>{next.player_name} &rarr;</a>)}

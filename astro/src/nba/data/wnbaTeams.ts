@@ -1,3 +1,4 @@
+import { WNBA_LAST_KNOWN_SEASON } from '../seasonRange';
 import type { Team } from './teams';
 
 // The WNBA's franchises, keyed by stats.wnba.com team id, from wehoop-wnba-data's team crosswalk
@@ -42,16 +43,27 @@ export const WNBA_FORMER_NAMES: readonly { team_id: number; tricode: string; thr
  * Franchises that folded, with their last season. The 2000-02 Portland Fire shares stats id 1611661327 with the 2026
  * expansion Portland Fire (stats.wnba.com reused it); they are different franchises, so ESPN id 12 resolves to no team.
  * ESPN itself now files the old Fire under the new one's id (132052 on its 2002 boards); wnbaLogoId undoes that for logos.
- * The crosswalk starts in 2002: first seasons are not listed.
+ * `from` is the first season, from the shots (WNBA_FIRST_SEASONS says where; the crosswalk starts in 2002).
  */
-export const WNBA_DEFUNCT: readonly { team_id: number; espn_id: number; tricode: string; name: string; through: number }[] = [
-    { team_id: 1611661314, espn_id: 1, tricode: 'CHA', name: 'Charlotte Sting', through: 2006 },
-    { team_id: 1611661315, espn_id: 2, tricode: 'CLE', name: 'Cleveland Rockers', through: 2003 },
-    { team_id: 1611661316, espn_id: 4, tricode: 'HOU', name: 'Houston Comets', through: 2008 },
-    { team_id: 1611661326, espn_id: 7, tricode: 'MIA', name: 'Miami Sol', through: 2002 },
-    { team_id: 1611661327, espn_id: 12, tricode: 'POR', name: 'Portland Fire', through: 2002 },
-    { team_id: 1611661318, espn_id: 13, tricode: 'SAC', name: 'Sacramento Monarchs', through: 2009 },
+export const WNBA_DEFUNCT: readonly { team_id: number; espn_id: number; tricode: string; name: string; from: number; through: number }[] = [
+    { team_id: 1611661314, espn_id: 1, tricode: 'CHA', name: 'Charlotte Sting', from: 1997, through: 2006 },
+    { team_id: 1611661315, espn_id: 2, tricode: 'CLE', name: 'Cleveland Rockers', from: 1997, through: 2003 },
+    { team_id: 1611661316, espn_id: 4, tricode: 'HOU', name: 'Houston Comets', from: 1997, through: 2008 },
+    { team_id: 1611661326, espn_id: 7, tricode: 'MIA', name: 'Miami Sol', from: 2000, through: 2002 },
+    { team_id: 1611661327, espn_id: 12, tricode: 'POR', name: 'Portland Fire', from: 2000, through: 2002 },
+    { team_id: 1611661318, espn_id: 13, tricode: 'SAC', name: 'Sacramento Monarchs', from: 1997, through: 2009 },
 ];
+
+/**
+ * Each current franchise's first season under any name (Las Vegas from the 1997 Utah Starzz, Dallas from the 1998 Detroit
+ * Shock); 1611661327 is the 2026 Fire, the 2000-02 one is WNBA_DEFUNCT's. The first regular-season (102...) shots season of
+ * each stats team id in wehoop-wnba-stats-data's shots_1997..2026 (test/fixtures/wnba/team_seasons_1997_2026.json pins it).
+ */
+export const WNBA_FIRST_SEASONS: Readonly<Record<number, number>> = {
+    1611661313: 1997, 1611661317: 1997, 1611661319: 1997, 1611661320: 1997, 1611661321: 1998, 1611661322: 1998,
+    1611661323: 1999, 1611661324: 1999, 1611661325: 2000, 1611661328: 2000, 1611661329: 2006, 1611661330: 2008,
+    1611661331: 2025, 1611661327: 2026, 1611661332: 2026,
+};
 
 const BY_ID = new Map(WNBA_TEAMS.map((t) => [t.team_id, t]));
 /** Current ESPN ids, plus the ESPN ids a relocated franchise had before (Utah Starzz 15, Orlando Miracle 10). */
@@ -74,6 +86,38 @@ function formerEra(team: Team | undefined, season: number | null | undefined) {
     if (team == null || season == null) return undefined;
     const era = WNBA_FORMER_NAMES.find((f) => f.team_id === team.team_id && season <= f.through);
     return era && era.name !== team.name ? era : undefined;
+}
+
+/**
+ * The team as it was in `season`: a folded franchise by its own name in its seasons, else the current franchise under
+ * the name it had then (WNBA_FORMER_NAMES, first `through` at or after the season). A folded franchise has its own
+ * historical logo (plan #5 hosts CLE, MIA and the 2000-02 POR; CHA, HOU and SAC come from ESPN) but no current
+ * colour, so it is grey #888888. The season decides, not the id: 1611661327 is the 2000-02 Portland Fire through 2002
+ * and the 2026 Portland Fire after.
+ */
+export function wnbaTeamInSeason(teamId: number, season: number): Team | undefined {
+    const folded = WNBA_DEFUNCT.find((d) => d.team_id === teamId && season <= d.through);
+    if (folded) return { team_id: teamId, tricode: folded.tricode, name: folded.name, color: '#888888', espn_id: folded.espn_id };
+    const t = BY_ID.get(teamId);
+    if (!t) return undefined;
+    return { ...t, name: WNBA_FORMER_NAMES.find((f) => f.team_id === teamId && season <= f.through)?.name ?? t.name };
+}
+
+/**
+ * The seasons of the franchise that holds `teamId` in `season`, through the last listed season: 1611661327 is 2000-2002 in
+ * 2002 and 2026 in 2026 (two franchises, one stats id). Undefined for an id no franchise had.
+ */
+export function wnbaSeasonsOf(teamId: number, season: number): number[] | undefined {
+    const folded = WNBA_DEFUNCT.find((d) => d.team_id === teamId && season <= d.through);
+    const first = folded ? folded.from : WNBA_FIRST_SEASONS[teamId];
+    if (first == null) return undefined;
+    const last = folded ? folded.through : WNBA_LAST_KNOWN_SEASON;
+    return Array.from({ length: last - first + 1 }, (_, i) => first + i);
+}
+
+/** The current franchise behind a tricode it has used (SAN and UTA are Las Vegas); a folded franchise's tricode has none. */
+export function wnbaFranchiseOf(tricode: string): number | undefined {
+    return (WNBA_TEAMS.find((t) => t.tricode === tricode) ?? WNBA_FORMER_NAMES.find((f) => f.tricode === tricode))?.team_id;
 }
 
 /**

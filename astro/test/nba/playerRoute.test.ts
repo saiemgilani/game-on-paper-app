@@ -94,17 +94,19 @@ describe('prepareNbaPlayer', () => {
         expect(r.explorer.games).toBeNull();
         expect(cache[0]).toMatchObject({ maxAge: 3600 });
     });
-    test('a shot whose game has no log row means the per-game views are unavailable', async () => {
+    test('a shot whose game has no log row means the per-game views are unavailable, and the page is not cached', async () => {
         const shotGames = new Set(shots.filter((s: any) => s.person_id === PID).map((s: any) => String(s.game_id)));
         const dropped = gameRows.findIndex((g: any) => shotGames.has(String(g.game_id)));
         expect(dropped).toBeGreaterThanOrEqual(0);
         for (const [label, rows] of [['no game rows', []], ['one game row dropped', gameRows.filter((_: any, k: number) => k !== dropped)]] as const) {
             state.games = rows as any[];
-            const { astro } = fakeAstro(`/nba/players/${PID}`, String(PID));
+            const { astro, cache, headers } = fakeAstro(`/nba/players/${PID}`, String(PID));
             const r = await prepareNbaPlayer(astro);
             state.games = null;
             if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
             expect(r.explorer.games, label).toBeNull();
+            expect(cache, label).toEqual([false]);
+            expect(headers.get('Cache-Control'), label).toBe('no-store');
         }
     });
 });

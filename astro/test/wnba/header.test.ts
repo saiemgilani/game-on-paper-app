@@ -6,10 +6,10 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create(); });
 
 describe('the WNBA Header', () => {
-    test('a basketball menu of Scoreboard only, no featured-team entry, a switch to every admitted league', async () => {
+    test('a basketball menu of five pages, no featured-team entry, a switch to every admitted league', async () => {
         const html = await container.renderToString(Header, { locals: { league: 'wnba', preview: true } as App.Locals });
         const items = [...html.matchAll(/<a href="(\/wnba[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /wnba/scoreboard']);
+        expect(items).toEqual(['Scoreboard /wnba/scoreboard', 'Players /wnba/players', 'Teams /wnba/teams', 'Scatter /wnba/scatter', 'Leaders /wnba/leaders']);
         expect(html).not.toContain('>Nets<');
         expect(html).toContain('title="Switch league"');
         for (const href of ['href="/"', 'href="/nfl"', 'href="/nba"']) expect(html).toContain(href);
