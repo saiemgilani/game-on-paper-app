@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { LEAGUES, NFL_LOGO_ABBR, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, leagueFromLocation, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -173,5 +173,22 @@ describe('the nba league', () => {
     test('nba logos use ESPN numeric ids in both modes', () => {
         expect(teamLogoUrl('nba', 17, false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/17.png');
         expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png');
+    });
+});
+
+describe('leagueFromLocation (client-side, e.g. the WP chart\'s logos)', () => {
+    afterEach(() => { vi.unstubAllGlobals(); });
+    const at = (pathname: string) => { vi.stubGlobal('window', { location: { pathname } }); return leagueFromLocation(); };
+    test('an admin preview link (/preview/<league>/...) is that league, not cfb', () => {
+        expect(at('/preview/wnba/game/1')).toBe('wnba');
+        expect(at('/preview/nba/game/1')).toBe('nba');
+        expect(at('/preview/nfl/game/1')).toBe('nfl');
+        expect(at('/preview')).toBe('cfb');
+        expect(at('/preview/game/1')).toBe('cfb');
+    });
+    test('public paths are unchanged', () => {
+        expect(at('/wnba/game/1')).toBe('wnba');
+        expect(at('/game/1')).toBe('cfb');
+        expect(at('/previewx/wnba/game/1')).toBe('cfb');
     });
 });

@@ -264,5 +264,6 @@ export function leaguePath(league: League | undefined, path: string): string {
 /** Client-side (Svelte) league detection; SSR code reads Astro.locals.league instead. */
 export function leagueFromLocation(): League {
     if (typeof window === 'undefined') return DEFAULT_LEAGUE;
-    return splitLeague(window.location.pathname).league;
+    // An admin's /preview/<league>/... link is that league's page (middleware rewrites it), not a cfb path.
+    return splitLeague(window.location.pathname.replace(/^\/preview(?=\/|$)/, '') || '/').league;
 }
