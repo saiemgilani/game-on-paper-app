@@ -140,9 +140,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
             WNBA_RESTRICTED_AREA,
         ),
         teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId, inSeason: wnbaTeamInSeason, franchiseOf: wnbaFranchiseOf },
-        // plan #6 builds the teams index; until then pages/wnba/index.astro redirects to the scoreboard
+        // pages/wnba/index.astro: the season's teams index with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here is what turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'stats-api',
         regularSeasonGames: wnbaSeasonGames,
         pronoun: 'her',
