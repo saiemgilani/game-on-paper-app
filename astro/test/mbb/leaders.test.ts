@@ -34,6 +34,16 @@ describe('the college leaders loader', () => {
         expect(Object.keys(r.boards).map(Number)).toEqual([5, 10]);
         expect(r.windowNote).toBe(' Windows count games from Feb 17 on: the last 49 days of games.');
     });
+    test("the loader's boards carry the season lines (Task 6 low): Most improved's season eFG is the season row's, not the read's", async () => {
+        const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
+        const top = r.boards[10].improved.rows[0];
+        expect(top.seasonEfg).toBe(lineOf(seasonLinesFromRows(seasonPlayers(2026)).get(top.person_id)!).efgPct);
+        const fromRead = leaderBoards(seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026)), null, 15, bars, { windows: [5, 10] });
+        const same = fromRead[10].improved.rows.find((x) => x.person_id === top.person_id);
+        expect(same).toBeDefined();
+        expect(same!.seasonEfg).not.toBe(top.seasonEfg);
+    });
     test('every ranked window lies inside the read; Most improved uses the season line', () => {
         const players = seasonPlayers(2026);
         const placed = seasonPlayerGamesFromRows(leadersGames2026(), players);

@@ -40,6 +40,11 @@ describe("plan #7's fixture rows: the SQL's context equals the TypeScript on the
         const { shots, sql } = fixture(2026);
         expect(statsByZone(shots, COURT)).not.toEqual(sql.hexIndex.zones);
     });
+    test("2019 on the 2026 NCAA court zones differently (the arc moved for 2019-20): the season's court is load-bearing", () => {
+        const { shots, sql } = fixture(2019);
+        expect(courtFor('mbb', 2026)).not.toBe(courtFor('mbb', 2019));
+        expect(statsByZone(shots, courtFor('mbb', 2026))).not.toEqual(sql.hexIndex.zones);
+    });
 });
 
 describe('Texas team-seasons: the TypeScript zones of the attributed shots equal the derived rim and mid-range counts', () => {

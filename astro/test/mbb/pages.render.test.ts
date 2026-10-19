@@ -10,7 +10,7 @@ import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
 import { describeHex } from '../../src/nba/charts/hexShotChart';
 import { buildDashboard } from '../../src/nba/dashboard';
 import {
-    TEX, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p19, p26, player2019Games, player2026Games,
+    TEX, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p26, player2019Games, player2026Games,
     player2026Seasons, player2026Shots, scheduleTeams, seasonPlayers, texShots,
 } from './dashboardFixtures';
 
@@ -95,6 +95,7 @@ describe('the MBB dashboard pages', () => {
         expect(plain(html)).toContain(`No stats.ncaa.org shots are linked to ${m.name} in 2018-19.`);
         expect(plain(html)).not.toContain('no charted shots');
         expect(html).not.toContain('id="nba-hex-panel"');
+        expect(html).not.toContain('id="nba-line"'); // no "0/0 FG · n/a FG%" header line on the empty page (final review)
     });
     test('/mbb/players: choose a team; /mbb/players?team=<Texas>: the Texas list', async () => {
         const choose = await page('players.astro', '/mbb/players');
@@ -112,6 +113,7 @@ describe('the MBB dashboard pages', () => {
         const html = size('/mbb/players/[p26]', await page('players/[id].astro', `/mbb/players/${id}`, { id: String(id) }));
         mbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain('Among players with 40+ field-goal attempts this regular season + postseason;');
+        expect(html).toContain('else stats.ncaa.org shot charts.'); // review Minor 3: not the NBA's "play-by-play shots"
         expect(html).toContain('full regular season + postseason');
         expect(html).toContain(hexDesc(player2026Shots(), 2026));
         expect(plain(html)).toMatch(/USG% &middot; [\d.]+% TS%/); // plain() keeps entities; the shared template writes &middot;
@@ -134,11 +136,10 @@ describe('the MBB dashboard pages', () => {
         expect(html).not.toContain('>20 games<');
         expect(html.match(/<tr class="fw-bold"/g)).toBeNull();
     });
-    test('unknown ids are 404s', async () => {
+    test('unknown ids are 404s (the page-level Astro.rewrite is rendered in notFound.render.test.ts)', async () => {
         const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
         const fake = (path: string, id: string) => ({ params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
         expect(await prepareBasketballPlayer(fake('/mbb/players/123', '123'), 'mbb')).toEqual({ notFound: true });
-        expect(p19().team_id).toBe(TEX);
     });
     test('HTML budgets (measured on these captures x 1.2; Step 3 sets them)', () => {
         const BUDGET: Record<string, number> = { '/mbb': 243155, '/mbb/team/251': 147119, '/mbb/players/[p26]': 260507, '/mbb/scatter': 124539, '/mbb/scatter?conference=all': 2069946, '/mbb/leaders': 101289 };

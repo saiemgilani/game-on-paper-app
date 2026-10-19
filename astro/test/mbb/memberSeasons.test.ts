@@ -5,10 +5,12 @@
 // still asks for a team.
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { BASKETBALL } from '../../src/basketball/config';
 import { withSeasonMembers } from '../../src/basketball/dashboards';
 import NbaPlayersRoute from '../../src/components/routes/NbaPlayersRoute.astro';
 import NbaTeamsRoute from '../../src/components/routes/NbaTeamsRoute.astro';
 import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../../src/nba/data/mbbMemberSeasons';
+import { MBB_LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 import { TEX, conferenceNames, conferences, coverage, leagueContext, scheduleTeams, seasonPlayers, texShots } from './dashboardFixtures';
 
 const state = vi.hoisted(() => ({ dropTex: false, failMembership: false, emptySeason: false }));
@@ -44,6 +46,12 @@ describe('the member-seasons table (R-P11)', () => {
             expect(withSeasonMembers([], conferences(s), scheduleTeams(s), s, 'mbb').map((t) => t.team_id).sort((a, b) => a - b), String(s)).toEqual(rule);
         }
         expect(MBB_MEMBER_SEASONS_THROUGH).toBe(2026);
+    });
+    test('the season rollover moves together: currentMembers, the member table and MBB_LAST_KNOWN_SEASON agree (review Important 1)', () => {
+        const m = BASKETBALL.mbb;
+        expect([m.currentMembers!.season, m.memberSeasons!.through]).toEqual([MBB_LAST_KNOWN_SEASON, MBB_LAST_KNOWN_SEASON]);
+        const last = [...MBB_MEMBER_SEASONS].filter(([, ss]) => ss.includes(MBB_LAST_KNOWN_SEASON)).map(([id]) => id).sort((a, b) => a - b);
+        expect([...m.currentMembers!.ids].sort((a, b) => a - b)).toEqual(last);
     });
     test('St. Thomas lists only its member seasons on its team page', async () => {
         expect(MBB_MEMBER_SEASONS.get(STMN)).toEqual([2022, 2023, 2024, 2025, 2026]);

@@ -97,9 +97,10 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     setCache(Astro, playerCache(league));
     if (coverage === undefined) uncacheable(Astro);
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
-    // college: the team's member seasons (R-P11)
-    const own = memberSeasonsOf(league, teamId, season, resolved.seasons) ?? BASKETBALL[league].teams.seasonsOf(teamId, season);
-    const seasons = own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons;
+    // college: the team's member seasons (R-P11), already filtered from resolved.seasons
+    const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
+    const own = members ? undefined : BASKETBALL[league].teams.seasonsOf(teamId, season);
+    const seasons = members ?? (own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons);
     if (!hasShots) {
         return { ...resolved, seasons, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
     }

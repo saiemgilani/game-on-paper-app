@@ -216,6 +216,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         wpModelNote: "Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature).",
         featuredTeam: null,
         courts: NCAA_COURTS,
+        // seasonsOf keeps the TeamModule contract; the MBB season pickers read memberSeasonsOf (the member table) first
         teams: { all: MBB_TEAMS, byEspnId: mbbTeamByEspnId, inSeason: mbbTeamInSeason, franchiseOf: mbbFranchiseOf, seasonsOf: mbbSeasonsOf },
         // pages/mbb/index.astro: the season's teams by conference with links to the scoreboard and the shooting pages
         landing: 'teams-index',
@@ -239,7 +240,8 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // D26, measured (plans/2026-10-11-mbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
         // of player games holds at most 43,835 rows (2022), under the 50,000 cap; a 20-game window needs ~120 days of games
         leadersRead: { days: 49, windows: [5, 10] },
-        currentMembers: { season: 2026, ids: MBB_MEMBERS_2026 },
+        // the member table's last season; memberSeasons.test.ts ties it, these ids and MBB_LAST_KNOWN_SEASON together
+        currentMembers: { season: MBB_MEMBER_SEASONS_THROUGH, ids: MBB_MEMBERS_2026 },
         memberSeasons: { through: MBB_MEMBER_SEASONS_THROUGH, seasons: MBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,

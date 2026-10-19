@@ -44,7 +44,7 @@ const defaults = { season: String(current) };
       <div class="col">
         <h1 class="h3 mb-1">{team.tricode} <span class="fw-normal">{team.name}</span></h1>
         <p class="text-muted mb-1">{label} {scope.noun}</p>
-        <p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
+        {!empty && (<p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
           {!empty && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}

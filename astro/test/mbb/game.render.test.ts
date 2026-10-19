@@ -77,6 +77,12 @@ describe('/mbb/game/[id] render (real captures)', () => {
         expect(plain(html)).toContain('1 of 62 shots have no recorded location');
         expect(html).toContain('href="/mbb/scoreboard?date=2025-03-06&amp;group=all"'); // a 8:30 pm ET tip on March 6
     });
+    test('401744223, a 2024-25 game: both team links carry ?season=2025 (R-P2; review Minor 1, the 2026 games above link season-less)', async () => {
+        prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401744223_api'), 'mbb') });
+        const links = [...(await render('401744223')).matchAll(/href="(\/mbb\/team\/[^"]*)"/g)].map((m) => m[1]);
+        expect(links.length).toBeGreaterThanOrEqual(2);
+        for (const l of links) expect(l).toMatch(/^\/mbb\/team\/\d+\?season=2025$/);
+    });
     test('401829457 from the processor: the neutral-site score (Decision 7)', async () => {
         prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401829457_processor'), 'mbb') });
         const html = await render('401829457');

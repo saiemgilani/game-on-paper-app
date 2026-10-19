@@ -1,9 +1,8 @@
 /**
- * The Data API reads behind the basketball dashboards: per-subject shots (`nba_stats` /
- * `wnba_stats` `shots`, or the college `shot_rows`), the three derived tables, and for
- * college leagues the coverage and conference reference rows. League-wide numbers come
- * from the three derived tables sdv-db rebuilds nightly. Every read goes through `requestSDV` (KV-cached, stamp-keyed) with
- * `strict`, so a route can tell an outage (503) from an empty table (404).
+ * The Data API reads behind the basketball dashboards: per-subject shots (`nba_stats` / `wnba_stats` `shots`, or
+ * the college `shot_rows`), the three derived tables sdv-db rebuilds nightly (the league-wide numbers), and for
+ * college leagues the coverage and conference reference rows. Every read goes through `requestSDV` (KV-cached,
+ * stamp-keyed) with `strict`, so a route can tell an outage (503) from an empty table (404).
  */
 import { retrieveRows } from './sdv';
 import { BASKETBALL } from '../basketball/config';
