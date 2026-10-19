@@ -8,7 +8,7 @@ vi.mock('../src/utils/features', async (orig) => {
 });
 
 import { GET } from '../src/pages/sitemap.xml';
-import { conferences } from './wbb/dashboardFixtures';
+import { WBB_MEMBERS_2026 } from '../src/nba/data/wbbMembers';
 
 describe('sitemap.xml with wbb public', async () => {
     const xml = await ((GET as any)({} as any) as Response).text();
@@ -19,7 +19,7 @@ describe('sitemap.xml with wbb public', async () => {
     test('every program of 2025-26 by ESPN id, the reclassifiers included; no player page', () => {
         const ids = [...xml.matchAll(/gameonpaper\.com\/wbb\/team\/(\d+)</g)].map((m) => Number(m[1]));
         expect(ids.length).toBe(363);
-        expect(new Set(ids)).toEqual(new Set(conferences(2026).map((r) => Number(r.team_id)))); // D43: exactly the 2026 conference members
+        expect(ids).toEqual([...WBB_MEMBERS_2026]); // D43/D47: exactly the committed 2026 member table, in its order (membership.test.ts pins it to the rule)
         for (const id of [88, 284, 2330, 2511, 2815, 2837, 2130, 2385, 2441]) expect(ids, String(id)).toContain(id);
         for (const id of [2697, 42]) expect(ids, String(id)).not.toContain(id);
         expect(xml).not.toContain('/wbb/players/');
