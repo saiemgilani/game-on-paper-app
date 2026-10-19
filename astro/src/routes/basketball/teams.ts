@@ -6,13 +6,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { placeholderFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import type { ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import { teamLinesFromRows, teamsFromSeasonRows } from '../../nba/tables';
 import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { uncacheable } from './cache';
-import { readBasketballSeasonRows, resolveBasketballSeason } from './season';
+import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballTeamsParams {
     season: number;
@@ -23,6 +24,8 @@ export interface BasketballTeamsParams {
     lines: Map<number, ShootingLine>;
     /** D29: the league total row's placeholder_shots / attempts; only for a league with a placeholderLocation */
     unlocated?: { count: number; total: number };
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballTeamsPrep = { unavailable: true } | BasketballTeamsParams;
@@ -31,6 +34,7 @@ export type BasketballTeamsPrep = { unavailable: true } | BasketballTeamsParams;
 export async function prepareBasketballTeams(Astro: AstroGlobal, league: BasketballLeague, { landing = false }: { landing?: boolean } = {}): Promise<BasketballTeamsPrep> {
     Astro.locals.league = league;
     const resolved = resolveBasketballSeason(Astro, league);
+    const coverageP = readCoverageNote(league, resolved.season);
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, landing ? '/' : '/teams'));
     if (rows === null) return { unavailable: true };
     // D29: the league-wide count plan #3 keeps on the league-context total row; only a league with a placeholder location reads it
@@ -47,5 +51,7 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
             uncacheable(Astro); // the page without its note must not be held for the season window
         }
     }
-    return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season, league), lines: teamLinesFromRows(rows), ...(unlocated ? { unlocated } : {}) };
+    const coverage = await coverageP;
+    if (coverage === undefined) uncacheable(Astro);
+    return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season, league), lines: teamLinesFromRows(rows), ...(unlocated ? { unlocated } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
 }

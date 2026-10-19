@@ -7,6 +7,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL, courtFor, placeholderFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../nba/adapters';
 import { buildDashboard, type DashboardData } from '../../nba/dashboard';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
@@ -16,7 +17,7 @@ import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterR
 import { retrieveLeagueContextRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
-import { resolveBasketballSeason } from './season';
+import { readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballTeamParams {
     season: number;
@@ -30,6 +31,8 @@ export interface BasketballTeamParams {
     sort: RosterSortKey;
     dir: SortDir;
     mode: Mode;
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -46,10 +49,12 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const teamId = Number(id);
     const resolved = resolveBasketballSeason(Astro, league);
     const { season } = resolved;
-    const sort = parseSort(ROSTER_SORT_KEYS, Astro.url.searchParams.get('sort'), 'fga');
+    const sortKeys = BASKETBALL[league].hidePie ? ROSTER_SORT_KEYS.filter((k) => k !== 'pie') : ROSTER_SORT_KEYS;
+    const sort = parseSort(sortKeys, Astro.url.searchParams.get('sort'), 'fga');
     const dir = parseDir(Astro.url.searchParams.get('dir'));
     const mode = parseMode(Astro.url.searchParams.get('mode'));
 
+    const coverageP = readCoverageNote(league, season);
     const reads = await Promise.allSettled([retrieveSeasonPlayerRows(season, league), retrieveLeagueContextRows(season, league), retrieveTeamShots(season, teamId, league)]);
     const [playersR, contextR, shotsR] = reads;
     for (const [name, r] of [['season players', playersR], ['league context', contextR], ['team shots', shotsR]] as const) {
@@ -71,6 +76,8 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     setCache(Astro, playerCache(league));
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them
     const own = BASKETBALL[league].teams.seasonsOf(teamId, season);
+    const coverage = await coverageP;
+    if (coverage === undefined) uncacheable(Astro);
     return {
         ...resolved,
         seasons: own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons,
@@ -79,5 +86,6 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         roster: sortRosterRows(rosterRows(rows, teamId), sort, dir, mode),
         dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value), courtFor(league, season), placeholderFor(league, season)),
         sort, dir, mode,
+        ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
     };
 }

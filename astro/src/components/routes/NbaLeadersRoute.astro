@@ -9,7 +9,7 @@ import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaLeadersParams }
-const { season, seasons, current, q, boards } = Astro.props.data;
+const { season, seasons, current, q, boards, coverage } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -26,7 +26,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row mb-3">
       <div class="col-12">
         <h1 class="h3">Rolling leaders, {label}</h1>
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/leaders')} />
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/leaders')} />{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}
       </div>
     </div>
     <div class="row">

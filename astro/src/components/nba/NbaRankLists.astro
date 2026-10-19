@@ -6,8 +6,8 @@ import { RANK_MIN, type RankEntry, type RankMetric, type RankMins, type RankSumm
 import { fmtInt, fmtPct } from '../../nba/format';
 import { basketball } from '../../basketball/config';
 import { playerHref } from '../../nba/links';
-interface Props { ranks: RankSummary[]; personId: number; seasonQuery: string; min?: RankMins }
-const { ranks, personId, seasonQuery, min = RANK_MIN } = Astro.props;
+interface Props { ranks: RankSummary[]; personId: number; seasonQuery: string; min?: RankMins; scope?: string }
+const { ranks, personId, seasonQuery, min = RANK_MIN, scope = 'regular season' } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const fmt = (metric: RankMetric, v: number) => (metric === 'fga' ? fmtInt(v) : fmtPct(v));
 const why: Record<RankMetric, string> = {
@@ -19,7 +19,7 @@ const listOf = (s: RankSummary) => [...s.top, ...(s.me && !s.top.some((r) => r.p
 ---
 <section id="ranks" aria-label="League ranks" class="mb-3">
   <h2 class="h5">League ranks</h2>
-  <p class="small text-muted">Among players with {min.fga}+ field-goal attempts this regular season; season stats where the release has them, else play-by-play shots. 3P% also needs {min.fg3a}+ three-point attempts; TS% needs a season-stats row.</p>
+  <p class="small text-muted">Among players with {min.fga}+ field-goal attempts this {scope}; season stats where the release has them, else play-by-play shots. 3P% also needs {min.fg3a}+ three-point attempts; TS% needs a season-stats row.</p>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3">
     {ranks.map((s) => (
       <div class="col">

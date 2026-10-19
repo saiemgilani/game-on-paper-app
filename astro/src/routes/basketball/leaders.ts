@@ -8,12 +8,13 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import { seasonPlayerGamesFromRows } from '../../nba/adapters';
 import { leaderBoards, type Boards } from '../../nba/data/leaders';
 import { retrieveSeasonPlayerGameRows } from '../../resources/nbaShots';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
-import { readBasketballSeasonRows, resolveBasketballSeason } from './season';
+import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballLeadersParams {
     season: number;
@@ -22,6 +23,8 @@ export interface BasketballLeadersParams {
     q: string;
     /** null when the season has no placeable game logs: rolling windows need game dates. */
     boards: Boards | null;
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballLeadersPrep = { unavailable: true } | BasketballLeadersParams;
@@ -33,6 +36,7 @@ export async function prepareBasketballLeaders(Astro: AstroGlobal, league: Baske
     const resolved = resolveBasketballSeason(Astro, league);
     const { season } = resolved;
     // the season-players read settles the cache policy; it is set below once the game rows are in too
+    const coverageP = readCoverageNote(league, season);
     const [players, games] = await Promise.all([
         readBasketballSeasonRows(Astro, league, season, route, false),
         retrieveSeasonPlayerGameRows(season, league).catch((e: any) => {
@@ -42,8 +46,10 @@ export async function prepareBasketballLeaders(Astro: AstroGlobal, league: Baske
         }),
     ]);
     if (!players || !games) return { unavailable: true };
+    const coverage = await coverageP;
     const placed = seasonPlayerGamesFromRows(games, players);
     if (players.length > 0) setCache(Astro, seasonCache(league)); // empty: readBasketballSeasonRows already made it uncacheable
     // D31: the league-season's per-game bars (the NBA's NBA_LEADER_BARS, so its boards are unchanged)
-    return { ...resolved, boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? null, 15, BASKETBALL[league].leaderBars(season)) : null };
+    if (coverage === undefined) uncacheable(Astro);
+    return { ...resolved, boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? null, 15, BASKETBALL[league].leaderBars(season)) : null, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
 }

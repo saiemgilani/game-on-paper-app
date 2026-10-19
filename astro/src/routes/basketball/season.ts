@@ -2,8 +2,9 @@
 import type { AstroGlobal } from 'astro';
 import { seasonQuery } from '../../nba/links';
 import { parseSeason } from '../../nba/seasons';
-import { retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
-import { BASKETBALL } from '../../basketball/config';
+import { retrieveCoverageRows, retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { coverageNote, isNcaaDashboards } from '../../basketball/dashboards';
 import { LEAGUES, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
 
@@ -36,4 +37,18 @@ export async function readBasketballSeasonRows(Astro: AstroGlobal, league: Baske
     if (rows.length === 0) uncacheable(Astro);
     else if (cacheOnSuccess) setCache(Astro, seasonCache(league));
     return rows;
+}
+
+/**
+ * A college dashboard page's coverage note (D24): null for a league without one (no read); undefined when the read failed.
+ * The read is decorative: the caller renders without the note and, AFTER its own setCache, calls uncacheable(Astro).
+ */
+export async function readCoverageNote(league: BasketballLeague, season: number): Promise<string | null | undefined> {
+    if (!isNcaaDashboards(league)) return null;
+    try {
+        return coverageNote(await retrieveCoverageRows(league), season, (s) => seasonLabelFor(league, s));
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} shot coverage for ${season}: ${e}, ${e?.stack}`);
+        return undefined;
+    }
 }

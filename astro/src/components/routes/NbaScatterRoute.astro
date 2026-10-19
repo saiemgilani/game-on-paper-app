@@ -6,16 +6,19 @@ import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import ScatterExplorer from '../nba/ScatterExplorer.svelte';
 import type { NbaScatterParams } from '../../routes/nba/scatter';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaScatterParams }
-const { season, seasons, current, q, points, min } = Astro.props.data;
+const { season, seasons, current, q, points, min, coverage } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const ft = cfg.featuredTeam;
 const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
+const usageNote = isNcaaDashboards(league) ? NCAA_USAGE_NOTE : null;
 const ip = islandLeagueProps(league, season);
 const title = `${name} scatter, ${label} | Game on Paper`;
 const description = `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two shooting or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
@@ -26,13 +29,13 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row mb-3">
       <div class="col-12">
         <h1 class="h3">League scatter, {label}</h1>
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/scatter')} />
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/scatter')} />{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}{usageNote && (<p class="small text-muted" id="nba-usage">{usageNote}</p>)}
       </div>
     </div>
     <div class="row">
       <div class="col-12">
         {points.length === 0
-          ? (<p class="text-muted">No regular-season shots in {label} yet.</p>)
+          ? (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>)
           : (<ScatterExplorer client:load points={points} subject={`${name} ${label}`} {...('highlight' in ip ? { highlight: ip.highlight } : {})} {...(ip.minFga ? { minFga: ip.minFga } : {})} />)}
       </div>
     </div>

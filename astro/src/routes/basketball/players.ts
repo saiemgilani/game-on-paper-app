@@ -10,13 +10,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import { playerSeasonsFromRows } from '../../nba/adapters';
 import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { PLAYER_COLUMNS, parseDir, parseSort, playerRows, sortPlayerRows, teamsFromSeasonRows, type PlayerRow, type PlayerSortKey } from '../../nba/tables';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
-import { readBasketballSeasonRows, resolveBasketballSeason } from './season';
+import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballPlayersParams {
     season: number;
@@ -33,6 +34,8 @@ export interface BasketballPlayersParams {
     rows: PlayerRow[];
     sort: PlayerSortKey;
     dir: SortDir;
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballPlayersPrep = { notFound: true } | { unavailable: true } | BasketballPlayersParams;
@@ -49,11 +52,14 @@ export async function prepareBasketballPlayers(Astro: AstroGlobal, league: Baske
     const sort = parseSort(PLAYER_SORT_KEYS, Astro.url.searchParams.get('sort'), 'attempts');
     const dir = parseDir(Astro.url.searchParams.get('dir'));
 
+    const coverageP = readCoverageNote(league, season);
     const rows = await readBasketballSeasonRows(Astro, league, season, leaguePath(league, '/players'), false); // the cache is set below, after the 404 check
     if (rows === null) return { unavailable: true };
+    const coverage = await coverageP;
     if (rows.length === 0) {
         // not ingested yet: the empty page (readBasketballSeasonRows already made it uncacheable)
-        return { ...resolved, teams: [], selected: null, team: requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir };
+        if (coverage === undefined) uncacheable(Astro);
+        return { ...resolved, teams: [], selected: null, team: requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
     }
     const teams = teamsFromSeasonRows(rows, season, league);
     const selected = requested === 'ALL' ? null : (teams.find((t) => t.tricode === requested) ?? teams.find((t) => t.team_id === BASKETBALL[league].teams.franchiseOf(requested)));
@@ -63,5 +69,6 @@ export async function prepareBasketballPlayers(Astro: AstroGlobal, league: Baske
     }
     const players = selected ? playerSeasonsFromRows(rows, selected.team_id) : playerSeasonsFromRows(rows);
     setCache(Astro, seasonCache(league));
-    return { ...resolved, teams, selected, team: selected?.tricode ?? 'ALL', defaults, rows: sortPlayerRows(playerRows(players), sort, dir), sort, dir };
+    if (coverage === undefined) uncacheable(Astro);
+    return { ...resolved, teams, selected, team: selected?.tricode ?? 'ALL', defaults, rows: sortPlayerRows(playerRows(players), sort, dir), sort, dir, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
 }

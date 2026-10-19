@@ -9,18 +9,20 @@ import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaTeamsParams } from '../../routes/nba/teams';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamsParams; landing?: boolean }
 const { data, landing = false } = Astro.props;
-const { season, seasons, current, q, teams, lines } = data;
+const { season, seasons, current, q, teams, lines, coverage } = data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
 const title = `${name} teams, ${label} shooting | Game on Paper`;
-const subtitle = `Every team's ${label} regular-season shooting line, from ${cfg.statsSourceLabel} play-by-play, with a shot chart and roster for each.`;
+const subtitle = `Every team's ${label} ${scope.adj} shooting line, from ${scope.source}, with a shot chart and roster for each.`;
 const here = lp(landing ? '/' : '/teams');
 const breadcrumbs: PageBreadcrumb[] = landing
     ? [{ title: name, active: true }]
@@ -32,7 +34,7 @@ const breadcrumbs: PageBreadcrumb[] = landing
       <div class="col-12">
         <h1 class="h3">{landing ? `${name} teams, ${label}` : `Teams, ${label}`}</h1>
         {data.unlocated && <p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>}
-        <p class="text-muted">{subtitle}</p>
+        <p class="text-muted">{subtitle}</p>{coverage && (<p class="small text-muted" id="nba-coverage">{coverage}</p>)}
         <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} />
         {landing && (
           <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
@@ -44,7 +46,7 @@ const breadcrumbs: PageBreadcrumb[] = landing
         )}
       </div>
     </div>
-    {teams.length === 0 && (<p class="text-muted">No regular-season shots in {label} yet.</p>)}
+    {teams.length === 0 && (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>)}
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="nba-teams">
       {teams.map((t) => {
         const line = lines.get(t.team_id);

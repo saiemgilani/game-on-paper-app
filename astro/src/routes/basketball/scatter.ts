@@ -6,12 +6,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL, rankMins } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import { headshotsFromRows, playerSeasonsFromRows } from '../../nba/adapters';
 import type { RankMins } from '../../nba/data/ranks';
 import { scatterPoints } from '../../nba/data/scatter';
 import type { ScatterPoint } from '../../nba/scatterMetrics';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
-import { readBasketballSeasonRows, resolveBasketballSeason } from './season';
+import { uncacheable } from './cache';
+import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballScatterParams {
     season: number;
@@ -21,6 +23,8 @@ export interface BasketballScatterParams {
     points: ScatterPoint[];
     /** the league-season's bars (rankMins): the NBA's 100 FGA / 50 3PA, scaled by season length */
     min: RankMins;
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballScatterPrep = { unavailable: true } | BasketballScatterParams;
@@ -30,9 +34,12 @@ export async function prepareBasketballScatter(Astro: AstroGlobal, league: Baske
     const cfg = BASKETBALL[league];
     const ft = cfg.featuredTeam;
     const resolved = resolveBasketballSeason(Astro, league);
+    const coverageP = readCoverageNote(league, resolved.season);
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, '/scatter'));
     if (rows === null) return { unavailable: true };
     const min = rankMins(league, resolved.season);
     const points = scatterPoints(playerSeasonsFromRows(rows), headshotsFromRows(rows), ft?.statsTeamId ?? null, { colorOf: (id) => cfg.teams.inSeason(id, resolved.season)?.color, min });
-    return { ...resolved, points, min };
+    const coverage = await coverageP;
+    if (coverage === undefined) uncacheable(Astro);
+    return { ...resolved, points, min, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
 }
