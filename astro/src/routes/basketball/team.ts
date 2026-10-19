@@ -36,6 +36,8 @@ export interface BasketballTeamParams {
     coverage?: string | null;
     /** college: a season member with no linked shot */
     empty?: true;
+    /** college (R-S14): a member whose placed shots name no player (New Orleans 2443): the dashboard, no roster, no players link */
+    noPlayers?: true;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -76,7 +78,8 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === teamId);
     const shots = shotsFromRows(shotsR.value);
     const coverage = await coverageP;
-    const hasShots = team !== undefined && shots.length > 0;
+    // R-S14: membership + placed shots decide the page, not season-player rows (an NBA/WNBA team with shots always has rows)
+    const hasShots = shots.length > 0;
     let member: Team | undefined = team;
     if (membershipP) {
         // a season MEMBER with no linked shot is a page that says so; a non-member is a 404 with or without shots (Hartford 2026:
@@ -113,5 +116,6 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value), courtFor(league, season), placeholderFor(league, season)),
         sort, dir, mode,
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        ...(team ? {} : { noPlayers: true as const }),
     };
 }

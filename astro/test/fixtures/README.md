@@ -575,17 +575,23 @@ needs a new id and a new snapshot in its own PR.
   (`https://sports.core.api.espn.com/v2/sports/basketball/leagues/womens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`,
   captured 2026-10-19 with requestESPN's Safari UA, `count` 357; owner ruling D34). `wbb/teams_2026.json`: one row per core id, `{id, ab, name, color}` from
   `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams/<id>` (abbreviation, displayName, color
-  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 13 ids with a D-I season (10+ games with one of the 32 women's D-I
-  conference ids) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are not in the core list,
-  with first/last such season and the same team-endpoint fields. `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
+  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 15 ids with a D-I season (10+ games with one of the 33 women's D-I
+  conference ids: ESPN's 32 dropdown ids plus 43, the D-I Independents, which the 2026 dropdown omits because no program is independent
+  in 2026; plan #11 ruling R-S11) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are
+  not in the core list, with first/last such season and the same team-endpoint fields. Each program's D-I seasons must be contiguous
+  first..last; a gap is admitted only for a season with 10+ games and no conference id recorded at all (Centenary 2113, 2003-04..2006-07,
+  between its 2002-03 independent season and its D-I conference seasons). `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
   regular-season (`season_type` 2) games of those D-I team-seasons; `wbb/games_in_scope.json`: the same with the postseason (`season_type` 2 or 3, D44). `wbb/conferences_2026.json`: `content.altSbDropdown.options` of
   `https://cdn.espn.com/core/womens-college-basketball/scoreboard?xhr=1` (2026-10-19) as `{id: data.group, label}`, 33 rows.
   `wbb/leader_bars.json`: per season 2019-2026, league-average regular-season FGA per team game for that season's D-I teams
   (wehoop-wbb-data `wbb/team_box/parquet/team_box_<season>.parquet`, commit 1d5e0668e) and for the NBA (hoopR-nba-data
   `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and `max(1, round(5 × ratio))` / `max(1, round(3 × ratio))`
-  (owner ruling D31). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
-  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (writes these fixtures and `src/nba/data/wbbTeams.ts` from its `wbb-probe/`
-  captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
+  (owner ruling D31). Plan #11 (R-S11, GOP d9543830) regenerated `other_di.json`, `season_games.json` and `games_in_scope.json` with
+  group 43 counted (Hartford 42 last 2022 -> 2023; Birmingham-Southern 3, Savannah State 2542 and Centenary 2113 first -> 2003; new
+  Morris Brown 2417 and Winston-Salem State 2736; team counts rise in the seasons with independents, medians unchanged except games in
+  scope 2007 31 -> 30). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (ClaudeCowork commit 4bad5e4c; writes these fixtures and `src/nba/data/wbbTeams.ts`
+  from its `wbb-probe/` captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
 - `wbb/game_<id>_processor.json` and `wbb/game_<id>_api.json` for 401827362 (Kansas at TCU, 2026-01-29, 77-79), 401805076 (UTEP at Louisiana
   Tech, 2026-03-08, 87-91, one overtime), 401856459 (Hofstra vs Charleston, 2026-03-15, CAA final, 56-68, neutral), 400550784 (Rutgers at
   UTEP, 2014-04-05, WNIT final, 56-54, two halves) and 273130043 (Stanford at Yale, 2007-11-09, 100-44, two halves, no turnovers recorded);
@@ -633,3 +639,37 @@ needs a new id and a new snapshot in its own PR.
   length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
   **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
   `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.
+- `wbb/dashboards/*`: the women's college shot dashboards' fixtures. (a) `ncaa_fixture_shot_rows.json` is sdv-db's committed
+  `tests/fixtures/ncaa_shot_dashboards/wbb/shot_rows.json` (sdv-db 6c2d393, file last changed in 7c64c30 = #167, plan
+  2026-10-11-ncaa-shots-sdv-db Task 5; sha256 242c6b94503a1e27d37bc635e59f885e6250ed5812c432c86aefe17a0b74203c), byte for byte: the
+  SQL's own `shot_rows` (254 rows) for South Carolina's NCAA contests 1989192 (2020-21) and 2125095 (2021-22), real release rows with
+  corner-band threes either side of the women's arc move; `ncaa_fixture_league_context.json` (273 rows) is sdv-db's
+  `ncaa_shot_dashboards.select_league_context(schema, 'wbb')` over exactly those rows (all six kinds), written by
+  `wbb_fixture_context.py` (plan 2026-10-11-wbb-shots-gop Task 2 Step 3). (b) Every other `.json` / `.json.gz` (gzip of the same
+  JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on 127.0.0.1) over a local warehouse loaded
+  from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` 2019–2026 on 2026-10-12 (ncaa-wbb-hoops-data ff5e192,
+  shot files last changed in 523abfd; its 2019 and 2026 shot files hold 236,067 and 708,038 rows = `shot_coverage.source_shots`),
+  `schedule` on 2026-10-12/19 (wehoop-wbb-data b86f451b; both release commits are as recorded at planning time, since the ingest manifest stores digests and dates, not commits), `team_group_seasons` / `group_seasons` on 2026-10-19
+  (sportsdataverse-data `wbb_groups`), the five `wbb.shot_*` tables built by sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12,
+  captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows` by person with the six lite columns, by team (South
+  Carolina, 2579) with the six plus `person_id` (for the parity test), and no game-id filter (regular season + postseason, D23);
+  `shot_season_players` / `shot_league_context` by season (2019, 2022, 2026); `shot_player_games` by person, the 2026 latest game
+  date (`order=-game_date&limit=1`, 2026-04-05) and the leaders' 49-day read (`game_date__gte` = latest − 48 days = 2026-02-16, 49
+  dates inclusive, R-S2); `shot_coverage` (every season); `team_group_seasons` (2019, 2021, 2022, 2026) / `group_seasons`
+  (`level=conference`; 2019, 2022, 2026); `schedule` (`select=home_id,away_id`; 2019, 2021, 2022, 2026). Players: South Carolina's
+  most-attempts shooter in 2026 (Joyce Edwards, 5239100, 538 attempts) and in 2018-19 (Mikiah Herbert Harrigan, 4065759, 41).
+  `leaders_window_rows.json`, `postseason_games.json`, `placeholder_check.json` and `unlinked_programs.json` are psql output of
+  `measure_wbb.sql` (Task 2 Step 2) on the same warehouse: the largest player-game count in any 42/49/56-date window per season,
+  type-3 games per season, the densest shot location per season, and per season the D-I reference programs with no shot the
+  release links to ESPN plus the NCAA team names with 600+ unlinked shots (Decision 8). The games-in-scope medians are
+  `wbb/games_in_scope.json` (plan #10; R-S9). **Used by:** `test/wbb/dashboardFixtures.ts` (and every WBB dashboard test through
+  it). **To regenerate:** plan 2026-10-11-wbb-shots-gop Task 2 (local warehouse, local API, the three scripts under ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-shots-gop/`).
+  (c) `new_orleans_shots_2026.json` (ruling R-S14): the `.data` of the same local API (sdv-db 6c2d393, `serve` on 127.0.0.1, same
+  warehouse), captured 2026-10-19 with `retrieveTeamShots`'s query for New Orleans (2443) in 2025-26:
+  `/v1/wbb/shot_rows?season=2026&team_id=2443&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+  992 rows (348 made, every one placed), written compactly as the other `.data` files (sha256
+  81e0f916ddb9da6a058bac0df4e116d7eea0975328dbb3bbee2658a27c955e08). New Orleans has no `shot_season_players` row in any captured
+  season (the release names no player on its shots; 2019 / 2022 / 2026 hold 317 / 768 / 992 placed shots). **Used by:**
+  `test/wbb/membership.test.ts`, `test/wbb/pages.render.test.ts` (the team page decides on membership + placed shots, not player rows).
+  **To regenerate:** the same curl against a local `sdv-db-api serve` with a throwaway read key.

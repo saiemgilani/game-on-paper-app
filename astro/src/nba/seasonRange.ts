@@ -117,7 +117,7 @@ export function wbbSeasonGames(season: number): number {
  * (test/fixtures/wbb/games_in_scope.json). [first season, games] ascending; a season past the table takes the latest.
  */
 const WBB_GAMES_IN_SCOPE: readonly (readonly [number, number])[] = [
-  [2003, 29], [2007, 31], [2020, 30], [2021, 23], [2022, 30], [2023, 31], [2024, 32], [2025, 30], [2026, 32],
+  [2003, 29], [2007, 30], [2008, 31], [2020, 30], [2021, 23], [2022, 30], [2023, 31], [2024, 32], [2025, 30], [2026, 32],
 ];
 export function wbbGamesInScope(season: number): number {
   return [...WBB_GAMES_IN_SCOPE].reverse().find(([from]) => season >= from)?.[1] ?? WBB_GAMES_IN_SCOPE[0][1];
