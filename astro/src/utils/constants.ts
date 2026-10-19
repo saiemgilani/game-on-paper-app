@@ -825,6 +825,10 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
     "net_adj_epa_rank",
 ]
 
+// 'team-season-bands': the five team-season quantiles the team trend chart's box draws (min, q1, median, q3, max);
+// each is breaks[100 * p] of sdv-db's team_summaries/percentiles row
+export const TEAM_SEASON_PCTILES = [0.01, 0.25, 0.5, 0.75, 0.99];
+
 export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
     // NFL-only categories (rbsdm.com parity) -- columns the nfl-data producer
     // adds to team_summaries; the college grid never has them (utils/league.ts
