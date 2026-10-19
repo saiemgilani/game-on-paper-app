@@ -3,7 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { categoryColumns, formatPlayerMetric, gameStatLine, percentileOf, totalGameLog } from '../src/utils/players';
+import { categoryColumns, formatPlayerMetric, GAME_PERCENTILE_MIN_PLAYS, gameStatLine, percentileOf, totalGameLog } from '../src/utils/players';
 import { formatPercent, formatRank, generateColorRampValue, roundNumber } from '../src/utils/misc';
 import { weekLabel } from '../src/utils/league';
 
@@ -16,8 +16,14 @@ import { weekLabel } from '../src/utils/league';
 // API is a 404 page rather than an identity shell.
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
+const nb = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
-const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true };
+// `cohortMissing(args)`: true -> that percentiles read 404s (`{}`), as a cohort under
+// the API's 30-game minimum does; `pctlCalls` records every read in order
+const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true, cohortMissing: () => false, pctlCalls: [] };
+// call counter for the flag-off assertion below: the gate must stop the fetch,
+// not just hide the panel, so the test resets and reads this around each render
+let rankedRowsCalls = 0;
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -35,7 +41,7 @@ vi.mock('../src/resources/sdv', async (orig) => {
         // the league-season distribution the game log's second shading reads. A
         // straight ramp per metric, so a value's percentile is arithmetic the test
         // can redo: `plays` 0..100, `epa` -50..50, the two rates 0..1.
-        retrievePlayerGamePercentiles: async () => (feed.percentiles
+        retrievePlayerGamePercentiles: async (...args: unknown[]) => (feed.pctlCalls.push(args), feed.percentiles && !feed.cohortMissing(args)
             ? {
                 plays: Array.from({ length: 101 }, (_, i) => i),
                 epa: Array.from({ length: 101 }, (_, i) => i - 50),
@@ -49,6 +55,10 @@ vi.mock('../src/resources/sdv', async (orig) => {
             { team_id: 20, pos_team: 'NYJ', EPAplay_off: -0.02, success_off: 0.44, explosive_off: 0.10, EPAplay_def: -0.04, EPAplay_off_rank: 21, success_off_rank: 18, explosive_off_rank: 20, EPAplay_def_rank: 6 },
         ],
         resolveEspnAthleteId: async (gsis: string) => (gsis === '00-0031381' ? '16800' : null),
+        retrieveRankedRows: async (req: any) => {
+            rankedRowsCalls++;
+            return req.league === 'nfl' ? nb.nfl_receiving_2024 : nb.cfb_passing_2024;
+        },
     };
 });
 
@@ -58,6 +68,7 @@ beforeAll(async () => {
 });
 
 async function render(league: 'cfb' | 'nfl', id: string, query: string) {
+    feed.pctlCalls = [];   // per render: the ladder's first (narrowest) read is `pctlCalls[0]`
     const path = league === 'nfl' ? `/nfl/players/${id}` : `/players/${id}`;
     const { default: Page } = await import(
         league === 'nfl' ? '../src/pages/nfl/players/[id].astro' : '../src/pages/players/[id].astro');
@@ -377,6 +388,29 @@ describe('CFB player page', () => {
         expect(html).not.toContain('progress-bar');
     }, 60_000);
 
+    test('the season table shades by his position group\'s percentile where it is published', async () => {
+        // audit D3: CFB rushing pools QBs with RBs, so `_pct` undersells an RB;
+        // the producer's `_pos_pct` ranks him among his own position
+        const seasons = cfb.seasons.data.map((r: any) => (r.category === 'passing' && r.season === 2024
+            ? { ...r, EPAplay_pct: 50, EPAplay_pos_pct: 99, success_pos_pct: null } : r));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            const row = bodyRows(html, 'player-season-passing')[0];
+            const col = 2 + categoryColumns('passing').findIndex(([k]) => k === 'EPAplay');
+            const td = row.match(/<td[^>]*>[\s\S]*?<\/td>/g)![col];
+            expect(td).toContain('hulk-bg-level-9');   // 99 within QBs, not 50 overall
+            // no `_pos_pct` for success: its `_pct` still shades it
+            const fx = seasons.find((r: any) => r.category === 'passing' && r.season === 2024);
+            const sr = row.match(/<td[^>]*>[\s\S]*?<\/td>/g)![2 + categoryColumns('passing').findIndex(([k]) => k === 'success')];
+            const want = generateColorRampValue(percentileOf(fx, 'success'), 100);
+            if (want) expect(sr).toContain(want);
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
     test('team context reuses the team_summaries row the team leaderboards read', async () => {
         const html = await renderPage('cfb', '4433971', 2024);
         const rows = bodyRows(html, 'player-team-context-table');
@@ -393,6 +427,40 @@ describe('CFB player page', () => {
         expect(rows[0]).toContain('hulk-bg-level-2');
         // and the panel is open on arrival (review on #267)
         expect(html).toContain('<div id="player-team-context" class="collapse show">');
+    }, 60_000);
+
+    test("team context ranks colour against the season's own team count", async () => {
+        // 122nd of 2014's 128 is the bottom bucket; with no count it reads out of 134
+        const sdv = await import('../src/resources/sdv');
+        const row = (team_count?: number) => [{ team_id: 183, pos_team: 'Syracuse', EPAplay_off: 0.2, EPAplay_off_rank: 122, team_count }] as any;
+        const spy = vi.spyOn(sdv, 'retrieveTeamSummaries');
+        try {
+            spy.mockResolvedValue(row(128));
+            const a = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-team-context-table')[0];
+            expect(cells(a)[1]).toContain('#122');
+            expect(a.match(/<td[^>]*>[\s\S]*?<\/td>/g)![1]).toContain('hulk-bg-level-0');
+            spy.mockResolvedValue(row());
+            const b = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-team-context-table')[0];
+            expect(b.match(/<td[^>]*>[\s\S]*?<\/td>/g)![1]).toContain('hulk-bg-level-1');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('a position-percentile cell says so in words, not only in colour', async () => {
+        const seasons = cfb.seasons.data.map((r: any) => (r.category === 'passing' && r.season === 2024
+            ? { ...r, position_group: 'QB', EPAplay_pos_pct: 98.6, success_pos_pct: null } : r));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };
+        try {
+            const row = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-season-passing')[0];
+            const tds = row.match(/<td[^>]*>[\s\S]*?<\/td>/g)!;
+            const col = (k: string) => tds[2 + categoryColumns('passing').findIndex(([c]) => c === k)];
+            expect(col('EPAplay')).toContain('title="99th percentile among QBs"');
+            expect(col('success')).not.toContain('title=');   // no position percentile published: nothing to name
+        } finally {
+            feed.cfb = before;
+        }
     }, 60_000);
 
     test('a team_summaries column the producer did not publish reads as absent, not zero', async () => {
@@ -802,7 +870,9 @@ describe('round-4 review (PR #267)', () => {
         // the league option's distribution is from; college's population is the nation
         expect(html).toContain('<label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>');
         expect(html).toMatch(/data-shade-mode="player"[^>]*>Player Games<\/option>/);
-        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every player-game in the nation that season"[^>]*>2024 Percentiles<\/option>/);
+        // and its population: his position group's games of 5+ plays (audit D1)
+        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every QB game of 5\+ plays in the nation that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS]);
         const rows = logRows(html);
         const g = cfb.games.data[0];
         const metrics = [...rows[0].matchAll(/<td[^>]*data-shade-player[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
@@ -822,7 +892,99 @@ describe('round-4 review (PR #267)', () => {
 
     test('the NFL toggle names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
-        expect(html).toMatch(/title="Percentile among every player-game in the league that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(html).toMatch(/title="Percentile among every WR game of 5\+ plays in the league that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(feed.pctlCalls[0]).toEqual([2024, 'nfl', 'WR', GAME_PERCENTILE_MIN_PLAYS]);
+    }, 60_000);
+
+    test('a game under the play floor is not read against the floored ladder', async () => {
+        // a 3-play cameo is not on a ladder of 5+-play games, so it gets no league
+        // percentile; the rest of the log keeps theirs
+        const games = cfb.games.data.map((g: any, i: number) => (i === 0 ? { ...g, plays: 3 } : g));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: games } };
+        try {
+            const rows = logRows(await renderPage('cfb', '4433971', 2024));
+            expect(rows[0]).not.toContain('data-league-pct');
+            expect(rows[0]).not.toMatch(/data-shade-league="hulk-/);
+            expect(rows[1]).toContain('data-league-pct');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('a log with no game on the ladder opens on the player shading, not an unshaded league view', async () => {
+        const two = cfb.games.data.slice(0, 2).map((g: any) => ({ ...g, plays: 2 }));   // too short to rank AND all under the 5-play floor
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: two } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('data-shade-mode="player" selected');
+            expect(html).not.toContain('data-shade-mode="league" selected');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('a position with no cohort keeps the all-player ladder', async () => {
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, identity: { ...cfb.identity, position: 'Linebacker' } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS]);
+            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('a position cohort under the API minimum falls back to every player, same floor', async () => {
+        // a 404 for the QB cohort used to mean no league toggle at all; the reader gets
+        // the all-player ladder at 5+ plays instead, and the hover says so
+        feed.cohortMissing = (args: unknown[]) => args[2] !== null;
+        feed.pctlCalls = [];
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            // the steps fire together (a 404 is never cached); the first non-empty IN ORDER wins
+            expect(feed.pctlCalls).toEqual([[2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, 0]]);
+            expect(html).toContain('data-shade-toggle="player-game-log"');
+            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+            expect(logRows(html)[0]).toContain('data-league-pct');
+        } finally {
+            feed.cohortMissing = () => false;
+        }
+    }, 60_000);
+
+    test("the ladder read is the season's roster group, and the hover names it", async () => {
+        const seasons = cfb.seasons.data.map((r: any) => (r.season === 2024 ? { ...r, position_group: 'RB' } : r));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, seasons: { ...cfb.seasons, data: seasons } };   // identity position stays QB
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', 'RB', GAME_PERCENTILE_MIN_PLAYS]);
+            expect(html).toContain('title="Percentile among every RB game of 5+ plays in the nation that season"');
+        } finally {
+            feed.cfb = before;
+        }
+    }, 60_000);
+
+    test('and when the floored ladder 404s too, to every player-game with no floor', async () => {
+        feed.cohortMissing = (args: unknown[]) => args[2] !== null || (args[3] as number) > 0;
+        feed.pctlCalls = [];
+        const games = cfb.games.data.map((g: any, i: number) => (i === 0 ? { ...g, plays: 3 } : g));
+        const before = feed.cfb;
+        feed.cfb = { ...cfb, games: { ...cfb.games, data: games } };
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(feed.pctlCalls).toEqual([
+                [2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, 0]]);
+            expect(html).toContain('data-shade-toggle="player-game-log"');
+            expect(html).toContain('title="Percentile among every player game in the nation that season"');
+            // no floor on that ladder, so a 3-play game is on it and is read against it
+            expect(logRows(html)[0]).toContain('data-league-pct');
+        } finally {
+            feed.cohortMissing = () => false;
+            feed.cfb = before;
+        }
     }, 60_000);
 
     test('with no league distribution there is no toggle, only the player shading', async () => {
@@ -851,5 +1013,52 @@ describe('round-4 review (PR #267)', () => {
         } finally {
             feed.cfb = before;
         }
+    }, 60_000);
+});
+
+describe('nearby ranks on the player page', () => {
+    test('CFB passer: four lists, marked once each, only when the flag admits the viewer', async () => {
+        rankedRowsCalls = 0;
+        const html = await renderPage('cfb', '4433971', 2024);
+        expect(rankedRowsCalls).toBe(1);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="table-secondary"/g) ?? []).length).toBe(4);
+        expect(block).toContain('Kyle McCord');
+        // Akshay on #296: the Team column as PlayerLeaderboardTable renders it (logo + team, linked)
+        expect(block).toMatch(/<th class="text-left" colspan="1">Team<\/th>/);
+        expect(block).toMatch(/<a href="\/year\/2024\/team\/\d+"><img class="img-fluid team-logo-\d+ me-2"[^>]*teamlogos\/ncaa\/500\/\d+\.png/);
+        // ...and below md one table plus a metric picker: every column but the first is d-none d-md-block
+        expect((block.match(/<option value=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="col-md-6 mb-3 d-none d-md-block"/g) ?? []).length).toBe(3);
+        const { default: Page } = await import('../src/pages/players/[id].astro');
+        rankedRowsCalls = 0;
+        const off = await container.renderToString(Page, {
+            params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'),
+            locals: { preview: true, flagOverrides: { 'rank-neighbors': false } },
+        });
+        expect(off).not.toContain('data-neighbor-ranks');
+        // program risk #3: the flag-off gate has to stop the read, not just hide
+        // the panel around it -- remove the gate at routes/player.ts and this goes red
+        expect(rankedRowsCalls).toBe(0);
+    }, 60_000);
+
+    test('a failed nearby-ranks read says so, not that there is no ranked row', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const spy = vi.spyOn(sdv, 'retrieveRankedRows').mockRejectedValue(new Error('ranked rows route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('id="player-neighbor-ranks-unavailable"');
+            expect(html).not.toContain('data-neighbor-ranks');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('NFL traded receiver: the lists come from his ranked NYJ row', async () => {
+        const html = await renderPage('nfl', '16800', 2024);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect(block).toContain('data-nb-key="00-0031381"');
     }, 60_000);
 });

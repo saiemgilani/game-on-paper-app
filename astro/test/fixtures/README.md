@@ -160,6 +160,8 @@ the table-reconciliation decisions (#264 review).
 **To regenerate** after a processor change: re-run that same offline route call
 for both leagues and overwrite the files; the game ids must stay the same.
 
+Regenerated 2026-10-07 after python/paper_index.add_start_ep (G10): drives rows carry avg_start_ep; same offline call. It also picks up the processor pin's changes since the first capture (win probabilities, the NFL tackle-points columns), and the teams' row order within a section can differ from one run to the next, so tests key rows by team id rather than by position.
+
 **Used by:** `test/tableContracts.render.test.ts` — the render-level table
 contract, twin-parity and aggregation-reconciliation tests (plan V3b).
 
@@ -173,6 +175,40 @@ The college twin of `nfl-summaries-2025.json`.
 **Used by:** `test/seasonTables.render.test.ts`, which renders the college team
 board from these rows and reconciles each season row against the parts it is
 summed from.
+
+## `neighbors-ranked-rows.json`
+Real rows from the live Data API, captured 2026-09-26: every team's six
+nearby-rank metrics and ranks (NFL 2025, CFB 2024) and every ranked row of NFL 2024 receiving and CFB 2024 passing
+(`<metric>_rank >= 1`). No hand edits. NFL 2024 receiving holds Davante Adams' NYJ row (ranked) but not his LV row
+(under the qualifier), which is what the traded-player tests need.
+
+**Used by:** `test/neighbors.test.ts`, `test/rankNeighbors.render.test.ts`, `test/playerPages.render.test.ts`.
+
+**To regenerate**, from `astro/`, in one shell call so `SDV_AUTH_TOKEN` (read from `.dev.vars`) never
+leaves it; keep the seasons so the tests' ids (NFL team 14, CFB passer 4433971, gsis `00-0031381`) hold:
+
+```bash
+SDV_AUTH_TOKEN="$(grep -E '^SDV_AUTH_TOKEN=' .dev.vars | head -1 | cut -d= -f2- | tr -d "\"'")" \
+node --input-type=module -e '
+const base = "https://data.sportsdataverse.org/v1";
+const get = async (p) => {
+  const r = await fetch(`${base}/${p}`, { headers: { Authorization: `Bearer ${process.env.SDV_AUTH_TOKEN}` } });
+  if (!r.ok) throw new Error(`${p}: ${r.status}`);
+  return (await r.json()).data;
+};
+const T = ["net_adj_epa","EPAplay_off","success_off","explosive_off","EPAplay_def","success_def"];
+const tsel = ["team_id","pos_team","season","conference", ...T, ...T.map((m) => `${m}_rank`)].join(",");
+const psel = (name, ms) => ["player_id", name, "team_id", "pos_team", "season", ...ms, ...ms.map((m) => `${m}_rank`)].join(",");
+const out = {
+  nfl_team_summaries_2025: await get(`nfl/team_summaries?season=2025&select=${tsel}&limit=150`),
+  cfb_team_summaries_2024: await get(`cfb/team_summaries?season=2024&select=${tsel}&limit=150`),
+  nfl_receiving_2024: await get(`nfl/receiving?season=2024&select=${psel("receiver_player_name", ["EPAplay","success","yardsplay","TEPA"])}&EPAplay_rank__gte=1&order=EPAplay_rank&limit=1000`),
+  cfb_passing_2024: await get(`cfb/passing?season=2024&select=${psel("passer_player_name", ["EPAplay","success","yardsdropback","TEPA"])}&EPAplay_rank__gte=1&order=EPAplay_rank&limit=1000`),
+};
+(await import("node:fs")).writeFileSync("test/fixtures/neighbors-ranked-rows.json", JSON.stringify(out, null, 1) + "\n");
+for (const [k, v] of Object.entries(out)) console.log(k, v.length);
+'
+```
 
 ## `team-summaries-cfb-2025.json` / `team-summaries-nfl-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_summaries?season=2025&limit=200` bodies
@@ -207,6 +243,66 @@ teams 333 and 2 (CFB) and 12 (NFL).
 - `season_players_2026_api.json`: every `shot_season_players` row for 2026, straight from the Data API
   (`GET /v1/nba_stats/shot_season_players?season=2026&limit=50000`, bearer token required; `.data` only).
   Captured 2026-10-11. Regenerate with the same request; the rows change nightly during the season.
+
+## `team-opponent-splits-2025.json`
+The Data API bodies the season team page's Results by Opponent panel reads, for
+Alabama (`cfb`, 333) and Kansas City (`nfl`, 12), keyed by league:
+`team_id` (`GET /v1/{league}/team_opponent_splits?season=2025&team_id=<id>`),
+`opponent_id` (the same with `opponent_id=<id>`: each opponent's row against
+the team) and `schedule.home_id` / `schedule.away_id` (the two schedule reads
+`retrieveTeamSchedule` makes: `cfb` `schedule`, `nfl` `espn_schedule`, with
+`order=-start_date`). CFB rows carry `opponent` and cover FCS opponents and
+the postseason (two postseason week-1 games); NFL rows carry no name and are
+regular season only.
+
+`cfb_155` holds the same six reads for North Dakota (FCS, `cfb` 155), whose
+2025 rows cover two games. Its Margin view's season average (-0.124 EPA/play,
+offense and defense each weighted by their own plays) sits beyond both bars
+(-0.09, -0.10): the real case that the chart's value axis must include the
+average line.
+
+**Provenance (2026-10-08):** captured verbatim from the live API; no edits.
+
+**Used by:** `test/gameSet.test.ts` (bar order, labels, raw and margin values,
+play-weighted averages) and `test/gameSet.render.test.ts` (the panel on
+`/year/2025/team/333` and `/nfl/year/2025/team/12`, its island props, the gates).
+
+**To regenerate:** repeat the six reads for 2025; the tests assert on those
+teams' games, labels and scores.
+
+## `team-opponent-splits-2026.json`
+The same six reads as `team-opponent-splits-2025.json`, for 2026, for Alabama
+(`cfb`, 333; 7 games) and Kansas City (`nfl`, 12; 4 games). 2026 is the first
+season the producers built after cfbfastR-cfb-data#141 / nfl-data#82 added
+`pass_plays`, `rush_plays`, `epa_per_pass`, `epa_per_rush`, `success_rate_pass`
+and `success_rate_rush`, so every row carries them. The 2025 fixture predates
+those columns and is kept as it is: it is the shape of a season not yet rebuilt.
+
+**Provenance (2026-10-18):** captured verbatim from the live API (bearer token),
+one read per body, `indent=1`; no edits. The schedule reads include the season's
+unplayed games.
+
+**Used by:** `test/gameSet.test.ts` (one `GAME_METRICS` entry per rate column, each
+rate weighted by its own count, `availableMetrics`) and `test/gameSet.render.test.ts`
+(all six metrics in the select).
+
+**To regenerate:** repeat the six reads for 2026. The values move with every
+week the season adds; the tests assert only on the columns and the arithmetic.
+
+## `team-summaries-cfb-2026-builder.json`
+The exact body the chart builder's read returns for
+`/charts/builder?season=2026&x=red_zone_success_off_pass&y=success_off`: the
+Data API's `GET /v1/cfb/team_summaries?season=2026&select=pos_team,team_id,season,conference,division,fbs_class,red_zone_success_off_pass,success_off,red_zone_success_off_pass_rank,success_off_rank&limit=150`
+(every team, 138). Rice (242) has a null `red_zone_success_off_pass`, which is
+what the median tests need: a team with no value is skipped, not read as 0.
+
+**Provenance (2026-10-04):** captured from the live API mid-season; no edits.
+
+**Used by:** `test/chartBuilder.test.ts` (the builder's median on an even-count
+column and on a column with a null, and the route's flag-off/on render).
+
+**To regenerate:** repeat the same request; the tests pin Rice as the only null
+and the two medians, so re-pin them from the new body.
 
 ## `schedule-cfb-333-2025.json` / `schedule-nfl-12-2025.json`
 The two Data API bodies `retrieveTeamSchedule` concatenates for one team-season,
@@ -252,3 +348,34 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+
+## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
+The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
+bodies, no `select`: one row each (Alabama, Kansas City) with every column the
+table serves (598 CFB, 578 NFL; the NFL has no `*_vs_ranked`).
+
+**Provenance (2026-10-08):** captured from the live API after the IF-1 republish
+(splits carry `epa_*` / `successes_*` and their rates; the d3 buckets, red zone,
+own/opp half, one score and the `ctx_*` game-context splits). No edits.
+
+**Used by:** `test/teamSplits.test.ts` (every `teamSplitColumns` select column
+exists; the defense perspective swaps) and `test/teamSplits.render.test.ts` (the
+Situational Splits panel on `/year/2025/team/333` and `/nfl/year/2025/team/12`).
+
+**To regenerate:** repeat the two requests for 2025.
+
+## `team-tendencies-cfb-2025.json.gz` / `team-tendencies-nfl-2025.json.gz`
+The whole 2025 season of the same table, as the season team page reads it for
+the Situational Splits ranks: `GET /v1/{cfb|nfl}/team_tendencies?season=2025&limit=400`
+with `select=` the route's keys (`season,pos_team_id,pos_team,games,plays,drives`)
+plus `teamSplitColumns(league)`. 236 CFB rows (138 with 300+ plays; every other
+row is an FCS team with 3 or fewer FBS games) and 32 NFL rows; gzipped, no edits.
+
+**Provenance (2026-10-12):** captured from the live API; Alabama's and Kansas
+City's rows match `team-tendencies-{cfb-333,nfl-12}-2025.json` on every shared column.
+
+**Used by:** `test/teamSplits.test.ts` (the ranks against every qualifying team,
+written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cells
+and caption).
+
+**To regenerate:** repeat the two requests with the current `teamSplitColumns`.

@@ -5,7 +5,7 @@
  * its own section. Two things used to break the pairing (review on #270):
  *
  *  - sections that list the teams in different orders (the processor's own
- *    payload does: `team` and `drive_scripting` below are opposite), and
+ *    payload can: `team` and `drive_scripting` below are put opposite), and
  *  - a team with no row at all for a script. Early in a game one side has run
  *    only scripted drives, or none yet, and its row is simply absent.
  *
@@ -19,8 +19,12 @@ import { roundNumber } from '../src/utils/misc';
 import { loadGzJson, locals } from './helpers/tables';
 
 const g = loadGzJson('usage-cfb-400869270.json.gz');
-const TEAM: any[] = g.advBoxScore.team;
 const SCRIPTING: any[] = g.advBoxScore.drive_scripting;
+// The processor does not keep a section's team order from one run to the next, so
+// the header section is put in the opposite order to drive_scripting here rather
+// than relying on the capture to have come out that way.
+const TEAM: any[] = g.advBoxScore.team.toSorted((a: any, b: any) =>
+    Number(String(a.pos_team) === String(SCRIPTING[0].pos_team)) - Number(String(b.pos_team) === String(SCRIPTING[0].pos_team)));
 const DRIVES: any[] = g.advBoxScore.drives;
 
 let container: AstroContainer;

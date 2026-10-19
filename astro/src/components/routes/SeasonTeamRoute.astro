@@ -14,17 +14,20 @@ import type { SeasonTeamData } from "../../routes/seasonTeam";
 import { cleanLocation, roundNumber } from "../../utils/misc";
 import TeamCard from "../../components/team/TeamCard.astro";
 import FiveFactorsTable from "../../components/team/FiveFactorsTable.astro";
+import TeamSplitsTable from "../../components/team/TeamSplitsTable.astro";
+import OpponentResults from "../../components/team/OpponentResults.astro";
 import RecordSplitsTable from "../../components/team/RecordSplitsTable.astro";
 import { isFeatureEnabled } from "../../utils/features";
 import TeamPlayerCard from "../../components/team/TeamPlayerCard.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
+import NeighborRanks from "../../components/leaderboards/NeighborRanks.astro";
 import { resumeRows } from "../../utils/resume";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -112,9 +115,28 @@ const breadcrumbs: PageBreadcrumb[] = [
             <FiveFactorsTable summary={teamSummaries[0]} />
         </div>
     )}
+    {neighborLists.length > 0 && (
+    <div class="container mb-3">
+        <GenericPanel id="nearby-ranks" title="Nearby Ranks" show={true}>
+            <NeighborRanks slot="panel-body" lists={neighborLists} kind="team" />
+        </GenericPanel>
+    </div>
+    )}
     {recordRows.length > 0 && (
         <div class="container mb-3">
             <RecordSplitsTable rows={recordRows} />
+        </div>
+    )}
+    {/* teamTendency is read only with the flag on; no row, no panel */}
+    {isFeatureEnabled('team-splits', Astro.locals) && teamTendency && (
+        <div class="container mb-3">
+            <TeamSplitsTable row={teamTendency} season={seasonTendencies ?? []} />
+        </div>
+    )}
+    {/* no games, no panel: the read is empty before a season's first kickoff */}
+    {isFeatureEnabled('vs-opponent', Astro.locals) && opponentSplits && opponentSplits.team.length > 0 && (
+        <div class="container mb-3">
+            <OpponentResults league={league} splits={opponentSplits} events={teamSeason?.events ?? []} teamColors={[teamSeason?.team, team]} />
         </div>
     )}
     <div class="container">

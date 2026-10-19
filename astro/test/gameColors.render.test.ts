@@ -135,7 +135,13 @@ describe('game-colours off: the page is byte-for-byte what main renders', () => 
     // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
     // PR that changes the game page moves these on purpose: re-run with
     // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { v2: '692a001751a4951d', classic: 'fd1759c91e80ba65' };
+    // Moved by the Binion box percentile fixes: the only visible change is the
+    // red-zone cell of the team with no red-zone snaps, "0%" -> "—"; the rest is
+    // the box's empty-ladder markup (no `null` class, no hidden %ile, no title).
+    // v2 moved for G10 (was bdd540d70b5e2d07): the drive-start EP row in the Drives table (the
+    // indented "Expected Points" sub-row), and Team Stats cells keyed to the game's two team ids,
+    // so a section the payload lacks prints dashes instead of empty cells; classic did not move.
+    const GOLDEN = { v2: 'fcf781b953128900', classic: '6adbaab93e7c7d94' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});
