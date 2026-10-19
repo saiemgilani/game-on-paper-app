@@ -37,7 +37,7 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(html).toContain('WNBA scoreboard, Friday, August 1 | Game on Paper'); // NbaScoreboardRoute.astro:21 with name 'WNBA'
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     });
-    test('2005-06-03 through the real loader: the halves-era overtime card says Final/OT; Detroit is DET, never ESPN\'s TUL; WAS / DET / NYL cards draw today\'s logos by ESPN id', async () => {
+    test('2005-06-03 through the real loader: the halves-era overtime card says Final/OT; Detroit is DET, never ESPN\'s TUL; WAS / NYL cards draw today\'s logos by ESPN id, Detroit the Shock\'s', async () => {
         const real = await vi.importActual<typeof import('../../src/routes/basketball/scoreboard')>('../../src/routes/basketball/scoreboard');
         prep.mockImplementationOnce((...a: Parameters<typeof real.prepareBasketballScoreboard>) => real.prepareBasketballScoreboard(...a));
         sbDay.mockImplementation(async (_l: string, d: string | null) => (d === null ? { day: '2026-10-12', events: [], degraded: false } : { day: '2005-06-03', events: events('20050603'), degraded: false }));
@@ -49,8 +49,10 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(html).toContain('<span class="d-block">DET: 34 D. Nolan PTS');
         expect(html).toContain('Final/OT');
         expect(html).toContain('href="/wnba/game/250603003"');
-        expect(lightSrcs(html)).toEqual(['min', 'wsh', 'ny', 'dal'].map(lightLogo));
-        for (const ab of ['wsh', 'min', 'dal', 'ny']) expect(darkBlock(html)).toContain(`/wnba/500-dark/${ab}.png`);
+        // D22 era logo: ESPN id 3 in 2005 is the Detroit Shock (wnba/500/det.png), never Dallas's
+        expect(lightSrcs(html)).toEqual(['min', 'wsh', 'ny', 'det'].map(lightLogo));
+        for (const ab of ['wsh', 'min', 'det', 'ny']) expect(darkBlock(html)).toContain(`/wnba/500-dark/${ab}.png`);
+        expect(html).not.toContain('/dal.png');
     });
     test('2002-06-15 through the real loader: the defunct Rockers, Sol and 2000-02 Fire draw the site-hosted logos, not the shield', async () => {
         const real = await vi.importActual<typeof import('../../src/routes/basketball/scoreboard')>('../../src/routes/basketball/scoreboard');
@@ -65,11 +67,15 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(byId['132052']).toBe('/assets/img/wnba/por-2000.png'); // ESPN's id for the old Fire; never the 2026 Fire's por.png
         expect(html).not.toContain('500/por.png');
         // the folded franchises ESPN does serve stay on ESPN
-        for (const [id, ab] of [['13', 'sac'], ['4', 'hou'], ['6', 'la'], ['3', 'dal']]) expect(byId[id]).toBe(lightLogo(ab));
-        // Utah (15) and Orlando (10) are relocations (D22, an open owner question), unchanged: the default shield
-        for (const id of ['15', '10']) expect(byId[id]).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80');
+        for (const [id, ab] of [['13', 'sac'], ['4', 'hou'], ['6', 'la']]) expect(byId[id]).toBe(lightLogo(ab));
+        expect(byId['3']).toBe(lightLogo('det')); // ESPN's Detroit Shock era file, light and dark
+        expect(darkBlock(html)).toContain("img.team-logo-3{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/det.png");
+        // D22 era logos: the Utah Starzz (15) and Orlando Miracle (10) draw their hosted WNBA.com 2002 marks, never the shield
+        expect(byId['15']).toBe('/assets/img/wnba/uta.png');
+        expect(byId['10']).toBe('/assets/img/wnba/orl.png');
+        expect(html).not.toContain('default-team-logo-500');
         // dark mode: no rule replaces a hosted logo; ESPN's teams keep theirs
-        for (const id of ['2', '7', '132052']) expect(darkBlock(html)).not.toContain(`team-logo-${id}{`);
+        for (const id of ['2', '7', '132052', '15', '10']) expect(darkBlock(html)).not.toContain(`team-logo-${id}{`);
         for (const ab of ['sac', 'hou']) expect(darkBlock(html)).toContain(`/wnba/500-dark/${ab}.png`);
     });
     test('a date before 2002-05-25 is a 400 that names the floor month', async () => {

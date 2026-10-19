@@ -156,23 +156,29 @@ export const NFL_LOGO_ABBR: Record<string, string> = {
 // (re-probed 2026-10-18) against both 500 and 500-dark. Of the defunct franchises, ESPN serves Charlotte (1, cha), Houston (4, hou)
 // and Sacramento (13, sac) by abbreviation (probe 2026-10-18); Cleveland (2), Miami (7) and the 2000-02 Portland Fire (12, not
 // the 2026 Fire's `por`) have no ESPN logo, so the site hosts theirs (WNBA_HOSTED_LOGOS).
+// The non-numeric keys are relocation eras (WNBA_FORMER_NAMES `logo`, via wnbaLogoId): ESPN still serves the Detroit Shock,
+// Tulsa Shock, San Antonio Silver Stars and San Antonio Stars marks under both 500 and 500-dark (probe 2026-10-18).
 export const WNBA_LOGO_ABBR: Record<string, string> = {
     '20': 'atl', '19': 'chi', '18': 'con', '3': 'dal', '129689': 'gs', '5': 'ind', '17': 'lv', '6': 'la',
     '8': 'min', '9': 'ny', '11': 'phx', '132052': 'por', '14': 'sea', '131935': 'tor', '16': 'wsh',
     '1': 'cha', '4': 'hou', '13': 'sac',
+    det: 'det', tul: 'tul', sas: 'sas', sa: 'sa',
 };
 
-// Defunct WNBA franchises' logos the site serves itself, keyed by wnbaLogoId: WNBA.com's own 2002 files, as archived by the
-// Wayback Machine (source, dates and sha256 in public/assets/img/wnba/README.md). One file serves light and dark.
+// WNBA logos the site serves itself, keyed by wnbaLogoId: defunct franchises' (by ESPN id) and the Utah Starzz and Orlando
+// Miracle eras ESPN has none for (by era key). WNBA.com's own 2002 files, as archived by the Wayback Machine (source, dates
+// and sha256 in public/assets/img/wnba/README.md). One file serves light and dark, so no dark rule may replace one.
 export const WNBA_HOSTED_LOGOS: Record<string, string> = {
     '2': '/assets/img/wnba/cle.png', '7': '/assets/img/wnba/mia.png', '12': '/assets/img/wnba/por-2000.png',
+    uta: '/assets/img/wnba/uta.png', orl: '/assets/img/wnba/orl.png',
 };
 
 /**
  * ESPN logo URL for a team, light or dark. Dark NFL logos go through the abbreviation
  * path; an NFL id missing from the map falls back to the light logo rather than a 404.
- * A WNBA team's logo is keyed by wnbaLogoId(id, season): a site-hosted file for a defunct franchise ESPN has none for (a
- * root-relative path), else ESPN's by abbreviation (WNBA_LOGO_ABBR), else ESPN's default shield. `season` only matters there.
+ * A WNBA team's logo is keyed by wnbaLogoId(id, season), which picks a relocated franchise's era logo: a site-hosted file
+ * ESPN has none for (a root-relative path), else ESPN's by abbreviation (WNBA_LOGO_ABBR), else ESPN's default shield.
+ * `season` only matters there.
  */
 export function teamLogoUrl(league: League | undefined, teamId: string | number, dark: boolean, season?: number | null): string {
     const logoLeague = espnLogoLeague(league);

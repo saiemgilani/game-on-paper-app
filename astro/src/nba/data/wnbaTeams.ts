@@ -25,14 +25,16 @@ export const WNBA_TEAMS: readonly Team[] = [
 /**
  * Names a current franchise had before (relocations, renames, a tricode change), with the last season (year) each applied.
  * Within a franchise the rows run oldest first: wnbaEraTricode takes the first whose `through` covers the season.
+ * `logo` is that era's logo key (wnbaLogoId), looked up in utils/league.ts: ESPN's era file (WNBA_LOGO_ABBR) or a site-hosted
+ * WNBA.com 2002 mark (WNBA_HOSTED_LOGOS). Phoenix's PHO row is the same team, so it has none.
  */
-export const WNBA_FORMER_NAMES: readonly { team_id: number; tricode: string; through: number; name: string }[] = [
-    { team_id: 1611661321, tricode: 'DET', through: 2009, name: 'Detroit Shock' },
-    { team_id: 1611661321, tricode: 'TUL', through: 2015, name: 'Tulsa Shock' },
-    { team_id: 1611661319, tricode: 'UTA', through: 2002, name: 'Utah Starzz' },
-    { team_id: 1611661319, tricode: 'SAN', through: 2013, name: 'San Antonio Silver Stars' },
-    { team_id: 1611661319, tricode: 'SAN', through: 2017, name: 'San Antonio Stars' },
-    { team_id: 1611661323, tricode: 'ORL', through: 2002, name: 'Orlando Miracle' },
+export const WNBA_FORMER_NAMES: readonly { team_id: number; tricode: string; through: number; name: string; logo?: string }[] = [
+    { team_id: 1611661321, tricode: 'DET', through: 2009, name: 'Detroit Shock', logo: 'det' },
+    { team_id: 1611661321, tricode: 'TUL', through: 2015, name: 'Tulsa Shock', logo: 'tul' },
+    { team_id: 1611661319, tricode: 'UTA', through: 2002, name: 'Utah Starzz', logo: 'uta' },
+    { team_id: 1611661319, tricode: 'SAN', through: 2013, name: 'San Antonio Silver Stars', logo: 'sas' },
+    { team_id: 1611661319, tricode: 'SAN', through: 2017, name: 'San Antonio Stars', logo: 'sa' },
+    { team_id: 1611661323, tricode: 'ORL', through: 2002, name: 'Orlando Miracle', logo: 'orl' },
     { team_id: 1611661317, tricode: 'PHO', through: 2024, name: 'Phoenix Mercury' },
 ];
 
@@ -67,14 +69,23 @@ export function wnbaTeamById(teamId: number): Team | undefined {
     return BY_ID.get(teamId);
 }
 
+/** The former identity a current team had in `season` (a relocation or rename), else undefined. Phoenix's PHO row is today's name. */
+function formerEra(team: Team | undefined, season: number | null | undefined) {
+    if (team == null || season == null) return undefined;
+    const era = WNBA_FORMER_NAMES.find((f) => f.team_id === team.team_id && season <= f.through);
+    return era && era.name !== team.name ? era : undefined;
+}
+
 /**
- * The ESPN id a logo is keyed by in `season`: the id itself, except where ESPN files a folded franchise under a current
- * team's id. ESPN's 2002 boards carry the 2000-02 Portland Fire as 132052, the 2026 Fire; through 2002 that is the old Fire's 12.
+ * The key a team's logo is looked up by in `season` (D22: ESPN id + season, never the name). A relocated franchise's era
+ * draws that era's logo: ESPN id 3 is `det` through 2009, `tul` through 2015, then Dallas's 3. Where ESPN files a folded
+ * franchise under a current team's id (its 2002 boards carry the 2000-02 Portland Fire as 132052, the 2026 Fire), it is the
+ * old franchise's id (12). Otherwise, and with no season, the id itself.
  */
 export function wnbaLogoId(espnId: string | number, season?: number | null): string {
     const current = season == null ? undefined : BY_ESPN_ID.get(Number(espnId));
     const folded = current && WNBA_DEFUNCT.find((d) => d.team_id === current.team_id && season! <= d.through);
-    return String(folded ? folded.espn_id : espnId);
+    return String(folded ? folded.espn_id : formerEra(current, season)?.logo ?? espnId);
 }
 
 /**
@@ -83,8 +94,5 @@ export function wnbaLogoId(espnId: string | number, season?: number | null): str
  * stats.wnba.com-only code) is no other identity, so ESPN's abbreviation stands. Keyed by ESPN id and season, never by name (D22).
  */
 export function wnbaEraTricode(espnId: number, season: number | null | undefined): string | undefined {
-    const team = wnbaTeamByEspnId(espnId);
-    if (team == null || season == null) return undefined;
-    const era = WNBA_FORMER_NAMES.find((f) => f.team_id === team.team_id && season <= f.through);
-    return era && era.name !== team.name ? era.tricode : undefined;
+    return formerEra(wnbaTeamByEspnId(espnId), season)?.tricode;
 }

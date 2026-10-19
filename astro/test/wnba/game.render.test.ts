@@ -10,6 +10,7 @@ const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
 import Page from '../../src/pages/wnba/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
+import { teamLogoUrl } from '../../src/utils/league';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/wnba/${name}.json`, import.meta.url)).toString());
 const plain = (h: string) => h.replace(/<[^>]+>/g, '');
@@ -37,11 +38,16 @@ function common(html: string) {
 
 describe('/wnba/game/[id] render (real captures)', () => {
     test('250603003, 2005: two halves and an overtime, labelled as halves everywhere (D14, Review Focus 1)', async () => {
-        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_250603003_processor'), 'wnba') });
+        const game = fromProcessor(read('game_250603003_processor'), 'wnba');
+        prep.mockResolvedValueOnce({ game });
         const html = await render('250603003');
         common(html);
-        // the WP island gets the season, which keys a WNBA logo (wnbaLogoId: the 2000-02 Portland Fire under 132052)
+        // the WP island gets the season, which keys a WNBA logo (wnbaLogoId): ESPN id 3 in 2005 draws the Detroit Shock's era mark
         expect(html).toContain('&quot;season&quot;:[0,2005]');
+        expect([game.home.team.id, game.away.team.id, game.season]).toEqual(['3', '9', 2005]);
+        expect(teamLogoUrl('wnba', game.home.team.id, false, game.season)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/det.png');
+        expect(teamLogoUrl('wnba', game.home.team.id, true, game.season)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500-dark/det.png');
+        expect(teamLogoUrl('wnba', game.away.team.id, false, game.season)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/ny.png');
         expect(plain(html)).toContain('New York 66 @ Detroit 68');
         expect(linescoreHeads(html).slice(1)).toEqual(['1', '2', 'OT', 'T']);
         // the play groups' own <summary> labels and the shot chart's own buttons, not any text that mentions a half

@@ -95,7 +95,8 @@ describe('the wnba league entry', () => {
     });
     test('logos: by abbreviation, the probe of 2026-10-12', () => {
         // the 15 current teams plus the three defunct franchises ESPN still serves a logo for (probe 2026-10-18)
-        expect(Object.keys(WNBA_LOGO_ABBR).sort()).toEqual([...WNBA_TEAMS.map((t) => String(t.espn_id)), '1', '4', '13'].sort());
+        // and the relocation eras ESPN serves an era file for (WNBA_FORMER_NAMES `logo`, probe 2026-10-18)
+        expect(Object.keys(WNBA_LOGO_ABBR).sort()).toEqual([...WNBA_TEAMS.map((t) => String(t.espn_id)), '1', '4', '13', 'det', 'tul', 'sas', 'sa'].sort());
         expect(teamLogoUrl('wnba', '129689', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/gs.png');
         expect(teamLogoUrl('wnba', 20, true)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500-dark/atl.png');
         expect(teamLogoUrl('wnba', 1, false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/cha.png'); // the defunct Sting, by abbreviation
@@ -127,6 +128,16 @@ describe('the wnba league entry', () => {
         expect(darkLogoCss([{ id: '132052', abbreviation: 'POR', season: 2002 }], BASKETBALL.wnba.darkLogo)).toBe('');
         expect(darkLogoCss([{ id: '132052', abbreviation: 'POR', season: 2026 }], BASKETBALL.wnba.darkLogo)).toContain('/wnba/500-dark/por.png');
         expect(darkLogoCss([{ id: '16', abbreviation: 'WAS' }], BASKETBALL.wnba.darkLogo)).toContain('/i/teamlogos/wnba/500-dark/wsh.png');
+        // era logos (D22, ESPN id + season): an ESPN era file gets its 500-dark twin; a hosted era mark gets no dark rule
+        for (const [id, season, ab] of [['3', 2009, 'det'], ['3', 2010, 'tul'], ['3', 2016, 'dal'], ['17', 2003, 'sas'], ['17', 2014, 'sa'], ['17', 2018, 'lv']] as const) {
+            expect(teamLogoUrl('wnba', id, false, season)).toBe(`https://a.espncdn.com/i/teamlogos/wnba/500/${ab}.png`);
+            expect(teamLogoUrl('wnba', id, true, season)).toBe(`https://a.espncdn.com/i/teamlogos/wnba/500-dark/${ab}.png`);
+            expect(darkLogoCss([{ id, abbreviation: 'X', season }], BASKETBALL.wnba.darkLogo)).toBe(`img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/${ab}.png&h=120&w=120')}`);
+        }
+        for (const [id, file] of [['15', 'uta'], ['17', 'uta'], ['10', 'orl'], ['18', 'orl']]) for (const dark of [false, true]) {
+            expect(teamLogoUrl('wnba', id, dark, 2002)).toBe(`/assets/img/wnba/${file}.png`);
+            expect(darkLogoCss([{ id, abbreviation: 'X', season: 2002 }], BASKETBALL.wnba.darkLogo)).toBe('');
+        }
         expect(BASKETBALL.nba.darkLogo.kind).toBe('abbr'); // the NBA keeps plan #4's strategy (byte-identical)
     });
     test('team links: none until the league has team pages; the NBA unchanged', () => {
