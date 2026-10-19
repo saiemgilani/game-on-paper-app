@@ -16,11 +16,15 @@ import { weekLabel } from '../src/utils/league';
 // API is a 404 page rather than an identity shell.
 const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.json', import.meta.url)).toString());
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
+const nb = JSON.parse(readFileSync(new URL('./fixtures/neighbors-ranked-rows.json', import.meta.url)).toString());
 
 // `cohortMissing(args)`: true -> that percentiles read 404s (`{}`), as a cohort under
 // the API's 30-game minimum does; `pctlCalls` records every read in order
 const feed: any = { cfb, nfl, missing: new Set<string>(), percentiles: true, cohortMissing: () => false, pctlCalls: [], splitPercentiles: true,
     groupSplitMissing: (_split: string) => false, splitCalls: [] };
+// call counter for the flag-off assertion below: the gate must stop the fetch,
+// not just hide the panel, so the test resets and reads this around each render
+let rankedRowsCalls = 0;
 
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
@@ -66,6 +70,10 @@ vi.mock('../src/resources/sdv', async (orig) => {
             { team_id: 20, pos_team: 'NYJ', EPAplay_off: -0.02, success_off: 0.44, explosive_off: 0.10, EPAplay_def: -0.04, EPAplay_off_rank: 21, success_off_rank: 18, explosive_off_rank: 20, EPAplay_def_rank: 6 },
         ],
         resolveEspnAthleteId: async (gsis: string) => (gsis === '00-0031381' ? '16800' : null),
+        retrieveRankedRows: async (req: any) => {
+            rankedRowsCalls++;
+            return req.league === 'nfl' ? nb.nfl_receiving_2024 : nb.cfb_passing_2024;
+        },
     };
 });
 
@@ -991,7 +999,7 @@ describe('round-4 review (PR #267)', () => {
         expect(html).toContain('<label class="text-muted text-small mb-0" for="player-game-log-shade">Compare performances against:</label>');
         expect(html).toMatch(/data-shade-mode="player"[^>]*>Player Games<\/option>/);
         // and its population: his position group's games of 5+ plays (audit D1)
-        expect(html).toMatch(/data-shade-mode="league"[^>]*title="Percentile among every QB game of 5\+ plays in the nation that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(html).toMatch(/data-shade-mode="league"[^>]*Percentile among every QB game of 5\+ plays in the nation that season[^>]*>2024 Percentiles<\/option>/);
         expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS]);
         const rows = logRows(html);
         const g = cfb.games.data[0];
@@ -1012,7 +1020,7 @@ describe('round-4 review (PR #267)', () => {
 
     test('the NFL toggle names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
-        expect(html).toMatch(/title="Percentile among every WR game of 5\+ plays in the league that season"[^>]*>2024 Percentiles<\/option>/);
+        expect(html).toMatch(/Percentile among every WR game of 5\+ plays in the league that season[^>]*>2024 Percentiles<\/option>/);
         expect(feed.pctlCalls[0]).toEqual([2024, 'nfl', 'WR', GAME_PERCENTILE_MIN_PLAYS]);
     }, 60_000);
 
@@ -1051,7 +1059,7 @@ describe('round-4 review (PR #267)', () => {
         try {
             const html = await renderPage('cfb', '4433971', 2024);
             expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS]);
-            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+            expect(html).toContain('Percentile among every player game of 5+ plays in the nation that season');
         } finally {
             feed.cfb = before;
         }
@@ -1067,7 +1075,7 @@ describe('round-4 review (PR #267)', () => {
             // the steps fire together (a 404 is never cached); the first non-empty IN ORDER wins
             expect(feed.pctlCalls).toEqual([[2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, 0]]);
             expect(html).toContain('data-shade-toggle="player-game-log"');
-            expect(html).toContain('title="Percentile among every player game of 5+ plays in the nation that season"');
+            expect(html).toContain('Percentile among every player game of 5+ plays in the nation that season');
             expect(logRows(html)[0]).toContain('data-league-pct');
         } finally {
             feed.cohortMissing = () => false;
@@ -1081,7 +1089,7 @@ describe('round-4 review (PR #267)', () => {
         try {
             const html = await renderPage('cfb', '4433971', 2024);
             expect(feed.pctlCalls[0]).toEqual([2024, 'cfb', 'RB', GAME_PERCENTILE_MIN_PLAYS]);
-            expect(html).toContain('title="Percentile among every RB game of 5+ plays in the nation that season"');
+            expect(html).toContain('Percentile among every RB game of 5+ plays in the nation that season');
         } finally {
             feed.cfb = before;
         }
@@ -1098,7 +1106,7 @@ describe('round-4 review (PR #267)', () => {
             expect(feed.pctlCalls).toEqual([
                 [2024, 'cfb', 'QB', GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, GAME_PERCENTILE_MIN_PLAYS], [2024, 'cfb', null, 0]]);
             expect(html).toContain('data-shade-toggle="player-game-log"');
-            expect(html).toContain('title="Percentile among every player game in the nation that season"');
+            expect(html).toContain('Percentile among every player game in the nation that season');
             // no floor on that ladder, so a 3-play game is on it and is read against it
             expect(logRows(html)[0]).toContain('data-league-pct');
         } finally {
@@ -1134,5 +1142,52 @@ describe('round-4 review (PR #267)', () => {
         } finally {
             feed.cfb = before;
         }
+    }, 60_000);
+});
+
+describe('nearby ranks on the player page', () => {
+    test('CFB passer: four lists, marked once each, only when the flag admits the viewer', async () => {
+        rankedRowsCalls = 0;
+        const html = await renderPage('cfb', '4433971', 2024);
+        expect(rankedRowsCalls).toBe(1);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="table-secondary"/g) ?? []).length).toBe(4);
+        expect(block).toContain('Kyle McCord');
+        // Akshay on #296: the Team column as PlayerLeaderboardTable renders it (logo + team, linked)
+        expect(block).toMatch(/<th class="text-left" colspan="1">Team<\/th>/);
+        expect(block).toMatch(/<a href="\/year\/2024\/team\/\d+"><img class="img-fluid team-logo-\d+ me-2"[^>]*teamlogos\/ncaa\/500\/\d+\.png/);
+        // ...and below md one table plus a metric picker: every column but the first is d-none d-md-block
+        expect((block.match(/<option value=/g) ?? []).length).toBe(4);
+        expect((block.match(/class="col-md-6 mb-3 d-none d-md-block"/g) ?? []).length).toBe(3);
+        const { default: Page } = await import('../src/pages/players/[id].astro');
+        rankedRowsCalls = 0;
+        const off = await container.renderToString(Page, {
+            params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'),
+            locals: { preview: true, flagOverrides: { 'rank-neighbors': false } },
+        });
+        expect(off).not.toContain('data-neighbor-ranks');
+        // program risk #3: the flag-off gate has to stop the read, not just hide
+        // the panel around it -- remove the gate at routes/player.ts and this goes red
+        expect(rankedRowsCalls).toBe(0);
+    }, 60_000);
+
+    test('a failed nearby-ranks read says so, not that there is no ranked row', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const spy = vi.spyOn(sdv, 'retrieveRankedRows').mockRejectedValue(new Error('ranked rows route is down'));
+        try {
+            const html = await renderPage('cfb', '4433971', 2024);
+            expect(html).toContain('id="player-neighbor-ranks-unavailable"');
+            expect(html).not.toContain('data-neighbor-ranks');
+        } finally {
+            spy.mockRestore();
+        }
+    }, 60_000);
+
+    test('NFL traded receiver: the lists come from his ranked NYJ row', async () => {
+        const html = await renderPage('nfl', '16800', 2024);
+        const block = html.split('data-neighbor-ranks')[1] ?? '';
+        expect((block.match(/data-nb-metric=/g) ?? []).length).toBe(4);
+        expect(block).toContain('data-nb-key="00-0031381"');
     }, 60_000);
 });
