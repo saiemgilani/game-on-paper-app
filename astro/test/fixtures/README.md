@@ -464,8 +464,8 @@ needs a new id and a new snapshot in its own PR.
   same team-seasons (D44). `mbb/conferences_2026.json`: `content.altSbDropdown.options` of
   `https://cdn.espn.com/core/mens-college-basketball/scoreboard?xhr=1` (2026-10-18, requestESPN's Safari UA) as
   `{id: data.group, label}`, 33 rows. **Used by:** `test/mbb/teams.test.ts`, `test/mbb/config.test.ts`. **To regenerate:**
-  `plans/2026-10-11-mbb-games-gop.md` Task 1 Step 1.
+  `mbb_teams.py` with its ESPN captures in `mbb-probe/`, both in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1's script plus `mbbSeasonsOf`; it also writes `astro/src/nba/data/mbbTeams.ts`).
 - `mbb/leader_bars.json`: per season 2019-2026, league-average regular-season (`season_type` 2) FGA per team game for the 366 D-I teams
   (hoopR-mbb-data `mbb/team_box/parquet/team_box_<season>.parquet`, commit 55d7a2a23) and for the NBA (hoopR-nba-data
   `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and the bars `max(1, round(5 × ratio))` /
-  `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** Task 1 Step 1b.
+  `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** `mbb_leader_bars.py` in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1b).
