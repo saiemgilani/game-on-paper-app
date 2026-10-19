@@ -21,6 +21,11 @@ const SEL = {
     game_player_rates: 'athlete_id,team_id,ts_pct,usg_pct',
 } as const;
 
+/** College box scores carry no plus-minus and no DNP reason at the source (hoopR-mbb-data player_box), so a college read leaves both out. */
+const PRO_LEAGUES: readonly BasketballLeague[] = ['nba', 'wnba'];
+export const playerBoxSelect = (league: BasketballLeague): string =>
+    PRO_LEAGUES.includes(league) ? SEL.player_box : SEL.player_box.replace(',plus_minus', '').replace(',reason', '');
+
 type Row = Record<string, any>;
 
 /** Ids reach a URL and a cache key: refuse anything but an ESPN-sized number before either exists. */
@@ -51,7 +56,7 @@ export async function retrieveNbaGameRows(id: string, league: BasketballLeague =
         readSchedule(id, league),
         get('pbp', q({ select: SEL.pbp, order: 'game_play_number' })),
         get('team_box', q({ select: SEL.team_box })),
-        get('player_box', q({ select: SEL.player_box })),
+        get('player_box', q({ select: playerBoxSelect(league) })),
         get('play_wp', q({ select: SEL.play_wp, order: 'game_play_number' })),
         get('game_team_rates', q({ select: SEL.game_team_rates })),
         get('game_player_rates', q({ select: SEL.game_player_rates })),
