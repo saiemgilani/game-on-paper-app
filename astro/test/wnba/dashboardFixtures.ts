@@ -1,11 +1,14 @@
 // Readers for the real WNBA dashboard captures (fixtures/wnba/dashboards, plan 2026-10-11-wnba-shots-gop Task 2).
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import type { LeagueContextRow, PlayerGameRow, SeasonPlayerRow, ShotApiRow } from '../../src/resources/nbaShots';
 
 export const SEA = 1611661328;
 export function readFix<T>(name: string): T {
-    const bytes = readFileSync(new URL(`../fixtures/wnba/dashboards/${name}`, import.meta.url));
+    // a path, not `new URL(…, import.meta.url)`: under `@vitest-environment jsdom` Vite rewrites that form to a web asset URL
+    const bytes = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../fixtures/wnba/dashboards', name));
     return JSON.parse((name.endsWith('.gz') ? gunzipSync(bytes) : bytes).toString('utf8')) as T;
 }
 export const seasonPlayers = (season: 2003 | 2008 | 2025 | 2026) => readFix<SeasonPlayerRow[]>(`season_players_${season}.json`);

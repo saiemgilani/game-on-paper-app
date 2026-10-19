@@ -6,9 +6,11 @@
  * The roster is sorted server-side (?sort=, ?dir=, ?mode=pergame|totals, all whitelisted).
  */
 import type { AstroGlobal } from 'astro';
+import { basketball, courtFor } from '../../basketball/config';
 import { leagueContextFromRows, shotsFromRows } from '../../nba/adapters';
 import { buildDashboard, type DashboardData } from '../../nba/dashboard';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
+import { placeholderAt } from '../../nba/data/placeholder';
 import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
@@ -73,7 +75,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         team,
         line: shootingLine(shots),
         roster: sortRosterRows(rosterRows(rows, teamId), sort, dir, mode),
-        dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value)),
+        dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value), courtFor(league, season), placeholderAt(basketball(league).placeholderLocation, season)),
         sort, dir, mode,
     };
 }

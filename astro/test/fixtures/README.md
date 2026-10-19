@@ -314,6 +314,11 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+- `nba/shots_2003_njn.json.gz`: New Jersey's 2003 regular-season shots (team 1610612751, `game_id` 002…), the six lite columns,
+  from hoopR-nba-stats-data `nba_stats/shots/parquet/shots_2003.parquet` (commit `fe3e515f`), the
+  release the Data API ingests. 6,585 shots, 2,078 at the hoop centre (0, 0), the NBA's 1998–2010 placeholder. Captured
+  2026-10-18. **Used by:** `test/basketball/placeholder.test.ts` (the NBA has no `placeholderLocation`, so these stay in
+  every NBA chart: D29 / R4). **To regenerate:** `plans/2026-10-11-wnba-shots-gop.md` Task 3 Step 0.
 
 ## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
@@ -370,6 +375,7 @@ needs a new id and a new snapshot in its own PR.
   definitions are identical on sdv-db `origin/main` `fd9b268`, `nba_shot_dashboards.py:144-148`), captured 2026-10-18. First era 0 is
   written as 1997. **Used by:** `test/wnba/config.test.ts` (GOP's `BASKETBALL.wnba.courts` must equal it era for era) and plan #6's
   `test/wnba/courts.test.ts`. **To regenerate:** the same command after a plan #3 court change; GOP's eras must follow in the same PR.
+  `placeholder` = `{ x, y, through }` read from sdv-db's WNBA `located` predicate by plans/2026-10-11-wnba-shots-gop.md Task 3 Step 0 (R22).
 - `wnba/team_crosswalk_2002_2026.json`: the distinct (ESPN team id, ESPN name, stats.wnba.com team id, stats tricode) rows of
   wehoop-wnba-data `wnba/crosswalk/parquet/wnba_team_crosswalk_{2002..2026}.parquet` (commit 62b7ca5a; the table is unchanged from
   5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.

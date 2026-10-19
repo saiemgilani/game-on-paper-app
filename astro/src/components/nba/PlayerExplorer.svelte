@@ -34,7 +34,7 @@
     const choose = (preset: GamePreset) => { if (games) selected = new Set(presetGames(games, preset)); };
     const activePreset = $derived(games ? GAME_PRESETS.find((p) => { const ids = presetGames(games, p); return ids.length === selected.size && ids.every((id) => selected.has(id)); }) : undefined);
     const view = $derived(selectedView(data, selected, dateWindow));
-    const dashboard = $derived(buildDashboard(view.shots, data.league));
+    const dashboard = $derived(buildDashboard(view.shots, data.league, data.court, data.placeholder ?? null));
     const rolling = $derived({ points: view.view ? rollingLines(view.view, n) : [], seasonFgPct: data.seasonFgPct, n });
     const line = $derived(shootingLine(view.shots));
     const neutral = games ? games.filter((g) => g.venue === 'neutral').length : 0;

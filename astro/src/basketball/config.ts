@@ -3,6 +3,7 @@
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import type { PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, teamByEspnId, type Team } from '../nba/data/teams';
 import { WNBA_TEAMS, wnbaLogoId, wnbaTeamByEspnId } from '../nba/data/wnbaTeams';
 import { netsTricode } from '../nba/seasonRange';
@@ -60,6 +61,8 @@ export interface BasketballConfig {
     /** the Header's basketball entries, paths relative to the league prefix */
     headerMenu: readonly MenuItem[];
     shotDashboards: ShotDashboardsSource;
+    /** D29: the provider's placeholder shot location, left out of the location charts and counted; unset = every shot is located */
+    placeholderLocation?: PlaceholderLocation;
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -122,6 +125,8 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         landing: 'teams-index',
         headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
         shotDashboards: 'stats-api',
+        // D29 / R22: stats.wnba.com's hoop-centre placeholder, 1997-through only (sdv-db's located predicate, same bound)
+        placeholderLocation: { x: 0, y: 0, through: 2010 },
     },
 };
 
