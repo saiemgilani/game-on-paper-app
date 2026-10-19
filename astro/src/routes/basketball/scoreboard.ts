@@ -76,7 +76,7 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
     if (groups && grp?.key === groups.default && !board.degraded && !board.stale && events.length === 0) {
         const d = await getScoreboardForDay(league, toEspnDate(date), { ...datedOpts, group: groups.all });
         if (!d.degraded && d.events.length > 0) { events = d.events; fallbackNote = TOP25_FALLBACK_NOTE; }
-        fallbackFailed = d.degraded; // never cache "No games scheduled." over a D-I read that failed
+        fallbackFailed = d.degraded; // never cache or show "No games scheduled." over a D-I read that failed: the page says unavailable
     }
     const games = sortScoreboard(events);
 
@@ -90,7 +90,7 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
         // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
         setCache(Astro, date < live.day ? (isOld(date, live.day) ? c.oldDay : c.pastDay) : date === dayNav(live.day).next ? c.live : c.futureDay);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale,
+    return { day: date, isLive, degraded: board.degraded || fallbackFailed, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale,
         ...(grp ? { group: grp.key, groupLabel: grp.label } : {}), ...(fallbackNote ? { fallbackNote } : {}) };
 }
 
