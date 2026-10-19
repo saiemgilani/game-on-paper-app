@@ -4,7 +4,7 @@ import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
-import { GradientFillLineController } from '../../resources/chart'
+import { GradientFillLineController, chartGridColor } from '../../resources/chart'
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
 const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, exportMeta = null } = $props()
@@ -368,6 +368,7 @@ async function generateChart() {
             responsive: true,
             scales: {
                 y: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     suggestedMax: 1.0,
                     suggestedMin: -1.0,
                     ticks: {
@@ -398,12 +399,12 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         }, 
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
                     }
                 },
                 x: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     ticks: {
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252'
                     },
@@ -420,9 +421,8 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         },
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
                     }
                 }
             },

@@ -2,7 +2,7 @@
 import Chart from 'chart.js/auto';
 import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import { SDV_TEAM_PERCENT_COLUMNS, SPECIAL_IMAGES, EVENT_KEY_TRENDS_METRIC_CHANGED, SPECIAL_IMAGES_DARK } from "../../utils/constants";
-import type { ValueDistribution, ValuePercentile } from "../../resources/chart";
+import { chartGridColor, type ValueDistribution, type ValuePercentile } from "../../resources/chart";
 import { retrieveValue, getCurrentViewport, roundNumber, waitForElement, STANDARD_THEME_HOVER_RGBA, STANDARD_THEME_BACKGROUND_RGBA, STANDARD_THEME_COLOR, getImageSizeForViewport, formatNumberForMetric, getAxisTitleSizeForViewport, getTitleSizeForViewport, generateTeamMetricTitle, shouldInvertSortForMetric, cleanField } from "../../utils/misc";
 import type { SDVTeamSummary } from "../../resources/sdv";
 import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "chart.js";
@@ -226,6 +226,11 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
 
     const viewport = getCurrentViewport(document, window);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // the grid rule all the site's Chart.js axes share, from the page's text colour
+    const ink = getComputedStyle(document.body).color;
+    const gridColor = chartGridColor(ink, isDarkMode);
+    // the axis lines take the zero line's colour; unset, Chart.js draws them near-black, invisible in dark mode
+    const axisBorder = { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" };
 
     const shouldFlipYAxis = shouldInvertSortForMetric(category, metric);
 
@@ -302,12 +307,13 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
             scales: {
                 y: {
                     reverse: shouldFlipYAxis,
+                    border: axisBorder,
                     grid: {
                         color: (line) => {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return gridColor
                         },
                     },
                     title: {
@@ -316,17 +322,17 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                         color: (isDarkMode) ? '#e8e6e3' : '#525252',
                         font: {
                             size: getAxisTitleSizeForViewport(viewport),
-                            family: '"Chivo", "Fira Mono", serif',
-                            style: "oblique"
+                            family: '"Chivo", "Fira Mono", serif'
                         }
                     },
                     ticks: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        color: ink
                     }
                 },
                 x: {
+                    border: axisBorder,
                     ticks: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        color: ink
                     },
                     title: {
                         display: true,
@@ -334,12 +340,11 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                         color: (isDarkMode) ? '#e8e6e3' : '#525252',
                         font: {
                             size: getAxisTitleSizeForViewport(viewport),
-                            family: '"Chivo", "Fira Mono", serif',
-                            style: "oblique"
+                            family: '"Chivo", "Fira Mono", serif'
                         }
                     },
                     grid: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                        color: gridColor,
                     }
                 }
             }

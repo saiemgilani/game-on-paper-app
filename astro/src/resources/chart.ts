@@ -1,4 +1,12 @@
 import {LineController, type UpdateMode, Chart, type Plugin} from "chart.js";
+import { color } from "chart.js/helpers";
+
+// The grid-line colour every Chart.js axis on the site shares: the theme's text colour (`ink`, the
+// canvas's computed `color`), faded. 0.3 on white reads as a grid line yet stays lighter than the
+// #AAAAAA zero lines; 0.2 on the dark background keeps the grid quiet under the brighter axis lines.
+export function chartGridColor(ink: string, dark: boolean): string {
+    return color(ink).alpha(dark ? 0.2 : 0.3).rgbString();
+}
 
 export interface ValuePercentile {
     season: number
