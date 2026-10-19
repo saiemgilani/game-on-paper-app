@@ -6,14 +6,14 @@
  * (games, his seasons) degrade and turn caching off.
  */
 import type { AstroGlobal } from 'astro';
-import { basketball, courtFor } from '../../basketball/config';
+import { basketball, courtFor, rankMins } from '../../basketball/config';
 import { headshotsFromRows, leagueContextFromRows, playerGamesFromRows, playerSeasonsFromRows, shotsFromRows, teamsOfPlayer } from '../../nba/adapters';
 import type { PlayerExplorerData } from '../nba/explorer';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import { COURT } from '../../nba/data/court';
 import { placeholderAt, placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
-import { rankSummaries, type RankSummary } from '../../nba/data/ranks';
+import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
@@ -33,6 +33,8 @@ export interface BasketballPlayerParams {
     next: PlayerSeason | null;
     explorer: PlayerExplorerData;
     ranks: RankSummary[];
+    /** the league-season's rank bars (rankMins): the NBA's 100 FGA / 50 3PA, scaled by season length */
+    min: RankMins;
     /** Seasons he took a regular-season shot in (the picker); just this one when that read failed. */
     hisSeasons: number[];
     /** D29: the season's shots at the league's placeholder location, and all his shots (the page note); absent for the NBA */
@@ -111,6 +113,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
+    const min = rankMins(league, season);
     if (degraded) uncacheable(Astro);
     else setCache(Astro, playerCache(league));
     return {
@@ -122,7 +125,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         prev: i > 0 ? roster[i - 1] : null,
         next: i >= 0 && i < roster.length - 1 ? roster[i + 1] : null,
         explorer: { shots, games, league: context, seasonFgPct: line.fgPct, ...(court === COURT ? {} : { court }), ...(placeholder ? { placeholder } : {}) },
-        ranks: rankSummaries(players, personId),
+        ranks: rankSummaries(players, personId, 5, min),
+        min,
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
     };

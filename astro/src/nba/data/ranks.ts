@@ -18,13 +18,16 @@ export const RANK_LABELS: Record<RankMetric, string> = {
 export const RANK_MIN_FGA = 100;
 /** 3P% also needs this many threes, or a centre's 2-for-3 leads the league. */
 export const RANK_MIN_FG3A = 50;
+/** A league-season's eligibility bars; basketball/config.ts `rankMins` scales the NBA's by the season's games. */
+export interface RankMins { fga: number; fg3a: number }
+export const RANK_MIN: RankMins = { fga: RANK_MIN_FGA, fg3a: RANK_MIN_FG3A };
 
 /**
  * The metric from the season stats when present, else from shots. The stats row used
  * (regular-season advanced totals) has no 3P%, so 3P% is always from shots; TS% needs free
  * throws, so a player without a stats row has none.
  */
-export function metricValue(p: PlayerSeason, metric: RankMetric): number | null {
+export function metricValue(p: PlayerSeason, metric: RankMetric, min: RankMins = RANK_MIN): number | null {
   const line = lineOf(p);
   switch (metric) {
     case "fga":
@@ -34,7 +37,7 @@ export function metricValue(p: PlayerSeason, metric: RankMetric): number | null 
     case "efgPct":
       return p.stats?.efg_pct ?? line.efgPct;
     case "fg3Pct":
-      return p.fg3a >= RANK_MIN_FG3A ? line.fg3Pct : null;
+      return p.fg3a >= min.fg3a ? line.fg3Pct : null;
     case "tsPct":
       return p.stats?.ts_pct ?? null;
   }
@@ -50,10 +53,10 @@ export interface RankEntry {
 }
 
 /** Every eligible player with a value, best first (ties by name). */
-export function rankTable(players: PlayerSeason[], metric: RankMetric): RankEntry[] {
+export function rankTable(players: PlayerSeason[], metric: RankMetric, min: RankMins = RANK_MIN): RankEntry[] {
   const rows = players
-    .filter((p) => p.attempts >= RANK_MIN_FGA)
-    .map((p) => ({ person_id: p.person_id, name: p.player_name, team: p.team_tricode, value: metricValue(p, metric) }))
+    .filter((p) => p.attempts >= min.fga)
+    .map((p) => ({ person_id: p.person_id, name: p.player_name, team: p.team_tricode, value: metricValue(p, metric, min) }))
     .filter((r): r is Omit<RankEntry, "rank"> => r.value !== null)
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   let rank = 0;
@@ -73,9 +76,9 @@ export interface RankSummary {
 }
 
 /** One summary per metric: his rank of N and the top five. */
-export function rankSummaries(players: PlayerSeason[], personId: number, topN = 5): RankSummary[] {
+export function rankSummaries(players: PlayerSeason[], personId: number, topN = 5, min: RankMins = RANK_MIN): RankSummary[] {
   return RANK_METRICS.map((metric) => {
-    const table = rankTable(players, metric);
+    const table = rankTable(players, metric, min);
     return {
       metric,
       label: RANK_LABELS[metric],
