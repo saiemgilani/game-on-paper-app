@@ -575,17 +575,23 @@ needs a new id and a new snapshot in its own PR.
   (`https://sports.core.api.espn.com/v2/sports/basketball/leagues/womens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`,
   captured 2026-10-19 with requestESPN's Safari UA, `count` 357; owner ruling D34). `wbb/teams_2026.json`: one row per core id, `{id, ab, name, color}` from
   `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams/<id>` (abbreviation, displayName, color
-  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 13 ids with a D-I season (10+ games with one of the 32 women's D-I
-  conference ids) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are not in the core list,
-  with first/last such season and the same team-endpoint fields. `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
+  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 15 ids with a D-I season (10+ games with one of the 33 women's D-I
+  conference ids: ESPN's 32 dropdown ids plus 43, the D-I Independents, which the 2026 dropdown omits because no program is independent
+  in 2026; plan #11 ruling R-S11) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are
+  not in the core list, with first/last such season and the same team-endpoint fields. Each program's D-I seasons must be contiguous
+  first..last; a gap is admitted only for a season with 10+ games and no conference id recorded at all (Centenary 2113, 2003-04..2006-07,
+  between its 2002-03 independent season and its D-I conference seasons). `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
   regular-season (`season_type` 2) games of those D-I team-seasons; `wbb/games_in_scope.json`: the same with the postseason (`season_type` 2 or 3, D44). `wbb/conferences_2026.json`: `content.altSbDropdown.options` of
   `https://cdn.espn.com/core/womens-college-basketball/scoreboard?xhr=1` (2026-10-19) as `{id: data.group, label}`, 33 rows.
   `wbb/leader_bars.json`: per season 2019-2026, league-average regular-season FGA per team game for that season's D-I teams
   (wehoop-wbb-data `wbb/team_box/parquet/team_box_<season>.parquet`, commit 1d5e0668e) and for the NBA (hoopR-nba-data
   `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and `max(1, round(5 × ratio))` / `max(1, round(3 × ratio))`
-  (owner ruling D31). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
-  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (writes these fixtures and `src/nba/data/wbbTeams.ts` from its `wbb-probe/`
-  captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
+  (owner ruling D31). Plan #11 (R-S11, GOP d9543830) regenerated `other_di.json`, `season_games.json` and `games_in_scope.json` with
+  group 43 counted (Hartford 42 last 2022 -> 2023; Birmingham-Southern 3, Savannah State 2542 and Centenary 2113 first -> 2003; new
+  Morris Brown 2417 and Winston-Salem State 2736; team counts rise in the seasons with independents, medians unchanged except games in
+  scope 2007 31 -> 30). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (ClaudeCowork commit 4bad5e4c; writes these fixtures and `src/nba/data/wbbTeams.ts`
+  from its `wbb-probe/` captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
 - `wbb/game_<id>_processor.json` and `wbb/game_<id>_api.json` for 401827362 (Kansas at TCU, 2026-01-29, 77-79), 401805076 (UTEP at Louisiana
   Tech, 2026-03-08, 87-91, one overtime), 401856459 (Hofstra vs Charleston, 2026-03-15, CAA final, 56-68, neutral), 400550784 (Rutgers at
   UTEP, 2014-04-05, WNIT final, 56-54, two halves) and 273130043 (Stanford at Yale, 2007-11-09, 100-44, two halves, no turnovers recorded);
