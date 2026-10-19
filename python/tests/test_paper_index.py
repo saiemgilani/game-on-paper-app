@@ -169,8 +169,45 @@ def test_margins_are_the_fitted_inputs_only(monkeypatch):
     f = _frame().with_columns(pl.Series("period", [1, 1, 2, 2, 1, 1, 2, 2]))
     out = paper_index.compute(f, 10, 20, league="nfl")
     assert set(out["margins"]) == _fitted("nfl")
+    assert set(out["impact"]) == set(out["importance"]) == _fitted("nfl")
     for w in out["byPeriod"].values():
-        assert set(w["margins"]) == _fitted("nfl")
+        assert set(w["margins"]) == set(w["impact"]) == _fitted("nfl")
+
+
+@pytest.mark.parametrize("league", LEAGUES)
+def test_impact_is_each_margins_log_odds(league):
+    """impact[k] = weight * margin on the real oracle games: same keys as
+    margins, same sign (every weight is >= 0), and they add up to
+    logit(homeShare)."""
+    for g in FIXTURES[league]["games"]:
+        out = paper_index.share_from_inputs(g["home"], g["away"], league)
+        assert set(out["impact"]) == set(out["margins"]) == _fitted(league)
+        for k, v in out["impact"].items():
+            assert v == paper_index.WEIGHTS[league][k] * out["margins"][k]
+            assert np.sign(v) == np.sign(out["margins"][k]), (league, g["gameId"], k)
+        share = out["homeShare"]
+        # logit is ill-conditioned near 1 (one oracle game sits at 1 - 6e-11)
+        assert sum(out["impact"].values()) == pytest.approx(np.log(share / (1 - share)), rel=1e-6)
+
+
+def test_importance_covers_every_weight_and_ships_with_the_index():
+    """IMPORTANCE is the table's row order: one positive number per weighted
+    margin, served as-is on the fitted margins only."""
+    for league in LEAGUES:
+        assert set(paper_index.IMPORTANCE[league]) == set(paper_index.WEIGHTS[league])
+        assert all(v > 0 for v in paper_index.IMPORTANCE[league].values())
+        out = paper_index.compute(_frame(), 10, 20, league)
+        assert out["importance"] == {
+            k: paper_index.IMPORTANCE[league][k] for k in _fitted(league)
+        }
+
+
+def test_impact_of_an_even_game_is_zero():
+    for league in LEAGUES:
+        ti = paper_index.team_inputs(_frame(), 10, league)
+        out = paper_index.share_from_inputs(ti, ti, league)
+        assert out["homeShare"] == 0.5
+        assert out["impact"] == {k: 0.0 for k in _fitted(league)}
 
 
 def test_by_period_windows():

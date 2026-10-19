@@ -907,13 +907,17 @@ export function generateCategoryForMetric(metric: string): string {
 }
 
 export function modifyMetricForCategory(category: string, metric: string) {
-    // an NFL-only category (tendencies / fourth-downs / luck) shares no column
-    // with the cfb grid: a metric it does not carry sorts by its first column
-    // (the leaderboard showed N/A ranks when the default net_adj_epa carried over)
+    // a metric the category does not carry sorts by its first column: an NFL-only
+    // category (tendencies / fourth-downs / luck) shares no column with the cfb grid
+    // (the leaderboard showed N/A ranks when the default net_adj_epa carried over), and
+    // Net Statistics has no pass/rush split or havoc (EPAplay_off_pass -> EPAplay_margin_pass
+    // left Metric History charting a metric its dropdown did not list, #330)
     const own = SDV_TEAM_METRIC_CATEGORIES[category];
-    if (own && !["offensive", "defensive", "differential"].includes(category)) {
-        return metric in own ? metric : Object.keys(own)[0];
-    }
+    const mapped = mapMetricToCategory(category, metric);
+    return !own || mapped in own ? mapped : Object.keys(own)[0];
+}
+
+function mapMetricToCategory(category: string, metric: string) {
     if (category == "offensive" && ["adj_def_epa", "net_adj_epa"].includes(metric)) {
         return "adj_off_epa"
     } else if (category == "defensive" && ["adj_off_epa", "net_adj_epa"].includes(metric)) {
@@ -988,7 +992,7 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 	return (z > 0) ? (1 - Prob) : Prob;
 }
 
-export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number,
+export async function safeCachePut(cache: KVNamespace, key: string, value: string | ArrayBuffer, ttl: number,
                                    metadata?: Record<string, unknown>): Promise<void> {
     try {
         await cache.put(key, value, { expirationTtl: ttl, metadata })

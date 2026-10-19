@@ -7,8 +7,8 @@
     import { leagueFromLocation } from '../../utils/league';
 
     const { title, teamColor, teamData, percentiles } = $props();
-    let selectedCategory = "offensive"
-    let selectedMetric = "EPAplay_off"
+    let selectedCategory = $state("offensive")
+    let selectedMetric = $state("EPAplay_off")
     let selectedPercentiles: ValuePercentile[] = $state([])
 
     function onChangeValue(category: string, metric: string) {
@@ -33,7 +33,7 @@
         document.dispatchEvent(changeEvent)
     }
 
-    onChangeValue(selectedCategory, selectedMetric)    
+    onChangeValue("offensive", "EPAplay_off")
 </script>
 
 <div class="container">
