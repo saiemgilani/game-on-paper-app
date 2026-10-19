@@ -34,10 +34,10 @@ describe("the WBB team module is ESPN's core D-I list (owner ruling D34)", () =>
 });
 
 describe('D-I membership by season (plan #6 TeamModule members, D34)', () => {
-    test('the 13 other D-I programs are the fixture, each a team only inside its D-I seasons', () => {
+    test('the 15 other D-I programs are the fixture, each a team only inside its D-I seasons', () => {
         expect(WBB_OTHER_DI.map((o) => [o.team.team_id, o.team.tricode, o.team.name, o.team.color, o.first, o.last]))
             .toEqual(OTHER.map((r) => [r.id, r.ab, r.name, r.color, r.first, r.last]));
-        expect(OTHER.map((r) => r.id)).toEqual([3, 42, 88, 284, 2113, 2330, 2341, 2511, 2542, 2597, 2697, 2815, 2837]);
+        expect(OTHER.map((r) => r.id)).toEqual([3, 42, 88, 284, 2113, 2330, 2341, 2417, 2511, 2542, 2597, 2697, 2736, 2815, 2837]);
     });
     test("the six 2026 programs ESPN's core list omits resolve for 2026 (D34)", () => {
         for (const [id, ab] of [[88, 'USI'], [284, 'STO'], [2330, 'LEM'], [2511, 'QUC'], [2815, 'LIN'], [2837, 'ETAM']] as const) {
@@ -47,8 +47,8 @@ describe('D-I membership by season (plan #6 TeamModule members, D34)', () => {
         expect(wbbTeamInSeason(2330, 2023)).toBeUndefined(); // Le Moyne's first D-I season is 2024
     });
     test('departed and arriving programs', () => {
-        expect(wbbTeamInSeason(42, 2022)!.name).toBe('Hartford Hawks');
-        expect(wbbTeamInSeason(42, 2023)).toBeUndefined();
+        expect(wbbTeamInSeason(42, 2023)!.name).toBe('Hartford Hawks'); // R-S11: its last D-I season, 2022-23, as an independent (43)
+        expect(wbbTeamInSeason(42, 2024)).toBeUndefined();
         expect(wbbTeamInSeason(2697, 2026)).toBeUndefined(); // West Florida: D-I schedule from 2026-27
         expect(wbbTeamInSeason(2697, 2027)!.tricode).toBe('UWF');
     });
@@ -62,7 +62,7 @@ describe('D-I membership by season (plan #6 TeamModule members, D34)', () => {
     test('seasonsOf (R-W2): a core team lists every season, another program its D-I seasons up to 2026, an unknown id none', () => {
         expect(wbbSeasonsOf(41)).toEqual(span(2003, 2026));
         for (const r of OTHER) expect(wbbSeasonsOf(r.id), String(r.id)).toEqual(span(r.first, Math.min(r.last, 2026)));
-        expect(wbbSeasonsOf(42)).toEqual(span(2003, 2022));     // Hartford
+        expect(wbbSeasonsOf(42)).toEqual(span(2003, 2023));     // Hartford
         expect(wbbSeasonsOf(2511)).toEqual(span(2023, 2026));   // Queens: its 2027 schedule is past WBB_LAST_KNOWN_SEASON
         expect(wbbSeasonsOf(2697)).toEqual([]);                 // West Florida: D-I only from 2027, no listed season yet
         expect(wbbSeasonsOf(111956)).toBeUndefined();
