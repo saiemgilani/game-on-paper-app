@@ -2,16 +2,17 @@
 // men's and women's college basketball. One entry per BASKETBALL_LEAGUES slug (the Record type refuses a missing one).
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
-import { COURT, NCAA_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import { COURT, NCAA_COURTS, NCAA_W_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
 import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
 import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../nba/data/mbbMemberSeasons';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
+import { WBB_CONFERENCES, WBB_TEAMS, wbbFranchiseOf, wbbSeasonsOf, wbbTeamByEspnId, wbbTeamInSeason } from '../nba/data/wbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
 import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
 import { NBA_LEADER_BARS, type LeaderBars, type LeaderWindow } from '../nba/data/leaders';
 import { RANK_MIN, type RankMins } from '../nba/data/ranks';
-import { mbbGamesInScope, mbbLeaderBars, mbbSeasonGames, netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
+import { mbbGamesInScope, mbbLeaderBars, mbbSeasonGames, netsTricode, wbbGamesInScope, wbbLeaderBars, wbbSeasonGames, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
 import { NBA_DARK_LOGO_ABBRS } from '../nba/scoreboard';
 
@@ -249,6 +250,51 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // them in the release although ESPN has them (D33, the hoopR-mbb-data issue of Task 7)
         linesFromSeason: 2013,
         // D36: a full D-I day (199 games on 2024-11-04) is one page, sectioned by status (scoreboardBudget.test.ts holds its size)
+        scoreboardGrouping: 'status',
+    },
+    wbb: {
+        league: 'wbb',
+        gamesSource: { apiBase: 'https://data.sportsdataverse.org/v1/wbb', schema: 'wbb', namespace: 'wbb-games' },
+        statsLeagueId: null,
+        regularGameIdPrefix: null,
+        // the college shot dashboards' provider (plan #11); the game page's shot chart is ESPN's
+        statsSourceLabel: 'stats.ncaa.org',
+        // two 20-minute halves through 2014-15, four 10-minute quarters from 2015-16 (season 2016): every wehoop-wbb-data schedule
+        // row 2003-2015 has format_regulation_periods 2 and every row 2016-2027 has 4; sdv-py nba_game_page _QUARTERS_FROM["wbb"]
+        regulation: [
+            { from: 0, periods: 2, kind: 'half', periodMinutes: 20 },
+            { from: 2016, periods: 4, kind: 'quarter', periodMinutes: 10 },
+        ],
+        overtimeMinutes: 5,
+        seasonLabelStyle: 'span',
+        // ESPN's cdn board has finals from 2002-11-10 (OU @ TENN, TTU @ LT); every earlier day of that autumn is empty
+        firstScoreboardDay: '2002-11-10',
+        scoreboardTimeZone: 'America/New_York',
+        scoreboardRefresh: 60,
+        // ncaa/500-dark/<espn id>.png is 200 for all 370 ids (2026-10-19): the id is the key (D22)
+        darkLogo: { kind: 'id', logoLeague: 'ncaa' },
+        // D21/D37: only what sdv-py records — the artifact (mbb_prediction_constants.py "womens": wbb_in_game_wp.ubj), the training
+        // sentence (mbb_game_predict.py:122-124, which wbb_game_predict.py reuses) and in_game_features (no period feature)
+        wpModelNote: "Game on Paper's women's college basketball in-game model (sdv-py wbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature).",
+        featuredTeam: null,
+        courts: NCAA_W_COURTS,
+        teams: { all: WBB_TEAMS, byEspnId: wbbTeamByEspnId, inSeason: wbbTeamInSeason, franchiseOf: wbbFranchiseOf, seasonsOf: wbbSeasonsOf },
+        // plan #11 builds the teams index; until then pages/wbb/index.astro redirects to the scoreboard
+        landing: 'teams-index',
+        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        shotDashboards: 'ncaa',
+        regularSeasonGames: wbbSeasonGames,
+        pronoun: 'her',
+        // D31: 3 FGA / 2 3PA per game in the leaders' window (WBB teams take ~0.66 of an NBA team's FGA per game)
+        leaderBars: wbbLeaderBars,
+        // ESPN's women's cdn board reads the singular `group=` like the men's: none = Top 25, 50 = all of D-I (Decision 1)
+        scoreboardGroups: { default: 'top25', all: '50', conferences: WBB_CONFERENCES },
+        espnRimPlaceholder: true,
+        // D44 (R6): regular season + postseason games, measured (games_in_scope.json)
+        gamesInScope: wbbGamesInScope,
+        // D39 (R12): ESPN's WBB summaries carry lines from 2025-26 only (Decision 8's sample)
+        linesFromSeason: 2026,
+        // D36 (R11): a D-I day on one page in live / upcoming / final sections (plan #8's Task 6b)
         scoreboardGrouping: 'status',
     },
 };

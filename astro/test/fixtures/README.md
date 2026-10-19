@@ -571,3 +571,18 @@ needs a new id and a new snapshot in its own PR.
   in any 42/49/56-date window per season, type-3 games per season, and the densest shot location per season.
   **Used by:** `test/mbb/dashboardFixtures.ts` (and every MBB dashboard test through it). **To regenerate:** plan
   2026-10-11-mbb-shots-gop Task 2 (local warehouse, local API, the three scratch scripts).
+- `wbb/core_2026.json`: ESPN's core D-I women's team list, verbatim
+  (`https://sports.core.api.espn.com/v2/sports/basketball/leagues/womens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`,
+  captured 2026-10-19 with requestESPN's Safari UA, `count` 357; owner ruling D34). `wbb/teams_2026.json`: one row per core id, `{id, ab, name, color}` from
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams/<id>` (abbreviation, displayName, color
+  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 13 ids with a D-I season (10+ games with one of the 32 women's D-I
+  conference ids) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are not in the core list,
+  with first/last such season and the same team-endpoint fields. `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
+  regular-season (`season_type` 2) games of those D-I team-seasons; `wbb/games_in_scope.json`: the same with the postseason (`season_type` 2 or 3, D44). `wbb/conferences_2026.json`: `content.altSbDropdown.options` of
+  `https://cdn.espn.com/core/womens-college-basketball/scoreboard?xhr=1` (2026-10-19) as `{id: data.group, label}`, 33 rows.
+  `wbb/leader_bars.json`: per season 2019-2026, league-average regular-season FGA per team game for that season's D-I teams
+  (wehoop-wbb-data `wbb/team_box/parquet/team_box_<season>.parquet`, commit 1d5e0668e) and for the NBA (hoopR-nba-data
+  `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and `max(1, round(5 × ratio))` / `max(1, round(3 × ratio))`
+  (owner ruling D31). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (writes these fixtures and `src/nba/data/wbbTeams.ts` from its `wbb-probe/`
+  captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
