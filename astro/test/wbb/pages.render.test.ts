@@ -52,6 +52,7 @@ function wbbPage(html: string, label: string) {
     expect(html).not.toContain('no recorded location');                                          // D29: no placeholder in WBB stats.ncaa.org shots
     expect(html).not.toContain('no charted shots');                                              // Decision 8
     expect(html).not.toMatch(/>2017-18</);                                                        // the picker starts at 2018-19
+    expect(html).toContain('id="nba-coverage"');                                                 // D24: the season's coverage note on every page
     for (const bad of ['NaN', 'undefined']) expect(noScripts(html)).not.toContain(bad);
 }
 const hexDesc = (shots: any[], season: Season) =>
