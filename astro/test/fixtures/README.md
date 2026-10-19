@@ -469,3 +469,23 @@ needs a new id and a new snapshot in its own PR.
   (hoopR-mbb-data `mbb/team_box/parquet/team_box_<season>.parquet`, commit 55d7a2a23) and for the NBA (hoopR-nba-data
   `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and the bars `max(1, round(5 × ratio))` /
   `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** `mbb_leader_bars.py` in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1b).
+- `mbb/game_<id>_processor.json` and `mbb/game_<id>_api.json` for 401808271 (Alabama at Tennessee, 2026-02-28, 71-69), 401820775 (NC State at
+  Notre Dame, 2026-02-28, 90-96, one overtime), 401744223 (Old Dominion vs Texas State at Pensacola Bay Center, 2025-03-07, 64-61, neutral)
+  and 401829457 (Coastal Carolina vs North Dakota at Western Hall, 2025-11-23, 75-58, neutral); `mbb/game_401706366_processor.json` (Western
+  Michigan at Akron, 2025-02-12, 92-105; every field-goal attempt at ESPN's (25, 0)). Dates are the schedule's UTC dates. Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /mbb/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="mbb")` at the
+    `python/uv.lock` commit `b4229f1c`, with plan #1's score rebuild). ESPN carries a DraftKings line for 401808271 (Tennessee favored
+    by 5.5, `home_team_spread` 5.5, pregame home win probability 0.688) and 401820775 (NC State favored by 6.5, -6.5, 0.2812), prior `spread`; none for the others
+    (`neutral` 0.5 for the two neutral-site games, `hfa` 0.6029 for 401706366).
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns (`player_box` through `playerBoxSelect('mbb')`, which leaves out
+    `plus_minus` and `reason`: hoopR-mbb-data's player box has neither) from a LOCAL sdv-db Data API over a local warehouse loaded from
+    the hoopR-mbb-data release parquet (commit `55d7a2a23`, after the owner's 2026-10-18 republish of plan #1's score rebuild),
+    `play_wp` / `game_*_rates` built by sdv-db's `mbb_game_pages` (`6391dda`) scoring with sdv-py `cd6f7f25` (the lock's `b4229f1c`
+    differs in the game-page code only by #900's guard for a non-object `format`). The release has no line for any 2024-2026 game,
+    so those priors are `hfa` or `neutral` (Decision 8). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/mbb/game.test.ts`): none. `RELEASE_SCORE_ROWS` is empty and `SWAPPED_RELEASE` is null: after the
+    republish, 401744223's rows 458-461 read 59-61 as in the rebuild, and 401829457's release rows read UND 58 - CCU 75 to the last
+    row, so all four pairs are in the parity gate (spec D7, post-republish).
+  - **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`,
+    the API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, the capture script with `playerBoxSelect`'s rule; ruling R16).
