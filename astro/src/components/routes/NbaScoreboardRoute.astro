@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import ErrorPage from '../ErrorPage.astro';
 import NbaGameCard from '../nba/NbaGameCard.astro';
-import { darkLogoCss, hasEspnLogo, shortDay } from '../../nba/scoreboard';
+import { darkLogoCss, hasEspnLogo, shortDay, statusSections } from '../../nba/scoreboard';
 import type { NbaScoreboardPrep } from '../../routes/nba/scoreboard';
 import { basketball } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
@@ -19,6 +19,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
 // The route accepts days up to the server's UTC date + 14; the picker's max is the same bound.
 // a college competitor ESPN has no logo for (team.logo absent) draws TeamRow's default shield, so it gets no dark rule
 const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors.filter((c) => hasEspnLogo(c, league)).map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation, season: g.season?.year }))), cfg.darkLogo);
+const sections = cfg.scoreboardGrouping === 'status' && !('badDate' in data) ? statusSections(data.games) : null;
 const groups = cfg.scoreboardGroups;
 const grp = 'badDate' in data ? null : (data.group ?? null);
 // the default group is never written into a URL: it is what the bare page shows
@@ -67,9 +68,18 @@ const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
         {data.stale && data.games.length > 0 && <p class="text-muted small">Live scores are temporarily unavailable. These are the last saved scores for {data.nav.label}.</p>}
         {!data.degraded && data.games.length === 0 && <p class="text-muted">No games scheduled.</p>}
         {data.fallbackNote && <p class="text-muted">{data.fallbackNote}</p>}
+        {sections ? (<>
+          <nav aria-label="Jump to games by status" class="mb-2 text-small">{sections.map((s) => <a class="me-3" href={`#${s.key}`}>{s.label} ({s.events.length})</a>)}</nav>
+          {sections.map((s) => (
+            <section id={s.key} aria-labelledby={`${s.key}-heading`}>
+              <h2 id={`${s.key}-heading`} class="h5 mt-3">{s.label}</h2>
+              <div class="row">{s.events.map((g) => <NbaGameCard game={g} />)}</div>
+            </section>
+          ))}
+        </>) : (
         <div class="row">
           {data.games.map((g) => <NbaGameCard game={g} />)}
-        </div>
+        </div>)}
       </div>
       {darkCss && <style set:html={`@media (prefers-color-scheme: dark){${darkCss}}`}></style>}
       <script is:inline>

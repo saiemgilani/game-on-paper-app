@@ -100,6 +100,8 @@ export interface BasketballConfig {
      * From it on, an ingested final without a line says the line is not in the warehouse; absent: "No line" everywhere (NBA, WNBA).
      */
     linesFromSeason?: number;
+    /** Owner ruling D36 (R11): 'status' renders a day's cards in Live / Upcoming / Final sections with jump links (college). Absent: one grid. */
+    scoreboardGrouping?: 'status';
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -215,6 +217,8 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // D39: hoopR-mbb-data has lined games in every season 2013-2023 and none before (lines_by_season.json); 2024-2026 lack
         // them in the release although ESPN has them (D33, the hoopR-mbb-data issue of Task 7)
         linesFromSeason: 2013,
+        // D36: a full D-I day (199 games on 2024-11-04) is one page, sectioned by status (scoreboardBudget.test.ts holds its size)
+        scoreboardGrouping: 'status',
     },
 };
 

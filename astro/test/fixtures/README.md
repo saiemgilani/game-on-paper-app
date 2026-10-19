@@ -542,3 +542,9 @@ needs a new id and a new snapshot in its own PR.
   2025-04-06 `top25`: empty (no ranked team played); 2025-04-06 `all` (`group=50`): its one D-I game, unranked (owner ruling D35's
   real no-ranked-games day). A grouped body has no `sbData.day`. **Used by:** `test/mbb/scoreboardGroups.test.ts`, `test/mbb/scoreboard.test.ts`,
   `test/mbb/scoreboard.render.test.ts`, `test/mbb/scoreboardRoute.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-mbb-games-gop.md`.
+- `mbb/scoreboard-20241104-all.json.gz` / `mbb/scoreboard-20261103-all.json`: ESPN cdn men's college D-I boards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?group=50&xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-19, reduced and trimmed exactly as the Task 6 boards (gzip -9 for the 199-game day). 2024-11-04: opening night, 199 finals, the busiest
+  real day (owner ruling D36's HTML budget; 1,770,598 bytes before gzip). 2026-11-03: 29 scheduled (`pre`) games. `mbb/scoreboard_budget.json`:
+  the rendered HTML length of the 2024-11-04 page and its budget (measured × 1.2), written by Task 6b Step 3. **Used by:**
+  `test/mbb/scoreboardSections.test.ts`, `test/mbb/scoreboardBudget.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 6b Steps 1 and 3.

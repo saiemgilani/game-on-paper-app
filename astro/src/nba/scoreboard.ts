@@ -124,6 +124,21 @@ export function hasEspnLogo(c: { team?: { logo?: unknown } } | undefined, league
     return espnLogoLeague(league) !== 'ncaa' || !!c?.team?.logo;
 }
 
+export type StatusSectionKey = 'live' | 'upcoming' | 'final';
+export interface StatusSection { key: StatusSectionKey; label: 'Live' | 'Upcoming' | 'Final'; events: ESPNScheduleEvent[] }
+const SECTIONS = [['live', 'Live'], ['upcoming', 'Upcoming'], ['final', 'Final']] as const;
+/**
+ * D36: a day's games by ESPN's status state (`in` live, `pre` upcoming, anything else final, including postponed and
+ * cancelled, whose card shows its own status line). Non-empty sections only, in that order; ESPN's order inside each.
+ */
+export function statusSections(events: ESPNScheduleEvent[]): StatusSection[] {
+    const keyOf = (e: ESPNScheduleEvent): StatusSectionKey => {
+        const state = (e.competitions[0]?.status as { type?: { state?: string } } | undefined)?.type?.state;
+        return state === 'in' ? 'live' : state === 'pre' ? 'upcoming' : 'final';
+    };
+    return SECTIONS.map(([key, label]) => ({ key, label, events: events.filter((e) => keyOf(e) === key) })).filter((s) => s.events.length > 0);
+}
+
 /** The scoreboard competitor's leaders block: points, rebounds, assists as '26 C. Anthony'. */
 export function gameLeaders(comp: ESPNCompetitor): { pts?: string; reb?: string; ast?: string } {
     const out: { pts?: string; reb?: string; ast?: string } = {};
