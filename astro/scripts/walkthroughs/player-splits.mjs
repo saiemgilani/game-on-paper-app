@@ -14,8 +14,7 @@ export default async (page, base) => {
     if ((await table.locator('[data-league-pct]').count()) < 1) throw new Error(`${path}: the splits table carries no league percentiles`);
     await table.scrollIntoViewIfNeeded();
     await page.waitForTimeout(1500);
-    // hover a percentile so its population tooltip is on screen
-    await table.locator('[data-league-pct]').first().hover();
-    await page.waitForTimeout(1500);
+    // the percentile explanation is the caption under the table, visible without a hover
+    if ((await table.locator('caption[data-league-pct-caption]').count()) !== 1) throw new Error(`${path}: the splits table carries no percentile caption`);
   }
 };
