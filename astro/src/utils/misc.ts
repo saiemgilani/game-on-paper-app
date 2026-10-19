@@ -802,6 +802,13 @@ export function teamSeasonBandsFor(rows: { season: number, metric: string, value
     return rows.filter(r => r.metric === metric).flatMap(r => r.values.map((value, i) => ({ season: r.season, pctile: TEAM_SEASON_PCTILES[i], value })));
 }
 
+/** 'team-season-bands': the team_summaries offense column whose team-season distribution National Trends draws for
+ *  its `sort` key (EPAplay -> EPAplay_off, pass_success -> success_off_pass, ...); undefined for a ladder-only metric
+ *  (dropbacks, GEI, ...), which keeps the team-game ladder. */
+export function nationalSeasonBandMetric(metric: string): string | undefined {
+    return Object.keys(SDV_TEAM_METRIC_CATEGORIES.offensive).find(k => getPercentileKey(k) === metric);
+}
+
 export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
     if (!input && input != 0) {
         return null;

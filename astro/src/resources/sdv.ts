@@ -864,11 +864,12 @@ export function teamSeasonBands(rows: unknown): SDVTeamSeasonBand[] {
  * team_summaries' ingest stamp so it moves when that table re-ingests. A 404 (no season with enough teams), a
  * failed read or a throw (no token, KV down) is no bands: `[]`.
  */
-export async function retrieveTeamSeasonPercentiles(league: League = 'cfb'): Promise<SDVTeamSeasonBand[]> {
+export async function retrieveTeamSeasonPercentiles(league: League = 'cfb', pin?: SdvPin): Promise<SDVTeamSeasonBand[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
-    const stamp = await sdvIngestStamp(league, 'team_summaries');
-    const pin = stamp ? { version: stamp, held: true, table: 'team_summaries' } : undefined;
     try {
+        // a caller showing the stamp passes its own pin (National Trends); `table`: the sub-route moves with team_summaries
+        if (!pin) pin = sdvPin(await sdvIngestStamp(league, 'team_summaries'));
+        if (pin) pin.table = 'team_summaries';
         // requestSDV throws before its own catch on a missing token or a failed KV read: no bands, like the ladder reads
         const content = await requestSDV('team_summaries/percentiles', undefined, undefined, 60 * 60 * 24 * 7, true, leagueSource(league), false, undefined, pin);
         return teamSeasonBands(content?.data);

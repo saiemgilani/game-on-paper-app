@@ -109,8 +109,9 @@ export const FLAGS: Record<string, FeatureState> = {
     'team-record-splits': 'preview',
     // The team profile's Metric History (/team/<id> and the /nfl twin) draws its boxes from the national
     // distribution of team SEASONS (sdv-db `team_summaries/percentiles`, one read) instead of the team-GAME
-    // ladder, and Net Statistics get boxes too. Off: the five ladder reads and today's chart, unchanged. The
-    // national trends page and game pages keep the game ladder either way.
+    // ladder, and Net Statistics get boxes too. National Trends (/charts/trends and the /nfl twin) draws the same
+    // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
+    // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'preview',
 };
 
