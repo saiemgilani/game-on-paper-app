@@ -72,14 +72,16 @@ describe('the WBB teams index by conference', () => {
         expect([...labels].filter((l) => !mapped.includes(l))).toEqual(['Pac-12']);
         expect(conferenceNames(2026).find((c) => c.group_id === 'wbb:summit')!.short_name).toBe('Summit');
     });
-    test('the table: 363 rows, a link for every program, n/a lines for the four unlinked ones', async () => {
-        // R-S13: New Orleans 2443 has placed shots but no season-player row, so its line is n/a too (five n/a rows, not four)
+    test('the table: 363 rows, a link for every program, n/a lines for the five without season-player rows', async () => {
+        // the four unlinked programs, plus R-S13: New Orleans 2443 has placed shots but no season-player row, so its line is n/a too
         const g = conferenceGroups(members(2026), conferences(2026), conferenceNames(2026));
         const html = await container.renderToString(NbaConferenceTeams, { props: { groups: g, lines: teamLinesFromRows(seasonPlayers(2026)), seasonQuery: '' }, locals: { league: 'wbb' } as App.Locals });
         expect(html.match(/<tr data-name=/g)).toHaveLength(363);
         expect(new Set([...html.matchAll(/href="\/wbb\/team\/(\d+)"/g)].map((m) => m[1])).size).toBe(363);
-        const row = html.slice(html.indexOf('href="/wbb/team/2441"'));
-        expect(row.slice(0, row.indexOf('</tr>'))).toContain('n/a');
+        for (const id of [2130, 2385, 2441, 2443, 2837]) {
+            const row = html.slice(html.indexOf(`href="/wbb/team/${id}"`));
+            expect(row.slice(0, row.indexOf('</tr>')), String(id)).toContain('n/a');
+        }
         expect(html).not.toContain('NaN');
     });
 });

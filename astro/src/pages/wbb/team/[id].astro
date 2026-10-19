@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/team/[id].astro: an ESPN team id; a program of the season with no linked shots is an empty page (D38)
+import NbaTeamRoute from '../../../components/routes/NbaTeamRoute.astro';
+import { prepareBasketballTeam } from '../../../routes/basketball/team';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballTeam(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaTeamRoute data={r} />
