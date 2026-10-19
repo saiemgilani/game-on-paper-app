@@ -3,6 +3,7 @@
 import type { ESPNGameHeader } from './espn';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
 import type { BasketballLeague } from '../utils/league';
+import { wnbaEraTricode } from '../nba/data/wnbaTeams';
 
 /** A count the source did not report stays null; the page renders a dash, never an invented 0. */
 export interface NbaTeamBox {
@@ -167,20 +168,24 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
     }
 }
 
+/** ESPN's abbreviation, except a WNBA franchise's tricode of that season where it differs (DET for id 3 in 2005, not ESPN's TUL). */
+const eraAbbreviation = (league: BasketballLeague, id: unknown, season: number | null, abbr: string): string =>
+    (league === 'wnba' ? wnbaEraTricode(Number(id), season) : undefined) ?? abbr
+
 export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague = 'nba'): NbaGame {
     const comp = j.header.competitions[0]
+    const season = j.header?.season?.year ?? null
     const side = (ha: 'home' | 'away'): NbaSide => {
         const c = comp.competitors.find((x) => x.homeAway === ha)!
         const t = j.teams[ha]
         const ti = j.teamInfo[ha]
         const record = c.record?.find((x) => x.type === 'total') ?? c.record?.[0]
         return {
-            team: { id: String(ti.id), abbreviation: ti.abbreviation, displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
+            team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
         }
     }
-    const season = j.header?.season?.year ?? null
     const reg = regulationFor(league, season, j.regulation_periods)
     return {
         id: String(j.gameId), source: 'processor',
@@ -203,7 +208,7 @@ export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'n
         const tid = num(s[`${ha}_id`])
         const prates = new Map(rows.game_player_rates.filter((p) => num(p.team_id) === tid).map((p) => [num(p.athlete_id), p]))
         return {
-            team: { id: String(tid), abbreviation: s[`${ha}_abbreviation`], displayName: s[`${ha}_display_name`], location: s[`${ha}_location`], name: s[`${ha}_name`], color: s[`${ha}_color`] ?? null, alternateColor: s[`${ha}_alternate_color`] ?? null, logo: s[`${ha}_logo`] ?? null },
+            team: { id: String(tid), abbreviation: eraAbbreviation(league, tid, num(s.season), s[`${ha}_abbreviation`]), displayName: s[`${ha}_display_name`], location: s[`${ha}_location`], name: s[`${ha}_name`], color: s[`${ha}_color`] ?? null, alternateColor: s[`${ha}_alternate_color`] ?? null, logo: s[`${ha}_logo`] ?? null },
             score: num(s[`${ha}_score`]), winner: isTrue(s[`${ha}_winner`]), records: parseRecord(s[`${ha}_records`]),
             linescores: parseLinescores(s[`${ha}_linescores`]),
             box: teamBox(rows.team_box.find((b) => num(b.team_id) === tid)), rates: teamRates(rows.game_team_rates.find((b) => num(b.team_id) === tid)),

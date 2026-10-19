@@ -11,6 +11,7 @@ import { setCache, uncacheable } from './cache';
 import { gopStorage } from '../../utils/telemetry';
 import { CACHE_TTL_MULTIPLIER } from '../../utils/config';
 import type { BasketballLeague } from '../../utils/league';
+import { wnbaEraTricode } from '../../nba/data/wnbaTeams';
 
 export type BasketballScoreboardParams = {
     day: string; isLive: boolean; degraded: boolean; games: ESPNScheduleEvent[];
@@ -50,6 +51,12 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
     const useLive = raw === null || (fresh && raw === live.day);
     const isLive = useLive && fresh;
     const board = useLive ? live : await getScoreboardForDay(league, toEspnDate(date), fresh && date < live.day ? (isOld(date, live.day) ? { pastDay: true, oldDay: true } : { pastDay: true }) : {});
+    // A WNBA franchise's tricode of that season where it differs from ESPN's (ESPN spells 2005's Detroit Shock "TUL").
+    // Keyed by id and season, so a repeat pass over a cached board is a no-op.
+    if (league === 'wnba') for (const ev of board.events) for (const c of ev.competitions?.[0]?.competitors ?? []) {
+        const tri = wnbaEraTricode(Number(c.id), (ev as any).season?.year);
+        if (tri && c.team) c.team.abbreviation = tri;
+    }
     const games = sortScoreboard(board.events);
 
     if (board.degraded || board.stale || (!useLive && !fresh)) {

@@ -22,7 +22,10 @@ export const WNBA_TEAMS: readonly Team[] = [
     { team_id: 1611661322, tricode: 'WAS', name: 'Washington Mystics', color: '#E03A3E', espn_id: 16 },
 ];
 
-/** Names a current franchise had before (relocations, renames, a tricode change), with the last season (year) each applied. */
+/**
+ * Names a current franchise had before (relocations, renames, a tricode change), with the last season (year) each applied.
+ * Within a franchise the rows run oldest first: wnbaEraTricode takes the first whose `through` covers the season.
+ */
 export const WNBA_FORMER_NAMES: readonly { team_id: number; tricode: string; through: number; name: string }[] = [
     { team_id: 1611661321, tricode: 'DET', through: 2009, name: 'Detroit Shock' },
     { team_id: 1611661321, tricode: 'TUL', through: 2015, name: 'Tulsa Shock' },
@@ -61,4 +64,14 @@ export function wnbaTeamByEspnId(espnId: number): Team | undefined {
 
 export function wnbaTeamById(teamId: number): Team | undefined {
     return BY_ID.get(teamId);
+}
+
+/**
+ * The tricode a franchise used in `season` when it differs from today's, else undefined: ESPN id 3 is DET through 2009
+ * (ESPN's own 2005 payloads spell it "TUL"), Phoenix PHO through 2024. Keyed by ESPN id and season, never by name (D22).
+ */
+export function wnbaEraTricode(espnId: number, season: number | null | undefined): string | undefined {
+    const id = wnbaTeamByEspnId(espnId)?.team_id;
+    if (id == null || season == null) return undefined;
+    return WNBA_FORMER_NAMES.find((f) => f.team_id === id && season <= f.through)?.tricode;
 }

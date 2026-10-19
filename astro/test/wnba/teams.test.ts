@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { WNBA_DEFUNCT, WNBA_FORMER_NAMES, WNBA_TEAMS, wnbaTeamByEspnId, wnbaTeamById } from '../../src/nba/data/wnbaTeams';
+import { WNBA_DEFUNCT, WNBA_FORMER_NAMES, WNBA_TEAMS, wnbaEraTricode, wnbaTeamByEspnId, wnbaTeamById } from '../../src/nba/data/wnbaTeams';
 
 type Row = { espn_team_id: number; espn_display_name: string; wnba_team_id: string; wnba_team_tricode: string; first: number; last: number };
 const XW: Row[] = JSON.parse(readFileSync(new URL('../fixtures/wnba/team_crosswalk_2002_2026.json', import.meta.url)).toString());
@@ -40,5 +40,30 @@ describe('the WNBA team module is the wehoop-wnba-data team crosswalk', () => {
             expect(XW.find((r) => r.espn_team_id === d.espn_id && r.espn_display_name === d.name), d.name).toBeDefined();
             expect(wnbaTeamByEspnId(d.espn_id), d.name).toBeUndefined();
         }
+    });
+});
+
+describe('wnbaEraTricode: the tricode a franchise had in a season, season-first (D22 id-keyed identity)', () => {
+    test('ESPN id 3 is the Detroit Shock through 2009, the Tulsa Shock through 2015, then no override (Dallas)', () => {
+        expect(wnbaEraTricode(3, 2005)).toBe('DET');
+        expect(wnbaEraTricode(3, 2009)).toBe('DET');
+        expect(wnbaEraTricode(3, 2010)).toBe('TUL');
+        expect(wnbaEraTricode(3, 2016)).toBeUndefined();
+        expect(wnbaEraTricode(3, 2025)).toBeUndefined();
+    });
+    test('a relocated franchise under either ESPN id: San Antonio under 17, Utah under 15', () => {
+        expect(wnbaEraTricode(17, 2005)).toBe('SAN');
+        expect(wnbaEraTricode(15, 2002)).toBe('UTA');
+        expect(wnbaEraTricode(17, 2018)).toBeUndefined();
+    });
+    test('Phoenix is PHO through 2024 and has no override from 2025', () => {
+        expect(wnbaEraTricode(11, 2024)).toBe('PHO');
+        expect(wnbaEraTricode(11, 2025)).toBeUndefined();
+    });
+    test('no override for a franchise with no former name, a folded franchise, an unknown id or an unknown season', () => {
+        for (const id of [16, 9, 8]) expect(wnbaEraTricode(id, 2005)).toBeUndefined(); // WAS, NYL, MIN on the 2005-06-03 board
+        expect(wnbaEraTricode(1, 2005)).toBeUndefined(); // Charlotte Sting
+        expect(wnbaEraTricode(12, 2002)).toBeUndefined(); // the 2000-02 Portland Fire
+        expect(wnbaEraTricode(3, null)).toBeUndefined();
     });
 });

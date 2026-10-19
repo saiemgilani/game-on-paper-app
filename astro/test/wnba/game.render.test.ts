@@ -49,6 +49,15 @@ describe('/wnba/game/[id] render (real captures)', () => {
         expect(html).toContain('href="/wnba/scoreboard?date=2005-06-03"');
         expect(html).toContain('overtime included');
         expect(html.match(/home-court advantage/g)).toHaveLength(1);
+        // ESPN spells id 3 "TUL" in 2005 beside "Detroit Shock"; the era tricode (WNBA_FORMER_NAMES) is DET everywhere
+        expect(html).not.toContain('TUL');
+        expect(html).toContain('aria-current="page">NYL @ DET</li>'); // breadcrumb
+        expect(html).toMatch(/<th scope="row" class="text-start fw-normal">DET<\/th>/); // linescore row
+        expect(plain(html)).toContain('pregame prior DET 54%');
+        expect(html).toContain('aria-label="DET player box score"');
+        expect(html).toContain('Score (NYL-DET)'); // plays tables
+        expect(html).toContain('DET WP');
+        expect(html).toContain('<h3 class="h6">DET</h3>'); // shot-chart heading
     });
     test('401736289 from the Data API: double overtime after four quarters', async () => {
         prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401736289_api'), 'wnba') });

@@ -4,6 +4,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 const prep = vi.fn();
 vi.mock('../../src/routes/basketball/scoreboard', async (orig) => ({ ...(await orig<typeof import('../../src/routes/basketball/scoreboard')>()), prepareBasketballScoreboard: (...a: unknown[]) => prep(...a) }));
+const sbDay = vi.fn();
+vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), getScoreboardForDay: (...a: unknown[]) => sbDay(...a) }));
 import Page from '../../src/pages/wnba/scoreboard.astro';
 import { dayNav } from '../../src/nba/scoreboard';
 
@@ -35,9 +37,16 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(html).toContain('WNBA scoreboard, Friday, August 1 | Game on Paper'); // NbaScoreboardRoute.astro:21 with name 'WNBA'
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     });
-    test('2005-06-03: the halves-era overtime card says Final/OT; WAS / TUL / NYL cards draw today\'s logos by ESPN id', async () => {
-        prep.mockResolvedValueOnce(day('2005-06-03', '20050603'));
+    test('2005-06-03 through the real loader: the halves-era overtime card says Final/OT; Detroit is DET, never ESPN\'s TUL; WAS / DET / NYL cards draw today\'s logos by ESPN id', async () => {
+        const real = await vi.importActual<typeof import('../../src/routes/basketball/scoreboard')>('../../src/routes/basketball/scoreboard');
+        prep.mockImplementationOnce((...a: Parameters<typeof real.prepareBasketballScoreboard>) => real.prepareBasketballScoreboard(...a));
+        sbDay.mockImplementation(async (_l: string, d: string | null) => (d === null ? { day: '2026-10-12', events: [], degraded: false } : { day: '2005-06-03', events: events('20050603'), degraded: false }));
         const html = await render('?date=2005-06-03');
+        expect(sbDay).toHaveBeenLastCalledWith('wnba', '20050603', expect.anything());
+        expect(html).not.toContain('TUL');
+        // each card's team cell (the winner's in <strong>, the loser's dimmed), then the leaders line
+        for (const ab of ['DET', 'NYL', 'WAS', 'MIN']) expect(html).toMatch(new RegExp(`>${ab}</(strong|span)>`)); // NYL / WAS / MIN have no former name: ESPN's abbreviation stays
+        expect(html).toContain('<span class="d-block">DET: 34 D. Nolan PTS');
         expect(html).toContain('Final/OT');
         expect(html).toContain('href="/wnba/game/250603003"');
         expect(lightSrcs(html)).toEqual(['min', 'wsh', 'ny', 'dal'].map(lightLogo));

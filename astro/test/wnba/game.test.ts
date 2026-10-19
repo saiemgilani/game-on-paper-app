@@ -118,6 +118,11 @@ describe('a neutral site is its own prior source (D13)', () => {
 });
 
 describe('the halves game (D14, Review Focus 1)', () => {
+    test('250603003: the 2005 Detroit Shock is DET (era tricode), never ESPN\'s TUL, on both sources', () => {
+        for (const x of [fromProcessor(read('game_250603003_processor'), 'wnba'), fromDataApi(read('game_250603003_api'), 'wnba')]) {
+            expect([x.away.team.abbreviation, x.home.team.abbreviation]).toEqual(['NYL', 'DET']);
+        }
+    });
     test('250603003: periods 1 and 2 are regulation halves, 3 is the overtime, on both sources', () => {
         for (const x of [fromProcessor(read('game_250603003_processor'), 'wnba'), fromDataApi(read('game_250603003_api'), 'wnba')]) {
             const regime = (per: number) => [...new Set(x.plays.filter((p) => p.period === per).map((p) => p.wpRegime))];
