@@ -1,6 +1,8 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
+import type { BasketballLeague } from '../utils/league';
 
 /** A count the source did not report stays null; the page renders a dash, never an invented 0. */
 export interface NbaTeamBox {
@@ -47,6 +49,11 @@ export interface NbaGame {
     date: string
     venue: string | null
     periods: number
+    /** the season's END year (ESPN header season.year / schedule season); picks the court and the regulation fallback */
+    season: number | null
+    /** regulation periods (4 quarters, 2 halves), from the game's own data, else its league's season rule */
+    regulation: number
+    periodKind: PeriodKind
     /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
     /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
     prior: { homeWinProb: number; source: 'spread' | 'hfa'; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
@@ -66,6 +73,7 @@ export interface NbaProcessorPayload {
     status: { name: string; completed: boolean; period: number | null; display_clock: string | null; detail: string | null }
     prior: { home_win_prob: number; source: 'spread' | 'hfa'; home_team_spread: number | null; game_spread_available: boolean }
     periods: number
+    regulation_periods?: number | null
     teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
@@ -80,6 +88,16 @@ export interface DataApiGameRows {
 /** A Data API boolean: the warehouse can hand one back as the string 'True'/'true', which `=== true` would read as false. */
 export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v === 'true';
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
+
+/** The regulation an ingested game was played to: the schedule's format_regulation_periods, else the season rule. */
+export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague = 'nba'): Regulation {
+    return regulationFor(league, num(row?.season), row?.format_regulation_periods)
+}
+
+/** The periods an ingested final must have plays in: its regulation, or more when the schedule says it went to overtime. */
+export function requiredPeriods(row: Record<string, any> | undefined, regulation: number): number {
+    return Math.max(regulation, Number(row?.status_period ?? regulation) || regulation)
+}
 const pair = (m: unknown, a: unknown): string => (num(m) == null || num(a) == null ? '–' : `${num(m)}-${num(a)}`) // a missing count is a dash, never 0-0
 
 /**
@@ -143,7 +161,7 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
     }
 }
 
-export function fromProcessor(j: NbaProcessorPayload): NbaGame {
+export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague = 'nba'): NbaGame {
     const comp = j.header.competitions[0]
     const side = (ha: 'home' | 'away'): NbaSide => {
         const c = comp.competitors.find((x) => x.homeAway === ha)!
@@ -156,20 +174,23 @@ export function fromProcessor(j: NbaProcessorPayload): NbaGame {
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
         }
     }
+    const season = j.header?.season?.year ?? null
+    const reg = regulationFor(league, season, j.regulation_periods)
     return {
         id: String(j.gameId), source: 'processor',
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
-        date: comp.date, venue: j.venue ?? null, periods: j.periods,
+        date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: j.prior.source, homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
-        home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > 4,
+        home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
     }
 }
 
-export function fromDataApi(rows: DataApiGameRows): NbaGame {
+export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'nba'): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))
     const plays = [...rows.pbp].sort((a, b) => (num(a.game_play_number) ?? 0) - (num(b.game_play_number) ?? 0)).map((r) => play(r, wpByN.get(num(r.game_play_number))))
-    const periods = Math.max(4, ...plays.map((p) => p.period))
+    const reg = scheduleRegulation(s, league)
+    const periods = Math.max(reg.periods, ...plays.map((p) => p.period))
     const wp0 = rows.play_wp[0]
     const p0 = rows.pbp[0]
     const side = (ha: 'home' | 'away'): NbaSide => {
@@ -186,8 +207,8 @@ export function fromDataApi(rows: DataApiGameRows): NbaGame {
     return {
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
-        date: s.date, venue: s.venue_full_name ?? null, periods,
+        date: s.date, venue: s.venue_full_name ?? null, periods, season: num(s.season), regulation: reg.periods, periodKind: reg.kind,
         prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
-        home: side('home'), away: side('away'), plays, hasOvertime: periods > 4,
+        home: side('home'), away: side('away'), plays, hasOvertime: periods > reg.periods,
     }
 }

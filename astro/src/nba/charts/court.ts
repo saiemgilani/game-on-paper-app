@@ -1,5 +1,6 @@
 import { select } from "d3-selection";
-import { courtLines, viewport, zoneLines, type Viewport } from "../data/court";
+import { COURT, courtLines, viewport, zoneLines, type Viewport } from "../data/court";
+import type { Court } from "../../basketball/config";
 import { setViewBox, TOKENS, type G } from "./theme";
 
 /** Charts show the half court from the baseline up to 35 ft, hoop at the bottom (the 2021 orientation). */
@@ -22,11 +23,11 @@ export interface CourtOptions {
   zones?: boolean;
 }
 
-export function drawCourt(g: G, v: Viewport, { zones = false }: { zones?: boolean } = {}): void {
+export function drawCourt(g: G, v: Viewport, { zones = false, court = COURT }: { zones?: boolean; court?: Court } = {}): void {
   g.append("g")
     .attr("class", "court")
     .selectAll("path")
-    .data(courtLines(v))
+    .data(courtLines(v, court))
     .join("path")
     .attr("d", (l) => l.d)
     .style("fill", "none")
@@ -38,7 +39,7 @@ export function drawCourt(g: G, v: Viewport, { zones = false }: { zones?: boolea
   g.append("g")
     .attr("class", "zones")
     .selectAll("path")
-    .data(zoneLines(v))
+    .data(zoneLines(v, court))
     .join("path")
     .attr("d", (l) => l.d)
     .style("fill", "none")
@@ -50,10 +51,10 @@ export function drawCourt(g: G, v: Viewport, { zones = false }: { zones?: boolea
 
 export const COURT_VIEWBOX = { width: DEFAULT_WIDTH, height: courtViewport().height };
 
-export function renderCourt(svg: SVGSVGElement, { width, zones }: CourtOptions): () => void {
+export function renderCourt(svg: SVGSVGElement, { width, zones, court }: CourtOptions & { court?: Court }): () => void {
   const v = courtViewport(width);
   const root = select(svg).append("g");
-  drawCourt(root, v, { zones });
+  drawCourt(root, v, { zones, court });
   setViewBox(svg, v.width, v.height);
   return () => root.remove();
 }

@@ -5,12 +5,20 @@
  * `strict`, so a route can tell an outage (503) from an empty table (404).
  */
 import { retrieveRows } from './sdv';
+import { BASKETBALL } from '../basketball/config';
+import type { BasketballLeague } from '../utils/league';
 
 /** League-wide rows are good for the ingest cadence; a subject's rows follow the football player page. */
 export const SEASON_TTL = 6 * 60 * 60;
 export const SUBJECT_TTL = 60 * 60;
 /** The API's cap; every season-level read asks for it so no row is silently dropped. */
 const LIMIT = '50000';
+
+/** Regular season only: `<prefix>%` on game_id where the league's ids carry one (stats.nba.com '002'). Key order is the cache key's. */
+const regularOnly = (league: BasketballLeague): Record<string, string> => {
+    const p = BASKETBALL[league].regularGameIdPrefix;
+    return p ? { game_id__like: `${p}%` } : {};
+};
 
 /** retrieveRows, but a page that hit the cap is truncated data behind a 200: fail loud (the routes' 503). */
 async function read<T>(...args: Parameters<typeof retrieveRows>): Promise<T[]> {
@@ -88,41 +96,41 @@ export interface ShotApiRow {
     shot_result: 'Made' | 'Missed';
 }
 
-export function retrieveLeagueContextRows(season: number): Promise<LeagueContextRow[]> {
-    return read<LeagueContextRow>('nba', 'shot_league_context', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+export function retrieveLeagueContextRows(season: number, league: BasketballLeague = 'nba'): Promise<LeagueContextRow[]> {
+    return read<LeagueContextRow>(league, 'shot_league_context', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
-export function retrieveSeasonPlayerRows(season: number): Promise<SeasonPlayerRow[]> {
-    return read<SeasonPlayerRow>('nba', 'shot_season_players', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+export function retrieveSeasonPlayerRows(season: number, league: BasketballLeague = 'nba'): Promise<SeasonPlayerRow[]> {
+    return read<SeasonPlayerRow>(league, 'shot_season_players', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
-/** Regular season only (game_id prefix 002), the lite columns only. */
-export function retrievePlayerShots(season: number, personId: number): Promise<ShotApiRow[]> {
-    return read<ShotApiRow>('nba', 'shots', {
-        season: String(season), person_id: String(personId), game_id__like: '002%',
+/** Regular season only (the league's game_id prefix, 002 for the NBA), the lite columns only. */
+export function retrievePlayerShots(season: number, personId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
+    return read<ShotApiRow>(league, 'shots', {
+        season: String(season), person_id: String(personId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
     }, SUBJECT_TTL, true);
 }
 
 /** A team's regular-season shots, the lite columns only (the team page's dashboard and line). */
-export function retrieveTeamShots(season: number, teamId: number): Promise<ShotApiRow[]> {
-    return read<ShotApiRow>('nba', 'shots', {
-        season: String(season), team_id: String(teamId), game_id__like: '002%',
+export function retrieveTeamShots(season: number, teamId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
+    return read<ShotApiRow>(league, 'shots', {
+        season: String(season), team_id: String(teamId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
     }, SUBJECT_TTL, true);
 }
 
-export function retrievePlayerGameRows(season: number, personId: number): Promise<PlayerGameRow[]> {
-    return read<PlayerGameRow>('nba', 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
+export function retrievePlayerGameRows(season: number, personId: number, league: BasketballLeague = 'nba'): Promise<PlayerGameRow[]> {
+    return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
 }
 
 /** Every player's game rows for the season (the leaders page's input; ~25k rows, under the cap). */
-export function retrieveSeasonPlayerGameRows(season: number): Promise<PlayerGameRow[]> {
-    return read<PlayerGameRow>('nba', 'shot_player_games', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+export function retrieveSeasonPlayerGameRows(season: number, league: BasketballLeague = 'nba'): Promise<PlayerGameRow[]> {
+    return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
 /** Every season he took a regular-season shot in, ascending (the season picker). */
-export async function retrievePlayerSeasons(personId: number): Promise<number[]> {
-    const rows = await read<{ season: number }>('nba', 'shot_season_players', { person_id: String(personId), select: 'season', limit: LIMIT }, SEASON_TTL, true);
+export async function retrievePlayerSeasons(personId: number, league: BasketballLeague = 'nba'): Promise<number[]> {
+    const rows = await read<{ season: number }>(league, 'shot_season_players', { person_id: String(personId), select: 'season', limit: LIMIT }, SEASON_TTL, true);
     return [...new Set(rows.map((r) => Number(r.season)))].sort((a, b) => a - b);
 }

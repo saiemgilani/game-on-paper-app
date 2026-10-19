@@ -379,3 +379,19 @@ written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cel
 and caption).
 
 **To regenerate:** repeat the two requests with the current `teamSplitColumns`.
+
+## `nba/pregame_401898403.json`
+A real *scheduled* NBA game page: Cleveland at Orlando (401898403), 2026-27
+preseason, `STATUS_SCHEDULED`, tip 2026-10-13T23:00Z.
+
+**Provenance (2026-10-12):** captured from
+`cdn.espn.com/core/nba/playbyplay?gameId=401898403&xhr=1&render=false&userab=18`
+(the body `retrieveGamePage` returns) with the `requestESPN` User-Agent, then
+trimmed to `{ gameId, gamepackageJSON: { header } }` (the only part the NBA
+pregame path reads). No hand edits inside `header`.
+
+**Used by:** `test/nba/byteIdentity.render.test.ts` (the `pregame` state; spec
+D15: real fixtures only).
+
+**To regenerate:** do not; the snapshot pins this exact page. A new capture
+needs a new id and a new snapshot in its own PR.

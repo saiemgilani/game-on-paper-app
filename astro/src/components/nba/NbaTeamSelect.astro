@@ -4,9 +4,12 @@
 // then the season's teams by tricode; the Nets default and the current season drop out of the URL.
 import type { Team } from '../../nba/data/teams';
 import { withParams } from '../../nba/links';
+import { basketball } from '../../basketball/config';
+import { leaguePath } from '../../utils/league';
 interface Props { teams: Team[]; team: string; season: number; defaults: { season: string; team: string }; id?: string }
 const { teams, team, season, defaults, id = 'nba-team' } = Astro.props;
-const href = (t: string) => withParams('/nba/players', { season: String(season), team: t }, defaults);
+const league = basketball(Astro.locals.league).league;
+const href = (t: string) => withParams(leaguePath(league, '/players'), { season: String(season), team: t }, defaults);
 ---
 <label class="visually-hidden" for={id}>Team</label>
 <select id={id} class="form-select form-select-md" onchange="window.location.href = this.value">

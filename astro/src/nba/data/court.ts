@@ -1,4 +1,5 @@
 import type { Zone } from "./aggregate";
+import type { Court } from "../../basketball/config";
 
 /**
  * NBA half court in the legacy shot frame (`x_legacy`/`y_legacy`): tenths of a foot, hoop centre
@@ -20,8 +21,9 @@ export const COURT = {
   threeRadius: 237.5, // 23.75 ft arc
 } as const;
 
-/** Height where the corner three meets the arc (~89.5, i.e. ~9 ft above the rim line). */
-export const THREE_BREAK_Y = Math.sqrt(COURT.threeRadius ** 2 - COURT.threeCornerX ** 2);
+/** Height where the corner three meets the arc (NBA ~89.5, i.e. ~9 ft above the rim line). */
+export const threeBreakY = (court: Court = COURT) => Math.sqrt(court.threeRadius ** 2 - court.threeCornerX ** 2);
+export const THREE_BREAK_Y = threeBreakY(COURT);
 
 export interface Point {
   x: number;
@@ -41,6 +43,7 @@ export interface Viewport {
   pad: number;
 }
 
+// ponytail: the frame (50 ft wide, rim 63 in off the baseline) is every league's; only the markings vary
 export function viewport(width: number, top: number = COURT.halfCourtY, pad = 0): Viewport {
   const scale = width / (2 * (COURT.halfWidth + pad));
   return { width, height: (top - COURT.baselineY + pad) * scale, scale, top, pad };
@@ -81,29 +84,29 @@ function path(points: Point[], v: Viewport, close = false): string {
 }
 
 /** Court markings as pixel paths for `v`, drawn from the legacy-frame geometry above. */
-export function courtLines(v: Viewport): CourtLine[] {
-  const { halfWidth: w, baselineY: base, halfCourtY: half, laneHalfWidth: lane, freeThrowY: ft } = COURT;
-  const cornerAngle = Math.atan2(THREE_BREAK_Y, COURT.threeCornerX);
+export function courtLines(v: Viewport, court: Court = COURT): CourtLine[] {
+  const { halfWidth: w, baselineY: base, halfCourtY: half, laneHalfWidth: lane, freeThrowY: ft } = court;
+  const cornerAngle = Math.atan2(threeBreakY(court), court.threeCornerX);
   return [
     { name: "boundary", d: path([{ x: -w, y: v.top }, { x: -w, y: base }, { x: w, y: base }, { x: w, y: v.top }], v) },
     { name: "half-court", d: path([{ x: -w, y: half }, { x: w, y: half }], v) },
-    { name: "centre-circle", d: path(arc(0, half, COURT.circleRadius, Math.PI, 2 * Math.PI), v) },
+    { name: "centre-circle", d: path(arc(0, half, court.circleRadius, Math.PI, 2 * Math.PI), v) },
     { name: "paint", d: path([{ x: -lane, y: base }, { x: -lane, y: ft }, { x: lane, y: ft }, { x: lane, y: base }], v) },
-    { name: "free-throw-circle", d: path(arc(0, ft, COURT.circleRadius, 0, Math.PI), v) },
-    { name: "free-throw-circle-inner", d: path(arc(0, ft, COURT.circleRadius, Math.PI, 2 * Math.PI), v), dashed: true },
-    { name: "restricted-area", d: path(arc(0, 0, COURT.restrictedRadius, 0, Math.PI), v) },
+    { name: "free-throw-circle", d: path(arc(0, ft, court.circleRadius, 0, Math.PI), v) },
+    { name: "free-throw-circle-inner", d: path(arc(0, ft, court.circleRadius, Math.PI, 2 * Math.PI), v), dashed: true },
+    { name: "restricted-area", d: path(arc(0, 0, court.restrictedRadius, 0, Math.PI), v) },
     {
       name: "backboard",
-      d: path([{ x: -COURT.backboardHalfWidth, y: COURT.backboardY }, { x: COURT.backboardHalfWidth, y: COURT.backboardY }], v),
+      d: path([{ x: -court.backboardHalfWidth, y: court.backboardY }, { x: court.backboardHalfWidth, y: court.backboardY }], v),
     },
-    { name: "rim", d: path(arc(0, 0, COURT.rimRadius, 0, 2 * Math.PI, 24), v, true) },
+    { name: "rim", d: path(arc(0, 0, court.rimRadius, 0, 2 * Math.PI, 24), v, true) },
     {
       name: "three-point-line",
       d: path(
         [
-          { x: -COURT.threeCornerX, y: base },
-          ...arc(0, 0, COURT.threeRadius, Math.PI - cornerAngle, cornerAngle, 64),
-          { x: COURT.threeCornerX, y: base },
+          { x: -court.threeCornerX, y: base },
+          ...arc(0, 0, court.threeRadius, Math.PI - cornerAngle, cornerAngle, 64),
+          { x: court.threeCornerX, y: base },
         ],
         v,
       ),
@@ -112,19 +115,19 @@ export function courtLines(v: Viewport): CourtLine[] {
 }
 
 /** Zone boundaries for `zoneOf`: restricted arc, paint, three-point line and the corner breaks. */
-export function zoneLines(v: Viewport): CourtLine[] {
+export function zoneLines(v: Viewport, court: Court = COURT): CourtLine[] {
   const keep = new Set(["restricted-area", "paint", "three-point-line"]);
   const breaks = [-1, 1].map((side) => ({
     name: side < 0 ? "corner-break-left" : "corner-break-right",
     d: path(
       [
-        { x: side * COURT.threeCornerX, y: THREE_BREAK_Y },
-        { x: side * COURT.halfWidth, y: THREE_BREAK_Y },
+        { x: side * court.threeCornerX, y: threeBreakY(court) },
+        { x: side * court.halfWidth, y: threeBreakY(court) },
       ],
       v,
     ),
   }));
-  return [...courtLines(v).filter((l) => keep.has(l.name)), ...breaks];
+  return [...courtLines(v, court).filter((l) => keep.has(l.name)), ...breaks];
 }
 
 export interface ZoneArea {
@@ -138,18 +141,18 @@ export interface ZoneArea {
 }
 
 /** The six `zoneOf` zones as fillable areas, cut off at the viewport top. */
-export function zoneAreas(v: Viewport): ZoneArea[] {
-  const { halfWidth: w, baselineY: base, laneHalfWidth: lane, freeThrowY: ft, threeCornerX: cx } = COURT;
-  const b = THREE_BREAK_Y;
+export function zoneAreas(v: Viewport, court: Court = COURT): ZoneArea[] {
+  const { halfWidth: w, baselineY: base, laneHalfWidth: lane, freeThrowY: ft, threeCornerX: cx } = court;
+  const b = threeBreakY(court);
   const cornerAngle = Math.atan2(b, cx);
-  const rim = arc(0, 0, COURT.restrictedRadius, 0, 2 * Math.PI, 48);
+  const rim = arc(0, 0, court.restrictedRadius, 0, 2 * Math.PI, 48);
   const paint = [
     { x: -lane, y: base },
     { x: -lane, y: ft },
     { x: lane, y: ft },
     { x: lane, y: base },
   ];
-  const insideThree = [{ x: -cx, y: base }, ...arc(0, 0, COURT.threeRadius, Math.PI - cornerAngle, cornerAngle, 64), { x: cx, y: base }];
+  const insideThree = [{ x: -cx, y: base }, ...arc(0, 0, court.threeRadius, Math.PI - cornerAngle, cornerAngle, 64), { x: cx, y: base }];
   const corner = (side: number) => [
     { x: side * w, y: base },
     { x: side * w, y: b },
@@ -161,7 +164,7 @@ export function zoneAreas(v: Viewport): ZoneArea[] {
     { x: -w, y: v.top },
     { x: w, y: v.top },
     { x: w, y: b },
-    ...arc(0, 0, COURT.threeRadius, cornerAngle, Math.PI - cornerAngle, 64),
+    ...arc(0, 0, court.threeRadius, cornerAngle, Math.PI - cornerAngle, 64),
   ];
   const at = (x: number, y: number) => toSvg({ x, y }, v);
   const cornerLabelX = (w + cx) / 2;

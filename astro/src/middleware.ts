@@ -12,6 +12,7 @@ import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
+import { LEAGUES, PREFIXED_LEAGUES } from './utils/league';
 import { isCoachBoardPath } from './utils/coaches';
 import { isPlayerPath } from './utils/players';
 
@@ -128,12 +129,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // same job the /admin block does below -- not a route rewrite: the URL and
   // the page file stay one-to-one.
   const effectivePath = previewRewrite ? new URL(previewRewrite, url).pathname : url.pathname;
-  if ((effectivePath === '/nfl' || effectivePath.startsWith('/nfl/')) && !isFeatureEnabled('nfl', context.locals)) {
-    previewRewrite = '/404';
-  }
-  // The NBA surface is its own 'preview' namespace (utils/features.ts), gated the same way.
-  if ((effectivePath === '/nba' || effectivePath.startsWith('/nba/')) && !isFeatureEnabled('nba', context.locals)) {
-    previewRewrite = '/404';
+  // Each prefixed league (the NFL, every basketball league) is its own 'preview' namespace, gated by the
+  // flag named after its slug: a viewer without access gets the site's 404 for the whole prefix.
+  for (const lg of PREFIXED_LEAGUES) {
+    const prefix = LEAGUES[lg].urlPrefix;
+    if ((effectivePath === prefix || effectivePath.startsWith(prefix + '/')) && !isFeatureEnabled(lg, context.locals)) {
+      previewRewrite = '/404';
+    }
   }
   // The head-coach boards are a 'preview' feature of their own, for both
   // leagues -- the same namespace gate, so a public /coaches or

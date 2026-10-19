@@ -1,5 +1,6 @@
 from functools import wraps
 import math
+from typing import Any
 
 from flask import Flask, request, jsonify, Response, g
 from datetime import datetime as dt, timezone as tz
@@ -677,24 +678,42 @@ def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
 
-@app.route("/nba/<int(min=100000,max=999999999999):game_id>/process", methods=["GET"])
-@require_auth_token
-def process_nba(game_id: int):
-    """One NBA game for the Astro game page: sdv-py's game_page_frames as JSON.
+# Basketball leagues the processor serves, one /<league>/<id>/process rule each. Deliberately not in _PROCESSORS
+# (those are the football *PlayProcess classes with participants knobs): the football routes are untouched.
+# module/fetch/helper name the sdv-py ESPN fetch and parse; frames_kwargs is what game_page_frames is called with
+# (the NBA uses its defaults).
+BASKETBALL_PROCESSORS: dict[str, dict[str, Any]] = {
+    "nba": {"module": "sportsdataverse.nba.nba_pbp", "fetch": "espn_nba_pbp", "helper": "helper_nba_pbp", "frames_kwargs": {}},
+}
 
-    Deliberately not in _PROCESSORS (those are the football *PlayProcess classes with
-    participants knobs); the football routes are untouched by this function. The id
-    converter bounds the id to 6-12 digits, so a malformed id 404s before any ESPN call
+
+def _regulation_periods(summary: dict) -> int | None:
+    """ESPN's per-game regulation (4 quarters, 2 halves) from the summary's top-level `format`."""
+    try:
+        return int(((summary.get("format") or {}).get("regulation") or {}).get("periods"))
+    # AttributeError: a non-dict `format` / `format.regulation` is "unknown", not a whole-game 500
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def _process_basketball(league: str, game_id: int):
+    """One game for the Astro basketball game page: sdv-py's game_page_frames as JSON.
+
+    The id converter bounds the id to 6-12 digits, so a malformed id 404s before any ESPN call
     (and cannot overflow polars' i32 downstream).
     """
+    import importlib
+
     from sportsdataverse.errors import AssetFetchError, NoDataError
     from sportsdataverse.nba.nba_game_page import game_page_frames
-    from sportsdataverse.nba.nba_pbp import espn_nba_pbp, helper_nba_pbp
 
     from nba_game import build_payload
 
+    spec = BASKETBALL_PROCESSORS[league]
+    pbp_module = importlib.import_module(spec["module"])
+    fetch_pbp, parse_pbp = getattr(pbp_module, spec["fetch"]), getattr(pbp_module, spec["helper"])  # looked up per call: tests monkeypatch them
     timings: dict = {}
-    g.gop_meta = {"game_id": str(game_id), "league": "nba"}
+    g.gop_meta = {"game_id": str(game_id), "league": league}
     log = logging.getLogger("root")
 
     def upstream(ok: bool, status, error=None):
@@ -702,7 +721,7 @@ def process_nba(game_id: int):
             "upstream_log",
             {
                 "service": "python",
-                "target": "espn_nba_pbp",
+                "target": spec["fetch"],
                 "status": status,
                 "duration_ms": timings.get("espn_fetch_ms"),
                 "ok": ok,
@@ -718,16 +737,16 @@ def process_nba(game_id: int):
     fetched = False
     try:
         with stage(timings, "espn_fetch"):
-            summary = espn_nba_pbp(game_id, raw=True)  # the one ESPN fetch; keys defaulted, nothing parsed
+            summary = fetch_pbp(game_id, raw=True)  # the one ESPN fetch; keys defaulted, nothing parsed
         fetched = True
         upstream(True, 200)
         if not summary.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
             return failed({"status": "bad", "message": "No plays available for this game yet."}, 404)
         with stage(timings, "parse"):
-            final = helper_nba_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
+            final = parse_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
         with stage(timings, "process"):
-            frames = game_page_frames(final)
-        payload = build_payload(game_id, final, frames)
+            frames = game_page_frames(final, **spec["frames_kwargs"])
+        payload = build_payload(game_id, final, frames, _regulation_periods(summary))
         g.gop_meta = {**g.gop_meta, "render_outcome": "ok", "timings": timings}
         body = orjson.dumps(
             payload, default=_orjson_default, option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS
@@ -738,16 +757,16 @@ def process_nba(game_id: int):
     except NoDataError as e:  # ESPN answered 404: a clean "nothing here", not a bug in this service
         if not fetched:
             upstream(True, 404)
-        log.info("nba %s: ESPN has no data: %s", game_id, e)
+        log.info("%s %s: ESPN has no data: %s", league, game_id, e)
         return failed({"status": "bad", "message": "No data available for this game."}, 404)
     except AssetFetchError as e:  # the fetch FAILED (rate limit, outage): answer unknown, not a stack trace
         upstream(False, None, ("AssetFetchError: %s" % (e,))[:500])
-        log.warning("nba %s: ESPN fetch failed: %s", game_id, e)
+        log.warning("%s %s: ESPN fetch failed: %s", league, game_id, e)
         return failed({"status": "bad", "message": "ESPN is unavailable. Try again shortly."}, 502)
     except KeyError as e:
-        # 502, not the football routes' 404: the page reads an NBA 404 as "no plays yet" and would
+        # 502, not the football routes' 404: the page reads a basketball 404 as "no plays yet" and would
         # cache a pregame page for a live game; a garbled payload is an unknown, so it is not cached
-        log.error("nba %s: malformed ESPN payload, threw 502: %r", game_id, e)
+        log.error("%s %s: malformed ESPN payload, threw 502: %r", league, game_id, e)
         if not fetched:
             upstream(False, None, ("KeyError: %r" % (e,))[:500])
         TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
@@ -755,7 +774,7 @@ def process_nba(game_id: int):
     except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
         import traceback
 
-        log.error("nba %s: processing failed, threw 500: %r", game_id, e)
+        log.error("%s %s: processing failed, threw 500: %r", league, game_id, e)
         TEL.log_error(
             str(e),
             stack="".join(traceback.format_tb(e.__traceback__))[:4000],
@@ -763,6 +782,15 @@ def process_nba(game_id: int):
             game_id=str(game_id),
         )
         return failed({"status": "bad", "message": "Unknown error occurred, check logs."}, 500)
+
+
+for _league in BASKETBALL_PROCESSORS:
+    app.add_url_rule(
+        f"/{_league}/<int(min=100000,max=999999999999):game_id>/process",
+        endpoint=f"process_{_league}",
+        view_func=require_auth_token(lambda game_id, _lg=_league: _process_basketball(_lg, game_id)),
+        methods=["GET"],
+    )
 
 
 def _sources(league: str, game_id: int):
