@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import ErrorPage from '../ErrorPage.astro';
 import NbaGameCard from '../nba/NbaGameCard.astro';
-import { darkLogoCss, shortDay } from '../../nba/scoreboard';
+import { darkLogoCss, hasEspnLogo, shortDay, statusSections } from '../../nba/scoreboard';
 import type { NbaScoreboardPrep } from '../../routes/nba/scoreboard';
 import { basketball } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
@@ -17,40 +17,69 @@ const lp = (p: string) => leaguePath(league, p);
 const firstMonth = DateTime.fromISO(cfg.firstScoreboardDay, { zone: 'utc' }).setLocale('en-US').toFormat('LLLL yyyy');
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scoreboard', active: true }];
 // The route accepts days up to the server's UTC date + 14; the picker's max is the same bound.
-const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors.map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation, season: g.season?.year }))), cfg.darkLogo);
+// a college competitor ESPN has no logo for (team.logo absent) draws TeamRow's default shield, so it gets no dark rule
+const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors.filter((c) => hasEspnLogo(c, league)).map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation, season: g.season?.year }))), cfg.darkLogo);
+const sections = cfg.scoreboardGrouping === 'status' && !('badDate' in data) ? statusSections(data.games) : null;
+const groups = cfg.scoreboardGroups;
+const grp = 'badDate' in data ? null : (data.group ?? null);
+// the default group is never written into a URL: it is what the bare page shows
+const gq = grp && groups && grp !== groups.default ? `group=${encodeURIComponent(grp)}` : '';
+const dayHref = (d: string) => `${lp('/scoreboard')}?date=${d}${gq ? `&${gq}` : ''}`;
+const tonightHref = `${lp('/scoreboard')}${gq ? `?${gq}` : ''}`;
 // A degraded read with no ?date= has no trustworthy day (the route only has the server clock).
 const noDay = !('badDate' in data) && data.degraded && !!data.undated;
 const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 ---
-{'badDate' in data ? (
+{'badDate' in data ? (data.badDate === 'group' ? (
+    <ErrorPage htmlTitle="Bad scoreboard" htmlSubtitle={`${name} scoreboard`} slug={lp('/scoreboard')} humanTitle="That is not a scoreboard we can show."
+        message="Use ?group=top25, all, or a conference from the menu." />
+) : (
     <ErrorPage htmlTitle="Bad date" htmlSubtitle={`${name} scoreboard`} slug={lp('/scoreboard')} humanTitle="That is not a date we can show."
         message={`Use ?date=YYYY-MM-DD for a day between ${firstMonth} and two weeks from today.`} />
-) : (
-    <GenericPage title={`${name} scoreboard${data.isLive || noDay ? '' : `, ${data.nav.label}`} | Game on Paper`}
+)) : (
+    <GenericPage title={`${name} scoreboard${data.isLive || noDay ? '' : `, ${data.nav.label}`}${data.groupLabel && grp !== groups?.default ? `, ${data.groupLabel}` : ''} | Game on Paper`}
         subtitle={`${name} scores${noDay ? '' : ` for ${data.nav.label}`} with win probability, four factors and shot charts for every game.`}
         slug={lp('/scoreboard')} breadcrumbs={breadcrumbs}
         description={`Live ${name} scoreboard with Game on Paper's win probability, four factors, advanced box scores and shot charts for every game.`}
-        canonicalPath={data.isLive || noDay ? lp('/scoreboard') : `${lp('/scoreboard')}?date=${data.day}`}>
+        canonicalPath={data.isLive || noDay ? tonightHref : dayHref(data.day)}>
       <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h1 class="h3 mb-0">{noDay ? 'Scoreboard' : data.isLive ? 'Tonight' : data.nav.label}</h1>
           <div class="d-flex flex-wrap align-items-center gap-2">
-            {!noDay && data.nav.prev >= cfg.firstScoreboardDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={`${lp('/scoreboard')}?date=${data.nav.prev}`} rel="prev">&larr; {shortDay(data.nav.prev)}</a>}
+            {!noDay && data.nav.prev >= cfg.firstScoreboardDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={dayHref(data.nav.prev)} rel="prev">&larr; {shortDay(data.nav.prev)}</a>}
             <form method="get" action={lp('/scoreboard')} class="d-inline-flex align-items-center gap-1">
               <label class="visually-hidden" for="nba-date">Day</label>
               <input id="nba-date" type="date" name="date" class="form-control form-control-sm" value={noDay ? undefined : data.day} min={cfg.firstScoreboardDay} max={maxDay} onchange="this.value && this.checkValidity() && this.form.submit()" />
+              {groups && (<>
+                <label class="visually-hidden" for="nba-group">Games</label>
+                <select id="nba-group" name="group" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                  <option value="top25" selected={grp === 'top25'}>Top 25</option>
+                  <option value="all" selected={grp === 'all'}>Division I</option>
+                  {groups.conferences.map((c) => <option value={c.id} selected={grp === c.id}>{c.label}</option>)}
+                </select>
+              </>)}
               <button type="submit" class="btn btn-sm btn-outline-primary">Go</button>
             </form>
-            {!noDay && data.nav.next <= maxDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={`${lp('/scoreboard')}?date=${data.nav.next}`} rel="next">{shortDay(data.nav.next)} &rarr;</a>}
-            {!data.isLive && <a class="btn btn-sm btn-link text-nowrap" href={lp('/scoreboard')}>Tonight</a>}
+            {!noDay && data.nav.next <= maxDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={dayHref(data.nav.next)} rel="next">{shortDay(data.nav.next)} &rarr;</a>}
+            {!data.isLive && <a class="btn btn-sm btn-link text-nowrap" href={tonightHref}>Tonight</a>}
           </div>
         </div>
         {data.degraded && data.games.length === 0 && <p class="text-muted">The scoreboard is unavailable right now. Please try again shortly.</p>}
         {data.stale && data.games.length > 0 && <p class="text-muted small">Live scores are temporarily unavailable. These are the last saved scores for {data.nav.label}.</p>}
         {!data.degraded && data.games.length === 0 && <p class="text-muted">No games scheduled.</p>}
+        {data.fallbackNote && <p class="text-muted">{data.fallbackNote}</p>}
+        {sections ? (<>
+          <nav aria-label="Jump to games by status" class="mb-2 text-small">{sections.map((s) => <a class="me-3" href={`#${s.key}`}>{s.label} ({s.events.length})</a>)}</nav>
+          {sections.map((s) => (
+            <section id={s.key} aria-labelledby={`${s.key}-heading`}>
+              <h2 id={`${s.key}-heading`} class="h5 mt-3">{s.label}</h2>
+              <div class="row">{s.events.map((g) => <NbaGameCard game={g} />)}</div>
+            </section>
+          ))}
+        </>) : (
         <div class="row">
           {data.games.map((g) => <NbaGameCard game={g} />)}
-        </div>
+        </div>)}
       </div>
       {darkCss && <style set:html={`@media (prefers-color-scheme: dark){${darkCss}}`}></style>}
       <script is:inline>

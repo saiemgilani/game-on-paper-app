@@ -77,6 +77,18 @@ describe('retrieveNbaGameRows', () => {
         expect(nba.find((u) => u.includes('/schedule?'))).toContain('id=401766458');
         expect(nba.every((u) => u.includes('select='))).toBe(true);
     });
+    test('mbb reads player_box without plus_minus and reason (R16: the college source has neither); nba still reads both', async () => {
+        urls.length = 0;
+        const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
+        await retrieveNbaGameRows('401820775', 'mbb');
+        await retrieveNbaGameRows('401766458');
+        const sel = (lg: string) => new URL(urls.find((u) => u.includes(`/v1/${lg}/player_box?`))!).searchParams.get('select')!.split(',');
+        expect(sel('mbb')).not.toContain('plus_minus');
+        expect(sel('mbb')).not.toContain('reason');
+        expect(sel('nba')).toContain('plus_minus');
+        expect(sel('nba')).toContain('reason');
+        expect(sel('mbb')).toEqual(sel('nba').filter((c) => c !== 'plus_minus' && c !== 'reason'));
+    });
 });
 
 describe('requestProcessor cache key', () => {

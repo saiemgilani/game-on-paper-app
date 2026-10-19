@@ -1,0 +1,115 @@
+{
+ "rows": [
+  {
+   "season": 2003,
+   "games": 18,
+   "lined": 0
+  },
+  {
+   "season": 2006,
+   "games": 1104,
+   "lined": 0
+  },
+  {
+   "season": 2007,
+   "games": 1623,
+   "lined": 0
+  },
+  {
+   "season": 2008,
+   "games": 2790,
+   "lined": 0
+  },
+  {
+   "season": 2009,
+   "games": 3650,
+   "lined": 0
+  },
+  {
+   "season": 2010,
+   "games": 3836,
+   "lined": 0
+  },
+  {
+   "season": 2011,
+   "games": 3469,
+   "lined": 0
+  },
+  {
+   "season": 2012,
+   "games": 3448,
+   "lined": 0
+  },
+  {
+   "season": 2013,
+   "games": 3895,
+   "lined": 2729
+  },
+  {
+   "season": 2014,
+   "games": 5084,
+   "lined": 3483
+  },
+  {
+   "season": 2015,
+   "games": 5280,
+   "lined": 3667
+  },
+  {
+   "season": 2016,
+   "games": 5390,
+   "lined": 3755
+  },
+  {
+   "season": 2017,
+   "games": 5479,
+   "lined": 3710
+  },
+  {
+   "season": 2018,
+   "games": 5645,
+   "lined": 3914
+  },
+  {
+   "season": 2019,
+   "games": 5474,
+   "lined": 5012
+  },
+  {
+   "season": 2020,
+   "games": 5394,
+   "lined": 5017
+  },
+  {
+   "season": 2021,
+   "games": 4015,
+   "lined": 3706
+  },
+  {
+   "season": 2022,
+   "games": 5830,
+   "lined": 5296
+  },
+  {
+   "season": 2023,
+   "games": 6116,
+   "lined": 5510
+  },
+  {
+   "season": 2024,
+   "games": 6151,
+   "lined": 0
+  },
+  {
+   "season": 2025,
+   "games": 6136,
+   "lined": 0
+  },
+  {
+   "season": 2026,
+   "games": 6275,
+   "lined": 0
+  }
+ ],
+ "linesFromSeason": 2013
+}

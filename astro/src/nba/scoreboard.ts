@@ -3,7 +3,8 @@
 import { DateTime } from 'luxon';
 import type { ESPNCompetitor, ESPNScheduleEvent, ESPNStatus } from '../resources/espn';
 import { FIRST_SEASON } from './seasonRange';
-import type { DarkLogoStrategy, PeriodKind } from '../basketball/config';
+import type { DarkLogoStrategy, PeriodKind, ScoreboardGroups } from '../basketball/config';
+import { espnLogoLeague, type League } from '../utils/league';
 import { endOfPeriodText, finalText, periodShort } from '../basketball/periods';
 
 const LIVE = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME'];
@@ -89,6 +90,53 @@ export function darkLogoCss(
         else if (strategy.abbrs.has(ab)) seen.set(id, ab);
     }
     return [...seen].map(([id, key]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${strategy.logoLeague}/500-dark/${key}.png&h=120&w=120')}`).join('');
+}
+
+export interface ScoreboardGroupChoice { key: string; espn: string | null; label: string }
+/**
+ * The ?group= contract for a league with scoreboard groups (spec D3): absent / 'top25' is ESPN's ungrouped board (the games with
+ * a ranked team), 'all' its every-team group, or one of ESPN's conference ids. Anything else is null (a 400 before any upstream
+ * call, so junk never mints a cache key).
+ */
+export function scoreboardGroupOf(groups: ScoreboardGroups, raw: string | null): ScoreboardGroupChoice | null {
+    if (raw == null || raw === '' || raw === groups.default) return { key: groups.default, espn: null, label: 'Top 25' };
+    if (raw === 'all') return { key: 'all', espn: groups.all, label: 'Division I' };
+    const c = groups.conferences.find((g) => g.id === raw);
+    return c ? { key: c.id, espn: c.id, label: c.label } : null;
+}
+
+/** The scoreboard keys no card reads; a D-I day drops from 2.73 MB to 1.77 MB of events (2024-11-04, 199 games). */
+export function trimScoreboardEvents(events: ESPNScheduleEvent[]): ESPNScheduleEvent[] {
+    return events.map((e) => {
+        const { links: _l, ...rest } = e as ESPNScheduleEvent & { links?: unknown };
+        return {
+            ...rest,
+            competitions: e.competitions.map((c) => {
+                const { highlights: _h, headlines: _hd, geoBroadcasts: _g, ...cr } = c as typeof c & { highlights?: unknown; headlines?: unknown; geoBroadcasts?: unknown };
+                return { ...cr, competitors: c.competitors.map(({ statistics: _s, linescores: _ls, ...r }: any) => r) };
+            }),
+        } as ESPNScheduleEvent;
+    });
+}
+
+/** ESPN gives a college competitor `team.logo` exactly when its logo exists (435 teams measured 2026-10-12); others draw the default shield. */
+export function hasEspnLogo(c: { team?: { logo?: unknown } } | undefined, league: League): boolean {
+    return espnLogoLeague(league) !== 'ncaa' || !!c?.team?.logo;
+}
+
+export type StatusSectionKey = 'live' | 'upcoming' | 'final';
+export interface StatusSection { key: StatusSectionKey; label: 'Live' | 'Upcoming' | 'Final'; events: ESPNScheduleEvent[] }
+const SECTIONS = [['live', 'Live'], ['upcoming', 'Upcoming'], ['final', 'Final']] as const;
+/**
+ * D36: a day's games by ESPN's status state (`in` live, `pre` upcoming, anything else final, including postponed and
+ * cancelled, whose card shows its own status line). Non-empty sections only, in that order; ESPN's order inside each.
+ */
+export function statusSections(events: ESPNScheduleEvent[]): StatusSection[] {
+    const keyOf = (e: ESPNScheduleEvent): StatusSectionKey => {
+        const state = ((e.competitions[0]?.status ?? e.status) as { type?: { state?: string } } | undefined)?.type?.state; // as the card reads it
+        return state === 'in' ? 'live' : state === 'pre' ? 'upcoming' : 'final';
+    };
+    return SECTIONS.map(([key, label]) => ({ key, label, events: events.filter((e) => keyOf(e) === key) })).filter((s) => s.events.length > 0);
 }
 
 /** The scoreboard competitor's leaders block: points, rebounds, assists as '26 C. Anthony'. */

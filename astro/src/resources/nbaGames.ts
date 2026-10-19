@@ -2,7 +2,7 @@
 import { retrieveRowsFrom } from './sdv';
 import { requestProcessor, ProcessorError } from './python';
 import { BASKETBALL } from '../basketball/config';
-import { LEAGUES, type BasketballLeague } from '../utils/league';
+import { LEAGUES, PRO_LEAGUES, type BasketballLeague } from '../utils/league';
 import { isTrue, type DataApiGameRows, type NbaProcessorPayload } from './nbaGame';
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -20,6 +20,10 @@ const SEL = {
     game_team_rates: 'team_id,efg_pct,tov_pct,orb_pct,ft_rate,possessions,off_rtg,def_rtg,pace,total_turnovers,game_minutes',
     game_player_rates: 'athlete_id,team_id,ts_pct,usg_pct',
 } as const;
+
+/** College box scores carry no plus-minus and no DNP reason at the source (hoopR-mbb-data player_box), so a college read leaves both out. */
+export const playerBoxSelect = (league: BasketballLeague): string =>
+    PRO_LEAGUES.includes(league) ? SEL.player_box : SEL.player_box.split(',').filter((c) => c !== 'plus_minus' && c !== 'reason').join(',');
 
 type Row = Record<string, any>;
 
@@ -51,7 +55,7 @@ export async function retrieveNbaGameRows(id: string, league: BasketballLeague =
         readSchedule(id, league),
         get('pbp', q({ select: SEL.pbp, order: 'game_play_number' })),
         get('team_box', q({ select: SEL.team_box })),
-        get('player_box', q({ select: SEL.player_box })),
+        get('player_box', q({ select: playerBoxSelect(league) })),
         get('play_wp', q({ select: SEL.play_wp, order: 'game_play_number' })),
         get('game_team_rates', q({ select: SEL.game_team_rates })),
         get('game_player_rates', q({ select: SEL.game_player_rates })),
