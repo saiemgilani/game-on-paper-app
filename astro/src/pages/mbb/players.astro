@@ -1,0 +1,16 @@
+---
+// src/pages/mbb/players.astro: one team at a time (?team=<ESPN team id>); without one, the pickers and a prompt
+import NbaPlayersRoute from '../../components/routes/NbaPlayersRoute.astro';
+import { prepareBasketballPlayers } from '../../routes/basketball/players';
+import { unavailable } from '../../routes/basketball/cache';
+
+const r = await prepareBasketballPlayers(Astro, 'mbb');
+if ('unavailable' in r) {
+    return unavailable('mbb');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaPlayersRoute data={r} />
