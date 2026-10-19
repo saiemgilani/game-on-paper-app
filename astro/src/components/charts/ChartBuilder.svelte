@@ -2,6 +2,7 @@
     import Chart from 'chart.js/auto';
     import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
+    import { chartGridColor } from '../../resources/chart';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite, escapeHtml } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
@@ -88,6 +89,10 @@
     let summary = $state('');
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
+        // the grid rule all the site's Chart.js axes share, from the page's text colour
+        const gridColor = chartGridColor(getComputedStyle(document.body).color, isDarkMode);
+        // the axis lines take the zero line's colour; unset, Chart.js draws them near-black, invisible in dark mode
+        const axisBorder = { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" };
         const minX = Math.min(...chartedPoints.map((t: any) => t.x))
         const maxX = Math.max(...chartedPoints.map((t: any) => t.x))
         const minY = Math.min(...chartedPoints.map((t: any) => t.y))
@@ -299,12 +304,13 @@
                 scales: {
                     x: {
                         reverse: shouldFlipXAxis,
+                        border: axisBorder,
                         grid: {
                             color: (line) => {
                                 if (line.tick.value == 0) {
                                     return (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
                                 }
-                                return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                                return gridColor
                             },
                         },
                         title: {
@@ -313,8 +319,7 @@
                             color: (isDarkMode) ? '#e8e6e3' : '#525252',
                             font: {
                                 size: getAxisTitleSizeForViewport(viewport),
-                                family: '"Chivo", "Fira Mono", serif',
-                                style: "oblique"
+                                family: '"Chivo", "Fira Mono", serif'
                             }
                         },
                         type: 'linear',
@@ -325,12 +330,13 @@
                     },
                     y: {
                         reverse: shouldFlipYAxis,
+                        border: axisBorder,
                         grid: {
                             color: (line) => {
                                 if (line.tick.value == 0) {
                                     return (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
                                 }
-                                return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                                return gridColor
                             },
                         },
                         title: {
@@ -339,8 +345,7 @@
                             color: (isDarkMode) ? '#e8e6e3' : '#525252',
                             font: {
                                 size: getAxisTitleSizeForViewport(viewport),
-                                family: '"Chivo", "Fira Mono", serif',
-                                style: "oblique"
+                                family: '"Chivo", "Fira Mono", serif'
                             }
                         },
                         type: 'linear',
