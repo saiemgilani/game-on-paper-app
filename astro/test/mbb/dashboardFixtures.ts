@@ -1,11 +1,14 @@
 // Readers for the real MBB dashboard fixtures (fixtures/mbb/dashboards, plan 2026-10-11-mbb-shots-gop Task 2).
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import type { LeagueContextRow, PlayerGameRow, SeasonPlayerRow, ShotApiRow } from '../../src/resources/nbaShots';
 
 export const TEX = 251;
 export function readFix<T>(name: string): T {
-    const bytes = readFileSync(new URL(`../fixtures/mbb/dashboards/${name}`, import.meta.url));
+    // a path, not `new URL(…, import.meta.url)`: under `@vitest-environment jsdom` Vite rewrites that form to a web asset URL
+    const bytes = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../fixtures/mbb/dashboards', name));
     return JSON.parse((name.endsWith('.gz') ? gunzipSync(bytes) : bytes).toString('utf8')) as T;
 }
 export type FixtureShotRow = ShotApiRow & { season: number };

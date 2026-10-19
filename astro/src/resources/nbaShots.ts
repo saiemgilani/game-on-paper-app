@@ -128,9 +128,15 @@ export function retrievePlayerGameRows(season: number, personId: number, league:
     return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
 }
 
-/** Every player's game rows for the season (the leaders page's input; ~25k rows, under the cap). */
-export function retrieveSeasonPlayerGameRows(season: number, league: BasketballLeague = 'nba'): Promise<PlayerGameRow[]> {
-    return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+/** Every player's game rows for the season (the NBA leaders page's input; ~25k rows, under the cap), or from `since` on (a college league's restricted read, D26). */
+export function retrieveSeasonPlayerGameRows(season: number, league: BasketballLeague = 'nba', since?: string): Promise<PlayerGameRow[]> {
+    return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), ...(since ? { game_date__gte: since } : {}), limit: LIMIT }, SEASON_TTL, true);
+}
+
+/** The season's latest player-game date (YYYY-MM-DD), one row; null for a season with none. */
+export async function retrieveLatestGameDate(season: number, league: BasketballLeague): Promise<string | null> {
+    const rows = await read<{ game_date: string | null }>(league, 'shot_player_games', { season: String(season), select: 'game_date', order: '-game_date', limit: '1' }, SEASON_TTL, true);
+    return rows[0]?.game_date ?? null;
 }
 
 /** Every season he took a regular-season shot in, ascending (the season picker). */

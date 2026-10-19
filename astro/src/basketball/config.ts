@@ -108,7 +108,11 @@ export interface BasketballConfig {
     shotFirstSeason?: number;
     /** D25: the source has no PIE (college box scores), so its column, header item and sort key are hidden. */
     hidePie?: true;
-    /** D26: the leaders page reads only the last `days` days of player games (a season-wide read is over the API's 50,000-row cap) and offers these windows. */
+    /**
+     * D26: the leaders page reads only the last `days` days of player games (a season-wide read is over the API's 50,000-row cap)
+     * and offers these windows. `days` counts inclusive dates (R-P4): the read is [latest - (days - 1), latest], so 49 is the
+     * latest game date and the 48 before it; never subtract `days` itself.
+     */
     leadersRead?: { days: number; windows: readonly LeaderWindow[] };
     /** D43/D47: the current season's members (a committed table), for the sitemap and current-season team links, which make no API read. */
     currentMembers?: { season: number; ids: readonly number[] };
