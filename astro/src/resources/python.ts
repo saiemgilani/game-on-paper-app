@@ -1110,8 +1110,12 @@ export interface ProcessedGame {
     paperIndex?: {
         homeShare: number
         margins: Record<string, number>
+        /** per margin, its push on homeShare in log-odds (weight x margin); same keys as margins */
+        impact?: Record<string, number>
+        /** per margin, its importance in the model (weight x spread); the table's tie-break after impact */
+        importance?: Record<string, number>
         teams: Record<string, Record<string, number>>
-        byPeriod: Record<string, { homeShare: number; margins: Record<string, number> }>
+        byPeriod: Record<string, { homeShare: number; margins: Record<string, number>; impact?: Record<string, number> }>
     }
     winprobability: ESPNWinProbability[]
     homeTeamSpread: number
