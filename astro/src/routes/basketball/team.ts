@@ -7,7 +7,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL, courtFor, placeholderFor } from '../../basketball/config';
-import { isNcaaDashboards, withSeasonMembers } from '../../basketball/dashboards';
+import { isNcaaDashboards, memberSeasonsOf, withSeasonMembers } from '../../basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../nba/adapters';
 import { buildDashboard, type DashboardData } from '../../nba/dashboard';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
@@ -58,6 +58,9 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const mode = parseMode(Astro.url.searchParams.get('mode'));
 
     const coverageP = readCoverageNote(league, season);
+    // college (D43/D47, R7): membership decides the page, so its two reads start beside the identity reads
+    const membershipP = isNcaaDashboards(league) ? Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]) : null;
+    membershipP?.catch(() => {}); // handled below; this only keeps an early unavailable return from leaving an unhandled rejection
     const reads = await Promise.allSettled([retrieveSeasonPlayerRows(season, league), retrieveLeagueContextRows(season, league), retrieveTeamShots(season, teamId, league)]);
     const [playersR, contextR, shotsR] = reads;
     for (const [name, r] of [['season players', playersR], ['league context', contextR], ['team shots', shotsR]] as const) {
@@ -73,34 +76,37 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === teamId);
     const shots = shotsFromRows(shotsR.value);
     const coverage = await coverageP;
-    if (!team || shots.length === 0) {
-        // college (D43/D47, R7): a season MEMBER with no linked shot is a page that says so; a non-member (Hartford 2026: ESPN
-        // lists it, no conference row) is a 404. The membership reads happen only on this branch. The NBA/WNBA keep the 404.
-        let member: Team | undefined;
-        if (isNcaaDashboards(league) && !team && shots.length === 0) {
-            try {
-                const [c, games] = await Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]);
-                member = withSeasonMembers([], c.teams, games, season, league).find((t) => t.team_id === teamId);
-            } catch (e: any) {
-                console.error(`ERROR while reading the ${league} ${season} membership for team ${teamId}: ${e}, ${e?.stack}`);
-            }
+    const hasShots = team !== undefined && shots.length > 0;
+    let member: Team | undefined = team;
+    if (membershipP) {
+        // a season MEMBER with no linked shot is a page that says so; a non-member is a 404 with or without shots (Hartford 2026:
+        // ESPN lists it, no conference row), as the index leaves it out. A failed read is the 503 (R-P12): never "gone".
+        try {
+            const [c, games] = await membershipP;
+            member = withSeasonMembers(team ? [team] : [], c.teams, games, season, league).find((t) => t.team_id === teamId);
+        } catch (e: any) {
+            console.error(`ERROR while reading the ${league} ${season} membership for team ${teamId}: ${e}, ${e?.stack}`);
+            uncacheable(Astro);
+            return { unavailable: true };
         }
-        if (!member) {
-            uncacheable(Astro); // a failed membership read is a 404 that is never cached
-            return { notFound: true };
-        }
-        setCache(Astro, playerCache(league));
-        if (coverage === undefined) uncacheable(Astro);
-        return { ...resolved, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
+    }
+    if (!member || (!membershipP && !hasShots)) {
+        uncacheable(Astro);
+        return { notFound: true };
     }
     setCache(Astro, playerCache(league));
-    // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them
-    const own = BASKETBALL[league].teams.seasonsOf(teamId, season);
     if (coverage === undefined) uncacheable(Astro);
+    // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
+    // college: the team's member seasons (R-P11)
+    const own = memberSeasonsOf(league, teamId, season, resolved.seasons) ?? BASKETBALL[league].teams.seasonsOf(teamId, season);
+    const seasons = own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons;
+    if (!hasShots) {
+        return { ...resolved, seasons, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
+    }
     return {
         ...resolved,
-        seasons: own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons,
-        team,
+        seasons,
+        team: member,
         line: shootingLine(shots),
         roster: sortRosterRows(rosterRows(rows, teamId), sort, dir, mode),
         dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value), courtFor(league, season), placeholderFor(league, season)),

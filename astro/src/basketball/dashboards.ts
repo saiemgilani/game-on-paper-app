@@ -124,3 +124,15 @@ export function withSeasonMembers(teams: readonly Team[], groupRows: readonly Te
     }
     return out;
 }
+
+/**
+ * R-P11: which of `seasons` a college team's season picker offers (and the players page carries ?team= into): its member
+ * seasons from the committed table, plus `season` itself (the page's own read decided it) and any season after the table.
+ * undefined for a league without the table (the NBA/WNBA keep TeamModule.seasonsOf).
+ */
+export function memberSeasonsOf(league: BasketballLeague, teamId: number, season: number, seasons: readonly number[]): number[] | undefined {
+    const table = BASKETBALL[league].memberSeasons;
+    if (!table) return undefined;
+    const own = table.seasons.get(teamId) ?? [];
+    return seasons.filter((s) => s === season || s > table.through || own.includes(s));
+}

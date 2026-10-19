@@ -24,7 +24,7 @@ const byIdPlayers = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
 const scope = dashboardScope(league, season);
 const title = `${name} teams, ${label} shooting | Game on Paper`;
-const subtitle = `Every team's ${label} ${scope.adj} shooting line, from ${scope.source}, with a shot chart and roster for each.`;
+const subtitle = `Every team's ${label} ${scope.adj} shooting line, from ${scope.source}, with a shot chart and roster for each${byIdPlayers ? ' team with linked shots' : ''}.`;
 const here = lp(landing ? '/' : '/teams');
 const breadcrumbs: PageBreadcrumb[] = landing
     ? [{ title: name, active: true }]

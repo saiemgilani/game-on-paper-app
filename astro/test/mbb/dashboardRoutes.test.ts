@@ -2,7 +2,7 @@
 // The team and player loaders read the college tables and build with the season's NCAA court.
 import { describe, expect, test, vi } from 'vitest';
 import { courtFor } from '../../src/basketball/config';
-import { TEX, leagueContext, p19, p26, player2019Games, player2026Games, player2026Seasons, player2026Shots, seasonPlayers, texShots } from './dashboardFixtures';
+import { TEX, conferences, leagueContext, p19, p26, player2019Games, player2026Games, player2026Seasons, player2026Shots, scheduleTeams, seasonPlayers, texShots } from './dashboardFixtures';
 
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
@@ -14,7 +14,9 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     retrievePlayerGameRows: async (s: number) => (s === 2026 ? player2026Games() : player2019Games()),
     retrievePlayerSeasons: async () => [...new Set(player2026Seasons().map((r) => Number(r.season)))].sort((a, b) => a - b),
     retrieveCoverageRows: async () => [],
-    retrieveConferenceRows: async () => ({ teams: [], groups: [] }),
+    // the team page checks the season's membership (D43/D47; Task 5 fix round)
+    retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as 2019 | 2021 | 2026), groups: [] }),
+    retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as 2019 | 2021 | 2026),
 }));
 const fakeAstro = (path: string, params: Record<string, string>) =>
     ({ params, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;

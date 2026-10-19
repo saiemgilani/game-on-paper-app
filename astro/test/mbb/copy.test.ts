@@ -79,7 +79,9 @@ describe('PIE hidden and USG% labelled (D25)', () => {
             retrieveLeagueContextRows: async () => leagueContext(2026),
             retrieveTeamShots: async () => texShots(2026),
             retrieveCoverageRows: async () => coverage(),
-            retrieveConferenceRows: async () => ({ teams: [], groups: [] }),
+            // the team page checks the season's membership (D43/D47; Task 5 fix round)
+            retrieveConferenceRows: async () => ({ teams: conferences(2026), groups: [] }),
+            retrieveScheduleTeamRows: async () => scheduleTeams(2026),
         }));
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         const astro = { params: { id: String(TEX) }, url: new URL(`https://gameonpaper.com/mbb/team/${TEX}?sort=pie`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;

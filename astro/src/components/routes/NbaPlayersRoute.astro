@@ -9,7 +9,7 @@ import NbaTeamSelect from '../nba/NbaTeamSelect.astro';
 import { withParams } from '../../nba/links';
 import type { NbaPlayersParams } from '../../routes/nba/players';
 import { basketball, seasonLabelFor } from '../../basketball/config';
-import { dashboardScope } from '../../basketball/dashboards';
+import { dashboardScope, memberSeasonsOf } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayersParams }
@@ -25,8 +25,9 @@ const title = `${name} players, ${label} shooting | Game on Paper`;
 const subtitle = `${scope.adj[0].toUpperCase()}${scope.adj.slice(1)} field-goal attempts from ${scope.source} for ${who}, ${label}${selected ? '; FGA, FG%, eFG% and 3P% count the selected team only' : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', active: true }];
 const params = { season: String(season), team };
-// the team rides only to its franchise's seasons: ?team=PDX in 2026 is not carried to 2002, where 1611661327 is the old Fire
-const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : undefined;
+// the team rides only to its franchise's seasons: ?team=PDX in 2026 is not carried to 2002, where 1611661327 is the old Fire;
+// a college team only to its member seasons (R-P11)
+const teamSeasons = selected ? (memberSeasonsOf(league, selected.team_id, season, seasons) ?? cfg.teams.seasonsOf(selected.team_id, season)) : undefined;
 ---
 <GenericPage title={title} subtitle={subtitle} slug={lp('/players')} breadcrumbs={breadcrumbs} canonicalPath={withParams(lp('/players'), params, defaults)}>
   <div class="container">
@@ -42,7 +43,7 @@ const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : u
     </div>
     <div class="row mb-3">
       <div class="col-12">
-        {needsTeam ? (<p class="text-muted">Choose a team to list its players.</p>) : rows.length === 0
+        {needsTeam && teams.length > 0 ? (<p class="text-muted">Choose a team to list its players.</p>) : rows.length === 0
           ? (<p class="text-muted">{selected ? `No ${scope.adj} shots for ${who} in ${label} yet.` : `No ${scope.adj} shots in ${label} yet.`}</p>)
           : (<Fragment>
               <NbaNameFilter tableId="nba-players" count={rows.length} />

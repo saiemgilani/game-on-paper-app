@@ -66,7 +66,7 @@ export async function prepareBasketballPlayers(Astro: AstroGlobal, league: Baske
     if (rows.length === 0) {
         // not ingested yet: the empty page (readBasketballSeasonRows already made it uncacheable)
         if (coverage === undefined) uncacheable(Astro);
-        return { ...resolved, teams: [], selected: null, team: byId ? requested : requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir, ...(byId ? { byId: true as const } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
+        return { ...resolved, teams: [], selected: null, team: byId ? requested : requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir, ...(byId ? { byId: true as const } : {}), ...(byId && requested === '' ? { needsTeam: true as const } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
     }
     const teams = teamsFromSeasonRows(rows, season, league);
     if (byId && requested === '') {
