@@ -60,7 +60,7 @@ const impactLevel = (v: number) => IMPACT_STEPS.filter((s) => Math.abs(v) >= s).
 const LEVEL_WORDS = ["", "slightly", "clearly", "strongly"];
 // arrows bolded (Akshay on #306): bootstrap-icons pins `.bi::before { font-weight: normal !important }`,
 // so fw-bold can't reach the glyph; the arrow cell's inherited -webkit-text-stroke thickens it instead
-// this game's impact, largest push either way first (Akshay on #306, from user feedback); ties by
+// this game's signed impact, most positive first down to most negative (Akshay on #306); ties by
 // the model's importance (weight x spread, python/paper_index.py IMPORTANCE), then display order
 // (stable sort). Rows without an impact or importance sort after those with one.
 const marginRows = MARGINS
@@ -70,11 +70,11 @@ const marginRows = MARGINS
         const level = v == null ? 0 : impactLevel(v);
         return {
             label, value: format(m[k]), pos: m[k] >= 0, importance: importance?.[k] ?? null,
-            size: v == null ? null : Math.abs(v), level, up: v != null && v > 0,
+            signed: v, level, up: v != null && v > 0,
             impactText: v == null ? "not measured" : level ? `${LEVEL_WORDS[level]} ${v > 0 ? "helped" : "hurt"} ${homeTeam.abbreviation}` : "little impact",
         };
     })
-    .sort((a, b) => Number(a.size == null) - Number(b.size == null) || (b.size ?? 0) - (a.size ?? 0)
+    .sort((a, b) => Number(a.signed == null) - Number(b.signed == null) || (b.signed ?? 0) - (a.signed ?? 0)
         || Number(a.importance == null) - Number(b.importance == null) || (b.importance ?? 0) - (a.importance ?? 0));
 // per-window strip, canonical order; a missing window simply doesn't render
 const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];

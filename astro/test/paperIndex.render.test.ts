@@ -1,7 +1,7 @@
 /**
  * The Deserved Win % margins table with the producer's per-margin impact
  * (python/paper_index.py `share_from_inputs` -> `impact`) shown as bold arrows,
- * rows sorted by the size of that impact, ties in the model's importance order
+ * rows sorted by the signed impact (most positive first), ties in the model's importance order
  * (`compute` -> `importance`).
  *
  * The fixture is the real `/cfb/400869270/process` body, which predates
@@ -75,27 +75,27 @@ const arrows = (row: string) => {
 };
 
 describe('Deserved Win %: margin impact', () => {
-    test('rows by impact, largest either way first; impact as one to three bold arrows or an em-dash, no percents', async () => {
+    test('rows by signed impact, most positive first; impact as one to three bold arrows or an em-dash, no percents', async () => {
         expect(Object.keys(IMPACT).sort()).toEqual(Object.keys(game.paperIndex.margins).sort());
         const { html, headers, rows, rowHtml } = await render({ ...game.paperIndex, impact: IMPACT, importance: IMPORTANCE });
         expect(headers).toEqual(['Margin', '', 'Impact']);
         const body = rows.slice(1);
         expect(body.map((r) => r[0])).toEqual([
-            'Field position (EP)', 'Explosiveness (EPA/success)', 'Opportunity Conversion Rate', 'Turnovers',
-            'Success Rate', 'Explosive Play Rate', 'Points per opportunity', 'Havoc Rate',
+            'Field position (EP)', 'Turnovers', 'Havoc Rate', 'Points per opportunity',
+            'Explosive Play Rate', 'Success Rate', 'Opportunity Conversion Rate', 'Explosiveness (EPA/success)',
         ]);
-        // |IMPACT|: fp +2.42, epa -1.91, conv -0.98, TO +0.60, success -0.30, explosive -0.17, ppo -0.09, havoc -0.05
+        // IMPACT, signed desc: fp +2.42, TO +0.60, havoc -0.05, ppo -0.09, explosive -0.17, success -0.30, conv -0.98, epa -1.91
         expect(rowHtml.slice(1).map((r) => { const a = arrows(r); return a.dash ? '—' : a.up ? `up${a.up}` : `down${a.down}`; }))
-            .toEqual(['up3', 'down3', 'down2', 'up1', 'down1', '—', '—', '—']);
+            .toEqual(['up3', 'up1', '—', '—', '—', 'down1', 'down2', 'down3']);
         expect(body.map((r) => r[2])).toEqual([
-            'strongly helped TEX', 'strongly hurt TEX', 'clearly hurt TEX', 'slightly helped TEX',
-            'slightly hurt TEX', '— little impact', '— little impact', '— little impact',
+            'strongly helped TEX', 'slightly helped TEX', '— little impact', '— little impact',
+            '— little impact', 'slightly hurt TEX', 'clearly hurt TEX', 'strongly hurt TEX',
         ].map((t) => t.replace('TEX', homeTeam.abbreviation)));
         expect(body.every((r) => !r[2].includes('%'))).toBe(true);
         expect(arrows(rowHtml[1]).style).toContain('var(--bs-green)');
-        expect(arrows(rowHtml[2]).style).toContain('var(--bs-purple)');
+        expect(arrows(rowHtml[8]).style).toContain('var(--bs-purple)');
         expect(arrows(rowHtml[1]).style).toContain('-webkit-text-stroke');
-        expect(arrows(rowHtml[6]).style).toContain('text-muted');
+        expect(arrows(rowHtml[3]).style).toContain('text-muted');
         expect(caption(html)).toBe(CAPTION);
     }, 30_000);
 
@@ -125,13 +125,13 @@ describe('Deserved Win %: margin impact', () => {
         const order = async (importance?: Record<string, number>) =>
             (await render({ ...game.paperIndex, impact, importance })).rows.slice(1).map((r) => r[0]);
         expect(await order(IMPORTANCE)).toEqual([
-            'Success Rate', 'Explosiveness (EPA/success)', 'Explosive Play Rate',
-            'Field position (EP)', 'Turnovers', 'Points per opportunity', 'Havoc Rate',
+            'Success Rate', 'Explosiveness (EPA/success)', 'Field position (EP)', 'Turnovers',
+            'Points per opportunity', 'Havoc Rate', 'Explosive Play Rate',
             'Opportunity Conversion Rate',
         ]);
         expect(await order()).toEqual([
-            'Success Rate', 'Explosive Play Rate', 'Explosiveness (EPA/success)',
-            'Points per opportunity', 'Field position (EP)', 'Havoc Rate', 'Turnovers',
+            'Success Rate', 'Explosiveness (EPA/success)', 'Points per opportunity',
+            'Field position (EP)', 'Havoc Rate', 'Turnovers', 'Explosive Play Rate',
             'Opportunity Conversion Rate',
         ]);
     }, 30_000);
