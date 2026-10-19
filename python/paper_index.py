@@ -105,6 +105,36 @@ WEIGHTS = {
     },
 }
 
+# Each margin's importance in the model: its weight times the standard
+# deviation of that margin over the league's train games (log-odds per SD),
+# so margins on different scales compare. The game page sorts the margins
+# table by each game's impact and breaks ties by this. Measured 2026-10-18 for the
+# WEIGHTS above on the trainer's current train panel (cfb 6,648 games, nfl
+# 1,615); tools/fit_paper_index.py records it as provenance["importance"]
+# and prints it on every refit, so paste it alongside the weights.
+IMPORTANCE = {
+    "cfb": {
+        "success": 2.8484,
+        "explosive": 0.1217,
+        "explosive_epa": 1.1618,
+        "opp_conversion": 1.1390,
+        "pts_per_opp": 0.4604,
+        "field_position": 1.4995,
+        "havoc": 0.4481,
+        "turnovers": 1.0590,
+    },
+    "nfl": {
+        "success": 0.7734,
+        "explosive": 0.0524,
+        "explosive_epa": 0.4561,
+        "opp_conversion": 0.6040,
+        "pts_per_opp": 0.6887,
+        "field_position": 0.8294,
+        "havoc": 0.4280,
+        "turnovers": 0.8587,
+    },
+}
+
 # A league without its own fit gets no index rather than another league's
 # weights wearing its name.
 FITTED_LEAGUES = frozenset(WEIGHTS)
@@ -283,7 +313,12 @@ def add_start_ep(
 def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     """Margins + the logistic share, from two team_inputs() dicts.
 
-    The returned margins are the league's FITTED inputs only (weight > 0)."""
+    The returned margins are the league's FITTED inputs only (weight > 0).
+    `impact` holds, per fitted margin, its push on the share in log-odds:
+    weight * margin, positive when it helped the home team. They add up to
+    the logistic's input, logit(homeShare), and unlike a change in the share
+    itself they do not flatten out in a blowout, where every margin's
+    percentage-point move is near zero."""
     margins = {
         "success": home["successRate"] - away["successRate"],
         "explosive": home["explosiveRate"] - away["explosiveRate"],
@@ -302,7 +337,10 @@ def share_from_inputs(home: dict, away: dict, league: str = "cfb") -> dict:
     # only the fitted inputs: a margin pinned to zero at fit time carries no
     # weight in the share, so it is not reported as one of its factors
     fitted = {k: v for k, v in margins.items() if weights[k] > 0}
-    return {"homeShare": 1.0 / (1.0 + math.exp(-z)), "margins": fitted}
+
+    impact = {k: weights[k] * v for k, v in fitted.items()}
+    share = 1.0 / (1.0 + math.exp(-z))
+    return {"homeShare": share, "margins": fitted, "impact": impact}
 
 
 def by_period(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict:
@@ -340,6 +378,7 @@ def compute(frame: pl.DataFrame, home_id, away_id, league: str = "cfb") -> dict 
     if home is None or away is None:
         return None
     out = share_from_inputs(home, away, league)
+    out["importance"] = {k: IMPORTANCE[league][k] for k in out["margins"]}
     out["teams"] = {str(home_id): home, str(away_id): away}
     try:
         out["byPeriod"] = by_period(frame, home_id, away_id, league)

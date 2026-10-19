@@ -132,8 +132,11 @@ describe.each([
         await render(league, id, true);
         const { teamSummaryColumns } = await import('../src/resources/sdv');
         const { fiveFactorColumns } = await import('../src/utils/fiveFactors');
-        expect(feed.calls).toHaveLength(1);
-        expect(feed.calls[0].columns).toEqual([...teamSummaryColumns(league), ...fiveFactorColumns()]);
+        // `preview: true` turns every preview flag on, so the page also makes the
+        // season-wide nearby-ranks read (no team_id); this is about the team's own row
+        const own = feed.calls.filter((c) => c.team_id !== undefined);
+        expect(own).toHaveLength(1);
+        expect(own[0].columns).toEqual([...teamSummaryColumns(league), ...fiveFactorColumns()]);
     }, 60_000);
 });
 
