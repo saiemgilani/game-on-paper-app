@@ -5,13 +5,15 @@
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
-import { teamHref } from '../../nba/links';
+import { teamHref, withParams } from '../../nba/links';
+import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaTeamsParams } from '../../routes/nba/teams';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
-interface Props { data: NbaTeamsParams }
-const { season, seasons, current, q, teams, lines } = Astro.props.data;
+interface Props { data: NbaTeamsParams; landing?: boolean }
+const { data, landing = false } = Astro.props;
+const { season, seasons, current, q, teams, lines } = data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -19,15 +21,27 @@ const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
 const title = `${name} teams, ${label} shooting | Game on Paper`;
 const subtitle = `Every team's ${label} regular-season shooting line, from ${cfg.statsSourceLabel} play-by-play, with a shot chart and roster for each.`;
-const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Teams', active: true }];
+const here = lp(landing ? '/' : '/teams');
+const breadcrumbs: PageBreadcrumb[] = landing
+    ? [{ title: name, active: true }]
+    : [{ title: name, url: lp('/'), active: false }, { title: 'Teams', active: true }];
 ---
-<GenericPage title={title} subtitle={subtitle} slug={lp('/teams')} breadcrumbs={breadcrumbs} canonicalPath={`${lp('/teams')}${q}`}>
+<GenericPage title={title} subtitle={subtitle} slug={here} breadcrumbs={breadcrumbs} canonicalPath={`${here}${q}`}>
   <div class="container">
     <div class="row mb-3">
       <div class="col-12">
-        <h1 class="h3">Teams, {label}</h1>
+        <h1 class="h3">{landing ? `${name} teams, ${label}` : `Teams, ${label}`}</h1>
+        {data.unlocated && <p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>}
         <p class="text-muted">{subtitle}</p>
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/teams')} />
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} />
+        {landing && (
+          <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+            <a href={lp('/scoreboard')}>Scoreboard &rarr;</a>
+            <a href={withParams(lp('/players'), { season: String(season) }, { season: String(current) })}>All players &rarr;</a>
+            <a href={withParams(lp('/scatter'), { season: String(season) }, { season: String(current) })}>Scatter &rarr;</a>
+            <a href={withParams(lp('/leaders'), { season: String(season) }, { season: String(current) })}>Leaders &rarr;</a>
+          </div>
+        )}
       </div>
     </div>
     {teams.length === 0 && (<p class="text-muted">No regular-season shots in {label} yet.</p>)}

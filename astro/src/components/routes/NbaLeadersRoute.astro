@@ -32,7 +32,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row">
       <div class="col-12">
         {boards
-          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} />)
+          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} />)
           : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
       </div>
     </div>

@@ -5,7 +5,8 @@
     import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
     import { playerHref } from '../../nba/links';
-    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars } = $props();
+    import type { BasketballLeague } from '../../utils/league';
+    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba' }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
     let n = $state<LeaderWindow>(10);
@@ -21,7 +22,7 @@
     <tr class:fw-bold={r.team_id === netsTeamId}>
         <td class="numeral">{r.rank}</td>
         <td class="text-truncate">
-            <a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>
+            <a href={playerHref(r.person_id, seasonQuery, league)}>{r.name}</a>
             <span class="d-block d-md-none small fw-normal text-muted">last game {fmtDate(r.window.to)}</span>
         </td>
         <td class="text-muted">{r.team}</td>

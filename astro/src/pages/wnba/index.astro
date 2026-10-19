@@ -1,10 +1,14 @@
 ---
-// /wnba: BASKETBALL.wnba.landing is 'teams-index', which plan #6 builds (it reads the wnba_stats shot tables). Until then the
-// scoreboard is the landing. Never cached, so plan #6's page is not hidden behind a held redirect.
-import { uncacheable } from '../../routes/basketball/cache';
-import { leaguePath } from '../../utils/league';
+// /wnba: BASKETBALL.wnba.landing is 'teams-index' (spec §3.4): the season's teams with their shooting lines, plus links to
+// the scoreboard and the other shooting pages. /wnba/teams is the same list under the Header's Teams entry.
+import NbaTeamsRoute from '../../components/routes/NbaTeamsRoute.astro';
+import { prepareBasketballTeams } from '../../routes/basketball/teams';
+import { unavailable } from '../../routes/basketball/cache';
 
-Astro.locals.league = 'wnba';
-uncacheable(Astro);
-return new Response(null, { status: 302, headers: { Location: leaguePath('wnba', '/scoreboard'), 'Cache-Control': 'no-store' } });
+const r = await prepareBasketballTeams(Astro, 'wnba', { landing: true });
+if ('unavailable' in r) {
+    return unavailable('wnba');
+}
 ---
+
+<NbaTeamsRoute data={r} landing />
