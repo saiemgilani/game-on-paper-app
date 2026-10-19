@@ -290,6 +290,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // ESPN's women's cdn board reads the singular `group=` like the men's: none = Top 25, 50 = all of D-I (Decision 1)
         scoreboardGroups: { default: 'top25', all: '50', conferences: WBB_CONFERENCES },
         espnRimPlaceholder: true,
+        // sdv-py load_ncaa_wbb_shots floor: stats.ncaa.org shot charts from 2018-19 (the scoreboard keeps 2003-2026)
+        shotFirstSeason: 2019,
+        // D25: plan #7's season line is box-score based and its pie is NULL
+        hidePie: true,
+        // D26, measured (plans/2026-10-11-wbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
+        // (inclusive dates) of WBB player games holds at most 40,983 rows, under the 50,000 cap
+        leadersRead: { days: 49, windows: [5, 10] },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json)
         gamesInScope: wbbGamesInScope,
         // D39 (R12): ESPN's WBB summaries carry lines from 2025-26 only (Decision 8's sample)
