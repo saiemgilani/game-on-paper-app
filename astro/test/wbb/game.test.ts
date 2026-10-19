@@ -19,13 +19,14 @@ const RELEASE_SCORE_ROWS: Record<string, number[]> = {};
  * Measured on the local warehouse 2026-10-19: wehoop-wbb-data's schedules carry `*_linescores` / `*_records` only from 2024 and
  * its team box `fast_break_points` / `points_in_paint` only from 2024, so a halves-era game reads null / empty where the processor
  * reads ESPN's values. 2008's release `total_rebounds` also counts team rebounds (Stanford 55 = 50 + 5, Yale 33 = 32 + 1) and
- * its player box has no minutes (null where the processor has 0). Exactly these differ: a new gap or a fixed one fails the test.
+ * its player box has no minutes where the processor has ESPN's 0s; the adapters read that as not recorded (R-W16), so both are
+ * null and minutes no longer differ. Exactly these differ: a new gap or a fixed one fails the test.
  */
-const RELEASE_FIELD_GAPS: Record<string, { fields: string[]; minutesNull?: Record<'home' | 'away', number[]> }> = {
+const RELEASE_FIELD_GAPS: Record<string, { fields: string[]; minutesUnrecorded?: true }> = {
     '400550784': { fields: ['box.fast_break_points', 'box.points_in_paint', 'linescores', 'records'] },
     '273130043': {
-        fields: ['box.fast_break_points', 'box.points_in_paint', 'box.total_rebounds', 'linescores', 'players.minutes', 'records'],
-        minutesNull: { home: [6696, 6698, 6699, 6704, 7436], away: [4896, 5210, 5934, 7186, 7435] },
+        fields: ['box.fast_break_points', 'box.points_in_paint', 'box.total_rebounds', 'linescores', 'records'],
+        minutesUnrecorded: true,
     },
 };
 
@@ -88,10 +89,9 @@ describe.each(GAMES)('wbb $id ($label): processor and Data API', (g) => {
             if (gap.fields.includes('box.total_rebounds')) {
                 expect(api[side].box!.total_rebounds, side).toBe(proc[side].box!.total_rebounds! + teamRebounds(proc, side));
             }
-            if (gap.minutesNull) {
-                const off = api[side].players.filter((r) => r.minutes !== proc[side].players.find((x) => x.athlete_id === r.athlete_id)!.minutes);
-                expect(off.map((r) => r.athlete_id).sort((x, y) => x - y), side).toEqual(gap.minutesNull[side]);
-                for (const r of off) expect([r.minutes, proc[side].players.find((x) => x.athlete_id === r.athlete_id)!.minutes]).toEqual([null, 0]);
+            if (gap.minutesUnrecorded) {
+                // R-W16: the release's null and the processor's ESPN 0s both read as not recorded
+                for (const x of [api, proc]) expect(x[side].players.map((r) => r.minutes), side).toEqual(x[side].players.map(() => null));
             }
         }
     });
@@ -123,6 +123,22 @@ describe('D12: before 2009 the turnover rates are null from both sources, never 
                 expect([r.tov_pct, r.possessions, r.off_rtg, r.def_rtg, r.pace, r.total_turnovers], `${x.source} ${side}`).toEqual([null, null, null, null, null, null]);
                 expect(r.efg_pct, `${x.source} ${side}`).not.toBeNull();
                 expect(x[side].players.filter((p) => !p.did_not_play).every((p) => p.usg_pct === null), `${x.source} ${side}`).toBe(true);
+            }
+        }
+    });
+    test("R-W16: ESPN's 2008 0s for turnovers and minutes read as not recorded (null) from both adapters; 2026 keeps its numbers", () => {
+        for (const x of [fromProcessor(read('game_273130043_processor'), 'wbb'), fromDataApi(read('game_273130043_api'), 'wbb')]) {
+            for (const side of ['home', 'away'] as const) {
+                const b = x[side].box!;
+                expect([b.turnovers, b.team_turnovers, b.total_turnovers], `${x.source} ${side}`).toEqual([null, null, null]);
+                expect(x[side].players.every((p) => p.turnovers === null && p.minutes === null), `${x.source} ${side}`).toBe(true);
+                expect(b.steals, `${x.source} ${side}`).not.toBeNull(); // only the unrecorded counts are blanked
+            }
+        }
+        for (const x of [fromProcessor(read('game_401827362_processor'), 'wbb'), fromDataApi(read('game_401827362_api'), 'wbb')]) {
+            for (const side of ['home', 'away'] as const) {
+                expect(typeof x[side].box!.total_turnovers, `${x.source} ${side}`).toBe('number');
+                expect(x[side].players.some((p) => (p.minutes ?? 0) > 0), `${x.source} ${side}`).toBe(true);
             }
         }
     });

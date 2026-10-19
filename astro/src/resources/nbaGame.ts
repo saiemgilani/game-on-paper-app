@@ -172,6 +172,24 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
 const eraAbbreviation = (league: BasketballLeague, id: unknown, season: number | null, abbr: string): string =>
     (league === 'wnba' ? wnbaEraTricode(Number(id), season) : undefined) ?? abbr
 
+/**
+ * R-W16: "not recorded" read from the data, not from a season constant. Early college boxes (ESPN's 2008 WBB box, D12) send 0
+ * for counts nobody kept. A final in which every player who has a minutes value shows 0 recorded no minutes; a team whose box
+ * says 0 turnovers while sdv-py nulled its rates' total_turnovers (the D12 signal) recorded no turnovers. Those become null, so
+ * the page shows a dash. No NBA, WNBA or MBB fixture matches either signature (test/wbb/game.render.test.ts pins the 2008 game).
+ */
+function blankUnrecorded(g: NbaGame): NbaGame {
+    if (!g.status.completed) return g // a live game at the tip really has 0 minutes and 0 turnovers
+    const mins = [g.home, g.away].flatMap((s) => s.players.map((p) => p.minutes)).filter((m) => m != null)
+    const noMinutes = mins.length > 0 && mins.every((m) => m === 0)
+    for (const s of [g.home, g.away]) {
+        const noTurnovers = s.box?.total_turnovers === 0 && s.rates?.total_turnovers == null
+        if (noTurnovers) s.box = { ...s.box!, turnovers: null, team_turnovers: null, total_turnovers: null }
+        if (noMinutes || noTurnovers) s.players = s.players.map((p) => ({ ...p, minutes: noMinutes ? null : p.minutes, turnovers: noTurnovers ? null : p.turnovers }))
+    }
+    return g
+}
+
 export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague = 'nba'): NbaGame {
     const comp = j.header.competitions[0]
     const season = j.header?.season?.year ?? null
@@ -187,13 +205,13 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague =
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)
-    return {
+    return blankUnrecorded({
         id: String(j.gameId), source: 'processor',
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
-    }
+    })
 }
 
 export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'nba'): NbaGame {
@@ -215,11 +233,11 @@ export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'n
             players: rows.player_box.filter((p) => num(p.team_id) === tid).map((p) => playerRow({ ...p, ...(prates.get(num(p.athlete_id)) ?? {}) })),
         }
     }
-    return {
+    return blankUnrecorded({
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
         date: s.date, venue: s.venue_full_name ?? null, periods, season: num(s.season), regulation: reg.periods, periodKind: reg.kind,
         prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: priorSource(wp0.prior_source), homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
         home: side('home'), away: side('away'), plays, hasOvertime: periods > reg.periods,
-    }
+    })
 }
