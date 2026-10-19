@@ -41,6 +41,7 @@ describe('the WBB dashboard fixtures', () => {
         expect([cov(2019).source_shots, cov(2026).source_shots]).toEqual([236067, 708038]); // the release files (plan #7 measured facts)
         expect(Math.min(...coverage().map((r) => r.placed_share))).toBe(cov(2025).placed_share); // the lowest placed share (0.9442)
         expect(cov(2025).placed_share).toBeGreaterThanOrEqual(0.94);
+        expect(cov(2025).placed_share).toBeCloseTo(0.9442, 4);
     });
     test('D25: no college row carries a PIE', () => {
         for (const s of [2019, 2022, 2026] as const) expect(seasonPlayers(s).filter((r) => r.pie !== null), String(s)).toEqual([]);
@@ -100,14 +101,19 @@ describe('the WBB dashboard fixtures', () => {
     });
     test('postseason: none in 2020, some in every other season (D23 wording)', () => {
         for (const r of postseasonGames()) expect(r.games > 0, String(r.season)).toBe(r.season !== 2020);
+        expect(postseasonGames().map((r) => r.season)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]);
+        expect(postseasonGames().map((r) => r.games)).toEqual([141, 0, 117, 142, 142, 145, 129, 145]);
     });
     test('D29: no placeholder location in stats.ncaa.org WBB shots', () => {
         for (const r of placeholderCheck()) {
             expect([r.top_x, r.top_y], String(r.season)).toEqual([0, 6]);
-            expect(r.top_share, String(r.season)).toBeGreaterThanOrEqual(0.01); // measured 0.0147-0.0198
             expect(r.top_share, String(r.season)).toBeLessThan(0.05);
-            expect(r.max_team_game_share, String(r.season)).toBeLessThan(0.5); // measured 0.1525-0.2405
+            expect(r.max_team_game_share, String(r.season)).toBeLessThan(0.5);
         }
+        // measured per season 2019-2026: the densest point 0.0147-0.0198 of a season, the busiest team-game 0.1525-0.2405
+        expect(placeholderCheck().map((r) => r.season)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]);
+        expect(placeholderCheck().map((r) => r.top_share)).toEqual([0.0147, 0.0167, 0.0176, 0.0177, 0.0182, 0.0192, 0.0198, 0.0195]);
+        expect(placeholderCheck().map((r) => r.max_team_game_share)).toEqual([0.1525, 0.2055, 0.1746, 0.2159, 0.2, 0.2405, 0.2241, 0.2022]);
     });
     test('measured facts (Task 2 capture, 2026-10-19): a re-capture that moves one is a data change to look at', () => {
         expect(fixtureShotRows()).toHaveLength(254);

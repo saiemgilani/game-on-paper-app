@@ -643,7 +643,7 @@ needs a new id and a new snapshot in its own PR.
   JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on 127.0.0.1) over a local warehouse loaded
   from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` 2019–2026 on 2026-10-12 (ncaa-wbb-hoops-data ff5e192,
   shot files last changed in 523abfd; its 2019 and 2026 shot files hold 236,067 and 708,038 rows = `shot_coverage.source_shots`),
-  `schedule` on 2026-10-12/19 (wehoop-wbb-data b86f451b), `team_group_seasons` / `group_seasons` on 2026-10-19
+  `schedule` on 2026-10-12/19 (wehoop-wbb-data b86f451b; both release commits are as recorded at planning time, since the ingest manifest stores digests and dates, not commits), `team_group_seasons` / `group_seasons` on 2026-10-19
   (sportsdataverse-data `wbb_groups`), the five `wbb.shot_*` tables built by sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12,
   captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows` by person with the six lite columns, by team (South
   Carolina, 2579) with the six plus `person_id` (for the parity test), and no game-id filter (regular season + postseason, D23);
