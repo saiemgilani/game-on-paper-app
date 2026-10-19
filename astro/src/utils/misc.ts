@@ -992,7 +992,7 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 	return (z > 0) ? (1 - Prob) : Prob;
 }
 
-export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number,
+export async function safeCachePut(cache: KVNamespace, key: string, value: string | ArrayBuffer, ttl: number,
                                    metadata?: Record<string, unknown>): Promise<void> {
     try {
         await cache.put(key, value, { expirationTtl: ttl, metadata })
