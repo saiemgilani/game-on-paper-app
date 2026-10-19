@@ -533,3 +533,12 @@ needs a new id and a new snapshot in its own PR.
   neutral, scheduled 2026-11-01T14:30Z) was `STATUS_SCHEDULED` when captured. `mbb/pregame_401920982_summary.json` is `{ pickcenter }` of
   `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401920982` at the same time (no providers yet).
   **Used by:** `test/mbb/gameRoute.test.ts`, `test/mbb/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 1.
+- `mbb/scoreboard-<YYYYMMDD>-<group>.json`: ESPN cdn men's college scoreboards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?<group=…&>xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-18, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed
+  (`links`, `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
+  caching). 2025-02-22: `top25` (no group; 15 events, every one with a ranked team), `all` (`group=50`, 131 events, 8 in overtime,
+  1,318,782 bytes), `g8` (Big 12, 6). 2024-11-04 `g30` (UAC, 8; three opponents ESPN has no logo for: UNTD 126794, AL 484, ARBA 2027).
+  2025-04-06 `top25`: empty (no ranked team played); 2025-04-06 `all` (`group=50`): its one D-I game, unranked (owner ruling D35's
+  real no-ranked-games day). A grouped body has no `sbData.day`. **Used by:** `test/mbb/scoreboardGroups.test.ts`, `test/mbb/scoreboard.test.ts`,
+  `test/mbb/scoreboard.render.test.ts`, `test/mbb/scoreboardRoute.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-mbb-games-gop.md`.

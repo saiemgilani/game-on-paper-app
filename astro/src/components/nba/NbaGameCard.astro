@@ -4,7 +4,7 @@
 // no linescore (the linescore lives on the game page).
 import type { ESPNScheduleEvent } from '../../resources/espn';
 import TeamRow from '../schedule/TeamRow.astro';
-import { gameLeaders, statusLine } from '../../nba/scoreboard';
+import { gameLeaders, hasEspnLogo, statusLine } from '../../nba/scoreboard';
 import { cleanAbbreviation, cx } from '../../utils/misc';
 import { gameHref } from '../../nba/links';
 import { basketball, regulationFor } from '../../basketball/config';
@@ -21,6 +21,8 @@ const state = rawStatus.type.state;
 const status = state === 'pre' ? { ...rawStatus, type: { ...rawStatus.type, name: 'STATUS_SCHEDULED' } } : rawStatus;
 const home = comp.competitors.find((c) => c.homeAway === 'home')!;
 const away = comp.competitors.find((c) => c.homeAway === 'away')!;
+// ESPN has no logo for some non-D-I opponents (and omits team.logo exactly then): TeamRow draws its default shield for id '0'
+const forRow = (c: typeof home) => (hasEspnLogo(c, league) ? c : { ...c, id: '0' });
 const homeScore = Number(home.score ?? 0), awayScore = Number(away.score ?? 0);
 const reg = regulationFor(league, game.season?.year ?? null, comp.format?.regulation?.periods);
 const line = statusLine(rawStatus, reg.periods, reg.kind);
@@ -40,8 +42,8 @@ const awayLine = label(leaders.away), homeLine = label(leaders.home);
                         : <span>{line.text}</span>}
                 </strong>
             </div>
-            <TeamRow espnComp={away} espnStatus={status} winner={awayScore > homeScore} completed={completed} hasBall={false} spacer="" season={game.season?.year} />
-            <TeamRow espnComp={home} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" season={game.season?.year} />
+            <TeamRow espnComp={forRow(away)} espnStatus={status} winner={awayScore > homeScore} completed={completed} hasBall={false} spacer="" season={game.season?.year} />
+            <TeamRow espnComp={forRow(home)} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" season={game.season?.year} />
             {(awayLine || homeLine) && (
                 <p class="small text-muted mb-3 d-none d-md-block">
                     {awayLine && <span class="d-block">{cleanAbbreviation(away.team)}: {awayLine}</span>}

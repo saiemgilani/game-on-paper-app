@@ -6,7 +6,7 @@
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL } from '../../basketball/config';
 import { getScoreboardForDay, type ESPNScheduleEvent } from '../../resources/espn';
-import { dayNav, parseDateParam, sortScoreboard, toEspnDate } from '../../nba/scoreboard';
+import { dayNav, parseDateParam, scoreboardGroupOf, sortScoreboard, toEspnDate } from '../../nba/scoreboard';
 import { setCache, uncacheable } from './cache';
 import { gopStorage } from '../../utils/telemetry';
 import { CACHE_TTL_MULTIPLIER } from '../../utils/config';
@@ -20,8 +20,15 @@ export type BasketballScoreboardParams = {
     stale: boolean;
     /** No ?date= was given. With `degraded` the day is the server's guess, so the page names no date. */
     undated?: boolean;
+    /** A league with scoreboard groups: the ?group= key ('top25' | 'all' | a conference id) and its label. */
+    group?: string; groupLabel?: string;
+    /** D35: the default Top 25 board of the day was empty, so these are that day's all-D-I games. */
+    fallbackNote?: string;
 };
-export type BasketballScoreboardPrep = { badDate: 'format' | 'calendar' | 'range' } | BasketballScoreboardParams;
+export type BasketballScoreboardPrep = { badDate: 'format' | 'calendar' | 'range' | 'group' } | BasketballScoreboardParams;
+
+/** Owner ruling D35: the default view of a day whose Top 25 board has no games (D40: in practice postseason days). */
+export const TOP25_FALLBACK_NOTE = 'No ranked teams play today — showing all Division I';
 
 export function scoreboardCaches(league: BasketballLeague) {
     const refresh = BASKETBALL[league].scoreboardRefresh;
@@ -44,22 +51,36 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
     // ESPN's day, so at most one day looser than the contract).
     const check = parseDateParam(raw, new Date().toISOString().slice(0, 10), cfg.firstScoreboardDay);
     if (!check.ok) { uncacheable(Astro); return { badDate: check.reason }; }
+    // ?group= is validated before any upstream call (a league without groups ignores the param, as today)
+    const groups = cfg.scoreboardGroups;
+    const grp = groups ? scoreboardGroupOf(groups, Astro.url.searchParams.get('group')) : null;
+    if (groups && !grp) { uncacheable(Astro); return { badDate: 'group' }; }
+    const g = grp?.espn ? { group: grp.espn } : null;
 
-    const live = await getScoreboardForDay(league, null);
+    const live = await (g ? getScoreboardForDay(league, null, g) : getScoreboardForDay(league, null));
     const fresh = !live.degraded && !live.stale;
     const date = raw ?? live.day;
     const useLive = raw === null || (fresh && raw === live.day);
     const isLive = useLive && fresh;
-    const board = useLive ? live : await getScoreboardForDay(league, toEspnDate(date), fresh && date < live.day ? (isOld(date, live.day) ? { pastDay: true, oldDay: true } : { pastDay: true }) : {});
+    const datedOpts = fresh && date < live.day ? (isOld(date, live.day) ? { pastDay: true, oldDay: true } : { pastDay: true }) : {};
+    const board = useLive ? live : await getScoreboardForDay(league, toEspnDate(date), { ...datedOpts, ...(g ?? {}) });
     // A WNBA franchise's tricode of that season where it differs from ESPN's (ESPN spells 2005's Detroit Shock "TUL").
     // Keyed by id and season, so a repeat pass over a cached board is a no-op.
     if (league === 'wnba') for (const ev of board.events) for (const c of ev.competitions?.[0]?.competitors ?? []) {
         const tri = wnbaEraTricode(Number(c.id), (ev as any).season?.year);
         if (tri && c.team) c.team.abbreviation = tri;
     }
-    const games = sortScoreboard(board.events);
+    // D35: the default (Top 25) board of the shown day is fresh and empty -> that day's all-D-I board, with a note. Never for an
+    // explicit ?group= (the URL says what the viewer asked for) and never for a league without groups (NBA/WNBA unchanged).
+    let events = board.events, fallbackNote: string | undefined, fallbackFailed = false;
+    if (groups && grp?.key === groups.default && !board.degraded && !board.stale && events.length === 0) {
+        const d = await getScoreboardForDay(league, toEspnDate(date), { ...datedOpts, group: groups.all });
+        if (!d.degraded && d.events.length > 0) { events = d.events; fallbackNote = TOP25_FALLBACK_NOTE; }
+        fallbackFailed = d.degraded; // never cache "No games scheduled." over a D-I read that failed
+    }
+    const games = sortScoreboard(events);
 
-    if (board.degraded || board.stale || (!useLive && !fresh)) {
+    if (board.degraded || board.stale || fallbackFailed || (!useLive && !fresh)) {
         // Not ESPN-confirmed: no cache (a fresh retry beats an hour of a guess) and no telemetry.
         uncacheable(Astro);
     } else if (isLive) {
@@ -69,7 +90,8 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
         // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
         setCache(Astro, date < live.day ? (isOld(date, live.day) ? c.oldDay : c.pastDay) : date === dayNav(live.day).next ? c.live : c.futureDay);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale };
+    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale,
+        ...(grp ? { group: grp.key, groupLabel: grp.label } : {}), ...(fallbackNote ? { fallbackNote } : {}) };
 }
 
 const isOld = (date: string, liveDay: string) => (Date.parse(liveDay) - Date.parse(date)) / 86400000 > OLD_DAY_AFTER_DAYS;

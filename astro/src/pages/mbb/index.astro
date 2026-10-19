@@ -1,0 +1,10 @@
+---
+// /mbb: BASKETBALL.mbb.landing is 'teams-index', which plan #9 builds. Until then the scoreboard is the landing; never cached,
+// so plan #9's page is not hidden behind a held redirect.
+import { uncacheable } from '../../routes/basketball/cache';
+import { leaguePath } from '../../utils/league';
+
+Astro.locals.league = 'mbb';
+uncacheable(Astro);
+return new Response(null, { status: 302, headers: { Location: leaguePath('mbb', '/scoreboard'), 'Cache-Control': 'no-store' } });
+---
