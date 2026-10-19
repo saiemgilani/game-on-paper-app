@@ -609,5 +609,15 @@ needs a new id and a new snapshot in its own PR.
     `points_in_paint` (null in the release: its team box carries them only from 2024, measured 2004-2026); 273130043 also `total_rebounds`
     (the release counts team rebounds: Stanford 55 = 50 + 5, Yale 33 = 32 + 1, the team-rebound rows in the play-by-play) and player
     `minutes` (null in the release, 0 from the processor, for all 5 + 5 players).
+  - **Used by:** `test/wbb/game.test.ts`, `test/wbb/shots.test.ts` (401702870 among them), `test/wbb/gameRoute.test.ts`,
+    `test/wbb/game.render.test.ts` (401702870 among them).
   - **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`, the
     API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, ClaudeCowork `ledgers/2026-10-19-bball-wbb-games-gop/capture_wbb_games.py`).
+- `wbb/espn_page_401805076.json` and `wbb/pregame_401920983.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/womens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` Safari UA),
+  trimmed to `{ gameId, gamepackageJSON: { header } }`. 401805076 (captured 2026-10-19T07:44Z) is Task 3's OT final; 401920983 (Notre Dame vs Villanova,
+  neutral, Palazzo dello Sport, scheduled 2026-11-01T17:00Z, season 2027) was captured `STATUS_SCHEDULED` on 2026-10-12T07:29Z into
+  `ClaudeCowork/plans/2026-10-11-bball-fixtures-staging/wbb_pregame_401920983.json`. `wbb/pregame_401920983_summary.json` is `{ pickcenter }`
+  (empty) of `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event=401920983` at the same time
+  (staging `wbb_pregame_401920983_summary.json`). **Used by:** `test/wbb/gameRoute.test.ts`, `test/wbb/game.render.test.ts`.
+  **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 5 Step 1.
