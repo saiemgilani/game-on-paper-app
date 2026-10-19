@@ -111,6 +111,7 @@ async function generateChart() {
             },
             scales: {
                 y: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     ticks: {
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252'
                     },
@@ -129,10 +130,10 @@ async function generateChart() {
                             }
                             return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         }, 
-                        border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     }
                 },
                 x: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     ticks: {
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252'
                     },
@@ -151,7 +152,6 @@ async function generateChart() {
                             }
                             return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         },
-                        border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     }
                 }
             }
