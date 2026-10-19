@@ -686,6 +686,7 @@ BASKETBALL_PROCESSORS: dict[str, dict[str, Any]] = {
     "nba": {"module": "sportsdataverse.nba.nba_pbp", "fetch": "espn_nba_pbp", "helper": "helper_nba_pbp", "frames_kwargs": {}},
     "wnba": {"module": "sportsdataverse.wnba.wnba_pbp", "fetch": "espn_wnba_pbp", "helper": "helper_wnba_pbp", "frames_kwargs": {"league": "wnba"}},
     "mbb": {"module": "sportsdataverse.mbb.mbb_pbp", "fetch": "espn_mbb_pbp", "helper": "helper_mbb_pbp", "frames_kwargs": {"league": "mbb"}},
+    "wbb": {"module": "sportsdataverse.wbb.wbb_pbp", "fetch": "espn_wbb_pbp", "helper": "helper_wbb_pbp", "frames_kwargs": {"league": "wbb"}},
 }
 
 

@@ -38,7 +38,7 @@ def _app(monkeypatch, summary, pushes=None):
 
 def test_one_rule_per_league_with_the_nba_rule_and_endpoint_unchanged(monkeypatch):
     app_mod = _app(monkeypatch, _summary())
-    assert set(app_mod.BASKETBALL_PROCESSORS) == {"nba", "wnba", "mbb"}
+    assert set(app_mod.BASKETBALL_PROCESSORS) == {"nba", "wnba", "mbb", "wbb"}
     rules = {r.rule: r.endpoint for r in app_mod.app.url_map.iter_rules()}
     for lg in app_mod.BASKETBALL_PROCESSORS:
         assert rules[f"/{lg}/<int(min=100000,max=999999999999):game_id>/process"] == f"process_{lg}"
