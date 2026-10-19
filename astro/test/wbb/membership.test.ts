@@ -6,13 +6,13 @@ import { BASKETBALL } from '../../src/basketball/config';
 import { withSeasonMembers } from '../../src/basketball/dashboards';
 import { WBB_MEMBERS_2026 } from '../../src/nba/data/wbbMembers';
 import { teamsFromSeasonRows } from '../../src/nba/tables';
-import { conferenceNames, conferences, coverage, leagueContext, scheduleTeams, seasonPlayers, type Season } from './dashboardFixtures';
+import { NOLA, conferenceNames, conferences, coverage, leagueContext, nolaShots2026, scheduleTeams, seasonPlayers, type Season } from './dashboardFixtures';
 
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number) => ([2019, 2022, 2026].includes(s) ? seasonPlayers(s as Season) : []),
     retrieveLeagueContextRows: async () => leagueContext(2026),
-    retrieveTeamShots: async () => [],
+    retrieveTeamShots: async (s: number, t: number) => (t === NOLA && s === 2026 ? nolaShots2026() : []),
     retrieveCoverageRows: async () => coverage(),
     retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as Season), groups: conferenceNames(s as Season) }),
     retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as Season),
@@ -35,11 +35,15 @@ describe('the current-season member table (plan #9 currentMembers)', () => {
 describe('team pages for every member of the season', () => {
     test('the four unlinked programs and a reclassifier: 200 empty pages in 2025-26', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        // R-S13: New Orleans 2443 has placed shots but no season-player row, so it is the same empty page
-        for (const id of [2130, 2385, 2441, 2837, 2443]) {
+        for (const id of [2130, 2385, 2441, 2837]) {
             const r: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${id}`, String(id)), 'wbb');
             expect([r.empty, r.team?.team_id], String(id)).toEqual([true, id]);
         }
+    });
+    test('R-S14: New Orleans 2443 (992 placed shots, no season-player row) is the dashboard with no roster, not the empty page', async () => {
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        const r: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${NOLA}`, String(NOLA)), 'wbb');
+        expect([r.empty, r.noPlayers, r.team?.team_id, r.roster, r.line.attempts, r.dashboard === null]).toEqual([undefined, true, NOLA, [], 992, false]);
     });
     test('without a conference row that season a program is a 404 (D43), even with shot rows', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');

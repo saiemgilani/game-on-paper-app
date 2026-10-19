@@ -10,8 +10,8 @@ import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
 import { describeHex } from '../../src/nba/charts/hexShotChart';
 import { buildDashboard } from '../../src/nba/dashboard';
 import {
-    SC, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p26, player2019Games, player2026Games,
-    player2026Seasons, player2026Shots, scShots, scheduleTeams, seasonPlayers, type Season,
+    NOLA, SC, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p26, player2019Games, player2026Games,
+    nolaShots2026, player2026Seasons, player2026Shots, scShots, scheduleTeams, seasonPlayers, type Season,
 } from './dashboardFixtures';
 import { defaultScatterConference } from '../../src/basketball/dashboards';
 
@@ -21,7 +21,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(`league ${lg}`); return CAPTURED.includes(s) ? seasonPlayers(s as Season) : []; },
     retrieveLeagueContextRows: async (s: number) => (CAPTURED.includes(s) ? leagueContext(s as Season) : []),
-    retrieveTeamShots: async (s: number, t: number) => (t === SC && CAPTURED.includes(s) ? scShots(s as Season).map(lite) : []),
+    retrieveTeamShots: async (s: number, t: number) => (t === SC && CAPTURED.includes(s) ? scShots(s as Season).map(lite) : t === NOLA && s === 2026 ? nolaShots2026() : []),
     retrievePlayerShots: async (s: number, id: number) => (s === 2026 && id === p26().person_id ? player2026Shots() : []),
     retrievePlayerGameRows: async (s: number, id: number) => (s === 2026 && id === p26().person_id ? player2026Games() : s === 2019 ? player2019Games() : []),
     retrievePlayerSeasons: async () => [...new Set(player2026Seasons().map((r) => Number(r.season)))].sort((a, b) => a - b),
@@ -107,6 +107,18 @@ describe('the WBB dashboard pages', () => {
         wbbPage(html, name);
         expect(plain(html)).toContain(`No stats.ncaa.org shots are linked to ${name} in 2025-26.`);
         expect(html).not.toContain('id="nba-hex-panel"');
+    });
+    test('/wbb/team/2443: New Orleans, placed shots but no player named on them (R-S14): the dashboard, no roster, no players link', async () => {
+        const html = await page('team/[id].astro', `/wbb/team/${NOLA}`, { id: String(NOLA) });
+        wbbPage(html, '2025-26 regular season + postseason');
+        expect(html).not.toContain('id="nba-empty"');
+        expect(plain(html)).not.toContain('No stats.ncaa.org shots are linked');
+        expect(html).toContain(hexDesc(nolaShots2026(), 2026));
+        expect(html).toContain('id="nba-no-players"');
+        expect(plain(html)).toContain('No player is named on these shots.');
+        expect(html).not.toContain('id="nba-roster"');
+        expect(html).not.toMatch(/href="\/wbb\/players\?/);
+        expect(plain(html)).toContain('348/992 FG');
     });
     test('/wbb/players: choose a team; ?team=<South Carolina>: her team list', async () => {
         const choose = await page('players.astro', '/wbb/players');

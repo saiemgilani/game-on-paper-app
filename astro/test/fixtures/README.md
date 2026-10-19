@@ -659,3 +659,11 @@ needs a new id and a new snapshot in its own PR.
   `wbb/games_in_scope.json` (plan #10; R-S9). **Used by:** `test/wbb/dashboardFixtures.ts` (and every WBB dashboard test through
   it). **To regenerate:** plan 2026-10-11-wbb-shots-gop Task 2 (local warehouse, local API, the three scripts under ClaudeCowork
   `ledgers/2026-10-19-bball-wbb-shots-gop/`).
+  (c) `new_orleans_shots_2026.json` (ruling R-S14): the `.data` of the same local API (sdv-db 6c2d393, `serve` on 127.0.0.1, same
+  warehouse), captured 2026-10-19 with `retrieveTeamShots`'s query for New Orleans (2443) in 2025-26:
+  `/v1/wbb/shot_rows?season=2026&team_id=2443&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+  992 rows (348 made, every one placed), written compactly as the other `.data` files (sha256
+  81e0f916ddb9da6a058bac0df4e116d7eea0975328dbb3bbee2658a27c955e08). New Orleans has no `shot_season_players` row in any captured
+  season (the release names no player on its shots; 2019 / 2022 / 2026 hold 317 / 768 / 992 placed shots). **Used by:**
+  `test/wbb/membership.test.ts`, `test/wbb/pages.render.test.ts` (the team page decides on membership + placed shots, not player rows).
+  **To regenerate:** the same curl against a local `sdv-db-api serve` with a throwaway read key.

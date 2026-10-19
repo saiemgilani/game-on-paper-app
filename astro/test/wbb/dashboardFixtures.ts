@@ -22,6 +22,9 @@ export const fixtureLeagueContext = () => readFix<LeagueContextRow[]>('ncaa_fixt
 export const seasonPlayers = (season: Season) => readFix<SeasonPlayerRow[]>(`season_players_${season}.json.gz`);
 export const leagueContext = (season: Season) => readFix<LeagueContextRow[]>(`league_context_${season}.json`);
 export const scShots = (season: Season) => readFix<(ShotApiRow & { person_id: number | null })[]>(`sc_shots_${season}.json`);
+/** R-S14: New Orleans (2443) 2025-26 by team, the six lite columns: placed shots, no season-player row */
+export const NOLA = 2443;
+export const nolaShots2026 = () => readFix<ShotApiRow[]>('new_orleans_shots_2026.json');
 export const player2026Shots = () => readFix<ShotApiRow[]>('player_2026_shots.json');
 export const player2026Seasons = () => readFix<{ season: number }[]>('player_2026_seasons.json');
 export const player2026Games = () => readFix<PlayerGameRow[]>('player_2026_games.json');
