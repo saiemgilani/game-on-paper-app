@@ -1,10 +1,10 @@
 // What the shot dashboards say and read for a league: the source table and the scope wording. College dashboards
 // (shotDashboards 'ncaa') read plan #7's stats.ncaa.org tables, which hold the regular season AND the postseason (D23).
-import { BASKETBALL } from './config';
+import { BASKETBALL, rankMins } from './config';
 import { fmtInt, fmtPct } from '../nba/format';
 import { isTrue } from '../resources/nbaGame';
 import type { Team } from '../nba/data/teams';
-import type { CoverageRow, GroupRow, ScheduleTeamRow, TeamGroupRow } from '../resources/nbaShots';
+import type { CoverageRow, GroupRow, ScheduleTeamRow, SeasonPlayerRow, TeamGroupRow } from '../resources/nbaShots';
 import type { BasketballLeague } from '../utils/league';
 
 export const isNcaaDashboards = (league: BasketballLeague): boolean => BASKETBALL[league].shotDashboards === 'ncaa';
@@ -135,4 +135,39 @@ export function memberSeasonsOf(league: BasketballLeague, teamId: number, season
     if (!table) return undefined;
     const own = table.seasons.get(teamId) ?? [];
     return seasons.filter((s) => s === season || s > table.through || own.includes(s));
+}
+
+/** One scatter filter choice: the reference conference's slug (the URL key, R2) and its short name. */
+export interface ConferenceOption { slug: string; label: string }
+
+/** R2: the scatter's conference key is the reference conference id without its league prefix ('mbb:sec' -> 'sec'). */
+export const conferenceSlug = (conferenceId: string): string => String(conferenceId).replace(/^[a-z]+:/, '');
+
+/** The season's conferences (those with a member row), A to Z by short name. */
+export function scatterConferenceOptions(teamRows: readonly TeamGroupRow[], groups: readonly GroupRow[]): ConferenceOption[] {
+    const names = new Map(groups.map((g) => [String(g.group_id), String(g.short_name)]));
+    const ids = [...new Set(teamRows.map((r) => String(r.conference_id)))];
+    return ids.map((id) => ({ slug: conferenceSlug(id), label: names.get(id) ?? conferenceSlug(id) })).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** Rows of one conference's teams that season ('all' = every row). Team ids in the reference are text, parsed behind /^\d+$/. */
+export function filterByConference<T extends { team_id: number }>(rows: readonly T[], teamRows: readonly TeamGroupRow[], slug: string): T[] {
+    if (slug === 'all') return [...rows];
+    const teams = new Set(teamRows.filter((r) => /^\d+$/.test(String(r.team_id)) && conferenceSlug(r.conference_id) === slug).map((r) => Number(r.team_id)));
+    return rows.filter((r) => teams.has(r.team_id));
+}
+
+/**
+ * Owner ruling D46: the scatter's default conference is computed, never configured: the conference with the most players at or
+ * over the season's rank bar among the rows already read (ties -> slug A to Z); 'all' when the season has no conference rows.
+ */
+export function defaultScatterConference(rows: readonly SeasonPlayerRow[], teamRows: readonly TeamGroupRow[], season: number, league: BasketballLeague): string {
+    const bar = rankMins(league, season).fga;
+    const confOf = new Map(teamRows.filter((r) => /^\d+$/.test(String(r.team_id))).map((r) => [Number(r.team_id), conferenceSlug(r.conference_id)]));
+    const count = new Map<string, number>();
+    for (const r of rows) {
+        const c = r.attempts >= bar ? confOf.get(r.team_id) : undefined;
+        if (c) count.set(c, (count.get(c) ?? 0) + 1);
+    }
+    return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? 'all';
 }
