@@ -13,8 +13,12 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number) => seasonPlayers(s as 2019 | 2023 | 2026),
     retrieveCoverageRows: async () => coverage(),
-    retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as 2019 | 2026), groups: conferenceNames(s as 2019 | 2026) }),
+    retrieveConferenceRows: async (s: number) => {
+        if (state.conferencesDown) throw new Error('conferences read down');
+        return { teams: conferences(s as 2019 | 2026), groups: conferenceNames(s as 2019 | 2026) };
+    },
 }));
+const state = vi.hoisted(() => ({ conferencesDown: false }));
 const fakeAstro = (path: string) => ({ params: {}, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
 const bar = rankMins('mbb', 2026).fga; // 40 (D44)
 const over = seasonPlayers(2026).filter((r) => r.attempts >= bar);
@@ -68,5 +72,39 @@ describe('the scatter loader', () => {
         expect(html).toMatch(/<select[^>]*name="conference"/);
         expect(html).toMatch(/<option value="all"[^>]*>All D-I<\/option>\s*<option/);
         expect(html).toMatch(/<option value="sec" selected[^>]*>SEC<\/option>/);
+    });
+    test('a failed conference read: no selector, every player over the bar, the response uncacheable', async () => {
+        const { prepareBasketballScatter } = await import('../../src/routes/basketball/scatter');
+        const cache: unknown[] = [];
+        const headers = new Headers();
+        const astro = { params: {}, url: new URL('https://gameonpaper.com/mbb/scatter?conference=sec'), locals: {} as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any;
+        state.conferencesDown = true;
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            const r: any = await prepareBasketballScatter(astro, 'mbb');
+            expect('conference' in r).toBe(false);
+            expect(r.points.length).toBe(over.length);
+            expect(cache.at(-1)).toBe(false);
+            expect(headers.get('Cache-Control')).toBe('no-store');
+            const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+            const { default: Route } = await import('../../src/components/routes/NbaScatterRoute.astro');
+            const html = await container.renderToString(Route, { props: { data: r }, locals: { league: 'mbb', preview: true } as App.Locals });
+            expect(html).not.toMatch(/name="conference"/);
+        } finally { state.conferencesDown = false; spy.mockRestore(); }
+    });
+    test('the island carries only the chosen conference\'s points (D42): the default big-ten, then All D-I', async () => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { prepareBasketballScatter } = await import('../../src/routes/basketball/scatter');
+        const { default: Route } = await import('../../src/components/routes/NbaScatterRoute.astro');
+        const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        const islandPoints = async (path: string) => {
+            const html = await container.renderToString(Route, { props: { data: await prepareBasketballScatter(fakeAstro(path), 'mbb') }, locals: { league: 'mbb', preview: true } as App.Locals });
+            const tag = [...html.matchAll(/<astro-island\b[^>]*>/g)].map((m) => m[0]).find((t) => t.includes('/ScatterExplorer.svelte"'))!;
+            return JSON.parse(unescape(tag.match(/\sprops="([^"]*)"/)![1])).points[1].length as number; // Astro's [1, array] prop pair
+        };
+        const bigTen = over.filter((r) => confOf.get(r.team_id) === 'big-ten').length;
+        expect(bigTen).toBe(170); // R-P8
+        expect(await islandPoints('/mbb/scatter')).toBe(bigTen);
+        expect(await islandPoints('/mbb/scatter?conference=all')).toBe(3509); // R-P8: All D-I
     });
 });

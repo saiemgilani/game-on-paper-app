@@ -40,6 +40,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
               <option value="all" selected={conference.selected === 'all'}>All D-I</option>
               {conference.options.map((o) => <option value={o.slug} selected={conference.selected === o.slug}>{o.label}</option>)}
             </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
           </form>)}{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}{usageNote && (<p class="small text-muted" id="nba-usage">{usageNote}</p>)}
       </div>
     </div>
