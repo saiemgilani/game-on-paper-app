@@ -53,7 +53,7 @@ describe('the wbb league entry', () => {
         expect(BASKETBALL.wbb.gamesInScope).toBe(wbbGamesInScope); // D44: the wiring; plan #11 pins rankMins / minFga on it
         for (const b of BARS) expect(wbbLeaderBars(b.season), String(b.season)).toEqual({ fga: b.fga, fg3a: b.fg3a });
         expect(BASKETBALL.wbb.leaderBars(2026)).toEqual({ fga: 3, fg3a: 2 }); // D31, pinned: 58.96 / 88.91 FGA per team game
-        expect([wbbLeaderBars(2003), wbbLeaderBars(2027)]).toEqual([wbbLeaderBars(2019), wbbLeaderBars(2026)]); // nearest measured season
+        for (const s of [2003, 2027]) expect(wbbLeaderBars(s), String(s)).toEqual({ fga: 3, fg3a: 2 }); // outside the measured 2019-2026: the same constant
         expect(BASKETBALL.wbb.regularSeasonGames).toBe(wbbSeasonGames);
         expect(wbbSeasonGames(2027)).toBe(wbbSeasonGames(2026));
         expect(BASKETBALL.wbb.pronoun).toBe('her');

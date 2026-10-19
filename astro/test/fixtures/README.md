@@ -629,7 +629,7 @@ needs a new id and a new snapshot in its own PR.
   overtime, 1 in two, 1 postponed (401813842); 1,427,955 bytes), `g8` (Big 12, 7). 2024-11-04 `all` (opening night, 161 events: 157 in regulation,
   3 in overtime, 1 canceled (401716378); the busiest WBB day in the releases; 34 competitors ESPN has no logo for, all non-D-I, e.g. Meredith
   111956; 1,568,033 bytes; the D36 HTML-size budget day). 2025-04-02: `top25` empty (no ranked team played) and `all` (3 events: the WBIT final
-  and two WNIT semifinals; the D35 fallback day). A grouped or empty body has no `sbData.day`. `wbb/scoreboard_budget.json`: the rendered HTML
+  and two WNIT semifinals; the D35 fallback day). 2014-02-08 `all` (captured 2026-10-19 with the same URL, UA and trim; a halves-era D-I day, `format.regulation.periods` 2 on all 118 events: 111 Final, 5 Final/OT at period 3, 2 Final/2OT at period 4, e.g. 400512272; history carries finals only, so no live `H1` / end-of-half text; 702,955 bytes). A grouped or empty body has no `sbData.day`. `wbb/scoreboard_budget.json`: the rendered HTML
   length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
   **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
   `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.

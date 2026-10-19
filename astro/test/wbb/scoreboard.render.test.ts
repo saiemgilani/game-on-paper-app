@@ -9,6 +9,14 @@ import { dayNav } from '../../src/nba/scoreboard';
 
 const events = (n: string) => JSON.parse(readFileSync(new URL(`../fixtures/wbb/scoreboard-${n}.json`, import.meta.url)).toString()).content.sbData.events;
 const day = (iso: string, n: string, group: string, groupLabel: string) => ({ day: iso, isLive: false, degraded: false, stale: false, nav: dayNav(iso), today: '2026-10-12', games: events(n), group, groupLabel });
+/** The Final section's card for one game: its NbaGameCard column, up to the next card or the section's end ('' when not in Final). */
+const finalCard = (h: string, id: string) => {
+    const sec = h.match(/<section id="final"[\s\S]*?<\/section>/)?.[0] ?? '';
+    const at = sec.indexOf(`href="/wbb/game/${id}"`);
+    if (at < 0) return '';
+    const next = sec.indexOf('<div class="col-xl-3', at);
+    return sec.slice(sec.lastIndexOf('<div class="col-xl-3', at), next < 0 ? undefined : next);
+};
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create(); });
 const render = (q: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/scoreboard${q}`), locals: { preview: true, league: 'wbb' } as App.Locals });
@@ -41,9 +49,12 @@ describe('/wbb/scoreboard render (real days)', () => {
         expect(html).toContain('href="/wbb/scoreboard?date=2026-02-08&amp;group=all"');
         expect(html).toMatch(/<option value="all" selected[^>]*>Division I<\/option>/);
         expect(html).toContain('WBB scoreboard, Saturday, February 7, Division I | Game on Paper');
-        // D36: every jump link targets a section on the page (the sections themselves are plan #8's, pinned in its MBB render test)
+        // D36: a finished day has exactly one section, Final, and its one jump link lands on it
         const jumps = [...html.matchAll(/<a[^>]+href="#([\w-]+)"/g)].map((m) => m[1]);
-        for (const id of jumps) expect(html, id).toContain(`id="${id}"`);
+        expect(jumps).toEqual(['final']);
+        for (const id of jumps) expect(html, id).toContain(`<section id="${id}"`);
+        // statusSections (plan #8): anything not live or upcoming is Final, so the postponed game sits there with its own status line
+        expect(finalCard(html, '401813842')).toContain('Postponed');
     });
     test('2026-02-07 Big 12: the conference is selected and kept on the day links', async () => {
         prep.mockResolvedValueOnce(day('2026-02-07', '20260207-g8', '8', 'Big 12'));
