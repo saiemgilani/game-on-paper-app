@@ -53,6 +53,8 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/game/${id}`), params: { id }, locals: { preview: true, league: 'wbb' } as App.Locals });
 
+/** Every distinct team-page link on the page, sorted. */
+const teamLinks = (h: string) => [...new Set([...h.matchAll(/href="(\/wbb\/team\/[^"]*)"/g)].map((m) => m[1]))].sort();
 function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).toContain('href="/wbb"');
@@ -95,6 +97,8 @@ describe('/wbb/game/[id] render (real captures)', () => {
         const html = await render('400550784');
         common(html); halves(html);
         expect(plain(html)).toContain('Rutgers 56 @ UTEP 54');
+        // D48: 2014 is before the dashboards (?season= would 404), so each current member links its current page, no query
+        expect(teamLinks(html)).toEqual(['/wbb/team/164', '/wbb/team/2638']);
         expect(linescoreHeads(html).slice(1)).toEqual(['1', '2', 'T']);
         // the release carries no linescores before 2024 (R-W15): the period cells are the page's dashes, only the totals are numbers
         expect(linescoreRows(html)).toEqual([['RUTG', '–', '–', '56'], ['UTEP', '–', '–', '54']]);
@@ -111,6 +115,7 @@ describe('/wbb/game/[id] render (real captures)', () => {
         const html = await render('273130043');
         common(html); halves(html);
         expect(plain(html)).toContain('Stanford 100 @ Yale 44');
+        expect(teamLinks(html)).toEqual(['/wbb/team/24', '/wbb/team/43']); // 2008: both current members, current pages, no query (D48)
         expect(summaries(html)).toEqual(['1st Half', '2nd Half']);
         for (const label of ['TOV%', 'Possessions', 'ORtg', 'DRtg', 'Pace']) expect(factor(html, label), label).toEqual(['–', '–']);
         expect(factor(html, 'eFG%').every((c) => c !== '–' && c !== '')).toBe(true);
