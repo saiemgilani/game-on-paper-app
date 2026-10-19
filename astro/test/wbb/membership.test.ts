@@ -1,0 +1,51 @@
+// astro/test/wbb/membership.test.ts
+// D38 + D43/D47 beyond the index: team pages answer 200 for every member of the season (empty when no shot is linked) and 404
+// otherwise; the committed current-season member table is plan #9's rule over the 2026 captures.
+import { describe, expect, test, vi } from 'vitest';
+import { BASKETBALL } from '../../src/basketball/config';
+import { withSeasonMembers } from '../../src/basketball/dashboards';
+import { WBB_MEMBERS_2026 } from '../../src/nba/data/wbbMembers';
+import { teamsFromSeasonRows } from '../../src/nba/tables';
+import { conferenceNames, conferences, coverage, leagueContext, scheduleTeams, seasonPlayers, type Season } from './dashboardFixtures';
+
+vi.mock('../../src/resources/nbaShots', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/nbaShots')>()),
+    retrieveSeasonPlayerRows: async (s: number) => ([2019, 2022, 2026].includes(s) ? seasonPlayers(s as Season) : []),
+    retrieveLeagueContextRows: async () => leagueContext(2026),
+    retrieveTeamShots: async () => [],
+    retrieveCoverageRows: async () => coverage(),
+    retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as Season), groups: conferenceNames(s as Season) }),
+    retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as Season),
+}));
+const fakeAstro = (path: string, id: string) =>
+    ({ params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
+
+describe('the current-season member table (plan #9 currentMembers)', () => {
+    test('WBB_MEMBERS_2026 is withSeasonMembers over the 2026 captures: 363, the six reclassifiers in, 2697 and 42 out', () => {
+        const rule = withSeasonMembers(teamsFromSeasonRows(seasonPlayers(2026), 2026, 'wbb'), conferences(2026), scheduleTeams(2026), 2026, 'wbb').map((t) => t.team_id).sort((a, b) => a - b);
+        expect([...WBB_MEMBERS_2026]).toEqual(rule);
+        expect(WBB_MEMBERS_2026).toHaveLength(363);
+        for (const id of [88, 284, 2330, 2511, 2815, 2837]) expect(WBB_MEMBERS_2026, String(id)).toContain(id);
+        for (const id of [2697, 42]) expect(WBB_MEMBERS_2026, String(id)).not.toContain(id);
+        expect(BASKETBALL.wbb.currentMembers).toEqual({ season: 2026, ids: WBB_MEMBERS_2026 });
+        for (const lg of ['nba', 'wnba'] as const) expect(Object.keys(BASKETBALL[lg]), lg).not.toContain('currentMembers');
+    });
+});
+
+describe('team pages for every member of the season', () => {
+    test('the four unlinked programs and a reclassifier: 200 empty pages in 2025-26', async () => {
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        // R-S13: New Orleans 2443 has placed shots but no season-player row, so it is the same empty page
+        for (const id of [2130, 2385, 2441, 2837, 2443]) {
+            const r: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${id}`, String(id)), 'wbb');
+            expect([r.empty, r.team?.team_id], String(id)).toEqual([true, id]);
+        }
+    });
+    test('without a conference row that season a program is a 404 (D43), even with shot rows', async () => {
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        for (const id of [2697, 42]) expect(await prepareBasketballTeam(fakeAstro(`/wbb/team/${id}`, String(id)), 'wbb'), String(id)).toEqual({ notFound: true });
+        expect(await prepareBasketballTeam(fakeAstro('/wbb/team/112358?season=2019', '112358'), 'wbb')).toEqual({ notFound: true });
+        const liuBrooklyn: any = await prepareBasketballTeam(fakeAstro('/wbb/team/2341?season=2019', '2341'), 'wbb');
+        expect([liuBrooklyn.empty, liuBrooklyn.team?.team_id]).toEqual([true, 2341]);
+    });
+});

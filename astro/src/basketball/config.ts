@@ -6,6 +6,8 @@ import { COURT, NCAA_COURTS, NCAA_W_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_CO
 import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
 import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../nba/data/mbbMemberSeasons';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
+import { WBB_MEMBERS_2026 } from '../nba/data/wbbMembers';
+import { WBB_MEMBER_SEASONS, WBB_MEMBER_SEASONS_THROUGH } from '../nba/data/wbbMemberSeasons';
 import { WBB_CONFERENCES, WBB_TEAMS, wbbFranchiseOf, wbbSeasonsOf, wbbTeamByEspnId, wbbTeamInSeason } from '../nba/data/wbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
@@ -297,6 +299,10 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // D26, measured (plans/2026-10-11-wbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
         // (inclusive dates) of WBB player games holds at most 40,983 rows, under the 50,000 cap
         leadersRead: { days: 49, windows: [5, 10] },
+        // D38 + D43/D47: the 2025-26 members (357 core + the six reclassifiers); plan #9's sitemap loop and current-season links read
+        // it. The member table's last season (R-S4); memberSeasons.test.ts ties it, these ids and WBB_LAST_KNOWN_SEASON together
+        currentMembers: { season: WBB_MEMBER_SEASONS_THROUGH, ids: WBB_MEMBERS_2026 },
+        memberSeasons: { through: WBB_MEMBER_SEASONS_THROUGH, seasons: WBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json)
         gamesInScope: wbbGamesInScope,
         // D39 (R12): ESPN's WBB summaries carry lines from 2025-26 only (Decision 8's sample)
