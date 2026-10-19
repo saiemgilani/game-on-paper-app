@@ -422,3 +422,19 @@ needs a new id and a new snapshot in its own PR.
   2000-02 Portland Fire, which ESPN files under the 2026 Fire's id 132052 (`POR`). The board also has Utah (15, `UTH`) and
   Orlando (10, `ORL`), relocated franchises with no ESPN logo. **Used by:** `test/wnba/scoreboard.render.test.ts`.
   **To regenerate:** the request above with `date=20020615`.
+- `wnba/dashboards/*`: the WNBA shot dashboards' Data API reads, verbatim (`.data` of each response, `.gz` = gzip of the same
+  JSON), from a LOCAL sdv-db Data API over a local warehouse loaded from the real wehoop-wnba-stats-data / wehoop-wnba-data
+  release parquet (`wnba_stats` 2d052bc, `wnba` from the wehoop-wnba-data checkout, HEAD f0856757 at capture; the
+  TypeScript-oracle side reads hoopR-nba-stats-data fe3e515f), the three `wnba_stats.shot_*` tables built by sdv-db
+  `wnba_shot_dashboards` (sdv-db 6391dda, plan 2026-10-11-bball-derived-builds-sdv-db; season stats from
+  `wnba_stats.player_stats_advanced` + `player_stats_base`, the leaguedash assets, D19; crosswalk floor 2002, D18). Captured
+  2026-10-19T02:05Z. Queries are `resources/nbaShots.ts`'s: `shots` with `game_id__like=102%` and the six lite columns
+  (`shots_2003` adds `person_id,team_id`: every 2003 regular-season shot, for the SQL-vs-TypeScript parity test;
+  `shots_2026_origin` adds `x_legacy=0&y_legacy=0`: every 2026 regular-season shot at the hoop centre, genuine after the
+  placeholder seasons, R22), `shot_league_context` / `shot_season_players` by season, `shot_player_games` by season (2026) or
+  person (the 2003 player), `limit=50000`. Seattle (1611661328) is plan #3 Task 6's team. Players: the 2026 one is Seattle's
+  most-attempts shooter (1643428), the 2003 one the season's most-attempts shooter without a headshot (100682).
+  Facts the tests pin: 28,436 regular-season shots in 2003 (Seattle 2,045), Seattle 2,112 in 2008 and 3,061 in 2026; season
+  attempts 28,436 / 31,006 / 38,535 / 45,296 (2003 / 2008 / 2025 / 2026); one `team_id` 0 row in 2025; 5,677 2003 shots at
+  (0, 0) (Seattle 424), counted in the 2003 league total's `placeholder_shots`. **Used by:** `test/wnba/dashboardFixtures.ts`.
+  **To regenerate:** plan 2026-10-11-wnba-shots-gop Task 2 (local warehouse, local API, `capture_wnba_dashboards.py`).
