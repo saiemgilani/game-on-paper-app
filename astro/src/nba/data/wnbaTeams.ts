@@ -68,6 +68,26 @@ export function wnbaTeamById(teamId: number): Team | undefined {
 }
 
 /**
+ * The team as it was in `season`: a folded franchise by its own name in its seasons, else the current franchise under
+ * the name it had then (WNBA_FORMER_NAMES, first `through` at or after the season). A folded franchise has its own
+ * historical logo (plan #5 hosts CLE, MIA and the 2000-02 POR; CHA, HOU and SAC come from ESPN) but no current
+ * colour, so it is grey #888888. The season decides, not the id: 1611661327 is the 2000-02 Portland Fire through 2002
+ * and the 2026 Portland Fire after.
+ */
+export function wnbaTeamInSeason(teamId: number, season: number): Team | undefined {
+    const folded = WNBA_DEFUNCT.find((d) => d.team_id === teamId && season <= d.through);
+    if (folded) return { team_id: teamId, tricode: folded.tricode, name: folded.name, color: '#888888', espn_id: folded.espn_id };
+    const t = BY_ID.get(teamId);
+    if (!t) return undefined;
+    return { ...t, name: WNBA_FORMER_NAMES.find((f) => f.team_id === teamId && season <= f.through)?.name ?? t.name };
+}
+
+/** The current franchise behind a tricode it has used (SAN and UTA are Las Vegas); a folded franchise's tricode has none. */
+export function wnbaFranchiseOf(tricode: string): number | undefined {
+    return (WNBA_TEAMS.find((t) => t.tricode === tricode) ?? WNBA_FORMER_NAMES.find((f) => f.tricode === tricode))?.team_id;
+}
+
+/**
  * The ESPN id a logo is keyed by in `season`: the id itself, except where ESPN files a folded franchise under a current
  * team's id. ESPN's 2002 boards carry the 2000-02 Portland Fire as 132052, the 2026 Fire; through 2002 that is the old Fire's 12.
  */

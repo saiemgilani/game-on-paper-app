@@ -4,8 +4,8 @@
 import { leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
 import type { PlaceholderLocation } from '../nba/data/placeholder';
-import { NETS_TEAM_ID, TEAMS, teamByEspnId, type Team } from '../nba/data/teams';
-import { WNBA_TEAMS, wnbaLogoId, wnbaTeamByEspnId } from '../nba/data/wnbaTeams';
+import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamInSeason, type Team } from '../nba/data/teams';
+import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
 import { netsTricode } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
 import { NBA_DARK_LOGO_ABBRS } from '../nba/scoreboard';
@@ -28,7 +28,14 @@ export interface FeaturedTeam { statsTeamId: number; espnTeamId: number; menuLab
 export type LandingKind = 'featured-team' | 'teams-index';
 export type ShotDashboardsSource = 'stats-api' | 'ncaa' | 'none';
 export interface MenuItem { label: string; path: string }
-export interface TeamModule { all: readonly Team[]; byEspnId(espnId: number): Team | undefined }
+export interface TeamModule {
+    all: readonly Team[];
+    byEspnId(espnId: number): Team | undefined;
+    /** the team as it was that season; undefined = unknown id */
+    inSeason(teamId: number, season: number): Team | undefined;
+    /** a current franchise's team id for any tricode it has used */
+    franchiseOf(tricode: string): number | undefined;
+}
 
 export interface BasketballConfig {
     league: BasketballLeague;
@@ -84,7 +91,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: { statsTeamId: NETS_TEAM_ID, espnTeamId: 17, menuLabel: 'Nets', tricode: netsTricode },
         // court.ts draws the 1997-98-on line (seasonRange.ts: 1996-97's 22 ft line is not drawn, and is not listed)
         courts: [{ from: 1998, court: COURT }],
-        teams: { all: TEAMS, byEspnId: teamByEspnId },
+        teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf },
         landing: 'featured-team',
         headerMenu: [
             { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Nets', path: '/' }, { label: 'Players', path: '/players' },
@@ -120,7 +127,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
             [{ from: 1997, court: WNBA_COURT_1997 }, { from: 2004, court: WNBA_COURT_2004 }, { from: 2013, court: WNBA_COURT }],
             WNBA_RESTRICTED_AREA,
         ),
-        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId },
+        teams: { all: WNBA_TEAMS, byEspnId: wnbaTeamByEspnId, inSeason: wnbaTeamInSeason, franchiseOf: wnbaFranchiseOf },
         // plan #6 builds the teams index; until then pages/wnba/index.astro redirects to the scoreboard
         landing: 'teams-index',
         headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],

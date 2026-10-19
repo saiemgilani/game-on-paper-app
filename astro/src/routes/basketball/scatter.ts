@@ -24,10 +24,11 @@ export type BasketballScatterPrep = { unavailable: true } | BasketballScatterPar
 
 export async function prepareBasketballScatter(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballScatterPrep> {
     Astro.locals.league = league;
-    const ft = BASKETBALL[league].featuredTeam;
+    const cfg = BASKETBALL[league];
+    const ft = cfg.featuredTeam;
     const resolved = resolveBasketballSeason(Astro, league);
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, '/scatter'));
     if (rows === null) return { unavailable: true };
-    // ponytail: 0 is no team, so no highlight; plan #6 makes the island's highlight optional
-    return { ...resolved, points: scatterPoints(playerSeasonsFromRows(rows), headshotsFromRows(rows), ft?.statsTeamId ?? 0) };
+    const points = scatterPoints(playerSeasonsFromRows(rows), headshotsFromRows(rows), ft?.statsTeamId ?? null, { colorOf: (id) => cfg.teams.inSeason(id, resolved.season)?.color });
+    return { ...resolved, points };
 }

@@ -23,8 +23,13 @@ export function scatterValues(p: PlayerSeason): Record<ScatterMetric, number | n
   };
 }
 
-/** Every player with 100+ FGA in the season's shots, as a scatter point. */
-export function scatterPoints(players: PlayerSeason[], headshots: ReadonlyMap<number, string>, netsTeamId: number): ScatterPoint[] {
+/** Every player with enough FGA in the season's shots, as a scatter point; `highlightTeamId` null highlights no one. */
+export function scatterPoints(
+  players: PlayerSeason[],
+  headshots: ReadonlyMap<number, string>,
+  highlightTeamId: number | null,
+  { colorOf = (id: number) => teamById(id)?.color }: { colorOf?: (teamId: number) => string | undefined } = {},
+): ScatterPoint[] {
   return players
     .filter((p) => p.attempts >= RANK_MIN_FGA)
     .map((p) => {
@@ -34,8 +39,8 @@ export function scatterPoints(players: PlayerSeason[], headshots: ReadonlyMap<nu
         name: p.player_name,
         team_id: p.team_id,
         team: p.team_tricode,
-        color: teamById(p.team_id)?.color ?? "#888888",
-        nets: p.team_id === netsTeamId,
+        color: colorOf(p.team_id) ?? "#888888",
+        nets: p.team_id === highlightTeamId,
         headshot: headshots.get(p.person_id) ?? null,
         // 4 decimals is finer than any axis can show and keeps the payload small.
         v: SCATTER_METRICS.map((m) => (values[m] === null ? null : Math.round(values[m] * 1e4) / 1e4)),

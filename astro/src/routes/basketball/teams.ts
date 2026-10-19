@@ -27,5 +27,5 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     const resolved = resolveBasketballSeason(Astro, league);
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, '/teams'));
     if (rows === null) return { unavailable: true };
-    return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season), lines: teamLinesFromRows(rows) };
+    return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season, league), lines: teamLinesFromRows(rows) };
 }

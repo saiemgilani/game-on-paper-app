@@ -63,7 +63,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (playersR.status !== 'fulfilled' || contextR.status !== 'fulfilled' || shotsR.status !== 'fulfilled') return { unavailable: true };
 
     const rows = playersR.value;
-    const team = teamsFromSeasonRows(rows, season).find((t) => t.team_id === teamId);
+    const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === teamId);
     const shots = shotsFromRows(shotsR.value);
     if (!team || shots.length === 0) {
         uncacheable(Astro);
