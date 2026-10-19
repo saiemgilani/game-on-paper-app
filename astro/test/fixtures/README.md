@@ -450,3 +450,22 @@ needs a new id and a new snapshot in its own PR.
   attempts 28,436 / 31,006 / 38,535 / 45,296 (2003 / 2008 / 2025 / 2026); one `team_id` 0 row in 2025; 5,677 2003 shots at
   (0, 0) (Seattle 424), counted in the 2003 league total's `placeholder_shots`. **Used by:** `test/wnba/dashboardFixtures.ts`.
   **To regenerate:** plan 2026-10-11-wnba-shots-gop Task 2 (local warehouse, local API, `capture_wnba_dashboards.py`).
+- `mbb/teams_2026.json`: ESPN's core D-I list for 2026 (owner ruling D34),
+  `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`
+  (2026-10-18, `count` 366, ids from each item's `$ref`), with `espn_abbreviation` / `espn_display_name` / `color` from
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000` or, for the five ids it lacks
+  (42, 88, 2511, 2598, 2815), `…/mens-college-basketball/teams/<id>` (2026-10-18, requestESPN's Safari UA; colour '#'-prefixed,
+  upper-cased; none: #888888). `mbb/other_di.json`: the 3 ids that have a D-I season (10+ games with one of the 32 D-I conference
+  ids) in hoopR-mbb-data `mbb/schedules/parquet/mbb_schedule_{2003..2026}.parquet` (commit 55d7a2a23) but are not in the 366, with
+  first/last such season (every season between is one), the abbreviation and name of the last such season's schedule rows
+  (St. Francis Brooklyn: SFBK in 2023, SFNY before) and the colour of `…/mens-college-basketball/teams/<id>`. `mbb/season_games.json`:
+  per season, the median / p10 / p90 completed regular-season (`season_type` 2) games of those D-I team-seasons.
+  `mbb/games_in_scope.json`: per season, the median / max completed regular-season + postseason (`season_type` 2 or 3) games of the
+  same team-seasons (D44). `mbb/conferences_2026.json`: `content.altSbDropdown.options` of
+  `https://cdn.espn.com/core/mens-college-basketball/scoreboard?xhr=1` (2026-10-18, requestESPN's Safari UA) as
+  `{id: data.group, label}`, 33 rows. **Used by:** `test/mbb/teams.test.ts`, `test/mbb/config.test.ts`. **To regenerate:**
+  `plans/2026-10-11-mbb-games-gop.md` Task 1 Step 1.
+- `mbb/leader_bars.json`: per season 2019-2026, league-average regular-season (`season_type` 2) FGA per team game for the 366 D-I teams
+  (hoopR-mbb-data `mbb/team_box/parquet/team_box_<season>.parquet`, commit 55d7a2a23) and for the NBA (hoopR-nba-data
+  `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and the bars `max(1, round(5 × ratio))` /
+  `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** Task 1 Step 1b.

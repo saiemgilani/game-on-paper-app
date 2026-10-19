@@ -1,0 +1,26 @@
+[
+ {
+  "id": 2113,
+  "ab": "CENT",
+  "name": "Centenary Louisiana Gentlemen",
+  "first": 2008,
+  "last": 2011,
+  "color": "#A20B36"
+ },
+ {
+  "id": 2542,
+  "ab": "SAV",
+  "name": "Savannah State Tigers",
+  "first": 2012,
+  "last": 2019,
+  "color": "#280298"
+ },
+ {
+  "id": 2597,
+  "ab": "SFBK",
+  "name": "St. Francis Brooklyn Terriers",
+  "first": 2003,
+  "last": 2023,
+  "color": "#113682"
+ }
+]

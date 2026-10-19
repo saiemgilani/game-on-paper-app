@@ -2,13 +2,14 @@
 // men's and women's college basketball. One entry per BASKETBALL_LEAGUES slug (the Record type refuses a missing one).
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
-import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import { COURT, NCAA_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
 import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
 import { NBA_LEADER_BARS, type LeaderBars } from '../nba/data/leaders';
 import { RANK_MIN, type RankMins } from '../nba/data/ranks';
-import { netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
+import { mbbGamesInScope, mbbLeaderBars, mbbSeasonGames, netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
 import { NBA_DARK_LOGO_ABBRS } from '../nba/scoreboard';
 
@@ -31,6 +32,10 @@ export interface FeaturedTeam { statsTeamId: number; espnTeamId: number; menuLab
 export type LandingKind = 'featured-team' | 'teams-index';
 export type ShotDashboardsSource = 'stats-api' | 'ncaa' | 'none';
 export interface MenuItem { label: string; path: string }
+/** One scoreboard group: ESPN's cdn `group=<id>` and the selector's label. */
+export interface ScoreboardGroup { id: string; label: string }
+/** A league with more games a day than one board shows (college): ESPN's no-group board is `default`, `all` its every-team group. */
+export interface ScoreboardGroups { default: 'top25'; all: string; conferences: readonly ScoreboardGroup[] }
 export interface TeamModule {
     all: readonly Team[];
     byEspnId(espnId: number): Team | undefined;
@@ -81,6 +86,15 @@ export interface BasketballConfig {
     leaderBars(season: number): LeaderBars;
     /** D29: the provider's placeholder shot location, left out of the location charts and counted; unset = every shot is located */
     placeholderLocation?: PlaceholderLocation;
+    /** absent: one board a day (NBA, WNBA). Present: ?group=top25|all|<conference id> (spec D3, Task 6) */
+    scoreboardGroups?: ScoreboardGroups;
+    /** ESPN's college feeds put field goals they did not locate at the rim, (25, 0); the game shot chart drops the impossible ones (Task 4) */
+    espnRimPlaceholder?: boolean;
+    /**
+     * Owner ruling D44 (R6): the season's games in scope (regular season + postseason) for leagues whose dashboards include the
+     * postseason (college, D23). Absent: thresholds keep regularSeasonGames (NBA, WNBA). Plan #9 makes rankMins read it.
+     */
+    gamesInScope?: (season: number) => number;
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -156,6 +170,43 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         leaderBars: wnbaLeaderBars,
         // D29 / R22: stats.wnba.com's hoop-centre placeholder, 1997-through only (sdv-db's located predicate, same bound)
         placeholderLocation: { x: 0, y: 0, through: 2010 },
+    },
+    mbb: {
+        league: 'mbb',
+        gamesSource: { apiBase: 'https://data.sportsdataverse.org/v1/mbb', schema: 'mbb', namespace: 'mbb-games' },
+        statsLeagueId: null,
+        regularGameIdPrefix: null,
+        // the college shot dashboards' provider (plan #9); the game page's shot chart is ESPN's
+        statsSourceLabel: 'stats.ncaa.org',
+        // two 20-minute halves in every season (spec §3.1; every 2002-2026 schedule row has format_regulation_periods 2)
+        regulation: [{ from: 0, periods: 2, kind: 'half', periodMinutes: 20 }],
+        overtimeMinutes: 5,
+        seasonLabelStyle: 'span',
+        // ESPN's cdn board has finals from 2002-11-14; every earlier day of that autumn is empty
+        firstScoreboardDay: '2002-11-14',
+        scoreboardTimeZone: 'America/New_York',
+        scoreboardRefresh: 60,
+        // ncaa/500-dark/<espn id>.png is 200 for every D-I team (2026-10-18): the id is the key (D22), no abbreviation map
+        darkLogo: { kind: 'id', logoLeague: 'ncaa' },
+        // D21/D37 (R13): only what sdv-py records — the artifact (sportsdataverse/mbb/models/mbb_in_game_wp.ubj), the training
+        // sentence (mbb_game_predict.py:122-124) and the five features of in_game_features (none of them the period)
+        wpModelNote: "Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature)",
+        featuredTeam: null,
+        courts: NCAA_COURTS,
+        teams: { all: MBB_TEAMS, byEspnId: mbbTeamByEspnId, inSeason: mbbTeamInSeason, franchiseOf: mbbFranchiseOf, seasonsOf: mbbSeasonsOf },
+        // plan #9 builds the teams index; until then pages/mbb/index.astro redirects to the scoreboard
+        landing: 'teams-index',
+        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        shotDashboards: 'ncaa',
+        regularSeasonGames: mbbSeasonGames,
+        pronoun: 'his',
+        // D31: 3 FGA / 2 3PA per game in the leaders' window (college teams take ~0.66 of an NBA team's FGA per game)
+        leaderBars: mbbLeaderBars,
+        // ESPN's cdn reads the singular `group=`: none = the Top 25 board, 50 = all of Division I (probe, Decision 1)
+        scoreboardGroups: { default: 'top25', all: '50', conferences: MBB_CONFERENCES },
+        espnRimPlaceholder: true,
+        // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
+        gamesInScope: mbbGamesInScope,
     },
 };
 

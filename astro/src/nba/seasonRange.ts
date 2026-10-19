@@ -53,3 +53,42 @@ export function wnbaSeasonGames(season: number): number {
 export function wnbaLeaderBars(_season: number): LeaderBars {
   return { fga: 4, fg3a: 2 }; // ponytail: one value for every measured season; a season that rounds differently gets a table
 }
+
+/** ESPN's men's college scoreboard has finals from 2002-11-14 (season 2003); the last season the releases hold (2026-10-18). */
+export const MBB_FIRST_SEASON = 2003;
+export const MBB_LAST_KNOWN_SEASON = 2026;
+/**
+ * Median completed regular-season games (ESPN season_type 2, conference tournaments included) of a D-I team, [first season,
+ * games] ascending. Measured 2026-10-18 over hoopR-mbb-data schedules 2003-2026 (test/fixtures/mbb/season_games.json); teams
+ * vary about +-2 around it. The scale of plan #6's season-total thresholds (rankMins).
+ */
+const MBB_SEASON_GAMES: readonly (readonly [number, number])[] = [
+  [2003, 29], [2007, 31], [2012, 32], [2020, 31], [2021, 24], [2022, 32], [2025, 33], [2026, 32],
+];
+/**
+ * Owner ruling D31: the rolling leaders' per-game bars, the NBA's 5 FGA / 3 3PA scaled by league-average team FGA per game over
+ * the NBA's in the same season (test/fixtures/mbb/leader_bars.json, Task 1 Step 1b): 0.649-0.661 in every season 2019-2026,
+ * so 3 / 2 throughout. [season, fga, fg3a]; a season outside the table takes the nearest measured season.
+ */
+const MBB_LEADER_BARS: readonly (readonly [number, number, number])[] = [
+  [2019, 3, 2], [2020, 3, 2], [2021, 3, 2], [2022, 3, 2], [2023, 3, 2], [2024, 3, 2], [2025, 3, 2], [2026, 3, 2],
+];
+export function mbbLeaderBars(season: number): LeaderBars {
+  const row = [...MBB_LEADER_BARS].reverse().find(([s]) => season >= s) ?? MBB_LEADER_BARS[0];
+  return { fga: row[1], fg3a: row[2] };
+}
+export function mbbSeasonGames(season: number): number {
+  return [...MBB_SEASON_GAMES].reverse().find(([from]) => season >= from)?.[1] ?? MBB_SEASON_GAMES[0][1];
+}
+/**
+ * Owner ruling D44 (R6): the scale of the college rank / scatter thresholds is the season's games in scope, regular season AND
+ * postseason (the college dashboards include the postseason, D23): the median D-I team's completed season_type 2 or 3 games,
+ * measured over hoopR-mbb-data schedules 2003-2026 (test/fixtures/mbb/games_in_scope.json, Task 1 Step 1). [first season, games]
+ * ascending; a season past the table takes the latest. Plan #9 makes rankMins read it through BASKETBALL.mbb.gamesInScope.
+ */
+const MBB_GAMES_IN_SCOPE: readonly (readonly [number, number])[] = [
+  [2003, 29], [2006, 30], [2007, 31], [2009, 32], [2010, 31], [2011, 32], [2018, 33], [2020, 31], [2021, 24], [2022, 32], [2023, 33],
+];
+export function mbbGamesInScope(season: number): number {
+  return [...MBB_GAMES_IN_SCOPE].reverse().find(([from]) => season >= from)?.[1] ?? MBB_GAMES_IN_SCOPE[0][1];
+}

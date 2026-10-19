@@ -12,7 +12,7 @@ const QUARTER = { periods: 4, kind: 'quarter', periodMinutes: 10 };
 
 describe('the wnba league entry', () => {
     test('identity and prefix', () => {
-        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba']);
+        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb']);
         expect(splitLeague('/wnba/game/401736287')).toEqual({ league: 'wnba', rest: '/game/401736287' });
         expect(splitLeague('/wnba')).toEqual({ league: 'wnba', rest: '/' });
         expect(splitLeague('/nba/game/1')).toEqual({ league: 'nba', rest: '/game/1' });
