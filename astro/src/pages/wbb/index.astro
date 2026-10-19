@@ -1,0 +1,10 @@
+---
+// /wbb: BASKETBALL.wbb.landing is 'teams-index', which plan #11 builds. Until then the scoreboard is the landing; never cached,
+// so plan #11's page is not hidden behind a held redirect.
+import { uncacheable } from '../../routes/basketball/cache';
+import { leaguePath } from '../../utils/league';
+
+Astro.locals.league = 'wbb';
+uncacheable(Astro);
+return new Response(null, { status: 302, headers: { Location: leaguePath('wbb', '/scoreboard'), 'Cache-Control': 'no-store' } });
+---

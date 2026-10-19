@@ -14,7 +14,7 @@ const GAMES: { season: number; median: number }[] = JSON.parse(readFileSync(new 
 
 describe('the mbb league entry', () => {
     test('identity and prefix', () => {
-        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb']);
+        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb', 'wbb']);
         expect(splitLeague('/mbb/game/401820775')).toEqual({ league: 'mbb', rest: '/game/401820775' });
         const l = LEAGUES.mbb;
         expect([l.sport, l.name, l.shortName, l.urlPrefix, l.espnPath, l.espnCoreLeague, l.logoLeague, l.scoreboardCacheKey, l.sdvApiBase, l.sdvSchema, l.teamCount, l.pool, l.defaultGroup, l.scoreboardQuery])

@@ -88,3 +88,37 @@ const MBB_GAMES_IN_SCOPE: readonly (readonly [number, number])[] = [
 export function mbbGamesInScope(season: number): number {
   return [...MBB_GAMES_IN_SCOPE].reverse().find(([from]) => season >= from)?.[1] ?? MBB_GAMES_IN_SCOPE[0][1];
 }
+
+/** ESPN's women's college scoreboard has finals from 2002-11-10 (season 2003); the last season the releases hold (2026-10-19). */
+export const WBB_FIRST_SEASON = 2003;
+export const WBB_LAST_KNOWN_SEASON = 2026;
+/**
+ * Median completed regular-season games (ESPN season_type 2, conference tournaments included) of a D-I women's team, [first
+ * season, games] ascending. Measured 2026-10-19 over wehoop-wbb-data schedules 2003-2026 (test/fixtures/wbb/season_games.json);
+ * teams vary about +-2 around it. The scale of plan #6's season-total thresholds (rankMins).
+ */
+const WBB_SEASON_GAMES: readonly (readonly [number, number])[] = [
+  [2003, 28], [2004, 29], [2007, 30], [2013, 31], [2015, 30], [2016, 31], [2020, 30], [2021, 22], [2022, 30], [2023, 31], [2025, 30], [2026, 31],
+];
+/**
+ * Owner ruling D31: the rolling leaders' per-game bars, the NBA's 5 FGA / 3 3PA scaled by WBB over NBA league-average team FGA
+ * per game in the same season (test/fixtures/wbb/leader_bars.json, Task 1 Step 1b): 0.656-0.671 in every season 2019-2026, so
+ * 3 / 2 throughout, and for any season outside 2019-2026 too.
+ */
+export function wbbLeaderBars(_season: number): LeaderBars {
+  return { fga: 3, fg3a: 2 }; // ponytail: one value for every measured season, as mbbLeaderBars; a season that rounds differently gets a table
+}
+export function wbbSeasonGames(season: number): number {
+  return [...WBB_SEASON_GAMES].reverse().find(([from]) => season >= from)?.[1] ?? WBB_SEASON_GAMES[0][1];
+}
+/**
+ * Owner ruling D44 (R6): the college thresholds' scale, regular season AND postseason (the college dashboards include the
+ * postseason, D23): the median D-I team's completed season_type 2 or 3 games, measured 2026-10-19 over wehoop-wbb-data schedules
+ * (test/fixtures/wbb/games_in_scope.json). [first season, games] ascending; a season past the table takes the latest.
+ */
+const WBB_GAMES_IN_SCOPE: readonly (readonly [number, number])[] = [
+  [2003, 29], [2007, 31], [2020, 30], [2021, 23], [2022, 30], [2023, 31], [2024, 32], [2025, 30], [2026, 32],
+];
+export function wbbGamesInScope(season: number): number {
+  return [...WBB_GAMES_IN_SCOPE].reverse().find(([from]) => season >= from)?.[1] ?? WBB_GAMES_IN_SCOPE[0][1];
+}

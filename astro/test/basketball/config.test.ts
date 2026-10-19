@@ -1,6 +1,6 @@
 // astro/test/basketball/config.test.ts
 import { describe, expect, test } from 'vitest';
-import { BASKETBALL, basketball, courtFor, pickRegulation, regulationFor, seasonLabelFor, statsSourceOf, type RegulationEra } from '../../src/basketball/config';
+import { BASKETBALL, basketball, courtFor, hasTeamPages, pickRegulation, regulationFor, seasonLabelFor, statsSourceOf, type RegulationEra } from '../../src/basketball/config';
 import { BASKETBALL_LEAGUES, LEAGUES, PREFIXED_LEAGUES, isBasketball, leagueSource, splitLeague } from '../../src/utils/league';
 import { COURT } from '../../src/nba/data/court';
 import { NETS_TEAM_ID, teamById } from '../../src/nba/data/teams';
@@ -20,7 +20,7 @@ describe('basketball league typing', () => {
             expect(PREFIXED_LEAGUES).toContain(lg);
             expect(BASKETBALL[lg].league).toBe(lg);
         }
-        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb']); // order is splitLeague's try order; unchanged for the NBA
+        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb', 'wbb']); // order is splitLeague's try order; unchanged for the NBA
     });
     test('isBasketball / basketball()', () => {
         expect(isBasketball('nba')).toBe(true);
@@ -90,5 +90,16 @@ describe('the nba entry', () => {
         expect(seasonLabelFor('nba', 2026)).toBe('2025-26');
         expect(nba.teams.all.length).toBe(30);
         expect(nba.teams.byEspnId(17)!.team_id).toBe(NETS_TEAM_ID);
+    });
+});
+
+// Plan #11 tripwire (final review of plan #10): a college (D-I pool) league that turns team pages on (Teams in its Header) must carry
+// its current members first, or the sitemap would list every team ever (cfg.teams.all) and team links would go to non-members.
+describe('a D-I league with team pages has currentMembers', () => {
+    test.each(BASKETBALL_LEAGUES.filter((lg) => LEAGUES[lg].pool === 'D-I'))('%s', (lg) => {
+        if (hasTeamPages(lg)) expect(BASKETBALL[lg].currentMembers?.ids.length, lg).toBeGreaterThan(0);
+    });
+    test('the rule covers both college leagues', () => {
+        expect(BASKETBALL_LEAGUES.filter((lg) => LEAGUES[lg].pool === 'D-I')).toEqual(['mbb', 'wbb']);
     });
 });
