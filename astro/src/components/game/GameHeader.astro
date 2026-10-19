@@ -56,8 +56,8 @@ const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` }
 <div class="py-3">
     <header class="blog-header d-none d-lg-inline">
         <div class="row d-flex flex-wrap justify-content-between align-items-center">
-            <div class="col-2 pt-1">
-                <a class="btn btn-sm btn-outline-primary align-middle" href={backHref}><i class="bi-arrow-left"></i></a>
+            <div class={share ? "col-2" : "col-2 pt-1"}>
+                <a class={share ? "btn btn-sm btn-outline-primary align-middle p-2" : "btn btn-sm btn-outline-primary align-middle"} href={backHref}><i class="bi-arrow-left"></i></a>
             </div>
             <div class="col-8 text-center">
                 <div>

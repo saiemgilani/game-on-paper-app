@@ -35,7 +35,7 @@
     onkeydown={(e) => { if (e.key === 'Escape') open = false; }}
 />
 <div class="dropdown" bind:this={root}>
-    <button class="btn btn-sm btn-outline-primary align-middle text-nowrap" class:p-2={label} type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
+    <button class="btn btn-sm btn-outline-primary align-middle text-nowrap p-2" type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
         <!-- Bootstrap Icons' share.svg inline, not <i class="bi-share">: Fanboy's
              Social list (in Safari/uBlock/AdGuard annoyance blockers) hides `.bi-share`,
              which left an empty button. Keep the bi-share class off this element. -->
