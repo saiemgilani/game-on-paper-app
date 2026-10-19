@@ -7,7 +7,7 @@ import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspn
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
 import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
-import { NBA_LEADER_BARS, type LeaderBars } from '../nba/data/leaders';
+import { NBA_LEADER_BARS, type LeaderBars, type LeaderWindow } from '../nba/data/leaders';
 import { RANK_MIN, type RankMins } from '../nba/data/ranks';
 import { mbbGamesInScope, mbbLeaderBars, mbbSeasonGames, netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
@@ -102,6 +102,12 @@ export interface BasketballConfig {
     linesFromSeason?: number;
     /** Owner ruling D36 (R11): 'status' renders a day's cards in Live / Upcoming / Final sections with jump links (college). Absent: one grid. */
     scoreboardGrouping?: 'status';
+    /** The shot dashboards' first season when it is later than the league's first listed season (stats.ncaa.org charts from 2019). */
+    shotFirstSeason?: number;
+    /** D25: the source has no PIE (college box scores), so its column, header item and sort key are hidden. */
+    hidePie?: true;
+    /** D26: the leaders page reads only the last `days` days of player games (a season-wide read is over the API's 50,000-row cap) and offers these windows. */
+    leadersRead?: { days: number; windows: readonly LeaderWindow[] };
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -212,6 +218,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // ESPN's cdn reads the singular `group=`: none = the Top 25 board, 50 = all of Division I (probe, Decision 1)
         scoreboardGroups: { default: 'top25', all: '50', conferences: MBB_CONFERENCES },
         espnRimPlaceholder: true,
+        // sdv-py load_ncaa_mbb_shots floor: stats.ncaa.org shot charts exist from 2018-19 (the scoreboard keeps 2003-2026)
+        shotFirstSeason: 2019,
+        // D25: plan #7's season line is box-score based and its pie is NULL
+        hidePie: true,
+        // D26, measured (plans/2026-10-11-mbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
+        // of player games holds at most 43,835 rows (2022), under the 50,000 cap; a 20-game window needs ~120 days of games
+        leadersRead: { days: 49, windows: [5, 10] },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,
         // D39: hoopR-mbb-data has lined games in every season 2013-2023 and none before (lines_by_season.json); 2024-2026 lack
@@ -301,7 +314,10 @@ export const NBA_SEASON_GAMES = 82;
 
 /** A season's rank / scatter bars: the NBA's per-game rate over this league-season's games (the NBA: 100 / 50 always). */
 export function rankMins(league: BasketballLeague, season: number): RankMins {
-    const g = BASKETBALL[league].regularSeasonGames(season);
+    // D44 (R6): a league whose dashboards include the postseason scales by its games in scope (plan #8's gamesInScope);
+    // the NBA and WNBA have none, so their bars are unchanged
+    const cfg = BASKETBALL[league];
+    const g = (cfg.gamesInScope ?? cfg.regularSeasonGames)(season);
     return { fga: Math.round((RANK_MIN.fga * g) / NBA_SEASON_GAMES), fg3a: Math.round((RANK_MIN.fg3a * g) / NBA_SEASON_GAMES) };
 }
 

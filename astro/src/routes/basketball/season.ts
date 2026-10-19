@@ -3,12 +3,15 @@ import type { AstroGlobal } from 'astro';
 import { seasonQuery } from '../../nba/links';
 import { parseSeason } from '../../nba/seasons';
 import { retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
+import { BASKETBALL } from '../../basketball/config';
 import { LEAGUES, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The season a page shows, from `?season=` against the league's listed seasons. */
 export function resolveBasketballSeason(Astro: AstroGlobal, league: BasketballLeague): { season: number; seasons: number[]; current: number; q: string } {
-    const seasons = LEAGUES[league].seasons; // the NBA's getter is range(FIRST_SEASON, LAST_KNOWN_SEASON) == siteSeasons()
+    const first = BASKETBALL[league].shotFirstSeason;
+    // the NBA's getter is range(FIRST_SEASON, LAST_KNOWN_SEASON) == siteSeasons(); a league with shotFirstSeason lists its dashboard seasons only
+    const seasons = first === undefined ? LEAGUES[league].seasons : LEAGUES[league].seasons.filter((s) => s >= first);
     const current = seasons[seasons.length - 1];
     const season = parseSeason(Astro.url.searchParams.get('season'), seasons);
     return { season, seasons, current, q: seasonQuery(season, current) };
