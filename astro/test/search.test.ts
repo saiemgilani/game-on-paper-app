@@ -88,12 +88,12 @@ describe('rankHits', () => {
         expect(hit.sublabel).toBe('uga / SEC');
     });
 
-    test("a game label lowercases only its meme-list team, on the real fixture row", () => {
-        const game = ALAB.find((r) => r.type === 'game')!;
-        const [plain] = rankHits([game], all);
-        expect(plain.label).toBe('Alabama @ LSU');
-        const [hit] = rankHits([{ ...game, label: 'Georgia vs Alabama' }], all);
-        expect(hit.label).toBe('georgia vs Alabama');
+    test("a game label lowercases only its meme-list team, on a real Data API row", () => {
+        // captured 2026-10-18 from /v1/search?q=georgia&league=cfb&types=game
+        const real: SearchRow = { type: 'game', id: '401856712', label: 'Georgia @ Alabama', sublabel: '2026 Week 6 · 20–17', league: 'cfb', score: 2 };
+        expect(rankHits([real], all)[0].label).toBe('georgia @ Alabama');
+        expect(rankHits([{ ...real, label: 'Alabama vs Georgia' }], all)[0].label).toBe('Alabama vs georgia');
+        expect(rankHits([ALAB.find((r) => r.type === 'game')!], all)[0].label).toBe('Alabama @ LSU');
     });
 
     test('teams carry light and dark logos with the SPECIAL_IMAGES overrides; players and games none', () => {
