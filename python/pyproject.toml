@@ -9,6 +9,9 @@ dependencies = [
     "flask-compress>=1.25",
     "orjson>=3.13",
     "psycopg[binary]>=3.3",
+    "pillow>=12",
+    "matplotlib>=3.10",
+    "tzdata>=2026.2",
 ]
 [tool.uv.sources]
 sportsdataverse = { git = "https://github.com/sportsdataverse/sportsdataverse-py", branch = "main" }

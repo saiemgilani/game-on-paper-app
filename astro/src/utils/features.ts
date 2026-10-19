@@ -91,6 +91,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // they show no box while this is 'preview'.
     'site-search': 'preview',
 
+    // Game link previews: og:image becomes the API's 1200x630 card for the
+    // game's state (utils/shareTags.ts), ?spoilers=off previews without the
+    // score (head tags only; the page renders as normal), and GameHeader shows
+    // a Share button beside Watch. Read in both game-page twins, PreGamePage and
+    // GameHeader. Off: every head is exactly today's and ?spoilers=off is ignored.
+    // The card endpoint itself is not gated (routes/shareCard.ts).
+    'share-card': 'preview',
     // Nearby-rank lists on the team-season and player pages: for each key
     // metric, the teams or players ranked within five places, the page's own
     // row marked. Promote once both leagues' lists have been reviewed.

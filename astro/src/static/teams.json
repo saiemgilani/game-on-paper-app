@@ -171,6 +171,14 @@
             ]
         },
         {
+            "team_id": 16,
+            "name": "Sacramento State",
+            "abbr": "SAC",
+            "seasons": [
+                2026
+            ]
+        },
+        {
             "team_id": 21,
             "name": "San Diego State",
             "abbr": "SDSU",
@@ -3377,6 +3385,14 @@
                 2023,
                 2024,
                 2025,
+                2026
+            ]
+        },
+        {
+            "team_id": 2449,
+            "name": "North Dakota State",
+            "abbr": "NDSU",
+            "seasons": [
                 2026
             ]
         },

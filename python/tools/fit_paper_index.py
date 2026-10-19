@@ -815,6 +815,12 @@ def fit_and_evaluate() -> dict:
         "holdout_games": int(len(yh)),
         "league_pts_per_opp": league_ppo,
         "margins_pinned_to_zero": dropped,
+        # each margin's importance in the model: its weight times its spread
+        # over the train games (log-odds per standard deviation), so margins on
+        # different scales compare -- paper_index.IMPORTANCE ships these
+        "importance": {
+            k: round(float(b * s), 4) for k, b, s in zip(WEIGHT_NAMES, beta, Xt.std(axis=0, ddof=1))
+        },
         **_rounded(metrics),
         "calibration": calibration_table(p_hold, yh),
         "fp_curve": ep_curve_fingerprint(LEAGUE),
@@ -940,6 +946,7 @@ def main() -> int:
     for k, v in fixture["weights"].items():
         print(f'    "{k}": {v:.4f},')
     print(f"and LEAGUE_PTS_PER_OPP[{LEAGUE!r}] = {prov['league_pts_per_opp']:.4f}")
+    print(f"and IMPORTANCE[{LEAGUE!r}] = {prov['importance']}")
     return 0
 
 

@@ -3,6 +3,7 @@ import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { loadGzJson } from './helpers/tables';
+import { wpExportTitle } from '../src/utils/chartExport';
 
 // Real, offline /process payloads (fixtures/README.md): CMU at OKST 2016, JAX at CLE 2026.
 const FIXTURES = { cfb: 'usage-cfb-400869270.json.gz', nfl: 'usage-nfl-401872922.json.gz' } as const;
@@ -34,6 +35,10 @@ describe('game-links: the header text links into the site', () => {
                 expect(h).toContain(`href="${prefix}/team/${game.teamInfo.away.id}"`);
                 expect(h).toContain(`href="${prefix}/team/${game.teamInfo.home.id}"`);
             }
+            // linked, the h1 still reads exactly what the WP chart's export title opens with
+            const comps = game.header.competitions[0].competitors;
+            const [away, home] = ['away', 'home'].map((side) => comps.find((c: any) => c.homeAway === side));
+            for (const h of heads) expect(wpExportTitle(away, home, 'Final')).toBe(`${h.replace(/<[^>]+>/g, '')}: Win Probability (Final)`);
             // pinned literally: header.season.type is the numeric route type (2 = regular season in both fixtures)
             const week = `href="${prefix}/year/${game.header.season.year}/type/2/week/${game.header.week}"`;
             expect(html.split(week).length - 1).toBe(2); // both Back buttons
