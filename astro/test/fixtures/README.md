@@ -633,3 +633,29 @@ needs a new id and a new snapshot in its own PR.
   length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
   **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
   `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.
+- `wbb/dashboards/*`: the women's college shot dashboards' fixtures. (a) `ncaa_fixture_shot_rows.json` is sdv-db's committed
+  `tests/fixtures/ncaa_shot_dashboards/wbb/shot_rows.json` (sdv-db 6c2d393, file last changed in 7c64c30 = #167, plan
+  2026-10-11-ncaa-shots-sdv-db Task 5; sha256 242c6b94503a1e27d37bc635e59f885e6250ed5812c432c86aefe17a0b74203c), byte for byte: the
+  SQL's own `shot_rows` (254 rows) for South Carolina's NCAA contests 1989192 (2020-21) and 2125095 (2021-22), real release rows with
+  corner-band threes either side of the women's arc move; `ncaa_fixture_league_context.json` (273 rows) is sdv-db's
+  `ncaa_shot_dashboards.select_league_context(schema, 'wbb')` over exactly those rows (all six kinds), written by
+  `wbb_fixture_context.py` (plan 2026-10-11-wbb-shots-gop Task 2 Step 3). (b) Every other `.json` / `.json.gz` (gzip of the same
+  JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on 127.0.0.1) over a local warehouse loaded
+  from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` 2019–2026 on 2026-10-12 (ncaa-wbb-hoops-data ff5e192,
+  shot files last changed in 523abfd; its 2019 and 2026 shot files hold 236,067 and 708,038 rows = `shot_coverage.source_shots`),
+  `schedule` on 2026-10-12/19 (wehoop-wbb-data b86f451b), `team_group_seasons` / `group_seasons` on 2026-10-19
+  (sportsdataverse-data `wbb_groups`), the five `wbb.shot_*` tables built by sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12,
+  captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows` by person with the six lite columns, by team (South
+  Carolina, 2579) with the six plus `person_id` (for the parity test), and no game-id filter (regular season + postseason, D23);
+  `shot_season_players` / `shot_league_context` by season (2019, 2022, 2026); `shot_player_games` by person, the 2026 latest game
+  date (`order=-game_date&limit=1`, 2026-04-05) and the leaders' 49-day read (`game_date__gte` = latest − 48 days = 2026-02-16, 49
+  dates inclusive, R-S2); `shot_coverage` (every season); `team_group_seasons` (2019, 2021, 2022, 2026) / `group_seasons`
+  (`level=conference`; 2019, 2022, 2026); `schedule` (`select=home_id,away_id`; 2019, 2021, 2022, 2026). Players: South Carolina's
+  most-attempts shooter in 2026 (Joyce Edwards, 5239100, 538 attempts) and in 2018-19 (Mikiah Herbert Harrigan, 4065759, 41).
+  `leaders_window_rows.json`, `postseason_games.json`, `placeholder_check.json` and `unlinked_programs.json` are psql output of
+  `measure_wbb.sql` (Task 2 Step 2) on the same warehouse: the largest player-game count in any 42/49/56-date window per season,
+  type-3 games per season, the densest shot location per season, and per season the D-I reference programs with no shot the
+  release links to ESPN plus the NCAA team names with 600+ unlinked shots (Decision 8). The games-in-scope medians are
+  `wbb/games_in_scope.json` (plan #10; R-S9). **Used by:** `test/wbb/dashboardFixtures.ts` (and every WBB dashboard test through
+  it). **To regenerate:** plan 2026-10-11-wbb-shots-gop Task 2 (local warehouse, local API, the three scripts under ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-shots-gop/`).
