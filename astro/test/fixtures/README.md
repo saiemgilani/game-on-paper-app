@@ -586,3 +586,28 @@ needs a new id and a new snapshot in its own PR.
   (owner ruling D31). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
   `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (writes these fixtures and `src/nba/data/wbbTeams.ts` from its `wbb-probe/`
   captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
+- `wbb/game_<id>_processor.json` and `wbb/game_<id>_api.json` for 401827362 (Kansas at TCU, 2026-01-29, 77-79), 401805076 (UTEP at Louisiana
+  Tech, 2026-03-08, 87-91, one overtime), 401856459 (Hofstra vs Charleston, 2026-03-15, CAA final, 56-68, neutral), 400550784 (Rutgers at
+  UTEP, 2014-04-05, WNIT final, 56-54, two halves) and 273130043 (Stanford at Yale, 2007-11-09, 100-44, two halves, no turnovers recorded);
+  `wbb/game_401702870_processor.json` (Duke at South Florida, 2024-12-21, 56-65; every field-goal attempt at ESPN's (25, 0)). Dates are the
+  schedule's UTC dates. Captured 2026-10-19.
+  - `_processor.json`: the live body of `GET /wbb/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="wbb")` at the
+    `python/uv.lock` commit `b4229f1c`, with plan #1's score rebuild and plan #2's D12 rule). ESPN carries a DraftKings line for 401827362
+    (TCU favored by 15.5, `home_team_spread` 15.5, pregame home win probability 0.8986), prior `spread`; none for the others (`neutral` 0.5
+    for 401856459, `hfa` 0.586 for the rest).
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns (`player_box` through `playerBoxSelect('wbb')`, which leaves out `plus_minus`
+    and `reason`: wehoop-wbb-data's player box has neither) from a LOCAL sdv-db Data API over a local warehouse loaded from the
+    wehoop-wbb-data release parquet (2014 and 2026 at commit `1d5e0668e`, after the owner's 2026-10-18 republish of plan #1's score rebuild,
+    2009-2027; 2008 from the release before it, which the republish did not cover), `play_wp` / `game_*_rates` built by sdv-db's
+    `wbb_game_pages` (`6391dda`) scoring with sdv-py `cd6f7f25`. The release has no line for any 2016-2026 game, so those priors are `hfa`
+    or `neutral` (Decision 8, D33). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/wbb/game.test.ts`): `RELEASE_SCORE_ROWS` is empty (after the republish no running-score row differs,
+    400550784's halves-era rows included; spec D7). `RELEASE_FIELD_GAPS` (ruling R-W15) names the fields the release lacks or defines
+    differently, and the test asserts exactly those differ: 400550784 and 273130043, both sides, `records` and `linescores` (null / empty in
+    the release: wehoop-wbb-data's schedules carry them only from 2024, measured on the local warehouse 2002-2026) and `fast_break_points` /
+    `points_in_paint` (null in the release: its team box carries them only from 2024, measured 2004-2026); 273130043 also `total_rebounds`
+    (the release counts team rebounds: Stanford 55 = 50 + 5, Yale 33 = 32 + 1, the team-rebound rows in the play-by-play) and player
+    `minutes` (null in the release, 0 from the processor, for all 5 + 5 players).
+  - **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`, the
+    API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, ClaudeCowork `ledgers/2026-10-19-bball-wbb-games-gop/capture_wbb_games.py`).
