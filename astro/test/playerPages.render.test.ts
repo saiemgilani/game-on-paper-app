@@ -403,7 +403,7 @@ describe('CFB player page', () => {
             else expect(cell).not.toContain('hulk-bg-level-');
             expect(cell).toMatch(new RegExp(`<small[^>]*data-league-pct[^>]*> ${want[i]}(st|nd|rd|th) %ile</small>`));
         });
-        expect(allRow).toContain('title="Percentile among every QB player-season in the nation that season, min 10 plays in the split"');
+        expect(html.split('id="player-splits-table"')[1].split('</table>')[0]).toContain('<caption class="text-muted text-small" data-league-pct-caption>Percentile among every QB player-season in the nation that season, min 10 plays in the split.</caption>');
         // both cohorts read at once: every player's, and his group's
         expect(feed.splitCalls).toEqual([[2024, 'cfb'], [2024, 'cfb', 'QB']]);
         // plays is a count, not a performance: no shading, no percentile (as in the game log)
@@ -417,7 +417,8 @@ describe('CFB player page', () => {
         const data = cfb.splits.data.map((s: any) => (s.split === 'red_zone' ? { ...s, plays: 9 } : s));
         feed.cfb = { ...cfb, splits: { ...cfb.splits, data } };
         try {
-            const rows = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-splits-table');
+            const page = await renderPage('cfb', '4433971', 2024);
+            const rows = bodyRows(page, 'player-splits-table');
             const rz = rows.find((r) => r.includes('Red zone'))!;
             expect(rz).not.toContain('data-league-pct');
             expect(rz).not.toContain('hulk-bg-level-');
@@ -438,7 +439,7 @@ describe('CFB player page', () => {
     test('splits: the NFL tooltip names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
         const table = html.split('id="player-splits-table"')[1].split('</table>')[0];
-        expect(table).toContain('title="Percentile among every WR player-season in the league that season, min 10 plays in the split"');
+        expect(table).toContain('Percentile among every WR player-season in the league that season, min 10 plays in the split');
         expect(feed.splitCalls).toEqual([[2024, 'nfl'], [2024, 'nfl', 'WR']]);
     }, 60_000);
 
@@ -446,19 +447,19 @@ describe('CFB player page', () => {
         // the route drops a group split under 30 player-seasons (red zone for a TE group)
         feed.groupSplitMissing = (split: string) => split === 'red_zone';
         try {
-            const rows = bodyRows(await renderPage('cfb', '4433971', 2024), 'player-splits-table');
+            const page = await renderPage('cfb', '4433971', 2024);
+            const rows = bodyRows(page, 'player-splits-table');
             const rz = rows.find((r) => r.includes('Red zone'))!;
             const rzRow = cfb.splits.data.find((s: any) => s.split === 'red_zone');
             const epa = (row: string) => [...row.matchAll(/<td[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0])[3];
             // red zone on the all-players ramp (by 3s), with the all-players hover
             expect(epa(rz)).toMatch(new RegExp(`> ${Math.floor(rzRow.epa / 3)}(st|nd|rd|th) %ile</small>`));
-            expect(rz).toContain('title="Percentile among every player-season in the nation that season, min 10 plays in the split"');
-            expect(rz).not.toContain('every QB player-season');
+            expect(rz).not.toContain('title="Percentile');
             // the other splits keep the group's
             const pd = rows.find((r) => r.includes('Passing downs'))!;
             const pdRow = cfb.splits.data.find((s: any) => s.split === 'passing_downs');
             expect(epa(pd)).toMatch(new RegExp(`> ${Math.floor(pdRow.epa / 6)}(st|nd|rd|th) %ile</small>`));
-            expect(pd).toContain('title="Percentile among every QB player-season in the nation that season, min 10 plays in the split"');
+            expect(page.split('id="player-splits-table"')[1]).toContain('Percentile among every QB player-season in the nation that season, min 10 plays in the split, except Red zone, which rank against every player-season.');
         } finally {
             feed.groupSplitMissing = () => false;
         }
@@ -489,7 +490,7 @@ describe('CFB player page', () => {
             const table = (await renderPage('cfb', '4433971', 2024)).split('id="player-splits-table"')[1].split('</table>')[0];
             expect(feed.splitCalls).toEqual([[2024, 'cfb']]);
             expect(table).toContain('data-league-pct');
-            expect(table).toContain('title="Percentile among every player-season in the nation that season, min 10 plays in the split"');
+            expect(table).toContain('Percentile among every player-season in the nation that season, min 10 plays in the split');
             expect(table).not.toMatch(/every [A-Z]{2} player-season/);
         } finally {
             feed.cfb = before;
