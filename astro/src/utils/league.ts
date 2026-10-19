@@ -152,22 +152,27 @@ export const NFL_LOGO_ABBR: Record<string, string> = {
 
 // ESPN serves WNBA logos only under the abbreviation: `wnba/500-dark/<id>.png` is a 404 for all 15 teams and `wnba/500/<id>.png`
 // for Golden State (129689), Toronto (131935) and Portland (132052). ESPN team id -> abbreviation, all 15 verified 2026-10-12
-// (re-probed 2026-10-18) against both 500 and 500-dark. A defunct franchise's id is not listed and keeps the id path.
+// (re-probed 2026-10-18) against both 500 and 500-dark. Of the defunct franchises, ESPN serves Charlotte (1, cha), Houston (4, hou)
+// and Sacramento (13, sac) by abbreviation (probe 2026-10-18); Cleveland (2) and Miami (7) have no logo at all, and the 2000-02
+// Portland Fire (12) is not the 2026 Fire whose `por` logo that would draw, so those three get the default shield.
 export const WNBA_LOGO_ABBR: Record<string, string> = {
     '20': 'atl', '19': 'chi', '18': 'con', '3': 'dal', '129689': 'gs', '5': 'ind', '17': 'lv', '6': 'la',
     '8': 'min', '9': 'ny', '11': 'phx', '132052': 'por', '14': 'sea', '131935': 'tor', '16': 'wsh',
+    '1': 'cha', '4': 'hou', '13': 'sac',
 };
 
 /**
  * ESPN logo URL for a team, light or dark. Dark NFL logos go through the abbreviation
  * path; an NFL id missing from the map falls back to the light logo rather than a 404.
- * A current WNBA team's light and dark logos both go through its abbreviation (WNBA_LOGO_ABBR).
+ * A WNBA team's light and dark logos both go through its abbreviation (WNBA_LOGO_ABBR); an unmapped id gets ESPN's default shield.
  */
 export function teamLogoUrl(league: League | undefined, teamId: string | number, dark: boolean): string {
     const logoLeague = espnLogoLeague(league);
     const id = String(teamId);
     const light = `https://a.espncdn.com/i/teamlogos/${logoLeague}/500/${id}.png`;
-    if (logoLeague === 'wnba' && WNBA_LOGO_ABBR[id]) return `https://a.espncdn.com/i/teamlogos/wnba/${dark ? '500-dark' : '500'}/${WNBA_LOGO_ABBR[id]}.png`;
+    if (logoLeague === 'wnba') return WNBA_LOGO_ABBR[id]
+        ? `https://a.espncdn.com/i/teamlogos/wnba/${dark ? '500-dark' : '500'}/${WNBA_LOGO_ABBR[id]}.png`
+        : 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; // ESPN serves no WNBA logo by id
     if (!dark) return light;
     if (logoLeague === 'nfl') {
         const abbr = NFL_LOGO_ABBR[id];

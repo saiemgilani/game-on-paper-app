@@ -94,13 +94,18 @@ describe('the wnba league entry', () => {
         expect(BASKETBALL.wnba.wpModelNote).not.toMatch(/trained on|one season/); // no unrecorded training claim
     });
     test('logos: by abbreviation, the probe of 2026-10-12', () => {
-        expect(Object.keys(WNBA_LOGO_ABBR).sort()).toEqual(WNBA_TEAMS.map((t) => String(t.espn_id)).sort());
+        // the 15 current teams plus the three defunct franchises ESPN still serves a logo for (probe 2026-10-18)
+        expect(Object.keys(WNBA_LOGO_ABBR).sort()).toEqual([...WNBA_TEAMS.map((t) => String(t.espn_id)), '1', '4', '13'].sort());
         expect(teamLogoUrl('wnba', '129689', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/gs.png');
         expect(teamLogoUrl('wnba', 20, true)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500-dark/atl.png');
-        expect(teamLogoUrl('wnba', 1, false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/1.png'); // the defunct Sting: unmapped, the id path
+        expect(teamLogoUrl('wnba', 1, false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/cha.png'); // the defunct Sting, by abbreviation
+        // Cleveland (2) and Miami (7) have no ESPN logo at all, and Portland Fire 2000-02 (12) must not draw the 2026 Fire's: the default shield
+        for (const id of ['2', '7', '12']) for (const dark of [false, true])
+            expect(teamLogoUrl('wnba', id, dark)).toBe('https://a.espncdn.com/i/teamlogos/default-team-logo-500.png');
         expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png'); // the NBA unchanged
         expect(darkLogoCss([{ id: '129689', abbreviation: 'GS' }, { id: '1', abbreviation: 'CHA' }], BASKETBALL.wnba.darkLogo))
-            .toBe("img.team-logo-129689{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/gs.png&h=120&w=120')}");
+            .toBe("img.team-logo-129689{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/gs.png&h=120&w=120')}"
+                + "img.team-logo-1{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/cha.png&h=120&w=120')}");
         // D22: keyed by ESPN id, so a 2005 board's WAS (today wsh) still gets the current dark logo
         expect(BASKETBALL.wnba.darkLogo).toEqual({ kind: 'idKeyed', logoLeague: 'wnba', abbrById: WNBA_LOGO_ABBR });
         expect(darkLogoCss([{ id: '16', abbreviation: 'WAS' }], BASKETBALL.wnba.darkLogo)).toContain('/i/teamlogos/wnba/500-dark/wsh.png');

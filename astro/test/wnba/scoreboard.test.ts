@@ -24,12 +24,13 @@ describe('WNBA scoreboard status from real days', () => {
 
 describe('logos by abbreviation (Decision 5, Review Focus 4)', () => {
     // TeamRow.astro draws the card's light logo from teamLogoUrl(league, id, false) through the combiner.
-    test('light: the three abbreviation-only franchises at 500/<abbr>.png; a defunct team and the NBA keep the id path', () => {
+    test('light: the three abbreviation-only franchises at 500/<abbr>.png; a defunct team by abbreviation or the default shield, the NBA the id path', () => {
         for (const [id, ab] of [['129689', 'gs'], ['131935', 'tor'], ['132052', 'por']]) {
             expect(teamLogoUrl('wnba', id, false)).toBe(`https://a.espncdn.com/i/teamlogos/wnba/500/${ab}.png`);
             expect(teamLogoUrl('wnba', id, true)).toBe(`https://a.espncdn.com/i/teamlogos/wnba/500-dark/${ab}.png`);
         }
-        expect(teamLogoUrl('wnba', '1', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/1.png'); // Charlotte Sting
+        expect(teamLogoUrl('wnba', '1', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/cha.png'); // Charlotte Sting
+        expect(teamLogoUrl('wnba', '7', false)).toBe('https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'); // Miami Sol: ESPN has none
         expect(teamLogoUrl('nba', '18', false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/18.png');
     });
     test('dark: every team of the 2025 board; on 2005-06-03 all four teams too, keyed by ESPN id (D22, R14)', () => {
