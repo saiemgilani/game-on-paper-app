@@ -7,6 +7,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { courtFor, placeholderFor, rankMins } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
 import { headshotsFromRows, leagueContextFromRows, playerGamesFromRows, playerSeasonsFromRows, shotsFromRows, teamsOfPlayer } from '../../nba/adapters';
 import type { PlayerExplorerData } from '../nba/explorer';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
@@ -17,7 +18,7 @@ import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/r
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
-import { resolveBasketballSeason } from './season';
+import { readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballPlayerParams {
     season: number;
@@ -39,6 +40,8 @@ export interface BasketballPlayerParams {
     hisSeasons: number[];
     /** D29: the season's shots at the league's placeholder location, and all his shots (the page note); absent for the NBA */
     unlocated?: { count: number; total: number };
+    /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
+    coverage?: string | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -54,6 +57,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const resolved = resolveBasketballSeason(Astro, league);
     const { season } = resolved;
 
+    const coverageP = readCoverageNote(league, season);
     const reads = await Promise.allSettled([
         retrieveSeasonPlayerRows(season, league),
         retrieveLeagueContextRows(season, league),
@@ -117,6 +121,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const min = rankMins(league, season);
     if (degraded) uncacheable(Astro);
     else setCache(Astro, playerCache(league));
+    const coverage = await coverageP;
+    if (coverage === undefined) uncacheable(Astro);
     return {
         ...resolved,
         player,
@@ -130,5 +136,6 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         min,
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
+        ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
     };
 }

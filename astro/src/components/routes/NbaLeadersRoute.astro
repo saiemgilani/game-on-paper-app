@@ -9,7 +9,7 @@ import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaLeadersParams }
-const { season, seasons, current, q, boards } = Astro.props.data;
+const { season, seasons, current, q, boards, coverage, windows, windowNote } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -18,7 +18,9 @@ const ft = cfg.featuredTeam;
 const label = seasonLabelFor(league, season);
 const ip = islandLeagueProps(league, season);
 const title = `${name} rolling leaders, ${label} | Game on Paper`;
-const description = `Who is shooting best over their last 5, 10 and 20 games in ${label}: FG%, eFG%, 3P% and most improved${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
+const listed = windows ?? [5, 10, 20];
+const windowWords = listed.length > 1 ? `${listed.slice(0, -1).join(', ')} and ${listed.at(-1)}` : String(listed[0]);
+const description = `Who is shooting best over their last ${windowWords} games in ${label}: FG%, eFG%, 3P% and most improved${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Leaders', active: true }];
 ---
 <GenericPage title={title} subtitle={description} slug={lp('/leaders')} breadcrumbs={breadcrumbs} description={description} canonicalPath={`${lp('/leaders')}${q}`}>
@@ -26,13 +28,13 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row mb-3">
       <div class="col-12">
         <h1 class="h3">Rolling leaders, {label}</h1>
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/leaders')} />
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/leaders')} />{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}
       </div>
     </div>
     <div class="row">
       <div class="col-12">
         {boards
-          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} />)
+          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} />)
           : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
       </div>
     </div>

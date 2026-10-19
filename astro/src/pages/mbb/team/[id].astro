@@ -1,0 +1,16 @@
+---
+// src/pages/mbb/team/[id].astro: an ESPN team id
+import NbaTeamRoute from '../../../components/routes/NbaTeamRoute.astro';
+import { prepareBasketballTeam } from '../../../routes/basketball/team';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballTeam(Astro, 'mbb');
+if ('unavailable' in r) {
+    return unavailable('mbb');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaTeamRoute data={r} />

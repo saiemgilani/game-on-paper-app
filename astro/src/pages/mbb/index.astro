@@ -1,10 +1,14 @@
 ---
-// /mbb: BASKETBALL.mbb.landing is 'teams-index', which plan #9 builds. Until then the scoreboard is the landing; never cached,
-// so plan #9's page is not hidden behind a held redirect.
-import { uncacheable } from '../../routes/basketball/cache';
-import { leaguePath } from '../../utils/league';
+// /mbb: BASKETBALL.mbb.landing is 'teams-index' (spec §3.4, D30): the season's teams by conference with their shooting
+// lines, plus links to the scoreboard and the other shooting pages. /mbb/teams is the same list under the Header's Teams.
+import NbaTeamsRoute from '../../components/routes/NbaTeamsRoute.astro';
+import { prepareBasketballTeams } from '../../routes/basketball/teams';
+import { unavailable } from '../../routes/basketball/cache';
 
-Astro.locals.league = 'mbb';
-uncacheable(Astro);
-return new Response(null, { status: 302, headers: { Location: leaguePath('mbb', '/scoreboard'), 'Cache-Control': 'no-store' } });
+const r = await prepareBasketballTeams(Astro, 'mbb', { landing: true });
+if ('unavailable' in r) {
+    return unavailable('mbb');
+}
 ---
+
+<NbaTeamsRoute data={r} landing />
