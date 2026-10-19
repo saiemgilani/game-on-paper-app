@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { WNBA_DEFUNCT, WNBA_FORMER_NAMES, WNBA_TEAMS, wnbaEraTricode, wnbaLogoId, wnbaTeamByEspnId, wnbaTeamById } from '../../src/nba/data/wnbaTeams';
+import { WNBA_HOSTED_LOGOS, WNBA_LOGO_ABBR } from '../../src/utils/league';
 
 type Row = { espn_team_id: number; espn_display_name: string; wnba_team_id: string; wnba_team_tricode: string; first: number; last: number };
 const XW: Row[] = JSON.parse(readFileSync(new URL('../fixtures/wnba/team_crosswalk_2002_2026.json', import.meta.url)).toString());
@@ -75,7 +76,26 @@ describe('wnbaLogoId: the ESPN id a logo is keyed by in a season', () => {
         expect(wnbaLogoId(132052, 2026)).toBe('132052');
         expect(wnbaLogoId(132052, null)).toBe('132052');
     });
-    test('every other id is itself, in any season', () => {
-        for (const id of [1, 2, 3, 7, 12, 15, 17]) expect(wnbaLogoId(id, 2002)).toBe(String(id));
+    test('a relocated franchise draws its era\'s logo, by ESPN id and season (D22): every WNBA_FORMER_NAMES boundary', () => {
+        // Detroit Shock -> Tulsa Shock -> Dallas Wings, all ESPN id 3
+        expect([2002, 2009, 2010, 2015, 2016, 2026].map((y) => wnbaLogoId(3, y))).toEqual(['det', 'det', 'tul', 'tul', '3', '3']);
+        // Utah Starzz (15; 17 if ESPN files it under the Aces) -> San Antonio Silver Stars -> San Antonio Stars -> Las Vegas Aces (17)
+        expect(wnbaLogoId(15, 2002)).toBe('uta');
+        expect([2002, 2003, 2013, 2014, 2017, 2018].map((y) => wnbaLogoId(17, y))).toEqual(['uta', 'sas', 'sas', 'sa', 'sa', '17']);
+        // Orlando Miracle (10; 18 likewise) -> Connecticut Sun (18)
+        expect(wnbaLogoId(10, 2002)).toBe('orl');
+        expect([2002, 2003].map((y) => wnbaLogoId(18, y))).toEqual(['orl', '18']);
+        // Phoenix's PHO row is today's name, so the id stands
+        expect(wnbaLogoId(11, 2005)).toBe('11');
+    });
+    test('every era with a logo key resolves to exactly one source: an ESPN era file or a hosted mark', () => {
+        for (const f of WNBA_FORMER_NAMES.filter((r) => r.logo)) {
+            expect(Number(f.logo! in WNBA_LOGO_ABBR) + Number(f.logo! in WNBA_HOSTED_LOGOS), f.name).toBe(1);
+        }
+        expect(WNBA_FORMER_NAMES.filter((r) => !r.logo).map((r) => r.name)).toEqual(['Phoenix Mercury']);
+    });
+    test('every other id is itself, in any season; no season, the id', () => {
+        for (const id of [1, 2, 7, 12, 16]) expect(wnbaLogoId(id, 2002)).toBe(String(id));
+        for (const id of [3, 15, 17]) expect(wnbaLogoId(id, null)).toBe(String(id));
     });
 });
