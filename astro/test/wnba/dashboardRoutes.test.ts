@@ -2,7 +2,7 @@
 // The two dashboard loaders build with the season's court: the team page's server-built dashboard, the player page's
 // explorer (the island rebuilds it in the browser from data.court).
 import { describe, expect, test, vi } from 'vitest';
-import { courtFor } from '../../src/basketball/config';
+import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { SEA, leagueContext, leagueShots2003, p03, player2003Games, seaShots, seasonPlayers } from './dashboardFixtures';
 
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
@@ -31,5 +31,8 @@ describe('dashboard loaders pass the season court', () => {
         const id = p03().person_id;
         const r: any = await prepareBasketballPlayer(fakeAstro(`/wnba/players/${id}?season=2003`, { id: String(id) }), 'wnba');
         expect(r.explorer.court).toBe(courtFor('wnba', 2003));
+        expect(r.explorer.placeholder).toEqual(BASKETBALL.wnba.placeholderLocation);
+        // 132 of her 526 2003 shots sit at the hoop centre (the real capture); seasonFgPct still counts all 526
+        expect(r.unlocated).toEqual({ count: 132, total: 526 });
     });
 });

@@ -255,8 +255,8 @@ export type Zone = (typeof ZONES)[number];
 /**
  * Two or three comes from `shot_value` (the scorer's call; coordinates near the line are noisy).
  * Threes at or below the corner break (y <= threeBreakY(court): ~89.5 on the NBA court, 0 on a WNBA court before 2013) are corner threes, split by the sign of x.
- * Twos: within 4 ft of the hoop centre is the restricted area, then the 16 ft lane up to the
- * free-throw line is the paint, anything else is mid-range.
+ * Twos: within `court.restrictedRadius` of the hoop centre (none when 0) is the restricted area, then the lane
+ * (`court.laneHalfWidth` either side) up to the free-throw line is the paint, anything else is mid-range.
  */
 export function zoneOf(s: Pick<Shot, "x_legacy" | "y_legacy" | "shot_value">, court: Court = COURT): Zone {
   if (s.shot_value === 3) {

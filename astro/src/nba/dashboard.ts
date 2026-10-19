@@ -39,9 +39,9 @@ export interface LeagueContext {
   fgPct: number | null;
 }
 
-export function leagueContext(league: ShotLite[]): LeagueContext {
+export function leagueContext(league: ShotLite[], court: Court = COURT): LeagueContext {
   return {
-    hexIndex: leagueHexIndex(league, HEX_RADIUS),
+    hexIndex: leagueHexIndex(league, HEX_RADIUS, court),
     byFoot: fgPctByDistance(league),
     byBin: fgPctByDistance(league, BAR_BIN_FT),
     sides: statsBySide(league, BAR_BIN_FT),
