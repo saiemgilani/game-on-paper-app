@@ -88,6 +88,14 @@ describe('rankHits', () => {
         expect(hit.sublabel).toBe('uga / SEC');
     });
 
+    test("a game label lowercases only its meme-list team, on the real fixture row", () => {
+        const game = ALAB.find((r) => r.type === 'game')!;
+        const [plain] = rankHits([game], all);
+        expect(plain.label).toBe('Alabama @ LSU');
+        const [hit] = rankHits([{ ...game, label: 'Georgia vs Alabama' }], all);
+        expect(hit.label).toBe('georgia vs Alabama');
+    });
+
     test('teams carry light and dark logos with the SPECIAL_IMAGES overrides; players and games none', () => {
         const hits = rankHits([
             { type: 'team', id: '61', label: 'Georgia', sublabel: 'UGA · SEC', league: 'cfb', score: 4 },

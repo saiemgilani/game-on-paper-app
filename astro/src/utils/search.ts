@@ -2,7 +2,7 @@ import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from './constants';
 import { leaguePath, teamLogoUrl, type League } from './league';
 import { cleanTextForTeam } from './misc';
 import { playerPath } from './players';
-import { teamIdByAbbr } from './teams';
+import { teamIdByAbbr, teamIdByName } from './teams';
 
 /** What the header search returns, in the order its groups are shown. */
 export const SEARCH_TYPES = ['team', 'player', 'game'] as const;
@@ -79,10 +79,13 @@ export function rankHits(rows: SearchRow[], opts: { players: boolean; nfl: boole
                 : type === 'player' ? teamIdByAbbr(league, sublabel.split(' / ')[0]) : null;
             // a team's sublabel opens with its abbreviation, which follows the list too (not the conference)
             const [abbr, ...rest] = sublabel.split(' / ');
+            // a game's label names two teams ("X @ Y", "X vs Y"); each follows its own meme-list entry
+            const gameLabel = () => r.label.split(/( @ | vs\.? )/)
+                .map((part, i) => (i % 2 ? part : cleanTextForTeam(part, teamIdByName(league, part)))).join('');
             return {
                 type,
                 id,
-                label: cleanTextForTeam(r.label, memeId),
+                label: type === 'game' ? gameLabel() : cleanTextForTeam(r.label, memeId),
                 sublabel: type === 'player' ? cleanTextForTeam(sublabel, memeId)
                     : type === 'team' ? [cleanTextForTeam(abbr, memeId), ...rest].join(' / ') : sublabel,
                 href: hrefFor({ type, id, league }),

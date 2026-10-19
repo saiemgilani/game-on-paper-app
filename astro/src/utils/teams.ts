@@ -60,6 +60,14 @@ export function cfbTeamIdByName(name: string | null | undefined): number | null 
     return key ? (CFB_ID_BY_NAME[key] ?? null) : null;
 }
 
+/** Team id for a league's team NAME, the lookup a game label ("Georgia @ LSU") needs. */
+export function teamIdByName(league: League, name: string | null | undefined): number | null {
+    if (league === 'cfb') return cfbTeamIdByName(name);
+    const key = String(name ?? '').trim().toLocaleLowerCase();
+    const hit = ((nflTeamsRaw.teams ?? []) as TeamIndex[]).find((t) => t.name.toLocaleLowerCase() === key);
+    return hit?.team_id ?? null;
+}
+
 /**
  * ESPN team id for a league's abbreviation ("UGA" -> 61, "LAC" -> 24). The Data API's
  * player search row names his latest team by abbreviation only, and the meme list
