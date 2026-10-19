@@ -97,6 +97,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
             const missing = shots.find((s) => !logged.has(s.game_id));
             if (missing) {
                 games = null;
+                degraded = true; // the two reads disagree mid-rebuild: don't hold the page without its per-game views
                 console.warn(`[player ${personId}] per-game views unavailable: game ${missing.game_id} has shots but no log row`);
             }
         }

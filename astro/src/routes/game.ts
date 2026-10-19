@@ -17,6 +17,7 @@ import { getGameCacheConfig } from '../utils/config';
 import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
+import { warmShareCards } from './shareCard';
 
 export interface GameRouteData {
     league: League;
@@ -103,6 +104,11 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             Astro.response.headers.set("Cache-Control", "no-store");
         } else {
             Astro.cache.set(config);
+            // 'share-card' (preview): keep this game's played card in KV, drawn from the game
+            // just processed, after the page is sent (routes/shareCard.ts)
+            if (game && isFeatureEnabled('share-card', Astro.locals)) {
+                (Astro.locals as any).cfContext?.waitUntil?.(warmShareCards(id, league, espnGame.gamepackageJSON.header, game));
+            }
         }
     } catch (e: any) {
         console.error(`ERROR while retrieving game data: ${e}, ${e.stack}`);

@@ -54,4 +54,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 COPY *.py ./
+# the share card's Chivo (share_card.py)
+COPY assets ./assets
 CMD ["gunicorn", "app:app"]

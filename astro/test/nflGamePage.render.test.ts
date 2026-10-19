@@ -35,7 +35,8 @@ describe('GamePage renders a finished NFL game end to end', () => {
         html = await container.renderToString(GamePage, {
             props: { id: GAME_ID, game, league: 'nfl' },
             request: new Request(`https://gameonpaper.com/nfl/game/${GAME_ID}`),
-            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false } },
+            // 'share-card' off: the ESPN share image (asserted below) is what its og:image replaces
+            locals: { league: 'nfl', preview: true, flagOverrides: { 'game-links': false, 'share-card': false } },
         });
         if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html);
     }, 60_000);

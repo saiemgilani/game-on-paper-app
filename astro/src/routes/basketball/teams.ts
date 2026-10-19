@@ -38,7 +38,10 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     if (placeholderFor(league, resolved.season)) {   // R22: only placeholder seasons
         try {
             const t = (await retrieveLeagueContextRows(resolved.season, league)).find((r) => r.kind === 'total');
-            if (t && (t.placeholder_shots ?? 0) > 0) unlocated = { count: t.placeholder_shots!, total: t.attempts };
+            if (t?.placeholder_shots == null) {
+                console.warn(`${league} teams ${resolved.season}: league context has no total row placeholder_shots for the placeholder note`);
+                uncacheable(Astro); // incomplete context: as a failed read
+            } else if (t.placeholder_shots > 0) unlocated = { count: t.placeholder_shots, total: t.attempts };
         } catch (e: any) {
             console.warn(`${league} teams ${resolved.season}: league context unavailable for the placeholder note (${e?.message ?? e})`);
             uncacheable(Astro); // the page without its note must not be held for the season window

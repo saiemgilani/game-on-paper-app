@@ -8,6 +8,10 @@ interface Props {
     result: {
         homeShare: number
         margins: Record<string, number>
+        /** per margin, its push on the home share in log-odds, weight x margin (paper_index.py) */
+        impact?: Record<string, number | null>
+        /** per margin, its importance in the model; breaks impact ties in the row order (paper_index.py) */
+        importance?: Record<string, number>
         byPeriod?: Record<string, { homeShare: number; margins: Record<string, number> }>
     }
     homeTeam: ESPNTeam
@@ -33,17 +37,45 @@ const barVars = colors && `#paper-index-panel { --pi-home: ${colors.light.home};
 const meterLabel = `Deserved Win %: ${awayTeam.abbreviation} ${awayPct}%, ${homeTeam.abbreviation} ${homePct}%`;
 const fmt = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${roundNumber(v, 2, digits)}`;
 const m = result.margins;
+const impact = result.impact;
+const pct = (v: number) => `${fmt(v * 100)}%`;
 // the home team's edge on each fitted input, in display order
-const marginRows = [
-    m.success != null ? { label: "Success Rate", value: `${fmt(m.success * 100)}%`, pos: m.success >= 0 } : null,
-    m.explosive != null ? { label: "Explosive Play Rate", value: `${fmt(m.explosive * 100)}%`, pos: m.explosive >= 0 } : null,
-    m.explosive_epa != null ? { label: "Explosiveness (EPA/success)", value: fmt(m.explosive_epa, 2), pos: m.explosive_epa >= 0 } : null,
-    m.opp_conversion != null ? { label: "Opportunity Conversion Rate", value: `${fmt(m.opp_conversion * 100)}%`, pos: m.opp_conversion >= 0 } : null,
-    m.pts_per_opp != null ? { label: "Points per opportunity", value: fmt(m.pts_per_opp), pos: m.pts_per_opp >= 0 } : null,
-    m.field_position != null ? { label: "Field position (EP)", value: fmt(m.field_position, 2), pos: m.field_position >= 0 } : null,
-    m.havoc != null ? { label: "Havoc Rate", value: `${fmt(m.havoc * 100)}%`, pos: m.havoc >= 0 } : null,
-    m.turnovers != null ? { label: "Turnovers", value: fmt(m.turnovers, 0), pos: m.turnovers >= 0 } : null,
-].filter((r): r is { label: string; value: string; pos: boolean } => !!r);
+const MARGINS: [string, string, (v: number) => string][] = [
+    ["success", "Success Rate", pct],
+    ["explosive", "Explosive Play Rate", pct],
+    ["explosive_epa", "Explosiveness (EPA/success)", (v) => fmt(v, 2)],
+    ["opp_conversion", "Opportunity Conversion Rate", pct],
+    ["pts_per_opp", "Points per opportunity", fmt],
+    ["field_position", "Field position (EP)", (v) => fmt(v, 2)],
+    ["havoc", "Havoc Rate", pct],
+    ["turnovers", "Turnovers", (v) => fmt(v, 0)],
+];
+const importance = result.importance;
+// impact as a level, not a number: one to three arrows by the margin's push in log-odds, an
+// em-dash under the first step. Log-odds, not percentage points, so a blowout's margins still
+// read (at 99% no single margin moves the share). Steps match Akshay's mockup on #306 (OSU-TEX
+// 2025: 0.6 = 1, 0.9 and 1.0 = 2, 2.0 and 2.7 = 3, 0.1 = none).
+const IMPACT_STEPS = [0.25, 0.75, 1.5];
+const impactLevel = (v: number) => IMPACT_STEPS.filter((s) => Math.abs(v) >= s).length;
+const LEVEL_WORDS = ["", "slightly", "clearly", "strongly"];
+// arrows bolded (Akshay on #306): bootstrap-icons pins `.bi::before { font-weight: normal !important }`,
+// so fw-bold can't reach the glyph; the arrow cell's inherited -webkit-text-stroke thickens it instead
+// this game's signed impact, most positive first down to most negative (Akshay on #306); ties by
+// the model's importance (weight x spread, python/paper_index.py IMPORTANCE), then display order
+// (stable sort). Rows without an impact or importance sort after those with one.
+const marginRows = MARGINS
+    .filter(([k]) => m[k] != null)
+    .map(([k, label, format]) => {
+        const v = impact?.[k] ?? null;
+        const level = v == null ? 0 : impactLevel(v);
+        return {
+            label, value: format(m[k]), pos: m[k] >= 0, importance: importance?.[k] ?? null,
+            signed: v, level, up: v != null && v > 0,
+            impactText: v == null ? "not measured" : level ? `${LEVEL_WORDS[level]} ${v > 0 ? "helped" : "hurt"} ${homeTeam.abbreviation}` : "little impact",
+        };
+    })
+    .sort((a, b) => Number(a.signed == null) - Number(b.signed == null) || (b.signed ?? 0) - (a.signed ?? 0)
+        || Number(a.importance == null) - Number(b.importance == null) || (b.importance ?? 0) - (a.importance ?? 0));
 // per-window strip, canonical order; a missing window simply doesn't render
 const PERIOD_ORDER = ["q1", "q2", "q3", "q4", "ot"];
 const periods = PERIOD_ORDER
@@ -87,10 +119,12 @@ const periods = PERIOD_ORDER
         </div>
         <div class="col-lg-4 col-12">
             <table class="table table-sm align-middle mb-0">
+                {impact && <caption class="text-muted text-small">Sorted by impact: how much each metric moved this game's Deserved Win %.</caption>}
                 <thead>
                     <tr>
                         <th>Margin</th>
                         <th class="text-center"><img class={`img-fluid team-logo-${homeTeam.id}`} width="35px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${homeTeam.id}.png`} alt={`ESPN team id ${homeTeam.id}`} /></th>
+                        {impact && <th class="text-center">Impact</th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -98,6 +132,12 @@ const periods = PERIOD_ORDER
                         <tr>
                             <td class="text-small">{r.label}</td>
                             <td class="text-center fw-bold" style={r.pos ? "color: var(--bs-green)" : "color: var(--bs-purple)"}>{r.value}</td>
+                            {impact && (r.level === 0
+                                ? <td class="text-center text-muted"><span aria-hidden="true">—</span><span class="visually-hidden">{r.impactText}</span></td>
+                                : <td class="text-center text-nowrap" style={`color: var(--bs-${r.up ? "green" : "purple"}); -webkit-text-stroke: 1px`}>
+                                    {Array.from({ length: r.level }, () => <i class={`bi bi-arrow-${r.up ? "up" : "down"}`} aria-hidden="true"></i>)}
+                                    <span class="visually-hidden">{r.impactText}</span>
+                                </td>)}
                         </tr>
                     ))}
                 </tbody>

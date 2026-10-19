@@ -23,6 +23,7 @@
         }
     }
 
+    const optGroupMap = $derived.by(() => {
     let optGroupMap = {};
     for (const [c, metrics] of Object.entries(SDV_TEAM_METRIC_CATEGORIES)) {
         if (category != c) {
@@ -46,6 +47,8 @@
             optGroupMap[subcat].push([key, title])
         }
     }
+    return optGroupMap;
+    });
 
 </script>
 <form class="mb-0 mb-sm-3 d-flex justify-content-xs-start justify-content-md-end" id="dropdown-form">

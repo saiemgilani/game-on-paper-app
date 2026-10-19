@@ -2,6 +2,7 @@ import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
+import { CARD_MAX_AGE, cardState, type CardState, type CardVariant } from "../utils/shareTags"
 
 export interface ProcessedModelInput {
     down: number
@@ -1109,8 +1110,12 @@ export interface ProcessedGame {
     paperIndex?: {
         homeShare: number
         margins: Record<string, number>
+        /** per margin, its push on homeShare in log-odds (weight x margin); same keys as margins */
+        impact?: Record<string, number>
+        /** per margin, its importance in the model (weight x spread); the table's tie-break after impact */
+        importance?: Record<string, number>
         teams: Record<string, Record<string, number>>
-        byPeriod: Record<string, { homeShare: number; margins: Record<string, number> }>
+        byPeriod: Record<string, { homeShare: number; margins: Record<string, number>; impact?: Record<string, number> }>
     }
     winprobability: ESPNWinProbability[]
     homeTeamSpread: number
@@ -1159,12 +1164,14 @@ export interface ProcessedGame {
     broadcasts: ESPNGeoBroadcast[]
     season: ESPNSeason
     gei?: number
+    /** when /process built the payload; absent until the processor sends it */
+    updatedAt?: string
     teamInfo: ProcessedGameTeamInfo
 }
 
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
-const APP_VERSION = getSecret("APP_VERSION") || "dev";
+export const APP_VERSION = getSecret("APP_VERSION") || "dev";
 
 function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
     const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
@@ -1300,6 +1307,85 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
         return Array.isArray(body?.sources) && body.sources.length ? body : null;
     } catch (e) {
         console.error(`ERROR while listing sources for ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
+/** What a card draws from the page's processed game: the plays' win-probability track and the Paper Index. */
+export interface CardPage { plays: Record<string, unknown>[], paperIndex?: { homeShare: number }, state: CardState }
+const CARD_PLAY_KEYS = ['scrimmage_play', 'winProbability', 'period', 'pos_team', 'homeScore', 'awayScore', 'scoringPlay'];
+
+/** A processed game slimmed to what a card reads (copies: the page may mutate its plays while rendering). */
+export function cardPage(game: ProcessedGame): CardPage {
+    const homeShare = (game as any).paperIndex?.homeShare;
+    return {
+        plays: game.plays.map((p) => Object.fromEntries(CARD_PLAY_KEYS.filter((k) => k in p).map((k) => [k, (p as any)[k]]))),
+        paperIndex: typeof homeShare === 'number' ? { homeShare } : undefined,
+        state: cardState(game.header.competitions[0].status),
+    };
+}
+
+/**
+ * The game page's own processed game, slimmed to what a card reads, or null when the API has
+ * none. It is the page's `/process` request (same path, same cache entry, same TTL), so a card
+ * costs the API drawing only: the play-by-play pipeline runs once per page cache window, for the
+ * page, and never again for a card. `state` is the state that payload was processed in.
+ */
+export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number): Promise<CardPage | null> {
+    try {
+        return cardPage(JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL)));
+    } catch (e) {
+        console.error(`ERROR while fetching the processed game for a share card, ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
+/**
+ * A game's share card from the API (python/share_card.py) as PNG bytes, or null when
+ * the API cannot render one. `pregame` is GOP's projection: home-relative margin and the
+ * home side's win probability. A pregame card is the API's GET, cached at the edge for as
+ * long as the card may be (CARD_MAX_AGE), keyed per deploy, state, variant and projection,
+ * so a new renderer redraws every card. A played game's card is a POST carrying `page` (the
+ * plays the game page already processed, retrieveCardPage), which has no edge cache of its
+ * own: the route keeps it in KV and its `cache.set` for CARD_MAX_AGE, both per deploy
+ * (routes/shareCard.ts).
+ */
+export async function retrieveShareCard(gameId: string | number, league: League, state: CardState, variant: CardVariant, pregame?: { margin: number, homeWinProb: number | null }, logos?: { home: string, away: string }, page?: CardPage | null): Promise<ArrayBuffer | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    const query = new URLSearchParams({ state, variant });
+    if (pregame) {
+        query.set('proj_margin', String(pregame.margin));
+        if (pregame.homeWinProb != null) query.set('proj_wp', String(pregame.homeWinProb));
+    }
+    // each side's art (shareTags cardLogoUrl): fixed per team and deploy, so it stays out of the cache key
+    const art = new URLSearchParams(logos ? { home_logo: logos.home, away_logo: logos.away } : {});
+    const url = `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`;
+    const auth = { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com" };
+    try {
+        let req: Response;
+        if (state === 'pre') {
+            req = await wrappedFetch(url, {
+                headers: auth,
+                cf: {
+                    cacheEverything: true,
+                    cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
+                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
+                }
+            });
+        } else {
+            req = await wrappedFetch(url, {
+                method: 'POST',
+                headers: { ...auth, "Content-Type": "application/json" },
+                body: JSON.stringify(page ? { plays: page.plays, paperIndex: page.paperIndex } : {}),
+            });
+        }
+        if (!req.ok) {
+            console.error(`ERROR share card ${league} ${gameId} ${query}: HTTP ${req.status}`);
+            return null;
+        }
+        return await req.arrayBuffer();
+    } catch (e) {
+        console.error(`ERROR while fetching share card for ${league} ${gameId}: ${e}`);
         return null;
     }
 }

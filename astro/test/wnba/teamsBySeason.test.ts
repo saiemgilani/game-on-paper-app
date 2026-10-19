@@ -14,7 +14,7 @@ import { SEA, seasonPlayers } from './dashboardFixtures';
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number) => seasonPlayers(s as 2026),
-    retrieveLeagueContextRows: async () => { throw new Error('league context down'); }, // only the teams index's placeholder note reads it here
+    retrieveLeagueContextRows: vi.fn(async (): Promise<any[]> => { throw new Error('league context down'); }), // only the teams index's placeholder note reads it here
 }));
 const fakeAstro = (path: string) => ({ params: {}, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
 const names = (season: 2003 | 2025 | 2026) => Object.fromEntries(teamsFromSeasonRows(seasonPlayers(season), season, 'wnba').map((t) => [t.tricode, t.name]));
@@ -132,6 +132,22 @@ describe('plan #6 final-review fixes, on real fixtures', () => {
         const r: any = await prepareBasketballTeams(astro, 'wnba');
         warn.mockRestore();
         expect([r.teams.length, r.unlocated]).toEqual([14, undefined]);
+        expect(set.mock.calls.at(-1)).toEqual([false]);
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
+    });
+    test.each([
+        ['no total row', [{ season: 2003, kind: 'zone', key1: 0, key2: null, attempts: 10, makes: 5, fg3a: 0, fg3m: 0 }]],
+        ['a total row without placeholder_shots', [{ season: 2003, kind: 'total', key1: null, key2: null, attempts: 28436, makes: 12000, fg3a: 0, fg3m: 0 }]],
+    ])('the teams index with incomplete league context (%s) is uncacheable', async (_label, rows) => {
+        const shots = await import('../../src/resources/nbaShots');
+        vi.mocked(shots.retrieveLeagueContextRows).mockResolvedValueOnce(rows);
+        const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
+        const set = vi.fn();
+        const astro = { ...fakeAstro('/wnba/teams?season=2003'), cache: { set } };
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const r: any = await prepareBasketballTeams(astro, 'wnba');
+        warn.mockRestore();
+        expect(r.unlocated).toBeUndefined();
         expect(set.mock.calls.at(-1)).toEqual([false]);
         expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
     });
