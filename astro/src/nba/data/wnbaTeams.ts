@@ -67,11 +67,13 @@ export function wnbaTeamById(teamId: number): Team | undefined {
 }
 
 /**
- * The tricode a franchise used in `season` when it differs from today's, else undefined: ESPN id 3 is DET through 2009
- * (ESPN's own 2005 payloads spell it "TUL"), Phoenix PHO through 2024. Keyed by ESPN id and season, never by name (D22).
+ * The tricode a franchise used in `season` when it was another team then (a relocation or rename), else undefined: ESPN id 3
+ * is DET through 2009 (ESPN's own 2005 payloads spell it "TUL"). A former-name row whose name is today's (Phoenix's PHO, a
+ * stats.wnba.com-only code) is no other identity, so ESPN's abbreviation stands. Keyed by ESPN id and season, never by name (D22).
  */
 export function wnbaEraTricode(espnId: number, season: number | null | undefined): string | undefined {
-    const id = wnbaTeamByEspnId(espnId)?.team_id;
-    if (id == null || season == null) return undefined;
-    return WNBA_FORMER_NAMES.find((f) => f.team_id === id && season <= f.through)?.tricode;
+    const team = wnbaTeamByEspnId(espnId);
+    if (team == null || season == null) return undefined;
+    const era = WNBA_FORMER_NAMES.find((f) => f.team_id === team.team_id && season <= f.through);
+    return era && era.name !== team.name ? era.tricode : undefined;
 }

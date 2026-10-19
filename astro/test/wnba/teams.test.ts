@@ -56,9 +56,8 @@ describe('wnbaEraTricode: the tricode a franchise had in a season, season-first 
         expect(wnbaEraTricode(15, 2002)).toBe('UTA');
         expect(wnbaEraTricode(17, 2018)).toBeUndefined();
     });
-    test('Phoenix is PHO through 2024 and has no override from 2025', () => {
-        expect(wnbaEraTricode(11, 2024)).toBe('PHO');
-        expect(wnbaEraTricode(11, 2025)).toBeUndefined();
+    test('Phoenix was always the Phoenix Mercury: stats.wnba.com\'s PHO never overrides ESPN\'s PHX', () => {
+        for (const season of [2005, 2015, 2024, 2025]) expect(wnbaEraTricode(11, season)).toBeUndefined();
     });
     test('no override for a franchise with no former name, a folded franchise, an unknown id or an unknown season', () => {
         for (const id of [16, 9, 8]) expect(wnbaEraTricode(id, 2005)).toBeUndefined(); // WAS, NYL, MIN on the 2005-06-03 board
