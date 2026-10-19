@@ -81,9 +81,19 @@ describe('MatchupBuilder lists 2026 FBS newcomers (#333)', () => {
                 awayTeamId: '16', awaySeason: '2026', homeTeamId: '2449', homeSeason: '2026',
             },
         });
-        for (const n of newcomers) {
-            expect(html).toMatch(new RegExp(`<option value="${n.team_id}"[^>]*>${n.name}</option>`));
-        }
-        expect(html).toMatch(/<option value="2026"[^>]*selected[^>]*>2026<\/option>/);
+        // each <select> on its own: [away team, away season, home team, home season]
+        const selects = [...html.matchAll(/<select\b[^>]*>([\s\S]*?)<\/select>/g)].map((m) => m[1]);
+        expect(selects).toHaveLength(4);
+        const option = (sel: string, value: string | number, label: string) =>
+            new RegExp(`<option(?![^>]*\\bdisabled\\b)[^>]*value="${value}"(?![^>]*\\bdisabled\\b)[^>]*>${label}</option>`).test(sel);
+        const selected = (sel: string, value: string | number) =>
+            new RegExp(`<option(?![^>]*\\bdisabled\\b)(?=[^>]*value="${value}")(?=[^>]*\\bselected\\b)[^>]*>`).test(sel);
+        [selects[0], selects[2]].forEach((sel, i) => {
+            expect(option(sel, newcomers[i].team_id, newcomers[i].name)).toBe(true);
+            expect(selected(sel, newcomers[i].team_id)).toBe(true);
+        });
+        // both season selects offer 2026 selected, none of it disabled
+        expect(selected(selects[1], 2026)).toBe(true);
+        expect(selected(selects[3], 2026)).toBe(true);
     });
 });
