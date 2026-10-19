@@ -6,13 +6,13 @@ import type { Team } from '../../nba/data/teams';
 import { withParams } from '../../nba/links';
 import { basketball } from '../../basketball/config';
 import { leaguePath } from '../../utils/league';
-interface Props { teams: Team[]; team: string; season: number; defaults: { season: string; team: string }; id?: string }
-const { teams, team, season, defaults, id = 'nba-team' } = Astro.props;
+interface Props { teams: Team[]; team: string; season: number; defaults: { season: string; team: string }; id?: string; byId?: boolean }
+const { teams, team, season, defaults, id = 'nba-team', byId = false } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const href = (t: string) => withParams(leaguePath(league, '/players'), { season: String(season), team: t }, defaults);
 ---
 <label class="visually-hidden" for={id}>Team</label>
 <select id={id} class="form-select form-select-md" onchange="window.location.href = this.value">
-  <option value={href('ALL')} selected={team === 'ALL'}>All teams</option>
-  {teams.map((t) => (<option value={href(t.tricode)} selected={t.tricode === team}>{t.tricode} &middot; {t.name}</option>))}
+  {byId ? (<option value="" selected={team === ''} disabled>Choose a team</option>) : (<option value={href('ALL')} selected={team === 'ALL'}>All teams</option>)}
+  {teams.map((t) => (<option value={href(byId ? String(t.team_id) : t.tricode)} selected={(byId ? String(t.team_id) : t.tricode) === team}>{t.tricode} &middot; {t.name}</option>))}
 </select>

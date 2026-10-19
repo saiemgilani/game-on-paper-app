@@ -3,7 +3,8 @@
 import { BASKETBALL } from './config';
 import { fmtInt, fmtPct } from '../nba/format';
 import { isTrue } from '../resources/nbaGame';
-import type { CoverageRow } from '../resources/nbaShots';
+import type { Team } from '../nba/data/teams';
+import type { CoverageRow, GroupRow, ScheduleTeamRow, TeamGroupRow } from '../resources/nbaShots';
 import type { BasketballLeague } from '../utils/league';
 
 export const isNcaaDashboards = (league: BasketballLeague): boolean => BASKETBALL[league].shotDashboards === 'ncaa';
@@ -62,4 +63,64 @@ export function coverageNote(rows: readonly CoverageRow[], season: number, label
     }
     if (!isTrue(r.meets_floor)) parts.push("This season is under the dashboards' coverage floors (94% placed, 95% attributed).");
     return parts.join(' ');
+}
+
+export interface ConferenceGroup {
+    /** the reference conference id (`mbb:acc`), or '' for teams with no conference row that season */
+    id: string;
+    label: string;
+    teams: Team[];
+}
+
+/**
+ * The season's teams by their conference that season: conferences A to Z by short name, teams A to Z by name, teams the
+ * reference does not place last under "Other Division I". Reference ids are text: a team id is a number only when it is
+ * all digits (anything else is dropped and logged, never cast).
+ */
+export function conferenceGroups(teams: readonly Team[], teamRows: readonly TeamGroupRow[], groups: readonly GroupRow[]): ConferenceGroup[] {
+    const names = new Map(groups.map((g) => [String(g.group_id), String(g.short_name)]));
+    const confOf = new Map<number, string>();
+    for (const r of teamRows) {
+        if (!/^\d+$/.test(String(r.team_id))) {
+            console.warn(`team_group_seasons: dropped a non-numeric team_id ${JSON.stringify(r.team_id)}`);
+            continue;
+        }
+        confOf.set(Number(r.team_id), String(r.conference_id));
+    }
+    const by = new Map<string, Team[]>();
+    for (const t of teams) {
+        const id = confOf.get(t.team_id) ?? '';
+        by.set(id, [...(by.get(id) ?? []), t]);
+    }
+    return [...by]
+        .map(([id, ts]) => ({ id, label: id === '' ? 'Other Division I' : (names.get(id) ?? id), teams: [...ts].sort((a, b) => a.name.localeCompare(b.name)) }))
+        .sort((a, b) => (a.id === '' ? 1 : b.id === '' ? -1 : a.label.localeCompare(b.label)));
+}
+
+/**
+ * Owner rulings D43/D47 (resolution R7), the ONE membership rule for college pages: a season's members are the ids with a
+ * conference row that season that appear as home or away in that season's schedule (a conference row alone keeps 2020-21's
+ * non-playing Ivy League; ESPN's core list alone keeps Hartford). Each member is its row-derived team from `teams` when it has
+ * shots, else `teams.inSeason(id, season)` of the league's module; an id that resolves to neither is logged and dropped.
+ * Selection only. Plan #11 reuses it for the women.
+ */
+export function withSeasonMembers(teams: readonly Team[], groupRows: readonly TeamGroupRow[], gameRows: readonly ScheduleTeamRow[], season: number, league: BasketballLeague): Team[] {
+    const played = new Set<number>();
+    for (const g of gameRows) for (const id of [g.home_id, g.away_id]) if (id != null && /^\d+$/.test(String(id))) played.add(Number(id));
+    const byId = new Map(teams.map((t) => [t.team_id, t]));
+    const out: Team[] = [];
+    const seen = new Set<number>();
+    for (const r of groupRows) {
+        if (!/^\d+$/.test(String(r.team_id))) {
+            console.warn(`${league} ${season} team_group_seasons: dropped a non-numeric team_id ${JSON.stringify(r.team_id)}`);
+            continue;
+        }
+        const id = Number(r.team_id);
+        if (seen.has(id) || !played.has(id)) continue;
+        seen.add(id);
+        const team = byId.get(id) ?? BASKETBALL[league].teams.inSeason(id, season);
+        if (team) out.push(team);
+        else console.warn(`${league} ${season}: conference member ${id} is in no team module; dropped`);
+    }
+    return out;
 }

@@ -13,14 +13,14 @@ import { dashboardScope } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayersParams }
-const { season, seasons, current, q, teams, selected, team, defaults, rows, sort, dir, coverage } = Astro.props.data;
+const { season, seasons, current, q, teams, selected, team, defaults, rows, sort, dir, coverage, byId, needsTeam } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
 const scope = dashboardScope(league, season);
-const who = selected ? `${selected.tricode} ${selected.name}` : 'every team';
+const who = selected ? `${selected.tricode} ${selected.name}` : needsTeam ? 'the team you choose' : 'every team';
 const title = `${name} players, ${label} shooting | Game on Paper`;
 const subtitle = `${scope.adj[0].toUpperCase()}${scope.adj.slice(1)} field-goal attempts from ${scope.source} for ${who}, ${label}${selected ? '; FGA, FG%, eFG% and 3P% count the selected team only' : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', active: true }];
@@ -35,14 +35,14 @@ const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : u
         <h1 class="h3">Players, {label}</h1>
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/players')} params={team === defaults.team ? {} : { team }} paramSeasons={teamSeasons} />
-          <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} />
+          <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} {...(byId ? { byId: true } : {})} />
         </div>
         <p class="small text-muted mb-0">{subtitle}</p>{coverage && (<p class="small text-muted mb-0" id="nba-coverage">{coverage}</p>)}
       </div>
     </div>
     <div class="row mb-3">
       <div class="col-12">
-        {rows.length === 0
+        {needsTeam ? (<p class="text-muted">Choose a team to list its players.</p>) : rows.length === 0
           ? (<p class="text-muted">{selected ? `No ${scope.adj} shots for ${who} in ${label} yet.` : `No ${scope.adj} shots in ${label} yet.`}</p>)
           : (<Fragment>
               <NbaNameFilter tableId="nba-players" count={rows.length} />

@@ -6,11 +6,11 @@
  */
 import type { AstroGlobal } from 'astro';
 import { placeholderFor } from '../../basketball/config';
-import { isNcaaDashboards } from '../../basketball/dashboards';
+import { conferenceGroups, isNcaaDashboards, withSeasonMembers, type ConferenceGroup } from '../../basketball/dashboards';
 import type { ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import { teamLinesFromRows, teamsFromSeasonRows } from '../../nba/tables';
-import { retrieveLeagueContextRows } from '../../resources/nbaShots';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows } from '../../resources/nbaShots';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { uncacheable } from './cache';
 import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
@@ -26,6 +26,8 @@ export interface BasketballTeamsParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** college: the season's members by conference; null when a reference read failed (plan #6's cards) */
+    conferences?: ConferenceGroup[] | null;
 }
 
 export type BasketballTeamsPrep = { unavailable: true } | BasketballTeamsParams;
@@ -35,8 +37,24 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     Astro.locals.league = league;
     const resolved = resolveBasketballSeason(Astro, league);
     const coverageP = readCoverageNote(league, resolved.season);
+    const conferencesP = isNcaaDashboards(league) ? retrieveConferenceRows(resolved.season, league) : null;
+    conferencesP?.catch(() => {}); // handled by the try below; this only keeps an early unavailable return from leaving an unhandled rejection
+    const gamesP = isNcaaDashboards(league) ? retrieveScheduleTeamRows(resolved.season, league) : null;
+    gamesP?.catch(() => {}); // handled by the try below; this only keeps an early unavailable return from leaving an unhandled rejection
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, landing ? '/' : '/teams'));
     if (rows === null) return { unavailable: true };
+    const teams = teamsFromSeasonRows(rows, resolved.season, league);
+    let conferences: ConferenceGroup[] | null | undefined;
+    if (isNcaaDashboards(league)) {
+        try {
+            const [c, games] = await Promise.all([conferencesP!, gamesP!]);
+            // D43/D47 (R7): the index is the season's members, with or without linked shots
+            conferences = conferenceGroups(withSeasonMembers(teams, c.teams, games, resolved.season, league), c.teams, c.groups);
+        } catch (e: any) {
+            console.error(`ERROR while loading the ${league} conferences or schedule for ${resolved.season}: ${e}, ${e?.stack}`);
+            conferences = null; // decorative: render plan #6's teams-with-shots cards, uncacheable below
+        }
+    }
     // D29: the league-wide count plan #3 keeps on the league-context total row; only a league with a placeholder location reads it
     let unlocated: { count: number; total: number } | undefined;
     if (placeholderFor(league, resolved.season)) {   // R22: only placeholder seasons
@@ -53,5 +71,6 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     }
     const coverage = await coverageP;
     if (coverage === undefined) uncacheable(Astro);
-    return { ...resolved, teams: teamsFromSeasonRows(rows, resolved.season, league), lines: teamLinesFromRows(rows), ...(unlocated ? { unlocated } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}) };
+    if (conferences === null) uncacheable(Astro);
+    return { ...resolved, teams, lines: teamLinesFromRows(rows), ...(unlocated ? { unlocated } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}), ...(conferences === undefined ? {} : { conferences }) };
 }

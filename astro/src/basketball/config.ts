@@ -3,6 +3,7 @@
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, NCAA_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
@@ -108,6 +109,8 @@ export interface BasketballConfig {
     hidePie?: true;
     /** D26: the leaders page reads only the last `days` days of player games (a season-wide read is over the API's 50,000-row cap) and offers these windows. */
     leadersRead?: { days: number; windows: readonly LeaderWindow[] };
+    /** D43/D47: the current season's members (a committed table), for the sitemap and current-season team links, which make no API read. */
+    currentMembers?: { season: number; ids: readonly number[] };
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -225,6 +228,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // D26, measured (plans/2026-10-11-mbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
         // of player games holds at most 43,835 rows (2022), under the 50,000 cap; a 20-game window needs ~120 days of games
         leadersRead: { days: 49, windows: [5, 10] },
+        currentMembers: { season: 2026, ids: MBB_MEMBERS_2026 },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,
         // D39: hoopR-mbb-data has lined games in every season 2013-2023 and none before (lines_by_season.json); 2024-2026 lack

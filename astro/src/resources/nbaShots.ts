@@ -168,3 +168,9 @@ export async function retrieveConferenceRows(season: number, league: BasketballL
     ]);
     return { teams, groups };
 }
+
+/** D47's game half: one row per game of the season, its two ESPN team ids (integer columns of `<lg>.schedule`; ~6,300 a men's season). */
+export interface ScheduleTeamRow { home_id: number | string | null; away_id: number | string | null }
+export function retrieveScheduleTeamRows(season: number, league: BasketballLeague): Promise<ScheduleTeamRow[]> {
+    return read<ScheduleTeamRow>(league, 'schedule', { season: String(season), select: 'home_id,away_id', limit: LIMIT }, SEASON_TTL, true);
+}

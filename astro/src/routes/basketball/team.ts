@@ -7,14 +7,14 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL, courtFor, placeholderFor } from '../../basketball/config';
-import { isNcaaDashboards } from '../../basketball/dashboards';
+import { isNcaaDashboards, withSeasonMembers } from '../../basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../nba/adapters';
 import { buildDashboard, type DashboardData } from '../../nba/dashboard';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
-import { retrieveLeagueContextRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -27,12 +27,15 @@ export interface BasketballTeamParams {
     team: Team;
     line: ShootingLine;
     roster: RosterRow[];
-    dashboard: DashboardData;
+    /** null only with `empty` */
+    dashboard: DashboardData | null;
     sort: RosterSortKey;
     dir: SortDir;
     mode: Mode;
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** college: a season member with no linked shot */
+    empty?: true;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -69,14 +72,30 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const rows = playersR.value;
     const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === teamId);
     const shots = shotsFromRows(shotsR.value);
+    const coverage = await coverageP;
     if (!team || shots.length === 0) {
-        uncacheable(Astro);
-        return { notFound: true };
+        // college (D43/D47, R7): a season MEMBER with no linked shot is a page that says so; a non-member (Hartford 2026: ESPN
+        // lists it, no conference row) is a 404. The membership reads happen only on this branch. The NBA/WNBA keep the 404.
+        let member: Team | undefined;
+        if (isNcaaDashboards(league) && !team && shots.length === 0) {
+            try {
+                const [c, games] = await Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]);
+                member = withSeasonMembers([], c.teams, games, season, league).find((t) => t.team_id === teamId);
+            } catch (e: any) {
+                console.error(`ERROR while reading the ${league} ${season} membership for team ${teamId}: ${e}, ${e?.stack}`);
+            }
+        }
+        if (!member) {
+            uncacheable(Astro); // a failed membership read is a 404 that is never cached
+            return { notFound: true };
+        }
+        setCache(Astro, playerCache(league));
+        if (coverage === undefined) uncacheable(Astro);
+        return { ...resolved, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
     }
     setCache(Astro, playerCache(league));
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them
     const own = BASKETBALL[league].teams.seasonsOf(teamId, season);
-    const coverage = await coverageP;
     if (coverage === undefined) uncacheable(Astro);
     return {
         ...resolved,
