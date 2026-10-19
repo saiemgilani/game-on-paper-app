@@ -1,5 +1,5 @@
-// With the wbb flag public, the sitemap lists the scoreboard only: /wbb is a 302 to it until plan #11's teams index, and WBB has no
-// team pages yet (hasTeamPages false), so no /wbb/team/ URL.
+// With the wbb flag public, the sitemap lists the landing, the Header's pages and the 363 programs of 2025-26 (D38: the
+// core list plus the six reclassifiers), never a player page, and stays inside the protocol's limits.
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('../src/utils/features', async (orig) => {
@@ -7,15 +7,27 @@ vi.mock('../src/utils/features', async (orig) => {
     return { ...real, FLAGS: { ...real.FLAGS, wbb: 'on' } };
 });
 
-import { hasTeamPages } from '../src/basketball/config';
 import { GET } from '../src/pages/sitemap.xml';
+import { conferences } from './wbb/dashboardFixtures';
 
 describe('sitemap.xml with wbb public', async () => {
     const xml = await ((GET as any)({} as any) as Response).text();
-    test('the scoreboard, not the /wbb redirect, no team page', () => {
-        const wbb = [...xml.matchAll(/<loc>(https:\/\/gameonpaper\.com\/wbb[^<]*)<\/loc>/g)].map((m) => m[1]);
-        expect(wbb).toEqual(['https://gameonpaper.com/wbb/scoreboard']);
-        expect(hasTeamPages('wbb')).toBe(false);
-        expect(xml).not.toContain('/wbb/team/');
+    test('the landing, the scoreboard, the four shooting pages', () => {
+        for (const p of ['/wbb', '/wbb/scoreboard', '/wbb/players', '/wbb/teams', '/wbb/scatter', '/wbb/leaders']) expect(xml).toContain(`<loc>https://gameonpaper.com${p}</loc>`);
+        expect(xml).not.toContain('/wbb/</loc>');
+    });
+    test('every program of 2025-26 by ESPN id, the reclassifiers included; no player page', () => {
+        const ids = [...xml.matchAll(/gameonpaper\.com\/wbb\/team\/(\d+)</g)].map((m) => Number(m[1]));
+        expect(ids.length).toBe(363);
+        expect(new Set(ids)).toEqual(new Set(conferences(2026).map((r) => Number(r.team_id)))); // D43: exactly the 2026 conference members
+        for (const id of [88, 284, 2330, 2511, 2815, 2837, 2130, 2385, 2441]) expect(ids, String(id)).toContain(id);
+        for (const id of [2697, 42]) expect(ids, String(id)).not.toContain(id);
+        expect(xml).not.toContain('/wbb/players/');
+    });
+    test('inside the protocol limits', () => {
+        const urls = (xml.match(/<url>/g) ?? []).length;
+        console.log(`sitemap.xml with wbb on: ${urls} URLs, ${Buffer.byteLength(xml)} bytes`); // record in the PR body
+        expect(urls).toBeLessThanOrEqual(50000);
+        expect(Buffer.byteLength(xml)).toBeLessThanOrEqual(50 * 1024 * 1024);
     });
 });

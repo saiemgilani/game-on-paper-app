@@ -281,9 +281,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: null,
         courts: NCAA_W_COURTS,
         teams: { all: WBB_TEAMS, byEspnId: wbbTeamByEspnId, inSeason: wbbTeamInSeason, franchiseOf: wbbFranchiseOf, seasonsOf: wbbSeasonsOf },
-        // plan #11 builds the teams index; until then pages/wbb/index.astro redirects to the scoreboard
+        // pages/wbb/index.astro: every program of the season by conference (D38), with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'ncaa',
         regularSeasonGames: wbbSeasonGames,
         pronoun: 'her',

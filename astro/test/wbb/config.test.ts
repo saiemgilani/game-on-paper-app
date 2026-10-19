@@ -70,7 +70,7 @@ describe('the wbb league entry', () => {
         expect(seasonLabelFor('wbb', 2026)).toBe('2025-26');
         expect(gameHref('wbb', 401805076)).toBe('/wbb/game/401805076');
         expect([w.scoreboardTimeZone, w.scoreboardRefresh, w.featuredTeam, w.landing]).toEqual(['America/New_York', 60, null, 'teams-index']);
-        expect(w.headerMenu).toEqual([{ label: 'Scoreboard', path: '/scoreboard' }]);
+        expect(w.headerMenu.map((x) => `${x.label} ${x.path}`)).toEqual(['Scoreboard /scoreboard', 'Players /players', 'Teams /teams', 'Scatter /scatter', 'Leaders /leaders']);
         expect(w.scoreboardGroups).toEqual({ default: 'top25', all: '50', conferences: WBB_CONFERENCES });
         expect(w.espnRimPlaceholder).toBe(true);
         expect([w.scoreboardGrouping, w.linesFromSeason]).toEqual(['status', 2026]); // D36 (R11), D39 (R12: measured, Decision 8)
@@ -105,8 +105,11 @@ describe('the wbb league entry', () => {
         expect(darkLogoCss([{ id: '41', abbreviation: 'CONN' }], BASKETBALL.wbb.darkLogo))
             .toBe("img.team-logo-41{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/41.png&h=120&w=120')}");
     });
-    test('no team pages yet: plain team names', () => {
-        expect(hasTeamPages('wbb')).toBe(false);
-        expect(teamHrefFromEspn({ id: '41' }, 'wbb')).toBeNull();
+    test('team pages: season-aware links (D48, R8): core teams, reclassifiers in their seasons; West Florida not before 2027', () => {
+        expect(hasTeamPages('wbb')).toBe(true);
+        expect(teamHrefFromEspn({ id: '41' }, 'wbb')).toBe('/wbb/team/41');
+        expect(teamHrefFromEspn({ id: '2837' }, 'wbb', 2026)).toBe('/wbb/team/2837');        // East Texas A&M, a reclassifier (D38)
+        expect(teamHrefFromEspn({ id: '2697' }, 'wbb', 2026)).toBeNull();                    // West Florida: D-I from 2027
+        expect(teamHrefFromEspn({ id: '2341' }, 'wbb', 2019)).toBe('/wbb/team/2341?season=2019'); // LIU Brooklyn in 2018-19
     });
 });

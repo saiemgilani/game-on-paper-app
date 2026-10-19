@@ -57,7 +57,7 @@ function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).toContain('href="/wbb"');
     expect([...html.matchAll(/href="\/nba[^"]*"/g)].map((m) => m[0])).toEqual(['href="/nba"']); // the Header's league switch only
-    expect(html).not.toContain('/wbb/team/'); // no WBB team pages in plan #10 (R-W9): team names are plain text
+    expect(html).toMatch(/href="\/wbb\/team\/\d+(\?season=\d{4})?"/); // core D-I team names link the team pages (plan #11); a past dashboard season carries ?season= (D48)
     expect(html).not.toContain('/mbb/game/');
     expect(html).toContain('aspect-ratio: 2 / 1'); // the WP island's client:only fallback box (#319 R1 I1)
     expect(plain(html)).toContain(BASKETBALL.wbb.wpModelNote); // D21, D37
@@ -166,6 +166,7 @@ describe('/wbb/game/[id] render (real captures)', () => {
         const html = await render('401702870');
         common(html); quarters(html);
         expect(plain(html)).toContain('ESPN has no shot locations for this game: 104 of 104 shots have no recorded location.');
+        for (const id of [150, 58]) expect(html).toContain(`href="/wbb/team/${id}?season=2025"`); // 2024-25, a past dashboard season: Duke and South Florida, members that season
         expect(buttons(html)).toEqual([]);
     });
     test("401920983, scheduled (real staged ESPN page): the pregame page asks ESPN for the women's college summary", async () => {
@@ -176,7 +177,7 @@ describe('/wbb/game/[id] render (real captures)', () => {
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
         for (const c of pg.gamepackageJSON.header.competitions[0].competitors) expect(html).toContain(c.team.displayName);
         expect(html).toContain('href="/wbb/scoreboard?date=2026-11-01&group=all"'); // GenericPage writes breadcrumbs as raw HTML (unescaped &)
-        expect(html).not.toContain('/wbb/team/');
+        for (const c of pg.gamepackageJSON.header.competitions[0].competitors) expect(html).toContain(`href="/wbb/team/${c.team.id}"`);
         expect(summary.mock.calls[0][1]).toBe('wbb');
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {
