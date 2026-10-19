@@ -621,3 +621,15 @@ needs a new id and a new snapshot in its own PR.
   (empty) of `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event=401920983` at the same time
   (staging `wbb_pregame_401920983_summary.json`). **Used by:** `test/wbb/gameRoute.test.ts`, `test/wbb/game.render.test.ts`.
   **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 5 Step 1.
+- `wbb/scoreboard-<YYYYMMDD>-<group>.json`: ESPN cdn women's college scoreboards
+  (`https://cdn.espn.com/core/womens-college-basketball/scoreboard?<group=…&>xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-19, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed (`links`,
+  `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
+  caching). 2026-02-07: `top25` (no group; 6 events, each with a ranked team), `all` (`group=50`, 138 events: 130 finals, 6 in one
+  overtime, 1 in two, 1 postponed (401813842); 1,427,955 bytes), `g8` (Big 12, 7). 2024-11-04 `all` (opening night, 161 events: 157 in regulation,
+  3 in overtime, 1 canceled (401716378); the busiest WBB day in the releases; 34 competitors ESPN has no logo for, all non-D-I, e.g. Meredith
+  111956; 1,568,033 bytes; the D36 HTML-size budget day). 2025-04-02: `top25` empty (no ranked team played) and `all` (3 events: the WBIT final
+  and two WNIT semifinals; the D35 fallback day). A grouped or empty body has no `sbData.day`. `wbb/scoreboard_budget.json`: the rendered HTML
+  length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
+  **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
+  `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.
