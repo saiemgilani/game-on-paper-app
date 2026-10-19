@@ -4,7 +4,7 @@
 import { leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
 import { NETS_TEAM_ID, TEAMS, teamByEspnId, type Team } from '../nba/data/teams';
-import { WNBA_TEAMS, wnbaTeamByEspnId } from '../nba/data/wnbaTeams';
+import { WNBA_TEAMS, wnbaLogoId, wnbaTeamByEspnId } from '../nba/data/wnbaTeams';
 import { netsTricode } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
 import { NBA_DARK_LOGO_ABBRS } from '../nba/scoreboard';
@@ -20,7 +20,8 @@ export type DarkLogoStrategy =
     | { kind: 'abbr'; logoLeague: string; abbrs: ReadonlySet<string> }
     | { kind: 'id'; logoLeague: string }
     // D22: the board's ESPN team id -> today's logo abbreviation, so an old board's WAS / TUL / NYL still gets a dark logo
-    | { kind: 'idKeyed'; logoLeague: string; abbrById: Readonly<Record<string, string>> }
+    // `logoId` re-keys an id by season first (wnbaLogoId: the 2000-02 Portland Fire under the 2026 Fire's 132052)
+    | { kind: 'idKeyed'; logoLeague: string; abbrById: Readonly<Record<string, string>>; logoId?: (espnId: string, season?: number | null) => string }
     | { kind: 'none' };
 export interface FeaturedTeam { statsTeamId: number; espnTeamId: number; menuLabel: string; tricode(season: number): string }
 export type LandingKind = 'featured-team' | 'teams-index';
@@ -107,7 +108,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         scoreboardTimeZone: 'America/New_York',
         scoreboardRefresh: 60,
         // D22: keyed by ESPN id (ESPN serves WNBA logos only by abbreviation, and old boards spell WAS / TUL / NYL)
-        darkLogo: { kind: 'idKeyed', logoLeague: 'wnba', abbrById: WNBA_LOGO_ABBR },
+        darkLogo: { kind: 'idKeyed', logoLeague: 'wnba', abbrById: WNBA_LOGO_ABBR, logoId: wnbaLogoId },
         // D21/D37: only what sdv-py records (nba_prediction_constants.py: the artifact; the 2024 fit of the pregame home edge)
         wpModelNote: "Game on Paper's WNBA in-game model (sdv-py wnba_in_game_wp.ubj): score margin, time remaining, the pregame prior and possession. The pregame home edge was fitted on 220 of 264 2024 WNBA games.",
         featuredTeam: null,

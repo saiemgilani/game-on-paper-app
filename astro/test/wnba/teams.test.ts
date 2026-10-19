@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { WNBA_DEFUNCT, WNBA_FORMER_NAMES, WNBA_TEAMS, wnbaEraTricode, wnbaTeamByEspnId, wnbaTeamById } from '../../src/nba/data/wnbaTeams';
+import { WNBA_DEFUNCT, WNBA_FORMER_NAMES, WNBA_TEAMS, wnbaEraTricode, wnbaLogoId, wnbaTeamByEspnId, wnbaTeamById } from '../../src/nba/data/wnbaTeams';
 
 type Row = { espn_team_id: number; espn_display_name: string; wnba_team_id: string; wnba_team_tricode: string; first: number; last: number };
 const XW: Row[] = JSON.parse(readFileSync(new URL('../fixtures/wnba/team_crosswalk_2002_2026.json', import.meta.url)).toString());
@@ -64,5 +64,18 @@ describe('wnbaEraTricode: the tricode a franchise had in a season, season-first 
         expect(wnbaEraTricode(1, 2005)).toBeUndefined(); // Charlotte Sting
         expect(wnbaEraTricode(12, 2002)).toBeUndefined(); // the 2000-02 Portland Fire
         expect(wnbaEraTricode(3, null)).toBeUndefined();
+    });
+});
+
+describe('wnbaLogoId: the ESPN id a logo is keyed by in a season', () => {
+    test('ESPN files the 2000-02 Portland Fire under the 2026 Fire\'s 132052: through 2002 that is the old Fire, 12', () => {
+        expect(wnbaLogoId(132052, 2000)).toBe('12');
+        expect(wnbaLogoId('132052', 2002)).toBe('12');
+        expect(wnbaLogoId(132052, 2003)).toBe('132052');
+        expect(wnbaLogoId(132052, 2026)).toBe('132052');
+        expect(wnbaLogoId(132052, null)).toBe('132052');
+    });
+    test('every other id is itself, in any season', () => {
+        for (const id of [1, 2, 3, 7, 12, 15, 17]) expect(wnbaLogoId(id, 2002)).toBe(String(id));
     });
 });

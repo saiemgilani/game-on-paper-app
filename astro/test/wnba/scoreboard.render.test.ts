@@ -52,6 +52,26 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(lightSrcs(html)).toEqual(['min', 'wsh', 'ny', 'dal'].map(lightLogo));
         for (const ab of ['wsh', 'min', 'dal', 'ny']) expect(darkBlock(html)).toContain(`/wnba/500-dark/${ab}.png`);
     });
+    test('2002-06-15 through the real loader: the defunct Rockers, Sol and 2000-02 Fire draw the site-hosted logos, not the shield', async () => {
+        const real = await vi.importActual<typeof import('../../src/routes/basketball/scoreboard')>('../../src/routes/basketball/scoreboard');
+        prep.mockImplementationOnce((...a: Parameters<typeof real.prepareBasketballScoreboard>) => real.prepareBasketballScoreboard(...a));
+        sbDay.mockImplementation(async (_l: string, d: string | null) => (d === null ? { day: '2026-10-12', events: [], degraded: false } : { day: '2002-06-15', events: events('20020615'), degraded: false }));
+        const html = await render('?date=2002-06-15');
+        const byId = Object.fromEntries([...html.matchAll(/<img class="[^"]*team-logo-(\d+)" [^>]*src="([^"]+)"/g)].map((m) => [m[1], m[2].replaceAll('&amp;', '&')]));
+        expect(Object.keys(byId)).toHaveLength(12);
+        // hosted files as they are, never through ESPN's combiner (it only resizes a.espncdn.com files)
+        expect(byId['2']).toBe('/assets/img/wnba/cle.png');
+        expect(byId['7']).toBe('/assets/img/wnba/mia.png');
+        expect(byId['132052']).toBe('/assets/img/wnba/por-2000.png'); // ESPN's id for the old Fire; never the 2026 Fire's por.png
+        expect(html).not.toContain('500/por.png');
+        // the folded franchises ESPN does serve stay on ESPN
+        for (const [id, ab] of [['13', 'sac'], ['4', 'hou'], ['6', 'la'], ['3', 'dal']]) expect(byId[id]).toBe(lightLogo(ab));
+        // Utah (15) and Orlando (10) are relocations (D22, an open owner question), unchanged: the default shield
+        for (const id of ['15', '10']) expect(byId[id]).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80');
+        // dark mode: no rule replaces a hosted logo; ESPN's teams keep theirs
+        for (const id of ['2', '7', '132052']) expect(darkBlock(html)).not.toContain(`team-logo-${id}{`);
+        for (const ab of ['sac', 'hou']) expect(darkBlock(html)).toContain(`/wnba/500-dark/${ab}.png`);
+    });
     test('a date before 2002-05-25 is a 400 that names the floor month', async () => {
         prep.mockResolvedValueOnce({ badDate: 'range' });
         const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wnba/scoreboard?date=2001-06-02'), locals: { preview: true, league: 'wnba' } as App.Locals });

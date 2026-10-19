@@ -7,7 +7,7 @@ import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController } from '../../resources/chart'
 import { wpMarkerGate, wpMarkerTitle } from '../../basketball/periods';
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter' } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -293,12 +293,12 @@ async function generateChart() {
                     }
 
                     if (!homeImage.src) {
-                        homeImage.src = teamLogoUrl(leagueFromLocation(), homeTeam.id, isDarkMode);
+                        homeImage.src = teamLogoUrl(leagueFromLocation(), homeTeam.id, isDarkMode, season);
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     homeImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false);
+                        const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season);
                         if (homeImage.src !== light) homeImage.src = light;
                     };
                     homeImage.onload = () => {                                            // when the image loads
@@ -318,12 +318,12 @@ async function generateChart() {
                     }
 
                     if (!awayImage.src) {
-                        awayImage.src = teamLogoUrl(leagueFromLocation(), awayTeam.id, isDarkMode);
+                        awayImage.src = teamLogoUrl(leagueFromLocation(), awayTeam.id, isDarkMode, season);
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     awayImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false);
+                        const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season);
                         if (awayImage.src !== light) awayImage.src = light;
                     };
                     awayImage.onload = () => {                                            // when the image loads

@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { BASKETBALL, courtFor, hasTeamPages, regulationFor, seasonLabelFor, splitAtRestrictedArea, statsSourceOf } from '../../src/basketball/config';
 import { COURT, WNBA_COURT, WNBA_RESTRICTED_AREA, courtLines, threeBreakY, viewport } from '../../src/nba/data/court';
-import { WNBA_TEAMS } from '../../src/nba/data/wnbaTeams';
+import { WNBA_TEAMS, wnbaLogoId } from '../../src/nba/data/wnbaTeams';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../src/nba/links';
 import { darkLogoCss, parseDateParam } from '../../src/nba/scoreboard';
-import { LEAGUES, PREFIXED_LEAGUES, WNBA_LOGO_ABBR, splitLeague, teamLogoUrl } from '../../src/utils/league';
+import { LEAGUES, PREFIXED_LEAGUES, WNBA_HOSTED_LOGOS, WNBA_LOGO_ABBR, splitLeague, teamLogoUrl } from '../../src/utils/league';
 
 const HALF = { periods: 2, kind: 'half', periodMinutes: 20 };
 const QUARTER = { periods: 4, kind: 'quarter', periodMinutes: 10 };
@@ -99,15 +99,33 @@ describe('the wnba league entry', () => {
         expect(teamLogoUrl('wnba', '129689', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/gs.png');
         expect(teamLogoUrl('wnba', 20, true)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500-dark/atl.png');
         expect(teamLogoUrl('wnba', 1, false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/cha.png'); // the defunct Sting, by abbreviation
-        // Cleveland (2) and Miami (7) have no ESPN logo at all, and Portland Fire 2000-02 (12) must not draw the 2026 Fire's: the default shield
-        for (const id of ['2', '7', '12']) for (const dark of [false, true])
-            expect(teamLogoUrl('wnba', id, dark)).toBe('https://a.espncdn.com/i/teamlogos/default-team-logo-500.png');
+        // Cleveland (2), Miami (7) and the 2000-02 Portland Fire (12) have no ESPN logo: the site hosts theirs, one file for light and dark
+        for (const [id, file] of [['2', 'cle'], ['7', 'mia'], ['12', 'por-2000']]) for (const dark of [false, true]) {
+            expect(teamLogoUrl('wnba', id, dark)).toBe(`/assets/img/wnba/${file}.png`);
+            expect(teamLogoUrl('wnba', id, dark, 2002)).toBe(`/assets/img/wnba/${file}.png`);
+        }
+        // ESPN files the old Fire under the 2026 Fire's 132052: through 2002 that is the old Fire's logo, from 2026 the new one's
+        for (const dark of [false, true]) expect(teamLogoUrl('wnba', 132052, dark, 2002)).toBe('/assets/img/wnba/por-2000.png');
+        expect(teamLogoUrl('wnba', 132052, false, 2026)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/por.png');
+        expect(teamLogoUrl('wnba', 132052, true)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500-dark/por.png'); // no season: the current team
+        // every hosted file exists, is a PNG and stays small
+        for (const path of Object.values(WNBA_HOSTED_LOGOS)) {
+            const bytes = readFileSync(new URL(`../../public${path}`, import.meta.url));
+            expect(bytes.subarray(1, 4).toString()).toBe('PNG');
+            expect(bytes.length).toBeLessThan(20_000);
+        }
+        // a season never moves another league's logo
+        expect(teamLogoUrl('nba', 12, false, 2002)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/12.png');
+        expect(teamLogoUrl('cfb', 2, true, 2002)).toBe('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2.png');
         expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png'); // the NBA unchanged
         expect(darkLogoCss([{ id: '129689', abbreviation: 'GS' }, { id: '1', abbreviation: 'CHA' }], BASKETBALL.wnba.darkLogo))
             .toBe("img.team-logo-129689{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/gs.png&h=120&w=120')}"
                 + "img.team-logo-1{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/cha.png&h=120&w=120')}");
         // D22: keyed by ESPN id, so a 2005 board's WAS (today wsh) still gets the current dark logo
-        expect(BASKETBALL.wnba.darkLogo).toEqual({ kind: 'idKeyed', logoLeague: 'wnba', abbrById: WNBA_LOGO_ABBR });
+        expect(BASKETBALL.wnba.darkLogo).toEqual({ kind: 'idKeyed', logoLeague: 'wnba', abbrById: WNBA_LOGO_ABBR, logoId: wnbaLogoId });
+        // the old Fire's 132052 on a 2002 board gets no dark rule (its hosted light file stands); the 2026 Fire's does
+        expect(darkLogoCss([{ id: '132052', abbreviation: 'POR', season: 2002 }], BASKETBALL.wnba.darkLogo)).toBe('');
+        expect(darkLogoCss([{ id: '132052', abbreviation: 'POR', season: 2026 }], BASKETBALL.wnba.darkLogo)).toContain('/wnba/500-dark/por.png');
         expect(darkLogoCss([{ id: '16', abbreviation: 'WAS' }], BASKETBALL.wnba.darkLogo)).toContain('/i/teamlogos/wnba/500-dark/wsh.png');
         expect(BASKETBALL.nba.darkLogo.kind).toBe('abbr'); // the NBA keeps plan #4's strategy (byte-identical)
     });

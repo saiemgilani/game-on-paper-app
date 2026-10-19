@@ -40,6 +40,8 @@ describe('/wnba/game/[id] render (real captures)', () => {
         prep.mockResolvedValueOnce({ game: fromProcessor(read('game_250603003_processor'), 'wnba') });
         const html = await render('250603003');
         common(html);
+        // the WP island gets the season, which keys a WNBA logo (wnbaLogoId: the 2000-02 Portland Fire under 132052)
+        expect(html).toContain('&quot;season&quot;:[0,2005]');
         expect(plain(html)).toContain('New York 66 @ Detroit 68');
         expect(linescoreHeads(html).slice(1)).toEqual(['1', '2', 'OT', 'T']);
         // the play groups' own <summary> labels and the shot chart's own buttons, not any text that mentions a half

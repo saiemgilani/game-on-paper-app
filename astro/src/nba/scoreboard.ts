@@ -76,7 +76,7 @@ export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(
 
 /** Dark-mode logo rules, only for numeric team ids (and, for 'abbr', allowlisted abbreviations); nothing raw reaches the style block. */
 export function darkLogoCss(
-    teams: Iterable<{ id?: unknown; abbreviation?: unknown } | undefined>,
+    teams: Iterable<{ id?: unknown; abbreviation?: unknown; season?: number | null } | undefined>,
     strategy: DarkLogoStrategy = { kind: 'abbr', logoLeague: 'nba', abbrs: NBA_DARK_LOGO_ABBRS },
 ): string {
     if (strategy.kind === 'none') return '';
@@ -85,7 +85,7 @@ export function darkLogoCss(
         const id = String(t?.id ?? ''), ab = String(t?.abbreviation ?? '').toLowerCase();
         if (!/^\d+$/.test(id)) continue;
         if (strategy.kind === 'id') seen.set(id, id);
-        else if (strategy.kind === 'idKeyed') { const k = strategy.abbrById[id]; if (k) seen.set(id, k); }
+        else if (strategy.kind === 'idKeyed') { const k = strategy.abbrById[strategy.logoId ? strategy.logoId(id, t?.season) : id]; if (k) seen.set(id, k); }
         else if (strategy.abbrs.has(ab)) seen.set(id, ab);
     }
     return [...seen].map(([id, key]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${strategy.logoLeague}/500-dark/${key}.png&h=120&w=120')}`).join('');

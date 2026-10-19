@@ -39,6 +39,7 @@ export const WNBA_FORMER_NAMES: readonly { team_id: number; tricode: string; thr
 /**
  * Franchises that folded, with their last season. The 2000-02 Portland Fire shares stats id 1611661327 with the 2026
  * expansion Portland Fire (stats.wnba.com reused it); they are different franchises, so ESPN id 12 resolves to no team.
+ * ESPN itself now files the old Fire under the new one's id (132052 on its 2002 boards); wnbaLogoId undoes that for logos.
  * The crosswalk starts in 2002: first seasons are not listed.
  */
 export const WNBA_DEFUNCT: readonly { team_id: number; espn_id: number; tricode: string; name: string; through: number }[] = [
@@ -64,6 +65,16 @@ export function wnbaTeamByEspnId(espnId: number): Team | undefined {
 
 export function wnbaTeamById(teamId: number): Team | undefined {
     return BY_ID.get(teamId);
+}
+
+/**
+ * The ESPN id a logo is keyed by in `season`: the id itself, except where ESPN files a folded franchise under a current
+ * team's id. ESPN's 2002 boards carry the 2000-02 Portland Fire as 132052, the 2026 Fire; through 2002 that is the old Fire's 12.
+ */
+export function wnbaLogoId(espnId: string | number, season?: number | null): string {
+    const current = season == null ? undefined : BY_ESPN_ID.get(Number(espnId));
+    const folded = current && WNBA_DEFUNCT.find((d) => d.team_id === current.team_id && season! <= d.through);
+    return String(folded ? folded.espn_id : espnId);
 }
 
 /**

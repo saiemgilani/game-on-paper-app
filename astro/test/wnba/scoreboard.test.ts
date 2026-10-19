@@ -30,7 +30,7 @@ describe('logos by abbreviation (Decision 5, Review Focus 4)', () => {
             expect(teamLogoUrl('wnba', id, true)).toBe(`https://a.espncdn.com/i/teamlogos/wnba/500-dark/${ab}.png`);
         }
         expect(teamLogoUrl('wnba', '1', false)).toBe('https://a.espncdn.com/i/teamlogos/wnba/500/cha.png'); // Charlotte Sting
-        expect(teamLogoUrl('wnba', '7', false)).toBe('https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'); // Miami Sol: ESPN has none
+        expect(teamLogoUrl('wnba', '7', false)).toBe('/assets/img/wnba/mia.png'); // Miami Sol: ESPN has none, the site hosts it
         expect(teamLogoUrl('nba', '18', false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/18.png');
     });
     test('dark: every team of the 2025 board; on 2005-06-03 all four teams too, keyed by ESPN id (D22, R14)', () => {

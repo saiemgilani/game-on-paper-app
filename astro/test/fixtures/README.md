@@ -417,3 +417,8 @@ needs a new id and a new snapshot in its own PR.
   WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
   `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
   Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
+- `wnba/scoreboard-20020615.json`: the same ESPN cdn WNBA scoreboard for 2002-06-15 (same URL, UA and trim), captured
+  2026-10-19T01:31Z: six finals with three defunct franchises ESPN serves no logo for, Cleveland (2) and Miami (7), and the
+  2000-02 Portland Fire, which ESPN files under the 2026 Fire's id 132052 (`POR`). The board also has Utah (15, `UTH`) and
+  Orlando (10, `ORL`), relocated franchises with no ESPN logo. **Used by:** `test/wnba/scoreboard.render.test.ts`.
+  **To regenerate:** the request above with `date=20020615`.
