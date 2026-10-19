@@ -90,7 +90,9 @@
 
     function generateChart(chartContext: HTMLElement | null, x: string, y: string) {
         // the grid rule all the site's Chart.js axes share, from the page's text colour
-        const gridColor = chartGridColor(getComputedStyle(document.body).color, isDarkMode);
+        // read the theme at draw time: isDarkMode was captured at load and goes stale after an OS theme change
+        const ink = getComputedStyle(document.body).color;
+        const gridColor = chartGridColor(ink, window.matchMedia('(prefers-color-scheme: dark)').matches);
         // the axis lines take the zero line's colour; unset, Chart.js draws them near-black, invisible in dark mode
         const axisBorder = { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" };
         const minX = Math.min(...chartedPoints.map((t: any) => t.x))
@@ -325,7 +327,7 @@
                         type: 'linear',
                         position: 'bottom',
                         ticks: {
-                            color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            color: ink
                         },
                     },
                     y: {
@@ -351,7 +353,7 @@
                         type: 'linear',
                         position: 'bottom',
                         ticks: {
-                            color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            color: ink
                         },
                     }
                 },

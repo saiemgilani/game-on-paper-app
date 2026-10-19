@@ -4,7 +4,7 @@ import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
-import { GradientFillLineController } from '../../resources/chart'
+import { GradientFillLineController, chartGridColor } from '../../resources/chart'
 
 const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false } = $props()
 const homeTeam = homeComp.team;
@@ -372,9 +372,9 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         }, 
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                        border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     }
                 },
                 x: {
@@ -394,9 +394,9 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         },
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
+                        border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     }
                 }
             },
