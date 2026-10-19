@@ -11,22 +11,71 @@
  * Only the two down-type splits carry an `<abbr title>`: the rest say what they
  * are. Success rate is the only success column -- the raw count of successful
  * plays is `plays` times `SR%` and earns no cell of its own.
+ *
+ * The three rate/value cells are shaded the way the game log's league mode shades
+ * its own (`PlayerGameLog.astro`): read off the season's whole player-season
+ * distribution for THAT split (`players/splits/percentiles`, sdv-db) -- his position
+ * group's player-seasons where the group has that split, every player's where it does
+ * not (`loadSplitBreaks`), the tooltip naming which -- on the site's
+ * green -> purple ramp, with the percentile printed beside the number as small faded
+ * `94th %ile`. Plays is a count, not a performance, so it gets neither -- as in the
+ * log. A split the player is under the population's play floor in is left unshaded
+ * (he is not in that population), and so is a split the route left out for having
+ * too few player-seasons (overtime, usually).
  */
-import { formatNumber, formatPercent, numberOrNull } from '../../utils/misc';
-import { PLAYER_SPLITS } from '../../utils/players';
-import type { SDVPlayerSplit } from '../../resources/sdv';
+import { formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
+import { PLAYER_SPLITS, percentileFromBreaks } from '../../utils/players';
+import { SPLIT_PERCENTILE_MIN_PLAYS, type SDVPlayerSplit } from '../../resources/sdv';
 
-interface Props { splits: SDVPlayerSplit[] }
-const { splits } = Astro.props;
+interface Props {
+    splits: SDVPlayerSplit[]
+    /** split -> metric -> 101 league-season percentile breakpoints; empty when that read failed */
+    leagueBreaks?: Record<string, Record<string, number[]>>
+    /** split -> the position group those breakpoints are over, or null/absent for every player */
+    leagueCohorts?: Record<string, string | null>
+}
+const { splits, leagueBreaks = {}, leagueCohorts = {} } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
 
 const by = new Map(splits.map((s) => [s.split, s]));
 const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
     // overtime is offered only when it was played
     .filter((s) => s.row && (numberOrNull(s.row.plays) ?? 0) > 0);
+
+const SHADED: [keyof SDVPlayerSplit, (v: unknown) => string][] = [
+    ['epa_per_play', (v) => formatNumber(v, 2)],
+    ['epa', (v) => formatNumber(v, 2)],
+    ['success_rate', (v) => formatPercent(v)],
+];
+/** Where the split's number sits in the whole league-season, 0..100, or null. */
+const leaguePct = (row: SDVPlayerSplit | undefined, key: string): number | null =>
+    row && (numberOrNull(row.plays) ?? 0) >= SPLIT_PERCENTILE_MIN_PLAYS
+        ? percentileFromBreaks(leagueBreaks[row.split]?.[key], row[key as keyof SDVPlayerSplit])
+        : null;
+const leagueShade = (row: SDVPlayerSplit | undefined, key: string): string =>
+    generateColorRampValue(leaguePct(row, key), 100) ?? '';
+/**
+ * The visible caption under the table: what the printed percentiles rank against. The
+ * cohort is per split (a position group's, or every player's when that group had too
+ * few), so a mix is spelled out rather than hidden in a hover.
+ */
+const leagueCaption = (): string | null => {
+    const shown = rows.filter((s) => SHADED.some(([key]) => leaguePct(s.row, String(key)) !== null));
+    if (shown.length === 0) return null;
+    const scope = `in the ${league === 'cfb' ? 'nation' : 'league'} that season, min ${SPLIT_PERCENTILE_MIN_PLAYS} plays in the split`;
+    const of = (group: string | null) => `Percentile among every ${group ? `${group} ` : ''}player-season ${scope}`;
+    const groups = [...new Set(shown.map((s) => leagueCohorts[s.key] ?? null))];
+    if (groups.length === 1) return `${of(groups[0])}.`;
+    const grouped = groups.find((g) => g !== null) ?? null;
+    const everyone = shown.filter((s) => (leagueCohorts[s.key] ?? null) === null).map((s) => s.label);
+    return `${of(grouped)}, except ${everyone.join(', ')}, which rank against every player-season.`;
+};
+const caption = leagueCaption();
 ---
 {rows.length > 0 && (
 <div class="table-responsive" id="player-splits-table">
     <table class="table table-sm">
+        {caption && <caption class="text-muted text-small" data-league-pct-caption>{caption}</caption>}
         <thead>
             <tr>
                 <th class="text-left" colspan="1">Split</th>
@@ -39,13 +88,19 @@ const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
         <tbody>
             {rows.map((s) => (
                 <tr class:list={[s.key === 'all' ? 'table-secondary' : null]}>
-                    <td class="text-left" colspan="1">
+                    <td class="text-left align-middle" colspan="1">
                         {s.title ? <abbr title={s.title}>{s.label}</abbr> : (s.key === 'all' ? <strong>{s.label}</strong> : s.label)}
                     </td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.plays, 0)}</td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa_per_play, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{formatNumber(s.row?.epa, 2)}</td>
-                    <td class="text-center numeral" colspan="1">{formatPercent(s.row?.success_rate)}</td>
+                    <td class="text-center numeral align-middle" colspan="1">{formatNumber(s.row?.plays, 0)}</td>
+                    {SHADED.map(([key, format]) => (
+                        <td class:list={["text-center", "align-middle", "numeral", leagueShade(s.row, String(key))]} colspan="1">
+                            {format(s.row?.[key])}
+                            {leaguePct(s.row, String(key)) !== null && (
+                                <small class="align-self-center d-block" style="opacity: 50%"
+                                    data-league-pct> {ordinal(leaguePct(s.row, String(key)) as number)} %ile</small>
+                            )}
+                        </td>
+                    ))}
                 </tr>
             ))}
         </tbody>
