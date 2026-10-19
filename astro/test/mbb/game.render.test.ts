@@ -32,6 +32,8 @@ function common(html: string) {
     expect(html).toContain('aspect-ratio: 2 / 1'); // the WP island's client:only fallback box (#319 R1 I1)
     expect(plain(html)).toContain(BASKETBALL.mbb.wpModelNote); // D21
     expect(html).toContain('/i/teamlogos/ncaa/');
+    expect(html).toContain('id="box-home"');
+    expect(html).not.toContain('>+/-<'); // college box scores have no plus-minus: no always-dash column (the NBA snapshot keeps it)
     for (const bad of ['NaN', 'null', 'undefined']) expect(noScripts(html)).not.toContain(bad);
     expect(plain(html)).not.toMatch(/(1st|2nd|3rd|4th) Quarter/);
     expect(html).not.toMatch(/>Q[1-4]</);
@@ -48,7 +50,7 @@ describe('/mbb/game/[id] render (real captures)', () => {
         expect(buttons(html)).toEqual(['All', 'H1', 'H2', 'OT', 'All', 'H1', 'H2', 'OT']);
         expect(html).toContain('overtime included');
         expect(html).toContain('href="/mbb/scoreboard?date=2026-02-28&amp;group=all"'); // Decision 10
-        // ESPN's line on the processor path (Decision 8), in the header's home-side form: prior.home_team_spread -6.5 is NCSU -6.5
+        // ESPN's line on the processor path (Decision 8), in the header's home-side form: home = ND, so the -6.5 home spread reads ND +6.5
         expect(plain(html)).toContain('Line: ND +6.5, pregame prior ND 28% (from the spread)');
     });
     test('401808271 from the Data API: regulation, the line is not in the warehouse (Decision 8, D33), the (25, 0) layup drawn', async () => {

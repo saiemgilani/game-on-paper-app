@@ -461,7 +461,8 @@ needs a new id and a new snapshot in its own PR.
   new ESPN id 129689. 2005-06-03: two finals in the halves era (`format.regulation.periods` 2), one in overtime (250603003, period 3;
   ESPN's own `status.type.detail` says "Final", GOP's `Final/OT` comes from the period and the regulation, D14); the board spells
   WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
-  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
+  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`, `test/mbb/scoreboardGroups.test.ts` (2025-08-01 keeps the event
+  `links` and competition `highlights|headlines|geoBroadcasts` `trimScoreboardEvents` drops). **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
   Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
 - `wnba/scoreboard-20020615.json`: the same ESPN cdn WNBA scoreboard for 2002-06-15 (same URL, UA and trim), captured
   2026-10-19T01:31Z: six finals with three defunct franchises ESPN serves no logo for, Cleveland (2) and Miami (7), and the
@@ -538,7 +539,7 @@ needs a new id and a new snapshot in its own PR.
   2026-10-18, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed
   (`links`, `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
   caching). 2025-02-22: `top25` (no group; 15 events, every one with a ranked team), `all` (`group=50`, 131 events, 8 in overtime,
-  1,318,782 bytes), `g8` (Big 12, 6). 2024-11-04 `g30` (UAC, 8; three opponents ESPN has no logo for: UNTD 126794, AL 484, ARBA 2027).
+  1,318,786 bytes), `g8` (Big 12, 6). 2024-11-04 `g30` (UAC, 8; three opponents ESPN has no logo for: UNTD 126794, AL 484, ARBA 2027).
   2025-04-06 `top25`: empty (no ranked team played); 2025-04-06 `all` (`group=50`): its one D-I game, unranked (owner ruling D35's
   real no-ranked-games day). A grouped body has no `sbData.day`. **Used by:** `test/mbb/scoreboardGroups.test.ts`, `test/mbb/scoreboard.test.ts`,
   `test/mbb/scoreboard.render.test.ts`, `test/mbb/scoreboardRoute.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-mbb-games-gop.md`.

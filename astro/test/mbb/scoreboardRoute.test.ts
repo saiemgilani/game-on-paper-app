@@ -45,6 +45,25 @@ describe('the loader validates group before any upstream call', () => {
         const top25: any = await prepareBasketballScoreboard(astro('?date=2025-02-22'), 'mbb'); // a non-empty Top 25 day: no D-I read, no note
         expect([top25.games.length, top25.fallbackNote, sbDay.mock.calls.some((c) => (c[2] as any)?.group === '50')]).toEqual([15, undefined, false]);
     });
+    test('D35 failed fallback: an empty Top 25 day whose D-I read degraded is uncacheable and carries no note', async () => {
+        const run = async (degraded: boolean) => {
+            const a = astro('?date=2025-04-06');
+            const set = vi.fn();
+            a.cache.set = set;
+            sbDay.mockReset();
+            sbDay.mockImplementation(async (_lg, _d, o) => ({ day: '2025-04-06', events: [], degraded: (o as any)?.group === '50' && degraded }));
+            const r: any = await prepareBasketballScoreboard(a, 'mbb');
+            expect(sbDay.mock.calls.some((c) => (c[2] as any)?.group === '50')).toBe(true); // the D-I read happened
+            return { r, set, cc: a.response.headers.get('Cache-Control') };
+        };
+        const failed = await run(true);
+        expect([failed.r.games.length, failed.r.fallbackNote]).toEqual([0, undefined]);
+        expect(failed.set).toHaveBeenCalledWith(false);
+        expect(failed.cc).toBe('no-store');
+        const ok = await run(false); // the same empty day with a D-I read that succeeded (and was empty) is cached
+        expect(ok.set).not.toHaveBeenCalledWith(false);
+        expect(ok.cc).toBeNull();
+    });
     test('the NBA and WNBA params carry no group keys', async () => {
         sbDay.mockResolvedValue({ day: '2025-02-22', events: [], degraded: false });
         for (const lg of ['nba', 'wnba'] as const) {

@@ -68,14 +68,10 @@ const MBB_SEASON_GAMES: readonly (readonly [number, number])[] = [
 /**
  * Owner ruling D31: the rolling leaders' per-game bars, the NBA's 5 FGA / 3 3PA scaled by league-average team FGA per game over
  * the NBA's in the same season (test/fixtures/mbb/leader_bars.json, Task 1 Step 1b): 0.649-0.661 in every season 2019-2026,
- * so 3 / 2 throughout. [season, fga, fg3a]; a season outside the table takes the nearest measured season.
+ * so 3 / 2 throughout, and for any season outside 2019-2026 too.
  */
-const MBB_LEADER_BARS: readonly (readonly [number, number, number])[] = [
-  [2019, 3, 2], [2020, 3, 2], [2021, 3, 2], [2022, 3, 2], [2023, 3, 2], [2024, 3, 2], [2025, 3, 2], [2026, 3, 2],
-];
-export function mbbLeaderBars(season: number): LeaderBars {
-  const row = [...MBB_LEADER_BARS].reverse().find(([s]) => season >= s) ?? MBB_LEADER_BARS[0];
-  return { fga: row[1], fg3a: row[2] };
+export function mbbLeaderBars(_season: number): LeaderBars {
+  return { fga: 3, fg3a: 2 }; // ponytail: one value for every measured season, as wnbaLeaderBars; a season that rounds differently gets a table
 }
 export function mbbSeasonGames(season: number): number {
   return [...MBB_SEASON_GAMES].reverse().find(([from]) => season >= from)?.[1] ?? MBB_SEASON_GAMES[0][1];

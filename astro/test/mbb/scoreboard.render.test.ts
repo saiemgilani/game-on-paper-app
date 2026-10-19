@@ -40,6 +40,9 @@ describe('/mbb/scoreboard render (real days)', () => {
         expect(html).toContain('/mbb/scoreboard?date=2025-02-22&amp;group=all"'); // canonical
         expect(html).toMatch(/<option value="all" selected[^>]*>Division I<\/option>/);
         expect(html).toContain('MBB scoreboard, Saturday, February 22, Division I | Game on Paper');
+        expect(html).toContain('12-17, 7-11 MVC'); // Southern Illinois, id 18: MVC in MBB (FBS Independents in football, no conference record)
+        expect(html).toContain('13-14, 6-7 UAC'); // UT Arlington, id 30 (Southland in football)
+        expect(html).not.toContain(' FBS Independents<');
     });
     test('2025-02-22 Big 12: the conference is selected and kept on the day links', async () => {
         prep.mockResolvedValueOnce(day('2025-02-22', '20250222-g8', '8', 'Big 12'));
@@ -47,6 +50,9 @@ describe('/mbb/scoreboard render (real days)', () => {
         expect(html.match(/href="\/mbb\/game\/\d+"/g)).toHaveLength(6);
         expect(html).toMatch(/<option value="8" selected[^>]*>Big 12<\/option>/);
         expect(html).toContain('href="/mbb/scoreboard?date=2025-02-21&amp;group=8"');
+        // record lines name MBB's own conferences (MBB_CONFERENCES), never the football group list's (id 8 is the SEC there)
+        expect(html).toContain('23-4, 15-1 Big 12'); // Houston
+        expect(html).not.toContain(' SEC<');
     });
     test('2024-11-04 UAC: a non-D-I opponent gets the default shield, never a 404 logo', async () => {
         prep.mockResolvedValueOnce(day('2024-11-04', '20241104-g30', '30', 'UAC'));

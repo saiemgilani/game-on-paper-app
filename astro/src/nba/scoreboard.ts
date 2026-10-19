@@ -133,7 +133,7 @@ const SECTIONS = [['live', 'Live'], ['upcoming', 'Upcoming'], ['final', 'Final']
  */
 export function statusSections(events: ESPNScheduleEvent[]): StatusSection[] {
     const keyOf = (e: ESPNScheduleEvent): StatusSectionKey => {
-        const state = (e.competitions[0]?.status as { type?: { state?: string } } | undefined)?.type?.state;
+        const state = ((e.competitions[0]?.status ?? e.status) as { type?: { state?: string } } | undefined)?.type?.state; // as the card reads it
         return state === 'in' ? 'live' : state === 'pre' ? 'upcoming' : 'final';
     };
     return SECTIONS.map(([key, label]) => ({ key, label, events: events.filter((e) => keyOf(e) === key) })).filter((s) => s.events.length > 0);

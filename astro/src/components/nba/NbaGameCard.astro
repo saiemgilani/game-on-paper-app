@@ -42,8 +42,8 @@ const awayLine = label(leaders.away), homeLine = label(leaders.home);
                         : <span>{line.text}</span>}
                 </strong>
             </div>
-            <TeamRow espnComp={forRow(away)} espnStatus={status} winner={awayScore > homeScore} completed={completed} hasBall={false} spacer="" season={game.season?.year} />
-            <TeamRow espnComp={forRow(home)} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" season={game.season?.year} />
+            <TeamRow espnComp={forRow(away)} espnStatus={status} winner={awayScore > homeScore} completed={completed} hasBall={false} spacer="" season={game.season?.year} conferences={cfg.scoreboardGroups?.conferences} />
+            <TeamRow espnComp={forRow(home)} espnStatus={status} winner={awayScore < homeScore} completed={completed} hasBall={false} spacer="mb-3" season={game.season?.year} conferences={cfg.scoreboardGroups?.conferences} />
             {(awayLine || homeLine) && (
                 <p class="small text-muted mb-3 d-none d-md-block">
                     {awayLine && <span class="d-block">{cleanAbbreviation(away.team)}: {awayLine}</span>}

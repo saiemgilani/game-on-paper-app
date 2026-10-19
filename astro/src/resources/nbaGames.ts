@@ -2,7 +2,7 @@
 import { retrieveRowsFrom } from './sdv';
 import { requestProcessor, ProcessorError } from './python';
 import { BASKETBALL } from '../basketball/config';
-import { LEAGUES, type BasketballLeague } from '../utils/league';
+import { LEAGUES, PRO_LEAGUES, type BasketballLeague } from '../utils/league';
 import { isTrue, type DataApiGameRows, type NbaProcessorPayload } from './nbaGame';
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -22,9 +22,8 @@ const SEL = {
 } as const;
 
 /** College box scores carry no plus-minus and no DNP reason at the source (hoopR-mbb-data player_box), so a college read leaves both out. */
-const PRO_LEAGUES: readonly BasketballLeague[] = ['nba', 'wnba'];
 export const playerBoxSelect = (league: BasketballLeague): string =>
-    PRO_LEAGUES.includes(league) ? SEL.player_box : SEL.player_box.replace(',plus_minus', '').replace(',reason', '');
+    PRO_LEAGUES.includes(league) ? SEL.player_box : SEL.player_box.split(',').filter((c) => c !== 'plus_minus' && c !== 'reason').join(',');
 
 type Row = Record<string, any>;
 

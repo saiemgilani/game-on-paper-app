@@ -59,9 +59,16 @@ describe('getScoreboardForDay with a group (real bodies)', () => {
         expect([...kv.keys()]).toEqual(['scoreboard-day:mbb:20250222']);
     });
     test('trimScoreboardEvents keeps everything a card reads', () => {
+        // a real capture that still carries the dropped keys (the WNBA 2025-08-01 board keeps links, highlights, headlines, geoBroadcasts)
+        const raw = JSON.parse(fix('../wnba/scoreboard-20250801')).content.sbData.events;
+        const t = trimScoreboardEvents(raw);
+        expect(raw.every((e: any) => e.links && e.competitions[0].geoBroadcasts)).toBe(true);
+        t.forEach((e: any, i: number) => {
+            const { links: _l, competitions: rc, ...rest } = raw[i];
+            const { highlights: _h, headlines: _hd, geoBroadcasts: _g, ...comp } = rc[0];
+            expect(e).toEqual({ ...rest, competitions: [comp] }); // exactly those keys gone; the competitors, status, date and season untouched
+        });
         const e = JSON.parse(fix('scoreboard-20250222-top25')).content.sbData.events;
-        const t = trimScoreboardEvents(e);
-        expect(t).toEqual(e); // the fixture is already trimmed: trimming is idempotent and drops nothing the card reads
-        for (const c of t[0].competitions[0].competitors) for (const k of ['id', 'homeAway', 'score', 'team', 'curatedRank', 'records', 'leaders']) expect(c, k).toHaveProperty(k);
+        for (const c of trimScoreboardEvents(e)[0].competitions[0].competitors) for (const k of ['id', 'homeAway', 'score', 'team', 'curatedRank', 'records', 'leaders']) expect(c, k).toHaveProperty(k);
     });
 });

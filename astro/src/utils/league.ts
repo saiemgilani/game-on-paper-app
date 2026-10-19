@@ -14,6 +14,8 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
 export const BASKETBALL_LEAGUES = ['nba', 'wnba', 'mbb'] as const;
 export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
+/** The professional leagues: their box scores carry plus-minus and a DNP reason; college box scores carry neither. */
+export const PRO_LEAGUES: readonly BasketballLeague[] = ['nba', 'wnba'];
 export type League = 'cfb' | 'nfl' | BasketballLeague;
 export type Sport = 'football' | 'basketball';
 export const DEFAULT_LEAGUE: League = 'cfb';

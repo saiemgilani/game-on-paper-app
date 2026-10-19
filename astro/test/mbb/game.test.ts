@@ -110,7 +110,9 @@ describe("ESPN's college end-of-half rows are the settle rows biggestPlays skips
 describe('the player_box select per league (R16: the college box has no plus-minus or DNP reason at the source)', () => {
     test('mbb leaves out plus_minus and reason; nba and wnba still read both; every other column is shared', () => {
         const cols = (l: Parameters<typeof playerBoxSelect>[0]) => playerBoxSelect(l).split(',');
-        for (const l of ['nba', 'wnba'] as const) expect(cols(l)).toEqual(expect.arrayContaining(['plus_minus', 'reason']));
+        expect(playerBoxSelect('wnba')).toBe(playerBoxSelect('nba')); // the pro select is the one full SEL.player_box
+        expect(cols('nba')).toContain('plus_minus');
+        expect(cols('nba')).toContain('reason');
         expect(cols('mbb')).not.toContain('plus_minus');
         expect(cols('mbb')).not.toContain('reason');
         expect(cols('mbb')).toEqual(cols('nba').filter((c) => c !== 'plus_minus' && c !== 'reason'));

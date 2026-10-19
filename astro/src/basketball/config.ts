@@ -197,7 +197,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         darkLogo: { kind: 'id', logoLeague: 'ncaa' },
         // D21/D37 (R13): only what sdv-py records — the artifact (sportsdataverse/mbb/models/mbb_in_game_wp.ubj), the training
         // sentence (mbb_game_predict.py:122-124) and the five features of in_game_features (none of them the period)
-        wpModelNote: "Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature)",
+        wpModelNote: "Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature).",
         featuredTeam: null,
         courts: NCAA_COURTS,
         teams: { all: MBB_TEAMS, byEspnId: mbbTeamByEspnId, inSeason: mbbTeamInSeason, franchiseOf: mbbFranchiseOf, seasonsOf: mbbSeasonsOf },

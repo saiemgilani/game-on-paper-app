@@ -71,7 +71,7 @@ describe('the mbb league entry', () => {
         expect(Object.keys(BASKETBALL.nba)).not.toContain('scoreboardGroups'); // the NBA object did not gain a key
     });
     test('the WP panel names the model with only what sdv-py records (D21, D37)', () => {
-        expect(BASKETBALL.mbb.wpModelNote).toBe("Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature)");
+        expect(BASKETBALL.mbb.wpModelNote).toBe("Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature).");
         expect(BASKETBALL.mbb.wpModelNote).not.toMatch(/20\d\d/); // D37: no season sdv-py does not record
     });
     test('NCAA courts by season (Step 2 rulebook figures)', () => {
