@@ -1,11 +1,13 @@
 /**
- * The Data API reads behind the /nba dashboards (spec §3.1-3.2). Per-subject reads are raw
- * `nba_stats.shots` rows; league-wide numbers come from the three derived tables sdv-db
- * rebuilds nightly. Every read goes through `requestSDV` (KV-cached, stamp-keyed) with
+ * The Data API reads behind the basketball dashboards: per-subject shots (`nba_stats` /
+ * `wnba_stats` `shots`, or the college `shot_rows`), the three derived tables, and for
+ * college leagues the coverage and conference reference rows. League-wide numbers come
+ * from the three derived tables sdv-db rebuilds nightly. Every read goes through `requestSDV` (KV-cached, stamp-keyed) with
  * `strict`, so a route can tell an outage (503) from an empty table (404).
  */
 import { retrieveRows } from './sdv';
 import { BASKETBALL } from '../basketball/config';
+import { shotsTable } from '../basketball/dashboards';
 import type { BasketballLeague } from '../utils/league';
 
 /** League-wide rows are good for the ingest cadence; a subject's rows follow the football player page. */
@@ -108,7 +110,7 @@ export function retrieveSeasonPlayerRows(season: number, league: BasketballLeagu
 
 /** Regular season only (the league's game_id prefix, 002 for the NBA), the lite columns only. */
 export function retrievePlayerShots(season: number, personId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
-    return read<ShotApiRow>(league, 'shots', {
+    return read<ShotApiRow>(league, shotsTable(league), {
         season: String(season), person_id: String(personId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
     }, SUBJECT_TTL, true);
@@ -116,7 +118,7 @@ export function retrievePlayerShots(season: number, personId: number, league: Ba
 
 /** A team's regular-season shots, the lite columns only (the team page's dashboard and line). */
 export function retrieveTeamShots(season: number, teamId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
-    return read<ShotApiRow>(league, 'shots', {
+    return read<ShotApiRow>(league, shotsTable(league), {
         season: String(season), team_id: String(teamId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
     }, SUBJECT_TTL, true);
@@ -135,4 +137,34 @@ export function retrieveSeasonPlayerGameRows(season: number, league: BasketballL
 export async function retrievePlayerSeasons(personId: number, league: BasketballLeague = 'nba'): Promise<number[]> {
     const rows = await read<{ season: number }>(league, 'shot_season_players', { person_id: String(personId), select: 'season', limit: LIMIT }, SEASON_TTL, true);
     return [...new Set(rows.map((r) => Number(r.season)))].sort((a, b) => a - b);
+}
+
+/** One row per season of a college league's coverage table (plan #7's shot_coverage): the numbers of the D24/D29 note. */
+export interface CoverageRow {
+    season: number;
+    source_shots: number;
+    d1_shots: number;
+    placed_shots: number;
+    attributed_shots: number;
+    placed_share: number;
+    attributed_share: number;
+    meets_floor: boolean | string;
+}
+
+/** Every season's coverage row (eight rows for 2019-2026): the note on every college dashboard page. */
+export function retrieveCoverageRows(league: BasketballLeague): Promise<CoverageRow[]> {
+    return read<CoverageRow>(league, 'shot_coverage', { limit: LIMIT }, SEASON_TTL, true);
+}
+
+/** sdv-reference-data's team -> conference rows (text ids) and the conference names, in the league schema (END-year seasons). */
+export interface TeamGroupRow { team_id: string; conference_id: string }
+export interface GroupRow { group_id: string; short_name: string }
+
+/** The season's conference of every D-I team and the conferences' names (the teams index groups by them). */
+export async function retrieveConferenceRows(season: number, league: BasketballLeague): Promise<{ teams: TeamGroupRow[]; groups: GroupRow[] }> {
+    const [teams, groups] = await Promise.all([
+        read<TeamGroupRow>(league, 'team_group_seasons', { season: String(season), select: 'team_id,conference_id', limit: LIMIT }, SEASON_TTL, true),
+        read<GroupRow>(league, 'group_seasons', { season: String(season), level: 'conference', select: 'group_id,short_name', limit: LIMIT }, SEASON_TTL, true),
+    ]);
+    return { teams, groups };
 }
