@@ -523,3 +523,13 @@ needs a new id and a new snapshot in its own PR.
     row, so all four pairs are in the parity gate (spec D7, post-republish).
   - **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`,
     the API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, the capture script with `playerBoxSelect`'s rule; ruling R16).
+- `mbb/lines_by_season.json`: per season, the number of games and of games with `game_spread_available` true in hoopR-mbb-data
+  `mbb/pbp/parquet/play_by_play_<season>.parquet` (commit 55d7a2a23), and `linesFromSeason`, the first season from which every season
+  through 2023 has lined games (2024-2026 lack lines in the release: owner ruling D33's producer issue). Owner ruling D39.
+  **Used by:** `test/mbb/lineNote.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 0.
+- `mbb/espn_page_401820775.json` and `mbb/pregame_401920982.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/mens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` UA),
+  captured 2026-10-18, trimmed to `{ gameId, gamepackageJSON: { header } }`. 401820775 is Task 3's OT final; 401920982 (Villanova vs Notre Dame,
+  neutral, scheduled 2026-11-01T14:30Z) was `STATUS_SCHEDULED` when captured. `mbb/pregame_401920982_summary.json` is `{ pickcenter }` of
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401920982` at the same time (no providers yet).
+  **Used by:** `test/mbb/gameRoute.test.ts`, `test/mbb/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 1.

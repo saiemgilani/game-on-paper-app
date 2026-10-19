@@ -95,6 +95,11 @@ export interface BasketballConfig {
      * postseason (college, D23). Absent: thresholds keep regularSeasonGames (NBA, WNBA). Plan #9 makes rankMins read it.
      */
     gamesInScope?: (season: number) => number;
+    /**
+     * Owner rulings D33/D39 (R12): the first season (END year) ESPN publishes betting lines for the league, measured (Task 5 Step 0).
+     * From it on, an ingested final without a line says the line is not in the warehouse; absent: "No line" everywhere (NBA, WNBA).
+     */
+    linesFromSeason?: number;
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -207,6 +212,9 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         espnRimPlaceholder: true,
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,
+        // D39: hoopR-mbb-data has lined games in every season 2013-2023 and none before (lines_by_season.json); 2024-2026 lack
+        // them in the release although ESPN has them (D33, the hoopR-mbb-data issue of Task 7)
+        linesFromSeason: 2013,
     },
 };
 
@@ -273,6 +281,15 @@ export function seasonLabelFor(league: BasketballLeague, endYear: number): strin
 /** A league has team pages exactly when its Header lists Teams; until then nothing links to /<league>/team/<id>. */
 export function hasTeamPages(league: BasketballLeague): boolean {
     return BASKETBALL[league].headerMenu.some((m) => m.path === '/teams');
+}
+
+/**
+ * D33/D39: the header's words for a game without a line. Only an ingested final (Data API) of a season ESPN publishes lines for
+ * says "No line in the warehouse"; the processor reads ESPN's own summary, so its "No line" is ESPN's.
+ */
+export function noLineText(league: BasketballLeague, season: number | null, source: 'processor' | 'data_api'): 'No line' | 'No line in the warehouse' {
+    const from = BASKETBALL[league].linesFromSeason;
+    return from !== undefined && source === 'data_api' && season != null && season >= from ? 'No line in the warehouse' : 'No line';
 }
 
 /** The 82 games the shipped NBA bars (100 FGA, 50 3PA) were set for. */

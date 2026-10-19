@@ -39,5 +39,7 @@ export function scoreboardDayHref(league: BasketballLeague, gameDate: string | n
     const now = today ?? DateTime.now().setZone(cfg.scoreboardTimeZone).toISODate()!;
     const day = gameDate ? DateTime.fromISO(gameDate).setZone(cfg.scoreboardTimeZone).toISODate() : null;
     const base = leaguePath(league, '/scoreboard');
-    return day && parseDateParam(day, now, cfg.firstScoreboardDay).ok ? `${base}?date=${day}` : base;
+    // a college game is on its day's all-D-I board, not necessarily on the default Top 25 one (plan #8 Decision 10)
+    const all = cfg.scoreboardGroups ? '&group=all' : '';
+    return day && parseDateParam(day, now, cfg.firstScoreboardDay).ok ? `${base}?date=${day}${all}` : base;
 }
