@@ -43,6 +43,9 @@ describe('teams by conference', () => {
         const html = await container.renderToString(NbaConferenceTeams, { props: { groups: g, lines: teamLinesFromRows(seasonPlayers(2026)), seasonQuery: '' }, locals: { league: 'mbb' } as App.Locals });
         expect(html.match(/<tbody id="conf-/g)).toHaveLength(g.length);
         expect(html.match(/<a href="#conf-/g)).toHaveLength(g.length);
+        // The jump links are adjacent nowrap anchors with no whitespace between them: only a wrapping flex row breaks them
+        // onto lines (without it the 32 links are one unbreakable line and the page scrolls sideways at 1280 and 390 px).
+        expect(html).toContain('<nav aria-label="Conferences" class="small mb-2 d-flex flex-wrap">');
         expect(html.match(/<tr data-name=/g)).toHaveLength(g.reduce((a, x) => a + x.teams.length, 0));
         expect(html).toContain(`href="/mbb/team/${TEX}"`);
         expect(html).toContain('data-nba-filter="nba-teams-table"');

@@ -15,7 +15,7 @@ const league = basketball(Astro.locals.league).league;
 const anchor = (g: ConferenceGroup) => `conf-${(g.id || 'other').replace(/^mbb:|^wbb:/, '').replace(/[^a-z0-9]+/gi, '-')}`;
 const count = groups.reduce((a, g) => a + g.teams.length, 0);
 ---
-<nav aria-label="Conferences" class="small mb-2">{groups.map((g) => (<a href={`#${anchor(g)}`} class="me-2 text-nowrap">{g.label}</a>))}</nav>
+<nav aria-label="Conferences" class="small mb-2 d-flex flex-wrap">{groups.map((g) => (<a href={`#${anchor(g)}`} class="me-2 text-nowrap">{g.label}</a>))}</nav>
 <NbaNameFilter tableId="nba-teams-table" count={count} noun="teams" placeholder="team name" />
 <div class="table-responsive">
   <table class="table table-sm" id="nba-teams-table">
