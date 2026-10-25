@@ -133,6 +133,19 @@ describe('/wbb/game/[id] render (real captures)', () => {
             expect(plain(html)).toMatch(/No line, pregame prior/);
             expect(plain(html)).not.toContain(D33_COPY); // 2008 < linesFromSeason 2026
         });
+    // Self-review on #343: ESPN's 2009-2012 box files the team total under team_turnovers (0 / 18 / 0, rates 18), which the team
+    // box printed as "0 (0 + 18)". The 2011 national final, a real capture: the total, no split it does not have.
+    test('310950245 (2011 final) from the processor: the legacy team_turnovers total, never 0 (0 + N)', async () => {
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_310950245_processor'), 'wbb') });
+        const html = await render('310950245');
+        common(html);
+        expect(teamBoxRow(html, 'Turnovers (player + team)')).toEqual(['16', '18']);
+        expect(plain(html)).not.toMatch(/\b0 \(0 \+ \d+\)/);
+    });
+    test('400550784 (2014): a college box counts team turnovers inside turnovers; the split is players + team', async () => {
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_400550784_processor'), 'wbb') });
+        expect(teamBoxRow(await render('400550784'), 'Turnovers (player + team)')).toEqual(['13 (12 + 1)', '19 (18 + 1)']);
+    });
     test('401827362 from the Data API: quarters, no line after ingest with the D33 copy, one unlocated jump shot (D33, D29)', async () => {
         prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401827362_api'), 'wbb') });
         const html = await render('401827362');

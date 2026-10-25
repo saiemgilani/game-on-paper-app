@@ -619,6 +619,12 @@ needs a new id and a new snapshot in its own PR.
     `test/wbb/game.render.test.ts` (401702870 among them).
   - **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`, the
     API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, ClaudeCowork `ledgers/2026-10-19-bball-wbb-games-gop/capture_wbb_games.py`).
+- `wbb/game_310950245_processor.json`: Notre Dame vs Texas A&M, 2011-04-05, the national final, two halves. The live body of
+  `GET /wbb/310950245/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`, `python/` venv
+  `uv sync --frozen` at the `uv.lock` sdv-py `b4229f1c`) over ESPN's live summary; no edits. The 2009-2012 legacy turnover shape:
+  each team box carries `turnovers` 0, `total_turnovers` 0 and its whole count under `team_turnovers` (Texas A&M 18, Notre Dame 16),
+  as sdv-py `mbb_team_ratings._turnovers` documents; the rates carry 18 and 16. **Used by:** `test/wbb/game.render.test.ts`
+  (self-review on #343). **To regenerate:** the same test-client call.
 - `wbb/espn_page_401805076.json` and `wbb/pregame_401920983.json`: ESPN cdn game pages
   (`https://cdn.espn.com/core/womens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` Safari UA),
   trimmed to `{ gameId, gamepackageJSON: { header } }`. 401805076 (captured 2026-10-19T07:44Z) is Task 3's OT final; 401920983 (Notre Dame vs Villanova,
