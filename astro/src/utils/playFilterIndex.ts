@@ -33,6 +33,25 @@ const ROLE_FIELDS: Record<Role, [string, string]> = {
     pret: ["punt_return_player_id", "punt_return_player_name"],
 };
 
+/**
+ * The team a role's player plays for. Not simply "the team with the ball": a kickoff's
+ * pos_team is the RECEIVING team, a punt's the kicking team, and a fumble can be
+ * recovered by either side, so the kicking roles read the processor's kicking_team /
+ * kick_return_team and a recovery its fumble_recovery_team, each falling back to the
+ * side that convention implies.
+ */
+const ROLE_TEAM: Record<Role, (p: any) => unknown> = {
+    pass: (p) => p.pos_team, rush: (p) => p.pos_team, recv: (p) => p.pos_team, fumble: (p) => p.pos_team,
+    sack: (p) => p.def_pos_team, int: (p) => p.def_pos_team, pbu: (p) => p.def_pos_team,
+    ff: (p) => p.forced_fumble_team ?? p.def_pos_team,
+    fumrec: (p) => p.fumble_recovery_team ?? (p.fumble_lost === true ? p.def_pos_team : p.pos_team),
+    punt: (p) => p.kicking_team ?? p.pos_team,
+    fg: (p) => p.fg_team ?? p.pos_team,
+    kickoff: (p) => p.kicking_team ?? p.def_pos_team,
+    kret: (p) => p.kick_return_team ?? p.pos_team,
+    pret: (p) => p.kick_return_team ?? p.def_pos_team,
+};
+
 /** Play-type filters that are not about one player. */
 export const PLAY_TAGS = {
     scoring: "Scoring plays", turnover: "Turnovers", penalty: "Penalties",
@@ -79,6 +98,9 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
     const byPlay: Record<string, string[]> = {};
     const players = new Map<string, PlayerOption>();
     const tagCounts: Partial<Record<PlayTag, number>> = {};
+    // player id -> team -> plays; a player's team is his majority, so one odd row
+    // (a returner's fumble, a mislabelled recovery) cannot move his whole menu entry
+    const votes = new Map<string, Map<string, number>>();
 
     for (const p of plays) {
         const key = keyOf(p);
@@ -89,9 +111,9 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
             const [idf, namef] = ROLE_FIELDS[role];
             const id = p[idf];
             if (id === null || id === undefined || id === "") continue;
-            // a defender belongs to the team without the ball; everyone else to pos_team
-            const defensive = role === "sack" || role === "int" || role === "pbu" || role === "ff";
-            const owner = String((defensive ? p.def_pos_team : p.pos_team) ?? "");
+            // the processor also fills fg_kicker on kickoffs; only an attempt is a field goal
+            if (role === "fg" && p.fg_attempt === false) continue;
+            const owner = String(ROLE_TEAM[role](p) ?? "");
             if (teamId !== undefined && String(teamId) !== owner) continue;
             const sid = String(id);
             sels.push(`r:${role}:${sid}`);
@@ -102,6 +124,9 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
             }
             e.roles[role] = (e.roles[role] ?? 0) + 1;
             e.total++;
+            const v = votes.get(sid) ?? new Map<string, number>();
+            v.set(owner, (v.get(owner) ?? 0) + 1);
+            votes.set(sid, v);
         }
 
         for (const tag of Object.keys(TAG_TEST) as PlayTag[]) {
@@ -120,6 +145,8 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
 
         if (sels.length) byPlay[key] = sels;
     }
+
+    for (const [sid, v] of votes) players.get(sid)!.teamId = [...v].sort((a, b) => b[1] - a[1])[0][0];
 
     return {
         byPlay,

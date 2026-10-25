@@ -85,3 +85,24 @@ describe('buildPlayIndex', () => {
         expect(Object.keys(e.byPlay)).toEqual([]);
     });
 });
+
+describe.each(['game-401729745.json.gz', 'game-401752696.json.gz'])('player teams in %s', (file) => {
+    const g = JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${file}`, import.meta.url))).toString());
+    // the box score's rosters are the independent truth for who plays for whom
+    const roster = new Map<string, string>();
+    for (const t of g.boxscore.players) for (const s of t.statistics) for (const a of s.athletes) roster.set(String(a.athlete.id), String(t.team.id));
+    const ix = buildPlayIndex(g.plays);
+
+    test('every player is grouped under the team his box score lists him on', () => {
+        // a kickoff's pos_team is the receiving team and a punt return's the kicking
+        // team, so the kickers and returners are the ones a pos_team rule misfiles
+        const known = ix.players.filter((p) => roster.has(p.id));
+        expect(known.some((p) => p.roles.kickoff || p.roles.pret)).toBe(true);
+        expect(known.filter((p) => p.teamId !== roster.get(p.id)).map((p) => p.name)).toEqual([]);
+    });
+
+    test('field goals count attempts only, not the kickoffs the kicker column also carries', () => {
+        const fg = ix.players.reduce((n, p) => n + (p.roles.fg ?? 0), 0);
+        expect(fg).toBe(g.plays.filter((p: any) => p.fg_attempt === true && p.fg_kicker_player_id).length);
+    });
+});
