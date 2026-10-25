@@ -1,5 +1,7 @@
 // The REAL loader (plan #4/#8's prepareBasketballScoreboard) over real women's boards: only ESPN's read is replaced, by the captures.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
@@ -27,7 +29,7 @@ const finalCard = (h: string, id: string) => {
 };
 const plain = (h: string) => h.replace(/<[^>]+>/g, '');
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = (q: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/scoreboard${q}`), locals: { preview: true, league: 'wbb' } as App.Locals });
 
 /**

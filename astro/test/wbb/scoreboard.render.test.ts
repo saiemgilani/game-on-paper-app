@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
@@ -18,7 +20,7 @@ const finalCard = (h: string, id: string) => {
     return sec.slice(sec.lastIndexOf('<div class="col-xl-3', at), next < 0 ? undefined : next);
 };
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = (q: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/scoreboard${q}`), locals: { preview: true, league: 'wbb' } as App.Locals });
 
 describe('/wbb/scoreboard render (real days)', () => {

@@ -95,6 +95,14 @@ export const FLAGS: Record<string, FeatureState> = {
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
     'five-factors': 'preview',
+    // The header search box (components/search/SiteSearch.svelte) and the
+    // GET /api/search proxy it calls, which 404s for every other viewer. Hits
+    // into a gated namespace are dropped per viewer: players while
+    // 'player-pages' is off, NFL rows while 'nfl' is off. Prerendered pages
+    // (glossary, data-sources, changelog) resolve the flag at build time, so
+    // they show no box while this is 'preview'.
+    'site-search': 'preview',
+
     // Game link previews: og:image becomes the API's 1200x630 card for the
     // game's state (utils/shareTags.ts), ?spoilers=off previews without the
     // score (head tags only; the page renders as normal), and GameHeader shows

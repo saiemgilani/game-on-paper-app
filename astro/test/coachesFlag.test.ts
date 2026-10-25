@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 
 // The head-coach boards sit behind the 'coaches' feature flag
 // (utils/features.ts): middleware turns every board route -- both leagues --
@@ -81,7 +83,8 @@ describe('the coaches flag', () => {
     });
 
     test('the header lists the Head Coaches section only to a viewer the flag admits', async () => {
-        const container = await AstroContainer.create();
+        // a preview header carries the search island, so the Svelte renderer is loaded
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Header } = await import('../src/components/Header.astro');
         const req = new Request('https://gameonpaper.com/');
         const pub = await container.renderToString(Header, { request: req, locals: {} });

@@ -1,9 +1,11 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test } from 'vitest';
 import Header from '../../src/components/Header.astro';
 
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('the MBB Header', () => {
     test('five pages, no featured-team entry, a switch that includes the other basketball leagues', async () => {
