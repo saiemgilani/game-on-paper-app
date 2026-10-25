@@ -32,7 +32,7 @@ describe('zone geometry follows the court', () => {
 });
 
 describe('the game shot chart honours the court on a real shot', () => {
-    const game = fromProcessor(JSON.parse(readFileSync('test/fixtures/nba/game_401766458_processor.json').toString()));
+    const game = fromProcessor(JSON.parse(readFileSync('test/fixtures/nba/game_401766458_processor.json').toString()), 'nba');
     const shots: GameShot[] = shotsOf(game.plays, Number(game.home.team.id)).map((p) => ({
         x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || (/three point/i.test(p.text) ? 3 : 2), label: p.text, period: p.period }));
     // the widest real attempt (Caldwell-Pope's corner three at x = -240), and a probe court one tenth too narrow to keep it

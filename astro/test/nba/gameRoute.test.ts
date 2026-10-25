@@ -229,15 +229,15 @@ describe('final review', () => {
 describe('sanityGate', () => {
     test('each clause fails on its own; a late-logged free throw does not', async () => {
         const { sanityGate } = await import('../../src/routes/nba/game');
-        expect(sanityGate(api())).toBeNull(); // the fixture pbp ends 119-95 against a 120-95 final
-        const a = api(); a.pbp = a.pbp.filter((p: any) => p.period_number !== 4); expect(sanityGate(a)).toMatch(/period/);
-        const np = api(); np.pbp[np.pbp.length - 1] = { ...np.pbp[np.pbp.length - 1], period_number: 'x' }; expect(sanityGate(np)).toMatch(/period/);
-        const b = api(); b.pbp[b.pbp.length - 1] = { ...b.pbp[b.pbp.length - 1], home_score: 1 }; expect(sanityGate(b)).toMatch(/final score/);
-        const c = api(); c.team_box = c.team_box.slice(0, 1); expect(sanityGate(c)).toMatch(/team_box/);
-        const d = api(); d.player_box = d.player_box.slice(0, 4); expect(sanityGate(d)).toMatch(/player_box/);
-        const e = api(); e.play_wp = e.play_wp.slice(1); expect(sanityGate(e)).toMatch(/play_wp/);
-        const f = api(); f.game_team_rates = []; expect(sanityGate(f)).toMatch(/game_team_rates/);
-        const h = api(); h.pbp[h.pbp.length - 1] = { ...h.pbp[h.pbp.length - 1], home_score: 'x' }; expect(sanityGate(h)).toMatch(/final score/);
-        const g = api(); g.game_player_rates = g.game_player_rates.slice(1); expect(sanityGate(g)).toMatch(/game_player_rates/);
+        expect(sanityGate(api(), 'nba')).toBeNull(); // the fixture pbp ends 119-95 against a 120-95 final
+        const a = api(); a.pbp = a.pbp.filter((p: any) => p.period_number !== 4); expect(sanityGate(a, 'nba')).toMatch(/period/);
+        const np = api(); np.pbp[np.pbp.length - 1] = { ...np.pbp[np.pbp.length - 1], period_number: 'x' }; expect(sanityGate(np, 'nba')).toMatch(/period/);
+        const b = api(); b.pbp[b.pbp.length - 1] = { ...b.pbp[b.pbp.length - 1], home_score: 1 }; expect(sanityGate(b, 'nba')).toMatch(/final score/);
+        const c = api(); c.team_box = c.team_box.slice(0, 1); expect(sanityGate(c, 'nba')).toMatch(/team_box/);
+        const d = api(); d.player_box = d.player_box.slice(0, 4); expect(sanityGate(d, 'nba')).toMatch(/player_box/);
+        const e = api(); e.play_wp = e.play_wp.slice(1); expect(sanityGate(e, 'nba')).toMatch(/play_wp/);
+        const f = api(); f.game_team_rates = []; expect(sanityGate(f, 'nba')).toMatch(/game_team_rates/);
+        const h = api(); h.pbp[h.pbp.length - 1] = { ...h.pbp[h.pbp.length - 1], home_score: 'x' }; expect(sanityGate(h, 'nba')).toMatch(/final score/);
+        const g = api(); g.game_player_rates = g.game_player_rates.slice(1); expect(sanityGate(g, 'nba')).toMatch(/game_player_rates/);
     });
 });

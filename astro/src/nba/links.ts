@@ -2,24 +2,13 @@ import { DateTime } from 'luxon';
 import { BASKETBALL, hasTeamPages } from '../basketball/config';
 import { leaguePath, type BasketballLeague } from '../utils/league';
 import { parseDateParam } from './scoreboard';
+import { teamHref } from './hrefs';
 
-/** Public league URLs. The current season has no ?season= so links land on the cached canonical URL. */
-export function seasonQuery(season: number, current: number): string {
-    return season === current ? '' : `?season=${season}`;
-}
-
-export const playerHref = (personId: number, q: string, league: BasketballLeague = 'nba') => `${leaguePath(league, `/players/${personId}`)}${q}`;
-export const teamHref = (teamId: number, q: string, league: BasketballLeague = 'nba') => `${leaguePath(league, `/team/${teamId}`)}${q}`;
-export const gameHref = (league: BasketballLeague, gameId: string | number) => leaguePath(league, `/game/${gameId}`);
-
-/** `path?params`, leaving out any param equal to its default (so defaults map to the canonical URL). */
-export function withParams(path: string, params: Record<string, string>, defaults: Record<string, string> = {}): string {
-    const kept = Object.entries(params).filter(([k, v]) => v !== defaults[k]);
-    return kept.length ? `${path}?${new URLSearchParams(kept)}` : path;
-}
+// The pure helpers live in ./hrefs so an island can import them without this module's config/luxon imports.
+export { seasonQuery, playerHref, teamHref, gameHref, withParams } from './hrefs';
 
 /** /<league>/team/<team key> for an ESPN team object ({id}); null for a team the league's team module does not know. */
-export function teamHrefFromEspn(t: { id?: unknown } | null | undefined, league: BasketballLeague = 'nba'): string | null {
+export function teamHrefFromEspn(t: { id?: unknown } | null | undefined, league: BasketballLeague): string | null {
     if (!hasTeamPages(league)) return null; // no team pages yet (the WNBA until plan #6): plain team names, never a 404 link
     const team = BASKETBALL[league].teams.byEspnId(Number(t?.id));
     return team ? teamHref(team.team_id, '', league) : null;
