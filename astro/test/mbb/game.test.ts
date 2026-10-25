@@ -118,3 +118,22 @@ describe('the player_box select per league (R16: the college box has no plus-min
         expect(cols('mbb')).toEqual(cols('nba').filter((c) => c !== 'plus_minus' && c !== 'reason'));
     });
 });
+
+// Self-review on #343: a college box counts its team turnovers inside `turnovers` (total == turnovers); NbaGame's
+// `turnovers` is the players' share in every league, so the team box reads "13 (10 + 3)", not "13 (13 + 3)".
+describe("the team box's turnovers split players from team in every league", () => {
+    const readLg = (lg: string, name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${lg}/${name}.json`, import.meta.url)).toString());
+    test('MBB 401744223 (13 with 3 team): players 10, both sources', () => {
+        for (const g of [fromProcessor(read('game_401744223_processor'), 'mbb'), fromDataApi(read('game_401744223_api'), 'mbb')]) {
+            const s = [g.home, g.away].find((x) => x.box?.team_turnovers === 3)!;
+            expect([s.box!.turnovers, s.box!.team_turnovers, s.box!.total_turnovers]).toEqual([10, 3, 13]);
+            expect(s.players.reduce((a, p) => a + (p.turnovers ?? 0), 0)).toBe(10);
+        }
+    });
+    test('NBA and WNBA boxes are unchanged: players + team = total already', () => {
+        for (const [lg, name] of [['nba', 'game_401766458_processor'], ['nba', 'game_401705127_processor'], ['wnba', 'game_401736287_processor'], ['wnba', 'game_250603003_processor']] as const) {
+            const g = fromProcessor(readLg(lg, name), lg);
+            for (const s of [g.home, g.away]) expect(s.box!.turnovers! + s.box!.team_turnovers!, `${lg} ${name}`).toBe(s.box!.total_turnovers);
+        }
+    });
+});
