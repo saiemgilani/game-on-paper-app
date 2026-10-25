@@ -1,4 +1,6 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 const prep = vi.fn();
@@ -17,7 +19,8 @@ const game = (id: string, name: string, period = 4, clock = '0.0', state = 'post
 const base = { day: '2025-04-15', isLive: false, degraded: false, stale: false, nav: { prev: '2025-04-14', next: '2025-04-16', label: 'Tuesday, April 15' }, today: '2026-10-21' };
 
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+// a preview header carries the search island, so the Svelte renderer is loaded
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = async () => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/scoreboard'), locals: { preview: true, league: 'nba' } as App.Locals });
 
 describe('/nba/scoreboard render', () => {

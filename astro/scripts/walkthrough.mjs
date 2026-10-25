@@ -17,7 +17,7 @@ import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { loadChromium, launchOptions, newThemedContext, appliedScheme, DEVICES, SCHEMES, slug } from './lib/browser.mjs';
+import { loadChromium, launchOptions, newThemedContext, appliedScheme, DEVICES, SCHEMES, slug, slugger } from './lib/browser.mjs';
 
 const BASE = (process.env.BASE ?? 'http://localhost:4321').replace(/\/$/, '');
 const OUT = process.env.OUT ?? 'img/walkthrough';
@@ -69,7 +69,7 @@ const steps = stepsPath ? (await import(pathToFileURL(resolve(stepsPath)).href))
 const scenarios = steps
   // `flow-` keeps a steps module from overwriting the scroll-through of a route with the same name
   ? [{ name: 'flow-' + slug(stepsPath.replace(/^.*\//, '').replace(/\.m?js$/, '')), run: (page) => steps(page, BASE) }]
-  : routes.map((r) => ({ name: slug(r), run: (page) => scrollThrough(page, BASE, r) }));
+  : routes.map((r) => ({ name: slugger(routes)(r), run: (page) => scrollThrough(page, BASE, r) }));
 
 const chromium = await loadChromium();
 await mkdir(OUT, { recursive: true });
