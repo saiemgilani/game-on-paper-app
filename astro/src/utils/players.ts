@@ -22,6 +22,7 @@ import { isFeatureEnabled } from './features';
 import { leaguePath, type League } from './league';
 import { numberOrNull, roundNumber } from './misc';
 import { madeOf, num, pct } from './usage';
+import type { SDVPlayerSplit } from '../resources/sdv';
 
 /** The season-table categories, in the order the page shows them. */
 export const PLAYER_CATEGORIES = ['passing', 'rushing', 'receiving'] as const;
@@ -447,6 +448,35 @@ export function percentileFromBreaks(breaks: number[] | undefined, value: unknow
     if (top < 0) return 0;
     const first = breaks[top] === v ? bound(false) : top;
     return Math.round((first + top) / 2);
+}
+
+/** The split metrics shaded and ranked (Situational Splits): the rate/value cells; plays is a count and gets neither. */
+export const SPLIT_SHADED_KEYS = ['epa_per_play', 'epa', 'success_rate'] as const;
+
+/** Where a split's number sits in its league-season distribution, 0..100; null under the play floor or with no breaks. */
+export function splitLeaguePct(row: SDVPlayerSplit | undefined, key: string, breaks: Record<string, Record<string, number[]>>, minPlays: number): number | null {
+    return row && (numberOrNull(row.plays) ?? 0) >= minPlays
+        ? percentileFromBreaks(breaks[row.split]?.[key], row[key as keyof SDVPlayerSplit])
+        : null;
+}
+
+/**
+ * The Situational Splits panel subtitle: what the printed percentiles rank against, naming the season (Akshay on #326:
+ * the year, not "that season"; a panel subtitle like the other panels'). The cohort is per split (a position group's, or
+ * every player's when that group had too few), so a mix is spelled out. null when no split shows a percentile.
+ */
+export function splitPercentileCaption(splits: SDVPlayerSplit[], breaks: Record<string, Record<string, number[]>>, cohorts: Record<string, string | null>, league: League, season: number | string, minPlays: number): string | null {
+    const by = new Map(splits.map((s) => [s.split, s]));
+    const shown = PLAYER_SPLITS.filter((s) => (numberOrNull(by.get(s.key)?.plays) ?? 0) > 0
+        && SPLIT_SHADED_KEYS.some((key) => splitLeaguePct(by.get(s.key), key, breaks, minPlays) !== null));
+    if (shown.length === 0) return null;
+    const scope = `in the ${league === 'cfb' ? 'nation' : 'league'} in ${season}, min ${minPlays} plays in the split`;
+    const of = (group: string | null) => `Percentile among every ${group ? `${group} ` : ''}player-season ${scope}`;
+    const groups = [...new Set(shown.map((s) => cohorts[s.key] ?? null))];
+    if (groups.length === 1) return `${of(groups[0])}.`;
+    const grouped = groups.find((g) => g !== null) ?? null;
+    const everyone = shown.filter((s) => (cohorts[s.key] ?? null) === null).map((s) => s.label);
+    return `${of(grouped)}, except ${everyone.join(', ')}, which rank against every player-season.`;
 }
 
 /**
