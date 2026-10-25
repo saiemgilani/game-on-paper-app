@@ -1,5 +1,5 @@
 // astro/test/basketball/config.test.ts
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { BASKETBALL, basketball, courtFor, pickRegulation, regulationFor, seasonLabelFor, statsSourceOf, type RegulationEra } from '../../src/basketball/config';
 import { BASKETBALL_LEAGUES, LEAGUES, PREFIXED_LEAGUES, isBasketball, leagueSource, splitLeague } from '../../src/utils/league';
 import { COURT } from '../../src/nba/data/court';
@@ -51,7 +51,13 @@ describe('regulation: per game from the data, the season rule as fallback', () =
         expect(pickRegulation(WBB, 2014, 4)).toEqual({ periods: 4, kind: 'quarter', periodMinutes: 10 });
         expect(pickRegulation(WBB, 2020, 2)).toEqual({ periods: 2, kind: 'half', periodMinutes: 20 });
         for (const junk of [3, 0, '', 'x', NaN, undefined, null]) expect(pickRegulation(WBB, 2015, junk)).toEqual({ periods: 2, kind: 'half', periodMinutes: 20 });
-        expect(pickRegulation(MBB, 2026, 4)).toEqual({ periods: 4, kind: 'quarter', periodMinutes: 10 }); // no quarter era: 40 regulation minutes over 4
+    });
+    test("data naming a shape the league never played keeps the config (self-review on #324)", () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(pickRegulation(MBB, 2026, 4)).toEqual({ periods: 2, kind: 'half', periodMinutes: 20 });
+        expect(regulationFor('nba', 2025, 2)).toEqual({ periods: 4, kind: 'quarter', periodMinutes: 12 }); // was H1/H2 and Final/2OT
+        expect(warn).toHaveBeenCalledTimes(2);
+        warn.mockRestore();
     });
 });
 
