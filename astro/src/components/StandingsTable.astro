@@ -20,7 +20,7 @@ const grouped = sections.some((s) => s.name);
     <table class="table table-sm align-middle mb-0">
         <thead>
             <tr>
-                <th>{grouped ? "" : "Team"}</th>
+                <th>{grouped ? <span class="visually-hidden">Team</span> : "Team"}</th>
                 <th class="text-center">Conf</th>
                 <th class="text-center">Overall</th>
                 <th class="text-center">PF</th>

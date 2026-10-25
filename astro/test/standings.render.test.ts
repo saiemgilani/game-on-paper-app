@@ -17,12 +17,13 @@ vi.mock('../src/resources/espn', () => ({
 }));
 
 describe('StandingsTable', () => {
-    test('the Sun Belt is one table: a heading row per division, no "Team" header', async () => {
+    test('the Sun Belt is one table: a heading row per division, the "Team" header visually hidden', async () => {
         const [, belt] = await loadStandings('cfb');
         const html = await (await AstroContainer.create()).renderToString(StandingsTable, { props: { league: 'cfb', sections: belt.divisions } });
         expect(html.match(/<table/g)).toHaveLength(1);
         expect([...html.matchAll(/gt_group_heading[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['Sun Belt - East', 'Sun Belt - West']);
         expect(html).not.toMatch(/<th[^>]*>Team<\/th>/);
+        expect(html).toMatch(/<th[^>]*><span class="visually-hidden">Team<\/span><\/th>/);
     });
 
     test('a plain conference keeps its "Team" header; a meme-list abbreviation is lowercased', async () => {

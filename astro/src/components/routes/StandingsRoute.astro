@@ -63,7 +63,7 @@ const teamIds = conferences.flatMap((c) => c.rows.map((r) => r.teamId));
             <p class="text-muted">Standings are unavailable right now. Try again in a few minutes.</p>
         )}
         <div class="row">
-            {conferences.map((conf) => conferences.length === 1 && conf.divisions ? (
+            {conferences.map((conf) => requested && conf.divisions ? (
                 // a conference with divisions on its own: one table per division
                 // on desktop, one table with division headings on mobile (#336)
                 <Fragment>
