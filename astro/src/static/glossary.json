@@ -91,6 +91,13 @@
             "source": "https://www.footballstudyhall.com/2011/4/13/2102634/the-toolbox-highlight-yards"
         }
     ],
+    "I": [
+        {
+            "term": "Impact (Deserved Win %)",
+            "definition": "How hard one margin pushed the home team's Deserved Win % on the game page: the margin times its weight in the model, in log-odds, the units the model adds up before turning them into a percentage. Arrows up helped the home team and arrows down hurt it: one arrow for a push of 0.25 to 0.75, two for 0.75 to 1.5, three for 1.5 or more, and an em-dash under 0.25. The table is sorted by each margin's importance in the model (its weight times how much it varies across games), the same order every game.",
+            "source": ""
+        }
+    ],
     "L": [
         {
             "term": "Late down",

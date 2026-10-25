@@ -1,8 +1,8 @@
 ---
 import GenericPage from '../../layouts/GenericPage.astro';
 import DarkModeLogos from '../DarkModeLogos.astro';
+import StandingsTable from '../StandingsTable.astro';
 import { loadStandings } from '../../utils/standings';
-import { cleanField } from '../../utils/misc';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 
 interface Props {
@@ -63,39 +63,24 @@ const teamIds = conferences.flatMap((c) => c.rows.map((r) => r.teamId));
             <p class="text-muted">Standings are unavailable right now. Try again in a few minutes.</p>
         )}
         <div class="row">
-            {conferences.map((conf) => (
+            {conferences.map((conf) => requested && conf.divisions ? (
+                // a conference with divisions on its own: one table per division
+                // on desktop, one table with division headings on mobile (#336)
+                <Fragment>
+                    {conf.divisions.map((d) => (
+                        <div class="col-lg-6 d-none d-lg-block mb-4">
+                            <h2 class="fs-5 mb-2">{d.name}</h2>
+                            <StandingsTable league={league} sections={[{ rows: d.rows }]} />
+                        </div>
+                    ))}
+                    <div class="col-12 d-lg-none mb-4">
+                        <StandingsTable league={league} sections={conf.divisions} />
+                    </div>
+                </Fragment>
+            ) : (
                 <div class={conferences.length > 1 ? "col-lg-6 col-12 mb-4" : "col-lg-8 col-12 mb-4"}>
                     {conferences.length > 1 && (<h2 class="fs-5 mb-2">{conf.name}</h2>)}
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Team</th>
-                                    <th class="text-center">Conf</th>
-                                    <th class="text-center">Overall</th>
-                                    <th class="text-center">PF</th>
-                                    <th class="text-center">PA</th>
-                                    <th class="text-center">+/-</th>
-                                    <th class="text-center">Strk</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {conf.rows.map((r) => (
-                                    <tr>
-                                        <td>
-                                            <a href={lp(`/team/${r.teamId}`)}><img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={r.logo ?? `https://a.espncdn.com/i/teamlogos/${cfg.logoLeague}/500/${r.teamId}.png`} alt={`ESPN team id ${r.teamId} ${cleanField(r, "name")}`} title={r.name} /><span class="visually-hidden">{cleanField(r, "name")}</span><strong><span class="d-none d-sm-inline">{cleanField(r, "name")}</span><span class="d-sm-none">{r.abbreviation ?? cleanField(r, "name")}</span></strong></a>
-                                        </td>
-                                        <td class="text-center">{r.conference || "—"}</td>
-                                        <td class="text-center">{r.overall}</td>
-                                        <td class="text-center text-muted">{r.pointsFor}</td>
-                                        <td class="text-center text-muted">{r.pointsAgainst}</td>
-                                        <td class="text-center text-muted">{r.pointDifferential}</td>
-                                        <td class="text-center text-muted">{r.streak}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <StandingsTable league={league} sections={conf.divisions ?? [{ rows: conf.rows }]} />
                 </div>
             ))}
         </div>

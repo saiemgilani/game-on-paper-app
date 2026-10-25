@@ -2,6 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 
 const kv = new Map<string, { value: string; ttl?: number }>();
 const fetchMock = vi.fn();
@@ -71,7 +73,8 @@ describe('over the real ESPN capture (2025-01-15)', () => {
 
 describe('render', () => {
     let container: AstroContainer;
-    beforeAll(async () => { container = await AstroContainer.create(); });
+    // a preview header carries the search island, so the Svelte renderer is loaded
+    beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
     const render = () => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/scoreboard'), locals: { preview: true, league: 'nba' } as App.Locals });
     const base = { day: '2025-01-15', isLive: false, degraded: false, stale: false, undated: false, today: '2026-10-21',
         nav: { prev: '2025-01-14', next: '2025-01-16', label: 'Wednesday, January 15' }, games: [] as unknown[] };
