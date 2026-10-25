@@ -27,10 +27,18 @@ const confOf = new Map(conferences(2026).map((r) => [Number(r.team_id), conferen
 describe('the conference key (R2) and the default (D46)', () => {
     test('slugs are the reference ids without the league prefix; options are the season\'s conferences A to Z', () => {
         expect([conferenceSlug('mbb:sec'), conferenceSlug('wbb:big-12'), conferenceSlug('acc')]).toEqual(['sec', 'big-12', 'acc']);
-        const o = scatterConferenceOptions(conferences(2026), conferenceNames(2026));
+        const o = scatterConferenceOptions(conferences(2026), conferenceNames(2026), 2026, 'mbb');
         expect(o.length).toBe(new Set(conferences(2026).map((r) => r.conference_id)).size);
         expect(o.map((x) => x.label)).toEqual([...o.map((x) => x.label)].sort((a, b) => a.localeCompare(b)));
         expect(o.find((x) => x.slug === 'sec')!.label).toBe('SEC');
+    });
+    test('a conference with rows but no member that season is no option: the 2021 Ivy League played no game (self-review on #342)', () => {
+        const ivy = conferences(2021).filter((r) => conferenceSlug(r.conference_id) === 'ivy');
+        expect(ivy.length).toBeGreaterThan(0);
+        const slugs = scatterConferenceOptions(conferences(2021), [], 2021, 'mbb').map((x) => x.slug);
+        expect(slugs).not.toContain('ivy');
+        expect(slugs.length).toBe(new Set(conferences(2021).map((r) => r.conference_id)).size - 1);
+        expect(scatterConferenceOptions(conferences(2026), [], 2026, 'mbb').map((x) => x.slug)).toContain('ivy');
     });
     test('the default is the conference with the most players over the 2026 bar (ties: slug A to Z)', () => {
         const count = new Map<string, number>();
