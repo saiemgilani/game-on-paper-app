@@ -49,7 +49,7 @@ export async function prepareBasketballScatter(Astro: AstroGlobal, league: Baske
     if (confP) {
         try {
             const c = await confP;
-            const options = scatterConferenceOptions(c.teams, c.groups);
+            const options = scatterConferenceOptions(c.teams, c.groups, resolved.season, league);
             const asked = Astro.url.searchParams.get('conference');
             const selected = asked === 'all' || options.some((o) => o.slug === asked) ? asked! : defaultScatterConference(rows, c.teams, resolved.season, league);
             conference = { options, selected };

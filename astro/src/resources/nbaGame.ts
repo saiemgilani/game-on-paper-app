@@ -97,7 +97,7 @@ export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v =
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 
 /** The regulation an ingested game was played to: the schedule's format_regulation_periods, else the season rule. */
-export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague = 'nba'): Regulation {
+export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague): Regulation {
     return regulationFor(league, num(row?.season), row?.format_regulation_periods)
 }
 
@@ -190,7 +190,7 @@ function blankUnrecorded(g: NbaGame): NbaGame {
     return g
 }
 
-export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague = 'nba'): NbaGame {
+export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague): NbaGame {
     const comp = j.header.competitions[0]
     const season = j.header?.season?.year ?? null
     const side = (ha: 'home' | 'away'): NbaSide => {
@@ -214,7 +214,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague =
     })
 }
 
-export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'nba'): NbaGame {
+export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))
     const plays = [...rows.pbp].sort((a, b) => (num(a.game_play_number) ?? 0) - (num(b.game_play_number) ?? 0)).map((r) => play(r, wpByN.get(num(r.game_play_number))))
