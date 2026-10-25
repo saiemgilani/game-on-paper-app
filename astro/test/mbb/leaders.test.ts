@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
 import { seasonLinesFromRows, seasonPlayerGamesFromRows } from '../../src/nba/adapters';
 import { lineOf } from '../../src/nba/data/aggregate';
-import { leaderBoards } from '../../src/nba/data/leaders';
+import { activeSinceByTeam, leaderBoards, leaderboard } from '../../src/nba/data/leaders';
 import { coverage, leadersGames2026, leadersLatest2026, seasonPlayers, windowRows } from './dashboardFixtures';
 
 const latest = leadersLatest2026()[0].game_date;
@@ -39,8 +39,10 @@ describe('the college leaders loader', () => {
         const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
         const top = r.boards[10].improved.rows[0];
         expect(top.seasonEfg).toBe(lineOf(seasonLinesFromRows(seasonPlayers(2026)).get(top.person_id)!).efgPct);
-        const fromRead = leaderBoards(seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026)), null, 15, bars, { windows: [5, 10] });
-        const same = fromRead[10].improved.rows.find((x) => x.person_id === top.person_id);
+        // the same player ranked without the season lines: his "season" is then the 49-day read (the whole ranked list,
+        // since he need not make that board's top 15)
+        const placed = seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026));
+        const same = leaderboard(placed, 10, 'improved', activeSinceByTeam(placed), bars).find((x) => x.person_id === top.person_id);
         expect(same).toBeDefined();
         expect(same!.seasonEfg).not.toBe(top.seasonEfg);
     });
@@ -56,6 +58,24 @@ describe('the college leaders loader', () => {
         expect(top.seasonEfg).toBe(lineOf(lines.get(top.person_id)!).efgPct);
         const p = players.filter((x) => x.person_id === top.person_id);
         expect(lines.get(top.person_id)!.attempts).toBe(p.reduce((a, x) => a + x.attempts, 0));
+    });
+    // Self-review on #342: "active" counted from the national final (2026-04-06) kept only teams still playing in the
+    // last two weeks of March: 224 shooters from 32 of 365 teams. Counted from each team's own latest game, the board
+    // is the whole league's.
+    test("active shooters are measured from their team's latest game, not the national final", async () => {
+        const players = seasonPlayers(2026);
+        const placed = seasonPlayerGamesFromRows(leadersGames2026(), players);
+        const opts = { windows: [5, 10] as const, seasonLines: seasonLinesFromRows(players) };
+        const board = (o: object) => leaderBoards(placed, null, 15, bars, { ...opts, ...o })[5].efgPct;
+        const teamsOf = (b: ReturnType<typeof board>) => new Set([...b.rows, ...b.also].map((r) => r.team_id)).size;
+        expect(board({}).eligible).toBe(224);
+        expect(board({ activeByTeam: true }).eligible).toBe(2241);
+        const all = leaderboard(placed, 5, 'efgPct', activeSinceByTeam(placed), bars, opts.seasonLines);
+        expect(new Set(all.map((r) => r.team_id)).size).toBe(339);
+        expect(teamsOf(board({ activeByTeam: true }))).toBeGreaterThan(1);
+        const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
+        expect([r.activeByTeam, r.boards[5].efgPct.eligible]).toEqual([true, 2241]);
     });
     test('without options the boards are the NBA ones: every window, season eFG from the games', () => {
         const placed = seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026));
