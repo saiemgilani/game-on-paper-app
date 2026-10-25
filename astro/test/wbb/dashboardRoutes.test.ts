@@ -11,7 +11,8 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return seasonPlayers(s as Season); },
     retrieveLeagueContextRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return leagueContext(s as Season); },
-    retrieveTeamShots: async (s: number, t: number) => (t === SC ? scShots(s as Season).map(lite) : []),
+    // checks its league like its siblings (self-review on #344): a loader sending the shots read to mbb must fail here
+    retrieveTeamShots: async (s: number, t: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return t === SC ? scShots(s as Season).map(lite) : []; },
     retrievePlayerShots: async () => player2026Shots(),
     retrievePlayerGameRows: async (s: number) => (s === 2026 ? player2026Games() : player2019Games()),
     retrievePlayerSeasons: async () => [...new Set(player2026Seasons().map((r) => Number(r.season)))].sort((a, b) => a - b),
