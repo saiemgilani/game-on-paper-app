@@ -42,10 +42,31 @@ async function render(sort: string, preview: boolean) {
     const tag = [...html.matchAll(/<astro-island\b[^>]*>/g)].map(m => m[0]).find(t => t.includes('/TrendsChart.svelte"'))!;
     const props = JSON.parse(tag.match(/\sprops="([^"]*)"/)![1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
     const points = (props.percentiles[1] as [number, Record<string, [number, number]>][]).map(([, p]) => ({ season: p.season[1], pctile: p.pctile[1], value: p.value[1] }));
-    return { points, freshness: props.freshness?.[1] };
+    // the dropdown is server-rendered (client:idle): its options, value -> label
+    const options = [...html.matchAll(/<option value="([^"-][^"]*)"[^>]*>([^<]+)<\/option>/g)].map(m => [m[1], m[2]]);
+    return { points, freshness: props.freshness?.[1], metricTitle: props.metricTitle?.[1], options };
 }
 const at2024 = (points: { season: number, value: number }[]) => points.filter(p => p.season === 2024).map(p => p.value);
 const bandRead = () => net.seen.filter(u => u.endsWith('/v1/nfl/team_summaries/percentiles'));
+
+// Akshay's QA notes on #329: the chart and y-axis titles printed raw sort keys ("yardsdropback", "lineyards") and read
+// Pass Expl % as "Explosive %". National Trends now names its keys from the list its dropdown renders.
+describe('National Trends titles', () => {
+    test('every dropdown metric has a real title, never its raw key; pass and rush rates say so', async () => {
+        const { NATIONAL_TRENDS_METRICS } = await import('../src/utils/constants');
+        const { nationalTrendsTitle } = await import('../src/utils/misc');
+        expect(NATIONAL_TRENDS_METRICS).toHaveLength(25);
+        for (const m of NATIONAL_TRENDS_METRICS) expect(nationalTrendsTitle(m.key), m.key).not.toBe(m.key);
+        expect(['yardsdropback', 'lineyards', 'yardsrush', 'pass_explosive', 'rush_explosive', 'pass_success', 'dropbacks'].map(nationalTrendsTitle))
+            .toEqual(['Yards/Dropback', 'Line Yards/Rush', 'Yards/Rush', 'Pass Explosive %', 'Rush Explosive %', 'Pass Success %', 'Dropbacks']);
+    });
+    test('the route hands the chart its title, and the dropdown lists the same metrics', async () => {
+        const { NATIONAL_TRENDS_METRICS } = await import('../src/utils/constants');
+        const { metricTitle, options } = await render('pass_explosive', true);
+        expect(metricTitle).toBe('Pass Explosive %');
+        expect(options).toEqual(NATIONAL_TRENDS_METRICS.map(m => [m.key, m.label]));
+    }, 60_000);
+});
 
 describe('National Trends with team-season-bands', () => {
     test('EPA/Play: boxes are the live 2024 EPAplay_off team-season points, from one read, stamped from team_summaries', async () => {

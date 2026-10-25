@@ -1252,3 +1252,36 @@ export const NFL_POST_LABELS: string[] = ['Wild Card', 'Divisional', 'Conference
 
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };
 export const EVENT_KEY_TRENDS_METRIC_CHANGED = 'TrendsMetricChanged';
+
+/**
+ * National Trends' metrics: the dropdown's groups and short labels, and each chart and y-axis title. The keys are the
+ * game-ladder sort keys, not team_summaries columns, so generateTeamMetricTitle cannot name them: it printed
+ * "yardsdropback" and read Pass Expl % as "Explosive %" (Akshay's QA notes on #329). One list feeds both, so they agree.
+ */
+export const NATIONAL_TRENDS_METRICS: { group: 'Passing' | 'Rushing' | 'Other' | null; key: string; label: string; title: string }[] = [
+    { group: null, key: 'EPAplay', label: 'EPA/Play', title: 'EPA/Play' },
+    { group: null, key: 'yardsplay', label: 'Yards/Play', title: 'Yards/Play' },
+    { group: null, key: 'success', label: 'SR%', title: 'Success %' },
+    { group: 'Passing', key: 'dropbacks', label: 'Dropbacks', title: 'Dropbacks' },
+    { group: 'Passing', key: 'EPAdropback', label: 'EPA/DB', title: 'EPA/Dropback' },
+    { group: 'Passing', key: 'yardsdropback', label: 'Yards/DB', title: 'Yards/Dropback' },
+    { group: 'Passing', key: 'pass_success', label: 'Pass SR%', title: 'Pass Success %' },
+    { group: 'Passing', key: 'pass_explosive', label: 'Pass Expl %', title: 'Pass Explosive %' },
+    { group: 'Rushing', key: 'rushes', label: 'Rush Attempts', title: 'Rush Attempts' },
+    { group: 'Rushing', key: 'EPArush', label: 'EPA/Rush', title: 'EPA/Rush' },
+    { group: 'Rushing', key: 'yardsrush', label: 'Yards/Rush', title: 'Yards/Rush' },
+    { group: 'Rushing', key: 'rush_success', label: 'Rush SR%', title: 'Rush Success %' },
+    { group: 'Rushing', key: 'rush_explosive', label: 'Rush Expl %', title: 'Rush Explosive %' },
+    { group: 'Rushing', key: 'opportunity_run', label: 'Opportunity %', title: 'Rush Opportunity %' },
+    { group: 'Rushing', key: 'lineyards', label: 'Line Yards', title: 'Line Yards/Rush' },
+    { group: 'Rushing', key: 'play_stuffed', label: 'Stuffed %', title: 'Stuffed %' },
+    { group: 'Other', key: 'havoc', label: 'Havoc %', title: 'Havoc %' },
+    { group: 'Other', key: 'explosive', label: 'Explosive %', title: 'Explosive %' },
+    { group: 'Other', key: 'nonExplosiveEpaPerPlay', label: 'Non-Expl EPA/Play', title: 'Non-Expl EPA/Play' },
+    { group: 'Other', key: 'early_down_EPA', label: 'Early Downs EPA/Play', title: 'Early Down EPA/Play' },
+    { group: 'Other', key: 'early_down_success', label: 'Early Downs SR%', title: 'Early Down SR%' },
+    { group: 'Other', key: 'late_down_success', label: 'Late Downs SR%', title: 'Late Down SR%' },
+    { group: 'Other', key: 'third_down_distance', label: 'Avg Distance (3rd)', title: 'Avg Distance (3rd)' },
+    { group: 'Other', key: 'red_zone_success', label: 'Red Zone SR%', title: 'Red Zone SR%' },
+    { group: 'Other', key: 'GEI', label: 'Game Excitement Index (GEI)', title: 'Game Excitement Index (GEI)' },
+];

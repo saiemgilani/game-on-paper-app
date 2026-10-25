@@ -9,7 +9,7 @@ import { retrievePercentiles, retrieveTeamSeasonPercentiles, sdvIngestStamp, sdv
 import { isFeatureEnabled } from '../../utils/features';
 import { freshnessStamp } from '../../utils/freshness';
 import { leaguePath, type League } from '../../utils/league';
-import { nationalSeasonBandMetric, teamSeasonBandsFor, yearRange } from '../../utils/misc';
+import { nationalSeasonBandMetric, nationalTrendsTitle, teamSeasonBandsFor, yearRange } from '../../utils/misc';
 
 // Route component: the page (per league) sets the league; this reads and renders.
 interface Props { league: League }
@@ -84,7 +84,7 @@ const title = `National Trends | ${range} | Game on Paper`;
             </div>
         </div>
     </div>
-    <TrendsChart client:only {...(stamp ? { freshness: stamp.iso } : {})} title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
+    <TrendsChart client:only {...(stamp ? { freshness: stamp.iso } : {})} title="National Trends" metricTitle={nationalTrendsTitle(metric)} teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
         <FallbackSpinner slot="fallback" />
     </TrendsChart>
 </GenericPage>
