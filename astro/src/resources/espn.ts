@@ -808,14 +808,15 @@ export interface ESPNConferenceStandings {
     name?: string
     shortName?: string
     abbreviation?: string
-    /** NFL nests its divisions here; the conference itself carries no entries. */
+    /** A conference with divisions (every NFL one; the CFB Sun Belt) nests them here and carries no entries itself. */
     children?: ESPNConferenceStandings[]
     standings?: { entries?: ESPNStandingsEntry[] }
 }
 
 // One group's standings by ESPN group id; null on any failure so a single
-// conference outage never costs the standings page. CFB returns entries on the
-// group itself, the NFL returns a conference whose divisions are `children`.
+// conference outage never costs the standings page. A conference without
+// divisions returns entries on the group itself; one with divisions (the NFL,
+// the CFB Sun Belt) returns them as `children`.
 export async function retrieveConferenceStandings(groupId: string | number, league: League = 'cfb'): Promise<ESPNConferenceStandings | null> {
     const url = `https://site.api.espn.com/apis/v2/sports/football/${LEAGUES[league].espnPath}/standings?group=${groupId}`;
     try {
