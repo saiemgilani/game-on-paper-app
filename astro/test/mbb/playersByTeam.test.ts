@@ -68,6 +68,19 @@ describe('/mbb/team/<id>: membership decides (D43, D47, D48)', () => {
         const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${m!.team_id}?season=2019`, { id: String(m!.team_id) }), 'mbb');
         expect([r.empty, r.dashboard, r.roster, r.team.team_id]).toEqual([true, null, [], m!.team_id]);
     });
+    test("the players page: a season member with no linked shot is that empty team page, not the 404 its season picker linked to", async () => {
+        const shotTeams = new Set(seasonPlayers(2019).map((x) => x.team_id));
+        const members = withSeasonMembers([], conferences(2019), scheduleTeams(2019), 2019, 'mbb').filter((t) => !shotTeams.has(t.team_id));
+        expect(members.length).toBeGreaterThan(0);
+        const { prepareBasketballPlayers } = await import('../../src/routes/basketball/players');
+        for (const m of members) {
+            expect(BASKETBALL.mbb.memberSeasons!.seasons.get(m.team_id), String(m.team_id)).toContain(2019);
+            const r: any = await prepareBasketballPlayers(fakeAstro(`/mbb/players?season=2019&team=${m.team_id}`), 'mbb');
+            expect([r.selected?.team_id, r.team, r.rows, r.teams.some((t: any) => t.team_id === m.team_id)], String(m.team_id)).toEqual([m.team_id, String(m.team_id), [], true]);
+        }
+        // a non-member stays a 404 (Oglethorpe, non-D-I)
+        expect(await prepareBasketballPlayers(fakeAstro('/mbb/players?season=2019&team=2476'), 'mbb')).toEqual({ notFound: true });
+    });
     test('an id that is no D-I member that season is still a 404', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         expect(await prepareBasketballTeam(fakeAstro('/mbb/team/2476', { id: '2476' }), 'mbb')).toEqual({ notFound: true }); // Oglethorpe, non-D-I
