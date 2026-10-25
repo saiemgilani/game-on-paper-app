@@ -473,13 +473,12 @@ async function waitToGenerateChart() {
     }
 }
 
-// with the page's per-theme colours, redraw in the other pair when the theme flips
-if (colors) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        Chart.getChart("wpChart")?.destroy()
-        waitToGenerateChart()
-    })
-}
+// redraw when the theme flips: the per-theme colours, and the dark flag the ticks, borders and grid alpha read at
+// generation, must follow the new theme with or without `colors` (CodeRabbit on #339)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    Chart.getChart("wpChart")?.destroy()
+    waitToGenerateChart()
+})
 
 if (document.readyState !== 'loading') {
     console.log(`DOM ready state`)
