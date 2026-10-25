@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 
 // The NFL surface sits behind the 'nfl' feature flag (utils/features.ts):
 // middleware turns any /nfl path into the site's 404 unless the viewer holds
@@ -61,7 +63,8 @@ describe('the nfl flag', () => {
     });
 
     test('the header offers the switch into the NFL only to a viewer the flag admits', async () => {
-        const container = await AstroContainer.create();
+        // a preview header carries the search island, so the Svelte renderer is loaded
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Header } = await import('../src/components/Header.astro');
         const req = new Request('https://gameonpaper.com/');
         const pub = await container.renderToString(Header, { request: req, locals: {} });

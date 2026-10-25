@@ -96,9 +96,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           body="$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '.body // ""')"
-          line="$(printf '%s\n' "$body" | sed -n 's/^[[:space:]]*Evidence routes:[[:space:]]*//Ip' | head -1 | tr -d '`\r')"
-          # keep only path-shaped tokens (at most 4), so nothing else reaches a command line
-          routes="$(printf '%s\n' "${line:-$DEFAULT_ROUTES}" | tr ' ,' '\n\n' | grep -E '^/[A-Za-z0-9/_.-]*$' | head -4 | tr '\n' ' ' || true)"
+          line="$(printf '%s\n' "$body" | sed -n 's/^[[:space:]]*Evidence routes:[[:space:]]*//Ip' | head -1 | tr -d '\r')"
+          # keep only path-shaped tokens (at most 4), so nothing else reaches a command line;
+          # a query string is allowed (a player's game log lives under ?season=) but only of
+          # [A-Za-z0-9_.=&-]: no space, quote, $, backtick, ; or glob character
+          routes="$(printf '%s\n' "${line:-$DEFAULT_ROUTES}" | tr ' ,' '\n\n' | sed -E 's/^`+|`+$//g' | grep -E '^/[A-Za-z0-9/_.-]*(\?[A-Za-z0-9_.=&-]*)?$' | head -4 | tr '\n' ' ' || true)"
           echo "routes=${routes:-$DEFAULT_ROUTES}" >> "$GITHUB_OUTPUT"
           echo "routes: ${routes:-$DEFAULT_ROUTES}"
           # optional scripted flows: only committed files under scripts/walkthroughs/ (at most 4)
@@ -124,7 +126,9 @@ jobs:
         run: |
           export NODE_PATH="$(npm root -g)"
           set +e
-          # ROUTES is validated above; word splitting into separate args is intended
+          # ROUTES is validated above; word splitting into separate args is intended, and
+          # set -f keeps a route's `?` from globbing against the working directory
+          set -f
           node scripts/lighthouse-compare.mjs --base HEAD^1 --head HEAD --runs 3 --shots \
             --walkthrough --steps "$STEPS" \
             --python-url http://127.0.0.1:5177 \
