@@ -43,7 +43,7 @@ export function statusLine(status: ESPNStatus, regulation = 4, kind: PeriodKind 
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 /** The ?date= contract: ISO day, real, within [firstDay, today + 14 days]. firstDay defaults to the NBA's 1997-10-01. */
-export function parseDateParam(raw: string | null, today: string, firstDay = `${FIRST_SEASON - 1}-10-01`): { ok: true; date: string } | { ok: false; reason: 'format' | 'calendar' | 'range' } {
+export function parseDateParam(raw: string | null, today: string, firstDay: string): { ok: true; date: string } | { ok: false; reason: 'format' | 'calendar' | 'range' } {
     if (raw == null || raw === '') return { ok: true, date: today };
     if (!ISO.test(raw)) return { ok: false, reason: 'format' };
     const d = DateTime.fromISO(raw, { zone: 'utc' });
@@ -77,7 +77,7 @@ export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(
 /** Dark-mode logo rules, only for numeric team ids (and, for 'abbr', allowlisted abbreviations); nothing raw reaches the style block. */
 export function darkLogoCss(
     teams: Iterable<{ id?: unknown; abbreviation?: unknown } | undefined>,
-    strategy: DarkLogoStrategy = { kind: 'abbr', logoLeague: 'nba', abbrs: NBA_DARK_LOGO_ABBRS },
+    strategy: DarkLogoStrategy,
 ): string {
     if (strategy.kind === 'none') return '';
     const seen = new Map<string, string>();
@@ -105,5 +105,5 @@ export function gameLeaders(comp: ESPNCompetitor): { pts?: string; reb?: string;
 /** The scoreboard day a game belongs to (its tip in America/New_York): `/nba/scoreboard?date=`, or the bare page when that day is out of range. */
 export function scoreboardBackHref(gameDate: string | null | undefined, today: string = DateTime.now().setZone('America/New_York').toISODate()!): string {
     const day = gameDate ? DateTime.fromISO(gameDate).setZone('America/New_York').toISODate() : null;
-    return day && parseDateParam(day, today).ok ? `/nba/scoreboard?date=${day}` : '/nba/scoreboard';
+    return day && parseDateParam(day, today, `${FIRST_SEASON - 1}-10-01`).ok ? `/nba/scoreboard?date=${day}` : '/nba/scoreboard';
 }
