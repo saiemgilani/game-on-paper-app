@@ -12,9 +12,9 @@ vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 
 import { onRequest } from '../src/middleware';
 import { mintAdminCookie, verifyAdminCookie, ADMIN_COOKIE } from '../src/utils/adminSession';
-import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
+import { keepPreviewSurface, mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
-    adminToolsHref, applyAdminView, currentView, parseFlagOverrides, serializeFlagOverrides,
+    adminToolsHref, applyAdminView, carryAdminParams, currentView, parseFlagOverrides, serializeFlagOverrides,
 } from '../src/utils/adminView';
 import { isFeatureEnabled } from '../src/utils/features';
 import { compareSources } from '../src/utils/sourceCompare';
@@ -151,6 +151,28 @@ describe('the toggle hrefs compose instead of replacing each other', () => {
         expect(adminToolsHref(withFlags, { flags: { 'game-page-v2': false } }))
             .toBe('/game/1?flags=coaches%3Aon%2Cgame-page-v2%3Aoff');
         expect(adminToolsHref(withFlags, { flags: { coaches: null } })).toBe('/game/1');
+    });
+});
+
+describe('a link followed from an overridden page keeps the override', () => {
+    test('a page without the parameters leaves the href byte-identical', () => {
+        for (const search of ['', '?', '?q=texas', '?source=espn', '?view=&flags=']) {
+            expect(carryAdminParams('/players/4432577', search)).toBe('/players/4432577');
+        }
+    });
+    test('view and flags are appended, nothing else is', () => {
+        expect(carryAdminParams('/players/4432577', '?view=live&flags=site-search:on,player-pages:on&source=cfbd'))
+            .toBe('/players/4432577?view=live&flags=site-search%3Aon%2Cplayer-pages%3Aon');
+        expect(carryAdminParams('/team/333', '?flags=player-pages:on')).toBe('/team/333?flags=player-pages%3Aon');
+    });
+    test('an href with its own query string keeps it, and the page wins a clash', () => {
+        expect(carryAdminParams('/players/1?season=2024#bio', '?view=preview')).toBe('/players/1?season=2024&view=preview#bio');
+        expect(carryAdminParams('/team/333?view=live', '?view=preview')).toBe('/team/333?view=preview');
+    });
+    test('the parameters survive onto the /preview surface', () => {
+        const href = carryAdminParams('/nfl/team/12', '?view=live');
+        expect(keepPreviewSurface(href, '/preview/game/401856682')).toBe('/preview/nfl/team/12?view=live');
+        expect(keepPreviewSurface(href, '/game/401856682')).toBe('/nfl/team/12?view=live');
     });
 });
 
