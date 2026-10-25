@@ -43,7 +43,8 @@ import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath, teamCountOf } from '../../utils/league';
 import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
-import { formatHeight, playerPath, totalGameLog } from '../../utils/players';
+import { formatHeight, playerPath, splitPercentileCaption, totalGameLog } from '../../utils/players';
+import { SPLIT_PERCENTILE_MIN_PLAYS } from '../../resources/sdv';
 import { cfbTeamIdByName } from '../../utils/teams';
 import { livePlayerGames } from '../../utils/liveQa';
 
@@ -59,6 +60,8 @@ const league = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 
 const { seasonRows, games, splits, espnGameIds, leagueBreaks, leagueCohort, splitBreaks, splitCohorts, teamRows, neighborLists, failed } = sections;
+// what the Situational Splits percentiles rank against, as the panel's subtitle (Akshay on #326)
+const splitCaption = season === null ? null : splitPercentileCaption(splits, splitBreaks, splitCohorts, league, season, SPLIT_PERCENTILE_MIN_PLAYS);
 
 // the summary tiles count what was PLAYED, so they sum the API's rows and
 // never the synthetic live row below
@@ -259,8 +262,9 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
         </Panel>
 
         <Panel id="player-splits-panel" title="Situational Splits" show={true} class="mb-md-3">
+            {splitCaption && <p slot="panel-subtitle" class="m-0 text-muted text-small" data-league-pct-caption>{splitCaption}</p>}
             <Fragment slot="panel-body">
-                <PlayerSplits splits={splits} leagueBreaks={splitBreaks} leagueCohorts={splitCohorts} />
+                <PlayerSplits splits={splits} leagueBreaks={splitBreaks} />
                 {failed.splits
                     ? <p class="m-0 text-muted text-small" id="player-splits-unavailable">{UNAVAILABLE}</p>
                     : splits.length === 0 && <p class="m-0 text-muted text-small">No plays for {season}.</p>}

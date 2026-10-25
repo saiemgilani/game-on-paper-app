@@ -99,6 +99,8 @@ async function render(league: 'cfb' | 'nfl', id: string, query: string) {
 const renderPage = (league: 'cfb' | 'nfl', id: string, season: number) => render(league, id, `?season=${season}`);
 /** No `?season=`: the page's default, the player's whole career. */
 const renderCareer = (league: 'cfb' | 'nfl', id: string) => render(league, id, '');
+/** The Situational Splits panel subtitle (what its percentiles rank against), or undefined. */
+const splitsCaption = (html: string) => html.match(/<p[^>]*data-league-pct-caption[^>]*>([^<]*)<\/p>/)?.[1];
 
 /** The `<tr>` blocks of one table, header row dropped. */
 const bodyRows = (html: string, id: string): string[] => {
@@ -403,7 +405,9 @@ describe('CFB player page', () => {
             else expect(cell).not.toContain('hulk-bg-level-');
             expect(cell).toMatch(new RegExp(`<small[^>]*data-league-pct[^>]*> ${want[i]}(st|nd|rd|th) %ile</small>`));
         });
-        expect(html.split('id="player-splits-table"')[1].split('</table>')[0]).toContain('<caption class="text-muted text-small" data-league-pct-caption>Percentile among every QB player-season in the nation that season, min 10 plays in the split.</caption>');
+        // Akshay on #326: the season by name, in the panel subtitle (not a caption under the table)
+        expect(splitsCaption(html)).toBe('Percentile among every QB player-season in the nation in 2024, min 10 plays in the split.');
+        expect(html.split('id="player-splits-table"')[1].split('</table>')[0]).not.toContain('<caption');
         // both cohorts read at once: every player's, and his group's
         expect(feed.splitCalls).toEqual([[2024, 'cfb'], [2024, 'cfb', 'QB']]);
         // plays is a count, not a performance: no shading, no percentile (as in the game log)
@@ -438,8 +442,7 @@ describe('CFB player page', () => {
 
     test('splits: the NFL tooltip names the league, not the nation', async () => {
         const html = await renderPage('nfl', '16800', 2024);
-        const table = html.split('id="player-splits-table"')[1].split('</table>')[0];
-        expect(table).toContain('Percentile among every WR player-season in the league that season, min 10 plays in the split');
+        expect(splitsCaption(html)).toContain('Percentile among every WR player-season in the league in 2024, min 10 plays in the split');
         expect(feed.splitCalls).toEqual([[2024, 'nfl'], [2024, 'nfl', 'WR']]);
     }, 60_000);
 
@@ -459,7 +462,7 @@ describe('CFB player page', () => {
             const pd = rows.find((r) => r.includes('Passing downs'))!;
             const pdRow = cfb.splits.data.find((s: any) => s.split === 'passing_downs');
             expect(epa(pd)).toMatch(new RegExp(`> ${Math.floor(pdRow.epa / 6)}(st|nd|rd|th) %ile</small>`));
-            expect(page.split('id="player-splits-table"')[1]).toContain('Percentile among every QB player-season in the nation that season, min 10 plays in the split, except Red zone, which rank against every player-season.');
+            expect(splitsCaption(page)).toBe('Percentile among every QB player-season in the nation in 2024, min 10 plays in the split, except Red zone, which rank against every player-season.');
         } finally {
             feed.groupSplitMissing = () => false;
         }
@@ -487,11 +490,12 @@ describe('CFB player page', () => {
         const before = feed.cfb;
         feed.cfb = { ...cfb, identity: { ...cfb.identity, position: 'Offensive Lineman' } };
         try {
-            const table = (await renderPage('cfb', '4433971', 2024)).split('id="player-splits-table"')[1].split('</table>')[0];
+            const html = await renderPage('cfb', '4433971', 2024);
+            const table = html.split('id="player-splits-table"')[1].split('</table>')[0];
             expect(feed.splitCalls).toEqual([[2024, 'cfb']]);
             expect(table).toContain('data-league-pct');
-            expect(table).toContain('Percentile among every player-season in the nation that season, min 10 plays in the split');
-            expect(table).not.toMatch(/every [A-Z]{2} player-season/);
+            expect(splitsCaption(html)).toContain('Percentile among every player-season in the nation in 2024, min 10 plays in the split');
+            expect(splitsCaption(html)).not.toMatch(/every [A-Z]{2} player-season/);
         } finally {
             feed.cfb = before;
         }

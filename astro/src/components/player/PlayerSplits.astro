@@ -16,7 +16,7 @@
  * its own (`PlayerGameLog.astro`): read off the season's whole player-season
  * distribution for THAT split (`players/splits/percentiles`, sdv-db) -- his position
  * group's player-seasons where the group has that split, every player's where it does
- * not (`loadSplitBreaks`), the tooltip naming which -- on the site's
+ * not (`loadSplitBreaks`), the panel subtitle naming which -- on the site's
  * green -> purple ramp, with the percentile printed beside the number as small faded
  * `94th %ile`. Plays is a count, not a performance, so it gets neither -- as in the
  * log. A split the player is under the population's play floor in is left unshaded
@@ -24,18 +24,15 @@
  * too few player-seasons (overtime, usually).
  */
 import { formatNumber, formatPercent, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
-import { PLAYER_SPLITS, percentileFromBreaks } from '../../utils/players';
+import { PLAYER_SPLITS, splitLeaguePct } from '../../utils/players';
 import { SPLIT_PERCENTILE_MIN_PLAYS, type SDVPlayerSplit } from '../../resources/sdv';
 
 interface Props {
     splits: SDVPlayerSplit[]
     /** split -> metric -> 101 league-season percentile breakpoints; empty when that read failed */
     leagueBreaks?: Record<string, Record<string, number[]>>
-    /** split -> the position group those breakpoints are over, or null/absent for every player */
-    leagueCohorts?: Record<string, string | null>
 }
-const { splits, leagueBreaks = {}, leagueCohorts = {} } = Astro.props;
-const league = Astro.locals.league ?? 'cfb';
+const { splits, leagueBreaks = {} } = Astro.props;
 
 const by = new Map(splits.map((s) => [s.split, s]));
 const rows = PLAYER_SPLITS.map((s) => ({ ...s, row: by.get(s.key) }))
@@ -49,33 +46,13 @@ const SHADED: [keyof SDVPlayerSplit, (v: unknown) => string][] = [
 ];
 /** Where the split's number sits in the whole league-season, 0..100, or null. */
 const leaguePct = (row: SDVPlayerSplit | undefined, key: string): number | null =>
-    row && (numberOrNull(row.plays) ?? 0) >= SPLIT_PERCENTILE_MIN_PLAYS
-        ? percentileFromBreaks(leagueBreaks[row.split]?.[key], row[key as keyof SDVPlayerSplit])
-        : null;
+    splitLeaguePct(row, key, leagueBreaks, SPLIT_PERCENTILE_MIN_PLAYS);
 const leagueShade = (row: SDVPlayerSplit | undefined, key: string): string =>
     generateColorRampValue(leaguePct(row, key), 100) ?? '';
-/**
- * The visible caption under the table: what the printed percentiles rank against. The
- * cohort is per split (a position group's, or every player's when that group had too
- * few), so a mix is spelled out rather than hidden in a hover.
- */
-const leagueCaption = (): string | null => {
-    const shown = rows.filter((s) => SHADED.some(([key]) => leaguePct(s.row, String(key)) !== null));
-    if (shown.length === 0) return null;
-    const scope = `in the ${league === 'cfb' ? 'nation' : 'league'} that season, min ${SPLIT_PERCENTILE_MIN_PLAYS} plays in the split`;
-    const of = (group: string | null) => `Percentile among every ${group ? `${group} ` : ''}player-season ${scope}`;
-    const groups = [...new Set(shown.map((s) => leagueCohorts[s.key] ?? null))];
-    if (groups.length === 1) return `${of(groups[0])}.`;
-    const grouped = groups.find((g) => g !== null) ?? null;
-    const everyone = shown.filter((s) => (leagueCohorts[s.key] ?? null) === null).map((s) => s.label);
-    return `${of(grouped)}, except ${everyone.join(', ')}, which rank against every player-season.`;
-};
-const caption = leagueCaption();
 ---
 {rows.length > 0 && (
 <div class="table-responsive" id="player-splits-table">
     <table class="table table-sm">
-        {caption && <caption class="text-muted text-small" data-league-pct-caption>{caption}</caption>}
         <thead>
             <tr>
                 <th class="text-left" colspan="1">Split</th>

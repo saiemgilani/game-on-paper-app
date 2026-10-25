@@ -14,7 +14,7 @@ export default async (page, base) => {
     if ((await table.locator('[data-league-pct]').count()) < 1) throw new Error(`${path}: the splits table carries no league percentiles`);
     await table.scrollIntoViewIfNeeded();
     await page.waitForTimeout(1500);
-    // the percentile explanation is the caption under the table, visible without a hover
-    if ((await table.locator('caption[data-league-pct-caption]').count()) !== 1) throw new Error(`${path}: the splits table carries no percentile caption`);
+    // the percentile explanation is the panel subtitle, visible without a hover (Akshay on #326)
+    if ((await page.locator('#player-splits-panel [data-league-pct-caption]').count()) !== 1) throw new Error(`${path}: the splits panel carries no percentile subtitle`);
   }
 };
