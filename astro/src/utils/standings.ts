@@ -19,6 +19,8 @@ export interface StandingsGroup {
     name: string
     shortName: string
     rows: StandingsRow[]
+    /** A CFB conference with divisions (the Sun Belt) keeps them here; `rows` is every team in it. */
+    divisions?: { name: string; rows: StandingsRow[] }[]
 }
 
 /** A group is renderable only once it actually has teams in it. */
@@ -49,17 +51,28 @@ function toGroup(
  * One fetch per conference. A conference without divisions carries its entries
  * on the group itself; one with divisions carries none and nests them as
  * `children` -- every NFL conference, and in CFB the Sun Belt (East/West, #334).
- * Both flatten to the same shape, so the page does not branch. A failed fetch
- * drops its own block and costs no other.
+ * An NFL division is its own block. A CFB conference stays one block, with its
+ * divisions kept for sub-headings (review on #336), so the dropdown lists the
+ * Sun Belt once. A failed fetch drops its own block and costs no other.
  */
 export async function loadStandings(league: League): Promise<StandingsGroup[]> {
     const ids = league === 'nfl' ? NFL_CONFERENCES : STANDINGS_CONFERENCES;
     const results = await Promise.all(ids.map((g) => retrieveConferenceStandings(g, league)));
-    return results.flatMap((c, i) =>
-        c?.standings?.entries?.length
-            ? [toGroup(c, ids[i], league)]
-            : (c?.children ?? []).map((d) => toGroup(d, `${ids[i]}-${d.id ?? ""}`, league, league === 'nfl')),
-    ).filter((g): g is StandingsGroup => !!g);
+    return results.flatMap((c, i): (StandingsGroup | null)[] => {
+        if (!c || c.standings?.entries?.length) return [toGroup(c, ids[i], league)];
+        const divisions = (c.children ?? [])
+            .map((d) => toGroup(d, `${ids[i]}-${d.id ?? ""}`, league, league === 'nfl'))
+            .filter((g): g is StandingsGroup => !!g);
+        if (league === 'nfl' || divisions.length === 0) return divisions;
+        const name = c.name ?? "Conference";
+        return [{
+            groupId: c.id ?? ids[i],
+            name,
+            shortName: c.shortName ?? c.abbreviation ?? name,
+            rows: divisions.flatMap((d) => d.rows),
+            divisions: divisions.map((d) => ({ name: d.name, rows: d.rows })),
+        }];
+    }).filter((g): g is StandingsGroup => !!g);
 }
 
 export interface StandingsRow {

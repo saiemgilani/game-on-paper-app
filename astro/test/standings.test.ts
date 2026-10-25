@@ -97,17 +97,19 @@ describe("sortStandings", () => {
 });
 
 describe("loadStandings (cfb)", () => {
-    it("renders the Sun Belt's East and West divisions, which carry its entries (#334)", async () => {
+    it("renders the Sun Belt as one block holding its East and West divisions (#334, #336)", async () => {
         // The SEC has its 16 teams on the group itself; the Sun Belt's group has
         // none -- they sit on its two division children (167 East, 168 West).
         const groups = await loadStandings("cfb");
-        expect(groups.map((g) => [g.groupId, g.name, g.rows.length])).toEqual([
-            ["8", "Southeastern Conference", 16],
-            ["167", "Sun Belt - East", 7],
-            ["168", "Sun Belt - West", 7],
+        expect(groups.map((g) => [g.groupId, g.shortName, g.rows.length])).toEqual([
+            ["8", "SEC", 16],
+            ["37", "Sun Belt", 14],
         ]);
-        expect(groups[1].rows.map((r) => r.name)).toContain("James Madison");
-        expect(groups[2].rows.map((r) => r.name)).toContain("Louisiana");
+        expect(groups[0].divisions).toBeUndefined();
+        const [east, west] = groups[1].divisions!;
+        expect([east.name, east.rows.length, west.name, west.rows.length]).toEqual(["Sun Belt - East", 7, "Sun Belt - West", 7]);
+        expect(east.rows.map((r) => r.name)).toContain("James Madison");
+        expect(west.rows.map((r) => r.name)).toContain("Louisiana");
     });
 });
 
