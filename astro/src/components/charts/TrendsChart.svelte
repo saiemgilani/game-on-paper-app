@@ -9,7 +9,12 @@ import type { ChartConfiguration, ChartData, ChartDataset, ChartItem } from "cha
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 import { freshnessSubtitle, freshnessTime } from '../../utils/freshness';
 
-const { title, teamColor, teamData, category, metric, percentiles, freshness = null } = $props();
+// metricTitle: National Trends names its own sort keys (nationalTrendsTitle); the team chart's team_summaries columns
+// keep generateTeamMetricTitle
+// invertY: National Trends shows the league, not one side, so no metric is "better low" there (Akshay on #329: havoc
+// and 3rd-down distance were flipped); null keeps the team chart's offense/defense rule
+const { title, teamColor, teamData, category, metric, percentiles, freshness = null, metricTitle = null, invertY = null } = $props();
+const metricName = (m: string) => metricTitle ?? generateTeamMetricTitle(m);
 
 function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
     let distributions: Record<number, ValueDistribution> = {};
@@ -73,7 +78,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
 
     const imageSize = getImageSizeForViewport(getCurrentViewport(document, window))
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const metricTitle = generateTeamMetricTitle(metric)
+    const seriesTitle = metricName(metric)
     const isRateMetric = SDV_TEAM_PERCENT_COLUMNS.includes(metric)
     const hasAvailableDistributions = Object.values(distributions).find(v => v.min != null) !== undefined;
     
@@ -96,7 +101,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
             const element = composite[p]
             if (!element) {
                 return {
-                    label: `${teamName} - ${metricTitle}: N/A`,
+                    label: `${teamName} - ${seriesTitle}: N/A`,
                     data: {
                         x: p,
                         y: null
@@ -106,7 +111,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
             }
             if (!element.data) {
                 return {
-                    label: `${teamName} - ${metricTitle}: N/A`,
+                    label: `${teamName} - ${seriesTitle}: N/A`,
                     data: {
                         x: p,
                         y: null
@@ -116,7 +121,7 @@ function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, perce
             }
 
             return {
-                label: `${teamName} - ${metricTitle}: ${formatNumberForMetric(metric, element.data.y || 0)}`,
+                label: `${teamName} - ${seriesTitle}: ${formatNumberForMetric(metric, element.data.y || 0)}`,
                 data: {
                     x: element.data.x,
                     y: (element.data.y || 0) * (isRateMetric ? 100.0 : 1.0)
@@ -232,7 +237,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
     // the axis lines take the zero line's colour; unset, Chart.js draws them near-black, invisible in dark mode
     const axisBorder = { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" };
 
-    const shouldFlipYAxis = shouldInvertSortForMetric(category, metric);
+    const shouldFlipYAxis = invertY ?? shouldInvertSortForMetric(category, metric);
 
     return {
         type: 'boxplot',
@@ -281,7 +286,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
             plugins: {
                     title: {
                     display: true,
-                    text: `${title} - ${generateTeamMetricTitle(metric)} - ${yearRange}`,
+                    text: `${title} - ${metricName(metric)} - ${yearRange}`,
                     color: (isDarkMode) ? "white" : "black",
                     font: {
                         size: getTitleSizeForViewport(viewport),
@@ -318,7 +323,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
                     },
                     title: {
                         display: true,
-                        text: generateTeamMetricTitle(metric),
+                        text: metricName(metric),
                         color: (isDarkMode) ? '#e8e6e3' : '#525252',
                         font: {
                             size: getAxisTitleSizeForViewport(viewport),
