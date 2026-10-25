@@ -1,9 +1,12 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test } from 'vitest';
 import Header from '../../src/components/Header.astro';
 
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+// a preview header carries the search island, so the Svelte renderer is loaded
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('the NBA header menu', () => {
     test('lists Scoreboard first, before Nets', async () => {

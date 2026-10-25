@@ -1,0 +1,55 @@
+---
+import { cleanField } from '../utils/misc';
+import { LEAGUES, leaguePath, type League } from '../utils/league';
+import type { StandingsRow } from '../utils/standings';
+
+interface Props {
+    league: League
+    // One unnamed section is a plain table. Named sections (a conference's
+    // divisions) get a heading row each and no "Team" header, the way
+    // PlayerBoxScore groups its rows (review on #336).
+    sections: { name?: string; rows: StandingsRow[] }[]
+}
+
+const { league, sections } = Astro.props;
+const cfg = LEAGUES[league];
+const lp = (p: string) => leaguePath(league, p);
+const grouped = sections.some((s) => s.name);
+---
+<div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+        <thead>
+            <tr>
+                <th>{grouped ? <span class="visually-hidden">Team</span> : "Team"}</th>
+                <th class="text-center">Conf</th>
+                <th class="text-center">Overall</th>
+                <th class="text-center">PF</th>
+                <th class="text-center">PA</th>
+                <th class="text-center">+/-</th>
+                <th class="text-center">Strk</th>
+            </tr>
+        </thead>
+        <tbody>
+            {sections.map((s) => (
+                <Fragment>
+                    {s.name && (
+                        <tr><td colspan="7" class="gt_group_heading fw-bold">{s.name}</td></tr>
+                    )}
+                    {s.rows.map((r) => (
+                        <tr>
+                            <td>
+                                <a href={lp(`/team/${r.teamId}`)}><img class={`img-fluid team-logo-${r.teamId} me-2`} width="20px" src={r.logo ?? `https://a.espncdn.com/i/teamlogos/${cfg.logoLeague}/500/${r.teamId}.png`} alt={`ESPN team id ${r.teamId} ${cleanField(r, "name")}`} title={r.name} /><span class="visually-hidden">{cleanField(r, "name")}</span><strong><span class="d-none d-sm-inline">{cleanField(r, "name")}</span><span class="d-sm-none">{cleanField(r, "abbreviation") || cleanField(r, "name")}</span></strong></a>
+                            </td>
+                            <td class="text-center">{r.conference || "—"}</td>
+                            <td class="text-center">{r.overall}</td>
+                            <td class="text-center text-muted">{r.pointsFor}</td>
+                            <td class="text-center text-muted">{r.pointsAgainst}</td>
+                            <td class="text-center text-muted">{r.pointDifferential}</td>
+                            <td class="text-center text-muted">{r.streak}</td>
+                        </tr>
+                    ))}
+                </Fragment>
+            ))}
+        </tbody>
+    </table>
+</div>
