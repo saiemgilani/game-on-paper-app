@@ -4,7 +4,7 @@
     // highlighted, shown below the top rows and the rest behind a <details>; with none (netsTeamId null) those parts never render.
     import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
-    import { playerHref } from '../../nba/links';
+    import { playerHref } from '../../nba/hrefs';
     import type { BasketballLeague } from '../../utils/league';
     let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '' }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
