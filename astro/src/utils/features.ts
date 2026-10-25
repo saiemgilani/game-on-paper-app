@@ -127,7 +127,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // ladder, and Net Statistics get boxes too. National Trends (/charts/trends and the /nfl twin) draws the same
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
-    'team-season-bands': 'preview',
+    'team-season-bands': 'on',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
