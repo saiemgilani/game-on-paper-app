@@ -103,10 +103,10 @@ const lp = (p: string) => leaguePath(league, p);
                             Tools
                         </a>
                         <ul class="dropdown-menu">
-                            {football && (<li><a href={lp("/game/matchup")} class="nav-link px-2 link-secondary">Matchup Builder</a></li>)}
-                            <li><a href="/glossary" class="nav-link px-2 link-secondary">Glossary</a></li>
-                            <li><a href="/data-sources" class="nav-link px-2 link-secondary">Data & Sources</a></li>
-                            <li><a href="/changelog" class="nav-link px-2 link-secondary">Changelog</a></li>
+                            {football && (<li><a href={lp("/game/matchup")} class="dropdown-item">Matchup Builder</a></li>)}
+                            <li><a href="/glossary" class="dropdown-item">Glossary</a></li>
+                            <li><a href="/data-sources" class="dropdown-item">Data & Sources</a></li>
+                            <li><a href="/changelog" class="dropdown-item">Changelog</a></li>
                         </ul>
                     </li>
                 </ul>
