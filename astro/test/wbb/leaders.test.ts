@@ -40,12 +40,24 @@ describe('the WBB leaders loader', () => {
         const r: any = await prepareBasketballLeaders(fakeAstro('/wbb/leaders'), 'wbb');
         const top = r.boards[10].improved.rows[0];
         expect(top.seasonEfg).toBe(lineOf(seasonLinesFromRows(seasonPlayers(2026)).get(top.person_id)!).efgPct);
-        const fromRead = leaderBoards(seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026)), null, 15, bars, { windows: [5, 10] });
+        const fromRead = leaderBoards(seasonPlayerGamesFromRows(leadersGames2026(), seasonPlayers(2026)), null, 15, bars, { windows: [5, 10], activeByTeam: true });
         // women's top row can rank out of the read-only board (no season lines); compare every player on both boards
         const readEfg = new Map(fromRead[10].improved.rows.map((x) => [x.person_id, x.seasonEfg]));
         const shared = r.boards[10].improved.rows.filter((x: any) => readEfg.has(x.person_id));
         expect(shared.length).toBeGreaterThan(0);
         expect(shared.some((x: any) => x.seasonEfg !== readEfg.get(x.person_id))).toBe(true);
+    });
+    // Self-review on #344 (the #342 fix, inherited): measured from the national final (2026-04-05), "active" kept 549
+    // shooters from 80 of 358 teams; from each team's own latest game, 2,197 from 328.
+    test("active shooters are measured from their team's latest game, not the national final", async () => {
+        const players = seasonPlayers(2026);
+        const placed = seasonPlayerGamesFromRows(leadersGames2026(), players);
+        const opts = { windows: [5, 10] as const, seasonLines: seasonLinesFromRows(players) };
+        expect(leaderBoards(placed, null, 15, bars, opts)[5].efgPct.eligible).toBe(549);
+        expect(leaderBoards(placed, null, 15, bars, { ...opts, activeByTeam: true })[5].efgPct.eligible).toBe(2197);
+        const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/wbb/leaders'), 'wbb');
+        expect([r.activeByTeam, r.boards[5].efgPct.eligible]).toEqual([true, 2197]);
     });
     test('every ranked window lies inside the read; Most improved uses the season line', () => {
         const players = seasonPlayers(2026);
