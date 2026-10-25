@@ -12,7 +12,9 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number) => ([2019, 2022, 2026].includes(s) ? seasonPlayers(s as Season) : []),
     retrieveLeagueContextRows: async () => leagueContext(2026),
-    retrieveTeamShots: async (s: number, t: number) => (t === NOLA && s === 2026 ? nolaShots2026() : []),
+    // 2697 and 42 (no 2026 conference row) get shot rows too, so the 404 below holds WITH shots, not for want of them
+    // (self-review on #344: R-S14 dropped the player-row requirement, leaving membership the only guard)
+    retrieveTeamShots: async (s: number, t: number) => (s === 2026 && [NOLA, 2697, 42].includes(t) ? nolaShots2026() : []),
     retrieveCoverageRows: async () => coverage(),
     retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as Season), groups: conferenceNames(s as Season) }),
     retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as Season),
@@ -44,6 +46,16 @@ describe('team pages for every member of the season', () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         const r: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${NOLA}`, String(NOLA)), 'wbb');
         expect([r.empty, r.noPlayers, r.team?.team_id, r.roster, r.line.attempts, r.dashboard === null]).toEqual([undefined, true, NOLA, [], 992, false]);
+    });
+    test("R-S14 on the index: New Orleans's line is its team page's (992 FGA), not a dash (self-review on #344)", async () => {
+        const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        expect(seasonPlayers(2026).some((r) => r.team_id === NOLA)).toBe(false);
+        const index: any = await prepareBasketballTeams(fakeAstro('/wbb/teams', ''), 'wbb');
+        const page: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${NOLA}`, String(NOLA)), 'wbb');
+        expect(index.lines.get(NOLA)).toEqual(page.line);
+        expect(index.lines.get(NOLA).attempts).toBe(992);
+        for (const id of [2697, 42]) expect(index.lines.has(id), String(id)).toBe(false); // non-members: no read, no row
     });
     test('without a conference row that season a program is a 404 (D43), even with shot rows', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
