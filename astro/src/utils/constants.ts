@@ -1067,6 +1067,9 @@ export const SDV_PLAYER_PERCENT_COLUMNS: string[] = [
 ];
 
 export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
+    // National Trends' game-ladder keys for the split rates (Akshay on #329: shown as 0.45, not 45%); the other ladder
+    // rate keys (success, havoc, explosive, ...) were already here. No team_summaries column has these names.
+    "pass_success", "rush_success", "pass_explosive", "rush_explosive",
     "pass_rate_off", "xpass_rate_off", "neutral_pass_rate_off", "neutral_xpass_rate_off",
     "fourth_go_rate_off", "fourth_go_expected_off", "fourth_go_over_expected_off", "fourth_go_when_recommended_off",
     "luck_fumble_rec_pct_off", "luck_fumble_rec_pct_def", "luck_opp_fg_pct_def",

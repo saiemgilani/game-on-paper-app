@@ -44,7 +44,7 @@ async function render(sort: string, preview: boolean) {
     const points = (props.percentiles[1] as [number, Record<string, [number, number]>][]).map(([, p]) => ({ season: p.season[1], pctile: p.pctile[1], value: p.value[1] }));
     // the dropdown is server-rendered (client:idle): its options, value -> label
     const options = [...html.matchAll(/<option value="([^"-][^"]*)"[^>]*>([^<]+)<\/option>/g)].map(m => [m[1], m[2]]);
-    return { points, freshness: props.freshness?.[1], metricTitle: props.metricTitle?.[1], options };
+    return { points, freshness: props.freshness?.[1], metricTitle: props.metricTitle?.[1], invertY: props.invertY?.[1], options };
 }
 const at2024 = (points: { season: number, value: number }[]) => points.filter(p => p.season === 2024).map(p => p.value);
 const bandRead = () => net.seen.filter(u => u.endsWith('/v1/nfl/team_summaries/percentiles'));
@@ -65,6 +65,16 @@ describe('National Trends titles', () => {
         const { metricTitle, options } = await render('pass_explosive', true);
         expect(metricTitle).toBe('Pass Explosive %');
         expect(options).toEqual(NATIONAL_TRENDS_METRICS.map(m => [m.key, m.label]));
+    }, 60_000);
+    // Akshay on #329: success and explosiveness rates are percent metrics, and the national chart flips no axis (havoc,
+    // 3rd-down distance and stuffed % read "better low" only from one offense's side)
+    test('every success and explosiveness rate is a percent metric; the national chart never inverts its axis', async () => {
+        const { NATIONAL_TRENDS_METRICS, SDV_TEAM_PERCENT_COLUMNS } = await import('../src/utils/constants');
+        const rates = NATIONAL_TRENDS_METRICS.map(m => m.key).filter(k => /success|explosive$/.test(k));
+        expect(rates).toEqual(['success', 'pass_success', 'pass_explosive', 'rush_success', 'rush_explosive', 'explosive', 'early_down_success', 'late_down_success', 'red_zone_success']);
+        for (const k of [...rates, 'havoc', 'play_stuffed', 'opportunity_run']) expect(SDV_TEAM_PERCENT_COLUMNS, k).toContain(k);
+        const { invertY } = await render('havoc', true);
+        expect(invertY).toBe(false);
     }, 60_000);
 });
 

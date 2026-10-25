@@ -11,7 +11,9 @@ import { freshnessSubtitle, freshnessTime } from '../../utils/freshness';
 
 // metricTitle: National Trends names its own sort keys (nationalTrendsTitle); the team chart's team_summaries columns
 // keep generateTeamMetricTitle
-const { title, teamColor, teamData, category, metric, percentiles, freshness = null, metricTitle = null } = $props();
+// invertY: National Trends shows the league, not one side, so no metric is "better low" there (Akshay on #329: havoc
+// and 3rd-down distance were flipped); null keeps the team chart's offense/defense rule
+const { title, teamColor, teamData, category, metric, percentiles, freshness = null, metricTitle = null, invertY = null } = $props();
 const metricName = (m: string) => metricTitle ?? generateTeamMetricTitle(m);
 
 function buildTeamChartData(teams: SDVTeamSummary[], color: string | null, percentiles: ValuePercentile[], category: string, metric: string): ChartData<'boxplot' | 'line'> {
@@ -230,7 +232,7 @@ function generateTeamChartConfig(title: string, color: string | null, teams: SDV
     const viewport = getCurrentViewport(document, window);
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    const shouldFlipYAxis = shouldInvertSortForMetric(category, metric);
+    const shouldFlipYAxis = invertY ?? shouldInvertSortForMetric(category, metric);
 
     return {
         type: 'boxplot',
