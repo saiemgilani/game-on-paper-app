@@ -42,15 +42,15 @@
 //   LH_ASTRO_PREFIX='docker run --rm --init --network host -v /tmp:/tmp -v {cwd}:{cwd} -w {cwd} node:22-bookworm'
 import { parseArgs } from 'node:util';
 import { spawn, spawnSync, execFileSync, execSync } from 'node:child_process';
-import { createServer } from 'node:http';
-import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, openSync, closeSync } from 'node:fs';
-import { join, resolve, dirname, extname, sep } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { aggregate, fmt, normalizeHtml, verdicts, withRange } from './lighthouse-verdicts.mjs';
+import { slugger } from './lib/browser.mjs';
+import { serveStatic } from './lib/serve-static.mjs';
 
 const { values: opt, positionals: routes } = parseArgs({
   allowPositionals: true,
@@ -96,15 +96,8 @@ if (!(RUNS >= 1)) usage('--runs must be >= 1');
 if (!MODES.every((m) => m === 'frontend' || m === 'e2e')) usage(`unknown --mode ${opt.mode}`);
 if (!PRESETS.every((p) => p === 'mobile' || p === 'desktop')) usage(`unknown preset in --presets ${opt.presets}`);
 if (opt['backend-cmd'] && !opt['python-url']) usage('--backend-cmd needs --python-url (the address it serves)');
-// file names derive from routes (the same slug visual-check.mjs uses), so two routes
-// that slug alike would overwrite each other's HTML, reports and screenshots
-const slugOf = (r) => (r === '/' ? 'home' : r.replace(/^\/+|\/+$/g, '').replace(/[^\w-]+/g, '-'));
-const slugOwner = new Map();
-for (const r of routes) {
-  const other = slugOwner.get(slugOf(r));
-  if (other !== undefined && other !== r) usage(`routes ${other} and ${r} map to the same file name "${slugOf(r)}"; pass only one`);
-  slugOwner.set(slugOf(r), r);
-}
+// file names derive from routes (the stems visual-check.mjs and walkthrough.mjs use too)
+const slug = slugger(routes);
 
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8' }).trim();
 const sha = { base: git('rev-parse', `${opt.base}^{commit}`), head: git('rev-parse', `${opt.head}^{commit}`) };
@@ -114,7 +107,6 @@ const WORK = resolve(opt.work ?? join(tmpdir(), 'gop-lighthouse'));
 mkdirSync(join(OUT, 'reports'), { recursive: true });
 mkdirSync(join(OUT, 'logs'), { recursive: true });
 
-const slug = slugOf;
 const say = (msg) => console.log(`[lighthouse-compare] ${msg}`);
 
 // ---------------------------------------------------------------- lighthouse CLI
@@ -332,46 +324,6 @@ async function capture(tree, origin) {
     say(`${tree.name} ${route}: "${title}" ${(pages[route].bytes / 1024).toFixed(0)} KB, warm response ${(ms / 1000).toFixed(1)} s`);
   }
   return pages;
-}
-
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.map': 'application/json', '.xml': 'application/xml', '.txt': 'text/plain',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-  '.gif': 'image/gif', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2',
-};
-const trimSlash = (p) => p.replace(/\/+$/, '') || '/';
-
-function serveStatic(tree, pages, port) {
-  const client = existsSync(join(tree.astro, 'dist', 'client')) ? join(tree.astro, 'dist', 'client') : join(tree.astro, 'dist');
-  const html = new Map(Object.entries(pages).map(([route, p]) => [trimSlash(route), p.file]));
-  const server = createServer((req, res) => {
-    const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    let file = html.get(trimSlash(path));
-    let type = TYPES['.html'];
-    if (!file) {
-      const candidate = resolve(client, `.${path}`);
-      if (candidate.startsWith(client + sep) && existsSync(candidate) && statSync(candidate).isFile()) {
-        file = candidate;
-        type = TYPES[extname(candidate).toLowerCase()] ?? 'application/octet-stream';
-      }
-    }
-    if (!file) {
-      res.writeHead(404);
-      res.end();
-      return;
-    }
-    let body = readFileSync(file);
-    const headers = { 'Content-Type': type };
-    if (path.startsWith('/_astro/')) headers['Cache-Control'] = 'public, max-age=31536000, immutable';
-    if (/^(text\/|application\/(json|xml)|image\/svg)/.test(type)) {
-      body = gzipSync(body, { level: 6 });
-      headers['Content-Encoding'] = 'gzip';
-    }
-    res.writeHead(200, headers);
-    res.end(body);
-  });
-  return new Promise((ok) => server.listen(port, '127.0.0.1', () => ok(server)));
 }
 
 // ---------------------------------------------------------------- lighthouse runs
