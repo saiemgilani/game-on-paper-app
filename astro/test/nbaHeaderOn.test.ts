@@ -2,6 +2,8 @@
 // 'preview' their Header is byte-identical to before the league existed (nflFlag.test.ts and
 // nflScoreboard.render.test.ts pin that), and promotion is then the flag flip alone.
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 vi.mock('../src/utils/features', async (orig) => {
@@ -14,7 +16,8 @@ vi.mock('../src/utils/features', async (orig) => {
 import Header from '../src/components/Header.astro';
 
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+// a preview header carries the search island, so the Svelte renderer is loaded
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('Header with the nba flag on', () => {
     test('a cfb viewer sees the NBA in the league menu beside the NFL (two others: the dropdown)', async () => {

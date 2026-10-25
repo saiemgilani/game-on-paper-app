@@ -1010,7 +1010,7 @@ export function calculateNormCdf(x: number, mean: number, sd: number): number {
 	return (z > 0) ? (1 - Prob) : Prob;
 }
 
-export async function safeCachePut(cache: KVNamespace, key: string, value: string, ttl: number,
+export async function safeCachePut(cache: KVNamespace, key: string, value: string | ArrayBuffer, ttl: number,
                                    metadata?: Record<string, unknown>): Promise<void> {
     try {
         await cache.put(key, value, { expirationTtl: ttl, metadata })
@@ -1128,4 +1128,9 @@ export function countRegexMatches(str: string, pattern: RegExp): number {
         return 0;
     }
     return (str.match(pattern) || []).length
+}
+
+/** A JSON body as a Response: `Content-Type: application/json` plus whatever headers the caller adds. */
+export function jsonResponse(body: unknown, headers: Record<string, string> = {}, status = 200): Response {
+    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 }

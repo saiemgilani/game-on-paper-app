@@ -8,6 +8,7 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
+import { PLAYER_SPLITS } from '../utils/players';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1528,6 +1529,54 @@ export async function retrievePlayerGamePercentiles(
     const out: Record<string, number[]> = {};
     for (const row of (content?.data ?? [])) {
         if (row?.metric && Array.isArray(row?.breaks)) out[String(row.metric)] = row.breaks.map(Number);
+    }
+    return out;
+}
+
+/** The split-percentile population's floor: a player-season needs this many plays in a split to be in it. */
+export const SPLIT_PERCENTILE_MIN_PLAYS = 10;
+
+/** The metrics `players/splits/percentiles` ranks; any other row is dropped. */
+const SPLIT_PERCENTILE_METRICS = new Set(['plays', 'epa', 'epa_per_play', 'success_rate']);
+/** The splits the Situational Splits table renders; any other row is dropped. */
+const SPLIT_PERCENTILE_SPLITS = new Set(PLAYER_SPLITS.map((s) => s.key));
+
+/** 101 finite breakpoints in non-decreasing order, or null: a malformed row is skipped, never coerced. */
+function percentileBreaks(breaks: unknown): number[] | null {
+    if (!Array.isArray(breaks) || breaks.length !== 101) return null;
+    for (const [i, b] of breaks.entries()) {
+        if (typeof b !== 'number' || !Number.isFinite(b) || (i > 0 && b < breaks[i - 1])) return null;
+    }
+    return breaks;
+}
+
+/**
+ * Percentile breakpoints for the Situational Splits metrics over every player-season
+ * in a league-season with at least `SPLIT_PERCENTILE_MIN_PLAYS` plays in the split
+ * (sdv-db `players/splits/percentiles`): split -> metric -> 101 breaks, 0th..100th.
+ * With `positionGroup` (QB/RB/WR/TE; RB includes FB) the population is that roster
+ * group's player-seasons only.
+ *
+ * A split with too few qualifying player-seasons (< 30) is left out by the route
+ * (overtime usually is; red zone for a TE group), and a season with none at all is a
+ * 404 -> {}: no distribution, the same as `retrievePlayerGamePercentiles`. Only known
+ * split and metric names are kept, so a key like `__proto__` never reaches the object.
+ */
+export async function retrievePlayerSplitPercentiles(
+    season: number, league: League = 'cfb', positionGroup: string | null = null,
+): Promise<Record<string, Record<string, number[]>>> {
+    const query: Record<string, string> = { season: String(season), min_plays: String(SPLIT_PERCENTILE_MIN_PLAYS) };
+    if (positionGroup) query.position_group = positionGroup;
+    const content = await requestPlayer(league, 'players/splits/percentiles', query, 60 * 60 * 24);
+    const out: Record<string, Record<string, number[]>> = {};
+    for (const row of (content?.data ?? [])) {
+        const split = String(row?.split);
+        const metric = String(row?.metric);
+        const breaks = percentileBreaks(row?.breaks);
+        if (!SPLIT_PERCENTILE_SPLITS.has(split)
+            || !SPLIT_PERCENTILE_METRICS.has(metric)
+            || !breaks) continue;
+        (out[split] ??= {})[metric] = breaks;
     }
     return out;
 }

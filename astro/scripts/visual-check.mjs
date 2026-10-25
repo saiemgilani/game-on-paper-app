@@ -13,7 +13,7 @@
 // server or a 404 can't pass off an error-page screenshot as valid.
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slug } from './lib/browser.mjs';
+import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slugger } from './lib/browser.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
@@ -36,6 +36,7 @@ const EXPAND = (process.env.VISUAL_CHECK_EXPAND ?? 'away-stats-panel,home-stats-
 // team page -- enough surfaces that a layout/theme regression shows up.
 const passed = process.argv.slice(2);
 const routes = passed.length ? passed : ['/', '/nfl', '/nfl/year/2025/teams/tendencies'];
+const slug = slugger(routes);
 
 const chromium = await loadChromium();
 // Admin-only UI (the game page's admin tools) renders for nobody without a

@@ -141,7 +141,7 @@ describe('game-colours off: the page is byte-for-byte what main renders', () => 
     // v2 moved for G10 (was bdd540d70b5e2d07): the drive-start EP row in the Drives table (the
     // indented "Expected Points" sub-row), and Team Stats cells keyed to the game's two team ids,
     // so a section the payload lacks prints dashes instead of empty cells; classic did not move.
-    const GOLDEN = { v2: 'c8cd5442553f72c4', classic: '6adbaab93e7c7d94' };
+    const GOLDEN = { v2: 'fcf781b953128900', classic: '6adbaab93e7c7d94' };
 
     test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
         const html = await render(twin, {});
