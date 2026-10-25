@@ -1,6 +1,6 @@
 <script lang="ts">
     import Chart from 'chart.js/auto';
-    import { color } from 'chart.js/helpers';
+    import { chartGridColor } from '../../resources/chart';
     import { averageAxisBounds, type OpponentBar } from '../../utils/gameSet';
     import { formatMetricValue, generateTeamMetricTitle, type MetricFormat } from '../../utils/misc';
 
@@ -34,9 +34,9 @@
         // the theme's own text colour, so the axes follow dark-*.css like the page does
         const style = getComputedStyle(canvas);
         const ink = style.color;
-        const faint = color(ink).alpha(0.2).rgbString();
         const font = { family: style.fontFamily };
         const pair = dark ? colors.dark : colors.light;
+        const faint = chartGridColor(ink, dark);
         const chart = new Chart(canvas, {
             type: 'bar',
             data: {
@@ -50,11 +50,13 @@
                 scales: {
                     x: {
                         ...averageAxisBounds(line),
-                        title: { display: true, text: title, color: ink, font: { ...font, style: 'oblique' } },
+                        title: { display: true, text: title, color: ink, font },
                         ticks: { color: ink, font, callback: (v) => fmt(v) },
                         grid: { color: (c) => (c.tick?.value === 0 ? ink : faint) },
+                        // the axis line; unset, Chart.js draws it in its default near-black borderColor
+                        border: { color: ink },
                     },
-                    y: { ticks: { color: ink, font, autoSkip: false }, grid: { display: false } },
+                    y: { ticks: { color: ink, font, autoSkip: false }, grid: { display: false }, border: { color: ink } },
                 },
                 plugins: {
                     legend: { display: false },
