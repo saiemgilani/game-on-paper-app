@@ -81,7 +81,7 @@ describe('retrieveNbaGameRows', () => {
         urls.length = 0;
         const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
         await retrieveNbaGameRows('401820775', 'mbb');
-        await retrieveNbaGameRows('401766458');
+        await retrieveNbaGameRows('401766458', 'nba');
         const sel = (lg: string) => new URL(urls.find((u) => u.includes(`/v1/${lg}/player_box?`))!).searchParams.get('select')!.split(',');
         expect(sel('mbb')).not.toContain('plus_minus');
         expect(sel('mbb')).not.toContain('reason');
