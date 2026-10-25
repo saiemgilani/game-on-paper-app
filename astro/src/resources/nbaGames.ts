@@ -40,13 +40,13 @@ const scheduleTTL = (content: any) => (isTrue(content?.data?.[0]?.status_type_co
 const readSchedule = (id: string, league: BasketballLeague) =>
     retrieveRowsFrom<Row>(BASKETBALL[league].gamesSource, 'schedule', { id, select: SEL.schedule, limit: '1' }, scheduleTTL, true, NBA_READ_TIMEOUT_MS);
 
-export async function retrieveNbaSchedule(id: string, league: BasketballLeague = 'nba'): Promise<Row | null> {
+export async function retrieveNbaSchedule(id: string, league: BasketballLeague): Promise<Row | null> {
     assertGameId(id, league);
     return (await readSchedule(id, league))[0] ?? null;
 }
 
 /** All seven tables for a completed game, in parallel, strict (a failed read rejects the whole thing). */
-export async function retrieveNbaGameRows(id: string, league: BasketballLeague = 'nba'): Promise<DataApiGameRows> {
+export async function retrieveNbaGameRows(id: string, league: BasketballLeague): Promise<DataApiGameRows> {
     assertGameId(id, league);
     const q = (extra: Record<string, string> = {}) => ({ game_id: id, limit: '5000', ...extra });
     const get = (table: keyof typeof SEL, query: Record<string, string>) =>
@@ -64,7 +64,7 @@ export async function retrieveNbaGameRows(id: string, league: BasketballLeague =
 }
 
 /** The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`. */
-export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague = 'nba'): Promise<NbaProcessorPayload> {
+export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague): Promise<NbaProcessorPayload> {
     assertGameId(id, league);
     const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, '', NBA_PROCESSOR_TIMEOUT_MS));
     if (json?.status === 'bad' || !Array.isArray(json?.plays)) throw new ProcessorError(502, `processor: ${json?.message ?? 'no plays'} for ${id}`);

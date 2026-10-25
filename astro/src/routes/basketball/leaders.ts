@@ -29,6 +29,8 @@ export interface BasketballLeadersParams {
     /** college (D26): the windows built and the note naming the read's first day */
     windows?: readonly LeaderWindow[];
     windowNote?: string;
+    /** Active shooters are measured from their own team's latest game (a restricted read: college). */
+    activeByTeam?: true;
 }
 
 export type BasketballLeadersPrep = { unavailable: true } | BasketballLeadersParams;
@@ -71,11 +73,12 @@ export async function prepareBasketballLeaders(Astro: AstroGlobal, league: Baske
     if (coverage === undefined) uncacheable(Astro);
     // D26: a restricted read builds only its windows and ranks "Most improved" against the season rows' line (the NBA/WNBA: {}, identical boards)
     const lr = BASKETBALL[league].leadersRead;
-    const opts = lr ? { windows: lr.windows, seasonLines: seasonLinesFromRows(players) } : {};
+    const opts = lr ? { windows: lr.windows, seasonLines: seasonLinesFromRows(players), activeByTeam: true } : {};
     return {
         ...resolved,
         boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? null, 15, BASKETBALL[league].leaderBars(season), opts) : null,
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        ...(lr ? { activeByTeam: true as const } : {}),
         ...(lr && games.since ? { windows: lr.windows, windowNote: ` Windows count games from ${fmtDate(games.since)} on: the last ${lr.days} days of games.` } : {}),
     };
 }

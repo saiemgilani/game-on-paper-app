@@ -21,7 +21,7 @@ const finalCache = (league: BasketballLeague) => ({ maxAge: 60 * 60 * 24 * 7 * 5
 const SCORE_TOLERANCE = 3;
 
 /** The clause an ingested game fails, or null. Guards against hoopR's known ESPN pathologies. */
-export function sanityGate(rows: DataApiGameRows, league: BasketballLeague = 'nba'): string | null {
+export function sanityGate(rows: DataApiGameRows, league: BasketballLeague): string | null {
     const s = rows.schedule[0];
     if (!s) return 'schedule: no row';
     const periods = requiredPeriods(s, scheduleRegulation(s, league).periods);

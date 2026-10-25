@@ -330,7 +330,8 @@ const plain = (e: RegulationEra): Regulation => ({ periods: e.periods, kind: e.k
 
 /**
  * A game's regulation. `dataPeriods` is the game's own count (schedule `format_regulation_periods`, ESPN
- * `format.regulation.periods`) and wins when it is 2 or 4; anything else falls back to the era `season` is in.
+ * `format.regulation.periods`) and wins when the league has an era of that shape (WBB/WNBA halves vs quarters);
+ * anything else -- junk, or a shape the league never played (an NBA "2") -- keeps the era `season` is in.
  */
 export function pickRegulation(eras: readonly RegulationEra[], season: number | null | undefined, dataPeriods?: unknown): Regulation {
     const s = season == null ? NaN : Number(season);
@@ -338,8 +339,8 @@ export function pickRegulation(eras: readonly RegulationEra[], season: number | 
     const n = dataPeriods == null || dataPeriods === '' ? NaN : Number(dataPeriods);
     if (!(n === 2 || n === 4) || n === byYear.periods) return plain(byYear);
     const same = [...eras].reverse().find((e) => e.periods === n);
-    // ponytail: no era of that shape in this league (data and config disagree): keep the era's regulation minutes
-    return same ? plain(same) : { periods: n, kind: n === 2 ? 'half' : 'quarter', periodMinutes: (byYear.periods * byYear.periodMinutes) / n };
+    if (!same) console.warn(`basketball: data says ${n} regulation periods, a shape this league never played; keeping ${byYear.periods}`);
+    return plain(same ?? byYear);
 }
 
 export function regulationFor(league: BasketballLeague, season: number | null | undefined, dataPeriods?: unknown): Regulation {

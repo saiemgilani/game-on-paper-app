@@ -78,6 +78,15 @@ export async function prepareBasketballPlayers(Astro: AstroGlobal, league: Baske
         ? (/^\d{1,10}$/.test(requested) ? teams.find((t) => t.team_id === Number(requested)) : undefined)
         : requested === 'ALL' ? null : (teams.find((t) => t.tricode === requested) ?? teams.find((t) => t.team_id === BASKETBALL[league].teams.franchiseOf(requested)));
     if (selected === undefined) {
+        // a season member with no linked shot (a 2019 member, D48): its empty page, as its team page is, never a 404 that
+        // the season picker (member seasons, R-P11) linked to (self-review on #342)
+        const id = byId && /^\d{1,10}$/.test(requested) ? Number(requested) : NaN;
+        const member = BASKETBALL[league].memberSeasons?.seasons.get(id)?.includes(season) ? BASKETBALL[league].teams.byEspnId(id) : undefined;
+        if (member) {
+            setCache(Astro, seasonCache(league));
+            if (coverage === undefined) uncacheable(Astro);
+            return { ...resolved, teams: [...teams, member], selected: member, team: requested, defaults, rows: [], sort, dir, byId: true, coverage: coverage ?? null };
+        }
         uncacheable(Astro);
         return { notFound: true };
     }

@@ -9,7 +9,7 @@ import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaLeadersParams }
-const { season, seasons, current, q, boards, coverage, windows, windowNote } = Astro.props.data;
+const { season, seasons, current, q, boards, coverage, windows, windowNote, activeByTeam } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -34,7 +34,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row">
       <div class="col-12">
         {boards
-          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} />)
+          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} {...(activeByTeam ? { activeByTeam } : {})} />)
           : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
       </div>
     </div>

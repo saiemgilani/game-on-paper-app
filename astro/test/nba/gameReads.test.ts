@@ -69,7 +69,7 @@ describe('retrieveNbaGameRows', () => {
     test('reads the seven tables for one game with narrowed selects', async () => {
         urls.length = 0;
         const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
-        const rows = await retrieveNbaGameRows('401766458');
+        const rows = await retrieveNbaGameRows('401766458', 'nba');
         expect(Object.keys(rows).sort()).toEqual(['game_player_rates', 'game_team_rates', 'pbp', 'play_wp', 'player_box', 'schedule', 'team_box']);
         const nba = urls.filter((u) => u.includes('/v1/nba/'));
         expect(nba).toHaveLength(7);
@@ -81,7 +81,7 @@ describe('retrieveNbaGameRows', () => {
         urls.length = 0;
         const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
         await retrieveNbaGameRows('401820775', 'mbb');
-        await retrieveNbaGameRows('401766458');
+        await retrieveNbaGameRows('401766458', 'nba');
         const sel = (lg: string) => new URL(urls.find((u) => u.includes(`/v1/${lg}/player_box?`))!).searchParams.get('select')!.split(',');
         expect(sel('mbb')).not.toContain('plus_minus');
         expect(sel('mbb')).not.toContain('reason');
@@ -115,7 +115,7 @@ describe('requestProcessor cache key', () => {
     });
     test('retrieveNbaProcessedGame fetches nba/<id>/process', async () => {
         const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
-        await expect(retrieveNbaProcessedGame('401766458', 60)).resolves.toMatchObject({ plays: [{}] });
+        await expect(retrieveNbaProcessedGame('401766458', 60, 'nba')).resolves.toMatchObject({ plays: [{}] });
     });
 });
 
@@ -129,7 +129,7 @@ describe('typed processor errors', () => {
         const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
         for (const status of [404, 502, 500]) {
             respond = (u) => (u.startsWith('http://python:5000/') ? new Response('{"status":"bad"}', { status }) : undefined);
-            await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status });
+            await expect(retrieveNbaProcessedGame('401766458', 60, 'nba')).rejects.toMatchObject({ name: 'ProcessorError', status });
             const err = await requestProcessor('cfb/401520150/process', 60).catch((e) => e);
             expect(err).toBeInstanceOf(ProcessorError);
             expect(err).toBeInstanceOf(Error);
@@ -139,7 +139,7 @@ describe('typed processor errors', () => {
     test('a 200 without plays is a 502 ProcessorError', async () => {
         respond = (u) => (u.startsWith('http://python:5000/') ? new Response('{"status":"bad","message":"nope"}', { status: 200 }) : undefined);
         const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
-        await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 502 });
+        await expect(retrieveNbaProcessedGame('401766458', 60, 'nba')).rejects.toMatchObject({ name: 'ProcessorError', status: 502 });
     });
 });
 
@@ -147,9 +147,9 @@ describe('game id checks', () => {
     test.each(['', '12345', '1234567890123', '../../v1/meta', '401766458?x=1', '40176645a'])('a bad id (%j) never reaches fetch', async (bad) => {
         const g = await import('../../src/resources/nbaGames');
         urls.length = 0;
-        await expect(g.retrieveNbaSchedule(bad)).rejects.toThrow(/invalid NBA game id/);
-        await expect(g.retrieveNbaGameRows(bad)).rejects.toThrow(/invalid NBA game id/);
-        await expect(g.retrieveNbaProcessedGame(bad, 60)).rejects.toThrow(/invalid NBA game id/);
+        await expect(g.retrieveNbaSchedule(bad, 'nba')).rejects.toThrow(/invalid NBA game id/);
+        await expect(g.retrieveNbaGameRows(bad, 'nba')).rejects.toThrow(/invalid NBA game id/);
+        await expect(g.retrieveNbaProcessedGame(bad, 60, 'nba')).rejects.toThrow(/invalid NBA game id/);
         expect(urls).toEqual([]);
     });
 });
@@ -162,7 +162,7 @@ describe('cache lifetimes and read shape', () => {
         for (const [completed, ttl] of [[true, YEAR], ['True', YEAR], [false, HOUR], ['False', HOUR], [null, HOUR]] as const) {
             respond = schedule(completed);
             putTtls.length = 0;
-            await expect(retrieveNbaSchedule('401766458')).resolves.toMatchObject({ id: 401766458 });
+            await expect(retrieveNbaSchedule('401766458', 'nba')).resolves.toMatchObject({ id: 401766458 });
             expect(putTtls.filter((p) => p.k !== 'sdv-meta:datasets').map((p) => p.ttl)).toEqual([ttl]);
         }
     });
@@ -170,10 +170,10 @@ describe('cache lifetimes and read shape', () => {
         const { retrieveNbaGameRows, retrieveNbaSchedule } = await import('../../src/resources/nbaGames');
         respond = schedule(false);
         putTtls.length = 0;
-        await retrieveNbaSchedule('401766458');
+        await retrieveNbaSchedule('401766458', 'nba');
         const solo = putTtls.filter((p) => p.k !== 'sdv-meta:datasets');
         putTtls.length = 0;
-        await retrieveNbaGameRows('401766458');
+        await retrieveNbaGameRows('401766458', 'nba');
         const all = putTtls.filter((p) => p.k !== 'sdv-meta:datasets');
         expect(all).toHaveLength(7);
         expect(all.filter((p) => p.ttl === YEAR)).toHaveLength(6);
@@ -182,7 +182,7 @@ describe('cache lifetimes and read shape', () => {
     test('pbp and play_wp ask for limit=5000, ordered', async () => {
         const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
         urls.length = 0;
-        await retrieveNbaGameRows('401766458');
+        await retrieveNbaGameRows('401766458', 'nba');
         for (const t of ['pbp', 'play_wp']) {
             const u = urls.find((x) => x.includes(`/v1/nba/${t}?`))!;
             expect(u).toContain('limit=5000');
@@ -199,7 +199,7 @@ describe('read timeouts (NBA only)', () => {
         abortedSignal(calls);
         const { retrieveNbaGameRows } = await import('../../src/resources/nbaGames');
         const { SDVRequestError } = await import('../../src/resources/sdv');
-        const err = await retrieveNbaGameRows('401766458').catch((e) => e);
+        const err = await retrieveNbaGameRows('401766458', 'nba').catch((e) => e);
         expect(err).toBeInstanceOf(SDVRequestError);
         expect(err.status).toBe(504);
         await new Promise((r) => setTimeout(r, 20)); // Promise.all rejects on the first; let the other reads settle under this spy
@@ -209,7 +209,7 @@ describe('read timeouts (NBA only)', () => {
         const calls: number[] = [];
         abortedSignal(calls);
         const { retrieveNbaProcessedGame } = await import('../../src/resources/nbaGames');
-        await expect(retrieveNbaProcessedGame('401766458', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 504 });
+        await expect(retrieveNbaProcessedGame('401766458', 60, 'nba')).rejects.toMatchObject({ name: 'ProcessorError', status: 504 });
         expect(calls).toEqual([25000]);
     });
     test('an AbortError with no timeout set is not reported as a processor timeout (football sets none)', async () => {

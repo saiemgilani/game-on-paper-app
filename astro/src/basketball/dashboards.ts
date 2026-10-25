@@ -137,16 +137,28 @@ export function memberSeasonsOf(league: BasketballLeague, teamId: number, season
     return seasons.filter((s) => s === season || s > table.through || own.includes(s));
 }
 
+/**
+ * Was the team a D-I member that season (D43/D47: a conference row and at least one game), per the committed table? A
+ * season after the table, or a league without one, counts as a member: the page's own read decides it.
+ */
+export function isSeasonMember(league: BasketballLeague, teamId: number, season: number): boolean {
+    const table = BASKETBALL[league].memberSeasons;
+    return !table || season > table.through || !!table.seasons.get(teamId)?.includes(season);
+}
+
 /** One scatter filter choice: the reference conference's slug (the URL key, R2) and its short name. */
 export interface ConferenceOption { slug: string; label: string }
 
 /** R2: the scatter's conference key is the reference conference id without its league prefix ('mbb:sec' -> 'sec'). */
 export const conferenceSlug = (conferenceId: string): string => String(conferenceId).replace(/^[a-z]+:/, '');
 
-/** The season's conferences (those with a member row), A to Z by short name. */
-export function scatterConferenceOptions(teamRows: readonly TeamGroupRow[], groups: readonly GroupRow[]): ConferenceOption[] {
+/**
+ * The season's conferences with at least one member that season, A to Z by short name. A conference row alone is not
+ * enough: the 2021 Ivy League has rows but played no game (self-review on #342), and offering it drew an empty chart.
+ */
+export function scatterConferenceOptions(teamRows: readonly TeamGroupRow[], groups: readonly GroupRow[], season: number, league: BasketballLeague): ConferenceOption[] {
     const names = new Map(groups.map((g) => [String(g.group_id), String(g.short_name)]));
-    const ids = [...new Set(teamRows.map((r) => String(r.conference_id)))];
+    const ids = [...new Set(teamRows.filter((r) => /^\d+$/.test(String(r.team_id)) && isSeasonMember(league, Number(r.team_id), season)).map((r) => String(r.conference_id)))];
     return ids.map((id) => ({ slug: conferenceSlug(id), label: names.get(id) ?? conferenceSlug(id) })).sort((a, b) => a.label.localeCompare(b.label));
 }
 

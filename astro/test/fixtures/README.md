@@ -347,6 +347,12 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - `_api.json` is one object with a key per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`), read from a LOCAL sdv-db Data API over a local full-history warehouse loaded from the real `hoopR-nba-data` release parquet; `play_wp` and `game_*_rates` were built by the sdv-db `nba_game_pages` build (sdv-db PR #142, head 128093f) scoring with sdv-py PR #749. Its prior is the stored 6.0 line (`spread`, 0.6604). The schedule's `*_linescores` / `*_records` are Python-repr strings (single quotes, newline separators), not JSON.
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
+- `nba/game_401705127_processor.json`: New York at Philadelphia, 2025-01-15, Final/OT (five periods each side). The
+  live body of `GET /nba/401705127/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`,
+  `uv sync --frozen` venv) over ESPN's live summary; no edits. The game is the overtime final on
+  `nba/scoreboard-20250115.json`. **Used by:** `test/nba/byteIdentity.render.test.ts` (the `game-overtime` state,
+  self-review on #324), snapshotted on 7c8ac627 (pre-refactor source).
+  **To regenerate:** the same test-client call; never regenerate the snapshot on the refactor branch.
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
 - `nba/shots_2003_njn.json.gz`: New Jersey's 2003 regular-season shots (team 1610612751, `game_id` 002…), the six lite columns,
   from hoopR-nba-stats-data `nba_stats/shots/parquet/shots_2003.parquet` (commit `fe3e515f`), the
@@ -619,6 +625,12 @@ needs a new id and a new snapshot in its own PR.
     `test/wbb/game.render.test.ts` (401702870 among them).
   - **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`, the
     API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, ClaudeCowork `ledgers/2026-10-19-bball-wbb-games-gop/capture_wbb_games.py`).
+- `wbb/game_310950245_processor.json`: Notre Dame vs Texas A&M, 2011-04-05, the national final, two halves. The live body of
+  `GET /wbb/310950245/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`, `python/` venv
+  `uv sync --frozen` at the `uv.lock` sdv-py `b4229f1c`) over ESPN's live summary; no edits. The 2009-2012 legacy turnover shape:
+  each team box carries `turnovers` 0, `total_turnovers` 0 and its whole count under `team_turnovers` (Texas A&M 18, Notre Dame 16),
+  as sdv-py `mbb_team_ratings._turnovers` documents; the rates carry 18 and 16. **Used by:** `test/wbb/game.render.test.ts`
+  (self-review on #343). **To regenerate:** the same test-client call.
 - `wbb/espn_page_401805076.json` and `wbb/pregame_401920983.json`: ESPN cdn game pages
   (`https://cdn.espn.com/core/womens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` Safari UA),
   trimmed to `{ gameId, gamepackageJSON: { header } }`. 401805076 (captured 2026-10-19T07:44Z) is Task 3's OT final; 401920983 (Notre Dame vs Villanova,

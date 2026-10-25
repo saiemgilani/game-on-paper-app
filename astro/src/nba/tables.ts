@@ -85,7 +85,7 @@ export function rosterRows(rows: SeasonPlayerRow[], teamId: number): RosterRow[]
 }
 
 /** The season's teams as the rows name them, with that season's tricode and name, sorted by tricode (blazing's teamsFromShots). */
-export function teamsFromSeasonRows(rows: SeasonPlayerRow[], season: number, league: BasketballLeague = 'nba'): Team[] {
+export function teamsFromSeasonRows(rows: SeasonPlayerRow[], season: number, league: BasketballLeague): Team[] {
     const { inSeason } = BASKETBALL[league].teams;
     const seen = new Map<number, string>();
     // team_id 0 is a shot the source could not put on a team (WNBA 1997 and 2025 hold one each): it is not a team

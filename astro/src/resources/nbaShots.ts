@@ -99,16 +99,16 @@ export interface ShotApiRow {
     shot_result: 'Made' | 'Missed';
 }
 
-export function retrieveLeagueContextRows(season: number, league: BasketballLeague = 'nba'): Promise<LeagueContextRow[]> {
+export function retrieveLeagueContextRows(season: number, league: BasketballLeague): Promise<LeagueContextRow[]> {
     return read<LeagueContextRow>(league, 'shot_league_context', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
-export function retrieveSeasonPlayerRows(season: number, league: BasketballLeague = 'nba'): Promise<SeasonPlayerRow[]> {
+export function retrieveSeasonPlayerRows(season: number, league: BasketballLeague): Promise<SeasonPlayerRow[]> {
     return read<SeasonPlayerRow>(league, 'shot_season_players', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
 /** Regular season only (the league's game_id prefix, 002 for the NBA), the lite columns only. */
-export function retrievePlayerShots(season: number, personId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
+export function retrievePlayerShots(season: number, personId: number, league: BasketballLeague): Promise<ShotApiRow[]> {
     return read<ShotApiRow>(league, shotsTable(league), {
         season: String(season), person_id: String(personId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
@@ -116,19 +116,19 @@ export function retrievePlayerShots(season: number, personId: number, league: Ba
 }
 
 /** A team's regular-season shots, the lite columns only (the team page's dashboard and line). */
-export function retrieveTeamShots(season: number, teamId: number, league: BasketballLeague = 'nba'): Promise<ShotApiRow[]> {
+export function retrieveTeamShots(season: number, teamId: number, league: BasketballLeague): Promise<ShotApiRow[]> {
     return read<ShotApiRow>(league, shotsTable(league), {
         season: String(season), team_id: String(teamId), ...regularOnly(league),
         select: 'game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result', limit: LIMIT,
     }, SUBJECT_TTL, true);
 }
 
-export function retrievePlayerGameRows(season: number, personId: number, league: BasketballLeague = 'nba'): Promise<PlayerGameRow[]> {
+export function retrievePlayerGameRows(season: number, personId: number, league: BasketballLeague): Promise<PlayerGameRow[]> {
     return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), person_id: String(personId), limit: LIMIT }, SUBJECT_TTL, true);
 }
 
 /** Every player's game rows for the season (the NBA leaders page's input; ~25k rows, under the cap), or from `since` on (a college league's restricted read, D26). */
-export function retrieveSeasonPlayerGameRows(season: number, league: BasketballLeague = 'nba', since?: string): Promise<PlayerGameRow[]> {
+export function retrieveSeasonPlayerGameRows(season: number, league: BasketballLeague, since?: string): Promise<PlayerGameRow[]> {
     return read<PlayerGameRow>(league, 'shot_player_games', { season: String(season), ...(since ? { game_date__gte: since } : {}), limit: LIMIT }, SEASON_TTL, true);
 }
 
@@ -139,7 +139,7 @@ export async function retrieveLatestGameDate(season: number, league: BasketballL
 }
 
 /** Every season he took a regular-season shot in, ascending (the season picker). */
-export async function retrievePlayerSeasons(personId: number, league: BasketballLeague = 'nba'): Promise<number[]> {
+export async function retrievePlayerSeasons(personId: number, league: BasketballLeague): Promise<number[]> {
     const rows = await read<{ season: number }>(league, 'shot_season_players', { person_id: String(personId), select: 'season', limit: LIMIT }, SEASON_TTL, true);
     return [...new Set(rows.map((r) => Number(r.season)))].sort((a, b) => a - b);
 }

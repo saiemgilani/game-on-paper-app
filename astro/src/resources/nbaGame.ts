@@ -97,7 +97,7 @@ export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v =
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 
 /** The regulation an ingested game was played to: the schedule's format_regulation_periods, else the season rule. */
-export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague = 'nba'): Regulation {
+export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague): Regulation {
     return regulationFor(league, num(row?.season), row?.format_regulation_periods)
 }
 
@@ -125,6 +125,20 @@ export function parseRecord(raw: unknown): string | null {
     return block?.match(/summary['"]?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null
 }
 
+/**
+ * `turnovers` is the players' turnovers. The NBA/WNBA box already says so (total = players + team); a college box counts
+ * the team's inside `turnovers` (total = turnovers, e.g. 13 with 3 team: players 10), so the team box's "(player + team)"
+ * read 13 (13 + 3) (self-review on #343). Data-driven: an NBA box with team turnovers never has total == turnovers.
+ *
+ * ESPN's 2009-2012 WBB box files the team's whole count under team_turnovers with turnovers and total_turnovers both 0
+ * (sdv-py mbb_team_ratings._turnovers; the 2011 final: 0 / 18 / 0, rates 18). That is the total, with no player/team split.
+ */
+function turnoverSplit(turnovers: number | null, team: number | null, total: number | null): Pick<NbaTeamBox, 'turnovers' | 'team_turnovers' | 'total_turnovers'> {
+    if (turnovers === 0 && total === 0 && team != null && team > 0) return { turnovers: null, team_turnovers: null, total_turnovers: team }
+    const players = turnovers != null && team != null && team > 0 && total === turnovers ? turnovers - team : turnovers
+    return { turnovers: players, team_turnovers: team, total_turnovers: total }
+}
+
 function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
     if (!r) return null
     const n = (k: string) => num(r[k])
@@ -133,7 +147,7 @@ function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
         three_point_field_goals_made: n('three_point_field_goals_made'), three_point_field_goals_attempted: n('three_point_field_goals_attempted'),
         free_throws_made: n('free_throws_made'), free_throws_attempted: n('free_throws_attempted'), offensive_rebounds: n('offensive_rebounds'),
         defensive_rebounds: n('defensive_rebounds'), total_rebounds: n('total_rebounds'), assists: n('assists'), steals: n('steals'), blocks: n('blocks'),
-        turnovers: n('turnovers'), team_turnovers: n('team_turnovers'), total_turnovers: n('total_turnovers'), fouls: n('fouls'),
+        ...turnoverSplit(n('turnovers'), n('team_turnovers'), n('total_turnovers')), fouls: n('fouls'),
         fast_break_points: r.fast_break_points ?? null, points_in_paint: r.points_in_paint ?? null, largest_lead: r.largest_lead ?? null,
     }
 }
@@ -190,7 +204,7 @@ function blankUnrecorded(g: NbaGame): NbaGame {
     return g
 }
 
-export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague = 'nba'): NbaGame {
+export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague): NbaGame {
     const comp = j.header.competitions[0]
     const season = j.header?.season?.year ?? null
     const side = (ha: 'home' | 'away'): NbaSide => {
@@ -214,7 +228,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague =
     })
 }
 
-export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague = 'nba'): NbaGame {
+export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))
     const plays = [...rows.pbp].sort((a, b) => (num(a.game_play_number) ?? 0) - (num(b.game_play_number) ?? 0)).map((r) => play(r, wpByN.get(num(r.game_play_number))))
