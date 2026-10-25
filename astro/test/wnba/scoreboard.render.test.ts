@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
@@ -12,7 +14,7 @@ import { dayNav } from '../../src/nba/scoreboard';
 const events = (d: string) => JSON.parse(readFileSync(new URL(`../fixtures/wnba/scoreboard-${d}.json`, import.meta.url)).toString()).content.sbData.events;
 const day = (iso: string, d: string) => ({ day: iso, isLive: false, degraded: false, stale: false, nav: dayNav(iso), today: '2026-10-12', games: events(d) });
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = (q = '') => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wnba/scoreboard${q}`), locals: { preview: true, league: 'wnba' } as App.Locals });
 // The light src each card's <img> draws, in card order (away team first); and the dark rules, which only live inside the dark media query.
 const lightSrcs = (html: string) => [...html.matchAll(/<img class="[^"]*team-logo-\d+" [^>]*src="([^"]+)"/g)].map((m) => m[1].replaceAll('&amp;', '&'));

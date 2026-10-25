@@ -645,3 +645,47 @@ needs a new id and a new snapshot in its own PR.
   length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
   **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
   `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.
+
+
+
+
+
+## `player-splits-percentiles-cfb-2025.json`
+The body sdv-db's `GET /v1/cfb/players/splits/percentiles?season=2025` returns
+(sdv-db #170): the envelope `{league, season, min_plays, count, data}` and, per row,
+`{split, metric, players, breaks[101]}`.
+
+**Provenance (2026-10-18):** fetched from the live Data API
+(`https://data.sportsdataverse.org`) with the read key. Trimmed to three of the 24
+rows (`all/epa_per_play`, `all/success_rate`, `red_zone/epa_per_play`) and `count`
+set to 3; the rows themselves are untouched.
+
+**Used by:** `test/playerSplitPercentiles.test.ts` (the request and the
+split -> metric -> breaks mapping in `retrievePlayerSplitPercentiles`).
+
+## `player-splits-percentiles-cfb-2025-qb.json`
+The same route with a position group:
+`GET /v1/cfb/players/splits/percentiles?season=2025&position_group=QB&min_plays=10`.
+The envelope adds `position_group`; the rows are the same shape, over the QB
+roster group's player-seasons only (480 in `all`, 217 in `red_zone`).
+
+**Provenance (2026-10-18):** fetched from the live Data API
+(`https://data.sportsdataverse.org`) with the read key. Trimmed to three of the 24
+rows (`all/epa`, `all/epa_per_play`, `red_zone/epa`) and `count` set to 3; the rows
+themselves are untouched. (The TE group's response that day had 20 rows: no
+`red_zone`, under the route's 30 player-season minimum, which is the per-split
+fallback `loadSplitBreaks` handles.)
+
+**Used by:** `test/playerSplitPercentiles.test.ts` (the `position_group` request
+and its mapping).
+
+## `standings-cfb-8-2026.json.gz`, `standings-cfb-37-2026.json.gz`, `standings-nfl-8-2026.json.gz`
+Real ESPN CFB standings bodies, `site.api.espn.com/apis/v2/sports/football/college-football/standings?group=<id>`,
+for the SEC (8: 16 entries on the group itself) and the Sun Belt (37: no entries on the group; its 7+7 teams sit on
+the `children` East 167 / West 168), plus the NFL AFC (`.../nfl/standings?group=8`: no entries, four division
+children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No edits.
+
+**Used by:** `test/standings.test.ts` (`loadStandings`, issue #334).
+
+**To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
+change will need the assertion updated too.
