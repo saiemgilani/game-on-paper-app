@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
@@ -10,7 +12,7 @@ import Page from '../../src/pages/mbb/scoreboard.astro';
 
 const events = (n: string) => JSON.parse(readFileSync(new URL(`../fixtures/mbb/scoreboard-${n}.json`, import.meta.url)).toString()).content.sbData.events;
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const render = (q: string, iso: string, n: string) => {
     prep.mockResolvedValueOnce({ day: iso, isLive: false, degraded: false, stale: false, nav: dayNav(iso), today: '2026-10-12', games: events(n), group: 'all', groupLabel: 'Division I' });
     return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/mbb/scoreboard${q}`), locals: { preview: true, league: 'mbb' } as App.Locals });
