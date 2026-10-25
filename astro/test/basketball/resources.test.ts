@@ -19,14 +19,14 @@ describe('resources read from the league config (NBA values unchanged)', () => {
         await retrieveNbaSchedule('401766458', 'nba');
         expect(calls.from.at(-1)![0]).toBe(BASKETBALL.nba.gamesSource);
         await retrieveNbaProcessedGame('401766458', 30, 'nba');
-        await retrieveNbaProcessedGame('401766458', 30);
+        await retrieveNbaProcessedGame('401766458', 30, 'nba');
         expect(calls.proc.map((c) => c[0])).toEqual(['nba/401766458/process', 'nba/401766458/process']);
         await expect(retrieveNbaSchedule('12', 'nba')).rejects.toThrow('invalid NBA game id: "12"');
     });
     test("shots: league 'nba', the '002%' filter, the same query key order as before", async () => {
         const s = await import('../../src/resources/nbaShots');
         await s.retrievePlayerShots(2026, 1629008, 'nba');
-        await s.retrieveTeamShots(2026, 1610612751);
+        await s.retrieveTeamShots(2026, 1610612751, 'nba');
         await s.retrieveSeasonPlayerRows(2026, 'nba');
         const [player, team, season] = calls.rows.slice(-3);
         expect(player[0]).toBe('nba');

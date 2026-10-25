@@ -2,10 +2,17 @@ import { describe, expect, test } from 'vitest';
 import { gameHref, playerHref, scoreboardDayHref, teamHref, teamHrefFromEspn } from '../../src/nba/links';
 import { darkLogoCss, parseDateParam, scoreboardBackHref } from '../../src/nba/scoreboard';
 import { BASKETBALL } from '../../src/basketball/config';
+import { basketballPath } from '../../src/nba/hrefs';
+import { BASKETBALL_LEAGUES, leaguePath } from '../../src/utils/league';
 
 describe('league-aware links (NBA values unchanged)', () => {
+    test('the island-safe basketballPath is leaguePath for every basketball league', () => {
+        for (const lg of BASKETBALL_LEAGUES) for (const p of ['/', '/players/1', '/team/2?season=2025', '/game/3', '/scoreboard']) {
+            expect(basketballPath(lg, p), `${lg} ${p}`).toBe(leaguePath(lg, p));
+        }
+    });
     test('hrefs', () => {
-        expect(playerHref(1629008, '?season=2025')).toBe('/nba/players/1629008?season=2025');
+        expect(playerHref(1629008, '?season=2025', 'nba')).toBe('/nba/players/1629008?season=2025');
         expect(playerHref(1629008, '', 'nba')).toBe('/nba/players/1629008');
         expect(teamHref(1610612751, '', 'nba')).toBe('/nba/team/1610612751');
         expect(teamHrefFromEspn({ id: '17' }, 'nba')).toBe('/nba/team/1610612751');
@@ -20,14 +27,14 @@ describe('league-aware links (NBA values unchanged)', () => {
     });
     test('the ?date= floor comes from the config', () => {
         expect(parseDateParam('1997-09-30', '2026-10-12', BASKETBALL.nba.firstScoreboardDay)).toEqual({ ok: false, reason: 'range' });
-        expect(parseDateParam('1997-10-01', '2026-10-12')).toEqual({ ok: true, date: '1997-10-01' });
+        expect(parseDateParam('1997-10-01', '2026-10-12', BASKETBALL.nba.firstScoreboardDay)).toEqual({ ok: true, date: '1997-10-01' });
         expect(parseDateParam('2025-01-15', '2026-10-12', '2025-01-16')).toEqual({ ok: false, reason: 'range' });
     });
-    test('dark logos: the NBA abbr list by default, id paths and none for other strategies', () => {
+    test('dark logos: the NBA abbr list, id paths and none for other strategies', () => {
         const teams = [{ id: '17', abbreviation: 'BKN' }, { id: '1', abbreviation: 'ZZZ' }];
-        expect(darkLogoCss(teams)).toBe(darkLogoCss(teams, BASKETBALL.nba.darkLogo));
-        expect(darkLogoCss(teams)).toContain('/i/teamlogos/nba/500-dark/bkn.png');
-        expect(darkLogoCss(teams)).not.toContain('team-logo-1{');
+        const nba = darkLogoCss(teams, BASKETBALL.nba.darkLogo);
+        expect(nba).toContain('/i/teamlogos/nba/500-dark/bkn.png');
+        expect(nba).not.toContain('team-logo-1{');
         expect(darkLogoCss(teams, { kind: 'id', logoLeague: 'ncaa' })).toContain('/i/teamlogos/ncaa/500-dark/1.png');
         expect(darkLogoCss(teams, { kind: 'none' })).toBe('');
     });

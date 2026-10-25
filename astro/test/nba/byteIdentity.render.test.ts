@@ -20,6 +20,7 @@ const PID = Number(Object.keys(byPlayer)[0]); // 1629008, a Net in seasonPlayerR
 const proc = read('game_401766458_processor');
 const api = read('game_401766458_api');
 const board = read('scoreboard-20250115');
+const otProc = read('game_401705127_processor'); // NY at PHI 2025-01-15, Final/OT (self-review on #324: no OT state was gated)
 
 const contextRows = () => [
     ...oracle.hexes.map((h: any) => ({ season: 2026, kind: 'hex', key1: h.i, key2: h.j, attempts: h.attempts, makes: h.makes, fg3a: 0, fg3m: 0 })),
@@ -99,6 +100,24 @@ describe('PR 0 byte-identity: every /nba route state', () => {
             ? { day: '2026-10-12', events: [], degraded: false }
             : { day: '2025-01-15', events: board.content.sbData.events, degraded: false }));
         await expect(await page('scoreboard.astro', '/nba/scoreboard?date=2025-01-15')).toMatchFileSnapshot(snap('scoreboard'));
+    });
+    // Self-review on #324: the states below were captured the same way, on 7c8ac627 (pre-refactor source), on 2026-10-25.
+    test('scoreboard: tonight (no ?date=, a fresh live read)', async () => {
+        espn.day.mockResolvedValue({ day: '2025-01-15', events: board.content.sbData.events, degraded: false });
+        await expect(await page('scoreboard.astro', '/nba/scoreboard')).toMatchFileSnapshot(snap('scoreboard-live'));
+    });
+    test('scoreboard: no ?date= and a degraded read (no trustworthy day)', async () => {
+        espn.day.mockResolvedValue({ day: '2026-10-12', events: [], degraded: true });
+        await expect(await page('scoreboard.astro', '/nba/scoreboard')).toMatchFileSnapshot(snap('scoreboard-degraded'));
+    });
+    test('scoreboard: a date before the first NBA day', async () => {
+        await expect(await page('scoreboard.astro', '/nba/scoreboard?date=1990-01-01')).toMatchFileSnapshot(snap('scoreboard-bad-date'));
+    });
+    test('game: an overtime final, from the processor', async () => {
+        games.schedule.mockResolvedValueOnce(null);
+        espn.page.mockResolvedValueOnce({ page: { gameId: 401705127, gamepackageJSON: { header: otProc.header } }, regressed: false, fetchFailed: false });
+        games.proc.mockResolvedValueOnce(otProc);
+        await expect(await page('game/[id].astro', '/nba/game/401705127', { id: '401705127' })).toMatchFileSnapshot(snap('game-overtime'));
     });
     test('game: a final the Data API has not ingested, from the processor', async () => {
         games.schedule.mockResolvedValueOnce(null);

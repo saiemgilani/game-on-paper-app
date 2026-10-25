@@ -347,6 +347,12 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - `_api.json` is one object with a key per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`), read from a LOCAL sdv-db Data API over a local full-history warehouse loaded from the real `hoopR-nba-data` release parquet; `play_wp` and `game_*_rates` were built by the sdv-db `nba_game_pages` build (sdv-db PR #142, head 128093f) scoring with sdv-py PR #749. Its prior is the stored 6.0 line (`spread`, 0.6604). The schedule's `*_linescores` / `*_records` are Python-repr strings (single quotes, newline separators), not JSON.
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
+- `nba/game_401705127_processor.json`: New York at Philadelphia, 2025-01-15, Final/OT (five periods each side). The
+  live body of `GET /nba/401705127/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`,
+  `uv sync --frozen` venv) over ESPN's live summary; no edits. The game is the overtime final on
+  `nba/scoreboard-20250115.json`. **Used by:** `test/nba/byteIdentity.render.test.ts` (the `game-overtime` state,
+  self-review on #324), snapshotted on 7c8ac627 (pre-refactor source).
+  **To regenerate:** the same test-client call; never regenerate the snapshot on the refactor branch.
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
 - `nba/shots_2003_njn.json.gz`: New Jersey's 2003 regular-season shots (team 1610612751, `game_id` 002…), the six lite columns,
   from hoopR-nba-stats-data `nba_stats/shots/parquet/shots_2003.parquet` (commit `fe3e515f`), the
