@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
-import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES } from "../utils/constants";
+import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES } from "../utils/constants";
 import type { ESPNGameHeader } from "./espn";
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
@@ -643,7 +643,12 @@ export class SDVRequestError extends Error {
  * `version`, the ingest stamp the page will show, and any read that cannot confirm its rows
  * belong to that stamp clears `held`, so the render drops its stamp (the rows still render).
  */
-export interface SdvPin { version: string; held: boolean }
+export interface SdvPin {
+    version: string; held: boolean;
+    /** The /v1/meta table `version` is the stamp of, when it is not the endpoint itself (a sub-route such as
+     *  `team_summaries/percentiles` has no meta entry; it moves with `team_summaries`). */
+    table?: string;
+}
 export const sdvPin = (version: string | undefined): SdvPin | undefined => version ? { version, held: true } : undefined;
 
 // `pin` replaces the meta lookup for a stamped render; without it, meta is asked here.
@@ -699,7 +704,7 @@ async function requestSDV(endpoint: string, query?: URLSearchParams, body?: URLS
         // rows from an ingest newer than its stamp. It holds only if a fresh meta read still
         // shows that stamp; otherwise the rows serve this render, are never stored under the
         // stamp, and the render drops its stamp.
-        if (pin && !(cacheable && (await fetchSDVDatasets(true))?.[`${source.schema}.${endpoint}`] === pin.version)) {
+        if (pin && !(cacheable && (await fetchSDVDatasets(true))?.[`${source.schema}.${pin.table ?? endpoint}`] === pin.version)) {
             pin.held = false;
             console.warn(`SDV pinned read could not confirm its stamp, not cached: ${endpointURL}`)
         } else if (cacheable) {
@@ -821,6 +826,58 @@ export async function retrievePercentiles(season?: number, percentile?: number, 
     // build): rank against the nearest earlier season that has one
     console.warn(`no percentiles for ${league} in ${season}, checking ${season - 1}`);
     return await retrievePercentiles(season - 1, percentile, maxLookback, league, pin);
+}
+
+/** The team-SEASON distribution of one metric in one season ('team-season-bands'): `values` are its
+ *  TEAM_SEASON_PCTILES quantiles over every team's season. `metric` is the team_summaries column name, so it needs
+ *  no key translation. One row per (season, metric) rather than one per point keeps the island's props under
+ *  today's team-game ladder (~600 rows for cfb instead of ~3,000). */
+export interface SDVTeamSeasonBand {
+    season: number
+    metric: string
+    values: number[]
+}
+
+// the trend chart's dropdown metrics -- the 26 the route serves
+const TEAM_SEASON_METRICS = new Set(['differential', 'offensive', 'defensive'].flatMap(c => Object.keys(SDV_TEAM_METRIC_CATEGORIES[c])));
+
+/** The route's rows -> their five ladder points, dropping any row whose shape is off (a metric the chart does not
+ *  know, or breaks that are not 101 finite, non-decreasing numbers). */
+export function teamSeasonBands(rows: unknown): SDVTeamSeasonBand[] {
+    if (!Array.isArray(rows)) return [];
+    const out: SDVTeamSeasonBand[] = [];
+    let dropped = 0;
+    for (const row of rows) {
+        const breaks = row?.breaks;
+        const ok = Number.isInteger(row?.season) && TEAM_SEASON_METRICS.has(row?.metric) && Array.isArray(breaks) && breaks.length === 101
+            && breaks.every((b: unknown, i: number) => typeof b === 'number' && Number.isFinite(b) && (i === 0 || b >= breaks[i - 1]));
+        if (!ok) { dropped++; continue; }
+        // 4 decimals is far below a pixel on any of these axes, and halves the bytes
+        out.push({ season: row.season, metric: row.metric, values: TEAM_SEASON_PCTILES.map(p => Math.round(breaks[Math.round(p * 100)] * 1e4) / 1e4) });
+    }
+    if (dropped) console.warn(`team season percentiles: dropped ${dropped} malformed row(s)`);
+    return out;
+}
+
+/**
+ * The team-season distribution of every trend-chart metric, every season (sdv-db `team_summaries/percentiles`),
+ * flattened to the five ladder points so only those reach the client. One read per league (~1.2 MB cfb), keyed by
+ * team_summaries' ingest stamp so it moves when that table re-ingests. A 404 (no season with enough teams), a
+ * failed read or a throw (no token, KV down) is no bands: `[]`.
+ */
+export async function retrieveTeamSeasonPercentiles(league: League = 'cfb', pin?: SdvPin): Promise<SDVTeamSeasonBand[]> {
+    if (!LEAGUES[league].sdvEnabled) return [];
+    try {
+        // a caller showing the stamp passes its own pin (National Trends); `table`: the sub-route moves with team_summaries
+        if (!pin) pin = sdvPin(await sdvIngestStamp(league, 'team_summaries'));
+        if (pin) pin.table = 'team_summaries';
+        // requestSDV throws before its own catch on a missing token or a failed KV read: no bands, like the ladder reads
+        const content = await requestSDV('team_summaries/percentiles', undefined, undefined, 60 * 60 * 24 * 7, true, leagueSource(league), false, undefined, pin);
+        return teamSeasonBands(content?.data);
+    } catch (err) {
+        console.error(`could not load team season percentiles for ${league}: ${err}`);
+        return [];
+    }
 }
 
 /**

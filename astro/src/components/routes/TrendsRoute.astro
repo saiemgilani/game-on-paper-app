@@ -5,10 +5,11 @@ import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import FreshnessStamp from '../../components/FreshnessStamp.astro';
 import GenericPage from '../../layouts/GenericPage.astro';
 import type { PageBreadcrumb } from '../../layouts/GenericPage.astro';
-import { retrievePercentiles, sdvIngestStamp, sdvPin, type SdvPin, type SDVSeasonPercentile } from '../../resources/sdv';
+import { retrievePercentiles, retrieveTeamSeasonPercentiles, sdvIngestStamp, sdvPin, type SdvPin, type SDVSeasonPercentile } from '../../resources/sdv';
+import { isFeatureEnabled } from '../../utils/features';
 import { freshnessStamp } from '../../utils/freshness';
 import { leaguePath, type League } from '../../utils/league';
-import { yearRange } from '../../utils/misc';
+import { nationalSeasonBandMetric, nationalTrendsTitle, teamSeasonBandsFor, yearRange } from '../../utils/misc';
 
 // Route component: the page (per league) sets the league; this reads and renders.
 interface Props { league: League }
@@ -25,24 +26,30 @@ async function readAll(pin?: SdvPin) {
     }
     return rows;
 }
-let pin = sdvPin(await sdvIngestStamp(league, 'percentiles'));
-let allPctls = await readAll(pin);
-// ponytail: one re-read. A second ingest inside the same render (vanishingly rare) renders
-// the re-read with no stamp, and its rows may mix versions; loop here if that ever shows up.
-if (pin && !pin.held) {
-    pin = sdvPin(await sdvIngestStamp(league, 'percentiles', true));
-    allPctls = await readAll(pin);
+// 'team-season-bands': a metric team_summaries carries draws its boxes from the team-SEASON distribution
+// (the team profile's one read). A ladder-only metric, or no bands (a 404, a failed read), keeps the game ladder.
+const bandMetric = isFeatureEnabled('team-season-bands', Astro.locals) ? nationalSeasonBandMetric(metric) : undefined;
+let pin = bandMetric ? sdvPin(await sdvIngestStamp(league, 'team_summaries')) : undefined;
+let selectedPercentiles = bandMetric ? teamSeasonBandsFor(await retrieveTeamSeasonPercentiles(league, pin), bandMetric) : [];
+if (!selectedPercentiles.length) {
+    pin = sdvPin(await sdvIngestStamp(league, 'percentiles'));
+    let allPctls = await readAll(pin);
+    // ponytail: one re-read. A second ingest inside the same render (vanishingly rare) renders
+    // the re-read with no stamp, and its rows may mix versions; loop here if that ever shows up.
+    if (pin && !pin.held) {
+        pin = sdvPin(await sdvIngestStamp(league, 'percentiles', true));
+        allPctls = await readAll(pin);
+    }
+    selectedPercentiles = allPctls.map((p: any) => {
+        return {
+            season: p["season"] || 2025,
+            pctile: p["pctile"],
+            value: p[metric]
+        }
+    })
 }
 
 const stamp = pin?.held ? freshnessStamp(pin.version) : null;
-
-const selectedPercentiles = allPctls.map((p: any) => {
-    return {
-        season: p["season"] || 2025,
-        pctile: p["pctile"],
-        value: p[metric]
-    }
-})
 
 
 const breadcrumbs: PageBreadcrumb[] = [
@@ -77,7 +84,7 @@ const title = `National Trends | ${range} | Game on Paper`;
             </div>
         </div>
     </div>
-    <TrendsChart client:only {...(stamp ? { freshness: stamp.iso } : {})} title="National Trends" teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
+    <TrendsChart client:only {...(stamp ? { freshness: stamp.iso } : {})} title="National Trends" metricTitle={nationalTrendsTitle(metric)} invertY={false} teamColor={null} teamData={[]} category={"offensive"} metric={metric} percentiles={selectedPercentiles}>
         <FallbackSpinner slot="fallback" />
     </TrendsChart>
 </GenericPage>
