@@ -2,11 +2,12 @@
     import TeamTrendsMetricDropdown from '../dropdowns/TeamTrendsMetricDropdown.svelte';
     import TrendsChart from './TrendsChart.svelte';
     import { type ValuePercentile } from '../../resources/chart';
-    import { getPercentileKey } from '../../utils/misc';
+    import { getPercentileKey, teamSeasonBandsFor } from '../../utils/misc';
     import { EVENT_KEY_TRENDS_METRIC_CHANGED } from '../../utils/constants';
     import { leagueFromLocation } from '../../utils/league';
 
-    const { title, teamColor, teamData, percentiles } = $props();
+    // seasonBands ('team-season-bands'): `percentiles` are team-season ladder points keyed by metric
+    const { title, teamColor, teamData, percentiles, seasonBands = false } = $props();
     let selectedCategory = $state("offensive")
     let selectedMetric = $state("EPAplay_off")
     let selectedPercentiles: ValuePercentile[] = $state([])
@@ -15,7 +16,9 @@
         selectedCategory = category;
         selectedMetric = metric;
 
-        if (selectedCategory != "differential") {
+        if (seasonBands) {
+            selectedPercentiles = teamSeasonBandsFor(percentiles, selectedMetric)
+        } else if (selectedCategory != "differential") {
             const pctlKey = getPercentileKey(selectedMetric)
             selectedPercentiles = percentiles.map((p: any) => {
                 return {

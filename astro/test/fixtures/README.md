@@ -558,6 +558,41 @@ needs a new id and a new snapshot in its own PR.
 
 
 
+## `team-season-percentiles-cfb.json`
+The Data API's `GET https://data.sportsdataverse.org/v1/cfb/team_summaries/percentiles`
+body (no `season`: every season, oldest first), trimmed: of the 598 rows (23
+seasons x 26 metrics) it keeps the 12 for seasons 2023-2025 and metrics
+`EPAplay_off`, `EPAplay_margin`, `success_off_pass` and `havoc_def`, and `count`
+is set to 12 to match. Each row is untouched: `{season, metric, teams, breaks[101]}`.
+
+**Provenance (2026-10-18):** captured from the live API with the read key, the
+day sdv-db #171 deployed the route. 2024 `EPAplay_off`: 134 teams, breaks[1|25|50|75|99]
+= -0.172 / -0.023 / 0.035 / 0.096 / 0.218.
+
+**Used by:** `test/teamSeasonBands.test.ts` (the flatten/validate mapping, the
+404 case, the profile route with the `team-season-bands` flag on and off) and
+`test/teamTrendBands.test.ts` (the metric filter).
+
+**To regenerate:** repeat the request and apply the same trim.
+
+## `team-season-percentiles-nfl.json`
+The Data API's `GET https://data.sportsdataverse.org/v1/nfl/team_summaries/percentiles`
+body (no `season`), trimmed: of the 728 rows (28 seasons, 1999-2026, x 26 metrics)
+it keeps the 9 for seasons 2023-2025 and metrics `EPAplay_off`, `success_off_pass`
+and `EPAplay_off_rush`, and `count` is set to 9 to match. Each row is untouched.
+
+**Provenance (2026-10-18):** captured from the live API with the read key
+(`SDV_DATA_READ_KEY`, bearer). 2024 `EPAplay_off`: 32 teams, breaks[1|25|50|75|99]
+= -0.1764 / -0.0533 / -0.0036 / 0.0686 / 0.2041; 2024 `success_off_pass`
+= 0.3873 / 0.429 / 0.4672 / 0.4947 / 0.5427.
+
+**Used by:** `test/nationalTrendsBands.test.ts` (National Trends under
+`team-season-bands`: EPA/Play and Pass SR% draw these points, a ladder-only metric
+and a 404 keep the game ladder, the flag off is unchanged).
+
+**To regenerate:** repeat the request and apply the same trim; the test asserts
+the 2024 points above.
+
 ## `player-splits-percentiles-cfb-2025.json`
 The body sdv-db's `GET /v1/cfb/players/splits/percentiles?season=2025` returns
 (sdv-db #170): the envelope `{league, season, min_plays, count, data}` and, per row,

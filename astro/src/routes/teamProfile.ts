@@ -5,15 +5,19 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
-import { retrievePercentiles, retrieveTeamSummaries, type SDVSeasonPercentile, type SDVTeamSummary } from '../resources/sdv';
+import { retrievePercentiles, retrieveTeamSeasonPercentiles, retrieveTeamSummaries, type SDVSeasonPercentile, type SDVTeamSeasonBand, type SDVTeamSummary } from '../resources/sdv';
+import { isFeatureEnabled } from '../utils/features';
 import type { League } from '../utils/league';
 
 export interface TeamProfileData {
     league: League;
     id: string;
     team: ESPNTeam;
-    percentiles: SDVSeasonPercentile[];
+    /** the team-game ladder rows; with `seasonBands`, the team-season ladder points instead */
+    percentiles: SDVSeasonPercentile[] | SDVTeamSeasonBand[];
     teamSummaries: SDVTeamSummary[];
+    /** 'team-season-bands' */
+    seasonBands: boolean;
 }
 
 export type TeamProfileResult = { notFound: true } | TeamProfileData;
@@ -37,10 +41,17 @@ export async function loadTeamProfile(Astro: AstroGlobal, league: League): Promi
         Astro.cache.set(false);
         return { notFound: true };
     }
-    let percentiles: SDVSeasonPercentile[] = [];
-    for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
-        percentiles = percentiles.concat(await retrievePercentiles(undefined, p, undefined, league));
+    const seasonBands = isFeatureEnabled('team-season-bands', Astro.locals);
+    let percentiles: SDVSeasonPercentile[] | SDVTeamSeasonBand[] = [];
+    if (seasonBands) {
+        percentiles = await retrieveTeamSeasonPercentiles(league);
+    } else {
+        let ladder: SDVSeasonPercentile[] = [];
+        for (const p of [0.01, 0.25, 0.5, 0.75, 0.99]) {
+            ladder = ladder.concat(await retrievePercentiles(undefined, p, undefined, league));
+        }
+        percentiles = ladder;
     }
     const teamSummaries = await retrieveTeamSummaries({ team_id: Number(id), league });
-    return { league, id, team, percentiles, teamSummaries };
+    return { league, id, team, percentiles, teamSummaries, seasonBands };
 }

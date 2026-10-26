@@ -825,6 +825,10 @@ export const SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS = [
     "net_adj_epa_rank",
 ]
 
+// 'team-season-bands': the five team-season quantiles the team trend chart's box draws (min, q1, median, q3, max);
+// each is breaks[100 * p] of sdv-db's team_summaries/percentiles row
+export const TEAM_SEASON_PCTILES = [0.01, 0.25, 0.5, 0.75, 0.99];
+
 export const SDV_TEAM_METRIC_CATEGORIES: Record<string, Record<string, string>> = {
     // NFL-only categories (rbsdm.com parity) -- columns the nfl-data producer
     // adds to team_summaries; the college grid never has them (utils/league.ts
@@ -1063,6 +1067,9 @@ export const SDV_PLAYER_PERCENT_COLUMNS: string[] = [
 ];
 
 export const SDV_TEAM_PERCENT_COLUMNS: string[] = [
+    // National Trends' game-ladder keys for the split rates (Akshay on #329: shown as 0.45, not 45%); the other ladder
+    // rate keys (success, havoc, explosive, ...) were already here. No team_summaries column has these names.
+    "pass_success", "rush_success", "pass_explosive", "rush_explosive",
     "pass_rate_off", "xpass_rate_off", "neutral_pass_rate_off", "neutral_xpass_rate_off",
     "fourth_go_rate_off", "fourth_go_expected_off", "fourth_go_over_expected_off", "fourth_go_when_recommended_off",
     "luck_fumble_rec_pct_off", "luck_fumble_rec_pct_def", "luck_opp_fg_pct_def",
@@ -1248,3 +1255,36 @@ export const NFL_POST_LABELS: string[] = ['Wild Card', 'Divisional', 'Conference
 
 export const SESSION_FAVORITES_DEFAULT = { teams: [], games: [] };
 export const EVENT_KEY_TRENDS_METRIC_CHANGED = 'TrendsMetricChanged';
+
+/**
+ * National Trends' metrics: the dropdown's groups and short labels, and each chart and y-axis title. The keys are the
+ * game-ladder sort keys, not team_summaries columns, so generateTeamMetricTitle cannot name them: it printed
+ * "yardsdropback" and read Pass Expl % as "Explosive %" (Akshay's QA notes on #329). One list feeds both, so they agree.
+ */
+export const NATIONAL_TRENDS_METRICS: { group: 'Passing' | 'Rushing' | 'Other' | null; key: string; label: string; title: string }[] = [
+    { group: null, key: 'EPAplay', label: 'EPA/Play', title: 'EPA/Play' },
+    { group: null, key: 'yardsplay', label: 'Yards/Play', title: 'Yards/Play' },
+    { group: null, key: 'success', label: 'SR%', title: 'Success %' },
+    { group: 'Passing', key: 'dropbacks', label: 'Dropbacks', title: 'Dropbacks' },
+    { group: 'Passing', key: 'EPAdropback', label: 'EPA/DB', title: 'EPA/Dropback' },
+    { group: 'Passing', key: 'yardsdropback', label: 'Yards/DB', title: 'Yards/Dropback' },
+    { group: 'Passing', key: 'pass_success', label: 'Pass SR%', title: 'Pass Success %' },
+    { group: 'Passing', key: 'pass_explosive', label: 'Pass Expl %', title: 'Pass Explosive %' },
+    { group: 'Rushing', key: 'rushes', label: 'Rush Attempts', title: 'Rush Attempts' },
+    { group: 'Rushing', key: 'EPArush', label: 'EPA/Rush', title: 'EPA/Rush' },
+    { group: 'Rushing', key: 'yardsrush', label: 'Yards/Rush', title: 'Yards/Rush' },
+    { group: 'Rushing', key: 'rush_success', label: 'Rush SR%', title: 'Rush Success %' },
+    { group: 'Rushing', key: 'rush_explosive', label: 'Rush Expl %', title: 'Rush Explosive %' },
+    { group: 'Rushing', key: 'opportunity_run', label: 'Opportunity %', title: 'Rush Opportunity %' },
+    { group: 'Rushing', key: 'lineyards', label: 'Line Yards', title: 'Line Yards/Rush' },
+    { group: 'Rushing', key: 'play_stuffed', label: 'Stuffed %', title: 'Stuffed %' },
+    { group: 'Other', key: 'havoc', label: 'Havoc %', title: 'Havoc %' },
+    { group: 'Other', key: 'explosive', label: 'Explosive %', title: 'Explosive %' },
+    { group: 'Other', key: 'nonExplosiveEpaPerPlay', label: 'Non-Expl EPA/Play', title: 'Non-Expl EPA/Play' },
+    { group: 'Other', key: 'early_down_EPA', label: 'Early Downs EPA/Play', title: 'Early Down EPA/Play' },
+    { group: 'Other', key: 'early_down_success', label: 'Early Downs SR%', title: 'Early Down SR%' },
+    { group: 'Other', key: 'late_down_success', label: 'Late Downs SR%', title: 'Late Down SR%' },
+    { group: 'Other', key: 'third_down_distance', label: 'Avg Distance (3rd)', title: 'Avg Distance (3rd)' },
+    { group: 'Other', key: 'red_zone_success', label: 'Red Zone SR%', title: 'Red Zone SR%' },
+    { group: 'Other', key: 'GEI', label: 'Game Excitement Index (GEI)', title: 'Game Excitement Index (GEI)' },
+];
