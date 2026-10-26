@@ -11,17 +11,23 @@ describe('buildPlayIndex', () => {
     const ix = buildPlayIndex(plays);
 
     test('finds every player the play text attributes something to', () => {
-        // 30 in this game -- the exact count of distinct ids across all 14 role columns.
-        // It is not larger because 2024 text names almost no defenders: one sack, no
-        // breakups, no forced fumbles. A 2025 game indexes far more.
+        // 29 in this game -- the exact count of distinct ids across all 14 role columns,
+        // less ESPN's "TEAM" pseudo-athlete (one team rush, id -5136). It is not larger
+        // because 2024 text names almost no defenders: one sack, no breakups, no forced
+        // fumbles. A 2025 game indexes far more.
         const ids = new Set<string>();
         for (const f of ['passer_player_id', 'rusher_player_id', 'receiver_player_id', 'sack_player_id',
             'interception_player_id', 'pass_breakup_player_id', 'fumble_forced_player_id',
             'fumble_recovered_player_id', 'fumble_player_id', 'punter_player_id', 'fg_kicker_player_id',
             'kickoff_player_id', 'kickoff_return_player_id', 'punt_return_player_id']) {
-            for (const p of plays) if (p[f] !== null && p[f] !== undefined && p[f] !== '') ids.add(String(p[f]));
+            for (const p of plays) {
+                if (p[f] === null || p[f] === undefined || p[f] === '') continue;
+                if (String(p[f.replace('_id', '_name')]).toUpperCase() !== 'TEAM') ids.add(String(p[f]));
+            }
         }
+        expect(ids.size).toBe(29);
         expect(ix.players.length).toBe(ids.size);
+        expect(ix.players.some((p) => p.name.toUpperCase() === 'TEAM')).toBe(false);
         expect(ix.players[0].total).toBeGreaterThan(ix.players[ix.players.length - 1].total);
     });
 
@@ -104,5 +110,42 @@ describe.each(['game-401729745.json.gz', 'game-401752696.json.gz'])('player team
     test('field goals count attempts only, not the kickoffs the kicker column also carries', () => {
         const fg = ix.players.reduce((n, p) => n + (p.roles.fg ?? 0), 0);
         expect(fg).toBe(g.plays.filter((p: any) => p.fg_attempt === true && p.fg_kicker_player_id).length);
+    });
+
+    test('the grouping does not depend on play order', () => {
+        const back = buildPlayIndex([...g.plays].reverse());
+        const team = (x: typeof ix) => Object.fromEntries(x.players.map((p) => [p.id, p.teamId]));
+        expect(team(back)).toEqual(team(ix));
+    });
+});
+
+// Shapes taken from the 222-game audit (2004-2026): the rows that misfiled a player
+// before a player got one side per play and the fumble roles ranked last.
+describe('fumble roles defer to the player’s other roles', () => {
+    const base = { pos_team: 1, def_pos_team: 2 };
+
+    test('a punt returner who fumbles stays on the return side', () => {
+        // 2022 401405139: two muffed returns, each one pret + one fumble on the same play
+        const muff = (n: number) => ({
+            ...base, game_play_number: n, kicking_team: 1, kick_return_team: 2, punter_player_id: 7, punter_player_name: 'P',
+            punt_return_player_id: 9, punt_return_player_name: 'R', fumble_player_id: 9, fumble_player_name: 'R',
+        });
+        const r = buildPlayIndex([muff(1), muff(2)]).players.find((p) => p.id === '9')!;
+        expect(r.teamId).toBe('2');
+        expect(r.roles).toEqual({ pret: 2, fumble: 2 });
+    });
+
+    test('a blocked punt’s recovery, which carries no fumble_recovery_team, goes to the return side', () => {
+        // 2022 401415272: the blocker recovers; fumble_lost is false and pos_team is the punting team
+        const block = { ...base, game_play_number: 1, kicking_team: 1, kick_return_team: 2, fumble_lost: false,
+            fumble_recovered_player_id: 5, fumble_recovered_player_name: 'B' };
+        expect(buildPlayIndex([block]).players[0].teamId).toBe('2');
+    });
+
+    test('a firm role outvotes a recovery the processor put on the wrong side', () => {
+        // 2006 262730057: an interception for team 2, then a recovery the processor gave to team 1
+        const int = { ...base, game_play_number: 1, interception_player_id: 4, interception_player_name: 'D' };
+        const rec = { ...base, game_play_number: 2, fumble_recovery_team: 1, fumble_recovered_player_id: 4, fumble_recovered_player_name: 'D' };
+        for (const order of [[int, rec], [rec, int]]) expect(buildPlayIndex(order).players[0].teamId).toBe('2');
     });
 });

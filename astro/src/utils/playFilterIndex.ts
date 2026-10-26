@@ -38,19 +38,25 @@ const ROLE_FIELDS: Record<Role, [string, string]> = {
  * pos_team is the RECEIVING team, a punt's the kicking team, and a fumble can be
  * recovered by either side, so the kicking roles read the processor's kicking_team /
  * kick_return_team and a recovery its fumble_recovery_team, each falling back to the
- * side that convention implies.
+ * side that convention implies. A fumble on a kick is the returner's (blocked punts
+ * carry no fumble_recovery_team, and their recovery is the return side's too).
+ * Measured on 222 games, 2004-2026, against the box score's rosters: every role here
+ * is 99%+ right except the two fumble roles (~92%), which is why they rank last below.
  */
 const ROLE_TEAM: Record<Role, (p: any) => unknown> = {
-    pass: (p) => p.pos_team, rush: (p) => p.pos_team, recv: (p) => p.pos_team, fumble: (p) => p.pos_team,
+    pass: (p) => p.pos_team, rush: (p) => p.pos_team, recv: (p) => p.pos_team,
+    fumble: (p) => p.kick_return_team ?? p.pos_team,
     sack: (p) => p.def_pos_team, int: (p) => p.def_pos_team, pbu: (p) => p.def_pos_team,
     ff: (p) => p.forced_fumble_team ?? p.def_pos_team,
-    fumrec: (p) => p.fumble_recovery_team ?? (p.fumble_lost === true ? p.def_pos_team : p.pos_team),
+    fumrec: (p) => p.fumble_recovery_team ?? p.kick_return_team ?? (p.fumble_lost === true ? p.def_pos_team : p.pos_team),
     punt: (p) => p.kicking_team ?? p.pos_team,
     fg: (p) => p.fg_team ?? p.pos_team,
     kickoff: (p) => p.kicking_team ?? p.def_pos_team,
     kret: (p) => p.kick_return_team ?? p.pos_team,
-    pret: (p) => p.kick_return_team ?? p.def_pos_team,
+    pret: (p) => p.punt_return_team ?? p.kick_return_team ?? p.def_pos_team,
 };
+/** The roles whose team is least certain: on a play, any other role of the same player decides his side. */
+const WEAK = new Set<Role>(["fumble", "fumrec"]);
 
 /** Play-type filters that are not about one player. */
 export const PLAY_TAGS = {
@@ -98,34 +104,52 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
     const byPlay: Record<string, string[]> = {};
     const players = new Map<string, PlayerOption>();
     const tagCounts: Partial<Record<PlayTag, number>> = {};
-    // player id -> team -> plays; a player's team is his majority, so one odd row
-    // (a returner's fumble, a mislabelled recovery) cannot move his whole menu entry
-    const votes = new Map<string, Map<string, number>>();
+    // player id -> team -> [plays from a firm role, plays from a fumble role]. A player's
+    // team is his majority, firm plays first, so one odd row (a returner's fumble, a
+    // mislabelled recovery) cannot move his whole menu entry.
+    const votes = new Map<string, Map<string, [number, number]>>();
 
     for (const p of plays) {
         const key = keyOf(p);
         if (!key) continue;
         const sels: string[] = [];
 
+        // this play's roles by player, so a player gets one side per play
+        const here = new Map<string, { name: unknown; roles: Role[]; owner: string; firm: boolean }>();
         for (const role of Object.keys(ROLE_FIELDS) as Role[]) {
             const [idf, namef] = ROLE_FIELDS[role];
             const id = p[idf];
             if (id === null || id === undefined || id === "") continue;
+            // ESPN's team pseudo-athlete is not a player
+            if (String(p[namef] ?? "").toUpperCase() === "TEAM") continue;
             // the processor also fills fg_kicker on kickoffs; only an attempt is a field goal
-            if (role === "fg" && p.fg_attempt === false) continue;
+            if (role === "fg" && p.fg_attempt !== true) continue;
             const owner = String(ROLE_TEAM[role](p) ?? "");
-            if (teamId !== undefined && String(teamId) !== owner) continue;
             const sid = String(id);
-            sels.push(`r:${role}:${sid}`);
+            const h = here.get(sid) ?? { name: p[namef], roles: [], owner: "", firm: false };
+            h.roles.push(role);
+            // a firm role's side beats a fumble role's; the first of each kind stands
+            if (owner && (!h.owner || (!h.firm && !WEAK.has(role)))) { h.owner = owner; h.firm = !WEAK.has(role); }
+            here.set(sid, h);
+        }
+
+        for (const [sid, h] of here) {
+            if (teamId !== undefined && String(teamId) !== h.owner) continue;
             let e = players.get(sid);
             if (!e) {
-                e = { id: sid, name: String(p[namef] ?? sid), teamId: owner, roles: {}, total: 0 };
+                e = { id: sid, name: String(h.name ?? sid), teamId: h.owner, roles: {}, total: 0 };
                 players.set(sid, e);
             }
-            e.roles[role] = (e.roles[role] ?? 0) + 1;
-            e.total++;
-            const v = votes.get(sid) ?? new Map<string, number>();
-            v.set(owner, (v.get(owner) ?? 0) + 1);
+            for (const role of h.roles) {
+                sels.push(`r:${role}:${sid}`);
+                e.roles[role] = (e.roles[role] ?? 0) + 1;
+                e.total++;
+            }
+            if (!h.owner) continue;
+            const v = votes.get(sid) ?? new Map<string, [number, number]>();
+            const n = v.get(h.owner) ?? [0, 0];
+            n[h.firm ? 0 : 1]++;
+            v.set(h.owner, n);
             votes.set(sid, v);
         }
 
@@ -146,7 +170,10 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
         if (sels.length) byPlay[key] = sels;
     }
 
-    for (const [sid, v] of votes) players.get(sid)!.teamId = [...v].sort((a, b) => b[1] - a[1])[0][0];
+    // most firm plays, then most fumble plays, then the lower team id: the same answer in any play order
+    for (const [sid, v] of votes) {
+        players.get(sid)!.teamId = [...v].sort(([ta, a], [tb, b]) => b[0] - a[0] || b[1] - a[1] || ta.localeCompare(tb))[0][0];
+    }
 
     return {
         byPlay,
