@@ -178,11 +178,12 @@ describe('fumble roles defer to the player’s other roles', () => {
 });
 
 describe('menu entries', () => {
-    test('a tie between two teams breaks on the numerically lower id, in any play order', () => {
-        // "333" sorts after "2000" as text; numerically it is lower
+    test('an exact tie stays with the side of the player’s earliest play', () => {
+        // never happened in the 222-game audit; team ids carry no meaning, so no id order decides it
         const a = { pos_team: 333, def_pos_team: 2000, game_play_number: 1, rusher_player_id: 3, rusher_player_name: 'X' };
         const b = { pos_team: 2000, def_pos_team: 333, game_play_number: 2, rusher_player_id: 3, rusher_player_name: 'X' };
-        for (const order of [[a, b], [b, a]]) expect(buildPlayIndex(order).players[0].teamId).toBe('333');
+        expect(buildPlayIndex([a, b]).players[0].teamId).toBe('333');
+        expect(buildPlayIndex([b, a]).players[0].teamId).toBe('2000');
     });
 
     test('ESPN’s TEAM pseudo-athlete is left out by its name, whatever its id', () => {

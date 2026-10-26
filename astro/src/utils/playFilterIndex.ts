@@ -181,10 +181,10 @@ export function buildPlayIndex(plays: any[]): PlayIndex {
         if (sels.length) byPlay[key] = sels;
     }
 
-    // most firm plays, then most fumble plays, then the numerically lower team id, so
-    // the answer is the same in any play order
-    const byVotes = ([ta, a]: [string, [number, number]], [tb, b]: [string, [number, number]]) =>
-        b[0] - a[0] || b[1] - a[1] || Number(ta) - Number(tb) || ta.localeCompare(tb);
+    // most firm plays, then most fumble plays; an exact tie (none in PR #346's 222-game
+    // audit) stays with the side of his earliest play, since the sort is stable and each
+    // vote map is in play order
+    const byVotes = ([, a]: [string, [number, number]], [, b]: [string, [number, number]]) => b[0] - a[0] || b[1] - a[1];
     for (const [sid, v] of votes) players.get(sid)!.teamId = [...v].sort(byVotes)[0][0];
 
     return {
