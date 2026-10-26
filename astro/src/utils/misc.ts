@@ -1,5 +1,5 @@
 import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor, ESPNStatus } from "../resources/espn";
-import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES, SDV_TEAM_METRIC_CATEGORIES } from "./constants";
+import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES, NATIONAL_TRENDS_METRICS } from "./constants";
 import { espnLogoLeague, leaguePath, type League } from "./league";
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
 
@@ -794,6 +794,24 @@ export function getPercentileKey(metric: string): string {
         default:
             return metric;
     }
+}
+
+/** 'team-season-bands': one metric's team-season ladder points, one per season and pctile (retrieveTeamSeasonPercentiles
+ *  rows carry the team_summaries column name, so a margin matches its own rows -- no ladder-key translation). */
+export function teamSeasonBandsFor(rows: { season: number, metric: string, values: number[] }[], metric: string): { season: number, pctile: number, value: number }[] {
+    return rows.filter(r => r.metric === metric).flatMap(r => r.values.map((value, i) => ({ season: r.season, pctile: TEAM_SEASON_PCTILES[i], value })));
+}
+
+/** 'team-season-bands': the team_summaries offense column whose team-season distribution National Trends draws for
+ *  its `sort` key (EPAplay -> EPAplay_off, pass_success -> success_off_pass, ...); undefined for a ladder-only metric
+ *  (dropbacks, GEI, ...), which keeps the team-game ladder. */
+/** National Trends' chart and y-axis title for its sort key; an unknown key falls back to the team-metric title. */
+export function nationalTrendsTitle(metric: string): string {
+    return NATIONAL_TRENDS_METRICS.find(m => m.key === metric)?.title ?? generateTeamMetricTitle(metric);
+}
+
+export function nationalSeasonBandMetric(metric: string): string | undefined {
+    return Object.keys(SDV_TEAM_METRIC_CATEGORIES.offensive).find(k => getPercentileKey(k) === metric);
 }
 
 export function generateColorRampValue(input: number | undefined | null, max: number, inverted: boolean = false): string | null {
