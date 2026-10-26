@@ -1,6 +1,7 @@
 
 <script>
 import Chart from 'chart.js/auto';
+import { chartGridColor } from '../../resources/chart';
 import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, calculateCumulativeSums, roundNumber, waitForElement } from '../../utils/misc';
 const { id, plays, homeTeam, awayTeam, colors = null } = $props();
 
@@ -110,6 +111,7 @@ async function generateChart() {
             },
             scales: {
                 y: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     ticks: {
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252'
                     },
@@ -126,12 +128,12 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         }, 
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
                     }
                 },
                 x: {
+                    border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     ticks: {
                         color: (isDarkMode) ?  '#e8e6e3' : '#525252'
                     },
@@ -148,9 +150,8 @@ async function generateChart() {
                             if (line.tick.value == 0) {
                                 return (isDarkMode) ? "white" : "#ACACAC"
                             }
-                            return (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
                         },
-                        borderColor: (isDarkMode) ? "#8D8D8D" : "#E5E5E5",
                     }
                 }
             }
@@ -181,13 +182,12 @@ async function waitToGenerateChart() {
     }
 }
 
-// with the page's per-theme colours, redraw in the other pair when the theme flips
-if (colors) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        Chart.getChart("epChart")?.destroy()
-        waitToGenerateChart()
-    })
-}
+// redraw when the theme flips: the per-theme colours, and the dark flag the ticks, borders and grid alpha read at
+// generation, must follow the new theme with or without `colors` (CodeRabbit on #339)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    Chart.getChart("epChart")?.destroy()
+    waitToGenerateChart()
+})
 
 if (document.readyState !== 'loading') {
     console.log(`DOM ready state`)

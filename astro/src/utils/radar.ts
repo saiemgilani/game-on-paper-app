@@ -1,5 +1,6 @@
 import type { ChartConfiguration, ChartData } from "chart.js";
 import { DEFAULT_LEAGUE, teamCountOf, type League } from "./league";
+import { chartGridColor } from "../resources/chart";
 import { roundNumber, retrieveValue, hexToRgb, getCurrentViewport, adjustTeamColorsForContrast, adjustColorForContrast, STANDARD_THEME_COLOR, getNumberWithOrdinal, cleanField, type ThemedGameColors } from "./misc";
 
 
@@ -85,6 +86,9 @@ export function generateRadarDataset(breakdowns: any[], titleKey: string, oppone
 }
 
 export function generateRadarConfig(data: ChartData<'radar'>, title: string, isDarkMode: boolean = true, showLegend: boolean = false): ChartConfiguration<'radar'> {
+    // the page's text colour, as the other Chart.js charts use since #339 (Akshay on #339: radars too, for consistency)
+    const ink = getComputedStyle(document.body).color;
+    const gridColor = chartGridColor(ink, isDarkMode);
     return {
         type: 'radar',
         data: data,
@@ -102,7 +106,7 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string, isD
                         chart.ctx.save()
                         chart.ctx.textAlign = "right"
                         chart.ctx.font = "8px Helvetica";
-                        chart.ctx.fillStyle = isDarkMode ? '#e8e6e3' : '#525252';
+                        chart.ctx.fillStyle = ink;
                         chart.ctx.fillText("Metrics shown as percentiles. From GameOnPaper.com, by Akshay Easwaran (@akeaswaran)\nand Saiem Gilani (@saiemgilani)", sizeWidth - (imgSize / 4.0), 7.875 * (sizeHeight / 8))
                         chart.ctx.restore();
                     }
@@ -114,7 +118,7 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string, isD
                 title: {
                     display: true,
                     text: title,
-                    color: (isDarkMode) ? "white" : "black",
+                    color: ink,
                     font: {
                         size: 15,
                         family: '"Chivo", "Fira Mono", serif'
@@ -148,18 +152,18 @@ export function generateRadarConfig(data: ChartData<'radar'>, title: string, isD
                     suggestedMin: 0,
                     suggestedMax: 100,
                     angleLines: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        color: gridColor
                     },
                     grid: {
-                        color: (isDarkMode) ? "#8D8D8D" : "#E5E5E5"
+                        color: gridColor
                     },
                     ticks: {
                         stepSize: 25,
                         backdropColor: (isDarkMode) ? 'rgb(56, 61, 63)' : 'rgba(255, 255, 255, 0.75)',
-                        color: (isDarkMode) ? '#e8e6e3' : '#525252'
+                        color: ink
                     },
                     pointLabels: {
-                        color: (isDarkMode) ? '#e8e6e3' : '#525252'
+                        color: ink
                     }
                 }
             }

@@ -15,7 +15,9 @@ import type { TeamProfileData } from "../../routes/teamProfile";
 // Route component: routes/teamProfile.ts (per-league page) read ESPN + the
 // season tables and made the not-found decision; this renders.
 type Props = TeamProfileData;
-const { league, id, team, percentiles: allPctls, teamSummaries } = Astro.props;
+const { league, id, team, percentiles: allPctls, teamSummaries, seasonBands } = Astro.props;
+// the flag's prop reaches the island only for a viewer the flag admits, so the public island is unchanged
+const bandProps = seasonBands ? { seasonBands } : {};
 
 const breadcrumbs: PageBreadcrumb[] = [
     {
@@ -76,7 +78,7 @@ function createSeasonRow(summary: SDVTeamSummary): string {
             </div>
         </div>
     </div>
-    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData} percentiles={allPctls}>
+    <TeamTrendsChart client:only title={cleanLocation(team)} teamColor={teamColorHex(team.color)} teamData={teamData} percentiles={allPctls} {...bandProps}>
         <FallbackSpinner slot="fallback" />
     </TeamTrendsChart>
     <TeamRadarChart client:only team={team} teamData={teamData} showSeasonPicker={true} league={league}>
