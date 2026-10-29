@@ -28,15 +28,14 @@ describe('sitemap.xml with the coaches flag on', () => {
       expect(xml).toContain(`<loc>https://gameonpaper.com/coaches/${b}</loc>`);
     }
     expect(AVAILABLE_SEASONS[0]).toBe(2004);
-    expect(xml).not.toContain(`/year/${AVAILABLE_SEASONS[0] - 1}/coaches/`);
+    expect(xml).not.toContain(`/year/${AVAILABLE_SEASONS[0] - 1}/coaches`);
     if (METRIC_YEAR != CURRENT_YEAR) {
       expect(xml).not.toContain(`/year/${CURRENT_YEAR}/coaches`);
     } else {
       expect(xml).toContain(`/year/${CURRENT_YEAR}/coaches`);
     }
-    expect(xml).not.toContain('<loc>https://gameonpaper.com/coaches</loc>');
-    expect(xml).not.toContain('<loc>https://gameonpaper.com/year/2025/coaches</loc>');
-    expect(xml).not.toContain('/coaches/pace/</loc>');
+    expect(xml).toContain('<loc>https://gameonpaper.com/year/2025/coaches</loc>');
+    expect(xml).toContain('/coaches/pace</loc>');
     const m = xml.match(/<loc>https:\/\/gameonpaper\.com\/year\/2015\/coaches\/pace<\/loc><lastmod>([^<]+)</);
     expect(m?.[1]).toBe('2016-01-15');
   });

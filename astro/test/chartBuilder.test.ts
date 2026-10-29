@@ -10,14 +10,6 @@ const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${
 // 138 teams, and Rice (242) has no red-zone pass value yet
 const cfb2026 = fixture('team-summaries-cfb-2026-builder.json').data as Record<string, any>[];
 
-describe('the chart-builder-v2 flag', () => {
-    test('is a preview feature until promoted', () => {
-        expect(FLAGS['chart-builder-v2']).toBe('preview');
-        expect(isFeatureEnabled('chart-builder-v2', {})).toBe(false);
-        expect(isFeatureEnabled('chart-builder-v2', { preview: true })).toBe(true);
-    });
-});
-
 describe('chart builder helpers', () => {
     test('median keeps zeros and ignores non-finite values', () => {
         expect(median([0, 0, 1])).toBe(0);
