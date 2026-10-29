@@ -53,8 +53,8 @@ ENV PATH="/code/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 # sportsdataverse retries each ESPN request up to 15 x 30s by default. A
-# throttled ESPN should fail the request well inside gunicorn's 120s timeout
-# (gunicorn.conf.py), which otherwise kills the worker to free it.
+# gthread worker's stuck thread is never reaped by gunicorn's timeout
+# (gunicorn.conf.py), so a throttled ESPN must fail the request quickly.
 ENV SDV_PY_HTTP_TIMEOUT=10
 ENV SDV_PY_HTTP_RETRIES=3
 
