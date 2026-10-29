@@ -1173,7 +1173,7 @@ const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 export const APP_VERSION = getSecret("APP_VERSION") || "dev";
 // What the API's responses depend on: the python/ tree and the sportsdataverse-py
-// main the image resolved (deploy.yml). Keying the API-layer cache on this, not on
+// the deployed API reports installing (deploy.yml). Keying the API-layer cache on this, not on
 // APP_VERSION, keeps a deploy that changes neither from re-processing every game:
 // on 2026-10-29 each deploy sent the whole crawl to a cold, ~17-games-a-minute API.
 export const PROCESSOR_VERSION = getSecret("PROCESSOR_VERSION") || APP_VERSION;
