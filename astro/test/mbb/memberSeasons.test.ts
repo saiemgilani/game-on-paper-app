@@ -4,6 +4,8 @@
 // minors: membership is checked when the team has shots too, the index copy says "with linked shots", an empty college season
 // still asks for a team.
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
 import { withSeasonMembers } from '../../src/basketball/dashboards';
@@ -33,7 +35,7 @@ const fakeAstro = (path: string, params: Record<string, string> = {}) => {
 };
 const STMN = 2900; // St. Thomas (mbbTeams.ts): Division I from 2021-22
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 beforeEach(() => { Object.assign(state, { dropTex: false, dropTexPlayers: false, failMembership: false, emptySeason: false }); });
 
 describe('the member-seasons table (R-P11)', () => {

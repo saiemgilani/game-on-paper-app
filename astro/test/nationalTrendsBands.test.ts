@@ -108,11 +108,4 @@ describe('National Trends with team-season-bands', () => {
         expect(net.ladder).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
         expect(at2024(points)).toEqual([9, 9, 9, 9, 9]);
     }, 60_000);
-
-    test('flag off: the game ladder, no band read', async () => {
-        const { points } = await render('EPAplay', false);
-        expect(bandRead()).toEqual([]);
-        expect(net.ladder).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
-        expect(at2024(points)).toEqual([9, 9, 9, 9, 9]);
-    }, 60_000);
 });

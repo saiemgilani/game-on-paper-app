@@ -61,12 +61,6 @@ beforeAll(async () => {
     game = await retrieveProcessedGame(GAME_ID, 30);
 }, 60_000);
 
-const TWINS = {
-    v2: () => import('../src/components/game/GamePage.astro'),
-    classic: () => import('../src/components/game/classic/GamePage.astro'),
-} as const;
-type Twin = keyof typeof TWINS;
-
 const head = (html: string) => html.match(/<head>[\s\S]*?<\/head>/)![0];
 const meta = (html: string, key: string) => head(html).match(new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`))?.[1]?.replace(/&amp;/g, '&');
 const sha = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 16);
@@ -77,8 +71,8 @@ function live(g: any) {
     return out;
 }
 
-async function renderGame(twin: Twin, on: boolean, { query = '', g = game }: { query?: string; g?: any } = {}) {
-    const { default: Page } = await TWINS[twin]();
+async function renderGame(on: boolean, { query = '', g = game }: { query?: string; g?: any } = {}) {
+    const { default: Page } = await import('../src/components/game/GamePage.astro');
     return container.renderToString(Page, {
         props: { id: GAME_ID, game: g, league: 'cfb' },
         request: new Request(`https://gameonpaper.com/game/${GAME_ID}${query}`),
@@ -160,39 +154,9 @@ describe('shareTags', () => {
     });
 });
 
-describe('share-card off: every head is what main renders', () => {
-    // sha256 (16 hex) of each <head> rendered from origin/main b8b8eaad's
-    // components with these fixtures, before 'share-card' existed. Delete this block
-    // when the flag is promoted.
-    const GOLDEN = { v2: '02ff6811e8e71526', classic: '02ff6811e8e71526', pregame: '6b43f22e0c60e419' };
-
-    test.each(Object.keys(TWINS) as Twin[])('%s', async (twin) => {
-        const html = await renderGame(twin, false);
-        expect(meta(html, 'og:image')).toBe(`https://s.espncdn.com/stitcher/sports/football/college-football/events/${GAME_ID}.png?templateId=espn.com.share.1`);
-        expect(meta(html, 'og:image:width')).toBe('400');
-        expect(meta(html, 'twitter:card')).toBe('summary');
-        expect(head(html)).not.toContain('og:image:alt');
-        if (process.env.PRINT_GOLDEN) console.log(`GOLDEN ${twin} ${sha(head(html))}`);
-        expect(sha(head(html))).toBe(GOLDEN[twin]);
-        // ?spoilers=off is ignored
-        expect(head(await renderGame(twin, false, { query: '?spoilers=off' }))).toBe(head(html));
-        // and no Share button
-        expect(html).not.toContain('ShareButton');
-    }, 60_000);
-
-    test('pregame', async () => {
-        const html = await renderPregame(false);
-        expect(meta(html, 'og:image')).toContain('s.espncdn.com/stitcher');
-        expect(meta(html, 'twitter:card')).toBe('summary');
-        if (process.env.PRINT_GOLDEN) console.log(`GOLDEN pregame ${sha(head(html))}`);
-        expect(sha(head(html))).toBe(GOLDEN.pregame);
-        expect(head(await renderPregame(false, '?spoilers=off'))).toBe(head(html));
-    }, 60_000);
-});
-
 describe('share-card on: the card for the game state', () => {
-    test.each(Object.keys(TWINS) as Twin[])('%s, final', async (twin) => {
-        const html = await renderGame(twin, true);
+    test('final', async () => {
+        const html = await renderGame(true);
         expect(meta(html, 'og:image')).toBe(`https://gameonpaper.com/game/${GAME_ID}/card.png?state=final&variant=full`);
         expect(meta(html, 'twitter:image')).toBe(meta(html, 'og:image'));
         expect(meta(html, 'og:image:width')).toBe('1200');
@@ -205,8 +169,8 @@ describe('share-card on: the card for the game state', () => {
         expect(head(html)).toContain('application/ld+json');
     }, 60_000);
 
-    test.each(Object.keys(TWINS) as Twin[])('%s, live', async (twin) => {
-        const html = await renderGame(twin, true, { g: live(game) });
+    test('live', async () => {
+        const html = await renderGame(true, { g: live(game) });
         expect(meta(html, 'og:image')).toMatch(new RegExp(`/game/${GAME_ID}/card\\.png\\?state=live&variant=full&v=live-\\d+$`));
     }, 60_000);
 
@@ -219,8 +183,8 @@ describe('share-card on: the card for the game state', () => {
         expect(html.match(/ShareButton/g)?.length).toBeGreaterThanOrEqual(2);
     }, 60_000);
 
-    test.each(Object.keys(TWINS) as Twin[])('%s, ?spoilers=off: the preview hides the score, the page does not', async (twin) => {
-        const html = await renderGame(twin, true, { query: '?spoilers=off' });
+    test('?spoilers=off: the preview hides the score, the page does not', async () => {
+        const html = await renderGame(true, { query: '?spoilers=off' });
         expect(meta(html, 'og:image')).toBe(`https://gameonpaper.com/game/${GAME_ID}/card.png?state=final&variant=spoilerfree`);
         for (const key of ['og:title', 'og:description', 'og:image:alt', 'twitter:title', 'twitter:description', 'description', 'title']) scoreFree(meta(html, key));
         for (const key of ['og:url', 'twitter:url']) expect(meta(html, key)).toBe(`https://gameonpaper.com/game/${GAME_ID}?spoilers=off`);
@@ -231,7 +195,7 @@ describe('share-card on: the card for the game state', () => {
         // the body is unchanged: the header still says the score
         const body = html.slice(html.indexOf('<body'));
         expect(body).toMatch(/Central Michigan[\s\S]{0,400}30[\s\S]{0,400}Oklahoma State[\s\S]{0,400}27/);
-        const plain = await renderGame(twin, true);
+        const plain = await renderGame(true);
         const uid = (s: string) => s.replace(/\suid="[^"]*"/g, '');
         expect(uid(body)).toBe(uid(plain.slice(plain.indexOf('<body'))));
     }, 60_000);

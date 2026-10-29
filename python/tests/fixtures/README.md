@@ -106,3 +106,7 @@ carries both runs.
   final; the processor serves the rebuilt 54-56.
 - `wbb_summary_273130043.json.gz`: same endpoint, `event=273130043`, captured 2026-10-19: 2007-11-09, Stanford (24) at Yale (43), 100-44, two
   halves, 358 plays, no turnovers under any box key. The D12 game (turnover rates null before 2009).
+- `nba_process_401585607.payload.json` moved with main's sportsdataverse lock f94d8cb9 (GOP #348), patched cell by cell through
+  `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`home_score` / `away_score` / `home_win_prob`,
+  `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a
+  Float32 tail (2213.1001 -> 2213.1, the Float64 clock dtype). No other field moved.

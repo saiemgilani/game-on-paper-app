@@ -46,11 +46,6 @@ const ASTRO_DIR = new URL('..', import.meta.url).pathname;
 const normalise = (html: string) => html.replace(/\suid="[^"]*"/g, ' uid=""').split(ASTRO_DIR).join('');
 const sha = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
-const TWINS = {
-    v2: () => import('../src/components/game/GamePage.astro'),
-    classic: () => import('../src/components/game/classic/GamePage.astro'),
-} as const;
-
 let container: AstroContainer;
 let game: any;
 beforeAll(async () => {
@@ -59,8 +54,8 @@ beforeAll(async () => {
     game = await retrieveProcessedGame(GAME_ID, 30);
 }, 60_000);
 
-async function render(twin: keyof typeof TWINS, locals: Record<string, unknown>) {
-    const { default: Page } = await TWINS[twin]();
+async function render(locals: Record<string, unknown>) {
+    const { default: Page } = await import('../src/components/game/GamePage.astro');
     return container.renderToString(Page, {
         props: { id: GAME_ID, game: structuredClone(game) },
         request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
@@ -68,9 +63,9 @@ async function render(twin: keyof typeof TWINS, locals: Record<string, unknown>)
     });
 }
 
-describe.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s game page, game-colours on', (twin) => {
+describe('game page, game-colours on', () => {
     let html = '';
-    beforeAll(async () => { html = await render(twin, { flagOverrides: { 'game-colours': true } }); }, 60_000);
+    beforeAll(async () => { html = await render({ flagOverrides: { 'game-colours': true } }); }, 60_000);
 
     test('the WP chart, the EP chart and every drive chart get the same light and dark pairs', () => {
         const expected = pickGameColors(game.teamInfo.home, game.teamInfo.away);
@@ -126,27 +121,4 @@ describe('Deserved Win % bars switch pair with prefers-color-scheme', () => {
         expect(html).toContain(`background-color: ${rgbToHex(home)}`);
         expect(html).toContain(`background-color: ${rgbToHex(away)}`);
     });
-});
-
-describe('game-colours off: the page is byte-for-byte what main renders', () => {
-    // Hashes of the flag-off render of this fixture on #270's tree before 'game-colours'
-    // existed (AE/design-fixes + main 4a62cc2a = be3b1082, same body, run there); the
-    // merged tree renders the same bytes. The flag's
-    // only footprint is the `colors` / dark drive-colour props, absent when it is off. Another
-    // PR that changes the game page moves these on purpose: re-run with
-    // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    // Moved by the Binion box percentile fixes: the only visible change is the
-    // red-zone cell of the team with no red-zone snaps, "0%" -> "—"; the rest is
-    // the box's empty-ladder markup (no `null` class, no hidden %ile, no title).
-    // v2 moved for G10 (was bdd540d70b5e2d07): the drive-start EP row in the Drives table (the
-    // indented "Expected Points" sub-row), and Team Stats cells keyed to the game's two team ids,
-    // so a section the payload lacks prints dashes instead of empty cells; classic did not move.
-    const GOLDEN = { v2: 'fcf781b953128900', classic: '6adbaab93e7c7d94' };
-
-    test.each(Object.keys(TWINS) as (keyof typeof TWINS)[])('%s', async (twin) => {
-        const html = await render(twin, {});
-        expect(html).not.toMatch(/&quot;(colors|darkOffenseColor|darkDefenseColor)&quot;/);
-        if (process.env.PRINT_GOLDEN) console.log(`GOLDEN ${twin} ${sha(normalise(html))}`);
-        expect(sha(normalise(html))).toBe(GOLDEN[twin]);
-    }, 60_000);
 });

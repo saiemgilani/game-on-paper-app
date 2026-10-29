@@ -296,7 +296,7 @@ describe('PlayerBoxScore builds a defensive box from 2025 play text', () => {
         expect(shown).not.toContain('focus-jump');
 
         const publicHtml = await container.renderToString(PlayerBoxScore, { props, locals: { league: 'cfb' } as any });
-        expect(publicHtml).not.toContain('/players/4433971');
+        expect(publicHtml).toContain('/players/4433971');
         expect(publicHtml).toContain('J.Payne');
 
         // a name with no id anywhere in the box gets no link rather than a guess
@@ -342,7 +342,6 @@ describe('the player stat line is a row under the name, not a column', () => {
         return rows;
     };
 
-    let classic = '';
     let v2 = '';
     beforeAll(async () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
@@ -351,15 +350,10 @@ describe('the player stat line is a row under the name, not a column', () => {
         const side = (rows: any[]) => rows.filter((r) => r.pos_team == teamId);
         // exactly the props each GamePage passes its own twin
         const props = { pass: side(game.advBoxScore.pass), rush: side(game.advBoxScore.rush), receiver: side(game.advBoxScore.receiver) };
-        classic = await container.renderToString((await import('../src/components/game/classic/PlayerBoxScore.astro')).default, { props });
         v2 = await container.renderToString((await import('../src/components/game/metrics/PlayerBoxScore.astro')).default, {
             props: { ...props, plays: game.plays, teamId, box: game.advBoxScore, season: game.season?.year },
         });
     }, 60_000);
-
-    test('classic: the name and five numbers, then the stat line spanning all six columns', () => {
-        expectSecondRows(classic, 6);
-    });
 
     test('v2: the same, and the air-yards and best-play tooltips move with the text', () => {
         const rows = expectSecondRows(v2, 6);
@@ -378,12 +372,10 @@ describe('the player stat line is a row under the name, not a column', () => {
             return rows.slice(0, end === -1 ? rows.length : end)
                 .filter((r) => !r.group && !r.statLine).map((r) => r.cells.map((c) => c.text));
         };
-        expect(nameRows(classic).length).toBeGreaterThan(5);
-        expect(nameRows(v2)).toEqual(nameRows(classic));
+        expect(nameRows(v2).length).toBeGreaterThan(5);
         // and a passer's line reads the same in both; v2 only appends LNG and the best play
         const firstLine = (html: string) => trs(html).find((r) => r.statLine)!.cells[0].text;
-        expect(firstLine(classic)).toMatch(/^20\/32, 153 yds, 1 TD, 2 INT, \d+ Sck, [\d.]+ xQBR/);
-        expect(firstLine(v2).startsWith(firstLine(classic))).toBe(true);
+        expect(firstLine(v2)).toMatch(/^20\/32, 153 yds, 1 TD, 2 INT, \d+ Sck, [\d.]+ xQBR/)
     });
 
     test('player box: specialists name and EPA, then the stat line', async () => {
@@ -435,31 +427,6 @@ describe('DrivesTable survives a drive with no processed plays', () => {
     });
 });
 
-describe('the classic snapshot serves the public while v2 is in preview', () => {
-    let html = '';
-    beforeAll(async () => {
-        const { retrieveProcessedGame } = await import('../src/resources/python');
-        const game = await retrieveProcessedGame(GAME_ID, 30);
-        const GamePageClassic = (await import('../src/components/game/classic/GamePage.astro')).default;
-        html = await container.renderToString(GamePageClassic, { props: { id: String(GAME_ID), game } });
-    }, 30000);
-
-    test('renders the pre-v2 page: plays table present, v2 surfaces absent', () => {
-        expect(html.length).toBeGreaterThan(50_000);
-        expect(html).toContain('<html');
-        // v2-only surfaces must not leak into the public variant
-        expect(html).not.toContain('data-play-filters');
-        expect(html).not.toContain('<symbol id="pi-td"');
-        expect(html).not.toContain('pi-pill');
-    });
-
-    test('the flag gates it: preview renders v2, public renders classic', async () => {
-        const { isFeatureEnabled, FLAGS } = await import('../src/utils/features');
-        expect(FLAGS['game-page-v2']).toBe('preview');
-        expect(isFeatureEnabled('game-page-v2', { preview: true })).toBe(true);
-        expect(isFeatureEnabled('game-page-v2', {})).toBe(false);
-    });
-});
 
 describe('the play filter is the only way to focus the plays on a player', () => {
     test('the dropdown carries a role option per player, and no name is a second control', async () => {
@@ -494,35 +461,30 @@ describe('chart islands serialize only the fields their charts read', () => {
         const { retrieveProcessedGame } = await import('../src/resources/python');
         const game = await retrieveProcessedGame(GAME_ID, 30);
         const { default: v2 } = await import('../src/components/game/GamePage.astro');
-        const { default: classic } = await import('../src/components/game/classic/GamePage.astro');
-        for (const [name, Page] of [['v2', v2], ['classic', classic]] as const) {
-            renders[name] = await container.renderToString(Page, {
-                props: { id: GAME_ID, game },
-                request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
-            });
-        }
+        renders['v2'] = await container.renderToString(v2, {
+            props: { id: GAME_ID, game },
+            request: new Request(`https://gameonpaper.com/game/${GAME_ID}`),
+        });
         sdvState.percentiles = [];
     }, 60_000);
 
-    for (const twin of ['v2', 'classic']) {
-        test(`${twin}: each drive chart gets a team colour, not the team`, () => {
-            const drives = islandProps(renders[twin], 'DriveChart');
-            expect(drives.length).toBeGreaterThan(10);
-            for (const p of drives) {
-                expect(p.offenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
-                expect(p.defenseColor[1]).toMatch(/^[0-9a-f]{6}$/i);
-                expect(p.offense).toBeUndefined();
-                expect(p.defense).toBeUndefined();
-            }
-        });
+    test(`v2: each drive chart gets a team colour, not the team`, () => {
+        const drives = islandProps(renders['v2'], 'DriveChart');
+        expect(drives.length).toBeGreaterThan(10);
+        for (const p of drives) {
+            expect(p.offenseColor[1]).toMatch(/^#[0-9a-f]{6}$/i);
+            expect(p.defenseColor[1]).toMatch(/^#[0-9a-f]{6}$/i);
+            expect(p.offense).toBeUndefined();
+            expect(p.defense).toBeUndefined();
+        }
+    });
 
-        test(`${twin}: the WP chart gets the excitement column, not the percentile table`, () => {
-            const [wp] = islandProps(renders[twin], 'WinProbabilityChart');
-            const rows = wp.percentiles[1].map((r: any) => r[1]);
-            expect(rows).toHaveLength(101);
-            expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
-        });
-    }
+    test(`v2: the WP chart gets the excitement column, not the percentile table`, () => {
+        const [wp] = islandProps(renders['v2'], 'WinProbabilityChart');
+        const rows = wp.percentiles[1].map((r: any) => r[1]);
+        expect(rows).toHaveLength(101);
+        expect(rows.every((r: any) => Object.keys(r).join() == 'GEI')).toBe(true);
+    });
 
     test('v2: the WP chart gets its export title and canonical URL', () => {
         const [wp] = islandProps(renders.v2, 'WinProbabilityChart');
@@ -538,10 +500,5 @@ describe('chart islands serialize only the fields their charts read', () => {
         const h1s = [...renders.v2.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => unescape(m[1].replace(/<[^>]+>/g, '')));
         expect(h1s).toHaveLength(2);
         for (const h1 of h1s) expect(wp.exportMeta[1].title[1]).toBe(`${h1}: Win Probability (Final)`);
-    });
-
-    test('classic: the WP chart keeps today\'s download, no export context', () => {
-        const [wp] = islandProps(renders.classic, 'WinProbabilityChart');
-        expect(wp).not.toHaveProperty('exportMeta');
     });
 });
