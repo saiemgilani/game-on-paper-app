@@ -1172,6 +1172,11 @@ export interface ProcessedGame {
 const PYTHON_HTTP_URL = getSecret("PYTHON_HTTP_URL") || 'http://python:5000';
 const PYTHON_HTTP_TOKEN = getSecret("PYTHON_HTTP_TOKEN");
 export const APP_VERSION = getSecret("APP_VERSION") || "dev";
+// What the API's responses depend on: the python/ tree and the sportsdataverse-py
+// main the image resolved (deploy.yml). Keying the API-layer cache on this, not on
+// APP_VERSION, keeps a deploy that changes neither from re-processing every game:
+// on 2026-10-29 each deploy sent the whole crawl to a cold, ~17-games-a-minute API.
+export const PROCESSOR_VERSION = getSecret("PROCESSOR_VERSION") || APP_VERSION;
 
 function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
     const statKeys = baseData.length > 0 ? Object.keys(baseData[0]) : []
@@ -1281,7 +1286,7 @@ export interface GameSources {
  * The processing sources the deployed sportsdataverse-py offers for a league.
  *
  * Only the admin tools call this, and it is a small static list per deploy, so
- * it is keyed on APP_VERSION exactly like the processed-game response: a build
+ * it is keyed on PROCESSOR_VERSION exactly like the processed-game response: a build
  * carrying a new adapter invalidates it with no purge. Fail-open -- the admin
  * toolbar renders with ESPN alone if the API cannot answer.
  */
@@ -1300,7 +1305,7 @@ export async function retrieveGameSources(gameId: string | number, league: Leagu
                 // league-wide key served /cfb/1/sources for /cfb/2/sources.
                 // See the route's docstring -- the echo is kept for the id-map
                 // follow-up, which makes the body vary per game for real.
-                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/sources?v=${APP_VERSION}`,
+                cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/sources?v=${PROCESSOR_VERSION}`,
             }
         });
         const body: GameSources = JSON.parse(await req.text());
@@ -1369,7 +1374,7 @@ export async function retrieveShareCard(gameId: string | number, league: League,
                 cf: {
                     cacheEverything: true,
                     cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
-                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${APP_VERSION}`,
+                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${PROCESSOR_VERSION}`,
                 }
             });
         } else {
@@ -1421,10 +1426,11 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
                 cacheEverything: true,
                 cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
                 // A completed game's API response is cached for a year. Keying it on the
-                // deployed version means a deploy (a parser fix in sportsdataverse-py
-                // rides in with every build) invalidates it without any zone purge; the
-                // page-side tag purge then re-renders from a fresh API response.
-                cacheKey: `${PYTHON_HTTP_URL}/${path}?v=${APP_VERSION}${query ? `&${query}` : ''}`,
+                // processor version means a deploy that changes python/ or picks up a new
+                // sportsdataverse-py main invalidates it without any zone purge, and one
+                // that changes neither keeps it; the page-side tag purge then re-renders
+                // from a fresh API response.
+                cacheKey: `${PYTHON_HTTP_URL}/${path}?v=${PROCESSOR_VERSION}${query ? `&${query}` : ''}`,
             }
         })
         text = await req.text();

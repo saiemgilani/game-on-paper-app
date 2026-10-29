@@ -25,8 +25,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
+      # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
+      # tree plus the sportsdataverse-py main the API image resolves (deploy-api below
+      # resolves the same ref), so a deploy that changes neither keeps every cached
+      # processed game.
+      - name: Processor version
+        id: procver
+        run: |
+          sdv="${{ github.event.client_payload.sportsdataverse_py_sha }}"
+          if [ -z "$sdv" ]; then
+            sdv="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
+          fi
+          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+          echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
         env:
+          PROCESSOR_VERSION: ${{ steps.procver.outputs.v }}
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
@@ -53,6 +68,7 @@ jobs:
             TELEMETRY_ENABLED
           vars: |
             APP_VERSION
+            PROCESSOR_VERSION
           preCommands: |
             npm ci
             npm run build
