@@ -42,9 +42,13 @@ jobs:
         id: procver
         env:
           BUST: ${{ inputs.bust_processor_cache && github.run_id || '' }}
+          RESOLVED_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
         run: |
-          sdv="$(curl -fsS --retry 5 --retry-delay 10 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty')"
-          echo "$sdv" | grep -qE '^[0-9a-f]{40}$' || { echo "::error::the API reported no sportsdataverse sha (got '$sdv')"; exit 1; }
+          sdv="$(curl -fsS --retry 5 --retry-delay 10 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty' || true)"
+          if ! echo "$sdv" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "::warning::the API reported no sportsdataverse sha (got '$sdv'); keying on the main deploy-api resolved"
+            sdv="$RESOLVED_SHA"
+          fi
           v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}${BUST:+-$BUST}"
           echo "v=$v" >> "$GITHUB_OUTPUT"
           echo "processor version $v"
@@ -90,6 +94,8 @@ jobs:
 
   deploy-api:
     runs-on: ubuntu-latest
+    outputs:
+      sdv_sha: ${{ steps.sdvpy.outputs.sha }}
     # Two merges minutes apart ran this job twice in parallel on 2026-08-31: run A
     # pulled its image, run B overwrote docker-compose.yml on the host, run A's
     # down+up then pulled B's image into a full disk and the API stayed down.
