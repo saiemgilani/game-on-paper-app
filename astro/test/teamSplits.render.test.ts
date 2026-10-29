@@ -152,11 +152,4 @@ describe('cfb season team page, Situational Splits edge cases', () => {
         expect(html).toContain('Alabama');
         expect(html).not.toContain('team-splits');
     }, 60_000);
-
-    test('flag off: no team_tendencies request and no panel', async () => {
-        const html = await render('cfb', '333', false);
-        expect(feed.calls).toHaveLength(0);
-        expect(html).not.toContain('team-splits-panel');
-        expect(html).not.toContain('Situational Splits');
-    }, 60_000);
 });

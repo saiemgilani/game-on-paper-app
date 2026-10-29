@@ -109,7 +109,7 @@ describe('national trends stamp', () => {
         expect(html).toContain('<time datetime="2026-09-20T04:00:00Z" data-freshness>Sep 20, 2026, 4:00 AM UTC</time>');
         // client:only islands serialize their props; the chart receives the ISO and draws it in the viewer's zone
         expect(html).toMatch(/props="[^"]*&quot;freshness&quot;:\[0,&quot;2026-09-20T04:00:00Z&quot;\]/);
-        expect(h.asked).toEqual(['cfb.percentiles']);
+        expect(h.asked).toEqual(["cfb.team_summaries", 'cfb.percentiles']);
         // all five percentile reads share one pin, it held, and that one batch is what renders
         expect(h.pctArgs).toHaveLength(5);
         expect(new Set(h.pctArgs.map((a) => a[4])).size).toBe(1);
@@ -139,7 +139,7 @@ describe('trends: an ingest landing mid-batch re-reads the whole batch once', ()
     test('read 3 moves: all five re-read under a fresh stamp, every row is the new version, stamp shown', async () => {
         h.moveAt = [3];
         const html = await page(TRENDS, { league: 'cfb' }, {});
-        expect(h.asked).toEqual(['cfb.percentiles', 'cfb.percentiles (fresh)']);
+        expect(h.asked).toEqual(["cfb.team_summaries", 'cfb.percentiles', 'cfb.percentiles (fresh)']);
         expect(h.pctArgs).toHaveLength(10);
         expect(h.pctArgs.slice(5).map((a) => a[1])).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
         expect(new Set(h.pctArgs.slice(5).map((a) => a[4])).size).toBe(1);

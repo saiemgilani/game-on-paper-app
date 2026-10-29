@@ -3,9 +3,11 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { generateGlossaryItems } from '../src/resources/glossary';
 import { termSlugs } from '../src/utils/seo';
+import { loadRenderers } from 'astro:container';
+import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create(); });
+beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('glossary term anchors', () => {
     test('every term is an h3 carrying its slug id; the letter sections stay', async () => {

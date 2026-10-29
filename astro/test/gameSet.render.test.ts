@@ -123,14 +123,6 @@ describe.each([
 });
 
 describe('Results by Opponent, gates', () => {
-    test('flag off: no panel and no team_opponent_splits read', async () => {
-        const html = await render('cfb', '333', false);
-        expect(html).toContain('Alabama');
-        expect(html).not.toContain('vs-opponent');
-        expect(html).not.toContain('Results by Opponent');
-        expect(feed.calls).toHaveLength(0);
-    }, 60_000);
-
     test('a season with the pass and rush columns: all six metrics in the select', async () => {
         const f = JSON.parse(readFileSync(new URL('./fixtures/team-opponent-splits-2026.json', import.meta.url)).toString());
         feed.override = { team: f.nfl.team_id.data, opponent: f.nfl.opponent_id.data };

@@ -95,3 +95,7 @@ carries both runs.
 - `mbb_summary_401829457.json.gz`: same endpoint, `event=401829457`, captured 2026-10-18: 2025-11-23, Coastal Carolina (324) vs North Dakota
   (155, home) at Western Hall, 75-58 to CCU, neutral, no pickcenter, 538 plays; every ESPN play row carries the away team's score in
   `homeScore` (plan #1's neutral-site swap). The processor's repaired score.
+- `nba_process_401585607.payload.json` moved with main's sportsdataverse lock f94d8cb9 (GOP #348), patched cell by cell through
+  `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`home_score` / `away_score` / `home_win_prob`,
+  `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a
+  Float32 tail (2213.1001 -> 2213.1, the Float64 clock dtype). No other field moved.
