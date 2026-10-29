@@ -55,7 +55,6 @@ describe('sitemap.xml', () => {
 
   test('coach board URLs exist with coaches flag now live', () => {
     expect(xml).toContain('/coaches/');
-    expect(xml).toContain('/coaches<');
   });
 
   test('no /nfl URL while the nfl flag is not public (they are 404s)', () => {

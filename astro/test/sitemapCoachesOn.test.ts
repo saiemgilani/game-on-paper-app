@@ -34,7 +34,6 @@ describe('sitemap.xml with the coaches flag on', () => {
     } else {
       expect(xml).toContain(`/year/${CURRENT_YEAR}/coaches`);
     }
-    expect(xml).toContain('<loc>https://gameonpaper.com/coaches</loc>');
     expect(xml).toContain('<loc>https://gameonpaper.com/year/2025/coaches</loc>');
     expect(xml).toContain('/coaches/pace</loc>');
     const m = xml.match(/<loc>https:\/\/gameonpaper\.com\/year\/2015\/coaches\/pace<\/loc><lastmod>([^<]+)</);

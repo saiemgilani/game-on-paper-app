@@ -60,8 +60,6 @@ function buildEntries(): Entry[] {
         // slashed form, and advertising a redirect wastes the crawl budget this
         // file exists to protect. Verified per-URL against production.
         { loc: '/teams/', lastmod: today, changefreq: 'weekly', priority: '0.7' },
-        { loc: '/players', lastmod: today, changefreq: 'weekly', priority: '0.7' },
-        { loc: '/coaches', lastmod: today, changefreq: 'weekly', priority: '0.7' },
         { loc: '/rankings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/standings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
