@@ -28,6 +28,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
+      # astro needs node >=22.23.4 (astro/package.json engines); check-latest so a runner's
+      # older cached 22.x is not used for the build wrangler-action runs below
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
       # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
       # tree plus the sportsdataverse-py the live API reports installing (the image
       # re-resolves main itself, so a ref resolved here could differ). A deploy that
