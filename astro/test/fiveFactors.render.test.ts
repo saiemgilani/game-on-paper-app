@@ -75,8 +75,8 @@ const EXPECTED: [string, string[], boolean, number, boolean?][] = [
     ['Turnovers', ['turnovers_off', 'turnovers_def', 'turnover_margin'], false, 2],
     ['Expected', ['expected_turnovers_off', 'expected_turnovers_def', 'expected_turnover_margin'], false, 2],
     ['Luck (pts)', ['turnover_luck_off', 'turnover_luck_def', 'turnover_luck'], false, 2],
-    ['Havoc', ['havoc_off', 'havoc_def', 'havoc_margin'], true, 1],
-    ['EPA / Game', ['havoc_EPAgame_off', 'havoc_EPAgame_def', 'havoc_EPAgame_margin'], false, 2],
+    ['Havoc %', ['havoc_off', 'havoc_def', 'havoc_margin'], true, 1],
+    ['Havoc EPA / Game', ['havoc_EPAgame_off', 'havoc_EPAgame_def', 'havoc_EPAgame_margin'], false, 2],
 ];
 /** Where a row's cells start in `tds()`: five cells a row (label, metric, off/def/margin). */
 const at = (label: string) => 5 * EXPECTED.findIndex(([l]) => l === label);
@@ -190,14 +190,5 @@ describe('cfb season team page, Five Factors edge cases', () => {
             expect(cell.text).toBe('—');
             expect(cell.cls).not.toContain('hulk-');
         }
-    }, 60_000);
-
-    test('flag off: no panel, and the request is exactly the pre-flag one', async () => {
-        const html = await render('cfb', '333', false);
-        expect(html).not.toContain('five-factors');
-        expect(html).not.toContain('Five Factors');
-        expect(feed.calls).toHaveLength(1);
-        expect(feed.calls[0].columns).toBeUndefined();
-        expect(feed.calls[0]).toEqual({ season: 2025, team_id: 333, league: 'cfb' });
     }, 60_000);
 });

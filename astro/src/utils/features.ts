@@ -26,7 +26,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // The rebuilt game page (#189) AND play marks (#187): public traffic gets
     // the frozen pre-v2 snapshot (components/game/classic/); the preview cookie
     // renders the new tree. Promote by flipping to 'on' and deleting classic/.
-    'game-page-v2': 'preview',
+    'game-page-v2': 'on',
     // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
     // 768px. Desktop keeps the card grid either way.
     'scoreboard-compact': 'preview',
@@ -58,7 +58,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
-    'coaches': 'preview',
+    'coaches': 'on',
     // The play processor's source switch (football-sources Stage 4): the game
     // page may ask the API to process a game from an alternate feed
     // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's
@@ -74,30 +74,30 @@ export const FLAGS: Record<string, FeatureState> = {
     // isPlayerPath); the links are gated in their components, because a public
     // link into a 404 namespace is worse than no link. Promote to 'on' once the
     // player-keyed Data API routes are live and the sitemap block is filled in.
-    'player-pages': 'preview',
+    'player-pages': 'on',
     // Game-page header links: the team names in the h1 go to /team/<id>, and the
     // Back button goes to the game's own week. Links on text the page already
     // shows, no new element. Read in GameHeader.astro, which both game-page
     // twins and the pregame page import.
-    'game-links': 'preview',
+    'game-links': 'on',
     // One team-colour decision per game (utils/misc.ts pickGameColors), a pair
     // per theme, handed to every chart on the game page (WP, EP, drive charts,
     // Deserved Win %) and the matchup radar. Off: each chart keeps its own
     // legacy colours.
-    'game-colours': 'preview',
+    'game-colours': 'on',
     // The Five Factors panel on the season team page (/year/N/team/<id> and the
     // /nfl twin), under Profile. Only this path adds the factor columns to the
     // team_summaries `select`, so for every other viewer the request, its cache
     // key and the page are exactly what they are today. Promote to 'on' once the
     // table has been reviewed on production data.
-    'five-factors': 'preview',
+    'five-factors': 'on',
     // The header search box (components/search/SiteSearch.svelte) and the
     // GET /api/search proxy it calls, which 404s for every other viewer. Hits
     // into a gated namespace are dropped per viewer: players while
     // 'player-pages' is off, NFL rows while 'nfl' is off. Prerendered pages
     // (glossary, data-sources, changelog) resolve the flag at build time, so
     // they show no box while this is 'preview'.
-    'site-search': 'preview',
+    'site-search': 'on',
 
     // Game link previews: og:image becomes the API's 1200x630 card for the
     // game's state (utils/shareTags.ts), ?spoilers=off previews without the
@@ -109,33 +109,33 @@ export const FLAGS: Record<string, FeatureState> = {
     // Nearby-rank lists on the team-season and player pages: for each key
     // metric, the teams or players ranked within five places, the page's own
     // row marked. Promote once both leagues' lists have been reviewed.
-    'rank-neighbors': 'preview',
+    'rank-neighbors': 'on',
     // The Situational Splits panel on the season team page (/year/N/team/<id> and
     // the /nfl twin): the team's team_tendencies row by down, field, score and
     // game context, for offense or defense, ranked against the season's other
     // rows. Only this path reads team_tendencies there; for every other viewer
     // the page and its requests are unchanged.
-    'team-splits': 'preview',
+    'team-splits': 'on',
     // Results by Opponent on the season team page (/year/N/team/<id> and the
     // /nfl twin): one bar per game from team_opponent_splits, EPA and Success %
     // per play, dropback and rush, raw or margin, with a dashed season average. Only this path
     // reads team_opponent_splits; every other viewer's requests are unchanged.
-    'vs-opponent': 'preview',
+    'vs-opponent': 'on',
     // Chart Builder v2 on /charts/builder (both leagues): one control bar (Season, X, Y, Random axes,
     // Plot) above the chart, and a median crosshair with quadrant labels. Off: today's builder.
-    'chart-builder-v2': 'preview',
+    'chart-builder-v2': 'on',
     // The Record panel on the season team page (/year/N/team/<id> and the /nfl
     // twin): the team's record split by home/away/neutral, conference (division
     // in the NFL), one-score games, vs FBS and vs ranked. It pivots the schedule
     // rows the page already reads for the TeamCard, so no request changes.
     // Promote to 'on' once the table has been reviewed on production data.
-    'team-record-splits': 'preview',
+    'team-record-splits': 'on',
     // The team profile's Metric History (/team/<id> and the /nfl twin) draws its boxes from the national
     // distribution of team SEASONS (sdv-db `team_summaries/percentiles`, one read) instead of the team-GAME
     // ladder, and Net Statistics get boxes too. National Trends (/charts/trends and the /nfl twin) draws the same
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
-    'team-season-bands': 'preview',
+    'team-season-bands': 'on',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

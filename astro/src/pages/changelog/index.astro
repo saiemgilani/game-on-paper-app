@@ -4,6 +4,10 @@ export const prerender = true;
 import GenericPage from '../../layouts/GenericPage.astro'
 const allLogs = Object.values(import.meta.glob('./*.md', { eager: true }));
 
+function extractLogDate(url: URL | string): string {
+  return String(url).replace("/changelog/", "")
+}
+
 let yearLogs: Record<string, unknown[]> = {};
 for (const log of allLogs) {
   const url = String((log as any).url)
@@ -11,7 +15,7 @@ for (const log of allLogs) {
     continue;
   }
   
-  const date: string = String((log as any).url).replace("/changelog/", "")
+  const date: string = extractLogDate(url)
   const year = date.slice(0, 4)
   if (!Object.keys(yearLogs).includes(year)) {
     yearLogs[year] = [];
@@ -19,6 +23,11 @@ for (const log of allLogs) {
   yearLogs[year].push(log)
 }
 
+for (let [year, logs] of Object.entries(yearLogs)) {
+  logs.sort((a: any, b: any) => {
+      return extractLogDate(b.url).localeCompare(extractLogDate(a.url))
+  })
+}
 
 function generateLogHtml(log: any): string {
   return `

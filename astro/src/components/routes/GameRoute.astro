@@ -5,7 +5,6 @@
  * page itself only decides the redirect.
  */
 import GamePage from '../game/GamePage.astro';
-import GamePageClassic from '../game/classic/GamePage.astro';
 import PreGamePage from '../game/PreGamePage.astro';
 import ErrorPage from '../ErrorPage.astro';
 import { isFeatureEnabled } from '../../utils/features';
@@ -65,7 +64,5 @@ const espnLink = `This may be due to a lack of data from ESPN. Double check that
     )
 }
 {
-    (espnGame && game && gameRenderable && !pregameState) && (isFeatureEnabled('game-page-v2', Astro.locals)
-        ? <GamePage id={id} game={game} league={league} />
-        : <GamePageClassic id={id} game={game} league={league} />)
+    (espnGame && game && gameRenderable && !pregameState) && (<GamePage id={id} game={game} league={league} />)
 }
