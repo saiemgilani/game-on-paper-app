@@ -69,14 +69,15 @@ describe('display rows', () => {
         expect(lists[3].rows.find((c) => c.self)!.value.endsWith('%')).toBe(true);
     });
 
-    test('player lists: leaderboard titles, and links only for a viewer the player-pages flag admits', () => {
+    test('player lists: leaderboard titles, and links', () => {
         const rows = fx.cfb_passing_2024;
         const mccord = rows.find((r: any) => String(r.player_id) === '4433971');
         const key = playerKey(mccord);
         const pub = playerNeighborLists(rows, key, 'passing', { league: 'cfb' }, 2024);
         expect(pub.map((l) => l.title)).toEqual(['EPA/DB', 'Pass SR%', 'Yards/DB', 'EPA']);
-        expect(pub.every((l) => l.rows.every((c) => c.href === null))).toBe(true);
-        const prev = playerNeighborLists(rows, key, 'passing', { league: 'cfb', preview: true }, 2024);
+        
+        expect(pub.every((l) => l.rows.every((c) => c.href === null))).toBe(false);
+        const prev = playerNeighborLists(rows, key, 'passing', { league: 'cfb' }, 2024);
         expect(prev[0].rows.find((c) => c.self)!.href).toBe('/players/4433971?season=2024');
     });
 });

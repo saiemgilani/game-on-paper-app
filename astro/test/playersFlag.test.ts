@@ -46,15 +46,14 @@ const PLAYER_PATHS = [
 ];
 
 describe('the player-pages flag', () => {
-    test('is a preview feature until promoted', () => {
-        expect(FLAGS['player-pages']).toBe('preview');
-        expect(isFeatureEnabled('player-pages', {})).toBe(false);
-        expect(isFeatureEnabled('player-pages', { preview: true })).toBe(true);
-    });
-
-    test('a public viewer gets the 404 for every player route, and only those', async () => {
+    test('a public viewer gets every player route', async () => {
         for (const p of PLAYER_PATHS) {
-            expect((await run(p, null)).rewrittenTo, p).toBe('/404');
+            if (p.includes("/nfl")) {
+                // this will be removed when NFL goes live
+                expect((await run(p, null)).rewrittenTo, p).toBe('/404');
+            } else {
+                expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
+            }
         }
         // the season leaderboards those pages hang off are untouched
         for (const p of ['/', '/players', '/year/2025/players/passing', '/year/2024/players/receiving', '/game/401634304', '/playersx']) {
@@ -144,7 +143,7 @@ describe('the links are gated with the pages', () => {
         expect(nflOn).toContain(`<strong>${fx.passing[0].passer_player_name}</strong></a>`);
     }, 60_000);
 
-    test('the game usage box links its names only for a preview viewer', async () => {
+    test('the game usage box links its names', async () => {
         const container = await AstroContainer.create();
         const { default: Usage } = await import('../src/components/game/metrics/UsageBoxScore.astro');
         // the committed game fixtures predate usage_box, so this is a minimal
@@ -158,10 +157,8 @@ describe('the links are gated with the pages', () => {
             request: new Request('https://gameonpaper.com/game/401634304'),
             locals: { league: 'cfb', ...locals },
         });
-        const off = await render({});
-        expect(off).toContain('<td>Kyle McCord');
-        expect(off).not.toContain('/players/');
-        const on = await render({ preview: true });
+
+        const on = await render({});
         expect(on).toContain('href="/players/4433971?season=2024"');
         expect(on).toContain('href="/players/4567890?season=2024"');
         expect(on).toContain('Kyle McCord</a>');

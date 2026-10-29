@@ -164,14 +164,4 @@ describe('cfb Record section edge cases', () => {
         expect(html).toContain('Alabama');
         expect(html).not.toContain('record-splits');
     }, 60_000);
-
-    test('flag off: no panel, and still exactly the two schedule reads', async () => {
-        const html = await render('cfb', '333', false);
-        expect(html).toContain('Alabama');
-        expect(html).not.toContain('record-splits');
-        expect(html).not.toContain('All completed games');
-        expect(feed.schedule).toHaveLength(2);
-        expect(feed.schedule.some((u) => u.includes('home_id=333'))).toBe(true);
-        expect(feed.schedule.some((u) => u.includes('away_id=333'))).toBe(true);
-    }, 60_000);
 });

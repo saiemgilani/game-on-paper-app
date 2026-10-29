@@ -118,15 +118,7 @@ describe('team profile route', () => {
         return { data, props: islandProps(html) };
     }
 
-    test('flag off: the five team-game ladder reads, and the island gets no seasonBands prop', async () => {
-        const { data, props } = await render(false);
-        expect(reads.ladder).toEqual([0.01, 0.25, 0.5, 0.75, 0.99]);
-        expect(net.seen.filter(u => u.includes('team_summaries/percentiles'))).toEqual([]);
-        expect(data.seasonBands).toBe(false);
-        expect(Object.keys(props)).not.toContain('seasonBands');
-    });
-
-    test('flag on: one team-season read instead, and the island is told', async () => {
+    test('one team-season read instead, and the island is told', async () => {
         const { data, props } = await render(true);
         expect(reads.ladder).toEqual([]);
         expect(data.seasonBands).toBe(true);
