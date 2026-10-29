@@ -54,8 +54,13 @@ def _pick_workers():
 workers, _cores_found, _mem_found, _by_mem = _pick_workers()
 
 bind = "0.0.0.0:5000"
-worker_class = "gthread"
-threads = 2                  # overlaps the ~0.12s ESPN fetch only
+# sync, not gthread: a gthread worker keeps heartbeating while its threads hang
+# on ESPN, so `timeout` never reaps them -- on 2026-10-29 every thread sat in
+# sportsdataverse retries and the API stopped answering, /healthcheck included.
+# A sync worker stuck past `timeout` is killed and replaced. threads must stay 1:
+# gunicorn silently turns sync into gthread when threads > 1.
+worker_class = "sync"
+threads = 1
 timeout = 120
 graceful_timeout = 30
 # recycle workers periodically: the model stack leaks slowly and a fresh
